@@ -668,6 +668,11 @@ class Base_Step_Executor:
             task_vars['_output'], task_vars['_depends'],
             task_vars['__signature_vars__'], task_vars).sig_id
 
+        # workflow ID should be included but not part of the signature, this is why it is included
+        # after task_id is created.
+        if '__workflow_sig__' in env.sos_dict and env.sos_dict['__workflow_sig__']:
+            task_vars['__workflow_sig__'] = env.sos_dict['__workflow_sig__']
+
         #618
         # it is possible that identical tasks are executed (with different underlying random numbers)
         # we should either give a warning or produce different ids...

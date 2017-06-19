@@ -55,7 +55,7 @@ class TestRemote(unittest.TestCase):
         self.temp_files = []
         Host.reset()
         # remove .status file left by failed workflows.
-        subprocess.call('sos purge --all', shell=True)
+        subprocess.call('sos purge', shell=True)
 
     def tearDown(self):
         for f in self.temp_files:
@@ -86,7 +86,7 @@ run:
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testRemoteExecution(self):
-        subprocess.check_output('sos purge --all', shell=True).decode()
+        subprocess.check_output('sos purge', shell=True).decode()
         script = SoS_Script('''
 [10]
 input: for_each={'i': range(5)}
@@ -130,7 +130,7 @@ run:
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testTaskSpooler(self):
         '''Test task spooler PBS engine'''
-        subprocess.check_output('sos purge --all', shell=True).decode()
+        subprocess.check_output('sos purge', shell=True).decode()
         script = SoS_Script('''
 [10]
 input: for_each={'i': range(3)}
@@ -174,7 +174,7 @@ run:
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testTaskSpoolerWithForceSigMode(self):
-        subprocess.check_output('sos purge --all', shell=True).decode()
+        subprocess.check_output('sos purge', shell=True).decode()
         script = SoS_Script('''
 [10]
 input: for_each={'i': range(3)}
@@ -335,7 +335,7 @@ print('a')
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testSoSExecute(self):
         '''Test sos execute'''
-        subprocess.check_output('sos purge --all -c docker.yml -q docker', shell=True)
+        subprocess.check_output('sos purge -c docker.yml -q docker', shell=True)
         script = SoS_Script('''
 [10]
 input: for_each={'i': range(3)}
@@ -362,7 +362,7 @@ run:
     def testSoSPurge(self):
         '''Test purge tasks'''
         # purge all previous tasks
-        subprocess.check_output('sos purge --all -c docker.yml -q ts', shell=True)
+        subprocess.check_output('sos purge -c docker.yml -q ts', shell=True)
         script = SoS_Script('''
 [10]
 input: for_each={'i': range(3)}
@@ -396,7 +396,7 @@ run:
         out = subprocess.check_output('sos status -c docker.yml -q docker -v1', shell=True).decode()
         self.assertEqual(out.strip().count('\n'), 1, 'Expect two lines: {}'.format(out))
         # show be ok
-        subprocess.check_output('sos purge --all -c docker.yml -q docker', shell=True)
+        subprocess.check_output('sos purge -c docker.yml -q docker', shell=True)
         out = subprocess.check_output('sos status -c docker.yml -q docker -v1', shell=True).decode()
         self.assertEqual(out.strip().count('\n'), 0)
 

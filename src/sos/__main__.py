@@ -765,9 +765,11 @@ def get_purge_parser(desc_only=False):
         return parser
     parser.add_argument('tasks', nargs='*', help='''ID of the tasks to be removed.
         There is no need to specify compelete task IDs because SoS will match specified
-        name with tasks starting with these names.''')
+        name with tasks starting with these names. If no task ID is specified,
+        all tasks related to specified workflows (option -w) will be removed.''')
     parser.add_argument('-a', '--all', action='store_true',
-        help='''Kill all tasks in local or specified remote task queue''')
+        help='''Clear all task information on local or specified remote task queue,
+        including tasks created by other workflows.''')
     parser.add_argument('--age', help='''Limit to tasks that are created more than
         (default) or within specified age. Value of this parameter can be in units
         s (second), m (minute), h (hour), or d (day, default), or in the foramt of
@@ -783,6 +785,9 @@ def get_purge_parser(desc_only=False):
         assumed to be a remote machine with process type if no configuration
         is found. SoS will list all configured queues (with details varying
         by option -v) if this option is specified without value.''')
+    parser.add_argument('-w', '--workflows', nargs='*', help='''Remove tasks generated
+        by specified task IDs. If no workflow is specified, all workflows in the
+        current project will be assumed.''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global or local
         sos config.yml files.''')
@@ -803,14 +808,20 @@ def cmd_purge(args, workflow_args):
         if args.queue == '':
             from .hosts import list_queues
             list_queues(args.config, args.verbosity)
-        elif not args.queue:
-            purge_tasks(args.tasks, args.all, args.age, args.status, args.verbosity)
+            return
+        if not args.all and not args.tasks and not args.workflows:
+            import glob
+            sig_files = glob.glob('.sos/*.sig')
+            workflows = [os.path.basename(x)[:-4] for x in sig_files]
+            args.workflows = workflows
+        if not args.queue:
+            purge_tasks(args.tasks, args.all, args.workflows, args.age, args.status, args.verbosity)
         else:
             # remote host?
             cfg = load_config_files(args.config)
             env.sos_dict.set('CONFIG', cfg)
             host = Host(args.queue)
-            print(host._task_engine.purge_tasks(args.tasks, args.all, args.age, args.status, args.verbosity))
+            print(host._task_engine.purge_tasks(args.tasks, args.all, args.workflows, args.age, args.status, args.verbosity))
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
