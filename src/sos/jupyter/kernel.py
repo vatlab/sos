@@ -2187,7 +2187,7 @@ Available subkernels:\n{}'''.format(
                     raise ValueError('Cannot overwrite existing output file {}'.format(filename))
 
                 with open(filename, 'a' if args.append else 'w') as script:
-                    script.write(remaining_code)
+                    script.write('\n'.join(remaining_code.splitlines()).rstrip() + '\n')
                 if args.setx:
                     import stat
                     os.chmod(filename, os.stat(filename).st_mode | stat.S_IEXEC)
