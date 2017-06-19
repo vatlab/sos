@@ -83,7 +83,7 @@ install: "python setup.py install"
 before_script: cd test
 script:
     # fresh coverage report
-    - pytest --cov sos --cov-config ../.coveragerc --cov-report xml --ignore JavaScript --ignore rq
+    - pytest --cov sos --cov-config ../.coveragerc --cov-report xml --ignore JavaScript --ignore rq -v
       
 after_success:
     - python-codacy-coverage -r coverage.xml

@@ -30,7 +30,7 @@
 import os
 import unittest
 from ipykernel.tests.utils import execute, wait_for_idle
-from sos.jupyter.test.utils import sos_kernel, get_result, clear_channels
+from sos.jupyter.test_utils import sos_kernel, get_result, clear_channels
 
 try:
     import feather

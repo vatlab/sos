@@ -30,7 +30,7 @@
 import os
 import unittest
 from ipykernel.tests.utils import assemble_output, execute, wait_for_idle
-from sos.jupyter.test.utils import sos_kernel, get_result, get_display_data, \
+from sos.jupyter.test_utils import sos_kernel, get_result, get_display_data, \
     clear_channels
 
 try:
