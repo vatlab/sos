@@ -85,7 +85,11 @@ before_script:
     - sh build_test_docker.sh
 script:
     # fresh coverage report
-    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report xml --ignore JavaScript --ignore rq -v
+    - ./run_tests test/docker
+    # docker needs to be tested separately because it somehow stuck if it is tested with others, perhaps there is some bug with sos
+    # of with the coverage feature
+    - pytest -x docker
+    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report xml --ignore JavaScript --ignore rq --ignore docker -v
       
 after_success:
     - python-codacy-coverage -r coverage.xml
