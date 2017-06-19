@@ -35,7 +35,7 @@
 
 # import unittest
 # from ipykernel.tests.utils import execute, wait_for_idle
-# from sos.jupyter.test.utils import sos_kernel, get_result
+# from sos.jupyter.test_utils import sos_kernel, get_result
 #
 # class TestKernel(unittest.TestCase):
 #     def setUp(self):

@@ -30,7 +30,7 @@
 import os
 import unittest
 from ipykernel.tests.utils import wait_for_idle
-from sos.jupyter.test.utils import sos_kernel
+from sos.jupyter.test_utils import sos_kernel, KC
 
 import nose.tools as nt
 
