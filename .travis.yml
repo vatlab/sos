@@ -83,18 +83,7 @@ install: "python setup.py install"
 before_script: cd test
 script:
     # fresh coverage report
-    - pytest --cov sos --cov-config ../.coveragerc ../sos/docker/test 
-    # append coverage, we cannot use a single command line because pytest asks
-    # tests to have different names
-    - pytest --cov sos --cov-config ../.coveragerc --cov-append  ../sos/Bash/test 
-    - pytest --cov sos --cov-config ../.coveragerc --cov-append  ../sos/Python2/test
-    - pytest --cov sos --cov-config ../.coveragerc --cov-append  ../sos/Python3/test
-    - pytest --cov sos --cov-config ../.coveragerc --cov-append  ../sos/R/test
-    - pytest --cov sos --cov-config ../.coveragerc --cov-append  ../sos/jupyter/test 
-    # generate a final xml report to be sent to codacy
-    - pytest --cov sos --cov-config ../.coveragerc --cov-append --cov-report xml ../test 
-    # - ./run_tests ../sos/JavaScript/test 
-    #- ./run_tests ../sos/rq/test
+    - pytest --cov sos --cov-config ../.coveragerc --cov-report xml --ignore JavaScript --ignore rq
       
 after_success:
     - python-codacy-coverage -r coverage.xml
