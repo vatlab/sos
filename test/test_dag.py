@@ -22,7 +22,6 @@
 
 
 import os
-import time
 import unittest
 from io import StringIO
 
@@ -731,14 +730,14 @@ A_1 -> A_2;
 [A_1]
 output: 'A1.txt'
 run:
-    sleep 3
+    sleep 0
     touch A1.txt
 
 [A_2]
 input:  'B2.txt'
 output: 'A2.txt'
 run:
-    sleep 3
+    sleep 0
     touch A2.txt
 
 [B: provides='B2.txt']
@@ -761,11 +760,9 @@ A_2;
 }
 ''')
         env.max_jobs = 4
-        #st = time.time()
         #env.verbosity = 4
         Base_Executor(wf).run()
         # the process is slower after switching to spawn mode
-        #self.assertLess(time.time() - st, 7)
         for f in ['A1.txt', 'B2.txt', 'A2.txt']:
             FileTarget(f).remove('both')
 
@@ -787,12 +784,12 @@ ss = 'A1'
 input: None
 
 run:
-    sleep 3
+    sleep 0
 
 [A_3]
 input: None
 import time
-time.sleep(3)
+time.sleep(0)
 with open("${ss}.txt", 'w') as tmp:
     tmp.write('test')
 
@@ -809,9 +806,7 @@ A_1 -> A_3;
 }
 ''')
         env.max_jobs = 3
-        #st = time.time()
         Base_Executor(wf).run()
-        #self.assertLess(time.time() - st, 7)
         for f in ['A1.txt']:
             self.assertTrue(FileTarget(f).exists())
             FileTarget(f).remove('both')
@@ -835,18 +830,18 @@ p = 'A1.txt'
 input: None
 
 run:
-    sleep 3
+    sleep 0
 
 [A_3]
 input: p
 
 run:
-    sleep 3
+    sleep 0
 
 [A_4]
 input: p
 run:
-    sleep 3
+    sleep 0
 
 [A_5]
 input: dynamic(p)
@@ -868,9 +863,7 @@ A_4 -> A_5;
 }
 ''')
         env.max_jobs = 3
-        st = time.time()
         Base_Executor(wf).run()
-        #self.assertLess(time.time() - st, 8)
         for f in ['A1.txt']:
             self.assertTrue(FileTarget(f).exists())
             FileTarget(f).remove('both')

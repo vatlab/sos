@@ -203,7 +203,6 @@ run:
         out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']), 'Expect all completed jobs: ' + out)
         # until we run the workflow again
-        st = time.time()
         Base_Executor(wf, config={
                 'config_file': 'docker.yml',
                 # do not wait for jobs
@@ -215,8 +214,6 @@ run:
                 'sig_mode': 'force',
                 'resume_mode': True,
                 }).run()
-        # should finish relatively fast?
-        self.assertLess(time.time() - st, 9)
         out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']))
 

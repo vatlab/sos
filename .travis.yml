@@ -80,10 +80,12 @@ sudo: required
 services:
     - docker
 install: "python setup.py install"
-before_script: cd test
+before_script:
+    - cd test
+    - sh build_test_docker.sh
 script:
     # fresh coverage report
-    - pytest --cov sos --cov-config ../.coveragerc --cov-report xml --ignore JavaScript --ignore rq -v
+    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report xml --ignore JavaScript --ignore rq -v
       
 after_success:
     - python-codacy-coverage -r coverage.xml

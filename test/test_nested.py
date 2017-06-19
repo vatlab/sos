@@ -55,7 +55,7 @@ class TestNested(unittest.TestCase):
         # progress bar with nested workflow
         script = SoS_Script('''
 import time
-time.sleep(0.5)
+time.sleep(0)
 [sub_1]
 [sub_2]
 [sub_3]

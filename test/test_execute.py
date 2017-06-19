@@ -21,7 +21,6 @@
 #
 
 import os
-#import time
 import glob
 import unittest
 import shutil
@@ -856,7 +855,6 @@ touch ${output}
 import time
 [A_1]
 output: 'a.txt'
-time.sleep(3)
 with open('a.txt', 'w') as txt:
     txt.write('A1\n')
 
@@ -864,18 +862,15 @@ with open('a.txt', 'w') as txt:
 [A_2]
 input: None
 output: 'b.txt'
-time.sleep(3)
 with open('b.txt', 'w') as txt:
     txt.write('A2\n')
         ''')
-        #st = time.time()
         ret1 = subprocess.Popen('sos run lock -j1', shell=True)
         ret2 = subprocess.Popen('sos run lock -j1', shell=True)
         ret1.wait()
         ret2.wait()
         # two processes execute A_1 and A_2 separately, usually
         # takes less than 5 seconds
-        #self.assertLess(time.time() - st, 11)
         FileTarget('lock.sos').remove('both')
 
 
@@ -887,42 +882,30 @@ with open('b.txt', 'w') as txt:
 [10]
 output: 'a.txt'
 sh:
-    sleep 2
     echo "a" > a.txt
 
 [20]
 output: 'aa.txt'
 sh:
-    sleep 2
     cat ${input} > ${output}
 ''')
         wf = script.workflow()
-        #st = time.time()
         Base_Executor(wf).run()
         self.assertTrue(FileTarget('aa.txt').exists())
-        #elapsed = time.time() - st
         # rerun should be faster
-        #st = time.time()
         Base_Executor(wf).run()
-        #self.assertLess(time.time() - st, elapsed)
         # if we remove the middle result, it should not matter
         os.remove('a.txt')
-        #st = time.time()
         Base_Executor(wf).run()
-        #self.assertLess(time.time() - st, elapsed)
         #
         # if we remove the final result, it will be rebuilt
         os.remove('aa.txt')
-        #st = time.time()
         Base_Executor(wf).run()
-        #self.assertGreater(time.time() - st, 2.5)
         #
         # now we request the generation of target
         FileTarget('a.txt').remove('target')
         FileTarget('aa.txt').remove('both')
-        #st = time.time()
         Base_Executor(wf).run()
-        #self.assertGreater(time.time() - st, elapsed - 1)
         #
         FileTarget('a.txt').remove('both')
         FileTarget('aa.txt').remove('both')

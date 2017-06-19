@@ -22,7 +22,6 @@
 
 import os
 import sys
-import time
 import unittest
 import shutil
 
@@ -186,20 +185,15 @@ sh:
 output: executable('lls')
 sh:
     touch lls
-    sleep 3
     chmod +x lls
 ''')
         wf = script.workflow()
         FileTarget('lls').remove('both')
         env.config['sig_mode'] = 'force'
-        st = time.time()
         Base_Executor(wf).run()
-        elapsed = time.time() - st
         # test validation
         env.config['sig_mode'] = 'default'
-        st = time.time()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, elapsed)
         FileTarget('lls').remove('both')
 
 
@@ -211,26 +205,19 @@ sh:
 depends: env_variable('AA')
 output:  'a.txt'
 sh:
-    sleep 2
     echo $AA > a.txt
 ''')
         wf = script.workflow()
         os.environ['AA'] = 'A1'
-        st = time.time()
         Base_Executor(wf).run()
-        elapsed = time.time() - st
         with open('a.txt') as at:
             self.assertEqual(at.read(), 'A1\n')
         # test validation
-        st = time.time()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, elapsed)
         # now if we change var, it should be rerun
         os.environ['AA'] = 'A2'
-        st = time.time()
         Base_Executor(wf).run()
         # allow one second variation
-        #self.assertGreater(time.time() - st, elapsed - 1)
         with open('a.txt') as at:
             self.assertEqual(at.read(), 'A2\n')
         FileTarget('a.txt').remove('both')
@@ -246,7 +233,6 @@ sh:
 [lls: provides=executable('lkls')]
 sh:
     touch lkls
-    sleep 3
     chmod +x lkls
 
 [c]
@@ -254,9 +240,7 @@ depends: executable('lkls')
 
 ''')
         wf = script.workflow('c')
-        st = time.time()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 2)
         FileTarget('lkls').remove('both')
 
     def testSharedVarInPairedWith(self):

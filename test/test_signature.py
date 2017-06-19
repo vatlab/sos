@@ -21,7 +21,6 @@
 #
 
 import os
-import time
 import unittest
 import shutil
 
@@ -64,12 +63,9 @@ class TestSignature(unittest.TestCase):
 
     def testSignature(self):
         self._testSignature(r"""
-import time
 [*_0]
 output: 'temp/a.txt', 'temp/b.txt'
 task:
-import time
-time.sleep(1)
 run('''echo "a.txt" > temp/a.txt ''')
 run('''echo "b.txt" > temp/b.txt ''')
 
@@ -78,19 +74,15 @@ dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', paired_with='dest'
 output: _dest
 
-time.sleep(0.5)
 run(" cp ${_input} ${_dest} ")
 """)
 
     def testSignature1(self):
         self._testSignature(r"""
-import time
 [*_0]
 output: 'temp/a.txt', 'temp/b.txt'
 
 task:
-import time
-time.sleep(1)
 run('''echo "a.txt" > temp/a.txt ''')
 run('''echo "b.txt" > temp/b.txt ''')
 
@@ -99,14 +91,12 @@ dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', paired_with='dest'
 output: _dest
 
-time.sleep(0.5)
 run(" cp ${_input} ${_dest} ")
 """)
         # script format
 
     def testSignature2(self):
         self._testSignature(r"""
-import time
 [*_0]
 output: 'temp/a.txt', 'temp/b.txt'
 
@@ -124,8 +114,6 @@ input: group_by='single', paired_with='dest'
 output: _dest
 
 task:
-import time
-time.sleep(0.5)
 run:
 echo cp ${_input} ${_dest}
 cp ${_input} ${_dest}
@@ -136,7 +124,6 @@ cp ${_input} ${_dest}
         FileTarget('a.txt').remove('both')
         # shared
         script = SoS_Script(r"""
-import time
 [0: shared='a']
 output: 'a.txt'
 run:
@@ -151,19 +138,14 @@ print(a)
 """)
         # alias should also be recovered.
         wf = script.workflow('default')
-        st = time.time()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 3)
         # rerun
-        st = time.time()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 3)
         FileTarget('a.txt').remove('both')
 
     def testSignatureWithoutOutput(self):
         # signature without output file
         self._testSignature(r"""
-import time
 [*_0]
 output: []
 
@@ -198,11 +180,8 @@ cp ${_input} ${_dest}
         #
         # only the first step
         wf = script.workflow('default:0')
-        start = time.time()
         env.config['sig_mode'] = 'force'
         Base_Executor(wf).run()
-        elapsed = time.time() - start
-        self.assertGreater(elapsed, 1)
         self.assertTrue(os.path.isfile('temp/a.txt'))
         self.assertTrue(os.path.isfile('temp/b.txt'))
         with open('temp/a.txt') as ta:
@@ -217,10 +196,8 @@ cp ${_input} ${_dest}
         # generate files (default step 0 and 1)
         Base_Executor(wf).run()
         # now, rerun in build mode
-        start = time.time()
         env.config['sig_mode'] = 'build'
         Base_Executor(wf).run()
-        #self.assertLess(time.time() - start, elapsed)
         #
         self.assertTrue(os.path.isfile('temp/c.txt'))
         self.assertTrue(os.path.isfile('temp/d.txt'))
@@ -235,11 +212,9 @@ cp ${_input} ${_dest}
         Base_Executor(wf).run()
 
         #
-        start = time.time()
         env.config['sig_mode'] = 'default'
         Base_Executor(wf).run()
 
-        #self.assertLess(time.time() - start, elapsed + 1)
         #
         # change script a little bit
         script = SoS_Script('# comment\n' + text)
@@ -256,12 +231,9 @@ cp ${_input} ${_dest}
     def testReexecution(self):
         '''Test -f option of sos run'''
         script = SoS_Script('''
-import time
 
 [0]
 output: 'a.txt'
-import time
-time.sleep(3)
 run("touch ${output}")
 ''')
         wf = script.workflow()
@@ -270,22 +242,15 @@ run("touch ${output}")
             FileTarget('a.txt').remove('both')
         except Exception:
             pass
-        start = time.time()
         Base_Executor(wf).run()
-        # regularly take more than 5 seconds to execute
-        self.assertGreater(time.time() - start, 2)
         # now, rerun should be much faster
-        start = time.time()
         Base_Executor(wf).run()
         # rerun takes less than 1 second
-        self.assertLess(time.time() - start, 3)
         #
         # force rerun mode
-        start = time.time()
         env.config['sig_mode'] = 'ignore'
         Base_Executor(wf).run()
         # regularly take more than 5 seconds to execute
-        self.assertGreater(time.time() - start, 2)
         try:
             # remove existing output if exists
             os.remove('a.txt')
@@ -303,41 +268,30 @@ run("touch ${output}")
 output: 'largefile.txt'
 
 python:
-    import time
-    time.sleep(3)
     with open("${output}", 'w') as out:
         for i in range(1000):
             out.write('{}\n'.format(i))
 
 ''')
         wf = script.workflow()
-        st = time.time()
         Base_Executor(wf).run()
-        elapsed = time.time() - st
         # sleep 3
-        self.assertGreater(elapsed, 3)
         # rerun, because this is the final target, it has to be
         # re-generated
         os.remove('largefile.txt')
-        st = time.time()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 3)
         self.assertTrue(os.path.isfile('largefile.txt'))
         #
         # we discard the signature, the step would still be
         # skipped because file signature will be calculated
         # during verification
-        st = time.time()
         FileTarget('largefile.txt').remove('signature')
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, elapsed)
         #
         # now if we touch the file, it needs to be regenerated
-        st = time.time()
         with open('largefile.txt', 'a') as lf:
             lf.write('something')
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 3)
         FileTarget('largefile.txt').remove('both')
 
     def testRemovalOfIntermediateFiles(self):
@@ -353,8 +307,6 @@ python:
 output: 'midfile.txt'
 
 python:
-    import time
-    time.sleep(3)
     with open("${output}", 'w') as out:
         for i in range(1000):
             out.write('{}\n'.format(i))
@@ -366,39 +318,28 @@ sh:
     echo "MORE" >> ${output}
 ''')
         wf = script.workflow()
-        st = time.time()
         Base_Executor(wf).run()
-        elapsed = time.time() - st
         # sleep 3
-        self.assertGreater(elapsed, 3)
         #
         # remove middle file, rerun
         os.remove('midfile.txt')
-        st = time.time()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 3)
         self.assertTrue(os.path.isfile('midfile.txt'))
         #
         # we discard the signature, and change midfile rerun
-        st = time.time()
         FileTarget('midfile.txt').remove('signature')
         with open('midfile.txt', 'a') as mf:
             mf.write('extra')
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 3)
         #
         # now if we touch the mid file, it needs to be regenerated
-        st = time.time()
         with open('midfile.txt', 'a') as lf:
             lf.write('something')
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 3)
         #
         # if we zap the mid file, it does not need to be rerun
         subprocess.call('sos remove midfile.txt --zap -y', shell=True)
-        st = time.time()
         Base_Executor(wf).run()
-        #self.assertLess(time.time() - st, elapsed - 2)
         FileTarget('midfile.txt').remove('both')
         FileTarget('midfile.txt.zapped').remove('both')
         FileTarget('final.txt').remove('both')
@@ -415,35 +356,26 @@ parameter: gvar = 10
 output: 'myfile.txt'
 # additional comment
 python:
-    import time
-    time.sleep(5)
     with open(${output!r}, 'w') as tmp:
         tmp.write('${gvar}')
 
 ''')
-        st = time.time()
         wf = script.workflow()
         Base_Executor(wf).run()
-        elapsed = time.time() - st
-        self.assertGreater(elapsed, 4.5)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '10')
         #
         # now if we change parameter, the step should be rerun
-        st = time.time()
         wf = script.workflow()
         Base_Executor(wf, args=['--gvar', '20']).run()
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '20')
-        self.assertGreater(time.time() - st, 4.5)
         #
         # do it again, signature should be effective
-        st = time.time()
         wf = script.workflow()
         Base_Executor(wf, args=['--gvar', '20']).run()
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '20')
-        self.assertLess(time.time() - st, elapsed)
 
         #
         script = SoS_Script(r'''
@@ -454,34 +386,26 @@ parameter: gvar = 10
 output: 'myfile.txt'
 # additional comment
 python:
-    import time
-    time.sleep(5)
     with open(${output!r}, 'w') as tmp:
         tmp.write('${gvar}')
 
 ''')
-        st = time.time()
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 4.5)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '10')
         #
         # now if we change parameter, the step should be rerun
-        st = time.time()
         wf = script.workflow()
         Base_Executor(wf, args=['--gvar', '20']).run()
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '20')
-        self.assertGreater(time.time() - st, 4.5)
         #
         # do it again, signature should be effective
-        st = time.time()
         wf = script.workflow()
         Base_Executor(wf, args=['--gvar', '20']).run()
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '20')
-        self.assertLess(time.time() - st, elapsed)
         FileTarget('myfile.txt').remove('both')
 
 
@@ -499,8 +423,6 @@ tt = [gvar]
 input: for_each='tt'
 output: "myfile_${_tt}.txt"
 python:
-    import time
-    time.sleep(3)
     print("DO ${_tt}")
     with open(${_output!r}, 'w') as tmp:
         tmp.write('${_tt}')
@@ -518,8 +440,6 @@ tt = [gvar, gvar + 1]
 input: for_each='tt'
 output: "myfile_${_tt}.txt"
 python:
-    import time
-    time.sleep(3)
     print("DO ${_tt}")
     with open(${_output!r}, 'w') as tmp:
         tmp.write('${_tt}')
@@ -544,8 +464,6 @@ tt = [gvar + 1]
 input: for_each='tt'
 output: "myfile_${_tt}.txt"
 python:
-    import time
-    time.sleep(3)
     print("DO ${_tt}")
     with open(${_output!r}, 'w') as tmp:
         tmp.write('${_tt}')
