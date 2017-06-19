@@ -413,10 +413,10 @@ sh:
     def testLocalTarget(self):
         '''Test the use of local target in remote mode'''
         # this file does not exist on remote machine
-        shutil.copy(__file__, 'test_task_tmp.py')
+        shutil.copy(__file__, 'test_task.py.tmp')
         script = SoS_Script('''
 [10]
-input: local('test_task_tmp.py')
+input: local('test_task.py.tmp')
 output: local('size.txt')
 sh:
     wc -l ${input} > ${output}
@@ -439,15 +439,15 @@ sh:
                 }).run()
         self.assertTrue(os.path.isfile('size.txt'))
         FileTarget('size.txt').remove()
-        FileTarget('test_task_tmp.py')
+        FileTarget('test_task.py.tmp')
 
     def testLocalSectionOption(self):
         '''Test the use of local target in remote mode'''
         # this file does not exist on remote machine
-        shutil.copy(__file__, 'test_task_tmp.py')
+        shutil.copy(__file__, 'test_task.py.tmp')
         script = SoS_Script('''
 [10: local]
-input: 'test_task_tmp.py'
+input: 'test_task.py.tmp'
 output: 'size.txt'
 sh:
     wc -l ${input} > ${output}
@@ -470,7 +470,7 @@ sh:
                 }).run()
         self.assertTrue(os.path.isfile('size.txt'))
         FileTarget('size.txt').remove()
-        FileTarget('test_task_tmp.py')
+        FileTarget('test_task.py.tmp')
 
 if __name__ == '__main__':
     unittest.main()

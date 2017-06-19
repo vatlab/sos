@@ -75,9 +75,9 @@ class TestKernel(unittest.TestCase):
     def testShell(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
-            execute(kc=kc, code="!ls test_kernel.py")
+            execute(kc=kc, code="!ls test_sos_kernel.py")
             stdout, stderr = assemble_output(iopub)
-            self.assertEqual(stdout, 'test_kernel.py\n')
+            self.assertEqual(stdout, 'test_sos_kernel.py\n')
             self.assertEqual(stderr, '')
 
     def testCD(self):
@@ -87,9 +87,9 @@ class TestKernel(unittest.TestCase):
             wait_for_idle(kc)
             execute(kc=kc, code="print(os.getcwd())")
             stdout, stderr = assemble_output(iopub)
-            self.assertFalse(stdout.strip().endswith('test'))
+            self.assertFalse(stdout.strip().endswith('jupyter'))
             self.assertEqual(stderr, '')
-            execute(kc=kc, code="%cd test")
+            execute(kc=kc, code="%cd jupyter")
 
     def testMagicUse(self):
         with sos_kernel() as kc:
