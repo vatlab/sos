@@ -37,12 +37,13 @@ before_install:
     - pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm 
     - pip install fasteners pygments ipython ptpython networkx pydotplus
     # for testing purposes
-    - pip install nose scipy
+    - pip install scipy
     # https://github.com/jupyter/jupyter/issues/150
     - pip install entrypoints
     - pip install jupyter
     - pip install coverage
     - pip install codacy-coverage
+    - pip install pytest pytest-cov
     # install r kernel
     - conda install -c r r-essentials r-feather
     - conda install -c conda-forge feather-format
@@ -81,13 +82,21 @@ services:
 install: "python setup.py install"
 before_script: cd test
 script:
-    # these will generate coverage information
-    - ./run_tests ../test ../sos/docker/test ../sos/Bash/test ../sos/Python2/test ../sos/Python3/test ../sos/R/test ../sos/jupyter/test 
+    # fresh coverage report
+    - pytest --cov sos --cov-config ../.coveragerc ../sos/docker/test 
+    # append coverage, we cannot use a single command line because pytest asks
+    # tests to have different names
+    - pytest --cov sos --cov-config ../.coveragerc --cov-append  ../sos/Bash/test 
+    - pytest --cov sos --cov-config ../.coveragerc --cov-append  ../sos/Python2/test
+    - pytest --cov sos --cov-config ../.coveragerc --cov-append  ../sos/Python3/test
+    - pytest --cov sos --cov-config ../.coveragerc --cov-append  ../sos/R/test
+    - pytest --cov sos --cov-config ../.coveragerc --cov-append  ../sos/jupyter/test 
+    # generate a final xml report to be sent to codacy
+    - pytest --cov sos --cov-config ../.coveragerc --cov-append --cov-report xml ../test 
     # - ./run_tests ../sos/JavaScript/test 
     #- ./run_tests ../sos/rq/test
       
 after_success:
-    - coverage xml
     - python-codacy-coverage -r coverage.xml
 
 notifications:

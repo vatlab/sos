@@ -48,8 +48,8 @@ install:
     - conda install -c r r-essentials r-feather
     - conda install -c conda-forge feather-format
     # used by ./run_tests for coverage
-    - pip install coverage
-    - pip install codacy-coverage
+    #- pip install coverage
+    #- pip install codacy-coverage
     # install bash kernel
     #- pip install bash_kernel
     #- python -m bash_kernel.install
@@ -68,9 +68,11 @@ test_script:
 #on_finish:
 #  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 
-on_success:
-    - coverage xml
-    - python-codacy-coverage -r coverage.xml
+# do not report coverage because codacy only accept coverage for each commit
+#
+#on_success:
+#    - coverage xml
+#    - python-codacy-coverage -r coverage.xml
 
 notifications:
     - provider: Email
