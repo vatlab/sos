@@ -391,7 +391,7 @@ run:
         #status = [line for line in out.split('\n') if tasks[0] in line][0].split('\t')[-1]
         #self.assertEqual(status, 'canceled', 'Status should be canceled. Got {}'.format(out))
 
-        subprocess.check_output('sos purge {} -c docker.yml -q docker'.format(tasks[0]), shell=True)
+        subprocess.check_output('sos purge {} -c docker.yml -q ts'.format(tasks[0]), shell=True)
         # there should be 2 more tasks
         out = subprocess.check_output('sos status -c docker.yml -q docker -v1', shell=True).decode()
         self.assertEqual(out.strip().count('\n'), 1, 'Expect two lines: {}'.format(out))
