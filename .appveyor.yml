@@ -55,6 +55,7 @@ install:
     #- python -m bash_kernel.install
 
     # install sos
+    - pip install pytest
     - python setup.py install
       
 test_script:
