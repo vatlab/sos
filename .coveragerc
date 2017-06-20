@@ -2,7 +2,6 @@
 branch = True
 cover_pylib = False
 concurrency = 
-    thread
     multiprocessing
 parallel = True
 omit = 
