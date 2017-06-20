@@ -13,7 +13,7 @@ before_install:
     - sudo apt-get update
     # upgrade docker so that it has same API version as client https://docs.travis-ci.com/user/docker/ 
     - sudo apt-get update
-    - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-engine
+    - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
     # install anaconda Python 3
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then  wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh; fi
     #- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then wget  https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh; fi
