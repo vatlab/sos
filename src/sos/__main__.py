@@ -854,7 +854,7 @@ def get_kill_parser(desc_only=False):
         sos config.yml files.''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
-            information to standard output (default to 2).'''),
+            information to standard output (default to 2).''')
     parser.set_defaults(func=cmd_kill)
     return parser
 
@@ -934,7 +934,7 @@ def get_remove_parser(desc_only=False):
             of files.''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
-            information to standard output (default to 2).'''),
+            information to standard output (default to 2).''')
     parser.set_defaults(func=cmd_remove)
     return parser
 
@@ -1237,7 +1237,7 @@ def get_config_parser(desc_only=False):
         will create a list with multiple values.''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
-            information to standard output (default to 2).'''),
+            information to standard output (default to 2).''')
     parser.set_defaults(func=cmd_config)
     return parser
 
@@ -1404,7 +1404,7 @@ def get_pack_parser(desc_only=False):
         help='''Overwrite output file if it already exists''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
-            information to standard output (default to 2).'''),
+            information to standard output (default to 2).''')
     parser.set_defaults(func=cmd_pack)
     return parser
 
@@ -1622,7 +1622,7 @@ def get_unpack_parser(desc_only=False):
         ignores existing files that are identical to those in the archive.''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
-            information to standard output (default to 2).'''),
+            information to standard output (default to 2).''')
     parser.set_defaults(func=cmd_unpack)
     return parser
 

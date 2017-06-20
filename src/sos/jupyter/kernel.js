@@ -148,15 +148,16 @@ define([
         }
 
         var sorted = isSorted(tr, fn);
+        var i;
 
         if (sorted === 1 || sorted === -1) {
             // if sorted already, reverse it
-            for (var i = tr.length - 1; i >= 0; --i) {
+            for (i = tr.length - 1; i >= 0; --i) {
                 tb.appendChild(tr[i]); // append each row in order
             }
         } else {
             tr = tr.sort(fn);
-            for (var i = 0; i < tr.length; ++i) {
+            for (i = 0; i < tr.length; ++i) {
                 tb.appendChild(tr[i]); // append each row in order
             }
         }
@@ -166,7 +167,8 @@ define([
     function get_workflow_from_cell(cell) {
         var lines = cell.get_text().split("\n");
         var workflow = "";
-        for (var l = 0; l < lines.length; ++l) {
+        var l;
+        for (l = 0; l < lines.length; ++l) {
             if (lines[l].startsWith("%include") || lines[l].startsWith("%from")) {
                 workflow += lines[l] + "\n";
                 continue;
@@ -187,7 +189,8 @@ define([
         var workflow = "";
         var run_notebook = false;
         var lines = code.split("\n");
-        for (var l = 0; l < lines.length; ++l) {
+        var l;
+        for (l = 0; l < lines.length; ++l) {
             if (lines[l].startsWith("#") || lines[l].trim() === "" || lines[l].startsWith("!")) {
                 continue;
             }
@@ -205,20 +208,21 @@ define([
             }
         }
 
+        var i;
         var cells = IPython.notebook.get_cells();
         if (run_notebook) {
             // Running %sossave --to html needs to save notebook
             IPython.notebook.save_notebook();
-            for (var i = 0; i < cells.length; ++i) {
+            for (i = 0; i < cells.length; ++i) {
                 // older version of the notebook might have sos in metadata
                 if (cells[i].cell_type === "code" && (!cells[i].metadata.kernel || cells[i].metadata.kernel === "SoS" ||
                         cells[i].metadata.kernel === "sos")) {
-                    workflow += get_workflow_from_cell(cells[i])
+                    workflow += get_workflow_from_cell(cells[i]);
                 }
             }
         }
         var rerun_option = "";
-        for (var i = cells.length - 1; i >= 0; --i) {
+        for (i = cells.length - 1; i >= 0; --i) {
             // this is the cell that is being executed...
             // according to this.set_input_prompt("*") before execute is called.
             // also, because a cell might be starting without a previous cell
@@ -256,7 +260,7 @@ define([
             callbacks, {
                 "silent": false,
                 "store_history": false
-            })
+            });
     };
 
     function loadFiles(files, fn) {
@@ -268,26 +272,23 @@ define([
         function loadFile(index) {
             if (files.length > index) {
                 console.log("Load " + files[index]);
+                var fileref;
                 if (files[index].endsWith(".css")) {
-                    var fileref = document.createElement("link");
+                    fileref = document.createElement("link");
                     fileref.setAttribute("rel", "stylesheet");
                     fileref.setAttribute("type", "text/css");
                     fileref.setAttribute("href", files[index]);
-			        head.appendChild(fileref);
-                    // Used to call a callback function
-                    fileref.onload = function() {
-                        loadFile(index);
                     }
                 } else {
-                    var fileref = document.createElement("script");
+                    fileref = document.createElement("script");
                     fileref.setAttribute("type", "text/javascript");
                     fileref.setAttribute("src", files[index]);
-			        head.appendChild(fileref);
-                    // Used to call a callback function
-                    fileref.onload = function() {
-                        loadFile(index);
-                    }
                 }
+                head.appendChild(fileref);
+                // Used to call a callback function
+                fileref.onload = function() {
+                    loadFile(index);
+                };
                 index = index + 1;
             } else if (fn) {
                 fn();
@@ -318,12 +319,13 @@ define([
 
             var data = msg.content.data;
             var msg_type = msg.metadata.msg_type;
+            var i, j;
 
             if (msg_type === "kernel-list") {
                 // upgrade existing meta data if it uses the old 3 item format
                 if (IPython.notebook.metadata["sos"]["kernels"].length > 0 &&
                     IPython.notebook.metadata["sos"]["kernels"][0].length === 3) {
-                    for (var j = 0; j < IPython.notebook.metadata["sos"]["kernels"].length; j++) {
+                    for (j = 0; j < IPython.notebook.metadata["sos"]["kernels"].length; j++) {
                         var def = IPython.notebook.metadata["sos"]["kernels"][j];
                         // original format, kernel, name, color
                         // new format, name, kenel, lan, color
@@ -332,7 +334,7 @@ define([
                 }
 
                 //
-                for (var j = 0; j < IPython.notebook.metadata["sos"]["kernels"].length; j++) {
+                for (j = 0; j < IPython.notebook.metadata["sos"]["kernels"].length; j++) {
                     var kdef = IPython.notebook.metadata["sos"]["kernels"][j];
                     // if local environment has kernel, ok...
                     var k_idx = data.findIndex((item) => item[0] === kdef[0]);
@@ -343,7 +345,7 @@ define([
                     }
                 }
 
-                for (var i = 0; i < data.length; i++) {
+                for (i = 0; i < data.length; i++) {
                     // BackgroundColor is color
                     window.BackgroundColor[data[i][0]] = data[i][3];
                     // by kernel name? For compatibility ...
@@ -401,10 +403,7 @@ define([
             } else if (msg_type === "cell-kernel") {
                 // get cell from passed cell index, which was sent through the
                 // %frontend magic
-                if (data[0] === -1)
-                    var cell = window.my_panel.cell;
-                else
-                    var cell = IPython.notebook.get_cell(data[0]);
+                var cell = data[0] === -1 ? window.my_panel.cell : IPython.notebook.get_cell(data[0]);
                 if (cell.metadata.kernel !== window.DisplayName[data[1]]) {
                     cell.metadata.kernel = window.DisplayName[data[1]];
                     // set meta information
