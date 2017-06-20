@@ -20,14 +20,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-#
-# NOTE: for some namespace reason, this test can only be tested using
-# nose.
-#
-# % nosetests test_kernel.py
-#
-#
-import os
 import unittest
 from ipykernel.tests.utils import execute, wait_for_idle
 from sos.jupyter.test_utils import sos_kernel, flush_channels
@@ -46,8 +38,7 @@ class TestKernel(unittest.TestCase):
             self.assertTrue('%get ' in get_reply(kc, '%')['matches'])
             self.assertTrue('%with ' in get_reply(kc, '%w')['matches'])
             # path complete
-            for m in get_reply(kc, '!ls ')['matches'][:5]:
-                self.assertTrue(os.path.exists(m))
+            self.assertGreater(len(get_reply(kc, '!ls ')['matches']), 0)
             #
             wait_for_idle(kc)
             # variable complete
