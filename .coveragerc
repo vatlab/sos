@@ -1,7 +1,6 @@
 [run]
 branch = True
 cover_pylib = False
-concurrency = multiprocessing
 parallel = True
 omit = 
     test_*.py
