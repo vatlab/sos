@@ -89,15 +89,13 @@ before_script:
 script:
     # docker needs to be tested separately because it somehow stuck if it is tested with others, perhaps there is some bug with sos
     # of with the coverage feature
-    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report -v docker
-    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report --cov-append -v jupyter
-    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report --cov-append -v R
-    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report --cov-append -v Python2
-    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report --cov-append -v Python3
-    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report --cov-append -v Bash
-    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report xml --cov-append -v \
-        --ignore docker --ignore jupyter --ignore R --ignore Python2 --ignore Python3 \
-        --ignore Bash --ignore JavaScript --ignore rq .
+    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report= -v docker
+    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report= --cov-append -v jupyter
+    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report= --cov-append -v R
+    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report= --cov-append -v Python2
+    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report= --cov-append -v Python3
+    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report= --cov-append -v Bash
+    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report=xml --cov-append -v --ignore docker --ignore jupyter --ignore R --ignore Python2 --ignore Python3 --ignore Bash --ignore JavaScript --ignore rq .
       
 after_success:
     - coverage combine
