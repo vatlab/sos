@@ -32,13 +32,6 @@ import unittest
 from ipykernel.tests.utils import execute, wait_for_idle
 from sos.jupyter.test_utils import sos_kernel, get_result
 
-try:
-    import feather
-    feather
-    with_feather = True
-except ImportError:
-    with_feather = False
-
 class TestKernel(unittest.TestCase):
     #
     # Beacuse these tests would be called from sos/test, we
@@ -53,7 +46,6 @@ class TestKernel(unittest.TestCase):
     def tearDown(self):
         os.chdir(self.olddir)
 
-    @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
     def testGetDataFromBash(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
@@ -91,7 +83,6 @@ set_var = {1, 2, '3'}
             self.assertEqual(sorted(res['dict_var']), [' ', ' ', 'a', 'b', 'c'])
             self.assertEqual(sorted(res['set_var']), [' ', ' ', '1', '2', '3'])
 
-    @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
     def testPutBashDataToPython(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
