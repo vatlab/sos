@@ -22,14 +22,12 @@
 
 import os
 import glob
-from prompt_toolkit.completion import Completer, CompleteEvent
-from prompt_toolkit.document import Document
-from ptpython.completer import PythonCompleter
+
+import rlcompleter
 from sos.utils import env
 
 def last_valid(line):
     text = line
-    #
     for char in (' ', '\t', '"', "'", '=', '('):
         if text.endswith(char):
             text = ''
@@ -37,13 +35,11 @@ def last_valid(line):
             text = text.rsplit(char, 1)[-1]
     return text
 
-class SoS_MagicsCompleter(Completer):
+class SoS_MagicsCompleter:
     def __init__(self, kernel):
-        super(SoS_MagicsCompleter, self).__init__()
         self.kernel = kernel
 
-    def get_completions(self, document, complete_event):
-        line = document.current_line_before_cursor
+    def get_completions(self, line):
         text = last_valid(line)
 
         if not text.strip():
@@ -64,15 +60,14 @@ class SoS_MagicsCompleter(Completer):
         else:
             return None
 
-class SoS_PathCompleter(Completer):
+class SoS_PathCompleter:
     '''PathCompleter.. The problem with ptpython's path completor is that
     it only matched 'text_before_cursor', which would not match cases such
     as %cd ~/, which we will need.'''
     def __init__(self):
-        super(SoS_PathCompleter, self).__init__()
+        pass
 
-    def get_completions(self, document, complete_event):
-        line = document.current_line_before_cursor.lstrip()
+    def get_completions(self, line):
         text = last_valid(line)
 
         if not text.strip():
@@ -85,22 +80,33 @@ class SoS_PathCompleter(Completer):
             else:
                 return text, matches
 
+class PythonCompleter:
+    def __init__(self):
+        pass
+
+    def get_completions(self, line):
+        text = last_valid(line)
+        
+        completer = rlcompleter.Completer(env.sos_dict._dict)
+        return text, completer.global_matches(text)
+
 class SoS_Completer(object):
     def __init__(self, kernel):
         self.completers = [
             SoS_MagicsCompleter(kernel),
             SoS_PathCompleter(),
-            PythonCompleter(lambda: env.sos_dict._dict, lambda: env.sos_dict._dict),
+            PythonCompleter(),
         ]
 
     def complete_text(self, code, cursor_pos = None):
         if cursor_pos is None:
             cursor_pos = len(code)
 
-        doc = Document(code, cursor_pos)
+        # get current line before cursor
+        doc = code[:cursor_pos].rpartition('\n')[2]
 
         for c in self.completers:
-            matched = c.get_completions(doc, CompleteEvent(completion_requested=True))
+            matched = c.get_completions(doc)
             if matched is None:
                 continue
             elif isinstance(matched, tuple):

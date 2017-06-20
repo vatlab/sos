@@ -177,7 +177,6 @@ setup(name = "sos",
           'ipython',
           'ipykernel',
           'notebook>=5.0.0',
-          'ptpython',
           # for DAG
           'networkx',
           'pydotplus',
@@ -315,6 +314,6 @@ ipynb-md.func = sos.jupyter.converter:notebook_to_md
         'dot':      ['graphviz'],
         # docker-py is not working on windows 10 (as of Jan 2017)
         'docker':   ['docker'],
-        'spyder':   ['spyder', 'jedi'],
+        'spyder':   ['spyder'],
     }
 )
