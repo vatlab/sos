@@ -39,13 +39,29 @@ class TestKernel(unittest.TestCase):
             self.assertTrue('%with ' in get_reply(kc, '%w')['matches'])
             # path complete
             self.assertGreater(len(get_reply(kc, '!ls ')['matches']), 0)
+            self.assertEqual(len(get_reply(kc, '!ls SOMETHING')['matches']), 0)
             #
             wait_for_idle(kc)
             # variable complete
             execute(kc=kc, code='alpha=5')
             wait_for_idle(kc)
+            execute(kc=kc, code='%use Python3')
+            wait_for_idle(kc)
             self.assertTrue('alpha' in get_reply(kc, 'al')['matches'])
             self.assertTrue('all(' in get_reply(kc, 'al')['matches'])
+            # for no match
+            self.assertEqual(len(get_reply(kc, 'alphabetatheta')['matches']), 0)
+            # get with all variables in
+            self.assertTrue('alpha' in get_reply(kc, '%get ')['matches'])
+            self.assertTrue('alpha' in get_reply(kc, '%get al')['matches'])
+            # with use and restart has kernel name
+            self.assertTrue('Python3' in get_reply(kc, '%with ')['matches'])
+            self.assertTrue('Python3' in get_reply(kc, '%use ')['matches'])
+            self.assertTrue('Python3' in get_reply(kc, '%shutdown ')['matches'])
+            self.assertTrue('Python3' in get_reply(kc, '%shutdown ')['matches'])
+            self.assertTrue('Python3' in get_reply(kc, '%use Py')['matches'])
+            #
+            self.assertEqual(len(get_reply(kc, '%use SOME')['matches']), 0)
 
 if __name__ == '__main__':
     unittest.main()

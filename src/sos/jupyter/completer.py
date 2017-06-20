@@ -46,15 +46,15 @@ class SoS_MagicsCompleter:
             if line.startswith('%get'):
                 return text, [x for x in env.sos_dict.keys() if x not in \
                     self.kernel.original_keys and not x.startswith('_')]
-            elif any(line.startswith(x) for x in ('%use', '%with', '%restart')):
-                return text, ['sos'] + list(self.kernel.supported_languages.keys())
+            elif any(line.startswith(x) for x in ('%use', '%with', '%shutdown')):
+                return text, ['SoS'] + list(self.kernel.supported_languages.keys())
             else:
                 return None
         elif text.startswith('%') and line.startswith(text):
             return text, ['%' + x + ' ' for x in self.kernel.ALL_MAGICS if x.startswith(text[1:])]
-        elif any(line.startswith(x) for x in ('%use', '%with', '%restart')):
+        elif any(line.startswith(x) for x in ('%use', '%with', '%shutdown')):
             return text, [x for x in self.kernel.supported_languages.keys() if x.startswith(text)]
-        elif line.startswith('%get'):
+        elif line.startswith('%get '):
             return text, [x for x in env.sos_dict.keys() if x.startswith(text) \
                 and x not in self.kernel.original_keys and not x.startswith('_')]
         else:
@@ -113,10 +113,7 @@ class SoS_Completer(object):
                 if matched[1]:
                     return matched
             else:
-                # iterator ...
-                matched = list(matched)
-                if matched:
-                    return code[matched[0].start_position:], [x.text for x in matched]
+                raise RuntimeError('Unrecognized completer return type {}'.format(matched))
         # No match
         return '', []
 
