@@ -143,22 +143,22 @@ def loadTask(filename):
 def collect_task_result(task_id, sigil, sos_dict):
     shared = {}
     if 'shared' in env.sos_dict['_runtime']:
-        vars = env.sos_dict['_runtime']['shared']
-        if isinstance(vars, str):
+        svars = env.sos_dict['_runtime']['shared']
+        if isinstance(svars, str):
             if vars not in env.sos_dict:
-                raise ValueError('Unavailable shared variable {} after the completion of task {}'.format(vars, task_id))
-            shared[vars] = copy.deepcopy(env.sos_dict[vars])
-        elif isinstance(vars, Mapping):
-            for var, val in vars.items():
+                raise ValueError('Unavailable shared variable {} after the completion of task {}'.format(svars, task_id))
+            shared[svars] = copy.deepcopy(env.sos_dict[svars])
+        elif isinstance(svars, Mapping):
+            for var, val in svars.items():
                 if var != val:
                     env.sos_dict.set(var, SoS_eval(val, sigil))
                 if var not in env.sos_dict:
                     raise ValueError('Unavailable shared variable {} after the completion of task {}'.format(var, task_id))
                 shared[var] = copy.deepcopy(env.sos_dict[var])
-        elif isinstance(vars, Sequence):
+        elif isinstance(svars, Sequence):
             # if there are dictionaries in the sequence, e.g.
             # shared=['A', 'B', {'C':'D"}]
-            for item in vars:
+            for item in svars:
                 if isinstance(item, str):
                     if item not in env.sos_dict:
                         raise ValueError('Unavailable shared variable {} after the completion of task {}'.format(item, task_id))
@@ -171,9 +171,9 @@ def collect_task_result(task_id, sigil, sos_dict):
                             raise ValueError('Unavailable shared variable {} after the completion of task {}'.format(var, task_id))
                         shared[var] = copy.deepcopy(env.sos_dict[var])
                 else:
-                    raise ValueError('Option shared should be a string, a mapping of expression, or a list of string or mappings. {} provided'.format(vars))
+                    raise ValueError('Option shared should be a string, a mapping of expression, or a list of string or mappings. {} provided'.format(svars))
         else:
-            raise ValueError('Option shared should be a string, a mapping of expression, or a list of string or mappings. {} provided'.format(vars))
+            raise ValueError('Option shared should be a string, a mapping of expression, or a list of string or mappings. {} provided'.format(svars))
         env.logger.debug('task {} (index={}) return shared variable {}'.format(task_id, env.sos_dict['_index'], shared))
     # the difference between sos_dict and env.sos_dict is that sos_dict (the original version) can have remote() targets
     # which should not be reported.

@@ -69,7 +69,7 @@ define([
     // configuration later on.
     IPython.notebook.metadata["sos"]["panel"].style = "side";
 
-    window.data = IPython.notebook.metadata["sos"]["kernels"];
+    var data = IPython.notebook.metadata["sos"]["kernels"];
     // upgrade existing meta data if it uses the old 3 item format
     if (IPython.notebook.metadata["sos"]["kernels"].length > 0 &&
         IPython.notebook.metadata["sos"]["kernels"][0].length === 3) {
@@ -134,8 +134,9 @@ define([
             }
         }
         var isSorted = function(array, fn) {
-            if (array.length < 2)
+            if (array.length < 2) {
                 return 1;
+            }
             var direction = fn(array[0], array[1]);
             for (var i = 1; i < array.length - 1; ++i) {
                 var d = fn(array[i], array[i + 1]);
@@ -173,8 +174,9 @@ define([
         var run_notebook = false;
         var lines = code.split("\n");
         for (var l = 0; l < lines.length; ++l) {
-            if (lines[l].startsWith("#") || lines[l].trim() === "" || lines[l].startsWith("!"))
-                continue
+            if (lines[l].startsWith("#") || lines[l].trim() === "" || lines[l].startsWith("!")) {
+                continue;
+            }
             // other magic
             if (lines[l].startsWith("%")) {
                 if (lines[l].match(/^%sosrun($|\s)|^%sossave($|\s)|^%preview\s.*(-w|--workflow).*$/)) {
@@ -195,7 +197,7 @@ define([
             var cells = IPython.notebook.get_cells();
             for (var i = 0; i < cells.length; ++i) {
                 // older version of the notebook might have sos in metadata
-                if (cells[i].cell_type === "code" && (cells[i].metadata.kernel === undefined || cells[i].metadata.kernel === "SoS" ||
+                if (cells[i].cell_type === "code" && (! cells[i].metadata.kernel || cells[i].metadata.kernel === "SoS" ||
                         cells[i].metadata.kernel === "sos")) {
                     workflow += get_workflow_from_cell(cells[i])
                 }
@@ -326,21 +328,21 @@ define([
 
                 for (var i = 0; i < data.length; i++) {
                     // BackgroundColor is color
-                    BackgroundColor[data[i][0]] = data[i][3];
+                    window.BackgroundColor[data[i][0]] = data[i][3];
                     // by kernel name? For compatibility ...
-                    if (!(data[i][1] in BackgroundColor))
-                        BackgroundColor[data[i][1]] = data[i][3];
+                    if (!(data[i][1] in window.BackgroundColor))
+                        window.BackgroundColor[data[i][1]] = data[i][3];
                     // DisplayName
-                    DisplayName[data[i][0]] = data[i][0];
+                    window.DisplayName[data[i][0]] = data[i][0];
                     if (!(data[i][1] in DisplayName))
-                        DisplayName[data[i][1]] = data[i][0];
+                        window.DisplayName[data[i][1]] = data[i][0];
                     // Name
-                    KernelName[data[i][0]] = data[i][1];
-                    if (!(data[i][1] in KernelName))
-                        KernelName[data[i][1]] = data[i][1];
+                    window.KernelName[data[i][0]] = data[i][1];
+                    if (!(data[i][1] in window.KernelName))
+                        window.KernelName[data[i][1]] = data[i][1];
                     // KernelList, use displayed name
-                    if (KernelList.findIndex((item) => item[0] === data[i][0]) === -1)
-                        KernelList.push([data[i][0], data[i][0]]);
+                    if (window.KernelList.findIndex((item) => item[0] === data[i][0]) === -1)
+                        window.KernelList.push([data[i][0], data[i][0]]);
 
                     // if the kernel is not in metadata, push it in
                     var k_idx = IPython.notebook.metadata["sos"]["kernels"].findIndex((item) => item[0] === data[i][0])
@@ -376,7 +378,7 @@ define([
             } else if (msg_type === "default-kernel") {
                 // update the cells when the notebook is being opened.
                 // we also set a global kernel to be used for new cells
-                $("#kernel_selector").val(DisplayName[data]);
+                $("#kernel_selector").val(window.DisplayName[data]);
                 // a side effect of change is cells without metadata kernel info will change background
                 $("#kernel_selector").change();
             } else if (msg_type === "cell-kernel") {
@@ -386,8 +388,8 @@ define([
                     var cell = window.my_panel.cell;
                 else
                     var cell = IPython.notebook.get_cell(data[0]);
-                if (cell.metadata.kernel !== DisplayName[data[1]]) {
-                    cell.metadata.kernel = DisplayName[data[1]];
+                if (cell.metadata.kernel !== window.DisplayName[data[1]]) {
+                    cell.metadata.kernel = window.DisplayName[data[1]];
                     // set meta information
                     changeStyleOnKernel(cell, data[1])
                 } else if (cell.metadata.tags && cell.metadata.tags.indexOf("report_output") >= 0) {
@@ -542,7 +544,7 @@ define([
         } else {
             var opts = sel.options;
             for (var opt, j = 0; opt = opts[j]; j++) {
-                if (opt.value === DisplayName[type]) {
+                if (opt.value === window.DisplayName[type]) {
                     sel.selectedIndex = j;
                     break;
                 }
@@ -558,8 +560,8 @@ define([
         // cell in panel does not have prompt area
         var col = "";
         if (cell.is_panel !== undefined) {
-            if (type && BackgroundColor[type]) {
-                col = BackgroundColor[type];
+            if (type && window.BackgroundColor[type]) {
+                col = window.BackgroundColor[type];
             }
             cell.element[0].getElementsByClassName("input")[0].style.backgroundColor = col;
             return col;
@@ -568,8 +570,8 @@ define([
 
         if (type === "sos" && get_workflow_from_cell(cell)) {
             col = "#F0F0F0";
-        } else if (type && BackgroundColor[type]) {
-            col = BackgroundColor[type];
+        } else if (type && window.BackgroundColor[type]) {
+            col = window.BackgroundColor[type];
         }
         var ip = cell.element[0].getElementsByClassName("input_prompt");
         var op = cell.element[0].getElementsByClassName("out_prompt_overlay");
@@ -667,11 +669,11 @@ define([
             Jupyter.toolbar.element.append(dropdown);
         // remove any existing items
         $("#kernel_selector").empty();
-        $.each(KernelList, function(key, value) {
+        $.each(window.KernelList, function(key, value) {
             $("#kernel_selector")
                 .append($("<option/>")
-                    .attr("value", DisplayName[value[0]])
-                    .text(DisplayName[value[0]]));
+                    .attr("value", window.DisplayName[value[0]])
+                    .text(window.DisplayName[value[0]]));
         });
         $("#kernel_selector").val("SoS");
         $("#kernel_selector").change(function() {
@@ -1679,10 +1681,10 @@ define([
         if (cell.element[0].getElementsByClassName("cell_kernel_selector").length > 0) {
             // update existing list
             var select = $(".cell_kernel_selector", cell.element).empty();
-            for (var i = 0; i < KernelList.length; i++) {
+            for (var i = 0; i < window.KernelList.length; i++) {
                 select.append($("<option/>")
-                    .attr("value", DisplayName[KernelList[i][0]])
-                    .text(DisplayName[KernelList[i][0]]));
+                    .attr("value", window.DisplayName[window.KernelList[i][0]])
+                    .text(window.DisplayName[window.KernelList[i][0]]));
             }
             select.val(kernel ? kernel : "");
             return;
@@ -1691,19 +1693,19 @@ define([
         var select = $("<select/>").attr("id", "cell_kernel_selector")
             .css("margin-left", "0.75em")
             .attr("class", "select-xs cell_kernel_selector");
-        for (var i = 0; i < KernelList.length; i++) {
+        for (var i = 0; i < window.KernelList.length; i++) {
             select.append($("<option/>")
-                .attr("value", DisplayName[KernelList[i][0]])
-                .text(DisplayName[KernelList[i][0]]));
+                .attr("value", window.DisplayName[window.KernelList[i][0]])
+                .text(window.DisplayName[window.KernelList[i][0]]));
         }
         select.val(kernel ? kernel : "");
 
         select.change(function() {
-            cell.metadata.kernel = DisplayName[this.value];
+            cell.metadata.kernel = window.DisplayName[this.value];
             // cell in panel does not have prompt area
             if (cell.is_panel !== undefined) {
-                if (BackgroundColor[this.value])
-                    cell.element[0].getElementsByClassName("input")[0].style.backgroundColor = BackgroundColor[this.value];
+                if (window.BackgroundColor[this.value])
+                    cell.element[0].getElementsByClassName("input")[0].style.backgroundColor = window.BackgroundColor[this.value];
                 else
                     cell.element[0].getElementsByClassName("input")[0].style.backgroundColor = "";
                 return;
@@ -1711,9 +1713,9 @@ define([
 
             var ip = cell.element[0].getElementsByClassName("input_prompt");
             var op = cell.element[0].getElementsByClassName("out_prompt_overlay");
-            if (BackgroundColor[this.value]) {
-                ip[0].style.backgroundColor = BackgroundColor[this.value];
-                op[0].style.backgroundColor = BackgroundColor[this.value];
+            if (window.BackgroundColor[this.value]) {
+                ip[0].style.backgroundColor = window.BackgroundColor[this.value];
+                op[0].style.backgroundColor = window.BackgroundColor[this.value];
             } else {
                 // Use "" to remove background-color?
                 ip[0].style.backgroundColor = "";

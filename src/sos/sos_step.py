@@ -116,22 +116,22 @@ def analyze_section(section, default_input=None):
     #
     # 2. look for input statement
     if 'shared' in section.options:
-        vars = section.options['shared']
-        if isinstance(vars, str):
-            changed_vars.add(vars)
-            vars = {vars: vars}
-        elif isinstance(vars, Sequence):
-            for item in vars:
+        svars = section.options['shared']
+        if isinstance(svars, str):
+            changed_vars.add(svars)
+            svars = {svars: svars}
+        elif isinstance(svars, Sequence):
+            for item in svars:
                 if isinstance(item, str):
                     changed_vars.add(item)
                 elif isinstance(item, Mapping):
                     changed_vars |= set(item.keys())
                 else:
-                    raise ValueError('Option shared should be a string, a mapping of expression, or list of string or mappings. {} provided'.format(vars))
-        elif isinstance(vars, Mapping):
-            changed_vars |= set(vars.keys())
+                    raise ValueError('Option shared should be a string, a mapping of expression, or list of string or mappings. {} provided'.format(svars))
+        elif isinstance(svars, Mapping):
+            changed_vars |= set(svars.keys())
         else:
-            raise ValueError('Option shared should be a string, a mapping of expression, or list of string or mappings. {} provided'.format(vars))
+            raise ValueError('Option shared should be a string, a mapping of expression, or list of string or mappings. {} provided'.format(svars))
 
 
     # look for input statement.
