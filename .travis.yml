@@ -46,6 +46,7 @@ before_install:
     - pip install coverage
     - pip install codacy-coverage
     - pip install pytest pytest-cov
+    - pip install python-coveralls
     # install r kernel
     - conda install -c r r-essentials r-feather
     - conda install -c conda-forge feather-format
@@ -92,7 +93,11 @@ script:
     - pytest -x --cov sos --cov-config ../.coveragerc --cov-report xml --ignore JavaScript --ignore rq --ignore docker -v
       
 after_success:
+    - coverage combine
+    - ls -l coverage.xml
     - python-codacy-coverage -r coverage.xml
+    # also report coverage to coveralls
+    - coveralls
 
 notifications:
     email:

@@ -221,13 +221,13 @@ run:
     def testSendSymbolicLink(self):
         '''Test to_host symbolic link or directories that contain symbolic link. #508'''
         # create a symbloc link
-        if os.path.exists('ll'):
-            os.remove('ll')
-        subprocess.call('ln -s scripts ll', shell=True)
+        if os.path.exists('llink'):
+            os.remove('llink')
+        subprocess.call('ln -s scripts llink', shell=True)
         script = SoS_Script('''
 [10]
-task: to_host='ll'
-files = os.listdir('ll')
+task: to_host='llink'
+files = os.listdir('llink')
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={
@@ -236,7 +236,7 @@ files = os.listdir('ll')
                 'wait_for_task': True,
                 'default_queue': 'docker',
                 }).run()
-        os.remove('ll')
+        os.remove('llink')
 
     @unittest.skipIf(not os.path.exists(os.path.expanduser('~').upper()) or not has_docker, 'Skip test for case sensitive file system')
     def testCaseInsensitiveLocalPath(self):
@@ -544,6 +544,7 @@ sh:
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker',
+                'sig_mode': 'force',
                 }).run()
         self.assertTrue(os.path.isfile('llp'))
         os.remove('llp')
