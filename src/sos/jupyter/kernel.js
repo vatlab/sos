@@ -123,16 +123,12 @@ define([
         var tb = table.tBodies[0]; // use `<tbody>` to ignore `<thead>` and `<tfoot>` rows
         var tr = Array.prototype.slice.call(tb.rows, 0); // put rows into array
 
-        if (dtype === "numeric") {
-            var fn = function(a, b) {
-                return parseFloat(a.cells[n].textContent) <= parseFloat(b.cells[n].textContent) ? -1 : 1;
-            }
-        } else {
-            var fn = function(a, b) {
-                var c = a.cells[n].textContent.trim().localeCompare(b.cells[n].textContent.trim());
-                return c > 0 ? 1 : (c < 0 ? -1 : 0);
-            }
-        }
+        var fn = dtype === "numeric" ? function(a, b) {
+            return parseFloat(a.cells[n].textContent) <= parseFloat(b.cells[n].textContent) ? -1 : 1;
+        } : function(a, b) {
+            var c = a.cells[n].textContent.trim().localeCompare(b.cells[n].textContent.trim());
+            return c > 0 ? 1 : (c < 0 ? -1 : 0);
+        };
         var isSorted = function(array, fn) {
             if (array.length < 2) {
                 return 1;
@@ -166,6 +162,24 @@ define([
         }
     }
 
+
+    function get_workflow_from_cell(cell) {
+        var lines = cell.get_text().split("\n");
+        var workflow = "";
+        for (var l = 0; l < lines.length; ++l) {
+            if (lines[l].startsWith("%include") || lines[l].startsWith("%from")) {
+                workflow += lines[l] + "\n";
+                continue
+            } else if (lines[l].startsWith("#") || lines[l].startsWith("%") || lines[l].trim() === "" || lines[l].startsWith("!")) {
+                continue
+            } else if (lines[l].startsWith("[") && lines[l].endsWith("]")) {
+                workflow += lines.slice(l).join("\n") + "\n\n";
+            }
+            break;
+        }
+        return workflow;
+    }
+
     var my_execute = function(code, callbacks, options) {
         /* check if the code is a workflow call, which is marked by
          * %sosrun or %sossave workflowname with options
@@ -191,20 +205,19 @@ define([
             }
         }
 
+        var cells = IPython.notebook.get_cells();
         if (run_notebook) {
             // Running %sossave --to html needs to save notebook
             IPython.notebook.save_notebook();
-            var cells = IPython.notebook.get_cells();
             for (var i = 0; i < cells.length; ++i) {
                 // older version of the notebook might have sos in metadata
-                if (cells[i].cell_type === "code" && (! cells[i].metadata.kernel || cells[i].metadata.kernel === "SoS" ||
+                if (cells[i].cell_type === "code" && (!cells[i].metadata.kernel || cells[i].metadata.kernel === "SoS" ||
                         cells[i].metadata.kernel === "sos")) {
                     workflow += get_workflow_from_cell(cells[i])
                 }
             }
         }
         var rerun_option = "";
-        var cells = IPython.notebook.get_cells();
         for (var i = cells.length - 1; i >= 0; --i) {
             // this is the cell that is being executed...
             // according to this.set_input_prompt("*") before execute is called.
@@ -255,23 +268,28 @@ define([
 
         function loadFile(index) {
             if (files.length > index) {
+                console.log("Load " + files[index]);
                 if (files[index].endsWith(".css")) {
                     var fileref = document.createElement("link");
                     fileref.setAttribute("rel", "stylesheet");
                     fileref.setAttribute("type", "text/css");
                     fileref.setAttribute("href", files[index]);
+			        head.appendChild(fileref);
+                    // Used to call a callback function
+                    fileref.onload = function() {
+                        loadFile(index);
+                    }
                 } else {
                     var fileref = document.createElement("script");
                     fileref.setAttribute("type", "text/javascript");
                     fileref.setAttribute("src", files[index]);
+			        head.appendChild(fileref);
+                    // Used to call a callback function
+                    fileref.onload = function() {
+                        loadFile(index);
+                    }
                 }
-                console.log("Load " + files[index]);
-                head.appendChild(fileref);
                 index = index + 1;
-                // Used to call a callback function
-                fileref.onload = function() {
-                    loadFile(index);
-                }
             } else if (fn) {
                 fn();
             }
@@ -519,22 +537,6 @@ define([
     }
 
 
-    function get_workflow_from_cell(cell) {
-        var lines = cell.get_text().split("\n");
-        var workflow = "";
-        for (var l = 0; l < lines.length; ++l) {
-            if (lines[l].startsWith("%include") || lines[l].startsWith("%from")) {
-                workflow += lines[l] + "\n";
-                continue
-            } else if (lines[l].startsWith("#") || lines[l].startsWith("%") || lines[l].trim() === "" || lines[l].startsWith("!")) {
-                continue
-            } else if (lines[l].startsWith("[") && lines[l].endsWith("]")) {
-                workflow += lines.slice(l).join("\n") + "\n\n";
-            }
-            break;
-        }
-        return workflow;
-    }
 
     function changeStyleOnKernel(cell, type) {
         // type should be  displayed name of kernel
@@ -1186,7 +1188,9 @@ define([
         $(".output_wrapper", cell.element).removeClass(tag);
         if ($(".tags-input", cell.element).length > 0) {
             // find the button and click
-            var tag = $(".cell-tag", cell.element).filter(function(idx, y) { return y.innerText === tag; });
+            var tag = $(".cell-tag", cell.element).filter(function(idx, y) {
+                return y.innerText === tag;
+            });
             $(".remove-tag-btn", tag).click();
         } else {
             // otherwise just remove the metadata
@@ -1203,7 +1207,7 @@ define([
             $(".btn", taginput)[1].click();
         } else {
             // if tag toolbar not exist
-            if (! cell.metadata.tags) {
+            if (!cell.metadata.tags) {
                 cell.metadata.tags = [tag];
             } else {
                 cell.metadata.tags.push(tag);
@@ -1276,8 +1280,8 @@ define([
             col = changeStyleOnKernel(panel_cell, panel_cell.metadata.kernel);
         }
         // if in sos mode and is single line, enable automatic preview
-        if ((cell.metadata.kernel === "SoS" || (cell.metadata.kernel === undefined && window.default_kernel === "SoS"))
-            && text.indexOf("\n") === -1 && text.indexOf("%") !== 0) {
+        if ((cell.metadata.kernel === "SoS" || (cell.metadata.kernel === undefined && window.default_kernel === "SoS")) &&
+            text.indexOf("\n") === -1 && text.indexOf("%") !== 0) {
             // if it is expression without space
             if (text.indexOf("=") === -1) {
                 if (text.trim().match(/^[_A-Za-z0-9\.]+$/))
