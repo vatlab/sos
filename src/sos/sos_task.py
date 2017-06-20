@@ -1040,7 +1040,6 @@ class TaskEngine(threading.Thread):
                     self.running_tasks.append(task)
         #
         if age is not None:
-            from sos.utils import expand_time
             age = expand_time(age, default_unit='d')
         return sorted([(x, self.task_status[x], self.task_date.get(x, time.time())) for x in tasks \
             if (status is None or self.task_status[x] in status) and (age is None or \

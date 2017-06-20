@@ -321,7 +321,7 @@ class Base_Executor:
         # excute global definition to get some basic setup
         try:
             SoS_exec(self.workflow.global_def, get_default_global_sigil())
-        except Exception as e:
+        except Exception:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
             raise

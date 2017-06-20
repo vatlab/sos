@@ -21,7 +21,6 @@
 #
 
 import unittest
-import time
 import subprocess
 import shutil
 
@@ -82,9 +81,7 @@ run:
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        #st = time.time()
         Base_Executor(wf).run()
-        #self.assertLess(time.time() - st, 4)
 
 if __name__ == '__main__':
     unittest.main()

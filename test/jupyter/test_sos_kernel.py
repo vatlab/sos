@@ -136,7 +136,7 @@ class TestKernel(unittest.TestCase):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             execute(kc=kc, code="%use R")
-            stdout, stderr = assemble_output(iopub)
+            _, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
             execute(kc=kc, code="a <- 1024")
             wait_for_idle(kc)
@@ -199,7 +199,7 @@ class TestKernel(unittest.TestCase):
             execute(kc=kc, code="_b_a = 22")
             wait_for_idle(kc)
             execute(kc=kc, code="%use R")
-            stdout, stderr = assemble_output(iopub)
+            _, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
             execute(kc=kc, code="%get a")
             wait_for_idle(kc)
