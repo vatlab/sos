@@ -87,22 +87,22 @@ before_script:
     - cd test
     - sh build_test_docker.sh
 script:
-    # docker needs to be tested separately because it somehow stuck if it is tested with others, perhaps there is some bug with sos
-    # of with the coverage feature
-    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report= -v docker
-    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report= --cov-append -v jupyter
-    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report= --cov-append -v R
-    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report= --cov-append -v Python2
-    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report= --cov-append -v Python3
-    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report= --cov-append -v Bash
-    - pytest -x --cov sos --cov-config ../.coveragerc --cov-report=xml --cov-append -v --ignore docker --ignore jupyter --ignore R --ignore Python2 --ignore Python3 --ignore Bash --ignore JavaScript --ignore rq .
+    # coverage does not seem to work well with python 3.6, but it does not really matter because we have coverage report from python 3.5 already
+    - 'if [ $TRAVIS_PYTHON_VERSION == "3.6" ]; then
+           pytest -x -v --ignore JavaScript --ignore rq . ;
+       else
+           pytest -x --cov sos --cov-config ../.coveragerc --cov-report= -v docker;
+           pytest -x --cov sos --cov-config ../.coveragerc --cov-report=xml --cov-append -v --ignore docker --ignore JavaScript --ignore rq .;
+       fi'
       
 after_success:
-    - coverage combine
-    - ls -l coverage.xml
-    - python-codacy-coverage -r coverage.xml
-    # also report coverage to coveralls
-    - coveralls
+    - 'if [ $TRAVIS_PYTHON_VERSION == "3.5" ]; then
+           coverage combine;
+           ls -l coverage.xml;
+           python-codacy-coverage -r coverage.xml;
+           also report coverage to coveralls;
+           coveralls;
+        fi'
 
 notifications:
     email:
