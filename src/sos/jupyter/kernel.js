@@ -278,7 +278,6 @@ define([
                     fileref.setAttribute("rel", "stylesheet");
                     fileref.setAttribute("type", "text/css");
                     fileref.setAttribute("href", files[index]);
-                    }
                 } else {
                     fileref = document.createElement("script");
                     fileref.setAttribute("type", "text/javascript");
