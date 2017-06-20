@@ -1,3 +1,5 @@
+dist: trusty
+group: edge
 os:
     - linux
     # travis does not support python on osx yet (https://github.com/travis-ci/travis-ci/issues/4729)
@@ -84,8 +86,6 @@ before_script:
     - cd test
     - sh build_test_docker.sh
 script:
-    # fresh coverage report
-    - ./run_tests test/docker
     # docker needs to be tested separately because it somehow stuck if it is tested with others, perhaps there is some bug with sos
     # of with the coverage feature
     - pytest -x docker
