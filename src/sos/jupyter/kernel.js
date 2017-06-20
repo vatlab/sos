@@ -115,7 +115,7 @@ define([
                 }
             }
         }
-    }
+    };
 
     window.sortDataFrame = function(id, n, dtype) {
         var table = document.getElementById("dataframe_" + id);
@@ -160,7 +160,7 @@ define([
                 tb.appendChild(tr[i]); // append each row in order
             }
         }
-    }
+    };
 
 
     function get_workflow_from_cell(cell) {
@@ -169,7 +169,7 @@ define([
         for (var l = 0; l < lines.length; ++l) {
             if (lines[l].startsWith("%include") || lines[l].startsWith("%from")) {
                 workflow += lines[l] + "\n";
-                continue
+                continue;
             } else if (lines[l].startsWith("#") || lines[l].startsWith("%") || lines[l].trim() === "" || lines[l].startsWith("!")) {
                 continue
             } else if (lines[l].startsWith("[") && lines[l].endsWith("]")) {
@@ -257,8 +257,7 @@ define([
                 "silent": false,
                 "store_history": false
             })
-    }
-
+    };
 
     function loadFiles(files, fn) {
         if (!files.length) {

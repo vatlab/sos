@@ -35,9 +35,9 @@ def preview_bam(filename):
                 records = headers[record_type]
             res += record_type + ':\n'
             for i, record in enumerate(records):
-                if type(record) == str:
+                if isinstance(record, str):
                     res += '  ' + short_repr(record) + '\n'
-                elif type(record) == dict:
+                elif isinstance(record, dict):
                     res += '  '
                     for idx, (k, v) in enumerate(record.items()):
                         if idx < 4:
