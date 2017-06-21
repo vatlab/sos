@@ -406,6 +406,9 @@ def notebook_to_pdf(notebook_file, output_file, sargs=None, unknown_args=None):
         unknown_args = ['--template', os.path.join(os.path.split(__file__)[0], sargs.template + ('' if sargs.template.endswith('.tpl') else '.tpl')) ] + unknown_args
     elif sargs.template:
         unknown_args = ['--template', sargs.template] + unknown_args
+    # jupyter convert will add extension to output file...
+    if output_file is not None and output_file.endswith('.pdf'):
+        output_file = output_file[:-4]
     export_notebook(PDFExporter, 'pdf', notebook_file, output_file, unknown_args)
 
 def get_notebook_to_md_parser():

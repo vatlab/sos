@@ -28,6 +28,10 @@ import subprocess
 from sos.utils import env
 from sos.jupyter.converter import script_to_notebook, notebook_to_script
 
+file_dir = os.path.split(__file__)[0]
+if not file_dir:
+    file_dir = '.'
+
 class TestConvert(unittest.TestCase):
     def setUp(self):
         env.reset()
@@ -66,7 +70,7 @@ report('this is action report')
 
     def testConvertAll(self):
         olddir = os.getcwd()
-        os.chdir(os.path.split(__file__)[0])
+        os.chdir(file_dir)
         subprocess.call('sos convert test.ipynb test_wf.sos --all', shell=True)
         self.assertTrue(os.path.isfile('test_wf.sos'))
         subprocess.call('sos convert test_wf.sos test2.ipynb', shell=True)
@@ -74,6 +78,27 @@ report('this is action report')
         # --execute does not yet work
         os.remove('test_wf.sos')
         os.remove('test2.ipynb')
+        os.chdir(olddir)
+
+    def testConvertHTML(self):
+        olddir = os.getcwd()
+        os.chdir(file_dir)
+        subprocess.call('sos convert test.ipynb test_wf.html', shell=True)
+        self.assertTrue(os.path.isfile('test_wf.html'))
+        os.chdir(olddir)
+
+    def testConvertPDF(self):
+        olddir = os.getcwd()
+        os.chdir(file_dir)
+        subprocess.call('sos convert test.ipynb test_wf.pdf', shell=True)
+        self.assertTrue(os.path.isfile('test_wf.pdf'))
+        os.chdir(olddir)
+
+    def testConvertMD(self):
+        olddir = os.getcwd()
+        os.chdir(file_dir)
+        subprocess.call('sos convert test.ipynb test_wf.md', shell=True)
+        self.assertTrue(os.path.isfile('test_wf.md'))
         os.chdir(olddir)
 
 if __name__ == '__main__':
