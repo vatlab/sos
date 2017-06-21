@@ -283,7 +283,6 @@ input: for_each=[{'a': range(10)}, {'b': range(3)}]
 task: concurrent=True
 run:
     echo "a = ${a}, b = ${b}"
-    sleep ${a + b}
 ''')
         env.config['wait_for_task'] = True
         wf = script.workflow()
