@@ -23,6 +23,7 @@
 import os
 import unittest
 import shutil
+from argparse import Namespace
 
 from sos.utils import env
 from sos.converter import script_to_html, script_to_markdown, script_to_term
@@ -62,6 +63,11 @@ report('this is action report')
         '''Test sos show script --html'''
         for script_file in self.scripts:
             script_to_html(script_file, script_file + '.html')
+            args = Namespace()
+            args.linenos = True
+            args.raw = None
+            args.view = False
+            script_to_html(script_file, script_file + '.html', args=args)
 
     def testScriptToMarkdown(self):
         '''Test sos show script --markdown'''
@@ -70,7 +76,6 @@ report('this is action report')
 
     def testScriptToTerm(self):
         '''Test sos show script --html'''
-        from argparse import Namespace
         args = Namespace()
         for script_file in self.scripts:
             script_to_term(script_file, None, args=args)
