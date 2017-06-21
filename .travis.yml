@@ -58,24 +58,10 @@ before_install:
     # Reading state information... Done
     # Package 'nodejs' is not installed, so not removed
     # 
-    - curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
-    - sudo apt-get install -y nodejs
-    # $sudo apt-get install -y nodejs-legacy
-    #  nodejs-lagacy cannot overwrite nodejs, but nodejs is not available to be
-    #  removed....
-    #  Preparing to unpack .../nodejs-legacy_0.10.25~dfsg2-2ubuntu1_all.deb ...
-    #
-    # Unpacking nodejs-legacy (0.10.25~dfsg2-2ubuntu1) ...
-    # dpkg: error processing archive /var/cache/apt/archives/nodejs-legacy_0.10.25~dfsg2-2ubuntu1_all.deb (--unpack):
-    # trying to overwrite '/usr/share/man/man1/node.1.gz', which is also in package nodejs 0.12.7-rwky1~trusty
-    # Processing triggers for man-db (2.6.7.1-1ubuntu1) ...
-    # Errors were encountered while processing:
-    # /var/cache/apt/archives/nodejs-legacy_0.10.25~dfsg2-2ubuntu1_all.deb
-    # E: Sub-process /usr/bin/dpkg returned an error code (1)
-    #
+    - sudo apt-get install nodejs-legacy npm 
     - sudo npm install -g ijavascript
     #- sudo npm install -g itypescript
-    - sudo -H ijsinstall --ts-install=global
+    - sudo -H ijsinstall --install=global
     #
     # install bash kernel
     - pip install bash_kernel
