@@ -32,8 +32,31 @@ import unittest
 from ipykernel.tests.utils import assemble_output, execute, wait_for_idle
 from sos.jupyter.test_utils import sos_kernel, get_result, get_display_data
 
-class TestKernel(unittest.TestCase):
+class TestSoSMagics(unittest.TestCase):
     #
+    def testMagicShutdown(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            execute(kc=kc, code='''
+%use R
+a = 100
+cat(a)
+''')
+            stdout, stderr = assemble_output(iopub)
+            self.assertTrue(stdout.endswith('100'), 'Should have output {}'.format(stdout))
+            self.assertEqual(stderr, '')
+            # now let us restart
+            execute(kc=kc, code='''
+%shutdown --restart R
+%use R
+cat(a)
+''')
+            stdout, stderr = assemble_output(iopub)
+            # not sure what is going on
+            # we should have error message, right?
+            self.assertEqual(stdout, '')
+            self.assertEqual(stderr, '')
+
     def testMagicSave(self):
         with sos_kernel() as kc:
             if os.path.isfile('test.txt'):
