@@ -33,13 +33,6 @@ from ipykernel.tests.utils import assemble_output, execute, wait_for_idle
 from sos.jupyter.test_utils import sos_kernel, get_result, get_display_data, \
     clear_channels
 
-try:
-    import feather
-    feather
-    with_feather = True
-except ImportError:
-    with_feather = False
-
 class TestKernel(unittest.TestCase):
     #
     # Beacuse these tests would be called from sos/test, we
@@ -54,7 +47,6 @@ class TestKernel(unittest.TestCase):
     def tearDown(self):
         os.chdir(self.olddir)
 
-    @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
     def testGetPythonDataFrameFromR(self):
         # Python -> R
         with sos_kernel() as kc:
@@ -80,7 +72,6 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             wait_for_idle(kc)
             #
 
-    @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
     def testGetPythonDataFromR(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
@@ -121,7 +112,6 @@ recursive_var = {'a': {'b': 123}, 'c': True}
             self.assertEqual(res['mat_var'].shape, (2,2))
             self.assertEqual(res['recursive_var'],  {'a': {'b': 123}, 'c': True})
 
-    @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
     def testPutRDataFrameToPython(self):
         # R -> Python
         with sos_kernel() as kc:
@@ -142,7 +132,6 @@ recursive_var = {'a': {'b': 123}, 'c': True}
             res = get_result(iopub)
             self.assertEqual(res, 'Mazda RX4')
 
-    @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
     def testPutRDataToPython(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
