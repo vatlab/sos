@@ -47,9 +47,12 @@ before_install:
     - pip install codacy-coverage
     - pip install pytest pytest-cov
     - pip install python-coveralls
-    # install r kernel
-    - conda install -c r r-essentials r-feather
-    - conda install -c conda-forge feather-format
+    # install r kernel (this took 80s to install too many packges)
+    #- conda install -c r r-essentials r-feather
+    - conda install -c r r-irdisplay r-irkernel r-feather
+    # version 0.4.0 uses pyarrow and jemalloc, which causes an error message
+    # ImportError: /home/travis/miniconda/envs/python_test/lib/python3.5/site-packages/pyarrow/../../.././libjemalloc.so.2: cannot allocate memory in static TLS block
+    - conda install -c conda-forge feather-format=0.3.1
     # install JavaScript kernel
     #
     # $ sudo apt-get remove -y nodejs
@@ -63,7 +66,9 @@ before_install:
     #- sudo npm install -g itypescript
     - ijsinstall --debug
     - jupyter kernelspec list
+    - export PATH=/home/travis/.nvm/versions/node/v7.4.0/bin:$PATH
     - which ijskernel
+    - ls /home/travis/.nvm/versions/node/v7.4.0/bin
     #
     # install bash kernel
     - pip install bash_kernel
