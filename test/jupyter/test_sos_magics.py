@@ -20,13 +20,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-#
-# NOTE: for some namespace reason, this test can only be tested using
-# nose.
-#
-# % nosetests test_kernel.py
-#
-#
 import os
 import unittest
 from ipykernel.tests.utils import assemble_output, execute, wait_for_idle
@@ -93,11 +86,13 @@ a=1
     def testMagicPreview(self):
         with sos_kernel() as kc:
             # preview variable
+            iopub = kc.iopub_channel
             execute(kc=kc, code='''
 %preview a
 a=1
 ''')
-            wait_for_idle(kc)
+            _, stderr = assemble_output(iopub)
+            self.assertEqual(stderr, '')
             # preview dataframe
             execute(kc=kc, code='''
 %preview mtcars -n -l 10
@@ -105,7 +100,8 @@ a=1
 %preview mtcars -n -s scatterplot _index disp hp mpg --tooltip wt qsec
 %get mtcars --from R
 ''')
-            wait_for_idle(kc)
+            _, stderr = assemble_output(iopub)
+            self.assertTrue(stderr == '' or 'Loading' in stderr)
             # preview csv file
             execute(kc=kc, code='''
 %preview a.csv
@@ -114,6 +110,44 @@ with open('a.csv', 'w') as csv:
 a,b,c
 1,2,3
 4,5,6
+""")
+''')
+            _, stderr = assemble_output(iopub)
+            self.assertEqual(stderr, '')
+            # preview zip
+            execute(kc=kc, code='''
+%preview a.zip
+%preview a.tar.gz
+%preview a.tar
+sh:
+    zip a.zip a.csv
+    tar czf a.tar.gz a.csv
+    tar czf a.tar.gz a.csv
+''')
+            _, stderr = assemble_output(iopub)
+            self.assertEqual(stderr, '')
+            # preview md
+            execute(kc=kc, code='''
+%preview a.md
+with open('a.md', 'w') as md:
+    md.write("""\
+# title
+
+* item
+* item
+""")
+''')
+            _, stderr = assemble_output(iopub)
+            self.assertEqual(stderr, '')
+            # preview dot
+            execute(kc=kc, code='''
+%preview a.dot
+with open('a.dot', 'w') as dot:
+    dot.write("""\
+graph graphname {
+     a -- b -- c;
+     b -- d;
+}
 """)
 ''')
             wait_for_idle(kc)
@@ -141,6 +175,7 @@ R:
     dev.off()
 ''')
             wait_for_idle(kc)
+            #
             # switch back
             execute(kc=kc, code='%use SoS')
             wait_for_idle(kc)
