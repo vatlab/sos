@@ -267,6 +267,8 @@ class TestKernel(unittest.TestCase):
             execute(kc=kc, code="%dict m")
             res = get_result(iopub)
             self.assertEqual(res['m'], 2.5)
+            execute(kc=kc, code="%use sos")
+            wait_for_idle(kc)
 
     def testSetSigil(self):
         '''Test set_options of sigil'''

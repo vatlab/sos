@@ -56,6 +56,8 @@ cat(a)
             # we should have error message, right?
             self.assertEqual(stdout, '')
             self.assertEqual(stderr, '')
+            execute(kc=kc, code='%use SoS')
+            wait_for_idle(kc)
 
     def testMagicSave(self):
         with sos_kernel() as kc:
@@ -66,9 +68,7 @@ cat(a)
 %save test.txt
 print("a=${100+11}")
 ''')
-            stdout, stderr = assemble_output(iopub)
-            self.assertTrue(stdout.endswith('a=111\n'))
-            self.assertEqual(stderr, '')
+            wait_for_idle(kc)
             with open('test.txt') as tt:
                 self.assertEqual(tt.read(), 'print("a=${100+11}")\n')
 
