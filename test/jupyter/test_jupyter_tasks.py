@@ -29,7 +29,8 @@
 #
 import os
 import unittest
-from ipykernel.tests.utils import wait_for_idle
+import subprocess
+from ipykernel.tests.utils import wait_for_idle, execute
 from sos.jupyter.test_utils import sos_kernel, KC
 
 import nose.tools as nt
@@ -54,19 +55,17 @@ def long_execute(code='', kc=None, **kwargs):
 
     return msg_id, reply['content']
 
-class TestKernel(unittest.TestCase):
+class TestJupyterTasks(unittest.TestCase):
     #
     # Beacuse these tests would be called from sos/test, we
     # should switch to this directory so that some location
     # dependent tests could run successfully
     #
     def setUp(self):
-        self.olddir = os.getcwd()
-        if os.path.dirname(__file__):
-            os.chdir(os.path.dirname(__file__))
+        subprocess.call(['sos', 'purge'])
 
     def tearDown(self):
-        os.chdir(self.olddir)
+        pass
 
     def testForceTask(self):
         '''Test the execution of tasks with -s force'''
@@ -74,7 +73,7 @@ class TestKernel(unittest.TestCase):
             # the cell will actually be executed several times
             # with automatic-reexecution
             code = """
-%set -v1 -s force
+%run -v1 -s force
 [10]
 input: for_each={'i': range(1)}
 task:
@@ -93,6 +92,29 @@ run:
             # these should be automatically rerun by the frontend
             long_execute(kc=kc, code=code)
             wait_for_idle(kc)
+
+    def testPendingTask(self):
+        '''Test the execution of tasks with -s force'''
+        with sos_kernel() as kc:
+            # the cell will actually be executed several times
+            # with automatic-reexecution
+            code = """
+%run -s force -W
+[10]
+input: for_each={'i': range(2)}
+task:
+run:
+   echo this is jupyter pending test "${i}"
+   sleep  ${10+i}
+
+"""
+            # these should be automatically rerun by the frontend
+            execute(kc=kc, code=code)
+            wait_for_idle(kc)
+            # check for task?
+            # there should be two tasks
+            lines = subprocess.check_output(['sos', 'status']).decode().splitlines()
+            self.assertGreaterEqual(len(lines), 2)
 
 if __name__ == '__main__':
     unittest.main()
