@@ -1099,3 +1099,8 @@ def convertAnsi2html(txt):
         replace('\033[91m', '<font color="red">'). \
         replace('\033[0m', '</font>'). \
         replace('\n', '<br>')
+
+# log to file for debugging purpose only
+def log_to_file(msg):
+    with open(os.path.join(os.path.expanduser('~'), 'jupyter_debug.txt'), 'a') as log:
+        log.write('{}\n'.format(msg))

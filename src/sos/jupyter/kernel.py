@@ -57,11 +57,6 @@ from .inspector import SoS_Inspector
 from .sos_executor import runfile
 from .sos_step import PendingTasks
 
-# I have not figured out how to log message to console so I have to use a file
-# to send debug message.
-def log_to_file(msg):
-    with open(os.path.join(os.path.expanduser('~'), 'jupyter_debug.txt'), 'a') as log:
-        log.write('{}\n'.format(msg))
 
 class FlushableStringIO(StringIO):
     '''This is a string buffer for output, but it will only
