@@ -58,6 +58,8 @@ before_install:
     # Reading state information... Done
     # Package 'nodejs' is not installed, so not removed
     # 
+    - curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
+    - sudo apt-get install -y nodejs
     # $sudo apt-get install -y nodejs-legacy
     #  nodejs-lagacy cannot overwrite nodejs, but nodejs is not available to be
     #  removed....
@@ -71,10 +73,9 @@ before_install:
     # /var/cache/apt/archives/nodejs-legacy_0.10.25~dfsg2-2ubuntu1_all.deb
     # E: Sub-process /usr/bin/dpkg returned an error code (1)
     #
-    #- sudo apt-get remove -y nodejs
-    #- sudo apt-get install -y nodejs-legacy
-    # - sudo npm install -g ijavascript
-    # - ijsinstall
+    - sudo npm install -g ijavascript
+    #- sudo npm install -g itypescript
+    - sudo -H ijsinstall --ts-install=global
     #
     # install bash kernel
     - pip install bash_kernel
@@ -92,7 +93,7 @@ script:
            pytest -x -v --ignore JavaScript --ignore rq . ;
        else
            pytest -x --cov sos --cov-config ../.coveragerc --cov-report= -v docker;
-           pytest -x --cov sos --cov-config ../.coveragerc --cov-report=xml --cov-append -v --ignore docker --ignore JavaScript --ignore rq .;
+           pytest -x --cov sos --cov-config ../.coveragerc --cov-report=xml --cov-append -v --ignore docker --ignore rq .;
        fi'
       
 after_success:
