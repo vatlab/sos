@@ -145,5 +145,52 @@ R:
             execute(kc=kc, code='%use SoS')
             wait_for_idle(kc)
 
+    def testMagicSandbox(self):
+        with sos_kernel() as kc:
+            # preview variable
+            execute(kc=kc, code='''
+%sandbox
+with open('test_blah.txt', 'w') as tb:
+    tb.write('a')
+''')
+            wait_for_idle(kc)
+            self.assertFalse(os.path.exists('test_blah.txt'))
+
+    def testMagicDebug(self):
+        with sos_kernel() as kc:
+            # preview variable
+            execute(kc=kc, code='''
+%debug on
+%debug off
+''')
+            wait_for_idle(kc)
+
+    def testMagicSessioninfo(self):
+        with sos_kernel() as kc:
+            # preview variable
+            execute(kc=kc, code='''
+%use R
+%use Python3
+%use SoS
+%sessioninfo
+''')
+            wait_for_idle(kc)
+
+    def testMagicRender(self):
+        with sos_kernel() as kc:
+            # preview variable
+            execute(kc=kc, code='''
+%render
+"""
+# header
+
+* item1
+* item2
+"""
+''')
+            wait_for_idle(kc)
+
+
+
 if __name__ == '__main__':
     unittest.main()
