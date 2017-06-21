@@ -50,7 +50,7 @@ before_install:
     # install r kernel (this took 80s to install too many packges)
     #- conda install -c r r-essentials r-feather
     # this takes about 27s
-    - conda install -c r r-irdisplay r-irkernel r-feather r-dplyr r-markdown r-rmarkdown r-knitr r-yaml r-htmltools r-catools r-base64enc r-stringr r-backports r-rprojroot
+    - conda install -c r r-irdisplay r-irkernel r-feather r-dplyr r-markdown r-rmarkdown r-knitr r-yaml r-htmltools r-catools r-base64enc r-stringr r-backports r-rprojroot r-ggplot2
     # version 0.4.0 uses pyarrow and jemalloc, which causes an error message
     # ImportError: /home/travis/miniconda/envs/python_test/lib/python3.5/site-packages/pyarrow/../../.././libjemalloc.so.2: cannot allocate memory in static TLS block
     - conda install -c conda-forge feather-format=0.3.1
