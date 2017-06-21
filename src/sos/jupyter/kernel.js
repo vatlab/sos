@@ -245,7 +245,7 @@ define([
                     (run_notebook ? " --filename '" + window.document.getElementById("notebook_name").innerHTML + "'" : "") +
                     (run_notebook ? " --workflow " + btoa(workflow) : "") + rerun_option +
                     " --cell " + i.toString() + "\n" + code,
-                    callbacks, options)
+                    callbacks, options);
             }
         }
         // if this is a command from scratch pad (not part of the notebook)
@@ -348,25 +348,29 @@ define([
                     // BackgroundColor is color
                     window.BackgroundColor[data[i][0]] = data[i][3];
                     // by kernel name? For compatibility ...
-                    if (!(data[i][1] in window.BackgroundColor))
+                    if (!(data[i][1] in window.BackgroundColor)) {
                         window.BackgroundColor[data[i][1]] = data[i][3];
+					}
                     // DisplayName
                     window.DisplayName[data[i][0]] = data[i][0];
-                    if (!(data[i][1] in DisplayName))
+                    if (!(data[i][1] in DisplayName)) {
                         window.DisplayName[data[i][1]] = data[i][0];
+					}
                     // Name
                     window.KernelName[data[i][0]] = data[i][1];
-                    if (!(data[i][1] in window.KernelName))
+                    if (!(data[i][1] in window.KernelName)) {
                         window.KernelName[data[i][1]] = data[i][1];
+					}
                     // KernelList, use displayed name
-                    if (window.KernelList.findIndex((item) => item[0] === data[i][0]) === -1)
+                    if (window.KernelList.findIndex((item) => item[0] === data[i][0]) === -1) {
                         window.KernelList.push([data[i][0], data[i][0]]);
+					}
 
                     // if the kernel is not in metadata, push it in
                     var k_idx = IPython.notebook.metadata["sos"]["kernels"].findIndex((item) => item[0] === data[i][0])
-                    if (k_idx === -1)
+                    if (k_idx === -1) {
                         IPython.notebook.metadata["sos"]["kernels"].push(data[i])
-                    else {
+					} else {
                         // if kernel exist update the rest of the information, but warn users first on
                         // inconsistency
                         if (IPython.notebook.metadata["sos"]["kernels"][k_idx][1] !== data[i][1]) {
@@ -440,22 +444,23 @@ define([
                 window.pending_cells[cell.cell_id] = data[1];
             } else if (msg_type === "remove-task") {
                 var item = document.getElementById("table_" + data[0] + "_" + data[1]);
-                if (item)
+                if (item) {
                     item.parentNode.removeChild(item);
+				}
             } else if (msg_type === "update-duration") {
                 if (window._duration_updater === undefined) {
                     window._duration_updater = window.setInterval(function() {
                         $("[id^=duration_]").text(function() {
                             return durationFormatter($(this).attr("datetime"));
-                        })
+                        });
                     }, 5000);
                 }
             } else if (msg_type === "task-status") {
                 // console.log(data);
                 var item = document.getElementById("status_" + data[0] + "_" + data[1]);
-                if (!item)
+                if (!item) {
                     return;
-                else {
+				} else {
                     // id, status, status_class, action_class, action_func
                     item.className = "fa fa-fw fa-2x " + data[3];
                     item.setAttribute('onmouseover', "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[4] + "').removeClass('" + data[3] + "')");
@@ -650,7 +655,7 @@ define([
         if (window.my_panel)
             add_lan_selector(window.my_panel.cell, "SoS");
 
-        var cells = IPython.notebook.get_cells();
+        cells = IPython.notebook.get_cells();
         for (var i = 0; i < cells.length; i++) {
             if (cells[i].cell_type === "code")
                 changeStyleOnKernel(cells[i], cells[i].metadata.kernel);

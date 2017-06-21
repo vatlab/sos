@@ -38,7 +38,7 @@ class SoS_VariableInspector(object):
                 if 'text/plain' in format_dict:
                     return format_dict
                 else:
-                    return {'text/plain': '{} ({})'.format(repr(env.sos_dict['name'], obj_desc)) }
+                    return {'text/plain': '{} ({})'.format(repr(env.sos_dict['name']), obj_desc) }
         except Exception:
             return {}
 
