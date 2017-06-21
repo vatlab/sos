@@ -128,7 +128,10 @@ def get_display_data(iopub):
             # idle message signals end of output
             break
         elif msg['msg_type'] == 'display_data':
-            result = content['data']['text/plain']
+            if 'text/plain' in content['data']:
+                result = content['data']['text/plain']
+            else:
+                result = content['data']['text/html']
         # some early version of IRKernel still passes execute_result
         elif msg['msg_type'] == 'execute_result':
             result = content['data']['text/plain']

@@ -28,10 +28,11 @@
 #
 #
 import os
+import glob
 import unittest
 import subprocess
 from ipykernel.tests.utils import wait_for_idle, execute
-from sos.jupyter.test_utils import sos_kernel, KC
+from sos.jupyter.test_utils import sos_kernel, KC, get_display_data
 
 import nose.tools as nt
 
@@ -112,6 +113,15 @@ run:
             execute(kc=kc, code=code)
             wait_for_idle(kc)
             # check for task?
+            execute(kc=kc, code='%tasks')
+            res = get_display_data(kc.iopub_channel)
+            # get IDs
+            # table_localhost_ac755352394584f797cebddf2c0b8ca7"
+            tid = res.split('table_localhost_')[-1].split('"')[0]
+            # now we have the tid, we can check task info
+            execute(kc=kc, code='%taskinfo ' + tid)
+            res = get_display_data(kc.iopub_channel)
+            self.assertTrue(tid in res)
             # there should be two tasks
             lines = subprocess.check_output(['sos', 'status']).decode().splitlines()
             self.assertGreaterEqual(len(lines), 2)
