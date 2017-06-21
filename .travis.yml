@@ -68,6 +68,9 @@ before_install:
     # install bash kernel
     - pip install bash_kernel
     - python -m bash_kernel.install
+    #
+    # R kernel?
+    - python -c 'import feather'
 sudo: required
 services:
     - docker
