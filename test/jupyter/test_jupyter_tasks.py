@@ -27,8 +27,6 @@
 # % nosetests test_kernel.py
 #
 #
-import os
-import glob
 import unittest
 import subprocess
 from ipykernel.tests.utils import wait_for_idle, execute
@@ -74,7 +72,8 @@ class TestJupyterTasks(unittest.TestCase):
             # the cell will actually be executed several times
             # with automatic-reexecution
             code = """
-%run -v1 -s force
+%set -v1
+%run -s force
 [10]
 input: for_each={'i': range(1)}
 task:
