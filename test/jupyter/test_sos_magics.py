@@ -59,18 +59,18 @@ cat(a)
             execute(kc=kc, code='%use SoS')
             wait_for_idle(kc)
 
-    #def testMagicSave(self):
-    #    with sos_kernel() as kc:
-    #        if os.path.isfile('test.txt'):
-    #            os.remove('test.txt')
-    #        iopub = kc.iopub_channel
-    #        execute(kc=kc, code='''
-#%save test.txt
-#a=1
-#''')
-#            wait_for_idle(kc)
-#            with open('test.txt') as tt:
-#                self.assertEqual(tt.read(), 'a=1\n')
+    def testMagicSave(self):
+        with sos_kernel() as kc:
+            if os.path.isfile('test.txt'):
+                os.remove('test.txt')
+            iopub = kc.iopub_channel
+            execute(kc=kc, code='''
+%save ~/test.txt
+a=1
+''')
+            wait_for_idle(kc)
+            with open(os.path.join(os.path.expanduser('~'), 'test.txt')) as tt:
+                self.assertEqual(tt.read(), 'a=1\n')
 
 if __name__ == '__main__':
     unittest.main()

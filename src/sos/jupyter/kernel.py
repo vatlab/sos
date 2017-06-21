@@ -2177,7 +2177,7 @@ Available subkernels:\n{}'''.format(
                 except SystemExit:
                     return
                 filename = self._interpolate_option(args.filename, quiet=False).strip()
-
+                filename = os.path.expanduser(filename)
                 if os.path.isfile(filename) and not args.force:
                     raise ValueError('Cannot overwrite existing output file {}'.format(filename))
 
@@ -2224,6 +2224,8 @@ Available subkernels:\n{}'''.format(
                 else:
                     ftype = args.__to__ if args.__to__ else 'sos'
                     filename = self._notebook_name + '.' + ftype
+
+                filename = os.path.expanduser(filename)
 
                 if os.path.isfile(filename) and not args.force:
                     raise ValueError('Cannot overwrite existing output file {}'.format(filename))
