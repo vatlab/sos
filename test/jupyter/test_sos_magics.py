@@ -65,6 +65,7 @@ cat(a)
                 os.remove('test.txt')
             iopub = kc.iopub_channel
             execute(kc=kc, code='''
+%preview ~/test.txt
 %save ~/test.txt
 a=1
 ''')
@@ -72,5 +73,19 @@ a=1
             with open(os.path.join(os.path.expanduser('~'), 'test.txt')) as tt:
                 self.assertEqual(tt.read(), 'a=1\n')
 
+    def testMagicPreview(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            execute(kc=kc, code='''
+%preview a
+a=1
+''')
+            wait_for_idle(kc)
+            execute(kc=kc, code='''
+%preview mtcars
+%get mtcars --from R
+''')
+            wait_for_idle(kc)
+                
 if __name__ == '__main__':
     unittest.main()
