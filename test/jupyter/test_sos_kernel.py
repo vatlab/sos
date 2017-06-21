@@ -32,7 +32,7 @@ import unittest
 from ipykernel.tests.utils import assemble_output, execute, wait_for_idle
 from sos.jupyter.test_utils import sos_kernel, get_result, get_display_data
 
-class TestKernel(unittest.TestCase):
+class TestSoSKernel(unittest.TestCase):
     #
     # Beacuse these tests would be called from sos/test, we
     # should switch to this directory so that some location
@@ -254,6 +254,21 @@ class TestKernel(unittest.TestCase):
             execute(kc=kc, code="sos_num")
             res = get_display_data(iopub)
             self.assertEqual(res, '133')
+
+    def testNewKernel(self):
+        '''Test magic use to create new kernels'''
+        with sos_kernel() as kc:
+            # create a data frame
+            execute(kc=kc, code='%use R2 -l R')
+            wait_for_idle(kc)
+            execute(kc=kc, code='%use R3 -l R -c black')
+            wait_for_idle(kc)
+            execute(kc=kc, code='%use R4 -k ir -l R -c green')
+            wait_for_idle(kc)
+            execute(kc=kc, code='%use R4 -c cyan')
+            wait_for_idle(kc)
+            execute(kc=kc, code="%use sos")
+            wait_for_idle(kc)
 
     def testWith(self):
         '''Test magic with'''

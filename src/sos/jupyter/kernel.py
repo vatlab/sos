@@ -493,12 +493,6 @@ class SoS_Kernel(IPythonKernel):
         parser.error = self._parse_error
         return parser
 
-    def get_skip_parser(self):
-        parser = argparse.ArgumentParser(prog='%skip',
-            description='''Skip the rest of the cell content and return''')
-        parser.error = self._parse_error
-        return parser
-
     def get_toc_parser(self):
         parser = argparse.ArgumentParser(prog='%toc',
             description='''Display toc in the side panel''')
