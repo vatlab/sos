@@ -39,11 +39,22 @@ class TestKernel(unittest.TestCase):
                     'Returned: {}'.format(ins_print))
             wait_for_idle(kc)
             #
+            # keywords
+            ins_depends = inspect(kc, 'depends:')['data']['text/plain']
+            self.assertTrue('dependent targets' in ins_depends,
+                    'Returned: {}'.format(ins_depends))
+            wait_for_idle(kc)
+            #
             execute(kc=kc, code='alpha=5')
             wait_for_idle(kc)
             execute(kc=kc, code='%use Python3')
             wait_for_idle(kc)
-            
+            # action
+            ins_run = inspect(kc, 'run:')['data']['text/plain']
+            self.assertTrue('sos.actions' in ins_run,
+                    'Returned: {}'.format(ins_run))
+            wait_for_idle(kc)
+            #
             ins_alpha = inspect(kc, 'alpha')['data']['text/plain']
             self.assertTrue('5' in ins_alpha, 'Returned: {}'.format(ins_alpha))
             wait_for_idle(kc)

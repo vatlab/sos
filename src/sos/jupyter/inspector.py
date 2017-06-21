@@ -68,8 +68,8 @@ class SoS_SyntaxInspector(object):
 class SoS_Inspector(object):
     def __init__(self, kernel):
         self.inspectors = [
-            SoS_VariableInspector(kernel),
             SoS_SyntaxInspector(kernel),
+            SoS_VariableInspector(kernel),
         ]
 
     def inspect(self, name, line, pos):
