@@ -30,8 +30,15 @@ class SoS_VariableInspector(object):
 
     def inspect(self, name, line, pos):
         try:
-            format_dict, _ = self.kernel.preview_var(name)
-            return format_dict
+            obj_desc, preview = self.kernel.preview_var(name, style=None)
+            if preview is None:
+                return {}
+            else:
+                format_dict, md_dict = preview
+                if 'text/plain' in format_dict:
+                    return format_dict
+                else:
+                    return {'text/plain': '{} ({})'.format(repr(env.sos_dict['name'], obj_desc)) }
         except Exception:
             return {}
 
@@ -52,7 +59,7 @@ class SoS_SyntaxInspector(object):
                 return {'text/plain': SOS_USAGES[name]}
             elif name in env.sos_dict:
                 # action?
-                return {'text/plain': pydoc.render_doc(env.sos_dict[name], title='SoS Documentation: %s')}
+                return {'text/plain': pydoc.render_doc(env.sos_dict[name], title='%s')}
             else:
                 return {}
         else:
@@ -61,8 +68,8 @@ class SoS_SyntaxInspector(object):
 class SoS_Inspector(object):
     def __init__(self, kernel):
         self.inspectors = [
-            SoS_SyntaxInspector(kernel),
             SoS_VariableInspector(kernel),
+            SoS_SyntaxInspector(kernel),
         ]
 
     def inspect(self, name, line, pos):
