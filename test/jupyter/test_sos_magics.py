@@ -76,16 +76,58 @@ a=1
     def testMagicPreview(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
+            # preview variable
             execute(kc=kc, code='''
 %preview a
 a=1
 ''')
             wait_for_idle(kc)
+            # preview dataframe
             execute(kc=kc, code='''
-%preview mtcars
+%preview mtcars -n -l 10
+%preview mtcars -n -s scatterplot mpg disp --by cyl
+%preview mtcars -n -s scatterplot _index disp hp mpg --tooltip wt qsec
 %get mtcars --from R
 ''')
             wait_for_idle(kc)
-                
+            # preview csv file
+            execute(kc=kc, code='''
+%preview a.csv
+with open('a.csv', 'w') as csv:
+    csv.write("""\
+a,b,c
+1,2,3
+4,5,6
+""")
+''')
+            wait_for_idle(kc)
+            #
+            execute(kc=kc, code='''
+%preview mtcars
+%usr R
+''')
+            wait_for_idle(kc)
+            # preview figure
+            execute(kc=kc, code='''
+%preview a.png
+R:
+    png('a.png')
+    plot(0)
+    dev.off()
+''')
+            wait_for_idle(kc)
+            # preview pdf
+            execute(kc=kc, code='''
+%preview a.pdf
+R:
+    pdf('a.pdf')
+    plot(0)
+    dev.off()
+''')
+            wait_for_idle(kc)
+            # switch back
+            execute(kc=kc, code='%use SoS')
+            wait_for_idle(kc)
+
 if __name__ == '__main__':
     unittest.main()

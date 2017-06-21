@@ -33,7 +33,7 @@ from ipykernel.tests.utils import assemble_output, execute, wait_for_idle
 from sos.jupyter.test_utils import sos_kernel, get_result, get_display_data, \
     clear_channels
 
-class TestKernel(unittest.TestCase):
+class TestRKernel(unittest.TestCase):
     #
     # Beacuse these tests would be called from sos/test, we
     # should switch to this directory so that some location
