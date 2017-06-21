@@ -383,13 +383,17 @@ run:
         # we should be able to get status
         tasks = res['pending_tasks']
         # should be ok
-        #subprocess.check_output('sos kill {} -c docker.yml -q ts'.format(tasks[0]), shell=True)
+        subprocess.check_output('sos kill {} -c docker.yml -q ts'.format(tasks[0]), shell=True)
         # wait a few seconds
         #time.sleep(3)
         # status cancelled
         #out = subprocess.check_output('sos status -c docker.yml -q docker -v1', shell=True).decode()
         #status = [line for line in out.split('\n') if tasks[0] in line][0].split('\t')[-1]
         #self.assertEqual(status, 'canceled', 'Status should be canceled. Got {}'.format(out))
+        # more verbose output
+        out = subprocess.check_output('sos status -c docker.yml -q docker -v4', shell=True).decode()
+        # HTML output
+        out = subprocess.check_output('sos status -c docker.yml -q docker --html', shell=True).decode()
 
         subprocess.check_output('sos purge {} -c docker.yml -q ts'.format(tasks[0]), shell=True)
         # there should be 2 more tasks

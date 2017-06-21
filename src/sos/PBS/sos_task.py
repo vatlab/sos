@@ -38,13 +38,6 @@ class PBS_TaskEngine(TaskEngine):
         # => kill_cmd (perhaps not needed)
         if 'job_template' in self.config:
             self.job_template = self.config['job_template'].replace('\r\n', '\n')
-        elif 'template_file' in self.config:
-            if not os.path.isfile(os.path.expanduser(self.config['template_file'])):
-                raise ValueError('Missing job_template file {} for queue {}'.format(self.config['job_template'], self.alias))
-            else:
-                with open(os.path.expanduser(self.config['template_file'])) as tmpl:
-                    self.job_template = tmpl.read()
-                env.logger.warning('Option template_file is deprecated and will be removed from next formal release of SoS.')
         else:
             raise ValueError('A job_template is required for queue {}'.format(self.alias))
 
