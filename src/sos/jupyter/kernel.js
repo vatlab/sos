@@ -145,7 +145,7 @@ define([
                 }
             }
             return direction;
-        }
+        };
 
         var sorted = isSorted(tr, fn);
         var i;
@@ -173,7 +173,7 @@ define([
                 workflow += lines[l] + "\n";
                 continue;
             } else if (lines[l].startsWith("#") || lines[l].startsWith("%") || lines[l].trim() === "" || lines[l].startsWith("!")) {
-                continue
+                continue;
             } else if (lines[l].startsWith("[") && lines[l].endsWith("]")) {
                 workflow += lines.slice(l).join("\n") + "\n\n";
             }
@@ -271,7 +271,6 @@ define([
 
         function loadFile(index) {
             if (files.length > index) {
-                console.log("Load " + files[index]);
                 var fileref;
                 if (files[index].endsWith(".css")) {
                     fileref = document.createElement("link");
@@ -353,7 +352,7 @@ define([
 					}
                     // DisplayName
                     window.DisplayName[data[i][0]] = data[i][0];
-                    if (!(data[i][1] in DisplayName)) {
+                    if (!(data[i][1] in window.DisplayName)) {
                         window.DisplayName[data[i][1]] = data[i][0];
 					}
                     // Name
@@ -369,7 +368,7 @@ define([
                     // if the kernel is not in metadata, push it in
                     var k_idx = IPython.notebook.metadata["sos"]["kernels"].findIndex((item) => item[0] === data[i][0])
                     if (k_idx === -1) {
-                        IPython.notebook.metadata["sos"]["kernels"].push(data[i])
+                        IPython.notebook.metadata["sos"]["kernels"].push(data[i]);
 					} else {
                         // if kernel exist update the rest of the information, but warn users first on
                         // inconsistency
@@ -410,7 +409,7 @@ define([
                 if (cell.metadata.kernel !== window.DisplayName[data[1]]) {
                     cell.metadata.kernel = window.DisplayName[data[1]];
                     // set meta information
-                    changeStyleOnKernel(cell, data[1])
+                    changeStyleOnKernel(cell, data[1]);
                 } else if (cell.metadata.tags && cell.metadata.tags.indexOf("report_output") >= 0) {
                     // #639
                     // if kernel is different, changeStyleOnKernel would set report_output.
@@ -448,7 +447,7 @@ define([
                     item.parentNode.removeChild(item);
 				}
             } else if (msg_type === "update-duration") {
-                if (window._duration_updater === undefined) {
+                if (!window._duration_updater) {
                     window._duration_updater = window.setInterval(function() {
                         $("[id^=duration_]").text(function() {
                             return durationFormatter($(this).attr("datetime"));
@@ -519,7 +518,7 @@ define([
         window.sos_comm.send({
             "list-kernel": IPython.notebook.metadata["sos"]["kernels"],
             "update-task-status": window.unknown_tasks,
-        })
+        });
         console.log("sos comm registered");
     }
 

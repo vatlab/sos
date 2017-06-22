@@ -113,13 +113,13 @@ run:
             wait_for_idle(kc)
             # check for task?
             execute(kc=kc, code='%tasks')
-            res = get_display_data(kc.iopub_channel)
+            res = get_display_data(kc.iopub_channel, 'text/html')
             # get IDs
             # table_localhost_ac755352394584f797cebddf2c0b8ca7"
             tid = res.split('table_localhost_')[-1].split('"')[0]
             # now we have the tid, we can check task info
             execute(kc=kc, code='%taskinfo ' + tid)
-            res = get_display_data(kc.iopub_channel)
+            res = get_display_data(kc.iopub_channel, 'text/html')
             self.assertTrue(tid in res)
             # there should be two tasks
             lines = subprocess.check_output(['sos', 'status']).decode().splitlines()
