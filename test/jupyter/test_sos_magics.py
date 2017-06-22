@@ -119,10 +119,17 @@ a,b,c
 %preview a.zip
 %preview a.tar.gz
 %preview a.tar
-sh:
-    zip a.zip a.csv
-    tar czf a.tar.gz a.csv
-    tar czf a.tar.gz a.csv
+import tarfile
+import zipfile
+
+with tarfile.open('a.tar.gz', 'w:gz') as tar:
+    tar.add('a.csv')
+
+with tarfile.open('a.tar', 'w') as tar:
+    tar.add('a.csv')
+
+with zipfile.ZipFile('a.zip', 'w') as zfile:
+    zfile.write('a.csv')
 ''')
             _, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
