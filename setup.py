@@ -170,6 +170,7 @@ setup(name = "sos",
           # for file lock
           'fasteners',
           'pyyaml',
+          'markdown',
           'pygments',
           # for jupyter notebook format conversion
           'nbformat',
