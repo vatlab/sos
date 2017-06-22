@@ -202,7 +202,7 @@ define([
                     run_notebook = true;
                     break;
                 } else {
-                    continue
+                    continue;
                 }
             } else {
                 run_notebook = false;
@@ -351,33 +351,34 @@ define([
                     // by kernel name? For compatibility ...
                     if (!(data[i][1] in window.BackgroundColor)) {
                         window.BackgroundColor[data[i][1]] = data[i][3];
-					}
+                    }
                     // DisplayName
                     window.DisplayName[data[i][0]] = data[i][0];
                     if (!(data[i][1] in window.DisplayName)) {
                         window.DisplayName[data[i][1]] = data[i][0];
-					}
+                    }
                     // Name
                     window.KernelName[data[i][0]] = data[i][1];
                     if (!(data[i][1] in window.KernelName)) {
                         window.KernelName[data[i][1]] = data[i][1];
-					}
+                    }
                     // KernelList, use displayed name
                     if (window.KernelList.findIndex((item) => item[0] === data[i][0]) === -1) {
                         window.KernelList.push([data[i][0], data[i][0]]);
-					}
+                    }
 
                     // if the kernel is not in metadata, push it in
-                    var k_idx = nb.metadata["sos"]["kernels"].findIndex((item) => item[0] === data[i][0])
+                    var k_idx = nb.metadata["sos"]["kernels"].findIndex((item) => item[0] === data[i][0]);
                     if (k_idx === -1) {
                         nb.metadata["sos"]["kernels"].push(data[i]);
-					} else {
+                    } else {
                         // if kernel exist update the rest of the information, but warn users first on
                         // inconsistency
                         if (nb.metadata["sos"]["kernels"][k_idx][1] !== data[i][1]) {
                             var r = confirm("This notebook used Jupyter kernel " + nb.metadata["sos"]["kernels"][k_idx][1] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][1] + " instead?");
-                            if (r === true)
+                            if (r) {
                                 nb.metadata["sos"]["kernels"][k_idx][1] = data[i][1];
+                            }
                         } else {
                             nb.metadata["sos"]["kernels"][k_idx][1] = data[i][1];
                         }
@@ -386,8 +387,9 @@ define([
                                 nb.metadata["sos"]["kernels"][k_idx][2] = data[i][2];
                             } else if (data[i][2] !== "") {
                                 var r = confirm("This notebook used language definition " + nb.metadata["sos"]["kernels"][k_idx][2] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][2] + " instead?");
-                                if (r === true)
+                                if (r) {
                                     nb.metadata["sos"]["kernels"][k_idx][2] = data[i][2];
+                                }
                             }
                         } else {
                             nb.metadata["sos"]["kernels"][k_idx][2] = data[i][2];
@@ -447,7 +449,7 @@ define([
                 var item = document.getElementById("table_" + data[0] + "_" + data[1]);
                 if (item) {
                     item.parentNode.removeChild(item);
-				}
+                }
             } else if (msg_type === "update-duration") {
                 if (!window._duration_updater) {
                     window._duration_updater = window.setInterval(function() {
@@ -461,12 +463,12 @@ define([
                 var item = document.getElementById("status_" + data[0] + "_" + data[1]);
                 if (!item) {
                     return;
-				} else {
+                } else {
                     // id, status, status_class, action_class, action_func
                     item.className = "fa fa-fw fa-2x " + data[3];
                     item.setAttribute('onmouseover', "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[4] + "').removeClass('" + data[3] + "')");
                     item.setAttribute('onmouseleave', "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[3] + "').removeClass('" + data[4] + "')");
-                    item.setAttribute("onClick", data[5] + '("' + data[1] + '", "' + data[0] + '")');
+                    item.setAttribute("onClick", data[5] + "('" + data[1] + "', '" + data[0] + "')");
                 }
                 if (data[2] === "completed") {
                     /* if successful, let us re-run the cell to submt another task
@@ -511,8 +513,9 @@ define([
         var used_kernels = new Set();
         var cells = nb.get_cells();
         for (var i = cells.length - 1; i >= 0; --i) {
-            if (cells[i].cell_type === "code" && cells[i].metadata.kernel)
+            if (cells[i].cell_type === "code" && cells[i].metadata.kernel) {
                 used_kernels.add(cells[i].metadata.kernel);
+            }
         }
         nb.metadata["sos"]["kernels"] = nb.metadata["sos"]["kernels"].filter(function(x) {
             return used_kernels.has(x[0])
@@ -532,7 +535,7 @@ define([
         // override kernel execute with the wrapper.
         // however, this function can be called multiple times for kernel
         // restart etc, so we should be careful
-        if (nb.kernel.orig_execute === undefined) {
+        if (!nb.kernel.orig_execute) {
             nb.kernel.orig_execute = nb.kernel.execute;
             nb.kernel.execute = my_execute;
             console.log("executor patched");
@@ -543,7 +546,7 @@ define([
 
     function changeStyleOnKernel(cell, type) {
         // type should be  displayed name of kernel
-        var sel = cell.element[0].getElementsByClassName("cell_kernel_selector")[0]
+        var sel = cell.element[0].getElementsByClassName("cell_kernel_selector")[0];
         if (!type) {
             sel.selectedIndex = -1;
         } else {
@@ -580,10 +583,12 @@ define([
         }
         var ip = cell.element[0].getElementsByClassName("input_prompt");
         var op = cell.element[0].getElementsByClassName("out_prompt_overlay");
-        if (ip.length > 0)
+        if (ip.length > 0) {
             ip[0].style.backgroundColor = col;
-        if (op.length > 0)
+        }
+        if (op.length > 0) {
             op[0].style.backgroundColor = col;
+        }
         return col;
     }
 
@@ -617,22 +622,27 @@ define([
         var res = []
         var seconds = parseInt(ms / 1000);
         var day = Math.floor(seconds / 86400);
-        if (day > 0)
+        if (day > 0) {
             res.push(day + " day");
+        }
         var hh = Math.floor((seconds % 86400) / 3600);
-        if (hh > 0)
+        if (hh > 0) {
             res.push(hh + " hr");
+        }
         var mm = Math.floor((seconds % 3600) / 60);
-        if (mm > 0)
+        if (mm > 0) {
             res.push(mm + " min");
+        }
         var ss = seconds % 60;
-        if (ss > 0)
+        if (ss > 0) {
             res.push(ss + " sec");
+        }
         res = res.join(" ");
-        if (res === "")
-            return "0 sec"
-        else
+        if (res === "") {
+            return "0 sec";
+        } else {
             return res;
+        }
     };
 
     function set_codemirror_option(evt, param) {
@@ -727,8 +737,8 @@ define([
     function removeMathJaxPreview(elt) {
         elt.find("script[type='math/tex']").each(
             function(i, e) {
-                $(e).replaceWith("$" + $(e).text() + "$")
-            })
+                $(e).replaceWith("$" + $(e).text() + "$");
+            });
         elt.find("span.MathJax_Preview").remove();
         elt.find("span.MathJax").remove();
         return elt
