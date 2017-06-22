@@ -27,6 +27,7 @@
 # % nosetests test_kernel.py
 #
 #
+import os
 import unittest
 import subprocess
 from ipykernel.tests.utils import wait_for_idle, execute
@@ -123,6 +124,40 @@ run:
             self.assertTrue(tid in res)
             # there should be two tasks
             lines = subprocess.check_output(['sos', 'status']).decode().splitlines()
+            self.assertGreaterEqual(len(lines), 2)
+
+    def testRemoteTask(self):
+        '''Test the execution of tasks with -q '''
+        if not os.path.exists('docker.yml') and os.path.exists(os.path.join('..', 'docker.yml')):
+            shutil.copy(os.path.join('..', 'docker.yml'), 'docker.yml')
+        with sos_kernel() as kc:
+            # the cell will actually be executed several times
+            # with automatic-reexecution
+            code = """
+%run -s force -W -q ts -c docker.yml
+[10]
+input: for_each={'i': range(2)}
+task:
+run:
+   echo this is jupyter pending test "${i}"
+   sleep  ${10+i}
+
+"""
+            # these should be automatically rerun by the frontend
+            execute(kc=kc, code=code)
+            wait_for_idle(kc)
+            # check for task?
+            execute(kc=kc, code='%tasks -q ts')
+            res = get_display_data(kc.iopub_channel, 'text/html')
+            # get IDs
+            # table_localhost_ac755352394584f797cebddf2c0b8ca7"
+            tid = res.split('table_ts_')[-1].split('"')[0]
+            # now we have the tid, we can check task info
+            execute(kc=kc, code='%taskinfo -q ts ' + tid)
+            res = get_display_data(kc.iopub_channel, 'text/html')
+            self.assertTrue(tid in res, 'expect {} in {}'.format(tid, res))
+            # there should be two tasks
+            lines = subprocess.check_output(['sos', 'status', '-q', 'ts', '-c', 'docker.yml']).decode().splitlines()
             self.assertGreaterEqual(len(lines), 2)
 
 if __name__ == '__main__':
