@@ -98,21 +98,21 @@ a=1
 %preview mtcars -n -l 10
 %get mtcars --from R
 ''')
-            res = get_display_data(iopub)
+            res = get_display_data(iopub, 'text/html')
             self.assertTrue('dataframe_container' in res and 'Mazda' in res, 'Expect preview {}'.format(res))
             #
             execute(kc=kc, code='''
 %preview mtcars -n -s scatterplot mpg disp --by cyl
 %get mtcars --from R
 ''')
-            res = get_display_data(iopub)
+            res = get_display_data(iopub, 'text/html')
             self.assertTrue('Hornet' in res, 'Expect preview {}'.format(res))
             #
             execute(kc=kc, code='''
 %preview mtcars -n -s scatterplot _index disp hp mpg --tooltip wt qsec
 %get mtcars --from R
 ''')
-            res = get_display_data(iopub)
+            res = get_display_data(iopub, 'text/html')
             self.assertTrue('Hornet' in res, 'Expect preview {}'.format(res))
             # preview csv file
             execute(kc=kc, code='''
@@ -124,7 +124,7 @@ a,b,c
 4,5,6
 """)
 ''')
-            res = get_display_data(iopub)
+            res = get_display_data(iopub, 'text/html')
             self.assertTrue('dataframe_container' in res, 'Expect preview {}'.format(res))
             # preview zip
             execute(kc=kc, code='''
@@ -171,7 +171,7 @@ with open('a.md', 'w') as md:
 * item
 """)
 ''')
-            res = get_display_data(iopub)
+            res = get_display_data(iopub, 'text/html')
             self.assertTrue('<li>item</li>' in res, 'Expect preview {}'.format(res))
             # preview html
             execute(kc=kc, code='''
@@ -190,7 +190,7 @@ with open('a.html', 'w') as dot:
 </html>
 """)
 ''')
-            res = get_display_data(iopub)
+            res = get_display_data(iopub, 'text/html')
             self.assertTrue('<h1>My First Heading</h1>' in res, 'Expect preview {}'.format(res))
             # preview dot
             execute(kc=kc, code='''
@@ -203,8 +203,8 @@ graph graphname {
 }
 """)
 ''')
-            res = get_display_data(iopub)
-            self.assertTrue('a.dot' in res, 'Expect preview {}'.format(res))
+            res = get_display_data(iopub, 'image/png')
+            self.assertGreater(len(res), 1000, 'Expect a image {}'.format(res))
             #
             execute(kc=kc, code='''
 %preview mtcars
@@ -219,8 +219,8 @@ R:
     plot(0)
     dev.off()
 ''')
-            res = get_display_data(iopub)
-            self.assertTrue('a.png' in res, 'Expect preview {}'.format(res))
+            res = get_display_data(iopub, 'image/png')
+            self.assertGreater(len(res), 1000, 'Expect a image {}'.format(res))
             # preview jpg
             execute(kc=kc, code='''
 %preview a.jpg
@@ -229,8 +229,8 @@ R:
     plot(0)
     dev.off()
 ''')
-            res = get_display_data(iopub)
-            self.assertTrue('a.jpg' in res, 'Expect preview {}'.format(res))
+            res = get_display_data(iopub, 'image/jpeg')
+            self.assertGreater(len(res), 1000, 'Expect a image {}'.format(res))
             # preview pdf
             execute(kc=kc, code='''
 %preview a.pdf
@@ -239,8 +239,9 @@ R:
     plot(0)
     dev.off()
 ''')
-            res = get_display_data(iopub)
-            self.assertTrue('a.pdf' in res, 'Expect preview {}'.format(res))
+            # could return html or image depending on configuration
+            res = get_display_data(iopub, ('text/html', 'image/png'))
+            self.assertTrue('iframe' in res or len(res) > 1000, 'Expect a image {}'.format(res))
             #
             # switch back
             execute(kc=kc, code='%use SoS')

@@ -114,7 +114,7 @@ def get_result(iopub):
     else:
         return eval(result['text/plain'])
 
-def get_display_data(iopub):
+def get_display_data(iopub, data_type='text/plain'):
     """retrieve display_data from an execution from subkernel
     because subkernel (for example irkernel) does not return
     execution_result
@@ -128,12 +128,13 @@ def get_display_data(iopub):
             # idle message signals end of output
             break
         elif msg['msg_type'] == 'display_data':
-            if 'text/html' in content['data']:
-                result = content['data']['text/html']
-            elif 'text/plain' in content['data']:
-                result = content['data']['text/plain']
+            if isinstance(data_type, str):
+                if data_type in content['data']:
+                    result = content['data'][data_type]
             else:
-                retult = content['data'].keys()
+                for dt in data_type:
+                    if dt in content['data']:
+                        result = content['data'][dt]
         # some early version of IRKernel still passes execute_result
         elif msg['msg_type'] == 'execute_result':
             result = content['data']['text/plain']
