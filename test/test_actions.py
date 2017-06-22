@@ -551,6 +551,24 @@ report(input=['a.txt', 'b.txt'], output='out.txt')
             self.assertTrue(FileTarget(name).exists())
             FileTarget(name).remove()
 
+    def testOptionWorkdir(self):
+        '''Test option workdir of tasks'''
+        if not os.path.isdir('temp_wdr'):
+            os.mkdir('temp_wdr')
+        with open(os.path.join('temp_wdr', 'a.txt'), 'w') as tmp:
+            tmp.write('hello')
+        script = SoS_Script(r'''
+[A_1]
+python: workdir='temp_wdr'
+  import shutil
+  shutil.copy('a.txt', 'a2.txt')
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertTrue(FileTarget(os.path.join('temp_wdr', 'a2.txt')))
+        with open(os.path.join('temp_wdr', 'a.txt')) as tmp:
+            self.assertEqual('hello', tmp.read())
+
     def testRegenerateReport(self):
         '''Testing the regeneration of report once is needed. The problem
         here is the 'input' parameter of report.'''
