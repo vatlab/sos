@@ -31,8 +31,4 @@ def docker_build(dockerfile=None, **kwargs):
     docker.build(dockerfile, **kwargs)
     return 0
 
-def docker_commit(**kwargs):
-    docker = SoS_DockerClient()
-    docker.commit(**kwargs)
-    return 0
 
