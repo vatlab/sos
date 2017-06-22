@@ -171,6 +171,8 @@ run:
         #self.assertLess(time.time() - st, 5)
         out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']), 'Expect all completed jobs: ' + out)
+        # get more detailed results
+        out = subprocess.check_output('sos status {} -c docker.yml -v4'.format(tasks), shell=True).decode()
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testTaskSpoolerWithForceSigMode(self):
