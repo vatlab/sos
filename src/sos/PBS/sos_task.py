@@ -77,7 +77,7 @@ class PBS_TaskEngine(TaskEngine):
         # for this task, we will need walltime, nodes, cores, mem
         # however, these could be fixed in the job template and we do not need to have them all in the runtime
         runtime = self.config
-        runtime.update({x:sos_dict['_runtime'][x] for x in ('nodes', 'cores', 'ppn', 'mem', 'walltime', 'cur_dir', 'home_dir', 'name') if x in sos_dict['_runtime']})
+        runtime.update({x:sos_dict['_runtime'][x] for x in ('nodes', 'cores', 'mem', 'walltime', 'cur_dir', 'home_dir', 'name') if x in sos_dict['_runtime']})
         runtime['task'] = task_id
         runtime['verbosity'] = env.verbosity
         runtime['sig_mode'] = env.config['sig_mode']
@@ -89,13 +89,8 @@ class PBS_TaskEngine(TaskEngine):
         if 'nodes' not in runtime:
             runtime['nodes'] = 1
         if 'cores' not in runtime:
-            if 'ppn' in runtime:
-                env.logger.warning('Option ppn is deprecated and will be removed from a formal release of SoS')
-                runtime['cores'] = runtime['ppn']
-            else:
-                runtime['cores'] = 1
+            runtime['cores'] = 1
         # for backward compatibility
-        runtime['ppn'] = runtime['cores']
         runtime['job_file'] = '~/.sos/tasks/{}.sh'.format(task_id)
 
         # let us first prepare a task file
