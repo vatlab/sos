@@ -105,6 +105,10 @@ def preview_tar(filename, kernel=None, style=None):
     return '{} files\n'.format(len(names)) + '\n'.join(names[:5]) + ('\n...' if len(names) > 5 else '')
 
 def preview_gz(filename, kernel=None, style=None):
+    import tarfile
+    # .tar.gz
+    if tarfile.is_tarfile(filename):
+        return preview_tar(filename, kernel, style)
     import gzip
     content = b''
     with gzip.open(filename, 'rb') as fin:

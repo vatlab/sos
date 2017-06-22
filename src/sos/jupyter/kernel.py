@@ -147,7 +147,9 @@ def get_previewers():
     # we put string infront of functions so that filename matching will be used before
     # content matching. For example, the xlsx file is actually a zip file so it could be
     # previewed as a zip file first.
-    return [x for x in result if isinstance(x[0], str)] + [x for x in result if not isinstance(x[0], str)]
+    return [x for x in result if isinstance(x[0], str) and x[0] != '*'] + \
+            [x for x in result if not isinstance(x[0], str)] + \
+            [x for x in result if x[0] == '*']
 
 class SoS_Kernel(IPythonKernel):
     implementation = 'SOS'
@@ -962,8 +964,6 @@ class SoS_Kernel(IPythonKernel):
 
     def send_frontend_msg(self, msg_type, msg=None):
         # if comm is never created by frontend, the kernel is in test mode without frontend
-        if not self.frontend_comm:
-            return
         if self._use_panel is False and msg_type in ('display_data', 'stream', 'preview-input'):
             if msg_type in ('display_data', 'stream'):
                 self.send_response(self.iopub_socket, msg_type, {} if msg is None else msg)
@@ -974,7 +974,7 @@ class SoS_Kernel(IPythonKernel):
                         'metadata': {},
                         'data': { 'text/html': HTML('<div class="sos_hint">{}</div>'.format(msg)).data}
                     })
-        else:
+        elif self.frontend_comm:
             self.frontend_comm.send({} if msg is None else msg, {'msg_type': msg_type})
 
     def _reset_dict(self):

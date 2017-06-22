@@ -23,7 +23,7 @@
 import os
 import unittest
 from ipykernel.tests.utils import assemble_output, execute, wait_for_idle
-from sos.jupyter.test_utils import sos_kernel
+from sos.jupyter.test_utils import sos_kernel, get_display_data
 
 class TestSoSMagics(unittest.TestCase):
     #
@@ -88,7 +88,7 @@ a=1
             # preview variable
             iopub = kc.iopub_channel
             execute(kc=kc, code='''
-%preview a
+%preview -n a
 a=1
 ''')
             _, stderr = assemble_output(iopub)
@@ -96,12 +96,24 @@ a=1
             # preview dataframe
             execute(kc=kc, code='''
 %preview mtcars -n -l 10
+%get mtcars --from R
+''')
+            res = get_display_data(iopub)
+            self.assertTrue('dataframe_container' in res and 'Mazda' in res, 'Expect preview {}'.format(res))
+            #
+            execute(kc=kc, code='''
 %preview mtcars -n -s scatterplot mpg disp --by cyl
+%get mtcars --from R
+''')
+            res = get_display_data(iopub)
+            self.assertTrue('Hornet' in res, 'Expect preview {}'.format(res))
+            #
+            execute(kc=kc, code='''
 %preview mtcars -n -s scatterplot _index disp hp mpg --tooltip wt qsec
 %get mtcars --from R
 ''')
-            _, stderr = assemble_output(iopub)
-            self.assertTrue(stderr == '' or 'Loading' in stderr or 'Only the first' in stderr, "Expect no error, got {}".format(stderr))
+            res = get_display_data(iopub)
+            self.assertTrue('Hornet' in res, 'Expect preview {}'.format(res))
             # preview csv file
             execute(kc=kc, code='''
 %preview a.csv
@@ -112,42 +124,45 @@ a,b,c
 4,5,6
 """)
 ''')
-            _, stderr = assemble_output(iopub)
-            self.assertEqual(stderr, '')
+            res = get_display_data(iopub)
+            self.assertTrue('dataframe_container' in res, 'Expect preview {}'.format(res))
             # preview zip
             execute(kc=kc, code='''
-%preview a.zip
+%preview -n a.zip
 import zipfile
 
 with zipfile.ZipFile('a.zip', 'w') as zfile:
     zfile.write('a.csv')
 ''')
-            _, stderr = assemble_output(iopub)
+            stdout, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
+            self.assertTrue('a.csv' in stdout, 'Expect preview {}'.format(stdout))
             # preview tar
             execute(kc=kc, code='''
-%preview a.tar
+%preview -n a.tar
 import tarfile
 
 with tarfile.open('a.tar', 'w') as tar:
     tar.add('a.csv')
 
 ''')
-            _, stderr = assemble_output(iopub)
+            stdout, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
-            # preview zip
+            self.assertTrue('a.csv' in stdout, 'Expect preview {}'.format(stdout))
+            # preview tar.gz
             execute(kc=kc, code='''
-%preview a.tar.gz
+%preview -n a.tar.gz
 import tarfile
 
 with tarfile.open('a.tar.gz', 'w:gz') as tar:
     tar.add('a.csv')
 ''')
-            _, stderr = assemble_output(iopub)
-            self.assertEqual(stderr, '')            
+            stdout, stderr = assemble_output(iopub)
+            self.assertEqual(stderr, '')
+            self.assertTrue('a.csv' in stdout, 'Expect preview {}'.format(stdout))
             # preview md
             execute(kc=kc, code='''
-%preview a.md
+%preview -n a.md
 with open('a.md', 'w') as md:
     md.write("""\
 # title
@@ -156,11 +171,11 @@ with open('a.md', 'w') as md:
 * item
 """)
 ''')
-            _, stderr = assemble_output(iopub)
-            self.assertEqual(stderr, '')
+            res = get_display_data(iopub)
+            self.assertTrue('<li>item</li>' in res, 'Expect preview {}'.format(res))
             # preview html
             execute(kc=kc, code='''
-%preview a.html
+%preview -n a.html
 with open('a.html', 'w') as dot:
     dot.write("""\
 <!DOCTYPE html>
@@ -175,10 +190,11 @@ with open('a.html', 'w') as dot:
 </html>
 """)
 ''')
-            wait_for_idle(kc)            
+            res = get_display_data(iopub)
+            self.assertTrue('<h1>My First Heading</h1>' in res, 'Expect preview {}'.format(res))
             # preview dot
             execute(kc=kc, code='''
-%preview a.dot
+%preview -n a.dot
 with open('a.dot', 'w') as dot:
     dot.write("""\
 graph graphname {
@@ -187,7 +203,8 @@ graph graphname {
 }
 """)
 ''')
-            wait_for_idle(kc)
+            res = get_display_data(iopub)
+            self.assertTrue('a.dot' in res, 'Expect preview {}'.format(res))
             #
             execute(kc=kc, code='''
 %preview mtcars
@@ -202,16 +219,18 @@ R:
     plot(0)
     dev.off()
 ''')
-            wait_for_idle(kc)
+            res = get_display_data(iopub)
+            self.assertTrue('a.png' in res, 'Expect preview {}'.format(res))
             # preview jpg
             execute(kc=kc, code='''
 %preview a.jpg
 R:
-    png('a.jpg')
+    jpeg('a.jpg')
     plot(0)
     dev.off()
 ''')
-            wait_for_idle(kc)
+            res = get_display_data(iopub)
+            self.assertTrue('a.jpg' in res, 'Expect preview {}'.format(res))
             # preview pdf
             execute(kc=kc, code='''
 %preview a.pdf
@@ -220,7 +239,8 @@ R:
     plot(0)
     dev.off()
 ''')
-            wait_for_idle(kc)
+            res = get_display_data(iopub)
+            self.assertTrue('a.pdf' in res, 'Expect preview {}'.format(res))
             #
             # switch back
             execute(kc=kc, code='%use SoS')
