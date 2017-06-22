@@ -117,22 +117,34 @@ a,b,c
             # preview zip
             execute(kc=kc, code='''
 %preview a.zip
-%preview a.tar.gz
-%preview a.tar
-import tarfile
 import zipfile
-
-with tarfile.open('a.tar.gz', 'w:gz') as tar:
-    tar.add('a.csv')
-
-with tarfile.open('a.tar', 'w') as tar:
-    tar.add('a.csv')
 
 with zipfile.ZipFile('a.zip', 'w') as zfile:
     zfile.write('a.csv')
 ''')
             _, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
+            # preview tar
+            execute(kc=kc, code='''
+%preview a.tar
+import tarfile
+
+with tarfile.open('a.tar', 'w') as tar:
+    tar.add('a.csv')
+
+''')
+            _, stderr = assemble_output(iopub)
+            self.assertEqual(stderr, '')
+            # preview zip
+            execute(kc=kc, code='''
+%preview a.tar.gz
+import tarfile
+
+with tarfile.open('a.tar.gz', 'w:gz') as tar:
+    tar.add('a.csv')
+''')
+            _, stderr = assemble_output(iopub)
+            self.assertEqual(stderr, '')            
             # preview md
             execute(kc=kc, code='''
 %preview a.md
@@ -146,6 +158,24 @@ with open('a.md', 'w') as md:
 ''')
             _, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
+            # preview html
+            execute(kc=kc, code='''
+%preview a.html
+with open('a.html', 'w') as dot:
+    dot.write("""\
+<!DOCTYPE html>
+<html>
+<body>
+
+<h1>My First Heading</h1>
+
+<p>My first paragraph.</p>
+
+</body>
+</html>
+""")
+''')
+            wait_for_idle(kc)            
             # preview dot
             execute(kc=kc, code='''
 %preview a.dot
@@ -169,6 +199,15 @@ graph graphname {
 %preview a.png
 R:
     png('a.png')
+    plot(0)
+    dev.off()
+''')
+            wait_for_idle(kc)
+            # preview jpg
+            execute(kc=kc, code='''
+%preview a.jpg
+R:
+    png('a.jpg')
     plot(0)
     dev.off()
 ''')

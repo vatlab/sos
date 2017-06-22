@@ -40,6 +40,9 @@ before_install:
     - pip install fasteners pygments ipython ptpython networkx pydotplus
     # for testing purposes
     - pip install scipy
+    # preview figure
+    - pip install wand
+    - sudo apt-get install libmagickwand-dev libmagickcore5-extra
     # https://github.com/jupyter/jupyter/issues/150
     - pip install entrypoints
     - pip install jupyter
