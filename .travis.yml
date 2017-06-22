@@ -41,8 +41,8 @@ before_install:
     # for testing purposes
     - pip install scipy
     # preview figure
-    - pip install wand
-    - sudo apt-get install libmagickwand-dev libmagickcore5-extra
+    - pip install wand graphviz
+    - sudo apt-get install libmagickwand-dev libmagickcore5-extra graphviz
     # https://github.com/jupyter/jupyter/issues/150
     - pip install entrypoints
     - pip install jupyter
