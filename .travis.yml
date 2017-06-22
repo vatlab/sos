@@ -54,6 +54,7 @@ before_install:
     # version 0.4.0 uses pyarrow and jemalloc, which causes an error message
     # ImportError: /home/travis/miniconda/envs/python_test/lib/python3.5/site-packages/pyarrow/../../.././libjemalloc.so.2: cannot allocate memory in static TLS block
     - conda install -c conda-forge feather-format=0.3.1
+    - conda install pandas numpy
     # version 0.3.1 works
     # - python -c 'import feather'
     #
