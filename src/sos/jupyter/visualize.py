@@ -103,7 +103,7 @@ class Visualizer:
         code = df.head(args.limit).to_html(index=True).replace('class="', 'id="dataframe_{}" class="sos_dataframe '.format(tid), 1)
 
         hr, rest = code.split('</tr>', 1)
-        index_type = 'numeric' if isinstance(df.index, pandas.indexes.range.RangeIndex) else 'alphabetic'
+        index_type = 'numeric' if isinstance(df.index, pandas.RangeIndex) else 'alphabetic'
         col_type = ['numeric' if self._is_numeric_type(x) else 'alphabetic' for x in df.dtypes]
         code = ''.join('''{} &nbsp; <i class="fa fa-sort" style="color:lightgray" onclick="sortDataFrame('{}', {}, '{}')"></th>'''.format(x,
             tid, idx,
@@ -272,7 +272,7 @@ class Visualizer:
 
         # if there are actual indexes... and plot by x
         class_name = 'scatterplot'
-        if args.cols[0] == '_index' and not isinstance(df.index, pandas.indexes.range.RangeIndex):
+        if args.cols[0] == '_index' and not isinstance(df.index, pandas.RangeIndex):
             options['xaxis']['ticks'] = [[x,str(y)] for x,y in enumerate(indexes)]
             class_name = 'scatterplot_by_rowname'
 
