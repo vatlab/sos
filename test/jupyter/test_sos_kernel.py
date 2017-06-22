@@ -75,9 +75,9 @@ class TestSoSKernel(unittest.TestCase):
     def testShell(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
-            execute(kc=kc, code="!ls test_sos_kernel.py")
+            execute(kc=kc, code="!echo ha ha")
             stdout, stderr = assemble_output(iopub)
-            self.assertEqual(stdout, 'test_sos_kernel.py\n')
+            self.assertTrue('ha ha' in stdout, "GOT ERROR {}".format(stderr))
             self.assertEqual(stderr, '')
 
     def testCD(self):
