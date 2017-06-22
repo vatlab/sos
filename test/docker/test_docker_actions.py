@@ -82,7 +82,7 @@ except Exception as e:
     print(e)
     has_docker = False
 
-class TestActions(unittest.TestCase):
+class TestDockerActions(unittest.TestCase):
     def setUp(self):
         self.olddir = os.getcwd()
         try:
@@ -231,24 +231,24 @@ mean(nums)
         wf = script.workflow()
         Base_Executor(wf).run()
 
-#    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
-#    def testDockerBuild(self):
-#        '''Test action docker build'''
-#        script = SoS_Script(r'''
-#[0]
-#docker_build:  tag='test/docker_build'
-##
-## Super simple example of a Dockerfile
-##
-#FROM ubuntu:latest
-#MAINTAINER Andrew Odewahn "odewahn@oreilly.com"
+    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
+    def testDockerBuild(self):
+        '''Test action docker build'''
+        script = SoS_Script(r'''
+[0]
+docker_build:  tag='test/docker_build'
 #
-#RUN apt-get update
+# Super simple example of a Dockerfile
 #
-#WORKDIR /home
-#''')
-#        wf = script.workflow()
-#        Base_Executor(wf).run()
+FROM ubuntu:latest
+MAINTAINER Andrew Odewahn "odewahn@oreilly.com"
+
+RUN apt-get update
+
+WORKDIR /home
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerImage(self):
