@@ -639,6 +639,7 @@ sh:
         '''Test the execution of tasks with -q '''
         from ipykernel.tests.utils import wait_for_idle, execute
         from sos.jupyter.test_utils import sos_kernel, KC, get_display_data 
+        subprocess.call(['sos', 'purge'])
         with sos_kernel() as kc:
             # the cell will actually be executed several times
             # with automatic-reexecution

@@ -297,6 +297,9 @@ class TestSoSKernel(unittest.TestCase):
             execute(kc=kc, code="%dict a")
             res = get_result(iopub)
             self.assertEqual(res['a'], "$100")
+            # reset sigil
+            execute(kc=kc, code='%set_options sigil="${ }"')
+            wait_for_idle(kc)
 
 if __name__ == '__main__':
     unittest.main()
