@@ -51,8 +51,7 @@ def preview_pdf(filename, kernel=None, style=None):
         # 'text/html': HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data,
         return {
             'image/png': base64.b64encode(img._repr_png_()).decode('ascii') }
-    except Exception as e:
-        env.logger.error(e)
+    except Exception:
         return { 'text/html':
             HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data}
 
@@ -63,34 +62,23 @@ def preview_html(filename, kernel=None, style=None):
         'text/plain': dehtml(content) }
 
 def preview_txt(filename, kernel=None, style=None):
-    try:
-        content = ''
-        with open(filename, 'r') as fin:
-            for _ in range(5):
-                content += fin.readline()
-        return content
-    except Exception:
-        return ''
+    content = ''
+    with open(filename, 'r') as fin:
+        for _ in range(5):
+            content += fin.readline()
+    return content
 
 def preview_csv(filename, kernel=None, style=None):
-    try:
-        import pandas
-        from .visualize import Visualizer
-        data = pandas.read_csv(filename)
-        return Visualizer(kernel, style).preview(data)
-    except Exception as e:
-        env.logger.warning(e)
-        return ''
+    import pandas
+    from .visualize import Visualizer
+    data = pandas.read_csv(filename)
+    return Visualizer(kernel, style).preview(data)
 
 def preview_xls(filename, kernel=None, style=None):
-    try:
-        import pandas
-        from .visualize import Visualizer
-        data = pandas.read_excel(filename)
-        return Visualizer(kernel, style).preview(data)
-    except Exception as e:
-        env.logger.warning(e)
-        return ''
+    import pandas
+    from .visualize import Visualizer
+    data = pandas.read_excel(filename)
+    return Visualizer(kernel, style).preview(data)
 
 def preview_zip(filename, kernel=None, style=None):
     import zipfile
@@ -121,13 +109,10 @@ def preview_gz(filename, kernel=None, style=None):
 
 def preview_md(filename, kernel=None, style=None):
     import markdown
-    try:
-        with open(filename) as fin:
-            text = fin.read()
-        html = markdown.markdown(text)
-        return {'text/html': HTML(html).data, 'text/plain': text}
-    except Exception:
-        return ''
+    with open(filename) as fin:
+        text = fin.read()
+    html = markdown.markdown(text)
+    return {'text/html': HTML(html).data, 'text/plain': text}
 
 def preview_dot(filename, kernel=None, style=None):
     from graphviz import Source

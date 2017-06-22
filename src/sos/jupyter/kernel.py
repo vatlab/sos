@@ -1769,11 +1769,11 @@ Available subkernels:\n{}'''.format(
                 self.send_frontend_msg('stream', {
                     'name': 'stderr',
                     'text': 'Unrecognized preview content: {}'.format(result)})
-                return
         except Exception as e:
-            self.send_frontend_msg('stream', {
-                'name': 'stderr',
-                'text': 'Failed to preview {}: {}'.format(filename, e)})
+            if self._debug_mode:
+                self.send_frontend_msg('stream', {
+                    'name': 'stderr',
+                    'text': 'Failed to preview {}: {}'.format(filename, e)})
 
     def render_result(self, res):
         if self._render_result is False:
