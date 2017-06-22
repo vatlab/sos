@@ -305,7 +305,8 @@ define([
             sel.selectedIndex = -1;
         } else {
             var opts = sel.options;
-            for (var opt, j = 0; opt = opts[j]; j++) {
+            var opt, j;
+            for (j = 0; opt = opts[j]; j++) {
                 if (opt.value === window.DisplayName[type]) {
                     sel.selectedIndex = j;
                     break;
@@ -358,8 +359,9 @@ define([
         for (var i = 0; i < cells.length; i++) {
             add_lan_selector(cells[i], cells[i].metadata.kernel);
         }
-        if (window.my_panel)
+        if (window.my_panel) {
             add_lan_selector(window.my_panel.cell, "SoS");
+        }
 
         cells = nb.get_cells();
         for (var i = 0; i < cells.length; i++) {
@@ -373,7 +375,7 @@ define([
 
         var dropdown = $("<select></select>").attr("id", "kernel_selector")
             .css("margin-left", "0.75em")
-            .attr("class", "form-control select-xs")
+            .attr("class", "form-control select-xs");
         // .change(select_kernel);
         if (Jupyter.toolbar.element.has("#kernel_selector").length === 0)
             Jupyter.toolbar.element.append(dropdown);
@@ -569,7 +571,7 @@ define([
                 if (!window._duration_updater) {
                     window._duration_updater = window.setInterval(function() {
                         $("[id^=duration_]").text(function() {
-                            return durationFormatter($(this).attr("datetime"));
+                            return window.durationFormatter($(this).attr("datetime"));
                         });
                     }, 5000);
                 }
@@ -592,8 +594,9 @@ define([
                         /* remove task from pending_cells */
                         for (var idx = 0; idx < window.pending_cells[cell].length; ++idx) {
                             if (window.pending_cells[cell][idx][0] !== data[0] ||
-                                window.pending_cells[cell][idx][1] !== data[1])
+                                window.pending_cells[cell][idx][1] !== data[1]) {
                                 continue;
+							}
                             window.pending_cells[cell].splice(idx, 1);
                             if (window.pending_cells[cell].length === 0) {
                                 delete window.pending_cells[cell];
@@ -633,7 +636,7 @@ define([
             }
         }
         nb.metadata["sos"]["kernels"] = nb.metadata["sos"]["kernels"].filter(function(x) {
-            return used_kernels.has(x[0])
+            return used_kernels.has(x[0]);
         });
         window.sos_comm.send({
             "list-kernel": nb.metadata["sos"]["kernels"],
@@ -713,8 +716,10 @@ define([
 
     function set_codemirror_option(evt, param) {
         var cells = nb.get_cells();
-        for (var i = cells.length - 1; i >= 0; --i)
+		var i;
+        for (i = cells.length - 1; i >= 0; --i) {
             cells[i].code_mirror.setOption("styleActiveLine", cells[i].selected);
+		}
         return true;
     }
 
@@ -754,7 +759,7 @@ define([
             });
         elt.find("span.MathJax_Preview").remove();
         elt.find("span.MathJax").remove();
-        return elt
+        return elt;
     }
 
 
@@ -767,17 +772,17 @@ define([
             if (ll.length === 0) {
                 var ll = $(c).prevAll().find(":header");
             }
-            var elt = ll[ll.length - 1]
+            var elt = ll[ll.length - 1];
             if (elt) {
                 var highlighted_item = $('.toc').find('a[href="#' + elt.id + '"]');
                 if (evt.type === "execute") {
                     // remove the selected class and add execute class
                     // il the cell is selected again, it will be highligted as selected+running
-                    highlighted_item.removeClass("toc-item-highlight-select").addClass("toc-item-highlight-execute")
+                    highlighted_item.removeClass("toc-item-highlight-select").addClass("toc-item-highlight-execute");
                     //console.log("->>> highlighted_item class",highlighted_item.attr("class"))
                 } else {
-                    $(".toc").find(".toc-item-highlight-select").removeClass("toc-item-highlight-select")
-                    highlighted_item.addClass("toc-item-highlight-select")
+                    $(".toc").find(".toc-item-highlight-select").removeClass("toc-item-highlight-select");
+                    highlighted_item.addClass("toc-item-highlight-select");
                 }
             }
         }
@@ -798,7 +803,7 @@ define([
                 $.ajax()
             }, 100); //workaround for  https://github.com/jupyter/notebook/issues/699
             nb.get_selected_cell().unselect(); //unselect current cell
-            var new_selected_cell = $("[id='" + h.attr('id') + "']").parents('.unselected').switchClass('unselected', 'selected')
+            var new_selected_cell = $("[id='" + h.attr('id') + "']").parents('.unselected').switchClass('unselected', 'selected');
             new_selected_cell.data("cell").selected = true;
             var cell = new_selected_cell.data("cell") // nb.get_selected_cell()
             highlight_toc_item("toc_link_click", {
@@ -891,7 +896,7 @@ define([
         var panel_wrapper = $("<div id='panel-wrapper'/>")
             .append(
                 $("<div/>").attr("id", "panel").addClass("panel")
-            )
+            );
 
         $("body").append(panel_wrapper);
 
@@ -903,8 +908,8 @@ define([
         });
         $([Jupyter.events]).on("toggle-all-headers", function() {
             if (nb.metadata["sos"]["panel"].style === "side") {
-                var headerVisibleHeight = $("#header").is(":visible") ? $("#header").height() : 0
-                $("#panel-wrapper").css("top", headerVisibleHeight)
+                var headerVisibleHeight = $("#header").is(":visible") ? $("#header").height() : 0;
+                $("#panel-wrapper").css("top", headerVisibleHeight);
                 $("#panel-wrapper").css("height", $("#site").height());
             }
         });
@@ -931,8 +936,8 @@ define([
                 }
                 if ((ui.position.left > 0) && (nb.metadata["sos"]["panel"].style === "side")) {
                     nb.metadata["sos"]["panel"].style = "float";
-                    if (nb.metadata["sos"]["panel"].height === 0)
-                        nb.metadata["sos"]["panel"].height = Math.max($("#site").height() / 2, 200)
+                    if (nb.metadata["sos"]["panel"].height === 0);
+                        nb.metadata["sos"]["panel"].height = Math.max($("#site").height() / 2, 200);
                     $("#panel-wrapper").css("height", nb.metadata["sos"]["panel"].height);
                     panel_wrapper.removeClass("sidebar-wrapper").addClass("float-wrapper");
                     $("#notebook-container").css("margin-left", 30);
@@ -955,8 +960,8 @@ define([
         $("#panel-wrapper").resizable({
             resize: function(event, ui) {
                 if (nb.metadata["sos"]["panel"].style === "side") {
-                    $("#notebook-container").css("margin-left", $("#panel-wrapper").width() + 30)
-                    $("#notebook-container").css("width", $("#notebook").width() - $("#panel-wrapper").width() - 30)
+                    $("#notebook-container").css("margin-left", $("#panel-wrapper").width() + 30);
+                    $("#notebook-container").css("width", $("#notebook").width() - $("#panel-wrapper").width() - 30);
                 }
             },
             start: function(event, ui) {
@@ -970,10 +975,12 @@ define([
 
         // if panel-wrapper is undefined (first run(?), then hide it)
         // if ($("#panel-wrapper").css("display") === undefined) $("#panel-wrapper").css("display", "none") //block
-        if ($("#panel-wrapper").css("display") === undefined) $("#panel-wrapper").css("display", "block") //block
+        if (!$("#panel-wrapper").css("display")) {
+			$("#panel-wrapper").css("display", "block") //block
+		}
         $("#site").bind("siteHeight", function() {
             $("#panel-wrapper").css("height", $("#site").height());
-        })
+        });
 
         $("#site").trigger("siteHeight");
 
