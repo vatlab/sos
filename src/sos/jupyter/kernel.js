@@ -297,253 +297,7 @@ define([
         loadFile(0);
     }
 
-    function register_sos_comm() {
-        // comm message sent from the kernel
-        window.sos_comm = Jupyter.notebook.kernel.comm_manager.new_comm("sos_comm", {});
-        window.sos_comm.on_msg(function(msg) {
-            // when the notebook starts it should receive a message in the format of
-            // a nested array of elements such as
-            //
-            // "ir", "R", "#ABackgroundColorDEF"
-            //
-            // where are kernel name (jupyter kernel), displayed name (SoS), and background
-            // color assigned by the language module. The user might use name ir or R (both
-            // acceptable) but the frontend should only display displayed name, and send
-            // the real kernel name back to kernel (%frontend and metadata).
-            //
-            // there are two kinds of messages from my_execute
-            // 1. cell_idx: kernel
-            //     the kernel used for the cell with source
-            // 2. None: kernel
-            //     the kernel for the new cell
-
-            var data = msg.content.data;
-            var msg_type = msg.metadata.msg_type;
-            var i, j;
-
-            if (msg_type === "kernel-list") {
-                // upgrade existing meta data if it uses the old 3 item format
-                if (nb.metadata["sos"]["kernels"].length > 0 &&
-                    nb.metadata["sos"]["kernels"][0].length === 3) {
-                    for (j = 0; j < nb.metadata["sos"]["kernels"].length; j++) {
-                        var def = nb.metadata["sos"]["kernels"][j];
-                        // original format, kernel, name, color
-                        // new format, name, kenel, lan, color
-                        nb.metadata["sos"]["kernels"][j] = [def[1], def[0], def[1], def[2]];
-                    }
-                }
-
-                //
-                for (j = 0; j < nb.metadata["sos"]["kernels"].length; j++) {
-                    var kdef = nb.metadata["sos"]["kernels"][j];
-                    // if local environment has kernel, ok...
-                    var k_idx = data.findIndex((item) => item[0] === kdef[0]);
-                    // otherwise is the kernel actually used?
-                    if (k_idx === -1) {
-                        alert("subkernel " + kdef[0] + " defined in this notebook (kernel " + kdef[1] + " and language " + kdef[2] +
-                            ") is unavailable.");
-                    }
-                }
-
-                for (i = 0; i < data.length; i++) {
-                    // BackgroundColor is color
-                    window.BackgroundColor[data[i][0]] = data[i][3];
-                    // by kernel name? For compatibility ...
-                    if (!(data[i][1] in window.BackgroundColor)) {
-                        window.BackgroundColor[data[i][1]] = data[i][3];
-                    }
-                    // DisplayName
-                    window.DisplayName[data[i][0]] = data[i][0];
-                    if (!(data[i][1] in window.DisplayName)) {
-                        window.DisplayName[data[i][1]] = data[i][0];
-                    }
-                    // Name
-                    window.KernelName[data[i][0]] = data[i][1];
-                    if (!(data[i][1] in window.KernelName)) {
-                        window.KernelName[data[i][1]] = data[i][1];
-                    }
-                    // KernelList, use displayed name
-                    if (window.KernelList.findIndex((item) => item[0] === data[i][0]) === -1) {
-                        window.KernelList.push([data[i][0], data[i][0]]);
-                    }
-
-                    // if the kernel is not in metadata, push it in
-                    var k_idx = nb.metadata["sos"]["kernels"].findIndex((item) => item[0] === data[i][0]);
-                    if (k_idx === -1) {
-                        nb.metadata["sos"]["kernels"].push(data[i]);
-                    } else {
-                        // if kernel exist update the rest of the information, but warn users first on
-                        // inconsistency
-                        if (nb.metadata["sos"]["kernels"][k_idx][1] !== data[i][1]) {
-                            var r = confirm("This notebook used Jupyter kernel " + nb.metadata["sos"]["kernels"][k_idx][1] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][1] + " instead?");
-                            if (r) {
-                                nb.metadata["sos"]["kernels"][k_idx][1] = data[i][1];
-                            }
-                        } else {
-                            nb.metadata["sos"]["kernels"][k_idx][1] = data[i][1];
-                        }
-                        if (nb.metadata["sos"]["kernels"][k_idx][2] !== data[i][2]) {
-                            if (nb.metadata["sos"]["kernels"][k_idx][2] === "") {
-                                nb.metadata["sos"]["kernels"][k_idx][2] = data[i][2];
-                            } else if (data[i][2] !== "") {
-                                var r = confirm("This notebook used language definition " + nb.metadata["sos"]["kernels"][k_idx][2] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][2] + " instead?");
-                                if (r) {
-                                    nb.metadata["sos"]["kernels"][k_idx][2] = data[i][2];
-                                }
-                            }
-                        } else {
-                            nb.metadata["sos"]["kernels"][k_idx][2] = data[i][2];
-                        }
-                        nb.metadata["sos"]["kernels"][k_idx][3] = data[i][3];
-                    }
-                }
-                //add dropdown menu of kernels in frontend
-                load_select_kernel();
-                console.log("kernel list updated");
-            } else if (msg_type === "default-kernel") {
-                // update the cells when the notebook is being opened.
-                // we also set a global kernel to be used for new cells
-                $("#kernel_selector").val(window.DisplayName[data]);
-                // a side effect of change is cells without metadata kernel info will change background
-                $("#kernel_selector").change();
-            } else if (msg_type === "cell-kernel") {
-                // get cell from passed cell index, which was sent through the
-                // %frontend magic
-                var cell = data[0] === -1 ? window.my_panel.cell : nb.get_cell(data[0]);
-                if (cell.metadata.kernel !== window.DisplayName[data[1]]) {
-                    cell.metadata.kernel = window.DisplayName[data[1]];
-                    // set meta information
-                    changeStyleOnKernel(cell, data[1]);
-                } else if (cell.metadata.tags && cell.metadata.tags.indexOf("report_output") >= 0) {
-                    // #639
-                    // if kernel is different, changeStyleOnKernel would set report_output.
-                    // otherwise we mark report_output
-                    $(".output_wrapper", cell.element).addClass("report_output");
-                }
-            } else if (msg_type === "preview-input") {
-                cell = window.my_panel.cell;
-                cell.clear_input();
-                cell.set_text(data);
-                cell.clear_output();
-            } else if (msg_type === "preview-kernel") {
-                changeStyleOnKernel(window.my_panel.cell, data);
-            } else if (msg_type === "preview-workflow") {
-                var cell = window.my_panel.cell;
-                cell.clear_input();
-                cell.set_text("%preview --workflow");
-                cell.clear_output();
-                cell.output_area.append_output({
-                    "output_type": "stream",
-                    "text": data,
-                    "name": "stdout"
-                });
-            } else if (msg_type === "tasks-pending") {
-                // console.log(data);
-                /* we record the pending tasks of cells so that we could
-                   rerun cells once all tasks have been completed */
-                /* let us get a more perminant id for cell so that we
-                   can still locate the cell once its tasks are completed. */
-                var cell = nb.get_cell(data[0]);
-                window.pending_cells[cell.cell_id] = data[1];
-            } else if (msg_type === "remove-task") {
-                var item = document.getElementById("table_" + data[0] + "_" + data[1]);
-                if (item) {
-                    item.parentNode.removeChild(item);
-                }
-            } else if (msg_type === "update-duration") {
-                if (!window._duration_updater) {
-                    window._duration_updater = window.setInterval(function() {
-                        $("[id^=duration_]").text(function() {
-                            return durationFormatter($(this).attr("datetime"));
-                        });
-                    }, 5000);
-                }
-            } else if (msg_type === "task-status") {
-                // console.log(data);
-                var item = document.getElementById("status_" + data[0] + "_" + data[1]);
-                if (!item) {
-                    return;
-                } else {
-                    // id, status, status_class, action_class, action_func
-                    item.className = "fa fa-fw fa-2x " + data[3];
-                    item.setAttribute('onmouseover', "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[4] + "').removeClass('" + data[3] + "')");
-                    item.setAttribute('onmouseleave', "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[3] + "').removeClass('" + data[4] + "')");
-                    item.setAttribute("onClick", data[5] + "('" + data[1] + "', '" + data[0] + "')");
-                }
-                if (data[2] === "completed") {
-                    /* if successful, let us re-run the cell to submt another task
-                       or get the result */
-                    for (var cell in window.pending_cells) {
-                        /* remove task from pending_cells */
-                        for (var idx = 0; idx < window.pending_cells[cell].length; ++idx) {
-                            if (window.pending_cells[cell][idx][0] !== data[0] ||
-                                window.pending_cells[cell][idx][1] !== data[1])
-                                continue;
-                            window.pending_cells[cell].splice(idx, 1);
-                            if (window.pending_cells[cell].length === 0) {
-                                delete window.pending_cells[cell];
-                                /* if the does not have any pending one, re-run it. */
-                                var cells = nb.get_cells();
-                                var rerun = null;
-                                for (var i = 0; i < cells.length; ++i) {
-                                    if (cells[i].cell_id === cell) {
-                                        rerun = cells[i];
-                                        break;
-                                    }
-                                }
-                                if (rerun) {
-                                    window._auto_resume = true;
-                                    rerun.execute();
-                                }
-                                break;
-                            }
-                        }
-                    }
-                }
-            } else if (msg_type === "show_toc") {
-                show_toc();
-            } else {
-                // this is preview output
-                var cell = window.my_panel.cell;
-                data.output_type = msg_type;
-                cell.output_area.append_output(data);
-            }
-            adjustPanel();
-        });
-        var used_kernels = new Set();
-        var cells = nb.get_cells();
-        for (var i = cells.length - 1; i >= 0; --i) {
-            if (cells[i].cell_type === "code" && cells[i].metadata.kernel) {
-                used_kernels.add(cells[i].metadata.kernel);
-            }
-        }
-        nb.metadata["sos"]["kernels"] = nb.metadata["sos"]["kernels"].filter(function(x) {
-            return used_kernels.has(x[0])
-        });
-        window.sos_comm.send({
-            "list-kernel": nb.metadata["sos"]["kernels"],
-            "update-task-status": window.unknown_tasks,
-        });
-        console.log("sos comm registered");
-    }
-
-    function send_kernel_msg(msg) {
-        window.sos_comm.send(msg);
-    }
-
-    function wrap_execute() {
-        // override kernel execute with the wrapper.
-        // however, this function can be called multiple times for kernel
-        // restart etc, so we should be careful
-        if (!nb.kernel.orig_execute) {
-            nb.kernel.orig_execute = nb.kernel.execute;
-            nb.kernel.execute = my_execute;
-            console.log("executor patched");
-        }
-    }
-
-
-
+    
     function changeStyleOnKernel(cell, type) {
         // type should be  displayed name of kernel
         var sel = cell.element[0].getElementsByClassName("cell_kernel_selector")[0];
@@ -591,6 +345,318 @@ define([
         }
         return col;
     }
+
+    
+    function load_select_kernel() {
+        // this function will be called twice, the first time when the notebook is loaded
+        // to create UT elements using the information from notebook metadata. The second
+        // time will be caused whent the backend sends the frontend a list of available kernels
+        // this is why we should not add additional UI elements when the function is called
+        // the second time.
+
+        var cells = nb.get_cells();
+        for (var i = 0; i < cells.length; i++) {
+            add_lan_selector(cells[i], cells[i].metadata.kernel);
+        }
+        if (window.my_panel)
+            add_lan_selector(window.my_panel.cell, "SoS");
+
+        cells = nb.get_cells();
+        for (var i = 0; i < cells.length; i++) {
+            if (cells[i].cell_type === "code")
+                changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
+        }
+        // update droplist of panel cell
+        if (window.my_panel) {
+            changeStyleOnKernel(window.my_panel.cell);
+        }
+
+        var dropdown = $("<select></select>").attr("id", "kernel_selector")
+            .css("margin-left", "0.75em")
+            .attr("class", "form-control select-xs")
+        // .change(select_kernel);
+        if (Jupyter.toolbar.element.has("#kernel_selector").length === 0)
+            Jupyter.toolbar.element.append(dropdown);
+        // remove any existing items
+        $("#kernel_selector").empty();
+        $.each(window.KernelList, function(key, value) {
+            $("#kernel_selector")
+                .append($("<option/>")
+                    .attr("value", window.DisplayName[value[0]])
+                    .text(window.DisplayName[value[0]]));
+        });
+        $("#kernel_selector").val("SoS");
+        $("#kernel_selector").change(function() {
+            var kernel_type = $("#kernel_selector").val();
+
+            window.default_kernel = kernel_type;
+
+            var cells = nb.get_cells();
+            for (var i in cells) {
+                if (cells[i].cell_type === "code" && !cells[i].metadata.kernel) {
+                    changeStyleOnKernel(cells[i], undefined);
+                }
+            }
+        });
+    }
+
+    var show_toc = function(evt) {
+        var cell = window.my_panel.cell;
+        cell.clear_input();
+        cell.set_text("%toc")
+        cell.clear_output();
+        var toc = cell.output_area.create_output_area().append(table_of_contents());
+        cell.output_area._safe_append(toc);
+        adjustPanel();
+    }
+
+    function register_sos_comm() {
+        // comm message sent from the kernel
+        window.sos_comm = Jupyter.notebook.kernel.comm_manager.new_comm("sos_comm", {});
+        window.sos_comm.on_msg(function(msg) {
+            // when the notebook starts it should receive a message in the format of
+            // a nested array of elements such as
+            //
+            // "ir", "R", "#ABackgroundColorDEF"
+            //
+            // where are kernel name (jupyter kernel), displayed name (SoS), and background
+            // color assigned by the language module. The user might use name ir or R (both
+            // acceptable) but the frontend should only display displayed name, and send
+            // the real kernel name back to kernel (%frontend and metadata).
+            //
+            // there are two kinds of messages from my_execute
+            // 1. cell_idx: kernel
+            //     the kernel used for the cell with source
+            // 2. None: kernel
+            //     the kernel for the new cell
+
+            var data = msg.content.data;
+            var msg_type = msg.metadata.msg_type;
+            var i, j;
+            var k_idx;
+            var cell;
+
+            if (msg_type === "kernel-list") {
+                // upgrade existing meta data if it uses the old 3 item format
+                if (nb.metadata["sos"]["kernels"].length > 0 &&
+                    nb.metadata["sos"]["kernels"][0].length === 3) {
+                    for (j = 0; j < nb.metadata["sos"]["kernels"].length; j++) {
+                        var def = nb.metadata["sos"]["kernels"][j];
+                        // original format, kernel, name, color
+                        // new format, name, kenel, lan, color
+                        nb.metadata["sos"]["kernels"][j] = [def[1], def[0], def[1], def[2]];
+                    }
+                }
+
+                //
+                for (j = 0; j < nb.metadata["sos"]["kernels"].length; j++) {
+                    var kdef = nb.metadata["sos"]["kernels"][j];
+                    // if local environment has kernel, ok...
+                    k_idx = data.findIndex((item) => item[0] === kdef[0]);
+                    // otherwise is the kernel actually used?
+                    if (k_idx === -1) {
+                        alert("subkernel " + kdef[0] + " defined in this notebook (kernel " + kdef[1] + " and language " + kdef[2] +
+                            ") is unavailable.");
+                    }
+                }
+
+                for (i = 0; i < data.length; i++) {
+                    // BackgroundColor is color
+                    window.BackgroundColor[data[i][0]] = data[i][3];
+                    // by kernel name? For compatibility ...
+                    if (!(data[i][1] in window.BackgroundColor)) {
+                        window.BackgroundColor[data[i][1]] = data[i][3];
+                    }
+                    // DisplayName
+                    window.DisplayName[data[i][0]] = data[i][0];
+                    if (!(data[i][1] in window.DisplayName)) {
+                        window.DisplayName[data[i][1]] = data[i][0];
+                    }
+                    // Name
+                    window.KernelName[data[i][0]] = data[i][1];
+                    if (!(data[i][1] in window.KernelName)) {
+                        window.KernelName[data[i][1]] = data[i][1];
+                    }
+                    // KernelList, use displayed name
+                    if (window.KernelList.findIndex((item) => item[0] === data[i][0]) === -1) {
+                        window.KernelList.push([data[i][0], data[i][0]]);
+                    }
+
+                    // if the kernel is not in metadata, push it in
+                    k_idx = nb.metadata["sos"]["kernels"].findIndex((item) => item[0] === data[i][0]);
+                    if (k_idx === -1) {
+                        nb.metadata["sos"]["kernels"].push(data[i]);
+                    } else {
+                        // if kernel exist update the rest of the information, but warn users first on
+                        // inconsistency
+                        if (nb.metadata["sos"]["kernels"][k_idx][1] !== data[i][1]) {
+                            var r = confirm("This notebook used Jupyter kernel " + nb.metadata["sos"]["kernels"][k_idx][1] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][1] + " instead?");
+                            if (r) {
+                                nb.metadata["sos"]["kernels"][k_idx][1] = data[i][1];
+                            }
+                        } else {
+                            nb.metadata["sos"]["kernels"][k_idx][1] = data[i][1];
+                        }
+                        if (nb.metadata["sos"]["kernels"][k_idx][2] !== data[i][2]) {
+                            if (nb.metadata["sos"]["kernels"][k_idx][2] === "") {
+                                nb.metadata["sos"]["kernels"][k_idx][2] = data[i][2];
+                            } else if (data[i][2] !== "") {
+                                var r = confirm("This notebook used language definition " + nb.metadata["sos"]["kernels"][k_idx][2] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][2] + " instead?");
+                                if (r) {
+                                    nb.metadata["sos"]["kernels"][k_idx][2] = data[i][2];
+                                }
+                            }
+                        } else {
+                            nb.metadata["sos"]["kernels"][k_idx][2] = data[i][2];
+                        }
+                        nb.metadata["sos"]["kernels"][k_idx][3] = data[i][3];
+                    }
+                }
+                //add dropdown menu of kernels in frontend
+                load_select_kernel();
+                console.log("kernel list updated");
+            } else if (msg_type === "default-kernel") {
+                // update the cells when the notebook is being opened.
+                // we also set a global kernel to be used for new cells
+                $("#kernel_selector").val(window.DisplayName[data]);
+                // a side effect of change is cells without metadata kernel info will change background
+                $("#kernel_selector").change();
+            } else if (msg_type === "cell-kernel") {
+                // get cell from passed cell index, which was sent through the
+                // %frontend magic
+                cell = data[0] === -1 ? window.my_panel.cell : nb.get_cell(data[0]);
+                if (cell.metadata.kernel !== window.DisplayName[data[1]]) {
+                    cell.metadata.kernel = window.DisplayName[data[1]];
+                    // set meta information
+                    changeStyleOnKernel(cell, data[1]);
+                } else if (cell.metadata.tags && cell.metadata.tags.indexOf("report_output") >= 0) {
+                    // #639
+                    // if kernel is different, changeStyleOnKernel would set report_output.
+                    // otherwise we mark report_output
+                    $(".output_wrapper", cell.element).addClass("report_output");
+                }
+            } else if (msg_type === "preview-input") {
+                cell = window.my_panel.cell;
+                cell.clear_input();
+                cell.set_text(data);
+                cell.clear_output();
+            } else if (msg_type === "preview-kernel") {
+                changeStyleOnKernel(window.my_panel.cell, data);
+            } else if (msg_type === "preview-workflow") {
+                cell = window.my_panel.cell;
+                cell.clear_input();
+                cell.set_text("%preview --workflow");
+                cell.clear_output();
+                cell.output_area.append_output({
+                    "output_type": "stream",
+                    "text": data,
+                    "name": "stdout"
+                });
+            } else if (msg_type === "tasks-pending") {
+                // console.log(data);
+                /* we record the pending tasks of cells so that we could
+                   rerun cells once all tasks have been completed */
+                /* let us get a more perminant id for cell so that we
+                   can still locate the cell once its tasks are completed. */
+                cell = nb.get_cell(data[0]);
+                window.pending_cells[cell.cell_id] = data[1];
+            } else if (msg_type === "remove-task") {
+                var item = document.getElementById("table_" + data[0] + "_" + data[1]);
+                if (item) {
+                    item.parentNode.removeChild(item);
+                }
+            } else if (msg_type === "update-duration") {
+                if (!window._duration_updater) {
+                    window._duration_updater = window.setInterval(function() {
+                        $("[id^=duration_]").text(function() {
+                            return durationFormatter($(this).attr("datetime"));
+                        });
+                    }, 5000);
+                }
+            } else if (msg_type === "task-status") {
+                // console.log(data);
+                var item = document.getElementById("status_" + data[0] + "_" + data[1]);
+                if (!item) {
+                    return;
+                } else {
+                    // id, status, status_class, action_class, action_func
+                    item.className = "fa fa-fw fa-2x " + data[3];
+                    item.setAttribute('onmouseover', "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[4] + "').removeClass('" + data[3] + "')");
+                    item.setAttribute('onmouseleave', "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[3] + "').removeClass('" + data[4] + "')");
+                    item.setAttribute("onClick", data[5] + "('" + data[1] + "', '" + data[0] + "')");
+                }
+                if (data[2] === "completed") {
+                    /* if successful, let us re-run the cell to submt another task
+                       or get the result */
+                    for (cell in window.pending_cells) {
+                        /* remove task from pending_cells */
+                        for (var idx = 0; idx < window.pending_cells[cell].length; ++idx) {
+                            if (window.pending_cells[cell][idx][0] !== data[0] ||
+                                window.pending_cells[cell][idx][1] !== data[1])
+                                continue;
+                            window.pending_cells[cell].splice(idx, 1);
+                            if (window.pending_cells[cell].length === 0) {
+                                delete window.pending_cells[cell];
+                                /* if the does not have any pending one, re-run it. */
+                                var cells = nb.get_cells();
+                                var rerun = null;
+                                for (var i = 0; i < cells.length; ++i) {
+                                    if (cells[i].cell_id === cell) {
+                                        rerun = cells[i];
+                                        break;
+                                    }
+                                }
+                                if (rerun) {
+                                    window._auto_resume = true;
+                                    rerun.execute();
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            } else if (msg_type === "show_toc") {
+                show_toc();
+            } else {
+                // this is preview output
+                cell = window.my_panel.cell;
+                data.output_type = msg_type;
+                cell.output_area.append_output(data);
+            }
+            adjustPanel();
+        });
+        var used_kernels = new Set();
+        var cells = nb.get_cells();
+        for (var i = cells.length - 1; i >= 0; --i) {
+            if (cells[i].cell_type === "code" && cells[i].metadata.kernel) {
+                used_kernels.add(cells[i].metadata.kernel);
+            }
+        }
+        nb.metadata["sos"]["kernels"] = nb.metadata["sos"]["kernels"].filter(function(x) {
+            return used_kernels.has(x[0])
+        });
+        window.sos_comm.send({
+            "list-kernel": nb.metadata["sos"]["kernels"],
+            "update-task-status": window.unknown_tasks,
+        });
+        console.log("sos comm registered");
+    }
+
+    function send_kernel_msg(msg) {
+        window.sos_comm.send(msg);
+    }
+
+    function wrap_execute() {
+        // override kernel execute with the wrapper.
+        // however, this function can be called multiple times for kernel
+        // restart etc, so we should be careful
+        if (!nb.kernel.orig_execute) {
+            nb.kernel.orig_execute = nb.kernel.execute;
+            nb.kernel.execute = my_execute;
+            console.log("executor patched");
+        }
+    }
+
 
     window.kill_task = function(task_id, task_queue) {
         console.log("Kill " + task_id);
@@ -650,59 +716,6 @@ define([
         for (var i = cells.length - 1; i >= 0; --i)
             cells[i].code_mirror.setOption("styleActiveLine", cells[i].selected);
         return true;
-    }
-
-    function load_select_kernel() {
-        // this function will be called twice, the first time when the notebook is loaded
-        // to create UT elements using the information from notebook metadata. The second
-        // time will be caused whent the backend sends the frontend a list of available kernels
-        // this is why we should not add additional UI elements when the function is called
-        // the second time.
-
-        var cells = nb.get_cells();
-        for (var i = 0; i < cells.length; i++) {
-            add_lan_selector(cells[i], cells[i].metadata.kernel);
-        }
-        if (window.my_panel)
-            add_lan_selector(window.my_panel.cell, "SoS");
-
-        cells = nb.get_cells();
-        for (var i = 0; i < cells.length; i++) {
-            if (cells[i].cell_type === "code")
-                changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
-        }
-        // update droplist of panel cell
-        if (window.my_panel) {
-            changeStyleOnKernel(window.my_panel.cell);
-        }
-
-        var dropdown = $("<select></select>").attr("id", "kernel_selector")
-            .css("margin-left", "0.75em")
-            .attr("class", "form-control select-xs")
-        // .change(select_kernel);
-        if (Jupyter.toolbar.element.has("#kernel_selector").length === 0)
-            Jupyter.toolbar.element.append(dropdown);
-        // remove any existing items
-        $("#kernel_selector").empty();
-        $.each(window.KernelList, function(key, value) {
-            $("#kernel_selector")
-                .append($("<option/>")
-                    .attr("value", window.DisplayName[value[0]])
-                    .text(window.DisplayName[value[0]]));
-        });
-        $("#kernel_selector").val("SoS");
-        $("#kernel_selector").change(function() {
-            var kernel_type = $("#kernel_selector").val();
-
-            window.default_kernel = kernel_type;
-
-            var cells = nb.get_cells();
-            for (var i in cells) {
-                if (cells[i].cell_type === "code" && !cells[i].metadata.kernel) {
-                    changeStyleOnKernel(cells[i], undefined);
-                }
-            }
-        });
     }
 
     function changeCellStyle() {
@@ -1314,15 +1327,6 @@ define([
         return false;
     };
 
-    var show_toc = function(evt) {
-        var cell = window.my_panel.cell;
-        cell.clear_input();
-        cell.set_text("%toc")
-        cell.clear_output();
-        var toc = cell.output_area.create_output_area().append(table_of_contents());
-        cell.output_area._safe_append(toc);
-        adjustPanel();
-    }
 
     var update_toc = function(evt, data) {
         if ($(".toc").length !== 0) {
