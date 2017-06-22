@@ -98,7 +98,8 @@ class Visualizer:
 
         tid = self.get_tid('table')
 
-        if df.shape[0] > args.limit:
+        # if the user already specified a value other than 200, we do not display the warning
+        if df.shape[0] > args.limit and args.limit == 200:
             self.kernel.warn("Only the first {} of the {} records are previewed. Use option --limit to set a new limit.".format(args.limit, df.shape[0]))
         code = df.head(args.limit).to_html(index=True).replace('class="', 'id="dataframe_{}" class="sos_dataframe '.format(tid), 1)
 

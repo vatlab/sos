@@ -101,7 +101,7 @@ a=1
 %get mtcars --from R
 ''')
             _, stderr = assemble_output(iopub)
-            self.assertTrue(stderr == '' or 'Loading' in stderr, "Expect no error, got {}".format(stderr))
+            self.assertTrue(stderr == '' or 'Loading' in stderr or 'Only the first' in stderr, "Expect no error, got {}".format(stderr))
             # preview csv file
             execute(kc=kc, code='''
 %preview a.csv
