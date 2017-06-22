@@ -21,7 +21,6 @@
 #
 
 import os
-import sys
 import unittest
 import shutil
 import subprocess
@@ -88,7 +87,7 @@ report('this is action report')
         self.assertTrue(os.path.isfile('test_wf.html'))
         os.chdir(olddir)
 
-    @unittest.skipIf(sys.platform == 'win32', 'No XeLatex under windows to compile pdf')
+    @unittest.skipIf(not shutil.which('xelatex'), 'No XeLatex under windows to compile pdf')
     def testConvertPDF(self):
         olddir = os.getcwd()
         os.chdir(file_dir)
