@@ -126,6 +126,18 @@ a,b,c
 ''')
             res = get_display_data(iopub, 'text/html')
             self.assertTrue('dataframe_container' in res, 'Expect preview {}'.format(res))
+            # preview txt file
+            execute(kc=kc, code='''
+%preview a.txt
+with open('a.txt', 'w') as txt:
+    txt.write("""\
+hello
+world
+""")
+''')
+            stdout, stderr = assemble_output(iopub)
+            self.assertEqual(stderr, '')
+            self.assertTrue('world' in stdout, 'Expect preview {}'.format(stdout))
             # preview zip
             execute(kc=kc, code='''
 %preview -n a.zip
@@ -160,6 +172,21 @@ with tarfile.open('a.tar.gz', 'w:gz') as tar:
             stdout, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
             self.assertTrue('a.csv' in stdout, 'Expect preview {}'.format(stdout))
+            #
+            # preview regular .gz
+            execute(kc=kc, code='''
+%preview -n a.gz
+import gzip
+
+with gzip.open('a.gz', 'w') as gz:
+    gz.write(b"""
+Hello
+world
+""")
+''')
+            stdout, stderr = assemble_output(iopub)
+            self.assertEqual(stderr, '')
+            self.assertTrue('world' in stdout, 'Expect preview {}'.format(stdout))
             # preview md
             execute(kc=kc, code='''
 %preview -n a.md
