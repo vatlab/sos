@@ -279,6 +279,13 @@ print('a')
                 'default_queue': 'docker_limited',
                 'sig_mode': 'force',
                 }).run)
+        self.assertRaises(Exception, Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'local_limited',
+                'sig_mode': 'force',
+                }).run)
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testRuntimeMaxWalltime(self):
@@ -295,6 +302,13 @@ time.sleep(15)
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker_limited',
+                'sig_mode': 'force',
+                }).run)
+        self.assertRaises(Exception, Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'local_limited',
                 'sig_mode': 'force',
                 }).run)
 
@@ -314,6 +328,19 @@ print('a')
                 'default_queue': 'docker_limited',
                 'sig_mode': 'force',
                 }).run)
+        self.assertRaises(Exception, Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'local_limited',
+                'sig_mode': 'force',
+                }).run)
+
+    def testListHosts(self):
+        '''test list hosts using sos status -q'''
+        for v in ['0', '1', '3', '4']:
+            output = subprocess.check_output(['sos', 'status', '-c', 'docker.yml', '-q', '-v', v]).decode()
+            self.assertTrue('ts' in output)
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testMaxWalltime(self):

@@ -115,11 +115,12 @@ class DaemonizedProcess(mp.Process):
 class LocalHost:
     '''For local host, no path map, send and receive ...'''
 
-    def __init__(self, alias='localhost'):
-        self.alias = alias
+    def __init__(self, config):
+        self.alias = config['alias'] if 'alias' in config else 'localhost'
         self.address = 'localhost'
         # we checkk local jobs more aggressively
         self.config = {'alias': 'localhost', 'status_check_interval': 2}
+        self.config.update(config)
         self._procs = []
 
     def prepare_task(self, task_id):
@@ -141,16 +142,19 @@ class LocalHost:
 
             if self.config.get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
                     and self.config['max_mem'] < task_vars['_runtime']['mem']:
-                raise ValueError('Task {} requested more mem ({}) than allowed max_mem ({})'.format(
+                env.logger.error('Task {} requested more mem ({}) than allowed max_mem ({})'.format(
                     task_id, task_vars['_runtime']['mem'], self.config['max_mem']))
+                return False
             if self.config.get('max_cores', None) is not None and task_vars['_runtime'].get('cores', None) is not None \
                     and self.config['max_cores'] < task_vars['_runtime']['cores']:
-                raise ValueError('Task {} requested more cores ({}) than allowed max_cores ({})'.format(
+                env.logger.error('Task {} requested more cores ({}) than allowed max_cores ({})'.format(
                     task_id, task_vars['_runtime']['cores'], self.config['max_cores']))
+                return False
             if self.config.get('max_walltime', None) is not None and task_vars['_runtime'].get('walltime', None) is not None \
                     and expand_time(self.config['max_walltime']) < expand_time(task_vars['_runtime']['walltime']):
-                raise ValueError('Task {} requested more walltime ({}) than allowed max_walltime ({})'.format(
+                env.logger.error('Task {} requested more walltime ({}) than allowed max_walltime ({})'.format(
                     task_id, task_vars['_runtime']['walltime'], self.config['max_walltime']))
+                return False
 
             new_param = TaskParams(
                 name = params.name,
@@ -715,8 +719,9 @@ class Host:
             # now we have definition for local and remote hosts
             cfg = env.sos_dict['CONFIG']['hosts']
             self.config = {x:y for x,y in cfg[self.alias].items() if x not in ('paths', 'shared')}
+
             # if local and remote hosts are the same
-            if LOCAL == REMOTE:
+            if LOCAL == REMOTE or ('address' in env.sos_dict['CONFIG']['hosts'][REMOTE] and env.sos_dict['CONFIG']['hosts'][REMOTE]['address'] == 'localhost'):
                 # there would be no path map
                 self.config['path_map'] = []
                 self.config['shared'] = ['/']
@@ -758,7 +763,7 @@ class Host:
     def _get_host_agent(self, start_engine):
         if self.alias not in self.host_instances:
             if self.config['address'] == 'localhost':
-                self.host_instances[self.alias] = LocalHost()
+                self.host_instances[self.alias] = LocalHost(self.config)
             else:
                 self.host_instances[self.alias] = RemoteHost(self.config)
 
