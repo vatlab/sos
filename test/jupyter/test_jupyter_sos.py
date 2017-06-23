@@ -160,18 +160,22 @@ run:
     touch C4.txt
 
         '''
+        script2 = '''
+import os
+fail = 0
+for f in ['A1.txt', 'A2.txt']:
+    fail += os.path.exists(f)
+for f in ['C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
+    fail += not os.path.exists(f)
+fail
+'''
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             execute(kc=kc, code=script)
             wait_for_idle(kc)
-        # test 1, we only need to generate target 'B1.txt'
-        for f in ['A1.txt', 'A2.txt']:
-            self.assertFalse(FileTarget(f).exists())
-        for f in ['C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
-            t = FileTarget(f)
-            self.assertTrue(t.exists(), '{} should exist'.format(f))
-            t.remove('both')
-
+            execute(kc=kc, code=script2)
+            res = get_result(iopub)
+            self.assertEqual(res, 0)
 
 
 if __name__ == '__main__':
