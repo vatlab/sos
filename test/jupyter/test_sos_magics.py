@@ -219,19 +219,6 @@ with open('a.html', 'w') as dot:
 ''')
             res = get_display_data(iopub, 'text/html')
             self.assertTrue('<h1>My First Heading</h1>' in res, 'Expect preview {}'.format(res))
-            # preview dot
-            execute(kc=kc, code='''
-%preview -n a.dot
-with open('a.dot', 'w') as dot:
-    dot.write("""\
-graph graphname {
-     a -- b -- c;
-     b -- d;
-}
-""")
-''')
-            res = get_display_data(iopub, 'image/png')
-            self.assertGreater(len(res), 1000, 'Expect a image {}'.format(res))
             #
             execute(kc=kc, code='''
 %preview mtcars
@@ -273,6 +260,21 @@ R:
             # switch back
             execute(kc=kc, code='%use SoS')
             wait_for_idle(kc)
+            # preview dot, needs imagemagick, which is unavailable under windows.
+            if sys.platform == 'win32':
+                return
+            execute(kc=kc, code='''
+%preview -n a.dot
+with open('a.dot', 'w') as dot:
+    dot.write("""\
+graph graphname {
+     a -- b -- c;
+     b -- d;
+}
+""")
+''')
+            res = get_display_data(iopub, 'image/png')
+            self.assertGreater(len(res), 1000, 'Expect a image {}'.format(res))
 
     def testMagicSandbox(self):
         with sos_kernel() as kc:
