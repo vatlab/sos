@@ -21,6 +21,7 @@
 #
 
 import os
+import sys
 import unittest
 from ipykernel.tests.utils import assemble_output, execute, wait_for_idle
 from sos.jupyter.test_utils import sos_kernel, get_display_data
