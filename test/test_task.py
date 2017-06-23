@@ -288,6 +288,51 @@ run:
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    def testKillAndPurge(self):
+        '''Test no wait'''
+        script = SoS_Script(r'''
+[10]
+input: for_each=[{'a': range(2)}]
+
+task: concurrent=True
+run:
+    echo Try to kill "a = ${a}"
+    sleep 20
+''')
+        wf = script.workflow()
+        env.config['sig_mode'] = 'force'
+        env.config['wait_for_task'] = False
+        ret = Base_Executor(wf).run()
+        # sos should quit
+        self.assertGreater(len(ret['pending_tasks']), 0)
+        # wait for the task to start
+        time.sleep(3)
+        subprocess.call(['sos', 'kill', ret['pending_tasks'][0]])
+        for i in range(20):
+            output = subprocess.check_output(['sos', 'status', ret['pending_tasks'][0], '-v', '1']).decode()
+            if 'killed' in output or 'aborted' in output:
+                break
+            self.assertFalse(i > 10, 'Task should be killed within 10 seconds, got {}'.format(output))
+            time.sleep(1)
+        #
+        subprocess.call(['sos', 'kill', '--all'])
+        for i in range(20):
+            output = subprocess.check_output(['sos', 'status', ret['pending_tasks'][1], '-v', '1']).decode()
+            if 'killed' in output or 'aborted' in output:
+                break
+            self.assertFalse(i > 10, 'Task should be killed within 10 seconds, got {}'.format(output))
+            time.sleep(1)
+        # test purge task
+        subprocess.call(['sos', 'purge', ret['pending_tasks'][0]])
+        self.assertFalse(ret['pending_tasks'][0] in subprocess.check_output(['sos', 'status']).decode())
+        # test purge by status
+        subprocess.call(['sos', 'purge', '--status', 'aborted'])
+        self.assertFalse('killed' in subprocess.check_output(['sos', 'status', '-v', '3']).decode())
+        # test purge by age
+        subprocess.call(['sos', 'purge', '--age=-20s'])
+        # purge by all is not tested because it is dangerous
+
+
     def testNoWait(self):
         '''Test no wait'''
         script = SoS_Script(r'''

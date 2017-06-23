@@ -204,32 +204,32 @@ class sos_step(BaseTarget):
     def write_sig(self):
         pass
 
-class bundle(BaseTarget):
-    '''a bundle of other targets'''
-    def __init__(self, *args):
-        super(bundle, self).__init__()
-        self._targets = []
-        for arg in args:
-            if isinstance(arg, str):
-                self._targets.append(os.path.expanduser(arg))
-            elif isinstance(arg, Iterable):
-                # in case arg is a Generator, check its type will exhaust it
-                arg = list(arg)
-                if not all(isinstance(x, str) for x in arg):
-                    raise RuntimeError('Invalid filename: {}'.format(arg))
-                self._targets.extend(arg)
-            else:
-                raise RuntimeError('Unrecognized file: {}'.format(arg))
-
-    def exists(self, mode='any'):
-        return all(FileTarget(x).exists(mode) for x in self._targets)
-
-    def name(self):
-        return repr(self._targets)
-
-    def signature(self, mode='any'):
-        return textMD5(repr(self._targets))
-
+# class bundle(BaseTarget):
+#     '''a bundle of other targets'''
+#     def __init__(self, *args):
+#         super(bundle, self).__init__()
+#         self._targets = []
+#         for arg in args:
+#             if isinstance(arg, str):
+#                 self._targets.append(os.path.expanduser(arg))
+#             elif isinstance(arg, Iterable):
+#                 # in case arg is a Generator, check its type will exhaust it
+#                 arg = list(arg)
+#                 if not all(isinstance(x, str) for x in arg):
+#                     raise RuntimeError('Invalid filename: {}'.format(arg))
+#                 self._targets.extend(arg)
+#             else:
+#                 raise RuntimeError('Unrecognized file: {}'.format(arg))
+#
+#     def exists(self, mode='any'):
+#         return all(FileTarget(x).exists(mode) for x in self._targets)
+#
+#     def name(self):
+#         return repr(self._targets)
+#
+#     def signature(self, mode='any'):
+#         return textMD5(repr(self._targets))
+#
 class dynamic(BaseTarget):
     '''A dynamic executable that only handles input files when
     it is available. This target is handled directly with its `resolve`
