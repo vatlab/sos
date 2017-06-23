@@ -86,7 +86,7 @@ class PythonCompleter:
 
     def get_completions(self, line):
         text = last_valid(line)
-        
+
         completer = rlcompleter.Completer(env.sos_dict._dict)
         return text, completer.global_matches(text)
 

@@ -379,8 +379,9 @@ define([
             .css("margin-left", "0.75em")
             .attr("class", "form-control select-xs");
         // .change(select_kernel);
-        if (Jupyter.toolbar.element.has("#kernel_selector").length === 0)
+        if (Jupyter.toolbar.element.has("#kernel_selector").length === 0) {
             Jupyter.toolbar.element.append(dropdown);
+		}
         // remove any existing items
         $("#kernel_selector").empty();
         $.each(window.KernelList, function(key, value) {
@@ -768,8 +769,9 @@ define([
 
 
     function highlight_toc_item(evt, data) {
-        if ($(".toc").length === 0)
+        if ($(".toc").length === 0) {
             return;
+		}
         var c = data.cell.element; //
         if (c) {
             var ll = $(c).find(":header");
@@ -778,7 +780,7 @@ define([
             }
             var elt = ll[ll.length - 1];
             if (elt) {
-                var highlighted_item = $('.toc').find('a[href="#' + elt.id + '"]');
+                var highlighted_item = $(".toc").find('a[href="#' + elt.id + '"]');
                 if (evt.type === "execute") {
                     // remove the selected class and add execute class
                     // il the cell is selected again, it will be highligted as selected+running
@@ -813,7 +815,7 @@ define([
             highlight_toc_item("toc_link_click", {
                 cell: cell
             });
-        })
+        });
         return a;
     };
 
@@ -872,7 +874,7 @@ define([
             // This anchor is automatically removed when building toc links. The original id is also preserved and an anchor is created
             // using it.
             // Finally a heading line can be linked to by [link](#initialID), or [link](#initialID-num_str) or [link](#myanchor)
-            h.id = h.id.replace(/\$/g, "").replace("\\", "")
+            h.id = h.id.replace(/\$/g, "").replace("\\", "");
             if (!$(h).attr("saveid")) {
                 $(h).attr("saveid", h.id)
             } //save original id
@@ -980,7 +982,7 @@ define([
         // if panel-wrapper is undefined (first run(?), then hide it)
         // if ($("#panel-wrapper").css("display") === undefined) $("#panel-wrapper").css("display", "none") //block
         if (!$("#panel-wrapper").css("display")) {
-			$("#panel-wrapper").css("display", "block") //block
+			$("#panel-wrapper").css("display", "block"); //block
 		}
         $("#site").bind("siteHeight", function() {
             $("#panel-wrapper").css("height", $("#site").height());
@@ -994,13 +996,13 @@ define([
             setTimeout(function() {
                 $("#notebook-container").css("width", $("#notebook").width() - $("#panel-wrapper").width() - 30);
                 $("#notebook-container").css("margin-left", $("#panel-wrapper").width() + 30);
-            }, 500)
+            }, 500);
             setTimeout(function() {
                 $("#panel-wrapper").css("height", $("#site").height());
-            }, 500)
+            }, 500);
             setTimeout(function() {
                 $("#panel-wrapper").css("top", $("#header").height());
-            }, 500) //wait a bit
+            }, 500); //wait a bit
             $("#panel-wrapper").css("left", 0);
 
         }
@@ -1107,7 +1109,7 @@ define([
                     panel_cell.execute();
                     return false;
                 })
-            )
+            );
 
         add_to_panel_history("sos", "%sossave --to html --force", "");
         add_to_panel_history("sos", "%preview --workflow", "");
