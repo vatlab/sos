@@ -374,6 +374,7 @@ download: dest_dir='tmp'
 [0]
 download: dest_dir='tmp', decompress=True
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/non-existing.gz
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/programs/SCORE-Seq-3.0-linux-64.zip	
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq-hg18_20100817.DB.gz
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_CHB_freq.ann
@@ -398,7 +399,16 @@ download: dest_dir='tmp', decompress=True
         wf = script.workflow()
         Base_Executor(wf).run()
         #
+        script = SoS_Script(r'''
+[0]
+download: dest_dir='tmp', decompress=True
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/programs/SKAT_0.82.tar.gz
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={'sig_mode': 'build'}).run()
+        #
         shutil.rmtree('tmp')
+
 
     def testPandoc(self):
         '''Test action pandoc'''
