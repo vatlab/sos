@@ -33,26 +33,19 @@ before_install:
     # downgrade python if needed
     - conda create -n python_test python=$TRAVIS_PYTHON_VERSION anaconda
     - source activate python_test
-    # https://github.com/jupyter/jupyter/issues/150
-    - pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm 
-    - pip install entrypoints
-    - pip install jupyter
-    # install JavaScript kernel
-    - sudo apt-get install nodejs-legacy npm
-    - sudo npm install -g ijavascript
-    - ijsinstall --spec-path=full
-    - jupyter kernelspec list --json
-    - jupyter  qtconsole  --kernel javascript
-    #
     # add docker
     - pip install docker
     # packages required by SoS
+    - pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm 
     - pip install fasteners pygments ipython ptpython networkx pydotplus
     # for testing purposes
     - pip install scipy
     # preview figure
     - pip install wand graphviz
     - sudo apt-get install libmagickwand-dev libmagickcore5-extra graphviz
+    # https://github.com/jupyter/jupyter/issues/150
+    - pip install entrypoints
+    - pip install jupyter
     - pip install coverage
     - pip install codacy-coverage
     - pip install pytest pytest-cov
@@ -70,6 +63,12 @@ before_install:
     #
     # for pdf generation
     - sudo apt-get install -y texlive-xetex texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended
+    # install JavaScript kernel
+    - sudo apt-get install nodejs-legacy npm
+    - sudo npm install -g ijavascript
+    #- sudo npm install -g itypescript
+    - ijsinstall --spec-path=full
+    - jupyter kernelspec list --json
     #
     # install bash kernel
     - pip install bash_kernel
@@ -85,10 +84,10 @@ before_script:
 script:
     # coverage does not seem to work well with python 3.6, but it does not really matter because we have coverage report from python 3.5 already
     - 'if [ $TRAVIS_PYTHON_VERSION == "3.6" ]; then
-           pytest -x -v --ignore rq --durations 20 . ;
+           pytest -x -v --ignore rq --ignore JavaScript --durations 20 . ;
        else
            pytest -x --cov sos --cov-config ../.coveragerc --cov-report= -v docker;
-           pytest -x --cov sos --cov-config ../.coveragerc --cov-report=xml --cov-append -v --durations 20 --ignore docker --ignore rq .;
+           pytest -x --cov sos --cov-config ../.coveragerc --cov-report=xml --cov-append -v --durations 20 --ignore JavaScript --ignore docker --ignore rq .;
        fi'
       
 after_success:
