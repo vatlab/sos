@@ -164,7 +164,7 @@ a = 5
         '''Testing target executable.'''
         script = SoS_Script('''
 [0]
-depends: executable('ls')
+depends: executable('ls --version', '8')
 sh:
     touch a.txt
 ''')
