@@ -108,7 +108,6 @@ sh:
         self.assertTrue(FileTarget('t_d1/t_f2').exists('signature'))
         self.assertTrue(FileTarget('t_d1/t_f2').exists('target'))
 
-
     def testRemoveSpecificTracked(self):
         # note the t_f1, which is under current directory and has to be remove specifically.
         subprocess.call('sos remove t_f1 ut_f1 t_d2 ut_d2 -t -y', shell=True)
@@ -129,6 +128,32 @@ sh:
         self.assertNonExists(['ut_f1', 'ut_d1/ut_f2', 't_d1/ut_f4'])
         self.assertExists(['t_d1/t_f2', 't_d2/t_d3/t_f3', 't_d2/t_d3', 't_d2', 't_d1', 't_f1'])
         self.assertExists(['ut_d1', 'ut_d2', 'ut_d2/ut_d3', 'ut_d2/ut_d3/ut_f3'])
+
+    def testRemoveByAge(self):
+        '''test remove by age'''
+        subprocess.call('sos remove --age=+1h -y', shell=True)
+        # nothing is removed
+        self.assertExists(['ut_f1', 'ut_d1/ut_f2', 't_d1/ut_f4', 't_d1/t_f2', 't_d2/t_d3/t_f3', 't_d2/t_d3', 't_d2', 't_d1', 't_f1', 'ut_d1', 'ut_d2', 'ut_d2/ut_d3', 'ut_d2/ut_d3/ut_f3'])
+        #
+        subprocess.call('sos remove -t --age=-1h -y', shell=True)
+        self.assertNonExists(['t_d1/t_f2', 't_d2/t_d3/t_f3'])
+        self.assertExists(['ut_f1', 'ut_d1/ut_f2', 't_d1/ut_f4', 't_f1', 't_d2/t_d3', 't_d2', 't_d1', 'ut_d1', 'ut_d2', 'ut_d2/ut_d3', 'ut_d2/ut_d3/ut_f3'])
+        #
+        subprocess.call('sos remove --age=-1h -y', shell=True)
+        self.assertExists(['ut_f1', 't_f1', 't_d2/t_d3', 't_d2', 't_d1', 'ut_d1', 'ut_d2', 'ut_d2/ut_d3'])
+
+    def testRemoveBySize(self):
+        '''test remove by size'''
+        subprocess.call('sos remove --size=+10M -y', shell=True)
+        # nothing is removed
+        self.assertExists(['ut_f1', 'ut_d1/ut_f2', 't_d1/ut_f4', 't_d1/t_f2', 't_d2/t_d3/t_f3', 't_d2/t_d3', 't_d2', 't_d1', 't_f1', 'ut_d1', 'ut_d2', 'ut_d2/ut_d3', 'ut_d2/ut_d3/ut_f3'])
+        #
+        subprocess.call('sos remove -t --size=-1M -y', shell=True)
+        self.assertNonExists(['t_d1/t_f2', 't_d2/t_d3/t_f3'])
+        self.assertExists(['ut_f1', 'ut_d1/ut_f2', 't_d1/ut_f4', 't_f1', 't_d2/t_d3', 't_d2', 't_d1', 'ut_d1', 'ut_d2', 'ut_d2/ut_d3', 'ut_d2/ut_d3/ut_f3'])
+        #
+        subprocess.call('sos remove --size=-1M -y', shell=True)
+        self.assertExists(['ut_f1', 't_f1', 't_d2/t_d3', 't_d2', 't_d1', 'ut_d1', 'ut_d2', 'ut_d2/ut_d3'])
 
     def testRemoveAll(self):
         '''Test remove all specified files'''

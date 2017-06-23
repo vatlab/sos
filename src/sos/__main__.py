@@ -1160,6 +1160,16 @@ def cmd_remove(args, unknown_args):
             if target.is_external() and not args.external():
                 env.logger.debug('Ignore external file {}'.format(filename))
                 return False
+            if args.size:
+                if (args.size > 0 and os.path.getsize(filename) < args.size) or \
+                    (args.size < 0 and os.path.getsize(filename) > -args.size):
+                    env.logger.debug('{} ignored due to size limit {}'.format(filename, args.size))
+                    return False
+            if args.age:
+                if (args.age > 0 and time.time() - os.path.getmtime(filename) < args.age) or \
+                    (args.age < 0 and time.time() - os.path.getmtime(filename) > -args.age):
+                    env.logger.debug('{} ignored due to age limit {}'.format(filename, args.age))
+                    return False
             if get_response('{} untracked file {}'.format('Would remove' if args.dryrun else 'Remove', filename),
                     always_yes = args.dryrun):
                 if not args.dryrun:
