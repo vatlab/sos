@@ -311,7 +311,7 @@ class RemoteHost:
             else:
                 env.logger.warning('Path {} is not under any specified paths of localhost and is mapped to {} on remote host.'.format(source, dest))
             result[source] = dest.replace('\\', '/')
-        elif isinstance(source, Sequence):
+        elif isinstance(source, (Sequence, set)):
             for src in source:
                 result.update(self._map_path(src))
         else:
@@ -341,7 +341,7 @@ class RemoteHost:
             else:
                 env.logger.warning('Path {} is not under any specified paths of localhost and is mapped to {} on remote host.'.format(source, dest))
             return dest.replace('\\', '/')
-        elif isinstance(source, Sequence):
+        elif isinstance(source, (Sequence, set)):
             ret = [self._map_var(x) for x in source]
             return [x for x in ret if x is not None]
         else:
