@@ -28,6 +28,41 @@ from sos.jupyter.test_utils import sos_kernel, get_display_data
 
 class TestSoSMagics(unittest.TestCase):
     #
+
+    def testHelp(self):
+        '''Test help messages'''
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            # create a data frame
+            execute(kc=kc, code='\n'.join('%{} -h'.format(magic) for magic in (
+                'cd', 'debug', 'dict', 'get', 'matplotlib', 'paste', 'preview',
+                'put', 'render', 'rerun', 'run', 'save', 'sandbox', 'set',
+                'sessioninfo', 'sosrun', 'sossave', 'shutdown', 'taskinfo', 'tasks',
+                'toc', 'use', 'with')))
+            wait_for_idle(kc)
+
+    def testMagicConnectInfo(self):
+        '''Test connect info'''
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            # create a data frame
+            execute(kc=kc, code='%connectinfo')
+            wait_for_idle(kc)
+
+    def testMagicMatplotlib(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            # create a data frame
+            execute(kc=kc, code='''
+%matplotlib inline
+In [59]:
+import matplotlib.pyplot as plt
+import numpy as np
+x = np.linspace(0, 10)
+plt.plot(x, np.sin(x), '--', linewidth=2)
+plt.show()''')
+            wait_for_idle(kc)
+
     def testMagicShutdown(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel

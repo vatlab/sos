@@ -258,6 +258,7 @@ class TestSoSKernel(unittest.TestCase):
     def testNewKernel(self):
         '''Test magic use to create new kernels'''
         with sos_kernel() as kc:
+            iopub = kc.iopub_channel
             # create a data frame
             execute(kc=kc, code='%use R2 -l R')
             wait_for_idle(kc)
@@ -267,6 +268,11 @@ class TestSoSKernel(unittest.TestCase):
             wait_for_idle(kc)
             execute(kc=kc, code='%use R4 -c cyan')
             wait_for_idle(kc)
+            execute(kc=kc, code='%with R5 -l sos.R:sos_R -c default')
+            wait_for_idle(kc)
+            execute(kc=kc, code='%with R6 -l unknown -c default')
+            _, stderr = assemble_output(iopub)
+            self.assertTrue('Failed to switch' in stderr, 'expect error {}'.format(stderr))
             execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
 
@@ -300,6 +306,7 @@ class TestSoSKernel(unittest.TestCase):
             # reset sigil
             execute(kc=kc, code='%set_options sigil="${ }"')
             wait_for_idle(kc)
+
 
 if __name__ == '__main__':
     unittest.main()
