@@ -322,7 +322,7 @@ define([
 
         // cell in panel does not have prompt area
         var col = "";
-        if (cell.is_panel !== undefined) {
+        if (cell.is_panel) {
             if (type && window.BackgroundColor[type]) {
                 col = window.BackgroundColor[type];
             }
@@ -365,8 +365,9 @@ define([
 
         cells = nb.get_cells();
         for (var i = 0; i < cells.length; i++) {
-            if (cells[i].cell_type === "code")
+            if (cells[i].cell_type === "code") {
                 changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
+            }
         }
         // update droplist of panel cell
         if (window.my_panel) {
@@ -405,12 +406,12 @@ define([
     var show_toc = function(evt) {
         var cell = window.my_panel.cell;
         cell.clear_input();
-        cell.set_text("%toc")
+        cell.set_text("%toc");
         cell.clear_output();
         var toc = cell.output_area.create_output_area().append(table_of_contents());
         cell.output_area._safe_append(toc);
         adjustPanel();
-    }
+    };
 
     function register_sos_comm() {
         // comm message sent from the kernel
@@ -583,8 +584,8 @@ define([
                 } else {
                     // id, status, status_class, action_class, action_func
                     item.className = "fa fa-fw fa-2x " + data[3];
-                    item.setAttribute('onmouseover', "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[4] + "').removeClass('" + data[3] + "')");
-                    item.setAttribute('onmouseleave', "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[3] + "').removeClass('" + data[4] + "')");
+                    item.setAttribute("onmouseover", "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[4] + "').removeClass('" + data[3] + "')");
+                    item.setAttribute("onmouseleave", "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[3] + "').removeClass('" + data[4] + "')");
                     item.setAttribute("onClick", data[5] + "('" + data[1] + "', '" + data[0] + "')");
                 }
                 if (data[2] === "completed") {
@@ -688,7 +689,7 @@ define([
 
     window.durationFormatter = function(start_date) {
         var ms = new Date() - start_date;
-        var res = []
+        var res = [];
         var seconds = parseInt(ms / 1000);
         var day = Math.floor(seconds / 86400);
         if (day > 0) {
@@ -768,7 +769,7 @@ define([
             return;
         var c = data.cell.element; //
         if (c) {
-            var ll = $(c).find(":header")
+            var ll = $(c).find(":header");
             if (ll.length === 0) {
                 var ll = $(c).prevAll().find(":header");
             }
@@ -824,8 +825,8 @@ define([
         var depth = 1; //var depth = ol_depth(ol);
         var li = ul; //yes, initialize li with ul!
         var all_headers = $("#notebook").find(":header");
-        var min_lvl = 1,
-            lbl_ary = [];
+        var min_lvl = 1;
+        var lbl_ary = [];
         for (; min_lvl <= 6; min_lvl++) {
             if (all_headers.is("h" + min_lvl)) {
                 break;
@@ -902,7 +903,7 @@ define([
 
         $([Jupyter.events]).on("resize-header.Page", function() {
             if (nb.metadata["sos"]["panel"].style === "side") {
-                $("#panel-wrapper").css("top", $("#header").height())
+                $("#panel-wrapper").css("top", $("#header").height());
                 $("#panel-wrapper").css("height", $("#site").height());
             }
         });
@@ -1731,7 +1732,7 @@ define([
         select.change(function() {
             cell.metadata.kernel = window.DisplayName[this.value];
             // cell in panel does not have prompt area
-            if (cell.is_panel !== undefined) {
+            if (cell.is_panel) {
                 if (window.BackgroundColor[this.value])
                     cell.element[0].getElementsByClassName("input")[0].style.backgroundColor = window.BackgroundColor[this.value];
                 else
@@ -1872,10 +1873,10 @@ define([
 
                 var myKeywords = commonKeywords,
                     myBuiltins = commonBuiltins;
-                if (parserConf.extra_keywords !== undefined)
+                if (parserConf.extra_keyword)
                     myKeywords = myKeywords.concat(parserConf.extra_keywords);
 
-                if (parserConf.extra_builtins !== undefined)
+                if (parserConf.extra_builtins)
                     myBuiltins = myBuiltins.concat(parserConf.extra_builtins);
 
                 var singleOperators = parserConf.singleOperators || /^[\+\-\*\/%\$&|\^~<>!@]/;
