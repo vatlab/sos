@@ -31,8 +31,9 @@ import os
 import unittest
 from ipykernel.tests.utils import execute, wait_for_idle
 from sos.jupyter.test_utils import sos_kernel, get_result
+from sos.target import FileTarget
 
-class TestAction(unittest.TestCase):
+class TestJupyterSoS(unittest.TestCase):
     #
     # Beacuse these tests would be called from sos/test, we
     # should switch to this directory so that some location
@@ -61,6 +62,93 @@ sos_run('a')
             execute(kc=kc, code="b")
             res = get_result(iopub)
             self.assertEqual(res, 10)
+
+    def testDAG(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            execute(kc=kc, code='''
+%run
+[a]
+b=10
+
+[default]
+sos_run('a')
+''')
+            wait_for_idle(kc)
+            execute(kc=kc, code="b")
+            res = get_result(iopub)
+            self.assertEqual(res, 10)
+
+    def testTarget(self):
+        for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
+            FileTarget(f).remove('both')
+        #
+        #  A1 <- B1 <- B2 <- B3
+        #   |
+        #   |
+        #  \/
+        #  A2 <- B2 <- C1 <- C2 <- C4
+        #                    C3
+        #
+        script = '''\
+%run -t B1.txt
+[A_1]
+input: 'B1.txt'
+output: 'A1.txt'
+run:
+    touch A1.txt
+
+[A_2]
+depends:  'B2.txt'
+run:
+    touch A2.txt
+
+[B1: provides='B1.txt']
+depends: 'B2.txt'
+run:
+    touch B1.txt
+
+[B2: provides='B2.txt']
+depends: 'B3.txt', 'C1.txt'
+run:
+    touch B2.txt
+
+[B3: provides='B3.txt']
+run:
+    touch B3.txt
+
+[C1: provides='C1.txt']
+depends: 'C2.txt', 'C3.txt'
+run:
+    touch C1.txt
+
+[C2: provides='C2.txt']
+depends: 'C4.txt'
+run:
+    touch C2.txt
+
+[C3: provides='C3.txt']
+depends: 'C4.txt'
+run:
+    touch C3.txt
+
+[C4: provides='C4.txt']
+run:
+    touch C4.txt
+
+        '''
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            execute(kc=kc, code=script)
+            wait_for_idle(kc)
+        # test 1, we only need to generate target 'B1.txt'
+        for f in ['A1.txt', 'A2.txt']:
+            self.assertFalse(FileTarget(f).exists())
+        for f in ['C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
+            t = FileTarget(f)
+            self.assertTrue(t.exists())
+            t.remove('both')
+
 
 
 if __name__ == '__main__':

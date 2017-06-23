@@ -136,9 +136,9 @@ def get_script_to_notebook_parser():
     parser = argparse.ArgumentParser('sos convert FILE.sos FILE._ipynb (or --to ipynb)',
         description='''Convert a sos script to Jupyter notebook (.ipynb)
             so that it can be opened by Jupyter notebook.''')
-    parser.add_argument('-e', '--execute', action='store_true',
-        help='''Execute the notebook as if running "Cell -> Run all" from the
-            Jupyter notebook interface''')
+    #parser.add_argument('-e', '--execute', action='store_true',
+    #    help='''Execute the notebook as if running "Cell -> Run all" from the
+    #        Jupyter notebook interface''')
     return parser
 
 def add_cell(cells, content, cell_type, cell_count, metainfo):
@@ -164,20 +164,20 @@ def add_cell(cells, content, cell_type, cell_count, metainfo):
         )
 
 
-from nbconvert.preprocessors.execute import ExecutePreprocessor, CellExecutionError
-class SoS_ExecutePreprocessor(ExecutePreprocessor):
-    def __init__(self, *args, **kwargs):
-        super(SoS_ExecutePreprocessor, self).__init__(*args, **kwargs)
-
-    def run_cell(self, cell):
-        kernel = cell.metadata.get('kernel', 'SoS')
-        try:
-            source = cell.source
-            cell.source = '%frontend --default-kernel SoS --cell-kernel {}\n{}'.format(kernel, source)
-            print(cell.source)
-            return super(SoS_ExecutePreprocessor, self).run_cell(cell)
-        finally:
-            cell.source = source
+#from nbconvert.preprocessors.execute import ExecutePreprocessor, CellExecutionError
+#class SoS_ExecutePreprocessor(ExecutePreprocessor):
+#    def __init__(self, *args, **kwargs):
+#        super(SoS_ExecutePreprocessor, self).__init__(*args, **kwargs)
+#
+#    def run_cell(self, cell):
+#        kernel = cell.metadata.get('kernel', 'SoS')
+#        try:
+#            source = cell.source
+#            cell.source = '%frontend --default-kernel SoS --cell-kernel {}\n{}'.format(kernel, source)
+#            print(cell.source)
+#            return super(SoS_ExecutePreprocessor, self).run_cell(cell)
+#        finally:
+#            cell.source = source
 
 def script_to_notebook(script_file, notebook_file, args=None, unknown_args=None):
     '''
@@ -296,13 +296,13 @@ def script_to_notebook(script_file, notebook_file, args=None, unknown_args=None)
             }
         }
     )
-    err = None
-    if args and args.execute:
-        ep = SoS_ExecutePreprocessor(timeout=600, kernel_name='sos')
-        try:
-            ep.preprocess(nb, {'metadata': {'path': '.'}})
-        except CellExecutionError as e:
-            err = e
+    #err = None
+    #if args and args.execute:
+    #    ep = SoS_ExecutePreprocessor(timeout=600, kernel_name='sos')
+    #    try:
+    #        ep.preprocess(nb, {'metadata': {'path': '.'}})
+    #    except CellExecutionError as e:
+    #        err = e
     #
     if not notebook_file:
         nbformat.write(nb, sys.stdout, 4)
@@ -310,8 +310,8 @@ def script_to_notebook(script_file, notebook_file, args=None, unknown_args=None)
         with open(notebook_file, 'w') as notebook:
             nbformat.write(nb, notebook, 4)
         env.logger.info('Jupyter notebook saved to {}'.format(notebook_file))
-    if err:
-        raise RuntimeError(repr(err))
+    #if err:
+    #    raise RuntimeError(repr(err))
 
 
 #
