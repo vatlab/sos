@@ -417,7 +417,7 @@ sh:
             tt.write('''
 [10]
 input: for_each={'I': range(10)}
-task: trunk_size=5
+task: trunk_size=5, cores=1, mem='1M', walltime='10m'
 sh:
     echo ${I} > ${I}.txt
     sleep 2
@@ -451,7 +451,7 @@ sh:
             tt.write('''
 [10]
 input: for_each={'I': range(12)}
-task: trunk_size=6, trunk_workers=3
+task: trunk_size=6, trunk_workers=3, mem='1M', walltime='10m'
 sh:
     echo ${I} > ${I}.txt
     sleep 2
