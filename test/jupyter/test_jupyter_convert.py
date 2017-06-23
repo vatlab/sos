@@ -48,6 +48,9 @@ print(output)
         with open('temp/script2.sos', 'w') as script:
             # with tab after run:
             script.write('''
+#! This is supposed to be a markdown
+#! cell
+
 [0]
 seq = range(3)
 input: for_each='seq'
@@ -65,8 +68,8 @@ report('this is action report')
     def testScriptToAndFromNotebook(self):
         '''Test sos show script --notebook'''
         for script_file in self.scripts:
-            script_to_notebook(script_file, script_file + '.ipynb')
-            notebook_to_script(script_file + '.ipynb', script_file)
+            script_to_notebook(script_file, script_file[:-4] + '.ipynb')
+            notebook_to_script(script_file[:-4] + '.ipynb', script_file)
 
     def testConvertAll(self):
         olddir = os.getcwd()
