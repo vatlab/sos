@@ -849,17 +849,6 @@ def list_queues(config_file, verbosity = 1):
             keys = sorted(h.config.keys())
             for key in keys:
                 print('  {} {}'.format((key + ':').ljust(24), h.config[key]))
-
-            if verbosity == 4:
-                if 'template_file' in keys:
-                    template_file = h.config['template_file']
-                    if not os.path.isfile(os.path.expanduser(template_file)):
-                        env.warning('Missing template_file {}'.format(template_file))
-                    else:
-                        print('------ begin of {} -------------'.format(template_file))
-                        with open(os.path.expanduser(template_file)) as tfile:
-                            print(tfile.read())
-                        print('------ end of file ---------------')
             print()
     if verbosity in (1, 2):
         width = [(len(x) for x in row) for row in host_description]

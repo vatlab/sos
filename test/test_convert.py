@@ -69,6 +69,8 @@ report('this is action report')
             args.raw = None
             args.view = False
             script_to_html(script_file, script_file + '.html', args=args)
+            #
+            self.assertEqual(subprocess.call(['sos', 'convert', script_file, '--to', 'html']), 0)
 
     def testScriptToMarkdown(self):
         '''Test sos show script --markdown'''

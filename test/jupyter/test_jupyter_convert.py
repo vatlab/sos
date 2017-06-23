@@ -88,6 +88,13 @@ report('this is action report')
         os.chdir(file_dir)
         subprocess.call('sos convert test.ipynb test_wf.html', shell=True)
         self.assertTrue(os.path.isfile('test_wf.html'))
+        #
+        subprocess.call('sos convert test.ipynb test_wf.html --template sos-report', shell=True)
+        self.assertTrue(os.path.isfile('test_wf.html'))
+        #
+        subprocess.call('sos convert test.ipynb test_wf.html --template sos-full', shell=True)
+        self.assertTrue(os.path.isfile('test_wf.html'))
+        #
         os.chdir(olddir)
 
     @unittest.skipIf(not shutil.which('xelatex'), 'No XeLatex under windows to compile pdf')
