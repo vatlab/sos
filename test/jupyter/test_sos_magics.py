@@ -94,27 +94,7 @@ a=1
 ''')
             _, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
-            # preview dataframe
-            execute(kc=kc, code='''
-%preview mtcars -n -l 10
-%get mtcars --from R
-''')
-            res = get_display_data(iopub, 'text/html')
-            self.assertTrue('dataframe_container' in res and 'Mazda' in res, 'Expect preview {}'.format(res))
-            #
-            execute(kc=kc, code='''
-%preview mtcars -n -s scatterplot mpg disp --by cyl
-%get mtcars --from R
-''')
-            res = get_display_data(iopub, 'text/html')
-            self.assertTrue('Hornet' in res, 'Expect preview {}'.format(res))
-            #
-            execute(kc=kc, code='''
-%preview mtcars -n -s scatterplot _index disp hp mpg --tooltip wt qsec
-%get mtcars --from R
-''')
-            res = get_display_data(iopub, 'text/html')
-            self.assertTrue('Hornet' in res, 'Expect preview {}'.format(res))
+
             # preview csv file
             execute(kc=kc, code='''
 %preview a.csv
@@ -322,6 +302,38 @@ with open('test_blah.txt', 'w') as tb:
 ''')
             wait_for_idle(kc)
 
+    def testVisualizer(self):
+        with sos_kernel() as kc:
+            # preview variable
+            iopub = kc.iopub_channel
+            # preview dataframe
+            execute(kc=kc, code='''
+%preview mtcars -n -l 10
+%get mtcars --from R
+''')
+            res = get_display_data(iopub, 'text/html')
+            self.assertTrue('dataframe_container' in res and 'Mazda' in res, 'Expect preview {}'.format(res))
+            #
+            execute(kc=kc, code='''
+%preview mtcars -n -s scatterplot mpg disp --by cyl
+%get mtcars --from R
+''')
+            res = get_display_data(iopub, 'text/html')
+            self.assertTrue('Hornet' in res, 'Expect preview {}'.format(res))
+            #
+            execute(kc=kc, code='''
+%preview mtcars -n -s scatterplot _index disp hp mpg --tooltip wt qsec
+%get mtcars --from R
+''')
+            res = get_display_data(iopub, 'text/html')
+            self.assertTrue('Hornet' in res, 'Expect preview {}'.format(res))
+            #
+            execute(kc=kc, code='''
+%preview mtcars -n -s scatterplot disp hp --log xy --xlim 60 80 --ylim 40 300
+%get mtcars --from R
+''')
+            res = get_display_data(iopub, 'text/html')
+            self.assertTrue('Hornet' in res, 'Expect preview {}'.format(res))
 
 
 if __name__ == '__main__':
