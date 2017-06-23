@@ -355,8 +355,9 @@ define([
         // this is why we should not add additional UI elements when the function is called
         // the second time.
 
+        var i = 0;
         var cells = nb.get_cells();
-        for (var i = 0; i < cells.length; i++) {
+        for (i = 0; i < cells.length; i++) {
             add_lan_selector(cells[i], cells[i].metadata.kernel);
         }
         if (window.my_panel) {
@@ -364,7 +365,7 @@ define([
         }
 
         cells = nb.get_cells();
-        for (var i = 0; i < cells.length; i++) {
+        for (i = 0; i < cells.length; i++) {
             if (cells[i].cell_type === "code") {
                 changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
             }
@@ -490,10 +491,11 @@ define([
                     if (k_idx === -1) {
                         nb.metadata["sos"]["kernels"].push(data[i]);
                     } else {
+                        var r;
                         // if kernel exist update the rest of the information, but warn users first on
                         // inconsistency
                         if (nb.metadata["sos"]["kernels"][k_idx][1] !== data[i][1]) {
-                            var r = confirm("This notebook used Jupyter kernel " + nb.metadata["sos"]["kernels"][k_idx][1] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][1] + " instead?");
+                            r = confirm("This notebook used Jupyter kernel " + nb.metadata["sos"]["kernels"][k_idx][1] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][1] + " instead?");
                             if (r) {
                                 nb.metadata["sos"]["kernels"][k_idx][1] = data[i][1];
                             }
@@ -504,7 +506,7 @@ define([
                             if (nb.metadata["sos"]["kernels"][k_idx][2] === "") {
                                 nb.metadata["sos"]["kernels"][k_idx][2] = data[i][2];
                             } else if (data[i][2] !== "") {
-                                var r = confirm("This notebook used language definition " + nb.metadata["sos"]["kernels"][k_idx][2] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][2] + " instead?");
+                                r = confirm("This notebook used language definition " + nb.metadata["sos"]["kernels"][k_idx][2] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][2] + " instead?");
                                 if (r) {
                                     nb.metadata["sos"]["kernels"][k_idx][2] = data[i][2];
                                 }
@@ -604,7 +606,7 @@ define([
                                 /* if the does not have any pending one, re-run it. */
                                 var cells = nb.get_cells();
                                 var rerun = null;
-                                for (var i = 0; i < cells.length; ++i) {
+                                for (i = 0; i < cells.length; ++i) {
                                     if (cells[i].cell_id === cell) {
                                         rerun = cells[i];
                                         break;
@@ -727,7 +729,8 @@ define([
     function changeCellStyle() {
         var cells = nb.get_cells();
         // setting up background color and selection according to notebook metadata
-        for (var i in cells) {
+        var i;
+        for (i in cells) {
             if (cells[i].cell_type === "code") {
                 changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
             }
@@ -735,7 +738,7 @@ define([
         $("[id^=status_]").removeAttr("onClick").removeAttr("onmouseover").removeAttr("onmouseleave");
         var tasks = $("[id^=status_]");
         window.unknown_tasks = [];
-        for (var i = 0; i < tasks.length; ++i) {
+        for (i = 0; i < tasks.length; ++i) {
             // status_localhost_5ea9232779ca19591819072642646d16
             if (tasks[i].id.match("^status_[^_]+_[0-9a-f]{32}$")) {
                 tasks[i].className = "fa fa-fw fa-2x fa-refresh fa-spin";
@@ -771,7 +774,7 @@ define([
         if (c) {
             var ll = $(c).find(":header");
             if (ll.length === 0) {
-                var ll = $(c).prevAll().find(":header");
+                ll = $(c).prevAll().find(":header");
             }
             var elt = ll[ll.length - 1];
             if (elt) {
