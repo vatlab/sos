@@ -60,11 +60,6 @@ report('this is action report')
     def tearDown(self):
         shutil.rmtree('temp')
 
-    def testConverterCmd(self):
-        '''Test convert commmand'''
-        subprocess.call('sos convert -h')
-        subprocess.call('sos convert sos-md -h')
-
     def testScriptToHtml(self):
         '''Test sos show script --html'''
         for script_file in self.scripts:

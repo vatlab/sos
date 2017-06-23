@@ -87,6 +87,7 @@ class TestExecute(unittest.TestCase):
         self.assertEqual(subprocess.call('sos dryrun scripts/master.sos L', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos-runner scripts/master L', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos convert -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos convert sos-ipynb -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         #
         self.assertEqual(subprocess.call('sos config -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos config -g --get', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
