@@ -65,6 +65,27 @@ sos_run('a')
             res = get_result(iopub)
             self.assertEqual(res, 10)
 
+    def testRerun(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            execute(kc=kc, code='''
+%run
+parameter: a=10
+
+[default]
+b = a
+''')
+            wait_for_idle(kc)
+            #
+            execute(kc=kc, code='''
+%rerun --a 20
+''')
+            wait_for_idle(kc)
+            execute(kc=kc, code="b")
+            res = get_result(iopub)
+            self.assertEqual(res, 20)
+
+
     def testDAG(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel

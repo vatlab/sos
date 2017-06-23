@@ -218,7 +218,7 @@ R:
             self.assertGreater(len(res), 1000, 'Expect a image {}'.format(res))
             # preview jpg
             execute(kc=kc, code='''
-%preview a.jpg
+%preview a.jp*
 R:
     jpeg('a.jpg')
     plot(0)

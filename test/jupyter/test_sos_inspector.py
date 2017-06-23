@@ -30,7 +30,13 @@ def inspect(kc, name, pos=0):
     reply = kc.get_shell_msg(timeout=2)
     return reply['content']
 
-class TestKernel(unittest.TestCase):
+def is_complete(kc, code):
+    flush_channels()
+    kc.is_complete(code)
+    reply = kc.get_shell_msg(timeout=2)
+    return reply['content']
+
+class TestSoSCompleter(unittest.TestCase):
     def testCompleter(self):
         with sos_kernel() as kc:
             # match magics
@@ -58,10 +64,24 @@ class TestKernel(unittest.TestCase):
             ins_alpha = inspect(kc, 'alpha')['data']['text/plain']
             self.assertTrue('5' in ins_alpha, 'Returned: {}'.format(ins_alpha))
             wait_for_idle(kc)
-            ins_get = inspect(kc, '%get', 2)['data']['text/plain']
-            self.assertTrue('usage: %get' in ins_get, 'Returned: {}'.format(ins_get))
+            for magic in ('get', 'run', 'set', 'sosrun', 'rerun', 'toc'):
+                ins_magic = inspect(kc, '%' + magic, 2)['data']['text/plain']
+                self.assertTrue('usage: %' + magic in ins_magic, 'Returned: {}'.format(ins_magic))
             wait_for_idle(kc)
             execute(kc=kc, code='%use SoS')
+            wait_for_idle(kc)
+
+    def testIsComplete(self):
+        with sos_kernel() as kc:
+            # match magics
+            status = is_complete(kc, 'prin')
+            self.assertEqual(status['status'], 'incomplete')
+            #
+            status = is_complete(kc, 'a=1')
+            self.assertEqual(status['status'], 'incomplete')
+            #
+            status = is_complete(kc, '%dict -r')
+            self.assertEqual(status['status'], 'complete')
             wait_for_idle(kc)
 
 if __name__ == '__main__':
