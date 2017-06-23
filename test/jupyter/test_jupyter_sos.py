@@ -33,6 +33,7 @@ import subprocess
 from ipykernel.tests.utils import execute, wait_for_idle
 from sos.jupyter.test_utils import sos_kernel, get_result
 from sos.target import FileTarget
+from sos.utils import env
 
 class TestJupyterSoS(unittest.TestCase):
     #
@@ -177,6 +178,31 @@ fail
             res = get_result(iopub)
             self.assertEqual(res, 0)
 
+
+    def testReverseSharedVariable(self):
+        '''Test shared variables defined in auxiliary steps'''
+        FileTarget('a.txt').remove('both')
+        script = r'''
+%run B
+[A: shared='b', provides='a.txt']
+b = 1
+run:
+    touch a.txt
+
+[B_1]
+depends: 'a.txt'
+
+[B_2]
+print(b)
+
+'''
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            execute(kc=kc, code=script)
+            wait_for_idle(kc)
+            execute(kc=kc, code="b")
+            res = get_result(iopub)
+            self.assertEqual(res, 1)
 
 if __name__ == '__main__':
     unittest.main()
