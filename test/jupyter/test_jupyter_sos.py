@@ -29,6 +29,7 @@
 #
 import os
 import unittest
+import subprocess
 from ipykernel.tests.utils import execute, wait_for_idle
 from sos.jupyter.test_utils import sos_kernel, get_result
 from sos.target import FileTarget
@@ -43,6 +44,7 @@ class TestJupyterSoS(unittest.TestCase):
         self.olddir = os.getcwd()
         if os.path.dirname(__file__):
             os.chdir(os.path.dirname(__file__))
+        subprocess.call('sos remove -s', shell=True)
 
     def tearDown(self):
         os.chdir(self.olddir)
@@ -91,7 +93,7 @@ sos_run('a')
         #                    C3
         #
         script = '''\
-%run -t B1.txt
+%run -t B1.txt -s force
 [A_1]
 input: 'B1.txt'
 output: 'A1.txt'
@@ -146,7 +148,7 @@ run:
             self.assertFalse(FileTarget(f).exists())
         for f in ['C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
             t = FileTarget(f)
-            self.assertTrue(t.exists())
+            self.assertTrue(t.exists(), '{} should exist'.format(f))
             t.remove('both')
 
 
