@@ -100,7 +100,11 @@ report('this is action report')
         os.chdir(file_dir)
         subprocess.call('sos convert test.ipynb test_wf.md', shell=True)
         self.assertTrue(os.path.isfile('test_wf.md'))
+        # output to stdout
+        subprocess.call('sos convert test.ipynb --to md > test_wf1.md', shell=True)
+        self.assertTrue(os.path.isfile('test_wf1.md'))
         os.chdir(olddir)
+        #
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestConvert)
