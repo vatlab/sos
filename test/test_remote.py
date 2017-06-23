@@ -172,7 +172,9 @@ run:
         out = subprocess.check_output('sos status {} -c docker.yml -q ts'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']), 'Expect all completed jobs: ' + out)
         # get more detailed results
-        out = subprocess.check_output('sos status {} -c docker.yml -q ts -v4'.format(tasks), shell=True).decode()
+        self.assertEqual(subprocess.call('sos status {} -c docker.yml -q ts -v4'.format(tasks), shell=True), 0)
+        self.assertEqual(subprocess.call('sos status -c docker.yml -q ts -v2', shell=True), 0)
+        self.assertEqual(subprocess.call('sos status {} -c docker.yml -q ts --html'.format(tasks), shell=True), 0)
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testTaskSpoolerWithForceSigMode(self):
