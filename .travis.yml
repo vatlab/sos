@@ -37,7 +37,9 @@ before_install:
     - pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm 
     - pip install entrypoints
     - pip install jupyter
-    #- sudo npm install -g itypescript
+    # install JavaScript kernel
+    - sudo apt-get install nodejs-legacy npm
+    - sudo npm install -g ijavascript
     - ijsinstall --spec-path=full
     - jupyter kernelspec list --json
     - jupyter  qtconsole  --kernel javascript
@@ -68,9 +70,6 @@ before_install:
     #
     # for pdf generation
     - sudo apt-get install -y texlive-xetex texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended
-    # install JavaScript kernel
-    - sudo apt-get install nodejs-legacy npm
-    - sudo npm install -g ijavascript
     #
     # install bash kernel
     - pip install bash_kernel
