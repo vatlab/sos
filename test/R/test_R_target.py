@@ -73,7 +73,7 @@ R:
         '''Test re-execution of steps with R_library'''
         script = SoS_Script('''
 [1]
-depends: R_library("ggplot2")
+depends: R_library("ggplot2", "2.2+")
 output: '1.txt'
 run:
     sleep 5
