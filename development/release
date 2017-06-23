@@ -10,7 +10,7 @@
 [patch: shared='version']
 parameter: version = str
 sh:
-	perl -pi.bak -e "s/^__version__ = .*/__version__ = '${version}'/" ../sos/_version.py
+	perl -pi.bak -e "s/^__version__ = .*/__version__ = '${version}'/" ../src/sos/_version.py
 
 
 [pip]
