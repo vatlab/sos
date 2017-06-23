@@ -702,15 +702,12 @@ class Host:
         # just to make it clear that alias refers to remote_host
         REMOTE = self.alias
         # now we need to find definition for local and remote host
-        if 'hosts' not in env.sos_dict['CONFIG']:
-            if LOCAL == 'localhost' and REMOTE == 'localhost':
-                self.config = {
-                        'address': 'localhost',
-                        'alias': 'localhost',
-                }
-            else:
-                raise ValueError('No hosts definitions for local and remote hosts {} and {}'.format(LOCAL, REMOTE))
-        else:
+        if LOCAL == 'localhost' and REMOTE == 'localhost':
+            self.config = {
+                    'address': 'localhost',
+                    'alias': 'localhost',
+            }
+        elif 'hosts' in env.sos_dict['CONFIG']:
             if LOCAL not in env.sos_dict['CONFIG']['hosts']:
                 raise ValueError('No hosts definition for local host {}'.format(LOCAL))
             if REMOTE not in env.sos_dict['CONFIG']['hosts']:
@@ -747,6 +744,8 @@ class Host:
                     #
                     self.config['path_map'].extend(['{} -> {}'.format(append_slash(cfg[LOCAL]['paths'][x]), append_slash(cfg[REMOTE]['paths'][x])) \
                         for x in cfg[LOCAL]['paths'].keys()])
+        else:
+            raise ValueError('No hosts definitions for local and remote hosts {} and {}'.format(LOCAL, REMOTE))
         #
         self.config['alias'] = self.alias
         self.description = self.config.get('description', '')

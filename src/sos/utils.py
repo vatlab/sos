@@ -723,6 +723,8 @@ def pretty_size(n,pow=0,b=1024,u='B',pre=['']+[p+'i'for p in'KMGTPEZY']):
     return "%%.%if %%s%%s"%abs(pow%(-pow-1))%(n/b**float(pow),pre[pow],u)
 
 def expand_size(size):
+    if isinstance(size, int):
+        return size
     m = re.match(r'\s*([+-]?)([\.\d]*)\s*(\S+)\s*', size)
     if not m:
         raise ValueError('Invalid size specified: {}'.format(size))
