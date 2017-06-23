@@ -204,7 +204,7 @@ R_library = sos.R.target:R_library
 Py_Module = sos.Python3.target:Py_Module
 
 [sos_actions]
-execute_script = sos.actions:execute_script
+script = sos.actions:script
 sos_run = sos.actions:sos_run
 fail_if = sos.actions:fail_if
 warn_if = sos.actions:warn_if

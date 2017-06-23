@@ -565,9 +565,23 @@ python: workdir='temp_wdr'
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(FileTarget(os.path.join('temp_wdr', 'a2.txt')))
+        self.assertTrue(FileTarget(os.path.join('temp_wdr', 'a2.txt')).exists())
         with open(os.path.join('temp_wdr', 'a.txt')) as tmp:
             self.assertEqual('hello', tmp.read())
+
+    def testActionScript(self):
+        '''Test action script'''
+        script = SoS_Script(r'''
+[A_1]
+script: interpreter='python'
+  with open('something.txt', 'w') as tmp:
+    tmp.write('something')
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertTrue(FileTarget('something.txt').exists())
+        with open('something.txt') as tmp:
+            self.assertEqual('something', tmp.read())
 
     def testRegenerateReport(self):
         '''Testing the regeneration of report once is needed. The problem

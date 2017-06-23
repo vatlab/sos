@@ -46,7 +46,7 @@ from .utils import env, transcribe, AbortExecution, short_repr, get_traceback
 from .sos_eval import Undetermined, interpolate
 from .target import FileTarget, fileMD5, executable, UnknownTarget, BaseTarget
 
-__all__ = ['SoS_Action', 'execute_script', 'sos_run',
+__all__ = ['SoS_Action', 'script', 'sos_run',
     'fail_if', 'warn_if', 'stop_if',
     'download',
     'run', 'perl', 'ruby', 'node', 'JavaScript',
@@ -323,7 +323,7 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, **kwargs):
     try:
         my_name = env.sos_dict['step_name']
         args_output = ', '.join('{}={}'.format(x, short_repr(y)) for x,y in args.items() if not x.startswith('__'))
-        env.logger.info('Executing workflow ``{}`` with input ``{}`` and {}'
+        env.logger.debug('Executing workflow ``{}`` with input ``{}`` and {}'
             .format(workflow, short_repr(env.sos_dict.get('_input', None), True),
             'no args' if not args_output else args_output))
 
@@ -377,7 +377,7 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, **kwargs):
         env.sos_dict.set('step_name', my_name)
 
 @SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'interpreter', 'suffix', 'args'])
-def execute_script(script, interpreter, suffix, args='', **kwargs):
+def script(script, interpreter, suffix='', args='', **kwargs):
     '''Execute specified script using specified interpreter.'''
     if env.config['run_mode'] == 'dryrun':
         print('{}:\n{}\n'.format(interpreter, script))

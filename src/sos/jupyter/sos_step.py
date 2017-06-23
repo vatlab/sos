@@ -23,7 +23,7 @@
 
 from sos.sos_step import Step_Executor, Base_Step_Executor, PendingTasks
 from sos.hosts import Host
-from sos.utils import env
+from sos.utils import env, short_repr
 import time
 
 class Interactive_Step_Executor(Step_Executor):
@@ -66,7 +66,14 @@ class Interactive_Step_Executor(Step_Executor):
     def run(self):
         return Base_Step_Executor.run(self)
 
-    #def log(self, stage=None, msg=None):
-    #    if stage == 'start':
-    #        env.logger.info('Running ``{}``: {}'.format(self.step.step_name(), self.step.comment.strip()))
+    def log(self, stage=None, msg=None):
+        if stage == 'start':
+            env.logger.debug('{} ``{}``: {}'.format('Checking' if self.run_mode == 'dryrun' else 'Executing',
+                self.step.step_name(), self.step.comment.strip()))
+        elif stage == 'input':
+            if env.sos_dict['input'] is not None:
+                env.logger.debug('input:    ``{}``'.format(short_repr(env.sos_dict['input'])))
+        elif stage == 'output':
+            if env.sos_dict['output'] is not None:
+                env.logger.debug('output:   ``{}``'.format(short_repr(env.sos_dict['output'])))
 

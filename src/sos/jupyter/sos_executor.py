@@ -115,10 +115,10 @@ class Interactive_Executor(Base_Executor):
         if targets:
             for t in targets:
                 if not FileTarget(t).exists('target') and FileTarget(t).exists('signature'):
-                    env.logger.info('Re-generating {}'.format(t))
+                    env.logger.debug('Re-generating {}'.format(t))
                     FileTarget(t).remove('signature')
                 else:
-                    env.logger.info('Target {} already exists'.format(t))
+                    env.logger.debug('Target {} already exists'.format(t))
         #
         while True:
             # find any step that can be executed and run it, and update the DAT
@@ -197,7 +197,7 @@ class Interactive_Executor(Base_Executor):
             except UnavailableLock as e:
                 runnable._status = 'pending'
                 runnable._signature = (e.output, e.sig_file)
-                env.logger.info('Waiting on another process for step {}'.format(section.step_name()))
+                env.logger.debug('Waiting on another process for step {}'.format(section.step_name()))
             except PendingTasks as e:
                 self.record_quit_status(e.tasks)
                 raise
@@ -207,7 +207,7 @@ class Interactive_Executor(Base_Executor):
                 raise
         if self.md5:
             self.save_workflow_signature(dag)
-            env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
+            env.logger.debug('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
         # remove task pending status if the workflow is completed normally
         try:
             wf_status = os.path.join(os.path.expanduser('~'), '.sos', self.md5 + '.status')
