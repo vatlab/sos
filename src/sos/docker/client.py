@@ -88,19 +88,19 @@ class SoS_DockerClient:
         return (':' in image and image in images) or \
             (':' not in image and '{}:latest'.format(image) in images)
 
-    def stream(self, line):
-        # properly output streamed output
-        try:
-            sys.stdout.write(json.loads(line).get('stream', ''))
-        except ValueError:
-            # sometimes all the data is sent on a single line ????
-            #
-            # ValueError: Extra data: line 1 column 87 - line 1 column
-            # 33268 (char 86 - 33267)
-            # This ONLY works because every line is formatted as
-            # {"stream": STRING}
-            for obj in re.findall('{\s*"stream"\s*:\s*"[^"]*"\s*}', line):
-                sys.stdout.write(json.loads(obj).get('stream', ''))
+    #def stream(self, line):
+    #    # properly output streamed output
+    #    try:
+    #        sys.stdout.write(json.loads(line).get('stream', ''))
+    #    except ValueError:
+    #        # sometimes all the data is sent on a single line ????
+    #        #
+    #        # ValueError: Extra data: line 1 column 87 - line 1 column
+    #        # 33268 (char 86 - 33267)
+    #        # This ONLY works because every line is formatted as
+    #        # {"stream": STRING}
+    #        for obj in re.findall('{\s*"stream"\s*:\s*"[^"]*"\s*}', line):
+    #            sys.stdout.write(json.loads(obj).get('stream', ''))
 
     def build(self, script, **kwargs):
         if not self.client:
@@ -138,12 +138,12 @@ class SoS_DockerClient:
             raise RuntimeError('Failed to pull image {}'.format(image))
         return ret
 
-    def commit(self, **kwargs):
-        if not self.client:
-            raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
-        for line in self.client.commit(**kwargs):
-            self.stream(line.decode())
-        return 0
+    #def commit(self, **kwargs):
+    #    if not self.client:
+    #        raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
+    #    for line in self.client.commit(**kwargs):
+    #        self.stream(line.decode())
+    #    return 0
 
     def run(self, image, script='', interpreter='', args='', suffix='.sh', **kwargs):
         if self.client is None:
