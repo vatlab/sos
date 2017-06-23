@@ -67,8 +67,8 @@ before_install:
     - sudo apt-get install nodejs-legacy npm
     - sudo npm install -g ijavascript
     #- sudo npm install -g itypescript
-    - ijsinstall
-    - jupyter kernelspec list
+    - ijsinstall --spec-path=full
+    - jupyter kernelspec list --json
     - export PATH=/home/travis/.nvm/versions/node/v7.4.0/bin:$PATH
     #
     # install bash kernel
@@ -85,10 +85,10 @@ before_script:
 script:
     # coverage does not seem to work well with python 3.6, but it does not really matter because we have coverage report from python 3.5 already
     - 'if [ $TRAVIS_PYTHON_VERSION == "3.6" ]; then
-           pytest -x -v --ignore rq --ignore JavaScript --durations 20 . ;
+           pytest -x -v --ignore rq --durations 20 . ;
        else
            pytest -x --cov sos --cov-config ../.coveragerc --cov-report= -v docker;
-           pytest -x --cov sos --cov-config ../.coveragerc --cov-report=xml --cov-append -v --durations 20 --ignore JavaScript --ignore docker --ignore rq .;
+           pytest -x --cov sos --cov-config ../.coveragerc --cov-report=xml --cov-append -v --durations 20 --ignore docker --ignore rq .;
        fi'
       
 after_success:
