@@ -221,6 +221,7 @@ run:
         out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']))
 
+    @unittest.skipIf(sys.platform == 'win32' or not has_docker, 'No symbloc link problem under win32 or no docker')
     def testToHostRename(self):
         '''Test to_host with dictionary'''
         script = SoS_Script('''
