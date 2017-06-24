@@ -494,41 +494,33 @@ class RemoteHost:
         seen = set()
         # avoid variable to be handled twice
         rvars = [x for x in mvars if not (x in seen or seen.add(x))]
-        preserved = set()
-        if 'preserved_vars' in task_vars['_runtime']:
-            if isinstance(task_vars['_runtime']['preserved_vars'], str):
-                preserved.add(task_vars['_runtime']['preserved_vars'])
-            elif isinstance(task_vars['_runtime']['preserved_vars'], (set, Sequence)):
-                preserved |= set(task_vars['_runtime']['preserved_vars'])
+        # translate cur_dir, home_dir, and workdir
+        task_vars['_runtime']['cur_dir'] = self._map_var(task_vars['_runtime']['cur_dir'])
+        task_vars['_runtime']['home_dir'] = self._map_var(task_vars['_runtime']['home_dir'])
+        if 'workdir' in task_vars['_runtime']:
+            task_vars['_runtime']['workdir'] = self._map_var(task_vars['_runtime']['workdir'])
+
+        mapped_vars = set()
+        if 'mapp_vars' in task_vars['_runtime']:
+            if isinstance(task_vars['_runtime']['mapped_vars_vars'], str):
+                mapped_vars.add(task_vars['_runtime']['mapped_vars_vars'])
+            elif isinstance(task_vars['_runtime']['mapped_vars_vars'], (set, Sequence)):
+                mapped_vars |= set(task_vars['_runtime']['mapped_vars_vars'])
             else:
-                raise ValueError('Unacceptable value for runtime option preserved_vars: {}'.format(task_vars['_runtime']['preserved_vars']))
-        env.logger.debug('Translating {}'.format(rvars))
-        for var in rvars:
-            if var in preserved:
-                env.logger.debug('Value of variable {} is preserved'.format(var))
-            elif var == '_runtime':
-                task_vars[var]['cur_dir'] = self._map_var(task_vars[var]['cur_dir'])
-                task_vars[var]['home_dir'] = self._map_var(task_vars[var]['home_dir'])
-                if 'workdir' in task_vars[var]:
-                    task_vars[var]['workdir'] = self._map_var(task_vars[var]['workdir'])
-            elif var in task_vars:
-                if isinstance(task_vars[var], (type(None), int)) or not pickleable(task_vars[var], var):
-                    continue
-                try:
-                    old_var = task_vars[var]
-                    task_vars[var] = self._map_var(task_vars[var])
-                    if not task_vars[var]:
-                        continue
-                    # looks a bit suspicious
-                    if isinstance(old_var, str) and old_var != task_vars[var] and not os.path.exists(os.path.expanduser(old_var)) \
-                            and os.sep not in old_var:
-                        env.logger.warning('On {}: ``{}`` = {}'.format(self.alias, var, short_repr(task_vars[var])))
-                    else:
-                        env.logger.info('On {}: ``{}`` = {}'.format(self.alias, var, short_repr(task_vars[var])))
-                except Exception as e:
-                    env.logger.debug('Failed to map variable {}: {}'.format(var, e))
+                raise ValueError('Unacceptable value for runtime option mapped_vars_vars: {}'.format(task_vars['_runtime']['mapped_vars_vars']))
+
+        for var in mapped_vars:
+            if var not in task_vars:
+                env.logger.warning('{} is not in task namespace and cannot be mapped.'.format(var))
+                continue
+            if isinstance(task_vars[var], str):
+                task_vars[var] = self._map_var(task_vars[var])
+                env.logger.info('On {}: ``{}`` = {}'.format(self.alias, var, short_repr(task_vars[var])))
+            elif isinstance(task_vars[var], (Sequence, set)):
+                task_vars[var] = type(task_vars[var])(self._map_var(task_vars[var]))
+                env.logger.info('On {}: ``{}`` = {}'.format(self.alias, var, short_repr(task_vars[var])))
             else:
-                env.logger.debug('Variable {} not in env.'.format(var))
+                env.logger.warning('Fail to map {} of type {}'.format(var, task_vars[var].__class__.__name__))
 
         # server restrictions #488
         task_vars['_runtime']['max_mem'] = self.config.get('max_mem', None)
