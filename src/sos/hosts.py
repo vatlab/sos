@@ -192,12 +192,25 @@ class LocalHost:
             p.join()
 
     def receive_result(self, task_id):
+        sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
+        if env.verbosity >= 2:
+            out_file = os.path.join(sys_task_dir, task_id + '.out')
+            err_file = os.path.join(sys_task_dir, task_id + '.err')
+            if os.path.isfile(out_file):
+                env.logger.info('{}.out:'.format(task_id))
+                with open(out_file) as out:
+                    print(out.read())
+            if os.path.isfile(err_file):
+                env.logger.info('{}.err:'.format(task_id))
+                with open(err_file) as err:
+                    print(err.read())
+
         res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.res')
         try:
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
-        except Exception as e:
-            env.logger.warning('Failed to receive result for task {}: {}'.format(task_id, e))
+        except Exception:
+            env.logger.warning('Result for {} is not received'.format(task_id))
             return {'ret_code': 1, 'output': {}}
 
         sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')

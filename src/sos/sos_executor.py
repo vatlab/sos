@@ -870,9 +870,11 @@ class Base_Executor:
                                 task_status = proc[2]._host.retrieve_results(proc[2]._pending_tasks)
                                 proc[1].send(task_status)
                                 proc[2]._status == 'failed'
-                                raise RuntimeError('Proc {}: {} completed, {} failed, {} aborted, {} mismatch'.format(proc_idx,
-                                    len([x for x in res if x=='completed']), len([x for x in res if x=='failed']),
-                                    len([x for x in res if x=='aborted']), len([x for x in res if x=='result-mismatch']) ))
+                                status = [('completed', len([x for x in res if x=='completed'])),
+                                    ('failed', len([x for x in res if x=='failed'])),
+                                    ('aborted', len([x for x in res if x=='aborted'])),
+                                    ('mismatch', len([x for x in res if x=='mismatch']))]
+                                raise RuntimeError(', '.join(['{} job{} {}'.format(y, 's' if y > 1 else '', x) for x,y in status if y > 0]))
                         if any(x in ('pending', 'submitted', 'running') for x in res):
                             continue
                         elif all(x == 'completed' for x in res):

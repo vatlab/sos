@@ -232,7 +232,6 @@ R = sos.R.actions:R
 Rmarkdown = sos.R.actions:Rmarkdown
 
 docker_build = sos.docker.actions:docker_build [docker]
-docker_commit = sos.docker.actions:docker_commit [docker]
 
 [sos_taskengines]
 process = sos.sos_task:BackgroundProcess_TaskEngine
