@@ -838,7 +838,8 @@ def list_queues(config_file, verbosity = 1):
     env.sos_dict.set('CONFIG', cfg)
     hosts = cfg.get('hosts', [])
     if not hosts:
-        sys.exit("No hosts is defined.")
+        env.logger.warning("No remote host or task queue is defined in ~/.sos/hosts.yml.")
+        return
     host_description = [['Alias', 'Address', 'Queue Type', 'Description'],
                         ['-----', '-------', '----------', '-----------']]
     for host in sorted(hosts):
