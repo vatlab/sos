@@ -670,14 +670,14 @@ define([
         send_kernel_msg({
             "kill-task": [task_id, task_queue],
         });
-    }
+    };
 
     window.resume_task = function(task_id, task_queue) {
         console.log("Resume " + task_id);
         send_kernel_msg({
             "resume-task": [task_id, task_queue],
         });
-    }
+    };
 
     window.task_info = function(task_id, task_queue) {
         console.log("Request info on " + task_id);
@@ -688,7 +688,7 @@ define([
         cell.clear_input();
         cell.set_text("%taskinfo " + task_id + " -q " + task_queue);
         cell.clear_output();
-    }
+    };
 
     window.durationFormatter = function(start_date) {
         var ms = new Date() - start_date;
@@ -806,7 +806,7 @@ define([
         a.html(hclone.html());
         a.on("click", function() {
             setTimeout(function() {
-                $.ajax()
+                $.ajax();
             }, 100); //workaround for  https://github.com/jupyter/notebook/issues/699
             nb.get_selected_cell().unselect(); //unselect current cell
             var new_selected_cell = $("[id='" + h.attr('id') + "']").parents('.unselected').switchClass('unselected', 'selected');
@@ -942,8 +942,9 @@ define([
                 }
                 if ((ui.position.left > 0) && (nb.metadata["sos"]["panel"].style === "side")) {
                     nb.metadata["sos"]["panel"].style = "float";
-                    if (nb.metadata["sos"]["panel"].height === 0);
+                    if (nb.metadata["sos"]["panel"].height === 0) {
                         nb.metadata["sos"]["panel"].height = Math.max($("#site").height() / 2, 200);
+                    }
                     $("#panel-wrapper").css("height", nb.metadata["sos"]["panel"].height);
                     panel_wrapper.removeClass("sidebar-wrapper").addClass("float-wrapper");
                     $("#notebook-container").css("margin-left", 30);
@@ -974,7 +975,7 @@ define([
                 $(this).width($(this).width());
                 //$(this).css("position", "fixed");
             },
-        })
+        });
 
         // Ensure position is fixed
         $("#panel-wrapper").css("position", "fixed");
@@ -1061,8 +1062,8 @@ define([
         this.cell.element.hide();
 
         // remove cell toolbar
-        $(".celltoolbar", cell.element).remove()
-        $(".ctb_hideshow", cell.element).remove()
+        $(".celltoolbar", cell.element).remove();
+        $(".ctb_hideshow", cell.element).remove();
         //this.cell.element.find("code_cell").css("position", "absolute").css("top", "1.5em");
         this.cell.element.find("div.input_prompt").addClass("panel_input_prompt").text("In [-]:");
         this.cell.element.find("div.input_area").css("margin-top", "20pt")
@@ -1072,8 +1073,9 @@ define([
                 .click(function() {
                     var dropdown = $("#panel_history");
                     var len = $("#panel_history option").length;
-                    if (len === 0)
+                    if (len === 0) {
                         return false;
+                    }
                     if (dropdown.css("display") === "none") {
                         dropdown.show();
                         dropdown[0].size = len;
