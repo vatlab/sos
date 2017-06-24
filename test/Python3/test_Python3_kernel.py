@@ -29,7 +29,7 @@
 #
 import os
 import unittest
-from ipykernel.tests.utils import execute, wait_for_idle
+from ipykernel.tests.utils import execute, wait_for_idle, assemble_output
 from sos.jupyter.test_utils import sos_kernel, get_result, clear_channels
 
 try:
@@ -39,7 +39,7 @@ try:
 except ImportError:
     with_feather = False
 
-class TestKernel(unittest.TestCase):
+class TestPython3Kernel(unittest.TestCase):
     #
     # Beacuse these tests would be called from sos/test, we
     # should switch to this directory so that some location
@@ -105,6 +105,33 @@ df_var = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             execute(kc=kc, code='df_var.shape')
             res = get_result(iopub)
             self.assertEqual(res, (1000, 10))
+
+
+    def testDirectExchangeWithPython3(self):
+        '''Test getting data from another instance of Python3 (bypassing sos)'''
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            # create a data frame
+            execute(kc=kc, code='''
+%use Python3
+import numpy
+var = numpy.array([1, 2, 3])
+''')
+            wait_for_idle(kc)
+            #
+            execute(kc=kc, code='''
+%use P3 -l Python3
+%get var --from Python3
+''')
+            wait_for_idle(kc)
+            execute(kc=kc, code="print(var.shape[0])")
+            stdout, _ = assemble_output(iopub)
+            self.assertEqual(stdout.strip(), '3', 'Expect {}'.format(stdout))
+            execute(kc=kc, code="%use sos")
+            wait_for_idle(kc)
+            execute(kc=kc, code="%dict -k")
+            res = get_result(iopub)
+            self.assertEqual(res, set())
 
 
 if __name__ == '__main__':
