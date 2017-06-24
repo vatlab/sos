@@ -108,7 +108,7 @@ df_var = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             # create a data frame
             execute(kc=kc, code='''
 %use Python2
-var = 3
+ddvar = 3
 ''')
             wait_for_idle(kc)
             #
