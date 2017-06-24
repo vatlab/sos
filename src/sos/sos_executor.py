@@ -873,7 +873,7 @@ class Base_Executor:
                                 status = [('completed', len([x for x in res if x=='completed'])),
                                     ('failed', len([x for x in res if x=='failed'])),
                                     ('aborted', len([x for x in res if x=='aborted'])),
-                                    ('mismatch', len([x for x in res if x=='mismatch']))]
+                                    ('result mismatch', len([x for x in res if x=='result-mismatch']))]
                                 raise RuntimeError(', '.join(['{} job{} {}'.format(y, 's' if y > 1 else '', x) for x,y in status if y > 0]))
                         if any(x in ('pending', 'submitted', 'running') for x in res):
                             continue

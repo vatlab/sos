@@ -521,7 +521,7 @@ def check_task(task):
                 if isinstance(res['output'], dict):
                     for x,y in res['output'].items():
                         if not FileTarget(x).exists() or FileTarget(x).signature() != y:
-                            env.logger.debug('{} not found or signature mismatch'.format(x))
+                            env.logger.warning('{} not found or signature mismatch'.format(x))
                             return 'result-mismatch'
                             # otherwise, it can be submitted or pending...
                     # this is called "completed" remotely but will be

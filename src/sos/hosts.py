@@ -500,7 +500,7 @@ class RemoteHost:
         if 'workdir' in task_vars['_runtime']:
             task_vars['_runtime']['workdir'] = self._map_var(task_vars['_runtime']['workdir'])
 
-        mapped_vars = set()
+        mapped_vars = {'_input', '_output', '_depends', 'input', 'output', 'depends'}
         if 'mapp_vars' in task_vars['_runtime']:
             if isinstance(task_vars['_runtime']['mapped_vars_vars'], str):
                 mapped_vars.add(task_vars['_runtime']['mapped_vars_vars'])
@@ -513,14 +513,16 @@ class RemoteHost:
             if var not in task_vars:
                 env.logger.warning('{} is not in task namespace and cannot be mapped.'.format(var))
                 continue
-            if isinstance(task_vars[var], str):
+            if not task_vars[var]:
+                continue
+            elif isinstance(task_vars[var], str):
                 task_vars[var] = self._map_var(task_vars[var])
                 env.logger.info('On {}: ``{}`` = {}'.format(self.alias, var, short_repr(task_vars[var])))
             elif isinstance(task_vars[var], (Sequence, set)):
                 task_vars[var] = type(task_vars[var])(self._map_var(task_vars[var]))
                 env.logger.info('On {}: ``{}`` = {}'.format(self.alias, var, short_repr(task_vars[var])))
             else:
-                env.logger.warning('Fail to map {} of type {}'.format(var, task_vars[var].__class__.__name__))
+                env.logger.warning('Failed to map {} of type {}'.format(var, task_vars[var].__class__.__name__))
 
         # server restrictions #488
         task_vars['_runtime']['max_mem'] = self.config.get('max_mem', None)
