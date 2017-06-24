@@ -114,17 +114,17 @@ var = 3
             #
             execute(kc=kc, code='''
 %use P3 -l Python2
-%get var --from Python2
+%get ddvar --from Python2
 ''')
             wait_for_idle(kc)
-            execute(kc=kc, code="print(var)")
+            execute(kc=kc, code="print(ddvar)")
             stdout, _ = assemble_output(iopub)
             self.assertEqual(stdout.strip(), '3', 'Expect {}'.format(stdout))
             execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
             execute(kc=kc, code="%dict -k")
             res = get_result(iopub)
-            self.assertEqual(res, set())
+            self.assertTrue('ddvar' not in res)
 
 if __name__ == '__main__':
     unittest.main()

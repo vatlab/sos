@@ -115,23 +115,23 @@ df_var = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             execute(kc=kc, code='''
 %use Python3
 import numpy
-var = numpy.array([1, 2, 3])
+d3var = numpy.array([1, 2, 3])
 ''')
             wait_for_idle(kc)
             #
             execute(kc=kc, code='''
 %use P3 -l Python3
-%get var --from Python3
+%get d3var --from Python3
 ''')
             wait_for_idle(kc)
-            execute(kc=kc, code="print(var.shape[0])")
+            execute(kc=kc, code="print(d3var.shape[0])")
             stdout, _ = assemble_output(iopub)
             self.assertEqual(stdout.strip(), '3', 'Expect {}'.format(stdout))
             execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
             execute(kc=kc, code="%dict -k")
             res = get_result(iopub)
-            self.assertEqual(res, set())
+            self.assertTrue('d3var' not in res)
 
 
 if __name__ == '__main__':
