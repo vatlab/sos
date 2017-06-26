@@ -90,7 +90,7 @@ hosts:
     local_limited:
         address: localhost
         max_mem: 1G
-        max_procs: 1
+        max_cores: 1
         max_walltime: 10
         paths:
             home: $HOME
@@ -98,7 +98,7 @@ hosts:
         address: root@localhost
         port: $PORT
         max_mem: 1G
-        max_procs: 1
+        max_cores: 1
         max_walltime: 10
         paths:
             home: /root            
