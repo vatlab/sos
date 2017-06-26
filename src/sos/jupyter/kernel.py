@@ -2165,6 +2165,7 @@ Available subkernels:\n{}'''.format(
             options, remaining_code = self.get_magic_and_code(code, False)
             old_options = self.options
             self.options = options + ' ' + self.options
+            self.options = self._interpolate_option(self.options, quiet=False)
             try:
                 self._workflow_mode = True
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
