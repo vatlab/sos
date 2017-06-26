@@ -58,6 +58,26 @@ from .sos_executor import runfile
 from .sos_step import PendingTasks
 
 
+def start_sub_kernel(startup_timeout=60, kernel_name='python', **kwargs):
+    """Start a new kernel, and return its Manager and Client"""
+    km = manager.KernelManager(kernel_name=kernel_name)
+    with open('kernel.stdout', 'w') as so, open('kernel.stderr', 'w') as se:
+        km.start_kernel(stdout=so, stderr=se, **kwargs)
+    kc = km.client()
+    kc.start_channels()
+    try:
+        kc.wait_for_ready(timeout=startup_timeout)
+    except RuntimeError as e:
+        kc.stop_channels()
+        km.shutdown_kernel()
+        with open('kernel.stdout') as so:
+            out = so.read()
+        with open('kernel.stderr') as se:
+            err = se.read()
+        raise RuntimeError('Failed to start {}: stdout: {}\n stderr: {}\n exception: {}'.format(kernel_name, out, err, e))
+
+    return km, kc
+
 class FlushableStringIO(StringIO):
     '''This is a string buffer for output, but it will only
     keep the first 200 lines and the last 10 lines.
@@ -674,7 +694,7 @@ class SoS_Kernel(IPythonKernel):
                 if name != plugin.kernel_name:
                     self._supported_languages[plugin.kernel_name] = plugin
             except Exception as e:
-                self.log.error('Failed to load language {}: {}'.format(entrypoint.name, e))
+                pass #self.log.error('Failed to load language {}: {}'.format(entrypoint.name, e))
         return self._supported_languages
 
     supported_languages = property(lambda self:self.get_supported_languages())
@@ -1172,7 +1192,7 @@ Available subkernels:\n{}'''.format(
             if kinfo[0] not in self.kernels:
                 # start a new kernel
                 try:
-                    self.kernels[kinfo[0]] = manager.start_new_kernel(
+                    self.kernels[kinfo[0]] = start_sub_kernel(
                             startup_timeout=60, kernel_name=kinfo[1], cwd=os.getcwd())
                     new_kernel = True
                 except Exception as e:
