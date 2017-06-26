@@ -651,6 +651,12 @@ class SoS_Kernel(IPythonKernel):
             self.send_frontend_msg('kernel-list', self.get_kernel_list())
             return new_def
         else:
+            # let us check if there is something wrong with the pre-defined language
+            for entrypoint in pkg_resources.iter_entry_points(group='sos_languages'):
+                if entrypoint.name == name:
+                    # there must be something wrong, let us trigger the exception here
+                    entrypoint.load()(self)
+            # if nothing is triggerred, kernel is not defined, return a general message
             raise ValueError('No pre-defined subkernel named {} is found. Please define it with one or both of parameters --kernel and --language'.format(name))
 
     def get_supported_languages(self):
