@@ -121,6 +121,14 @@ Rmarkdown(input=['default_10.md', 'default_20.md'], output='output.html')
             self.assertTrue(FileTarget(f).exists())
             FileTarget(f).remove()
 
+    def testRmarkdownToStdout(self):
+        script = SoS_Script(r'''
+# generate report
+Rmarkdown:
+    # this is title
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
 
 if __name__ == '__main__':
     unittest.main()

@@ -322,7 +322,7 @@ define([
 
         // cell in panel does not have prompt area
         var col = "";
-        if (cell.is_panel !== undefined) {
+        if (cell.is_panel) {
             if (type && window.BackgroundColor[type]) {
                 col = window.BackgroundColor[type];
             }
@@ -355,8 +355,9 @@ define([
         // this is why we should not add additional UI elements when the function is called
         // the second time.
 
+        var i = 0;
         var cells = nb.get_cells();
-        for (var i = 0; i < cells.length; i++) {
+        for (i = 0; i < cells.length; i++) {
             add_lan_selector(cells[i], cells[i].metadata.kernel);
         }
         if (window.my_panel) {
@@ -364,9 +365,10 @@ define([
         }
 
         cells = nb.get_cells();
-        for (var i = 0; i < cells.length; i++) {
-            if (cells[i].cell_type === "code")
+        for (i = 0; i < cells.length; i++) {
+            if (cells[i].cell_type === "code") {
                 changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
+            }
         }
         // update droplist of panel cell
         if (window.my_panel) {
@@ -377,8 +379,9 @@ define([
             .css("margin-left", "0.75em")
             .attr("class", "form-control select-xs");
         // .change(select_kernel);
-        if (Jupyter.toolbar.element.has("#kernel_selector").length === 0)
+        if (Jupyter.toolbar.element.has("#kernel_selector").length === 0) {
             Jupyter.toolbar.element.append(dropdown);
+		}
         // remove any existing items
         $("#kernel_selector").empty();
         $.each(window.KernelList, function(key, value) {
@@ -405,12 +408,12 @@ define([
     var show_toc = function(evt) {
         var cell = window.my_panel.cell;
         cell.clear_input();
-        cell.set_text("%toc")
+        cell.set_text("%toc");
         cell.clear_output();
         var toc = cell.output_area.create_output_area().append(table_of_contents());
         cell.output_area._safe_append(toc);
         adjustPanel();
-    }
+    };
 
     function register_sos_comm() {
         // comm message sent from the kernel
@@ -489,10 +492,11 @@ define([
                     if (k_idx === -1) {
                         nb.metadata["sos"]["kernels"].push(data[i]);
                     } else {
+                        var r;
                         // if kernel exist update the rest of the information, but warn users first on
                         // inconsistency
                         if (nb.metadata["sos"]["kernels"][k_idx][1] !== data[i][1]) {
-                            var r = confirm("This notebook used Jupyter kernel " + nb.metadata["sos"]["kernels"][k_idx][1] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][1] + " instead?");
+                            r = confirm("This notebook used Jupyter kernel " + nb.metadata["sos"]["kernels"][k_idx][1] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][1] + " instead?");
                             if (r) {
                                 nb.metadata["sos"]["kernels"][k_idx][1] = data[i][1];
                             }
@@ -503,7 +507,7 @@ define([
                             if (nb.metadata["sos"]["kernels"][k_idx][2] === "") {
                                 nb.metadata["sos"]["kernels"][k_idx][2] = data[i][2];
                             } else if (data[i][2] !== "") {
-                                var r = confirm("This notebook used language definition " + nb.metadata["sos"]["kernels"][k_idx][2] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][2] + " instead?");
+                                r = confirm("This notebook used language definition " + nb.metadata["sos"]["kernels"][k_idx][2] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][2] + " instead?");
                                 if (r) {
                                     nb.metadata["sos"]["kernels"][k_idx][2] = data[i][2];
                                 }
@@ -583,8 +587,8 @@ define([
                 } else {
                     // id, status, status_class, action_class, action_func
                     item.className = "fa fa-fw fa-2x " + data[3];
-                    item.setAttribute('onmouseover', "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[4] + "').removeClass('" + data[3] + "')");
-                    item.setAttribute('onmouseleave', "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[3] + "').removeClass('" + data[4] + "')");
+                    item.setAttribute("onmouseover", "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[4] + "').removeClass('" + data[3] + "')");
+                    item.setAttribute("onmouseleave", "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[3] + "').removeClass('" + data[4] + "')");
                     item.setAttribute("onClick", data[5] + "('" + data[1] + "', '" + data[0] + "')");
                 }
                 if (data[2] === "completed") {
@@ -603,7 +607,7 @@ define([
                                 /* if the does not have any pending one, re-run it. */
                                 var cells = nb.get_cells();
                                 var rerun = null;
-                                for (var i = 0; i < cells.length; ++i) {
+                                for (i = 0; i < cells.length; ++i) {
                                     if (cells[i].cell_id === cell) {
                                         rerun = cells[i];
                                         break;
@@ -688,7 +692,7 @@ define([
 
     window.durationFormatter = function(start_date) {
         var ms = new Date() - start_date;
-        var res = []
+        var res = [];
         var seconds = parseInt(ms / 1000);
         var day = Math.floor(seconds / 86400);
         if (day > 0) {
@@ -726,7 +730,8 @@ define([
     function changeCellStyle() {
         var cells = nb.get_cells();
         // setting up background color and selection according to notebook metadata
-        for (var i in cells) {
+        var i;
+        for (i in cells) {
             if (cells[i].cell_type === "code") {
                 changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
             }
@@ -734,7 +739,7 @@ define([
         $("[id^=status_]").removeAttr("onClick").removeAttr("onmouseover").removeAttr("onmouseleave");
         var tasks = $("[id^=status_]");
         window.unknown_tasks = [];
-        for (var i = 0; i < tasks.length; ++i) {
+        for (i = 0; i < tasks.length; ++i) {
             // status_localhost_5ea9232779ca19591819072642646d16
             if (tasks[i].id.match("^status_[^_]+_[0-9a-f]{32}$")) {
                 tasks[i].className = "fa fa-fw fa-2x fa-refresh fa-spin";
@@ -764,17 +769,18 @@ define([
 
 
     function highlight_toc_item(evt, data) {
-        if ($(".toc").length === 0)
+        if ($(".toc").length === 0) {
             return;
+		}
         var c = data.cell.element; //
         if (c) {
-            var ll = $(c).find(":header")
+            var ll = $(c).find(":header");
             if (ll.length === 0) {
-                var ll = $(c).prevAll().find(":header");
+                ll = $(c).prevAll().find(":header");
             }
             var elt = ll[ll.length - 1];
             if (elt) {
-                var highlighted_item = $('.toc').find('a[href="#' + elt.id + '"]');
+                var highlighted_item = $(".toc").find('a[href="#' + elt.id + '"]');
                 if (evt.type === "execute") {
                     // remove the selected class and add execute class
                     // il the cell is selected again, it will be highligted as selected+running
@@ -809,7 +815,7 @@ define([
             highlight_toc_item("toc_link_click", {
                 cell: cell
             });
-        })
+        });
         return a;
     };
 
@@ -824,8 +830,8 @@ define([
         var depth = 1; //var depth = ol_depth(ol);
         var li = ul; //yes, initialize li with ul!
         var all_headers = $("#notebook").find(":header");
-        var min_lvl = 1,
-            lbl_ary = [];
+        var min_lvl = 1;
+        var lbl_ary = [];
         for (; min_lvl <= 6; min_lvl++) {
             if (all_headers.is("h" + min_lvl)) {
                 break;
@@ -868,7 +874,7 @@ define([
             // This anchor is automatically removed when building toc links. The original id is also preserved and an anchor is created
             // using it.
             // Finally a heading line can be linked to by [link](#initialID), or [link](#initialID-num_str) or [link](#myanchor)
-            h.id = h.id.replace(/\$/g, "").replace("\\", "")
+            h.id = h.id.replace(/\$/g, "").replace("\\", "");
             if (!$(h).attr("saveid")) {
                 $(h).attr("saveid", h.id)
             } //save original id
@@ -902,7 +908,7 @@ define([
 
         $([Jupyter.events]).on("resize-header.Page", function() {
             if (nb.metadata["sos"]["panel"].style === "side") {
-                $("#panel-wrapper").css("top", $("#header").height())
+                $("#panel-wrapper").css("top", $("#header").height());
                 $("#panel-wrapper").css("height", $("#site").height());
             }
         });
@@ -976,7 +982,7 @@ define([
         // if panel-wrapper is undefined (first run(?), then hide it)
         // if ($("#panel-wrapper").css("display") === undefined) $("#panel-wrapper").css("display", "none") //block
         if (!$("#panel-wrapper").css("display")) {
-			$("#panel-wrapper").css("display", "block") //block
+			$("#panel-wrapper").css("display", "block"); //block
 		}
         $("#site").bind("siteHeight", function() {
             $("#panel-wrapper").css("height", $("#site").height());
@@ -990,13 +996,13 @@ define([
             setTimeout(function() {
                 $("#notebook-container").css("width", $("#notebook").width() - $("#panel-wrapper").width() - 30);
                 $("#notebook-container").css("margin-left", $("#panel-wrapper").width() + 30);
-            }, 500)
+            }, 500);
             setTimeout(function() {
                 $("#panel-wrapper").css("height", $("#site").height());
-            }, 500)
+            }, 500);
             setTimeout(function() {
                 $("#panel-wrapper").css("top", $("#header").height());
-            }, 500) //wait a bit
+            }, 500); //wait a bit
             $("#panel-wrapper").css("left", 0);
 
         }
@@ -1103,7 +1109,7 @@ define([
                     panel_cell.execute();
                     return false;
                 })
-            )
+            );
 
         add_to_panel_history("sos", "%sossave --to html --force", "");
         add_to_panel_history("sos", "%preview --workflow", "");
@@ -1731,7 +1737,7 @@ define([
         select.change(function() {
             cell.metadata.kernel = window.DisplayName[this.value];
             // cell in panel does not have prompt area
-            if (cell.is_panel !== undefined) {
+            if (cell.is_panel) {
                 if (window.BackgroundColor[this.value])
                     cell.element[0].getElementsByClassName("input")[0].style.backgroundColor = window.BackgroundColor[this.value];
                 else
@@ -1872,10 +1878,10 @@ define([
 
                 var myKeywords = commonKeywords,
                     myBuiltins = commonBuiltins;
-                if (parserConf.extra_keywords !== undefined)
+                if (parserConf.extra_keyword)
                     myKeywords = myKeywords.concat(parserConf.extra_keywords);
 
-                if (parserConf.extra_builtins !== undefined)
+                if (parserConf.extra_builtins)
                     myBuiltins = myBuiltins.concat(parserConf.extra_builtins);
 
                 var singleOperators = parserConf.singleOperators || /^[\+\-\*\/%\$&|\^~<>!@]/;

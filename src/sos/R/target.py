@@ -169,6 +169,12 @@ class R_library(BaseTarget):
     def name(self):
         return self._library
 
+    def __repr__(self):
+        if self._version:
+            return '{}("{}", {!r})'.format(self.__class__.__name__, self.name(), self._version)
+        else:
+            return super(R_library, self).__repr__()
+
     def signature(self, mode='any'):
         # we are supposed to get signature of the library, but we cannot
         return textMD5(repr(self._library))

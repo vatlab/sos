@@ -368,13 +368,12 @@ download: dest_dir='tmp'
         Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq.ann'))
         #
-
         # this will take a while
         script = SoS_Script(r'''
 [0]
 download: dest_dir='tmp', decompress=True
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/non-existing.gz
-    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/programs/SCORE-Seq-3.0-linux-64.zip	
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/programs/SCORE-Seq-3.0-linux-64.zip
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq-hg18_20100817.DB.gz
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_CHB_freq.ann
@@ -390,19 +389,23 @@ download: dest_dir='tmp', decompress=True
         self.assertRaises(ExecuteError, Base_Executor(wf).run)
         self.assertLess(time.time() - start, 3)
         #
-        # test decompress tar.gz file
+        # test decompress tar.gz, .zip and .gz files
         script = SoS_Script(r'''
 [0]
 download: dest_dir='tmp', decompress=True
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/programs/SKAT_0.82.tar.gz
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/programs/SCORE-Seq-3.0-linux-64.zip	
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq-hg18_20100817.DB.gz
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        #
+        # run in build mode
         script = SoS_Script(r'''
 [0]
 download: dest_dir='tmp', decompress=True
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/programs/SKAT_0.82.tar.gz
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/programs/SCORE-Seq-3.0-linux-64.zip	
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq-hg18_20100817.DB.gz
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={'sig_mode': 'build'}).run()

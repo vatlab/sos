@@ -385,6 +385,9 @@ def workflow_status(workflow):
                     pending_tasks[v[0]].append(v[1])
             except Exception as e:
                 raise ValueError('Unrecognizable status line {}: {}'.format(line, e))
+    if 'script' not in res:
+        env.logger.error('Cannot resume a workflow with script file (it must have been started programmatically with content of a script).')
+        sys.exit(1)
     #
     env.logger.info('{:15s} \t{}'.format('Workflow ID:', os.path.basename(workflow)[:-7]))
     env.logger.info('{:15s} \t{}'.format('Command:', re.sub(r'\s+', ' ', interpolate(
@@ -938,6 +941,27 @@ def get_remove_parser(desc_only=False):
     parser.set_defaults(func=cmd_remove)
     return parser
 
+class AnswerMachine:
+    def __init__(self, always_yes=False, confirmed=False):
+        self._always_yes = always_yes
+        self._confirmed = confirmed
+
+    def get(self, msg):
+        if self._always_yes:
+            return True
+        if self._confirmed:
+            print(msg)
+            return True
+        while True:
+            res = input('{} (y/n/a)? '.format(msg))
+            if res == 'a':
+                self._confirmed = True
+                return True
+            elif res == 'y':
+                return True
+            elif res == 'n':
+                return False
+
 def get_tracked_files(sig_file):
     from .target import FileTarget
     with open(sig_file) as sig:
@@ -998,22 +1022,6 @@ def cmd_remove(args, unknown_args):
             env.logger.info('No runtime signatures removed')
         return
     #
-    def get_response(msg, always_yes = False):
-        if always_yes:
-            return True
-        if args.__confirm__:
-            print(msg)
-            return True
-        while True:
-            res = input('{} (y/n/a)? '.format(msg))
-            if res == 'a':
-                args.__confirm__ = True
-                return True
-            elif res == 'y':
-                return True
-            elif res == 'n':
-                return False
-
     tracked_files = {os.path.abspath(os.path.expanduser(x)) for x in tracked_files}
 
     if tracked_files:
@@ -1034,7 +1042,7 @@ def cmd_remove(args, unknown_args):
         from sos.utils import expand_time
         args.age = expand_time(args.age, default_unit='d')
     if args.signature:
-        def func(filename):
+        def func(filename, resp):
             if os.path.abspath(filename) not in tracked_files:
                 return False
             target = FileTarget(filename)
@@ -1062,7 +1070,7 @@ def cmd_remove(args, unknown_args):
                 return True
             return False
     elif args.tracked:
-        def func(filename):
+        def func(filename, resp):
             if os.path.abspath(filename) not in tracked_files:
                 return False
             target = FileTarget(filename)
@@ -1079,8 +1087,7 @@ def cmd_remove(args, unknown_args):
                     (args.age < 0 and time.time() - os.path.getmtime(filename) > -args.age):
                     env.logger.debug('{} ignored due to age limit {}'.format(filename, args.age))
                     return False
-            if get_response('{} tracked file {}'.format('Would remove' if args.dryrun else 'Remove', filename),
-                    always_yes = args.dryrun):
+            if resp.get('{} tracked file {}'.format('Would remove' if args.dryrun else 'Remove', filename)):
                 if not args.dryrun:
                     env.logger.debug('Remove {}'.format(s))
                     try:
@@ -1092,7 +1099,7 @@ def cmd_remove(args, unknown_args):
                 env.logger.debug('No signature exists for tracked file {}'.format(filename))
             return False
     elif args.untracked:
-        def func(filename):
+        def func(filename, resp):
             if os.path.abspath(filename) in tracked_files:
                 return False
             target = FileTarget(filename)
@@ -1109,8 +1116,7 @@ def cmd_remove(args, unknown_args):
                     (args.age < 0 and time.time() - os.path.getmtime(filename) > -args.age):
                     env.logger.debug('{} ignored due to age limit {}'.format(filename, args.age))
                     return False
-            if get_response('{} untracked file {}'.format('Would remove' if args.dryrun else 'Remove', filename),
-                    always_yes = args.dryrun):
+            if resp.get('{} untracked file {}'.format('Would remove' if args.dryrun else 'Remove', filename)):
                 if not args.dryrun:
                     env.logger.debug('Remove {}'.format(s))
                     try:
@@ -1122,7 +1128,7 @@ def cmd_remove(args, unknown_args):
                 env.logger.debug('No signature exists for tracked file {}'.format(filename))
             return False
     elif args.zap:
-        def func(filename):
+        def func(filename, resp):
             if os.path.abspath(filename) not in tracked_files:
                 return False
             target = FileTarget(filename)
@@ -1139,8 +1145,7 @@ def cmd_remove(args, unknown_args):
                     (args.age < 0 and time.time() - os.path.getmtime(filename) > -args.age):
                     env.logger.debug('{} ignored due to age limit {}'.format(filename, args.age))
                     return False
-            if get_response('{} tracked file {}'.format('Would zap' if args.dryrun else 'Zap', filename),
-                    always_yes = args.dryrun):
+            if resp.get('{} tracked file {}'.format('Would zap' if args.dryrun else 'Zap', filename)):
                 if not args.dryrun:
                     env.logger.debug('Zap {}'.format(s))
                     try:
@@ -1155,7 +1160,7 @@ def cmd_remove(args, unknown_args):
             return False
     else:
         # default behavior
-        def func(filename):
+        def func(filename, resp):
             target = FileTarget(filename)
             if target.is_external() and not args.external():
                 env.logger.debug('Ignore external file {}'.format(filename))
@@ -1170,8 +1175,7 @@ def cmd_remove(args, unknown_args):
                     (args.age < 0 and time.time() - os.path.getmtime(filename) > -args.age):
                     env.logger.debug('{} ignored due to age limit {}'.format(filename, args.age))
                     return False
-            if get_response('{} untracked file {}'.format('Would remove' if args.dryrun else 'Remove', filename),
-                    always_yes = args.dryrun):
+            if resp.get('{} untracked file {}'.format('Would remove' if args.dryrun else 'Remove', filename)):
                 if not args.dryrun:
                     env.logger.debug('Remove {}'.format(s))
                     try:
@@ -1184,6 +1188,7 @@ def cmd_remove(args, unknown_args):
             return False
 
     removed = 0
+    resp = AnswerMachine(always_yes = args.dryrun, confirmed = args.__confirm__)
     for target in args.targets:
         target = os.path.expanduser(target)
         if FileTarget(target).is_external():
@@ -1192,7 +1197,7 @@ def cmd_remove(args, unknown_args):
             elif not args.external:
                 sys.exit('Only subdirectories of the current directory can be removed unless option --external is specified. {} specified.'.format(target))
         if os.path.isfile(target):
-            removed += func(target)
+            removed += func(target, resp)
             continue
         # directory
         for dirname, dirlist, filelist in os.walk(target):
@@ -1202,7 +1207,7 @@ def cmd_remove(args, unknown_args):
                     # ignore hidden file
                     if x.startswith('.'):
                         continue
-                    removed += func(os.path.join(dirname, x))
+                    removed += func(os.path.join(dirname, x), resp)
             dirlist[:] = [x for x in dirlist if not x.startswith('.')]
     env.logger.info('{}{} file{} {}'.format('Signagure of ' if args.signature else '', removed,
         's' if removed > 1 else '', 'zapped' if args.zap else 'removed'))
@@ -1499,18 +1504,8 @@ def cmd_pack(args, unknown_args):
     else:
         tar_args = {'name': args.output, 'mode': 'w:gz'}
 
-    def get_response(msg):
-        if args.__confirm__:
-            print(msg)
-            return True
-        while True:
-            res = input('{} (y/n)? '.format(msg))
-            if res == 'y':
-                return True
-            elif res == 'n':
-                return False
-
-    if os.path.isfile(args.output) and not args.__confirm__ and not get_response('Overwrite {}'.format(args.output)):
+    resp = AnswerMachine(always_yes=False, confirmed=args.__confirm__)
+    if os.path.isfile(args.output) and not args.__confirm__ and not resp.get('Overwrite {}'.format(args.output)):
         env.logger.info('Operation aborted due to existing output file')
         sys.exit(0)
 
@@ -1644,21 +1639,9 @@ def cmd_unpack(args, unknown_args):
     import fnmatch
     import time
 
-    env.verbosity = args.verbosity
-    def get_response(msg):
-        if args.__confirm__:
-            print(msg + '? y')
-            return True
-        while True:
-            res = input('{} (y/n/a)? '.format(msg))
-            if res == 'a':
-                args.__confirm__ = True
-                return True
-            elif res == 'y':
-                return True
-            elif res == 'n':
-                return False
+    resp = AnswerMachine(always_yes=False, confirmed=False)
 
+    env.verbosity = args.verbosity
     prog = ProgressBar(desc='Extracting {}'.format(args.archive), total=os.path.getsize(args.archive),
         disable=args.verbosity!=1 or args.__list__)
     try:
@@ -1714,7 +1697,7 @@ def cmd_unpack(args, unknown_args):
                 is_runtime = False
                 # hacking f.name to correct destination
                 if f.name.startswith('external/'):
-                    if not get_response('Extract {} to outside of current directory'.format(f.name[9:])):
+                    if not resp.get('Extract {} to outside of current directory'.format(f.name[9:])):
                         continue
                     f.name = f.name[9:]
                 elif f.name.startswith('tracked/'):
@@ -1746,7 +1729,7 @@ def cmd_unpack(args, unknown_args):
                         if not is_runtime:
                             env.logger.info('Ignore identical {}'.format(f.name))
                         continue
-                    if not get_response('Overwrite existing file {}'.format(f.name)):
+                    if not resp.get('Overwrite existing file {}'.format(f.name)):
                         continue
                 if not f.name.startswith('.sos'):
                     env.logger.info('Extracting {}'.format(f.name))

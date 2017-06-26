@@ -139,7 +139,7 @@ sh:
         self.assertNonExists(['t_d1/t_f2', 't_d2/t_d3/t_f3'])
         self.assertExists(['ut_f1', 'ut_d1/ut_f2', 't_d1/ut_f4', 't_f1', 't_d2/t_d3', 't_d2', 't_d1', 'ut_d1', 'ut_d2', 'ut_d2/ut_d3', 'ut_d2/ut_d3/ut_f3'])
         #
-        subprocess.call('sos remove --age=-1h -y', shell=True)
+        subprocess.call('sos remove -u --age=-1h -y', shell=True)
         self.assertExists(['ut_f1', 't_f1', 't_d2/t_d3', 't_d2', 't_d1', 'ut_d1', 'ut_d2', 'ut_d2/ut_d3'])
 
     def testRemoveBySize(self):
@@ -152,7 +152,7 @@ sh:
         self.assertNonExists(['t_d1/t_f2', 't_d2/t_d3/t_f3'])
         self.assertExists(['ut_f1', 'ut_d1/ut_f2', 't_d1/ut_f4', 't_f1', 't_d2/t_d3', 't_d2', 't_d1', 'ut_d1', 'ut_d2', 'ut_d2/ut_d3', 'ut_d2/ut_d3/ut_f3'])
         #
-        subprocess.call('sos remove --size=-1M -y', shell=True)
+        subprocess.call('sos remove -u --size=-1M -y', shell=True)
         self.assertExists(['ut_f1', 't_f1', 't_d2/t_d3', 't_d2', 't_d1', 'ut_d1', 'ut_d2', 'ut_d2/ut_d3'])
 
     def testRemoveAll(self):

@@ -366,6 +366,15 @@ run:
             # ok if the task has already been completed and there is nothing
             # to resume
             pass
+        #
+        # rerun task in different mode
+        env.config['resume_mode'] = False
+        env.config['wait_for_task'] = True
+        Base_Executor(wf).run()
+        env.config['sig_mode'] = 'assert'
+        Base_Executor(wf).run()
+        env.config['sig_mode'] = 'build'
+        Base_Executor(wf).run()
 
     def testSharedOption(self):
         '''Test shared option of task'''
@@ -384,6 +393,23 @@ sh:
         wf = script.workflow()
         Base_Executor(wf, config={'sig_mode': 'force'}).run()
         self.assertTrue(os.path.isfile("a100.txt"))
+        # sequence of var or mapping
+        FileTarget("a.txt").remove("both")
+        FileTarget("a100.txt").remove("both")
+        script = SoS_Script('''
+[10: shared = {'a': 'a[0]', 'b':'b[0]'}]
+task: shared=[{'a': 'int(open("a.txt").read())'}, 'b']
+b = 20
+sh:
+  echo 100 > a.txt
+
+[20]
+sh:
+    touch a${a}_${b}.txt
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={'sig_mode': 'force'}).run()
+        self.assertTrue(os.path.isfile("a100_20.txt"))
 
     def testTrunkSizeOption(self):
         '''Test option trunk_size'''

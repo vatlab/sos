@@ -94,7 +94,7 @@ class MasterTaskParams(TaskParams):
         #
         # walltime
         if not self.task_stack:
-            for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem', 'max_mem', 'preserved_vars', 'name'):
+            for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem', 'max_mem', 'map_vars', 'name'):
                 if key in params.sos_dict['_runtime'] and params.sos_dict['_runtime'][key] is not None:
                     self.sos_dict['_runtime'][key] = params.sos_dict['_runtime'][key]
         else:
@@ -521,7 +521,7 @@ def check_task(task):
                 if isinstance(res['output'], dict):
                     for x,y in res['output'].items():
                         if not FileTarget(x).exists() or FileTarget(x).signature() != y:
-                            env.logger.debug('{} not found or signature mismatch'.format(x))
+                            env.logger.warning('{} not found or signature mismatch'.format(x))
                             return 'result-mismatch'
                             # otherwise, it can be submitted or pending...
                     # this is called "completed" remotely but will be
