@@ -69,10 +69,8 @@ before_install:
     # then install nodejs-legacy
     - sudo apt-get purge --auto-remove nodejs npm node
     - sudo rm -rf /usr/local/bin/npm /usr/local/share/man/man1/node* /usr/local/lib/dtrace/node.d ~/.npm ~/.node-gyp /opt/local/bin/node opt/local/include/node /opt/local/lib/node_modules
-    - sudo rm -rf /usr/local/lib/node*
-    - sudo rm -rf /usr/local/include/node*
-    - sudo rm -rf /usr/local/bin/node*
-    -
+    - sudo rm -rf /usr/local/lib/node* /usr/local/include/node* /usr/local/bin/node*
+    - sudo rm -rf ~/.npm
     - sudo apt-get install nodejs-legacy npm
     - sudo npm install -g ijavascript
     #- sudo npm install -g itypescript
