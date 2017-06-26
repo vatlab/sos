@@ -1177,7 +1177,7 @@ Available subkernels:\n{}'''.format(
                 except Exception as e:
                     # there is something wrong, so we try again and try to get some
                     # more error message
-                    fout, ferr = StringIO, StringIO
+                    fout, ferr = StringIO(), StringIO()
                     try:
                         # this should fail
                         manager.start_new_kernel(
