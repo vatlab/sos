@@ -596,7 +596,7 @@ run:
     touch test.py
 
 [20]
-output: "${input}.bak"
+output: "${input!R}.bak"
 task:
 run:
     cp ${input} ${output}
