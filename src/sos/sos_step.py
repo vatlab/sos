@@ -44,12 +44,25 @@ class PendingTasks(Exception):
         super(PendingTasks, self).__init__(*args, **kwargs)
         self.tasks = tasks
 
+def tag_remote(obj):
+    rargs = []
+    if isinstance(obj, local):
+        rargs.append(obj.resolve())
+    elif isinstance(obj, str):
+        # regular target
+        rargs.append(remote(obj))
+    elif isinstance(obj, Sequence):
+        for k in obj:
+            rargs.extend(tag_remote(k))
+    else:
+        raise ValueError('Unrecognized input target of type {}: {}'.format(obj.__class__.__name__, obj))
+    return rargs
+
 def parse_stmt(stmt, sigil, force_remote):
     if force_remote:
-        args, kwargs = SoS_eval('__null_func__({})'.format(stmt), sigil, convert=False)
-        args = [x.resolve() if isinstance(x, local) else remote(x) for x in args]
+        args, kwargs = SoS_eval('__null_func__({})'.format(stmt), sigil)
         # now if local, we need to interpolate
-        args = [interpolate(x, sigil, env.sos_dict._dict) if isinstance(x, str) else x for x in args]
+        args = [interpolate(x, sigil, env.sos_dict._dict) if isinstance(x, str) else x for x in tag_remote(args)]
     else:
         args, kwargs = SoS_eval('__null_func__({})'.format(stmt), sigil)
     return args, kwargs
