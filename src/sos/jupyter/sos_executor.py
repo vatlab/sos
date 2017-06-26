@@ -314,6 +314,7 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
             'resume_mode': kernel is not None and kernel._resume_execution,
             'run_mode': 'dryrun' if args.dryrun else 'interactive',
             'verbosity': args.verbosity,
+            'remote_targets': getattr(args, '__remote__', False),
 
             # wait if -w or in dryrun mode, not wait if -W, otherwise use queue default
             'max_procs': 1,
