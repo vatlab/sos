@@ -47,6 +47,12 @@ install:
     # install r kernel
     - conda install -c r r-essentials r-feather
     - conda install -c conda-forge feather-format
+    # for python2 kernel
+    - conda create -n ipykernel_py2 python=2 ipykernel
+    - activate ipykernel_py2
+    - python -m ipykernel install --user
+    - deactivate
+ 
     # used by ./run_tests for coverage
     #- pip install coverage
     #- pip install codacy-coverage
@@ -57,7 +63,7 @@ install:
     # install sos
     - pip install pytest
     - python setup.py install
-      
+
 test_script:
     - cd test
     - pytest --ignore JavaScript --ignore rq --ignore docker --ignore Bash -v
