@@ -291,6 +291,11 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
 
     global_def, task, sos_dict, sigil = params.global_def, params.task, params.sos_dict, params.sigil
 
+    # task output
+    env.sos_dict.set('__std_out__', os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out'))
+    env.sos_dict.set('__std_err__', os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'))
+    env.logfile = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
+
     SoS_exec('import os, sys, glob', None)
     SoS_exec('from sos.runtime import *', None)
     try:
@@ -475,10 +480,6 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                 else:
                     raise ValueError('Unacceptable input for option prepend_path: {}'.format(sos_dict['_runtime']['prepend_path']))
 
-        # task output
-        env.sos_dict.set('__std_out__', os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out'))
-        env.sos_dict.set('__std_err__', os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'))
-        env.logfile = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
 
         # step process
         SoS_exec(task, sigil)
@@ -711,7 +712,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
                 params = pickle.load(task)
             row('Task')
             row(td='<pre style="text-align:left">{}</pre>'.format(params.task))
-            row('Global Definitions')
+            row('Global')
             if params.global_def:
                 row(td='<pre style="text-align:left">{}</pre>'.format(params.global_def))
             row('Environment')

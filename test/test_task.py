@@ -83,6 +83,7 @@ with open('test/result.txt', 'w') as res:
         env.config['sig_mode'] = 'force'
         env.config['wait_for_task'] = True
         script =  SoS_Script(r"""
+import time
 [0]
 
 repeat = range(4)
@@ -90,7 +91,6 @@ input: for_each='repeat'
 
 task: concurrent=False
 
-import time
 print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
 time.sleep(_repeat + 1)
 print('I am {}, done'.format(_index))
