@@ -259,6 +259,7 @@ tarfile:is_tarfile,1 = sos.jupyter.preview:preview_tar
 *,0 = sos.jupyter.preview:preview_txt
 
 *.bam,1 = sos.bioinfo.preview:preview_bam [bam]
+*.sam,1 = sos.bioinfo.preview:preview_bam [bam]
 
 [sos_languages]
 R = sos.R.kernel:sos_R [R]

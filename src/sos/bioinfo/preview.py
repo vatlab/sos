@@ -23,7 +23,7 @@
 
 from sos.utils import short_repr
 
-def preview_bam(filename):
+def preview_bam(filename, kernel=None, style=None):
     import pysam
     res = ''
     with pysam.AlignmentFile(filename, 'rb') as bam:
