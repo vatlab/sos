@@ -21,13 +21,20 @@
 #
 
 import os
-import sys
 import unittest
-from ipykernel.tests.utils import assemble_output, execute, wait_for_idle
-from sos.jupyter.test_utils import sos_kernel, get_display_data
+from ipykernel.tests.utils import assemble_output, execute
+from sos.jupyter.test_utils import sos_kernel
 
 class TestPreview(unittest.TestCase):
-    #
+    def setUp(self):
+        self.olddir = os.getcwd()
+        file_dir = os.path.split(__file__)[0]
+        if file_dir:
+            os.chdir(file_dir)
+
+    def tearDown(self):
+        os.chdir(self.olddir)
+
     def testMagicPreview(self):
         with sos_kernel() as kc:
             # preview bam file
