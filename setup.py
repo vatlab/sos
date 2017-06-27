@@ -236,7 +236,6 @@ docker_build = sos.docker.actions:docker_build [docker]
 [sos_taskengines]
 process = sos.sos_task:BackgroundProcess_TaskEngine
 rq = sos.rq.sos_task:RQ_TaskEngine [rq]
-celery = sos.celery.sos_task:Celery_TaskEngine [celery]
 pbs = sos.PBS.sos_task:PBS_TaskEngine
 
 [sos_functions]
@@ -309,7 +308,6 @@ ipynb-md.func = sos.jupyter.converter:notebook_to_md
         'md':       ['markdown'],
         'R':        ['feather-format', 'pandas', 'numpy'],
         'rq':       ['rq', 'rq-dashboard'],
-        'celery':   ['celery', 'flower'],
         'bam':      ['pysam'],
         'dot':      ['graphviz'],
         # docker-py is not working on windows 10 (as of Jan 2017)
