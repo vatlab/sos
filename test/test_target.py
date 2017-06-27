@@ -164,7 +164,7 @@ a = 5
         '''Testing target executable.'''
         script = SoS_Script('''
 [0]
-depends: executable('rsync --version', '2.')
+depends: executable('python --version', '3.')
 sh:
     touch a.txt
 ''')
