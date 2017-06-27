@@ -21,55 +21,68 @@
 #
 
 import os
-import pickle
 from sos.utils import env
 from rq import Queue as rqQueue
 from redis import Redis
-from sos.sos_task import TaskEngine, execute_task
+from sos.sos_task import TaskEngine, execute_task, loadTask
+from sos.sos_eval import interpolate
 
 class RQ_TaskEngine(TaskEngine):
+
     def __init__(self, agent):
         super(RQ_TaskEngine, self).__init__(agent)
-        # we have self.config for configurations
         #
-        # redis_host
-        # redis_port
-        #
-        self.redis_host = self.config['redis_host'] if 'redis_host' in self.config else 'localhost'
-        self.redis_port = self.config['redis_port'] if 'redis_port' in self.config else 6379
+        self.redis_host = self.config.get('address', 'localhost')
+        self.redis_port = self.config.get('port', 6379)
+        self.redis_queue = self.config.get('queue', None)
 
         try:
             redis_conn = Redis(host=self.redis_host, port=self.redis_port)
         except Exception as e:
-            env.logger.error('Failed to connect to redis server with host {} and port {}: {}'.format(
+            raise RuntimeError('Failed to connect to redis server with host {} and port {}: {}'.format(
                 self.redis_server, self.redis.port, e))
 
-        self.redis_queue = rqQueue(connection=redis_conn)
+        self.redis_queue = rqQueue(self.redis_queue, connection=redis_conn)
+        self.jobs = {}
 
     def execute_task(self, task_id):
-        # read the task file and look for runtime info
         #
+        if not super(RQ_TaskEngine, self).execute_task(task_id):
+            return False
+
         task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.task')
-        with open(task_file, 'rb') as task:
-            params = pickle.load(task)
-            task, sos_dict, sigil = params.data
-        # bioinformatics can be running for long time...
-        # let me assume a longest running time of 1 month
-        walltime = sos_dict['_runtime']['walltime'] if 'walltime' in sos_dict['_runtime'] else 60*60*24*30
+        sos_dict = loadTask(task_file).sos_dict
 
-        if isinstance(walltime, str):
-            if walltime.count(':') > 2:
-                raise ValueError('Incorrect format.')
-            try:
-                walltime = sum([int(val)*60**idx  for idx, val in enumerate(walltime.split(':')[-1::-1])])
-            except Exception:
-                raise ValueError('Unacceptable walltime {} (can be "HH:MM:SS" or a number (seconds))'.format(walltime))
-
+        # however, these could be fixed in the job template and we do not need to have them all in the runtime
+        runtime = self.config
+        runtime.update({x:sos_dict['_runtime'][x] for x in ('walltime', 'cur_dir', 'home_dir', 'name') if x in sos_dict['_runtime']})
+        runtime['task'] = task_id
+        runtime['verbosity'] = env.verbosity
+        runtime['sig_mode'] = env.config['sig_mode']
+        runtime['run_mode'] = env.config['run_mode']
+        if 'name' in runtime:
+            runtime['job_name'] = interpolate(runtime['name'], '${ }', sos_dict)
+        else:
+            runtime['job_name'] = interpolate('${step_name}_${_index}', '${ }', sos_dict)
+        if 'nodes' not in runtime:
+            runtime['nodes'] = 1
+        if 'cores' not in runtime:
+            runtime['cores'] = 1
+    
         # tell subprocess where pysos.runtime is
-        self.proc_results.append(
-            self.redis_queue.enqueue(
-            execute_task,
-            args=(task_id, env.verbosity, env.sig_mode),
-            timeout=walltime))
+        self.jobs[task_id] = self.redis_queue.enqueue(
+            execute_task, args=(task_id, env.verbosity, runtime['run_mode'],
+                runtime['sig_mode'], 5, 60),
+            job_id = runtime['job_name'],
+            # result expire after one day
+            result_ttl=86400,
+            timeout=runtime.get('walltime', '30d'))
 
+    #def query_tasks(self, tasks=None, verbosity=1, html=False, start_time=True, age=None):
+    #    status_lines = super(PBS_TaskEngine, self).query_tasks(tasks, verbosity, html, start_time, age=age)
+    #    return status_lines
+
+    #def kill_tasks(self, tasks, all_tasks=False):
+    #    output = super(PBS_TaskEngine, self).kill_tasks(tasks, all_tasks)
+    #    return output
 

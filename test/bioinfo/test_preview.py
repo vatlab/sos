@@ -27,29 +27,28 @@ from sos.jupyter.test_utils import sos_kernel
 
 class TestPreview(unittest.TestCase):
     def setUp(self):
-        self.olddir = os.getcwd()
-        file_dir = os.path.split(__file__)[0]
-        if file_dir:
-            os.chdir(file_dir)
-
-    def tearDown(self):
-        os.chdir(self.olddir)
+        self.test_dir = os.getcwd()
+        self.resource_dir = os.path.abspath(os.path.split(__file__)[0])
 
     def testMagicPreview(self):
         with sos_kernel() as kc:
             # preview bam file
             iopub = kc.iopub_channel
             execute(kc=kc, code='''
+%cd {}            
 %preview -n sim_reads_aligned.bam
-''')
+%cd {}
+'''.format(self.resource_dir, self.test_dir))
             stdout, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
             self.assertTrue('PG' in stdout)
 
             # preview sam file
             execute(kc=kc, code='''
-%preview -n sim_reads_aligned.bam
-''')
+%cd {}            
+%preview -n sim_reads_aligned.sam
+%cd {}
+'''.format(self.resource_dir, self.test_dir))
             stdout, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
             self.assertTrue('PG' in stdout)

@@ -28,6 +28,18 @@ from sos.target import FileTarget
 import unittest
 import subprocess
 
+
+has_docker = True
+try:
+    subprocess.check_output('docker ps | grep test_sos', shell=True).decode()
+except subprocess.CalledProcessError:
+    subprocess.call('sh build_test_docker.sh', shell=True)
+    try:
+        subprocess.check_output('docker ps | grep test_sos', shell=True).decode()
+    except subprocess.CalledProcessError:
+        print('Failed to set up a docker machine with sos')
+        has_docker = False
+
 class TestRQQueue(unittest.TestCase):
     def setUp(self):
         env.reset()

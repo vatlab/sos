@@ -42,6 +42,11 @@ ADD authorized_keys /root/.ssh/authorized_keys
 RUN  pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm
 RUN  pip install fasteners pygments ipython ptpython networkx pydotplus
 
+EUN  apt-get install -y redis-server
+RUN  pip install rq celery
+
+RUN  rq worker high
+
 ARG  SHA=LATEST
 RUN  SHA=$SHA git clone http://github.com/vatlab/SOS sos
 RUN  cd sos && python setup.py install
@@ -49,6 +54,7 @@ RUN  cd sos && python setup.py install
 RUN  echo "export TS_SLOTS=10" >> /root/.bash_profile
 
 EXPOSE 22
+EXPOSE 6379
 CMD ["/usr/sbin/sshd", "-D"]
 HERE
 
@@ -106,6 +112,11 @@ hosts:
         description: task spooler on the docker machine
         address: root@localhost
         port: $PORT
+    rq:
+        description: rq server with worker
+        redis_host: root@localhost
+        redis_port: $PORT
+        redis_queue: high
 HERE
 
 # this part is not interpolated

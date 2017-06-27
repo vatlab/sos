@@ -31,7 +31,7 @@ import glob
 import pkg_resources
 from collections.abc import Sequence
 
-from .utils import env, pickleable, short_repr, load_config_files, expand_size, format_HHMMSS, expand_time
+from .utils import env, short_repr, load_config_files, expand_size, format_HHMMSS, expand_time
 from .sos_eval import interpolate, Undetermined
 from .sos_task import BackgroundProcess_TaskEngine, TaskParams, loadTask
 
@@ -123,9 +123,13 @@ class LocalHost:
         self.config.update(config)
         self._procs = []
 
+        self.task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias)
+        if not os.path.isdir(self.task_dir):
+            os.mkdir(self.task_dir)
+
     def prepare_task(self, task_id):
         def_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
-        task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
+        task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.task')
         # add server restriction on task file
         params = loadTask(def_file)
         task_vars = params.sos_dict
@@ -214,8 +218,7 @@ class LocalHost:
             env.logger.warning('Result for {} is not received'.format(task_id))
             return {'ret_code': 1, 'output': {}}
 
-        sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
-        task_file = os.path.join(sys_task_dir, task_id + '.def')
+        task_file = os.path.join(self.task_dir, task_id + '.def')
         params = loadTask(task_file)
         job_dict = params.sos_dict
 
@@ -489,12 +492,6 @@ class RemoteHost:
             env.logger.info('{} ``send`` {}'.format(task_id, short_repr(task_vars['_runtime']['to_host'])))
 
         # map variables
-        mvars = ['_input', '_output', '_depends', 'input', 'output', 'depends', '_runtime',
-            '_local_input_{}'.format(task_vars['_index']),
-            '_local_output_{}'.format(task_vars['_index'])] + list(task_vars['__signature_vars__'])
-        seen = set()
-        # avoid variable to be handled twice
-        rvars = [x for x in mvars if not (x in seen or seen.add(x))]
         # translate cur_dir, home_dir, and workdir
         task_vars['_runtime']['cur_dir'] = self._map_var(task_vars['_runtime']['cur_dir'])
         task_vars['_runtime']['home_dir'] = self._map_var(task_vars['_runtime']['home_dir'])
