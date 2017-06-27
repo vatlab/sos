@@ -33,7 +33,7 @@ from ipykernel.tests.utils import assemble_output, execute, wait_for_idle
 from sos.jupyter.test_utils import sos_kernel, get_result, get_display_data, \
     clear_channels
 
-class TestKernel(unittest.TestCase):
+class TestJavaScriptKernel(unittest.TestCase):
     #
     # Beacuse these tests would be called from sos/test, we
     # should switch to this directory so that some location
@@ -47,7 +47,7 @@ class TestKernel(unittest.TestCase):
     def tearDown(self):
         os.chdir(self.olddir)
 
-    def testGetPythonDataFrameFromR(self):
+    def testGetPythonDataFrameFromJavaScript(self):
         # Python -> R
         with sos_kernel() as kc:
             iopub = kc.iopub_channel

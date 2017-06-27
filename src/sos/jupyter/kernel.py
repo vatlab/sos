@@ -1184,7 +1184,7 @@ Available subkernels:\n{}'''.format(
                                 startup_timeout=60, kernel_name=kinfo[1], cwd=os.getcwd(),
                                 stdout=subprocess.DEVNULL, stderr=ferr)
                         except:
-                            ferr.fseek(0)
+                            ferr.seek(0)
                             self.warn('Failed to start kernel "{}". {}\nError Message:\n{}'.format(kernel, e,
                                 ferr.read().decode()))
                     return

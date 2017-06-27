@@ -10,10 +10,13 @@ python:
     - "3.5"
     - "3.6"
 before_install:
-    - sudo apt-get update
     # upgrade docker so that it has same API version as client https://docs.travis-ci.com/user/docker/ 
     - sudo apt-get update
     - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
+    - sudo apt-get install libmagickwand-dev libmagickcore5-extra graphviz
+    - sudo apt-get install -y texlive-xetex texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended
+    - sudo apt-get purge --auto-remove nodejs npm node
+    - sudo apt-get install nodejs-legacy npm
     # install anaconda Python 3
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then  wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh; fi
     #- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then wget  https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh; fi
@@ -36,20 +39,10 @@ before_install:
     # add docker
     - pip install docker
     # packages required by SoS
-    - pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm 
-    - pip install fasteners pygments ipython ptpython networkx pydotplus
-    # for testing purposes
-    - pip install scipy
-    # preview figure
-    - pip install wand graphviz
-    - sudo apt-get install libmagickwand-dev libmagickcore5-extra graphviz
+    - pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm  scipy
+    - pip install fasteners pygments ipython ptpython networkx pydotplus wand graphviz
     # https://github.com/jupyter/jupyter/issues/150
-    - pip install entrypoints
-    - pip install jupyter
-    - pip install coverage
-    - pip install codacy-coverage
-    - pip install pytest pytest-cov
-    - pip install python-coveralls
+    - pip install entrypoints jupyter coverage codacy-coverage pytest pytest-cov python-coveralls
     # install r kernel (this took 80s to install too many packges)
     #- conda install -c r r-essentials r-feather
     # this takes about 27s
@@ -62,16 +55,13 @@ before_install:
     # - python -c 'import feather'
     #
     # for pdf generation
-    - sudo apt-get install -y texlive-xetex texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended
     # install JavaScript kernel
     # https://github.com/petethepig/devtools-terminal/issues/70
     # need to remove nodejs-5.x ppa, purge nodejs
     # then install nodejs-legacy
-    - sudo apt-get purge --auto-remove nodejs npm node
     - sudo rm -rf /usr/local/bin/npm /usr/local/share/man/man1/node* /usr/local/lib/dtrace/node.d ~/.npm ~/.node-gyp /opt/local/bin/node opt/local/include/node /opt/local/lib/node_modules
     - sudo rm -rf /usr/local/lib/node* /usr/local/include/node* /usr/local/bin/node*
     - sudo rm -rf ~/.npm
-    - sudo apt-get install nodejs-legacy npm
     - sudo npm install -g ijavascript
     #- sudo npm install -g itypescript
     - ijsinstall --spec-path=full
