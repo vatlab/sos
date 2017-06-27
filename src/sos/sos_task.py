@@ -302,7 +302,10 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
         # global def could fail due to execution on remote host...
         # we also execute global_def way before others and allows variables set by
         # global_def be overwritten by other passed variables
-        SoS_exec(global_def, None)
+        #
+        # note that we do not handle parameter in tasks because values should already be
+        # in sos_task dictionary
+        SoS_exec('del sos_handle_parameter_\n' + global_def, None)
     except Exception as e:
         env.logger.debug('Failed to execute global definition {}: {}'.format(global_def, e))
 
