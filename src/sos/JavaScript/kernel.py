@@ -27,7 +27,7 @@ JS_init_statement = '''
 __get_sos_vars = function() {
     vars = []
     for(v in this) {
-        if (v.startsWith('sos') )
+        if (typeof v.startsWith === "function" && v.startsWith('sos') )
         {
             vars.push(v);
         }
