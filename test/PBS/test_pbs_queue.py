@@ -35,7 +35,7 @@ has_docker = True
 try:
     subprocess.check_output('docker ps | grep test_sos', shell=True).decode()
 except subprocess.CalledProcessError:
-    subprocess.call('sh build_test_docker.sh', shell=True)
+    subprocess.call('sh ../build_test_docker.sh', shell=True)
     try:
         subprocess.check_output('docker ps | grep test_sos', shell=True).decode()
     except subprocess.CalledProcessError:
@@ -48,7 +48,7 @@ except subprocess.CalledProcessError:
 #    with open('~/docker.yml', 'w') as d:
 #        d.write(cfg.replace('/home/', 'c:\\Users\\'))
 
-class TestRemote(unittest.TestCase):
+class TestPBSQueue(unittest.TestCase):
     def setUp(self):
         env.reset()
         #self.resetDir('~/.sos')
@@ -252,11 +252,11 @@ sh:
         # create a symbloc link
         if os.path.exists('llink'):
             os.remove('llink')
-        subprocess.call('ln -s scripts llink', shell=True)
+        subprocess.call('ln -s test_pbs_queue.py llink', shell=True)
         script = SoS_Script('''
 [10]
 task: to_host='llink'
-files = os.listdir('llink')
+sz = os.path.getmtime('llink')
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={
@@ -270,14 +270,14 @@ files = os.listdir('llink')
     @unittest.skipIf(not os.path.exists(os.path.expanduser('~').upper()) or not has_docker, 'Skip test for case sensitive file system')
     def testCaseInsensitiveLocalPath(self):
         '''Test path_map from a case insensitive file system.'''
-        FileTarget('test_remote.py.bak').remove('both')
+        FileTarget('test_pbs_queue.py.bak').remove('both')
         script = SoS_Script('''
 [10]
-output: 'test_remote.py.bak'
+output: 'test_pbs_queue.py.bak'
 task: to_host=r'{}'
 import shutil
-shutil.copy("test_remote.py", "${{output}}")
-'''.format(os.path.join(os.path.abspath('.').upper(), 'test_remote.py')))
+shutil.copy("test_pbs_queue.py", "${{output}}")
+'''.format(os.path.join(os.path.abspath('.').upper(), 'test_pbs_queue.py')))
         wf = script.workflow()
         Base_Executor(wf, config={
                 'config_file': '~/docker.yml',
@@ -286,11 +286,11 @@ shutil.copy("test_remote.py", "${{output}}")
                 'default_queue': 'docker',
                 'sig_mode': 'force',
                 }).run()
-        self.assertTrue(FileTarget('test_remote.py.bak').exists('target'))
+        self.assertTrue(FileTarget('test_pbs_queue.py.bak').exists('target'))
         # the files should be the same
-        with open('test_remote.py') as ori, open('test_remote.py.bak') as bak:
+        with open('test_pbs_queue.py') as ori, open('test_pbs_queue.py.bak') as bak:
             self.assertEqual(ori.read(), bak.read())
-        FileTarget('test_remote.py.bak').remove('both')
+        FileTarget('test_pbs_queue.py.bak').remove('both')
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testMaxMem(self):
