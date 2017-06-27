@@ -57,11 +57,11 @@ class InstallWithConfigurations(install):
             os.makedirs(vim_ftdetect_dir)
         shutil.copy('misc/sos-detect.vim', vim_ftdetect_file)
         # copy vim-ipython to .vim/ftplugin
-        vim_plugin_dir = os.path.expanduser('~/.vim/ftplugin/sos')
-        if not os.path.isdir(vim_plugin_dir):
-            os.makedirs(vim_plugin_dir)
-        shutil.copy('misc/vim-ipython/ipy.vim', os.path.join(vim_plugin_dir, 'ipy.vim'))
-        shutil.copy('misc/vim-ipython/vim_ipython.py', os.path.join(vim_plugin_dir, 'vim_ipython.py'))
+        #vim_plugin_dir = os.path.expanduser('~/.vim/ftplugin/sos')
+        #if not os.path.isdir(vim_plugin_dir):
+        #    os.makedirs(vim_plugin_dir)
+        #shutil.copy('misc/vim-ipython/ipy.vim', os.path.join(vim_plugin_dir, 'ipy.vim'))
+        #shutil.copy('misc/vim-ipython/vim_ipython.py', os.path.join(vim_plugin_dir, 'vim_ipython.py'))
         #
         # at this point, jupyter and ipython should have been installed.
         import json
@@ -70,24 +70,22 @@ class InstallWithConfigurations(install):
         except ImportError:
             from ipykernel.kernelspec import KernelSpecManager as KS
         from IPython.utils.tempdir import TemporaryDirectory
-        from IPython.paths import get_ipython_dir
+        #from IPython.paths import get_ipython_dir
         #
         # copy ipython magic to ~/.ipython/extensions
-        ext_dir = os.path.join(get_ipython_dir(), 'extensions')
-        ext_file = os.path.join(ext_dir, 'sos_magic.py')
-        if not os.path.isdir(ext_dir):
-            os.makedirs(ext_dir)
-        prof_dir = os.path.join(get_ipython_dir(), 'profile_sos')
-        prof_file = os.path.join(prof_dir, 'ipython_config.py')
-        if not os.path.isdir(prof_dir):
-            os.makedirs(prof_dir)
+        #ext_dir = os.path.join(get_ipython_dir(), 'extensions')
+        #ext_file = os.path.join(ext_dir, 'sos_magic.py')
+        #if not os.path.isdir(ext_dir):
+        #    os.makedirs(ext_dir)
+        #prof_dir = os.path.join(get_ipython_dir(), 'profile_sos')
+        #prof_file = os.path.join(prof_dir, 'ipython_config.py')
+        #if not os.path.isdir(prof_dir):
+        #    os.makedirs(prof_dir)
         #
-        shutil.copy('src/sos/jupyter/ipython_magic.py', ext_file)
-        shutil.copy('src/sos/jupyter/sos_ipython_profile.py', prof_file)
+        #shutil.copy('src/sos/jupyter/ipython_magic.py', ext_file)
+        #shutil.copy('src/sos/jupyter/sos_ipython_profile.py', prof_file)
         #
-        log.info('\nSoS is installed and configured to use with vim, ipython, and Jupyter.')
-        log.info('Use "set syntax=sos" to enable syntax highlighting.')
-        log.info('Use "ipython --profile sos" to start ipython with sos magic.')
+        #log.info('Use "ipython --profile sos" to start ipython with sos magic.')
         #
         # Now write the kernelspec
         with TemporaryDirectory() as td:
@@ -102,6 +100,8 @@ class InstallWithConfigurations(install):
             except Exception:
                 log.error("\nWARNING: Could not install SoS Kernel as %s user." % self.user)
         #log.info('Run "python misc/patch_spyder.py" to patch spyder with sos support.')
+        log.info('\nSoS is installed and configured to use with vim and Jupyter.')
+        log.info('Use "set syntax=sos" to enable syntax highlighting.')
         log.info('And "sos -h" to start using Script of Scripts.')
 
 dest = '''\
@@ -314,6 +314,6 @@ ipynb-md.func = sos.jupyter.converter:notebook_to_md
         'dot':      ['graphviz'],
         # docker-py is not working on windows 10 (as of Jan 2017)
         'docker':   ['docker'],
-        'spyder':   ['spyder'],
+        #'spyder':   ['spyder'],
     }
 )
