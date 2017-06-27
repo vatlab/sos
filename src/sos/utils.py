@@ -932,11 +932,11 @@ def load_config_files(filename=None):
         env.logger.debug("{} does not exist".format(sos_config_file))
     # user-specified configuration file.
     if filename is not None:
-        if not os.path.isfile(filename):
+        if not os.path.isfile(os.path.expanduser(filename)):
             raise RuntimeError('Config file {} not found'.format(filename))
         with fasteners.InterProcessLock(os.path.join(tempfile.gettempdir(), 'sos_config_')):
             try:
-                with open(filename) as config:
+                with open(os.path.expanduser(filename)) as config:
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
                 raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(filename, e))
