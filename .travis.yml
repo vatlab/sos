@@ -16,6 +16,13 @@ before_install:
     - sudo apt-get install libmagickwand-dev libmagickcore5-extra graphviz
     - sudo apt-get install -y texlive-xetex texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended
     - sudo apt-get purge --auto-remove nodejs npm node
+    # install JavaScript kernel
+    # https://github.com/petethepig/devtools-terminal/issues/70
+    # need to remove nodejs-5.x ppa, purge nodejs
+    # then install nodejs-legacy
+    - sudo rm -rf /usr/local/bin/npm /usr/local/share/man/man1/node* /usr/local/lib/dtrace/node.d ~/.npm ~/.node-gyp /opt/local/bin/node opt/local/include/node /opt/local/lib/node_modules
+    - sudo rm -rf /usr/local/lib/node* /usr/local/include/node* /usr/local/bin/node*
+    - sudo rm -rf ~/.nvm ~/.ngm
     - sudo apt-get install nodejs-legacy npm
     # install anaconda Python 3
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then  wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh; fi
@@ -58,13 +65,6 @@ before_install:
     - pip install bash_kernel
     - python -m bash_kernel.install
     # for pdf generation
-    # install JavaScript kernel
-    # https://github.com/petethepig/devtools-terminal/issues/70
-    # need to remove nodejs-5.x ppa, purge nodejs
-    # then install nodejs-legacy
-    - sudo rm -rf /usr/local/bin/npm /usr/local/share/man/man1/node* /usr/local/lib/dtrace/node.d ~/.npm ~/.node-gyp /opt/local/bin/node opt/local/include/node /opt/local/lib/node_modules
-    - sudo rm -rf /usr/local/lib/node* /usr/local/include/node* /usr/local/bin/node*
-    - sudo rm -rf ~/.npm
     - sudo npm install -g ijavascript
     - sudo npm rebuild
     #- sudo npm install -g itypescript
