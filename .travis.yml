@@ -20,9 +20,9 @@ before_install:
     # need to remove nodejs-5.x ppa, purge nodejs
     # then install nodejs-legacy
     - sudo apt-get purge --auto-remove nodejs npm node
-    - sudo rm -rf /usr/local/bin/npm /usr/local/share/man/man1/node* /usr/local/lib/dtrace/node.d ~/.npm ~/.node-gyp /opt/local/bin/node opt/local/include/node /opt/local/lib/node_modules
-    - sudo rm -rf /usr/local/lib/node* /usr/local/include/node* /usr/local/bin/node*
-    - sudo rm -rf ~/.nvm ~/.ngm
+      #- sudo rm -rf /usr/local/bin/npm /usr/local/share/man/man1/node* /usr/local/lib/dtrace/node.d ~/.npm ~/.node-gyp /opt/local/bin/node opt/local/include/node /opt/local/lib/node_modules
+      #- sudo rm -rf /usr/local/lib/node* /usr/local/include/node* /usr/local/bin/node*
+    - sudo rm -rf ~/.nvm 
     - sudo apt-get install nodejs-legacy npm
     # install anaconda Python 3
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then  wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh; fi
@@ -46,8 +46,8 @@ before_install:
     # add docker
     - pip install docker
     # packages required by SoS
-    - pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm  scipy
-    - pip install fasteners pygments ipython ptpython networkx pydotplus wand graphviz
+    - pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm scipy pysam
+    - pip install fasteners pygments ipython networkx pydotplus wand graphviz
     # https://github.com/jupyter/jupyter/issues/150
     - pip install entrypoints jupyter coverage codacy-coverage pytest pytest-cov python-coveralls
     # install r kernel (this took 80s to install too many packges)
