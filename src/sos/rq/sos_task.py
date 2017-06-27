@@ -32,9 +32,9 @@ class RQ_TaskEngine(TaskEngine):
     def __init__(self, agent):
         super(RQ_TaskEngine, self).__init__(agent)
         #
-        self.redis_host = self.config.get('address', 'localhost')
-        self.redis_port = self.config.get('port', 6379)
-        self.redis_queue = self.config.get('queue', None)
+        self.redis_host = self.config.get('redis_host', self.config.get('address', 'localhost'))
+        self.redis_port = self.config.get('redis_port', 6379)
+        self.redis_queue = self.config.get('queue', 'default')
 
         try:
             redis_conn = Redis(host=self.redis_host, port=self.redis_port)
@@ -76,13 +76,6 @@ class RQ_TaskEngine(TaskEngine):
             job_id = runtime['job_name'],
             # result expire after one day
             result_ttl=86400,
-            timeout=runtime.get('walltime', '30d'))
-
-    #def query_tasks(self, tasks=None, verbosity=1, html=False, start_time=True, age=None):
-    #    status_lines = super(PBS_TaskEngine, self).query_tasks(tasks, verbosity, html, start_time, age=age)
-    #    return status_lines
-
-    #def kill_tasks(self, tasks, all_tasks=False):
-    #    output = super(PBS_TaskEngine, self).kill_tasks(tasks, all_tasks)
-    #    return output
+            timeout=runtime.get('walltime', 86400*30))
+        return True
 

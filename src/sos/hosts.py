@@ -173,11 +173,13 @@ class LocalHost:
             for l, r in task_vars['_runtime']['to_host'].items():
                 if l != r:
                     shutil.copy(l, r)
+        self.send_task_file(task_file)
         return True
 
     def send_task_file(self, task_file):
         # on the same file system, no action is needed.
-        pass
+        dest_task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', os.path.basename(task_file))
+        shutil.copyfile(task_file, dest_task_file)
 
     def check_output(self, cmd):
         # get the output of command
@@ -218,7 +220,7 @@ class LocalHost:
             env.logger.warning('Result for {} is not received'.format(task_id))
             return {'ret_code': 1, 'output': {}}
 
-        task_file = os.path.join(self.task_dir, task_id + '.def')
+        task_file = os.path.join(sys_task_dir, task_id + '.def')
         params = loadTask(task_file)
         job_dict = params.sos_dict
 

@@ -42,10 +42,10 @@ ADD authorized_keys /root/.ssh/authorized_keys
 RUN  pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm
 RUN  pip install fasteners pygments ipython ptpython networkx pydotplus
 
-EUN  apt-get install -y redis-server
+RUN  apt-get install -y redis-server
 RUN  pip install rq celery
 
-RUN  rq worker high
+RUN  rq worker high &
 
 ARG  SHA=LATEST
 RUN  SHA=$SHA git clone http://github.com/vatlab/SOS sos
@@ -72,15 +72,16 @@ docker build --build-arg SHA=$SHA -t eg_sshd .
 docker run -d -P --env TS_SLOTS=10 --name test_sos eg_sshd
 
 # get the port
-PORT=$(docker port test_sos 22 | cut -f2 -d:)
+PORT22=$(docker port test_sos 22 | cut -f2 -d:)
+PORT6379=$(docker port test_sos 6379 | cut -f2 -d:)
 
 # add the docker machine to known_hosts so that sos will not be
 # prompt with the message "are you sure you want to connect"?
 
-ssh  -o 'StrictHostKeyChecking no' -p $PORT root@localhost exit
+ssh  -o 'StrictHostKeyChecking no' -p $PORT22 root@localhost exit
 
 # write a host file
-cat > docker.yml << HERE
+cat > ~/docker.yml << HERE
 localhost: me
 hosts:
     me:
@@ -90,7 +91,7 @@ hosts:
             home: $HOME
     docker:
         address: root@localhost
-        port: $PORT
+        port: $PORT22
         paths:
             home: /root
     local_limited:
@@ -102,25 +103,29 @@ hosts:
             home: $HOME
     docker_limited:
         address: root@localhost
-        port: $PORT
+        port: $PORT22
         max_mem: 1G
         max_cores: 1
         max_walltime: 10
         paths:
             home: /root            
+    docker_rq:
+        description: rq server with worker
+        address: root@localhost
+        port: $PORT22
+        redis_host: localhost
+        redis_port: $PORT6379
+        queue: high
+        paths:
+            home: $HOME
     ts:
         description: task spooler on the docker machine
         address: root@localhost
-        port: $PORT
-    rq:
-        description: rq server with worker
-        redis_host: root@localhost
-        redis_port: $PORT
-        redis_queue: high
+        port: $PORT22
 HERE
 
 # this part is not interpolated
-cat >> docker.yml << 'HERE'
+cat >> ~/docker.yml << 'HERE'
         paths:
             home: /root
         queue_type: pbs

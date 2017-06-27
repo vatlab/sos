@@ -21,9 +21,9 @@
 #
 
 #from sos.sos_script import SoS_Script
-from sos.utils import env
 from sos.target import FileTarget
-#from sos.rq.sos_executor import RQ_Executor
+from sos.sos_script import SoS_Script
+from sos.sos_executor import Base_Executor
 
 import unittest
 import subprocess
@@ -33,7 +33,7 @@ has_docker = True
 try:
     subprocess.check_output('docker ps | grep test_sos', shell=True).decode()
 except subprocess.CalledProcessError:
-    subprocess.call('sh build_test_docker.sh', shell=True)
+    subprocess.call('sh ../build_test_docker.sh', shell=True)
     try:
         subprocess.check_output('docker ps | grep test_sos', shell=True).decode()
     except subprocess.CalledProcessError:
@@ -41,59 +41,28 @@ except subprocess.CalledProcessError:
         has_docker = False
 
 class TestRQQueue(unittest.TestCase):
-    def setUp(self):
-        env.reset()
-        self.temp_files = []
-        subprocess.call('redis-server &', shell=True)
-        subprocess.call('rq worker &', shell=True)
 
-    def tearDown(self):
-        #
-        for f in self.temp_files:
-            FileTarget(f).remove('both')
-        subprocess.call('redis-cli shutdown', shell=True)
-        # how to kill rq worker?
+    @unittest.skipIf(not has_docker, "Docker container not usable")
+    def testRemoteExecute(self):
+        script = SoS_Script('''
+[10]
+output: 'result.txt'
+task:
 
-    def touch(self, files):
-        '''create temporary files'''
-        if isinstance(files, str):
-            files = [files]
-        #
-        for f in files:
-            with open(f, 'w') as tmp:
-                tmp.write('test')
-        #
-        self.temp_files.extend(files)
+run:
+  echo 'rq' > 'result.txt'
 
-#     def testSharedVar(self):
-#         '''Test shared var with rq queue'''
-#         script = SoS_Script(
-# '''
-# [work_1: shared = {'data': 'output'}]
-# input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
-# output: expand_pattern('{_name}.out')
-# task: concurrent = True
-# run:
-#   touch ${_output}
-#
-# [work_2]
-# input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}', paired_with = ['data']
-# output: expand_pattern('{_name}.out2')
-# task: concurrent = True
-# run:
-#   touch ${_data} ${_output}
-#
-# [default]
-# sos_run("work:1+work:2")
-# ''')
-#         self.touch(['1.txt', '2.txt'])
-#         subprocess.call('sos remove . -t -y', shell=True)
-#         wf = script.workflow()
-#         RQ_Executor(wf).run()
-#         for f in ['1.out', '1.out2', '2.out', '2.out2']:
-#             self.assertTrue(FileTarget(f).exists('target'))
-#             FileTarget(f).remove('both')
-
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={
+                'config_file': '~/docker.yml',
+                'wait_for_task': True,
+                'default_queue': 'docker_rq',
+                'sig_mode': 'force',
+                }).run()
+        self.assertTrue(FileTarget('result.txt').exists())
+        with open('result.txt') as res:
+            self.assertEqual(res.read(), 'rq\n')
 
 if __name__ == '__main__':
     unittest.main()

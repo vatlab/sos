@@ -189,8 +189,20 @@ def collect_task_result(task_id, sigil, sos_dict):
             'output': output,
             'shared': {env.sos_dict['_index']: shared} }
 
-
 def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_interval=5,
+    resource_monitor_interval=60):
+    res = _execute_task(task_id, verbosity, runmode, sigmode, monitor_interval, resource_monitor_interval)
+    # write result file
+    res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.res')
+    with open(res_file, 'wb') as res_file:
+        pickle.dump(res, res_file)
+    if res['ret_code'] != 0 and 'exception' in res:
+        with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'), 'a') as err:
+            err.write('sos execute quits with code {} and exception {}: {}\n'.format(
+                res['ret_code'], res['exception'].__class__.__name__, repr(res['exception'])))
+    return res['ret_code']
+
+def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_interval=5,
     resource_monitor_interval=60):
     '''A function that execute specified task within a local dictionary
     (from SoS env.sos_dict). This function should be self-contained in that
@@ -242,7 +254,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                 try:
                     results = []
                     for t in params.task_stack:
-                        results.append(p.apply_async(execute_task, (t, verbosity, runmode,
+                        results.append(p.apply_async(_execute_task, (t, verbosity, runmode,
                             sigmode, monitor_interval, resource_monitor_interval), callback=copy_out_and_err))
                     for idx,r in enumerate(results):
                         results[idx] = r.get()
@@ -255,7 +267,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                 results = []
                 for tid, tdef in params.task_stack:
                     try:
-                        res = execute_task((tid, tdef), verbosity=verbosity, runmode=runmode,
+                        res = _execute_task((tid, tdef), verbosity=verbosity, runmode=runmode,
                             sigmode=sigmode, monitor_interval=monitor_interval,
                             resource_monitor_interval=resource_monitor_interval)
                         copy_out_and_err(res)
@@ -531,7 +543,7 @@ def check_task(task):
                 if isinstance(res['output'], dict):
                     for x,y in res['output'].items():
                         if not FileTarget(x).exists() or FileTarget(x).signature() != y:
-                            env.logger.warning('{} not found or signature mismatch'.format(x))
+                            env.logger.debug('{} not found or signature mismatch'.format(x))
                             return 'result-mismatch'
                             # otherwise, it can be submitted or pending...
                     # this is called "completed" remotely but will be

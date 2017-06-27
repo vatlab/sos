@@ -596,7 +596,6 @@ def get_execute_parser(desc_only=False):
 
 
 def cmd_execute(args, workflow_args):
-    import pickle
     from .sos_task import execute_task, check_task, monitor_interval, resource_monitor_interval
     from .monitor import summarizeExecution
     from .utils import env, load_config_files
@@ -642,16 +641,9 @@ def cmd_execute(args, workflow_args):
             #
             if os.path.isfile(res_file):
                 os.remove(res_file)
-            res = execute_task(task, verbosity=args.verbosity, runmode='dryrun' if args.dryrun else 'run',
+            exit_code.append(execute_task(task, verbosity=args.verbosity, runmode='dryrun' if args.dryrun else 'run',
                 sigmode=args.__sig_mode__,
-                monitor_interval=monitor_interval, resource_monitor_interval=resource_monitor_interval)
-            with open(res_file, 'wb') as res_file:
-                pickle.dump(res, res_file)
-            if res['ret_code'] != 0 and 'exception' in res:
-                with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.err'), 'a') as err:
-                    err.write('sos execute quits with code {} and exception {}: {}\n'.format(
-                        res['ret_code'], res['exception'].__class__.__name__, repr(res['exception'])))
-            exit_code.append(res['ret_code'])
+                monitor_interval=monitor_interval, resource_monitor_interval=resource_monitor_interval))
         sys.exit(sum(exit_code))
     elif args.queue == '':
         from .hosts import list_queues

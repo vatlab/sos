@@ -42,11 +42,11 @@ except subprocess.CalledProcessError:
         print('Failed to set up a docker machine with sos')
         has_docker = False
 
-if sys.platform == 'win32':
-    with open('docker.yml', 'r') as d:
-        cfg = d.read()
-    with open('docker.yml', 'w') as d:
-        d.write(cfg.replace('/home/', 'c:\\Users\\'))
+#if sys.platform == 'win32':
+#    with open('~/docker.yml', 'r') as d:
+#        cfg = d.read()
+#    with open('~/docker.yml', 'w') as d:
+#        d.write(cfg.replace('/home/', 'c:\\Users\\'))
 
 class TestRemote(unittest.TestCase):
     def setUp(self):
@@ -75,7 +75,7 @@ run:
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 'wait_for_task': True,
                 'default_queue': 'docker',
                 'sig_mode': 'force',
@@ -98,7 +98,7 @@ run:
 ''')
         wf = script.workflow()
         res = Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': False,
                 'default_queue': 'docker',
@@ -109,14 +109,14 @@ run:
         tasks = ' '.join(res['pending_tasks'])
         # wait another 15 seconds?
         time.sleep(15)
-        out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
+        out = subprocess.check_output('sos status {} -c ~/docker.yml -q docker'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']), 'Expect all completed jobs: ' + out)
 
         Host.reset()
         # until we run the workflow again
         #st = time.time()
         Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker',
@@ -124,7 +124,7 @@ run:
                 }).run()
         # should finish relatively fast?
         #self.assertLess(time.time() - st, 5)
-        out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
+        out = subprocess.check_output('sos status {} -c ~/docker.yml'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']), 'Expect all completed jobs: ' + out)
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
@@ -142,7 +142,7 @@ run:
 ''')
         wf = script.workflow()
         res = Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': False,
                 'default_queue': 'ts',
@@ -152,16 +152,16 @@ run:
         # we should be able to get status
         tasks = ' '.join(res['pending_tasks'])
         time.sleep(2)
-        out = subprocess.check_output('sos status {} -c docker.yml -q ts'.format(tasks), shell=True).decode()
+        out = subprocess.check_output('sos status {} -c ~/docker.yml -q ts'.format(tasks), shell=True).decode()
         self.assertGreaterEqual(out.count('running'), 1, 'Expect at least one running job: ' + out)
         # wait another 20 seconds?
         time.sleep(15)
-        out = subprocess.check_output('sos status {} -c docker.yml -q ts'.format(tasks), shell=True).decode()
+        out = subprocess.check_output('sos status {} -c ~/docker.yml -q ts'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']))
         # until we run the workflow again
         #st = time.time()
         Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'ts',
@@ -169,12 +169,12 @@ run:
                 }).run()
         # should finish relatively fast?
         #self.assertLess(time.time() - st, 5)
-        out = subprocess.check_output('sos status {} -c docker.yml -q ts'.format(tasks), shell=True).decode()
+        out = subprocess.check_output('sos status {} -c ~/docker.yml -q ts'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']), 'Expect all completed jobs: ' + out)
         # get more detailed results
-        self.assertEqual(subprocess.call('sos status {} -c docker.yml -q ts -v4'.format(tasks), shell=True), 0)
-        self.assertEqual(subprocess.call('sos status -c docker.yml -q ts -v2', shell=True), 0)
-        self.assertEqual(subprocess.call('sos status {} -c docker.yml -q ts --html'.format(tasks), shell=True), 0)
+        self.assertEqual(subprocess.call('sos status {} -c ~/docker.yml -q ts -v4'.format(tasks), shell=True), 0)
+        self.assertEqual(subprocess.call('sos status -c ~/docker.yml -q ts -v2', shell=True), 0)
+        self.assertEqual(subprocess.call('sos status {} -c ~/docker.yml -q ts --html'.format(tasks), shell=True), 0)
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testTaskSpoolerWithForceSigMode(self):
@@ -190,7 +190,7 @@ run:
 ''')
         wf = script.workflow()
         res = Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': False,
                 'default_queue': 'ts',
@@ -200,15 +200,15 @@ run:
         # we should be able to get status
         tasks = ' '.join(res['pending_tasks'])
         time.sleep(2)
-        out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
+        out = subprocess.check_output('sos status {} -c ~/docker.yml -q docker'.format(tasks), shell=True).decode()
         self.assertGreaterEqual(out.count('running'), 1, 'Expect at least one running jobs: ' + out)
         # wait another 20 seconds?
         time.sleep(20)
-        out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
+        out = subprocess.check_output('sos status {} -c ~/docker.yml -q docker'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']), 'Expect all completed jobs: ' + out)
         # until we run the workflow again
         Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'ts',
@@ -218,7 +218,7 @@ run:
                 'sig_mode': 'force',
                 'resume_mode': True,
                 }).run()
-        out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
+        out = subprocess.check_output('sos status {} -c ~/docker.yml'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']))
 
     @unittest.skipIf(sys.platform == 'win32' or not has_docker, 'No symbloc link problem under win32 or no docker')
@@ -236,7 +236,7 @@ sh:
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker',
@@ -260,7 +260,7 @@ files = os.listdir('llink')
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker',
@@ -280,7 +280,7 @@ shutil.copy("test_remote.py", "${{output}}")
 '''.format(os.path.join(os.path.abspath('.').upper(), 'test_remote.py')))
         wf = script.workflow()
         Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker',
@@ -302,7 +302,7 @@ print('a')
 ''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker_limited',
@@ -318,7 +318,7 @@ print('a')
 ''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'local_limited',
@@ -336,7 +336,7 @@ time.sleep(15)
 ''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker_limited',
@@ -353,7 +353,7 @@ time.sleep(15)
 ''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'local_limited',
@@ -370,7 +370,7 @@ print('a')
 ''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker_limited',
@@ -386,7 +386,7 @@ print('a')
 ''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'local_limited',
@@ -396,7 +396,7 @@ print('a')
     def testListHosts(self):
         '''test list hosts using sos status -q'''
         for v in ['0', '1', '3', '4']:
-            output = subprocess.check_output(['sos', 'status', '-c', 'docker.yml', '-q', '-v', v]).decode()
+            output = subprocess.check_output(['sos', 'status', '-c', '~/docker.yml', '-q', '-v', v]).decode()
             self.assertTrue('ts' in output)
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
@@ -409,7 +409,7 @@ print('a')
 ''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker_limited',
@@ -419,7 +419,7 @@ print('a')
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testSoSExecute(self):
         '''Test sos execute'''
-        subprocess.check_output('sos purge -c docker.yml -q docker', shell=True)
+        subprocess.check_output('sos purge -c ~/docker.yml -q docker', shell=True)
         script = SoS_Script('''
 [10]
 input: for_each={'i': range(3)}
@@ -431,7 +431,7 @@ run:
 ''')
         wf = script.workflow()
         res = Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': False,
                 'default_queue': 'ts',
@@ -440,13 +440,13 @@ run:
         tasks = res['pending_tasks']
         # re-run some tasks
         for task in tasks:
-            subprocess.check_output('sos execute {} -c docker.yml -q ts'.format(task), shell=True)
+            subprocess.check_output('sos execute {} -c ~/docker.yml -q ts'.format(task), shell=True)
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testSoSPurge(self):
         '''Test purge tasks'''
         # purge all previous tasks
-        subprocess.check_output('sos purge -c docker.yml -q ts', shell=True)
+        subprocess.check_output('sos purge -c ~/docker.yml -q ts', shell=True)
         script = SoS_Script('''
 [10]
 input: for_each={'i': range(3)}
@@ -458,7 +458,7 @@ run:
 ''')
         wf = script.workflow()
         res = Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': False,
                 'default_queue': 'ts',
@@ -467,25 +467,25 @@ run:
         # we should be able to get status
         tasks = res['pending_tasks']
         # should be ok
-        subprocess.check_output('sos kill {} -c docker.yml -q ts'.format(tasks[0]), shell=True)
+        subprocess.check_output('sos kill {} -c ~/docker.yml -q ts'.format(tasks[0]), shell=True)
         # wait a few seconds
         #time.sleep(3)
         # status cancelled
-        #out = subprocess.check_output('sos status -c docker.yml -q docker -v1', shell=True).decode()
+        #out = subprocess.check_output('sos status -c ~/docker.yml -q docker -v1', shell=True).decode()
         #status = [line for line in out.split('\n') if tasks[0] in line][0].split('\t')[-1]
         #self.assertEqual(status, 'canceled', 'Status should be canceled. Got {}'.format(out))
         # more verbose output
-        out = subprocess.check_output('sos status -c docker.yml -q docker -v4', shell=True).decode()
+        out = subprocess.check_output('sos status -c ~/docker.yml -q docker -v4', shell=True).decode()
         # HTML output
-        out = subprocess.check_output('sos status -c docker.yml -q docker --html', shell=True).decode()
+        out = subprocess.check_output('sos status -c ~/docker.yml -q docker --html', shell=True).decode()
 
-        subprocess.check_output('sos purge {} -c docker.yml -q ts'.format(tasks[0]), shell=True)
+        subprocess.check_output('sos purge {} -c ~/docker.yml -q ts'.format(tasks[0]), shell=True)
         # there should be 2 more tasks
-        out = subprocess.check_output('sos status -c docker.yml -q docker -v1', shell=True).decode()
+        out = subprocess.check_output('sos status -c ~/docker.yml -q docker -v1', shell=True).decode()
         self.assertEqual(out.strip().count('\n'), 1, 'Expect two lines: {}'.format(out))
         # show be ok
-        subprocess.check_output('sos purge -c docker.yml -q docker', shell=True)
-        out = subprocess.check_output('sos status -c docker.yml -q docker -v1', shell=True).decode()
+        subprocess.check_output('sos purge -c ~/docker.yml -q docker', shell=True)
+        out = subprocess.check_output('sos status -c ~/docker.yml -q docker -v1', shell=True).decode()
         self.assertEqual(out.strip().count('\n'), 0)
 
 
@@ -501,7 +501,7 @@ run:
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker',
@@ -521,7 +521,7 @@ run:
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker',
@@ -548,7 +548,7 @@ run:
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker',
@@ -572,7 +572,7 @@ run:
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker',
@@ -603,7 +603,7 @@ run:
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker',
@@ -628,7 +628,7 @@ sh:
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker',
@@ -645,7 +645,7 @@ sh:
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker',
@@ -666,7 +666,7 @@ sh:
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'sig_mode': 'force',
@@ -683,7 +683,7 @@ sh:
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={
-                'config_file': 'docker.yml',
+                'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'sig_mode': 'force',
@@ -702,7 +702,7 @@ sh:
             # the cell will actually be executed several times
             # with automatic-reexecution
             code = """
-%run -s force -W -q ts -c docker.yml
+%run -s force -W -q ts -c ~/docker.yml
 [10]
 input: for_each={'i': range(2)}
 task:
@@ -725,7 +725,7 @@ run:
             res = get_display_data(kc.iopub_channel, 'text/html')
             self.assertTrue(tid in res, 'expect {} in {}'.format(tid, res))
             # there should be two tasks
-            lines = subprocess.check_output(['sos', 'status', '-q', 'ts', '-c', 'docker.yml']).decode().splitlines()
+            lines = subprocess.check_output(['sos', 'status', '-q', 'ts', '-c', '~/docker.yml']).decode().splitlines()
             self.assertGreaterEqual(len(lines), 2)
 
 if __name__ == '__main__':
