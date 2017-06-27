@@ -49,8 +49,9 @@ class TaskParams(object):
     '''A parameter object that encaptulates parameters sending to
     task executors. This would makes the output of workers, especially
     in the web interface much cleaner (issue #259)'''
-    def __init__(self, name, task, sos_dict, sigil):
+    def __init__(self, name, global_def, task, sos_dict, sigil):
         self.name = name
+        self.global_def = global_def
         self.task = task
         self.sos_dict = sos_dict
         self.sigil = sigil
@@ -69,6 +70,7 @@ class TaskParams(object):
 class MasterTaskParams(TaskParams):
     def __init__(self, num_workers=0):
         self.ID = 'M_0'
+        self.global_def = ''
         self.task = ''
         self.sos_dict = {'_runtime': {}, '_input': [], '_output': [], '_depends': []}
         self.sigil = None
@@ -275,7 +277,17 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
             all_res['shared'].update(x['shared'])
         return all_res
 
-    task, sos_dict, sigil = params.task, params.sos_dict, params.sigil
+    global_def, task, sos_dict, sigil = params.global_def, params.task, params.sos_dict, params.sigil
+
+    SoS_exec('import os, sys, glob', None)
+    SoS_exec('from sos.runtime import *', None)
+    try:
+        # global def could fail due to execution on remote host...
+        # we also execute global_def way before others and allows variables set by
+        # global_def be overwritten by other passed variables
+        SoS_exec(global_def, None)
+    except Exception as e:
+        env.logger.debug('Failed to execute global definition {}: {}'.format(global_def, e))
 
     if '_runtime' not in sos_dict:
         sos_dict['_runtime'] = {}
@@ -456,8 +468,6 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         env.sos_dict.set('__std_err__', os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'))
         env.logfile = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
 
-        SoS_exec('import os, sys, glob', None)
-        SoS_exec('from sos.runtime import *', None)
         # step process
         SoS_exec(task, sigil)
 

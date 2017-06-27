@@ -158,6 +158,7 @@ class LocalHost:
 
             new_param = TaskParams(
                 name = params.name,
+                global_def = params.global_def,
                 task = params.task,
                 sos_dict = params.sos_dict,
                 sigil = params.sigil
@@ -533,6 +534,7 @@ class RemoteHost:
 
         new_param = TaskParams(
             name = params.name,
+            global_def = params.global_def,
             task = params.task,
             sos_dict = params.sos_dict,
             sigil = params.sigil
