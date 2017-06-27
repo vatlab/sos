@@ -82,7 +82,7 @@ class InstallWithConfigurations(install):
         if not os.path.isdir(prof_dir):
             os.makedirs(prof_dir)
         #
-        shutil.copy('src/sos/jupyter/sos_magic.py', ext_file)
+        shutil.copy('src/sos/jupyter/ipython_magic.py', ext_file)
         shutil.copy('src/sos/jupyter/sos_ipython_profile.py', prof_file)
         #
         log.info('\nSoS is installed and configured to use with vim, ipython, and Jupyter.')
