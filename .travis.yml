@@ -15,11 +15,11 @@ before_install:
     - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
     - sudo apt-get install libmagickwand-dev libmagickcore5-extra graphviz
     - sudo apt-get install -y texlive-xetex texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended
-    - sudo apt-get purge --auto-remove nodejs npm node
     # install JavaScript kernel
     # https://github.com/petethepig/devtools-terminal/issues/70
     # need to remove nodejs-5.x ppa, purge nodejs
     # then install nodejs-legacy
+    - sudo apt-get purge --auto-remove nodejs npm node
     - sudo rm -rf /usr/local/bin/npm /usr/local/share/man/man1/node* /usr/local/lib/dtrace/node.d ~/.npm ~/.node-gyp /opt/local/bin/node opt/local/include/node /opt/local/lib/node_modules
     - sudo rm -rf /usr/local/lib/node* /usr/local/include/node* /usr/local/bin/node*
     - sudo rm -rf ~/.nvm ~/.ngm
@@ -71,16 +71,16 @@ before_install:
     - ijsinstall --spec-path=full
     #
     # print version info
-    - lsb_release -a
-    - conda list
-    - pip list
-    - jupyter kernelspec list --json
-    - npm list -g
-    - npm -v
-    - node -v
-    - which node
-    - which nodejs
-    - which ijskernel
+    #- lsb_release -a
+    #- conda list
+    #- pip list
+    #- jupyter kernelspec list --json
+    #- npm list -g
+    #- npm -v
+    #- node -v
+    #- which node
+    #- which nodejs
+    #- which ijskernel
 sudo: required
 services:
     - docker
@@ -94,7 +94,7 @@ script:
            pytest -x -v --ignore rq --durations 20 . ;
        else
            pytest -x --cov sos --cov-config ../.coveragerc --cov-report= -v docker;
-           pytest -x --cov sos --cov-config ../.coveragerc --cov-report=xml --cov-append -v --durations 20 --ignore JavaScript --ignore docker --ignore rq .;
+           pytest -x --cov sos --cov-config ../.coveragerc --cov-report=xml --cov-append -v --durations 20 --ignore docker --ignore rq .;
        fi'
       
 after_success:
