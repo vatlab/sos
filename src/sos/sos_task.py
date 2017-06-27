@@ -663,6 +663,10 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
             print('TASK:\n=====')
             print(params.task)
             print()
+            if params.global_def:
+                print('GLOBAL:\n=======')
+                print(params.global_def)
+                print()
             print('ENVIRONMENT:\n============')
             job_vars = params.sos_dict
             for k in sorted(job_vars.keys()):
@@ -707,6 +711,9 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
                 params = pickle.load(task)
             row('Task')
             row(td='<pre style="text-align:left">{}</pre>'.format(params.task))
+            row('Global Definitions')
+            if params.global_def:
+                row(td='<pre style="text-align:left">{}</pre>'.format(params.global_def))
             row('Environment')
             job_vars = params.sos_dict
             for k in sorted(job_vars.keys()):
