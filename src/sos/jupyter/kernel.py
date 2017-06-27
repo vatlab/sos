@@ -57,7 +57,6 @@ from .inspector import SoS_Inspector
 from .sos_executor import runfile
 from .sos_step import PendingTasks
 
-
 class FlushableStringIO(StringIO):
     '''This is a string buffer for output, but it will only
     keep the first 200 lines and the last 10 lines.
@@ -651,6 +650,12 @@ class SoS_Kernel(IPythonKernel):
             self.send_frontend_msg('kernel-list', self.get_kernel_list())
             return new_def
         else:
+            # let us check if there is something wrong with the pre-defined language
+            for entrypoint in pkg_resources.iter_entry_points(group='sos_languages'):
+                if entrypoint.name == name:
+                    # there must be something wrong, let us trigger the exception here
+                    entrypoint.load()(self)
+            # if nothing is triggerred, kernel is not defined, return a general message
             raise ValueError('No pre-defined subkernel named {} is found. Please define it with one or both of parameters --kernel and --language'.format(name))
 
     def get_supported_languages(self):
@@ -668,7 +673,7 @@ class SoS_Kernel(IPythonKernel):
                 if name != plugin.kernel_name:
                     self._supported_languages[plugin.kernel_name] = plugin
             except Exception as e:
-                self.log.error('Failed to load language {}: {}'.format(entrypoint.name, e))
+                pass #self.log.error('Failed to load language {}: {}'.format(entrypoint.name, e))
         return self._supported_languages
 
     supported_languages = property(lambda self:self.get_supported_languages())
@@ -1170,7 +1175,18 @@ Available subkernels:\n{}'''.format(
                             startup_timeout=60, kernel_name=kinfo[1], cwd=os.getcwd())
                     new_kernel = True
                 except Exception as e:
-                    self.warn('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}'.format(kernel, e))
+                    # there is something wrong, so we try again and try to get some
+                    # more error message
+                    fout, ferr = StringIO(), StringIO()
+                    try:
+                        # this should fail
+                        manager.start_new_kernel(
+                            startup_timeout=60, kernel_name=kinfo[1], cwd=os.getcwd(),
+                            stdout=fout, stderr=ferr)
+                    except:
+                        pass
+                    self.warn('Failed to start kernel "{}". {}\nstdout:\n{}\nstderr:\n{}'.format(kernel, e,
+                        fout.getvalue(), ferr.getvalue()))
                     return
             self.KM, self.KC = self.kernels[kinfo[0]]
             self.RET_VARS = [] if ret_vars is None else ret_vars
@@ -2139,6 +2155,7 @@ Available subkernels:\n{}'''.format(
             options, remaining_code = self.get_magic_and_code(code, False)
             old_options = self.options
             self.options = options + ' ' + self.options
+            self.options = self._interpolate_option(self.options, quiet=False)
             try:
                 self._workflow_mode = True
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)

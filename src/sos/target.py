@@ -26,7 +26,6 @@ import shlex
 import shutil
 import fasteners
 import pkg_resources
-from collections import Iterable
 
 from .utils import env, Error, short_repr, stable_repr, save_var, load_var, isPrimitive
 from .sos_eval import Undetermined
@@ -251,7 +250,12 @@ class remote(BaseTarget):
         self._target = target
 
     def name(self):
-        return FileTarget(self._target).name() if isinstance(self._target, str) else self._target.name()
+        if isinstance(self._target, str):
+            return FileTarget(self._target).name()
+        elif isinstance(self._target, BaseTarget):
+            return self._target.name()
+        else:
+            return repr(self._target)
 
     def exists(self, mode='any'):
         return True

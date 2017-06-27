@@ -414,11 +414,10 @@ def param_of(name, text):
             continue
     return exprs
 
-def SoS_eval(expr, sigil, convert=True):
+def SoS_eval(expr, sigil):
     '''Evaluate an expression after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
-    if convert:
-        expr = ConvertString(expr, sigil)
+    expr = ConvertString(expr, sigil)
     return eval(expr, env.sos_dict._dict)
 
 def _is_expr(expr):

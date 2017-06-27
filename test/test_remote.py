@@ -308,6 +308,15 @@ print('a')
                 'default_queue': 'docker_limited',
                 'sig_mode': 'force',
                 }).run)
+
+    def testLocalMaxMem(self):
+        '''Test server restriction max_mem'''
+        script = SoS_Script('''
+[10]
+task: mem='2G'
+print('a')
+''')
+        wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
                 'config_file': 'docker.yml',
                 # do not wait for jobs
@@ -333,6 +342,16 @@ time.sleep(15)
                 'default_queue': 'docker_limited',
                 'sig_mode': 'force',
                 }).run)
+
+    def testLocalRuntimeMaxWalltime(self):
+        '''Test server max_walltime option'''
+        script = SoS_Script('''
+[10]
+task:
+import time
+time.sleep(15)
+''')
+        wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
                 'config_file': 'docker.yml',
                 # do not wait for jobs
@@ -342,11 +361,11 @@ time.sleep(15)
                 }).run)
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
-    def testMaxProcs(self):
-        '''Test server restriction max_procs'''
+    def testMaxCores(self):
+        '''Test server restriction max_cores'''
         script = SoS_Script('''
 [10]
-task: procs=8
+task: cores=8
 print('a')
 ''')
         wf = script.workflow()
@@ -357,6 +376,15 @@ print('a')
                 'default_queue': 'docker_limited',
                 'sig_mode': 'force',
                 }).run)
+
+    def testLocalMaxCores(self):
+        '''Test server restriction max_cores'''
+        script = SoS_Script('''
+[10]
+task: cores=8
+print('a')
+''')
+        wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
                 'config_file': 'docker.yml',
                 # do not wait for jobs
@@ -568,7 +596,7 @@ run:
     touch test.py
 
 [20]
-output: "${input}.bak"
+output: "${input!R}.bak"
 task:
 run:
     cp ${input} ${output}
@@ -668,7 +696,7 @@ sh:
     def testRemoteTaskFromJupyter(self):
         '''Test the execution of tasks with -q '''
         from ipykernel.tests.utils import wait_for_idle, execute
-        from sos.jupyter.test_utils import sos_kernel, KC, get_display_data
+        from sos.jupyter.test_utils import sos_kernel, get_display_data 
         subprocess.call(['sos', 'purge'])
         with sos_kernel() as kc:
             # the cell will actually be executed several times
