@@ -27,7 +27,6 @@ from sos.jupyter.test_utils import sos_kernel
 
 class TestPreview(unittest.TestCase):
     def setUp(self):
-        self.test_dir = os.getcwd()
         self.resource_dir = os.path.abspath(os.path.split(__file__)[0])
 
     def testMagicPreview(self):
@@ -35,20 +34,16 @@ class TestPreview(unittest.TestCase):
             # preview bam file
             iopub = kc.iopub_channel
             execute(kc=kc, code='''
-%cd {}            
-%preview -n sim_reads_aligned.bam
-%cd {}
-'''.format(self.resource_dir, self.test_dir))
+%preview -n {}/sim_reads_aligned.bam
+'''.format(self.resource_dir))
             stdout, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
             self.assertTrue('PG' in stdout)
 
             # preview sam file
             execute(kc=kc, code='''
-%cd {}            
-%preview -n sim_reads_aligned.sam
-%cd {}
-'''.format(self.resource_dir, self.test_dir))
+%preview -n {}/sim_reads_aligned.sam
+'''.format(self.resource_dir))
             stdout, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
             self.assertTrue('PG' in stdout)
