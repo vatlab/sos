@@ -1175,18 +1175,18 @@ Available subkernels:\n{}'''.format(
                             startup_timeout=60, kernel_name=kinfo[1], cwd=os.getcwd())
                     new_kernel = True
                 except Exception as e:
-                    # there is something wrong, so we try again and try to get some
-                    # more error message
-                    fout, ferr = StringIO(), StringIO()
-                    try:
-                        # this should fail
-                        manager.start_new_kernel(
-                            startup_timeout=60, kernel_name=kinfo[1], cwd=os.getcwd(),
-                            stdout=fout, stderr=ferr)
-                    except:
-                        pass
-                    self.warn('Failed to start kernel "{}". {}\nstdout:\n{}\nstderr:\n{}'.format(kernel, e,
-                        fout.getvalue(), ferr.getvalue()))
+                    # try toget error message
+                    import tempfile
+                    with tempfile.TemporaryFile() as ferr:
+                        try:
+                            # this should fail
+                            manager.start_new_kernel(
+                                startup_timeout=60, kernel_name=kinfo[1], cwd=os.getcwd(),
+                                stdout=subprocess.DEVNULL, stderr=ferr)
+                        except:
+                            ferr.tell()
+                            self.warn('Failed to start kernel "{}". {}\nError Message:\n{}'.format(kernel, e,
+                                ferr.read()))
                     return
             self.KM, self.KC = self.kernels[kinfo[0]]
             self.RET_VARS = [] if ret_vars is None else ret_vars

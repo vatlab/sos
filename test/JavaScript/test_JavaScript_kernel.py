@@ -62,6 +62,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             clear_channels(iopub)
             execute(kc=kc, code="%use JavaScript")
             _, stderr = assemble_output(iopub)
+            self.maxDiff = None
             self.assertEqual(stderr, '', 'Got error message {}'.format(stderr))
             execute(kc=kc, code="%get df")
             wait_for_idle(kc)
