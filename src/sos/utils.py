@@ -743,12 +743,12 @@ def expand_size(size):
 
 def find_symbolic_links(item):
     item = os.path.expanduser(item)
-    if os.path.isfile(item):
-        return {}
-    elif os.path.islink(item):
+    if os.path.islink(item):
         if not os.path.exists(item):
             env.logger.warning('Non-existent symbolic link {}'.format(item))
         return {item: os.path.realpath(item)}
+    elif os.path.isfile(item):
+        return {}
     else:
         result = {}
         for x in os.listdir(item):
