@@ -692,7 +692,7 @@ sh:
         self.assertTrue(os.path.isfile('llp'))
         os.remove('llp')
 
-    @unittest.skipIf(sys.platform == 'win32', 'appveyor does not have docker with linux')
+    @unittest.skipIf(sys.platform == 'win32' or not has_docker, 'appveyor does not have docker with linux')
     def testRemoteTaskFromJupyter(self):
         '''Test the execution of tasks with -q '''
         from ipykernel.tests.utils import wait_for_idle, execute
