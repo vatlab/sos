@@ -112,6 +112,7 @@ hosts:
     docker_rq:
         description: rq server with worker
         address: root@localhost
+        queue_type: rq
         port: $PORT22
         redis_host: localhost
         redis_port: $PORT6379
