@@ -1059,6 +1059,14 @@ class TaskEngine(threading.Thread):
             # default
             self.wait_for_task = True
 
+    def notify(self, msg):
+        # GUI
+        if hasattr(env, '__task_notifier__'):
+            env.__task_notifier__(msg)
+        # text mode does not provide detailed message change information
+        elif isinstance(msg, str):
+            env.logger.info(msg)
+
     def monitor_tasks(self, tasks=None, status=None, age=None):
         '''Start monitoring specified or all tasks'''
         self.engine_ready.wait()
@@ -1145,15 +1153,12 @@ class TaskEngine(threading.Thread):
                             if self.submitting_tasks[k].result():
                                 if k in self.canceled_tasks:
                                     # task is canceled while being prepared
-                                    if hasattr(env, '__task_notifier__'):
-                                        env.__task_notifier__(['change-status', self.agent.alias, k, 'aborted'])
+                                    self.notify(['change-status', self.agent.alias, k, 'aborted'])
                                 else:
                                     self.running_tasks.append(k)
-                                    if hasattr(env, '__task_notifier__'):
-                                        env.__task_notifier__(['change-status', self.agent.alias, k, 'submitted'])
+                                    self.notify(['change-status', self.agent.alias, k, 'submitted'])
                             else:
-                                if hasattr(env, '__task_notifier__'):
-                                    env.__task_notifier__(['change-status', self.agent.alias, k, 'failed'])
+                                self.notify(['change-status', self.agent.alias, k, 'failed'])
                                 self.task_status[k] = 'failed'
                         #else:
                         #    env.logger.trace('{} is still being submitted.'.format(k))
@@ -1170,10 +1175,10 @@ class TaskEngine(threading.Thread):
                 to_run = self.pending_tasks[ : self.max_running_jobs - num_active_tasks]
                 for tid in to_run:
                     if self.task_status[tid] == 'running':
-                        env.logger.info('{} ``runnng``'.format(tid))
+                        self.notify('{} ``runnng``'.format(tid))
                     elif tid in self.canceled_tasks:
                         # the job is canceled while being prepared to run
-                        env.logger.info('{} ``canceled``'.format(tid))
+                        self.notify('{} ``canceled``'.format(tid))
                     else:
                         env.logger.trace('Start submitting {} (status: {})'.format(tid, self.task_status.get(tid, 'unknown')))
                         self.submitting_tasks[tid] = self._thread_workers.submit(self.execute_task, tid)
@@ -1190,17 +1195,15 @@ class TaskEngine(threading.Thread):
         with threading.Lock():
             # if already in
             #if task_id in self.running_tasks or task_id in self.pending_tasks:
-            #    env.logger.info('{} ``{}``'.format(task_id, self.task_status[task_id]))
-            #    if hasattr(env, '__task_notifier__'):
-            #        env.__task_notifier__(['new-status', task_id, self.task_status[task_id]])
+            #    self.notify('{} ``{}``'.format(task_id, self.task_status[task_id]))
+            #    self.notify(['new-status', task_id, self.task_status[task_id]])
             #    return self.task_status[task_id]
             #
             if task_id in self.task_status and self.task_status[task_id]:
                 if self.task_status[task_id] == 'running':
                     self.running_tasks.append(task_id)
-                    env.logger.info('{} ``already runnng``'.format(task_id))
-                    if hasattr(env, '__task_notifier__'):
-                        env.__task_notifier__(['new-status', self.agent.alias, task_id, 'running',
+                    self.notify('{} ``already runnng``'.format(task_id))
+                    self.notify(['new-status', self.agent.alias, task_id, 'running',
                             self.task_date.get(task_id, time.time())])
                     return 'running'
                 # there is a case when the job is already completed (complete-old), but
@@ -1209,29 +1212,27 @@ class TaskEngine(threading.Thread):
                 # completed very soon.
                 elif self.task_status[task_id] == 'completed':
                     if env.config['sig_mode'] != 'force':
-                        env.logger.info('{} ``already completed``'.format(task_id))
+                        self.notify('{} ``already completed``'.format(task_id))
                         return 'completed'
                     elif task_id in env.config.get('resumed_tasks', []):
                         # force re-execution, but it is possible that this task has been
                         # executed but quit in no-wait mode (or canceled by user). More
                         # importantly, the Jupyter notebook would re-run complted workflow
                         # even if it has "-s force" signature.
-                        #if hasattr(env, '__task_notifier__'):
-                        #    env.__task_notifier__(['new-status', task_id, 'completed'])
-                        env.logger.info('{} ``resume with completed``'.format(task_id))
+                        #self.notify(['new-status', task_id, 'completed'])
+                        self.notify('{} ``resume with completed``'.format(task_id))
                         return 'completed'
                     else:
-                        env.logger.info('{} ``re-execute completed``'.format(task_id))
+                        self.notify('{} ``re-execute completed``'.format(task_id))
                 else:
-                    env.logger.info('{} ``restart`` from status ``{}``'.format(task_id, self.task_status[task_id]))
+                    self.notify('{} ``restart`` from status ``{}``'.format(task_id, self.task_status[task_id]))
 
-            env.logger.info('{} ``queued``'.format(task_id))
+            self.notify('{} ``queued``'.format(task_id))
             self.pending_tasks.append(task_id)
             if task_id in self.canceled_tasks:
                 self.canceled_tasks.remove(task_id)
             self.task_status[task_id] = 'pending'
-            if hasattr(env, '__task_notifier__'):
-                env.__task_notifier__(['new-status', self.agent.alias, task_id, 'pending',
+            self.notify(['new-status', self.agent.alias, task_id, 'pending',
                     self.task_date.get(task_id, time.time())])
             return 'pending'
 
@@ -1259,11 +1260,11 @@ class TaskEngine(threading.Thread):
             if task_id in self.canceled_tasks and status != 'aborted':
                 env.logger.debug('Task {} is still not killed (status {})'.format(task_id, status))
                 status = 'aborted'
-            if hasattr(env, '__task_notifier__') and status != 'non-exist':
+            if status != 'non-exist':
                 if task_id in self.task_status and self.task_status[task_id] == status:
-                    env.__task_notifier__(['pulse-status', self.agent.alias, task_id, status])
+                    self.notify(['pulse-status', self.agent.alias, task_id, status])
                 else:
-                    env.__task_notifier__(['change-status', self.agent.alias, task_id, status])
+                    self.notify(['change-status', self.agent.alias, task_id, status])
             self.task_status[task_id] = status
             if status == 'pening' and task_id not in self.pending_tasks:
                 self.pending_tasks.append(task_id)
@@ -1276,8 +1277,7 @@ class TaskEngine(threading.Thread):
     def remove_tasks(self, tasks):
         with threading.Lock():
             for task in tasks:
-                if hasattr(env, '__task_notifier__'):
-                    env.__task_notifier__(['remove-task', self.agent.alias, task])
+                self.notify(['remove-task', self.agent.alias, task])
                 #if task in self.task_status:
                 #    self.task_status.pop(task)
                 #if task in self.running_tasks:

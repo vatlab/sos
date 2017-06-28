@@ -37,6 +37,7 @@ class RQ_TaskEngine(TaskEngine):
         self.redis_queue = self.config.get('queue', 'default')
 
         try:
+            env.logger.debug('Connecting to redis server {} at port {}'.format(self.redis_host, self.redis_port))
             redis_conn = Redis(host=self.redis_host, port=self.redis_port)
         except Exception as e:
             raise RuntimeError('Failed to connect to redis server with host {} and port {}: {}'.format(
