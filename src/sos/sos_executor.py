@@ -41,6 +41,13 @@ from .hosts import Host
 
 __all__ = []
 
+try:
+    # https://github.com/pytest-dev/pytest-cov/issues/139
+    from pytest_cov.embed import cleanup_on_sigterm
+    cleanup_on_sigterm()
+except:
+    pass
+
 class ExecuteError(Error):
     """An exception to collect exceptions raised during run time so that
     other branches of the DAG would continue if some nodes fail to execute."""
