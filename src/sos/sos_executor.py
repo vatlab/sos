@@ -1009,12 +1009,14 @@ class Base_Executor:
         except Exception as e:
             import signal
             for p, _, _ in procs + pool:
-                #p.terminate()
-                os.kill(p.pid, signal.SIGINT)
-                # wait for one second
-                p.wait(1)
-                if p.is_alive():
+                if sys.platform == 'win32':
                     p.terminate()
+                else:
+                    os.kill(p.pid, signal.SIGINT)
+                    # wait for one second
+                    p.wait(1)
+                    if p.is_alive():
+                        p.terminate()
                 p.join()
             raise e
         finally:
@@ -1025,11 +1027,13 @@ class Base_Executor:
                 import signal
                 for w, _, _ in procs + pool:
                     if w.is_alive():
-                        #w.terminate()
-                        os.kill(p.pid, signal.SIGINT)
-                        w.wait(1)
-                        if w.is_alive():
+                        if sys.platform == 'win32':
                             w.terminate()
+                        else:
+                            os.kill(w.pid, signal.SIGINT)
+                            w.wait(1)
+                            if w.is_alive():
+                                w.terminate()
                         w.join()
             prog.close()
         #
