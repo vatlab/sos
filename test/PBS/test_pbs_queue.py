@@ -250,9 +250,11 @@ sh:
     def testSendSymbolicLink(self):
         '''Test to_host symbolic link or directories that contain symbolic link. #508'''
         # create a symbloc link
+        with open('ttt.py', 'w') as ttt:
+            ttt.write('something')
         if os.path.exists('llink'):
             os.remove('llink')
-        subprocess.call('ln -s test_pbs_queue.py llink', shell=True)
+        subprocess.call('ln -s ttt.py llink', shell=True)
         script = SoS_Script('''
 [10]
 task: to_host='llink'
@@ -264,6 +266,7 @@ sz = os.path.getmtime('llink')
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker',
+                'sig_mode': 'force'
                 }).run()
         os.remove('llink')
 
@@ -271,13 +274,15 @@ sz = os.path.getmtime('llink')
     def testCaseInsensitiveLocalPath(self):
         '''Test path_map from a case insensitive file system.'''
         FileTarget('test_pbs_queue.py.bak').remove('both')
+        with open('tt1.py', 'w') as tt1:
+            tt1.write('soemthing')
         script = SoS_Script('''
 [10]
-output: 'test_pbs_queue.py.bak'
+output: 'tt1.py.bak'
 task: to_host=r'{}'
 import shutil
-shutil.copy("test_pbs_queue.py", "${{output}}")
-'''.format(os.path.join(os.path.abspath('.').upper(), 'test_pbs_queue.py')))
+shutil.copy("tt1.py", "${{output}}")
+'''.format(os.path.join(os.path.abspath('.').upper(), 'tt1.py')))
         wf = script.workflow()
         Base_Executor(wf, config={
                 'config_file': '~/docker.yml',
@@ -286,11 +291,10 @@ shutil.copy("test_pbs_queue.py", "${{output}}")
                 'default_queue': 'docker',
                 'sig_mode': 'force',
                 }).run()
-        self.assertTrue(FileTarget('test_pbs_queue.py.bak').exists('target'))
+        self.assertTrue(FileTarget('tt1.py.bak').exists('target'))
         # the files should be the same
-        with open('test_pbs_queue.py') as ori, open('test_pbs_queue.py.bak') as bak:
+        with open('tt1.py') as ori, open('tt1.py.bak') as bak:
             self.assertEqual(ori.read(), bak.read())
-        FileTarget('test_pbs_queue.py.bak').remove('both')
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testMaxMem(self):
