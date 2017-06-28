@@ -25,6 +25,7 @@ from sos.target import FileTarget
 from sos.sos_script import SoS_Script
 from sos.sos_executor import Base_Executor
 
+import os
 import unittest
 import subprocess
 
@@ -42,26 +43,37 @@ except subprocess.CalledProcessError:
 
 class TestRQQueue(unittest.TestCase):
 
+    def setUp(self):
+        # set up rq worker and redis server
+        self.rs = subprocess.Popen('redis-server')
+        self.rw = subprocess.Popen(['rq', 'worker', 'high'])
+
+    def tearDown(self):
+        self.rs.terminate()
+        self.rw.terminate()
+
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testRemoteExecute(self):
+        if os.path.isfile('result_rq.txt'):
+            os.remove('result_rq.txt')
         script = SoS_Script('''
 [10]
-output: 'result.txt'
+output: 'result_rq.txt'
 task:
 
 run:
-  echo 'rq' > 'result.txt'
+  echo 'rq' > 'result_rq.txt'
 
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={
                 'config_file': '~/docker.yml',
                 'wait_for_task': True,
-                'default_queue': 'docker_rq',
+                'default_queue': 'local_rq',
                 'sig_mode': 'force',
                 }).run()
-        self.assertTrue(FileTarget('result.txt').exists())
-        with open('result.txt') as res:
+        self.assertTrue(FileTarget('result_rq.txt').exists())
+        with open('result_rq.txt') as res:
             self.assertEqual(res.read(), 'rq\n')
 
 if __name__ == '__main__':

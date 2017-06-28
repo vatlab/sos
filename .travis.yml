@@ -13,7 +13,7 @@ before_install:
     # upgrade docker so that it has same API version as client https://docs.travis-ci.com/user/docker/ 
     - sudo apt-get update
     - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
-    - sudo apt-get install libmagickwand-dev libmagickcore5-extra graphviz
+    - sudo apt-get install libmagickwand-dev libmagickcore5-extra graphviz redis-server
     - sudo apt-get install -y texlive-xetex texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended
     # install JavaScript kernel
     # https://github.com/petethepig/devtools-terminal/issues/70
@@ -44,7 +44,7 @@ before_install:
     - conda create -n python_test python=$TRAVIS_PYTHON_VERSION anaconda
     - source activate python_test
     # add docker
-    - pip install docker
+    - pip install docker rq
     # packages required by SoS
     - pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm scipy pysam
     - pip install fasteners pygments ipython networkx pydotplus wand graphviz
