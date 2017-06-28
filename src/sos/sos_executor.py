@@ -1007,16 +1007,8 @@ class Base_Executor:
                 env.logger.info(task[1])
             # close all processes
         except Exception as e:
-            import signal
             for p, _, _ in procs + pool:
-                if sys.platform == 'win32':
-                    p.terminate()
-                else:
-                    os.kill(p.pid, signal.SIGINT)
-                    # wait for one second
-                    p.wait(1)
-                    if p.is_alive():
-                        p.terminate()
+                p.terminate()
                 p.join()
             raise e
         finally:
@@ -1024,16 +1016,9 @@ class Base_Executor:
                 for _, p, _ in procs + pool:
                     p.send(None)
                 time.sleep(0.1)
-                import signal
                 for w, _, _ in procs + pool:
                     if w.is_alive():
-                        if sys.platform == 'win32':
-                            w.terminate()
-                        else:
-                            os.kill(w.pid, signal.SIGINT)
-                            w.wait(1)
-                            if w.is_alive():
-                                w.terminate()
+                        w.terminate()
                         w.join()
             prog.close()
         #
