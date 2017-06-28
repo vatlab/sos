@@ -784,12 +784,12 @@ class Host:
                 available_engines = []
                 for entrypoint in pkg_resources.iter_entry_points(group='sos_taskengines'):
                     try:
-                        available_engines.append(entrypoint.name)
                         if entrypoint.name == self._task_engine_type:
                             task_engine = entrypoint.load()(self.host_instances[self.alias])
                             break
+                        available_engines.append(entrypoint.name)
                     except Exception as e:
-                        env.logger.warning('Failed to load task engine {}: {}'.format(self._task_engine_type, e))
+                        raise RuntimeError('Failed to load task engine {}: {}'.format(self._task_engine_type, e))
 
                 if task_engine is None:
                     raise RuntimeError('Failed to locate task engine type {}. Available engine types are {}'.format(
