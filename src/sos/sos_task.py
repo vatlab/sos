@@ -139,8 +139,11 @@ class MasterTaskParams(TaskParams):
 
 
 def loadTask(filename):
-    with open(filename, 'rb') as task:
-        return pickle.load(task)
+    try:
+        with open(filename, 'rb') as task:
+            return pickle.load(task)
+    except ImportError as e:
+        raise RuntimeError('Failed to load task {}, which is likely caused by incompatible python modules between local and remote hosts: {}'.format(os.path.basename(filename), e))
 
 def collect_task_result(task_id, sigil, sos_dict):
     shared = {}
