@@ -43,10 +43,9 @@ RUN  pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm
 RUN  pip install fasteners pygments ipython ptpython networkx pydotplus
 
 RUN  apt-get install -y redis-server
-RUN  pip install rq celery
+RUN  pip install rq
 
 RUN  rq worker high &
-RUN  celery -A sos.celery.sos_task worker --loglevel=info
 
 ARG  SHA=LATEST
 RUN  SHA=$SHA git clone http://github.com/vatlab/SOS sos

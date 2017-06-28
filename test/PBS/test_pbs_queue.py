@@ -35,7 +35,7 @@ has_docker = True
 try:
     subprocess.check_output('docker ps | grep test_sos', shell=True).decode()
 except subprocess.CalledProcessError:
-    subprocess.call('sh ../build_test_docker.sh', shell=True)
+    subprocess.call('sh build_test_docker.sh', shell=True)
     try:
         subprocess.check_output('docker ps | grep test_sos', shell=True).decode()
     except subprocess.CalledProcessError:
