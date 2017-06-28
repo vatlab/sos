@@ -1582,6 +1582,16 @@ define([
  /*   box-shadow: 13px 0px 0px #aaaaaa; */
 }
 
+.one_liner {
+    overflow: hidden;
+    height: 15px;
+}
+
+.one_liner:hover {
+    height: auto;
+    width: auto;
+}
+
 .dataframe_container { max-height: 400px }
 .dataframe_input {
     border: 1px solid #ddd;

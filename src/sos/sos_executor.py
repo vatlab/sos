@@ -1011,7 +1011,11 @@ class Base_Executor:
             for p, _, _ in procs + pool:
                 #p.terminate()
                 os.kill(p.pid, signal.SIGINT)
-                p.wait()
+                # wait for one second
+                p.wait(1)
+                if p.is_alive():
+                    p.terminate()
+                p.join()
             raise e
         finally:
             if not nested:
@@ -1023,8 +1027,10 @@ class Base_Executor:
                     if w.is_alive():
                         #w.terminate()
                         os.kill(p.pid, signal.SIGINT)
-                        w.wait()
-                        #w.join()
+                        w.wait(1)
+                        if w.is_alive():
+                            w.terminate()
+                        w.join()
             prog.close()
         #
         if exec_error.errors:

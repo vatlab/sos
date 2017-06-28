@@ -701,11 +701,11 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
         print('<table width="100%" class="resource_table">')
         def row(th=None, td=None):
             if td is None:
-                print('<tr><th align="right" width="30%"><font color="blue">{}</font></th><td></td></tr>'.format(th))
+                print('<tr><th align="right" width="30%">{}</th><td></td></tr>'.format(th))
             elif th is None:
                 print('<tr><td colspan="2" align="left"  width="30%">{}</td></tr>'.format(td))
             else:
-                print('<tr><th align="right"  width="30%">{}</th><td align="left">{}</td></tr>'.format(th, td))
+                print('<tr><th align="right"  width="30%">{}</th><td align="left"><div class="one_liner">{}</div></td></tr>'.format(th, td))
         for s, (t, d) in zip(status, all_tasks):
             row('ID', t)
             row('Status', s)
@@ -718,10 +718,10 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
                 params = pickle.load(task)
             row('Task')
             row(td='<pre style="text-align:left">{}</pre>'.format(params.task))
-            row('Global')
             if params.global_def:
+                row('Global')
                 row(td='<pre style="text-align:left">{}</pre>'.format(params.global_def))
-            row('Environment')
+            #row('Environment')
             job_vars = params.sos_dict
             for k in sorted(job_vars.keys()):
                 v = job_vars[k]
@@ -734,7 +734,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
                         row(k, '<pre style="text-align:left">{}</pre>'.format(pprint.pformat(v)))
             summary = summarizeExecution(t, status=s)
             if summary:
-                row('Execution')
+                #row('Execution')
                 for line in summary.split('\n'):
                     fields = line.split(None, 1)
                     if fields[0] == 'task':
