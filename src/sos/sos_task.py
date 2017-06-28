@@ -698,7 +698,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
         from .utils import PrettyRelativeTime, isPrimitive
         from .monitor import summarizeExecution
         import pprint
-        print('<table width="100%">')
+        print('<table width="100%" class="resource_table">')
         def row(th=None, td=None):
             if td is None:
                 print('<tr><th align="right" width="30%"><font color="blue">{}</font></th><td></td></tr>'.format(th))

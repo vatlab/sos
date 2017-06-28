@@ -1010,7 +1010,7 @@ class Base_Executor:
             import signal
             for p, _, _ in procs + pool:
                 #p.terminate()
-                p.send_signal(signal.SIGINT)
+                os.kill(p.pid, signal.SIGINT)
                 p.wait()
             raise e
         finally:
@@ -1022,7 +1022,7 @@ class Base_Executor:
                 for w, _, _ in procs + pool:
                     if w.is_alive():
                         #w.terminate()
-                        w.send_signal(signal.SIGINT)
+                        os.kill(p.pid, signal.SIGINT)
                         w.wait()
                         #w.join()
             prog.close()
