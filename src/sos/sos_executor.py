@@ -1007,18 +1007,24 @@ class Base_Executor:
                 env.logger.info(task[1])
             # close all processes
         except Exception as e:
+            import signal
             for p, _, _ in procs + pool:
-                p.terminate()
+                #p.terminate()
+                p.send_signal(signal.SIGINT)
+                p.wait()
             raise e
         finally:
             if not nested:
                 for _, p, _ in procs + pool:
                     p.send(None)
                 time.sleep(0.1)
+                import signal
                 for w, _, _ in procs + pool:
                     if w.is_alive():
-                        w.terminate()
-                        w.join()
+                        #w.terminate()
+                        w.send_signal(signal.SIGINT)
+                        w.wait()
+                        #w.join()
             prog.close()
         #
         if exec_error.errors:
