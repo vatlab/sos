@@ -21,6 +21,7 @@
 #
 
 import os
+import sys
 import unittest
 from ipykernel.tests.utils import assemble_output, execute
 from sos.jupyter.test_utils import sos_kernel
@@ -29,6 +30,7 @@ class TestPreview(unittest.TestCase):
     def setUp(self):
         self.resource_dir = os.path.abspath(os.path.split(__file__)[0])
 
+    @unittest.skipIf(sys.platform == 'win32', 'pysam is not installed under windows')
     def testMagicPreview(self):
         with sos_kernel() as kc:
             # preview bam file
