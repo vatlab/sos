@@ -1016,7 +1016,6 @@ class Base_Executor:
         except Exception as e:
             for p, _, _ in procs + pool:
                 p.terminate()
-                p.join()
             raise e
         finally:
             if not nested:
