@@ -67,6 +67,7 @@ sos_run('a')
             self.assertEqual(res, 10)
 
     def testReadonlyALLCAPVars(self):
+        subprocess.call('sos config --global --set warning.readonly_vars True', shell=True)
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             execute(kc=kc, code='''
@@ -78,6 +79,7 @@ A=20
 ''')
             _, stderr = assemble_output(iopub)
             self.assertTrue('A' in stderr, 'Expect an error {}'.format(stderr))
+        subprocess.call('sos config --global --set warning.readonly_vars False', shell=True)
 
     def testRerun(self):
         with sos_kernel() as kc:
