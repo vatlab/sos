@@ -104,7 +104,7 @@ run: workdir='../docs/doc/examples'
 
 [convert-example-notebooks]
 input:  '../docs/src/examples/*.ipynb', group_by=1
-depends: '../sos/jupyter/sos-full.tpl'
+depends: '../src/sos/jupyter/sos-full.tpl'
 output: "../docs/doc/examples/${_input!bn}.html"
 
 run: workdir='../docs/doc/examples'
