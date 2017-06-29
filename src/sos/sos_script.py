@@ -78,6 +78,7 @@ class SoS_Step:
         self.comment_ended = False
         # everything before step process
         self.statements = []
+        self.parameters = {}
         # step processes
         self.global_def = ''
         self.task = ''
@@ -339,6 +340,7 @@ class SoS_Step:
                     raise ValueError('{}: Invalid parameter definition: {}'.format(self.step_name(), statement[2]))
                 self.statements[idx] = ['!', 'if "sos_handle_parameter_" in globals():\n    {} = sos_handle_parameter_({!r}, {})\n'
                     .format(name, name.strip(), value), statement[2].strip()]
+                self.parameters[name] = value
         #
         task_directive = [idx for idx, statement in enumerate(self.statements) if statement[0] == ':' and statement[1] == 'task']
         if not task_directive:
@@ -460,6 +462,13 @@ class SoS_Workflow:
     def has_external_task(self):
         return any(x.has_external_task() for x in self.sections) or \
                 any(x.has_external_task() for x in self.auxiliary_sections)
+
+    def parameters(self):
+        # collect parameters defined by `parameter:` of steps
+        par = {}
+        for x in self.sections + self.auxiliary_sections:
+            par.update(x.parameters)
+        return par
 
 class SoS_ScriptContent:
     '''A small class to record the script information to be used by nested
@@ -1129,12 +1138,15 @@ for __n, __v in {}.items():
         #
         # if there is no section in the script, we create a default section with global
         # definition being the content.
+        global_parameters = {}
         if not [x for x in self.sections if not x.is_global]:
             self.sections.append(SoS_Step(self.content, [('default', None, None)], global_sigil=self.global_sigil))
             for section in [x for x in self.sections if x.is_global]:
                 self.sections[-1].statements.extend(section.statements)
                 self.sections[-1].task = section.task
                 self.global_def = ''
+            # determine script and parameter etc, although there should not be any task
+            self.sections[-1].finalize()
         else:
             # as the last step, let us insert the global section to all sections
             for idx,sec in [(idx,x) for idx,x in enumerate(self.sections) if x.is_global]:
@@ -1146,6 +1158,7 @@ for __n, __v in {}.items():
                                 'Global section cannot contain sos input, ouput, and task statements')
                     else:
                         self.global_def += statement[1]
+                global_parameters.update(sec.parameters)
         # remove the global section after inserting it to each step of the process
         self.sections = [x for x in self.sections if not x.is_global]
         #
@@ -1153,6 +1166,7 @@ for __n, __v in {}.items():
             # for nested / included sections, we need to keep their own global definition
             if '.' not in section.names[0][0]:
                 section.global_def = self.global_def
+                section.parameters.update(global_parameters)
             #
             section.tokens = section.get_tokens()
             section.md5 = textMD5(self.content.md5 + section.tokens)

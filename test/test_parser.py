@@ -223,6 +223,7 @@ parameter: a = [1, 2]
 [0]
 ''')
         wf = script.workflow()
+        self.assertEqual(list(wf.parameters().keys()), ['a'])
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['a'], [1,2])
         wf = script.workflow()
@@ -257,6 +258,7 @@ parameter: b=str(int(a)+1)
 [0]
 ''')
         wf = script.workflow()
+        self.assertEqual(list(wf.parameters().keys()), ['b'])
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['b'], '101')
         #
@@ -314,6 +316,7 @@ parameter: b = int
 parameter: b = list
 [0]
 ''')
+        self.assertEqual(list(wf.parameters().keys()), ['b'])
         wf = script.workflow()
         self.assertRaises(ArgumentError, Base_Executor(wf).run, mode='dryrun')
         # also require the type
@@ -423,6 +426,15 @@ parameter: a_b = int
 parameter: {} = int
 [0]
 '''.format(key))
+        # multiple parameters
+        script = SoS_Script('''
+parameter: a_b = int
+[0]
+parameter: c_b = list
+''')
+        wf = script.workflow()
+        self.assertEqual(sorted(list(wf.parameters().keys())), ['a_b', 'c_b'])
+
 
 
     def testSectionVariables(self):
