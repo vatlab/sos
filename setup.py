@@ -266,6 +266,8 @@ Python2 = sos.Python2.kernel:sos_Python2
 Python3 = sos.Python3.kernel:sos_Python3
 Bash = sos.Bash.kernel:sos_Bash
 JavaScript = sos.JavaScript.kernel:sos_JavaScript
+SAS = sos.SAS.kernel:sos_SAS
+Matlab = sos.SAS.kernel:sos_Matlab
 
 [sos_converters]
 sos-html.parser = sos.converter:get_script_to_html_parser
