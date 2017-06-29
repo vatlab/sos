@@ -213,6 +213,21 @@ class Base_Executor:
     def __init__(self, workflow=None, args=None, shared=None, config=None):
         self.workflow = workflow
         self.args = [] if args is None else args
+        if '__args__' not in self.args:
+            # if there is __args__, this is a nested workflow and we do not test this.
+            for idx,arg in enumerate(self.args):
+                wf_pars = self.workflow.parameters().keys()
+                if isinstance(arg, str) and arg.startswith('--'):
+                    if not wf_pars:
+                        raise ValueError('Undefined parameter {} for command line argument "{}". Acceptable parameters are: {}'.format(
+                            arg[2:], ' '.join(args[idx:]), ', '.join(wf_pars)))
+                    pars = [arg[2:], arg[2:].replace('-', '_')]
+                    if arg[2:].startswith('no-'):
+                        pars.extend([arg[5:], arg[5:].replace('-', '_')])
+                    if not any(x in wf_pars for x in pars):
+                        raise ValueError('Undefined parameter {} for command line argument "{}". Acceptable parameters are: {}'.format(
+                            arg[2:], ' '.join(args[idx:]), ', '.join(wf_pars)))
+
         self.shared = {} if shared is None else shared
         self.config = {} if config is None else config
         env.config.update(self.config)

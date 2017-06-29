@@ -752,8 +752,15 @@ class Host:
                     #
                     self.config['path_map'].extend(['{} -> {}'.format(append_slash(cfg[LOCAL]['paths'][x]), append_slash(cfg[REMOTE]['paths'][x])) \
                         for x in cfg[LOCAL]['paths'].keys()])
+        elif LOCAL == REMOTE:
+            # now we have checked local and remote are not defined, but they are the same, so
+            # it is safe to assume that they are both local hosts
+            self.config = {
+                    'address': 'localhost',
+                    'alias': LOCAL,
+            }
         else:
-            raise ValueError('No hosts definitions for local and remote hosts {} and {}'.format(LOCAL, REMOTE))
+            raise ValueError('Undefined local and remote hosts {} and {}.'.format(LOCAL, REMOTE))
         #
         self.config['alias'] = self.alias
         self.description = self.config.get('description', '')
