@@ -53,7 +53,7 @@ class UnresolvableObject(Error):
         super(UnresolvableObject, self).__init__('Unresolvable object ({}) during string interpolation, use converter R if needed.'.format(obj))
 
 def sos_compile(expr, *args, **kwargs):
-    ''' Compiling an statement but ignores tab error (mixed tab and space'''
+    ''' Compiling an statement but ignores tab error (mixed tab and space)'''
     try:
         compile(expr, *args, **kwargs)
     except TabError:
