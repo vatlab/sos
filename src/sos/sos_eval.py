@@ -493,6 +493,7 @@ def SoS_exec(stmts, sigil, _dict=None):
         finally:
             del act
         executed += stmts + '\n'
+    env.sos_dict.check_readonly_vars()
     return res
 
 #

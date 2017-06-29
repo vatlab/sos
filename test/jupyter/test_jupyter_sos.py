@@ -30,7 +30,7 @@
 import os
 import unittest
 import subprocess
-from ipykernel.tests.utils import execute, wait_for_idle
+from ipykernel.tests.utils import execute, wait_for_idle, assemble_output
 from sos.jupyter.test_utils import sos_kernel, get_result
 from sos.target import FileTarget
 from sos.utils import env
@@ -65,6 +65,19 @@ sos_run('a')
             execute(kc=kc, code="b")
             res = get_result(iopub)
             self.assertEqual(res, 10)
+
+    def testReadonlyALLCAPVars(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            execute(kc=kc, code='''
+%run
+A=10
+
+[default]
+A=20
+''')
+            _, stderr = assemble_output(iopub)
+            self.assertTrue('A' in stderr, 'Expect an error {}'.format(stderr))
 
     def testRerun(self):
         with sos_kernel() as kc:
