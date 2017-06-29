@@ -307,7 +307,7 @@ ipynb-md.func = sos.jupyter.converter:notebook_to_md
         'image':    ['wand'],
         'md':       ['markdown'],
         'R':        ['feather-format', 'pandas', 'numpy'],
-        'rq':       ['rq', 'rq-dashboard'],
+        'rq':       ['rq'],
         'bam':      ['pysam'],
         'dot':      ['graphviz'],
         # docker-py is not working on windows 10 (as of Jan 2017)
