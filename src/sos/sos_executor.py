@@ -333,6 +333,9 @@ class Base_Executor:
 
         # load configuration files
         cfg = load_config_files(self.config['config_file'])
+        # if check_readonly is set to True, allow checking readonly vars
+        if cfg.get('warning', {}).get('readonly_vars', False):
+            env.sos_dict._readonly_vars = {}
         env.sos_dict.set('CONFIG', frozendict(cfg))
 
         SoS_exec('import os, sys, glob', None)

@@ -172,13 +172,13 @@ class WorkflowDict(object):
     """
     def __init__(self, *args, **kwargs):
         self._dict = dict(*args, **kwargs)
-        self._readonly_vars = {}
+        self._readonly_vars = None
 
     def set(self, key, value):
         '''A short cut to set value to key without triggering any logging
         or warning message.'''
         self._dict[key] = value
-        if key.isupper():
+        if self._readonly_vars is not None and key.isupper():
             self._check_readonly(key, value)
 
     def quick_update(self, obj):
@@ -234,6 +234,8 @@ class WorkflowDict(object):
                 self._readonly_vars[key] = self._dict[key]
 
     def check_readonly_vars(self):
+        if self._readonly_vars is None:
+            return
         for key in self._readonly_vars:
             if key in self._dict and (hasattr(self._dict[key], '__dict__') or self._dict[key] != self._readonly_vars[key]):
                 env.logger.warning('Value of readonly variable {} is changed from {} to {}'.format(
