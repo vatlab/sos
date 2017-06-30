@@ -1060,12 +1060,13 @@ class TaskEngine(threading.Thread):
             self.wait_for_task = True
 
     def notify(self, msg):
-        # GUI
+        # GUI ...
         if hasattr(env, '__task_notifier__'):
-            env.__task_notifier__(msg)
-        # text mode does not provide detailed message change information
+            if not isinstance(msg, str):
+                env.__task_notifier__(msg)
         elif isinstance(msg, str):
             env.logger.info(msg)
+        # text mode does not provide detailed message change information
 
     def monitor_tasks(self, tasks=None, status=None, age=None):
         '''Start monitoring specified or all tasks'''
