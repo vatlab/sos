@@ -220,7 +220,7 @@ class WorkflowDict(object):
 
     def _check_readonly(self, key, value):
         # we only keep track of primitive types
-        if hasattr(value, '__dict__'):
+        if self._readonly_vars is None or hasattr(value, '__dict__'):
             return
         if key not in self._readonly_vars:
             self._readonly_vars[key] = value
