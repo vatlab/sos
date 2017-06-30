@@ -31,10 +31,10 @@ MAINTAINER Bo Peng <bpeng@mdanderson.org>
 USER    root
 
 RUN     conda install -y feather-format -c conda-forge
-RUN     conda install -y spyder
+# RUN     conda install -y spyder
 
 RUN     pip install pip --upgrade
-RUN     pip install xlrd docker-py
+RUN     pip install xlrd docker
 RUN     pip install markdown
 
 RUN     pip install bash_kernel
