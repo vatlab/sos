@@ -33,7 +33,6 @@ import subprocess
 from ipykernel.tests.utils import execute, wait_for_idle, assemble_output
 from sos.jupyter.test_utils import sos_kernel, get_result
 from sos.target import FileTarget
-from sos.utils import env
 
 class TestJupyterSoS(unittest.TestCase):
     #
@@ -67,7 +66,7 @@ sos_run('a')
             self.assertEqual(res, 10)
 
     def testReadonlyALLCAPVars(self):
-        subprocess.call('sos config --global --set warning.readonly_vars True', shell=True)
+        subprocess.call('sos config --global --set sos.change_all_cap_vars warning', shell=True)
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             execute(kc=kc, code='''
@@ -79,7 +78,7 @@ A=20
 ''')
             _, stderr = assemble_output(iopub)
             self.assertTrue('A' in stderr, 'Expect an error {}'.format(stderr))
-        subprocess.call('sos config --global --set warning.readonly_vars False', shell=True)
+        subprocess.call('sos config --global --unset sos.change_all_cap_vars', shell=True)
 
     def testRerun(self):
         with sos_kernel() as kc:

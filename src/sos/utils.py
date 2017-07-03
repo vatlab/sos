@@ -172,13 +172,14 @@ class WorkflowDict(object):
     """
     def __init__(self, *args, **kwargs):
         self._dict = dict(*args, **kwargs)
-        self._readonly_vars = None
+        self._readonly_vars = {}
+        self._change_all_cap_vars = None
 
     def set(self, key, value):
         '''A short cut to set value to key without triggering any logging
         or warning message.'''
         self._dict[key] = value
-        if self._readonly_vars is not None and key.isupper():
+        if self._change_all_cap_vars is not None and key.isupper():
             self._check_readonly(key, value)
 
     def quick_update(self, obj):
@@ -220,14 +221,18 @@ class WorkflowDict(object):
 
     def _check_readonly(self, key, value):
         # we only keep track of primitive types
-        if self._readonly_vars is None or hasattr(value, '__dict__'):
+        if self._change_all_cap_vars is None or hasattr(value, '__dict__'):
             return
         if key not in self._readonly_vars:
             self._readonly_vars[key] = value
             return
         if key in self._dict and self._dict[key] != self._readonly_vars[key]:
-            env.logger.warning('Value of readonly variable {} is changed from {} to {}'.format(
-                key, self._readonly_vars[key], self._dict[key]))
+            if self._change_all_cap_vars == 'warning':
+                env.logger.warning('Value of readonly variable {} is changed from {} to {}'.format(
+                    key, self._readonly_vars[key], self._dict[key]))
+            else:
+                raise RuntimeError('Value of readonly variable {} is changed from {} to {}'.format(
+                    key, self._readonly_vars[key], self._dict[key]))
             if hasattr(self._dict[key], '__dict__'):
                 self._readonly_vars.pop(key)
             else:
@@ -238,8 +243,12 @@ class WorkflowDict(object):
             return
         for key in self._readonly_vars:
             if key in self._dict and (hasattr(self._dict[key], '__dict__') or self._dict[key] != self._readonly_vars[key]):
-                env.logger.warning('Value of readonly variable {} is changed from {} to {}'.format(
-                    key, self._readonly_vars[key], self._dict[key]))
+                if self._change_all_cap_vars == 'warning':
+                    env.logger.warning('Value of readonly variable {} is changed from {} to {}'.format(
+                        key, self._readonly_vars[key], self._dict[key]))
+                else:
+                    raise RuntimeError('Value of readonly variable {} is changed from {} to {}'.format(
+                        key, self._readonly_vars[key], self._dict[key]))
                 if hasattr(self._dict[key], '__dict__'):
                     self._readonly_vars.pop(key)
                 else:
