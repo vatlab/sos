@@ -42,16 +42,30 @@ def preview_img(filename, kernel=None, style=None):
         return { 'image/' + image_type: image_data }
 
 def preview_pdf(filename, kernel=None, style=None):
-    try:
-        # this import will fail even if wand is installed
-        # if imagemagick is not installed properly.
-        from wand.image import Image
-        img = Image(filename=filename)
-        # iframe preview does not work as good as png preview
-        # 'text/html': HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data,
-        return {
-            'image/png': base64.b64encode(img._repr_png_()).decode('ascii') }
-    except Exception:
+    use_png = False
+    if style is not None and 'style' in style:
+        if style['style'] != 'png':
+            if kernel is not None:
+                kernel.warn('Option --style of PDF preview only accept parameter png: {} provided'.format(style['style']))
+        else:
+            use_png = True
+    if use_png:
+        try:
+            # this import will fail even if wand is installed
+            # if imagemagick is not installed properly.
+            from wand.image import Image
+            img = Image(filename=filename)
+            # iframe preview does not work as good as png preview
+            # 'text/html': HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data,
+            return {
+                'image/png': base64.b64encode(img._repr_png_()).decode('ascii') }
+        except Exception as e:
+            if kernel is not None:
+                kernel.warn(e)
+            return { 'text/html':
+                HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data}
+    else:
+        # by default use iframe, because PDF figure can have multiple pages (#693)
         return { 'text/html':
             HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data}
 

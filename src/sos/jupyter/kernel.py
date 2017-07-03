@@ -331,10 +331,10 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('-w', '--workflow', action='store_true',
             help='''Preview notebook workflow''')
         # this option is currently hidden
-        parser.add_argument('-s', '--style', choices=['table', 'scatterplot'],
-            help='''Option to visualize dataframe, which by default is "table".
-            The %%preview magic also accepts arbitrary additional keyword
-            arguments, which would be interpreted by individual style. Passing
+        parser.add_argument('-s', '--style', choices=['table', 'scatterplot', 'png'],
+            help='''Option for preview file or variable, which by default is "table"
+            for Pandas DataFrame. The %%preview magic also accepts arbitrary additional
+            keyword arguments, which would be interpreted by individual style. Passing
             '-h' with '--style' would display the usage information of particular
             style.''')
         parser.add_argument('--off', action='store_true',

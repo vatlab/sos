@@ -261,9 +261,17 @@ R:
 ''')
             res = get_display_data(iopub, 'image/jpeg')
             self.assertGreater(len(res), 1000, 'Expect a image {}'.format(res))
-            # preview pdf
+            # preview pdf in iframe (by default)
             execute(kc=kc, code='''
 %preview a.pdf
+R:
+    pdf('a.pdf')
+    plot(0)
+    dev.off()
+''')
+            # or png (which requires imagemagick
+            execute(kc=kc, code='''
+%preview a.pdf -s png
 R:
     pdf('a.pdf')
     plot(0)
