@@ -270,12 +270,9 @@ R:
     dev.off()
 ''')
             # or png (which requires imagemagick
+            wait_for_idle(kc)
             execute(kc=kc, code='''
 %preview a.pdf -s png
-R:
-    pdf('a.pdf')
-    plot(0)
-    dev.off()
 ''')
             # could return html or image depending on configuration
             res = get_display_data(iopub, ('text/html', 'image/png'))
