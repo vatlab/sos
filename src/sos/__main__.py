@@ -1288,20 +1288,30 @@ def cmd_config(args, workflow_args):
         else:
             env.logger.error('Config file {} does not exist'.format(config_file))
         #
-        unset = []
-        for option in args.__unset_config__:
-            for k in cfg.keys():
-                if fnmatch.fnmatch(k, option):
-                    unset.append(k)
-                    print('Unset {}'.format(k))
-        #
-        if unset:
-            for k in set(unset):
-                cfg.pop(k)
+        def unset_key(prefix, cfg):
+            changed = 0
+            unset = []
+            for option in args.__unset_config__:
+                for k in cfg.keys():
+                    if fnmatch.fnmatch('.'.join(prefix + [k]), option):
+                        unset.append(k)
+                        print('Unset {}'.format('.'.join(prefix + [k])))
             #
             if unset:
-                with open(config_file, 'w') as config:
-                    config.write(yaml.safe_dump(cfg, default_flow_style=False))
+                changed += len(unset)
+                for k in set(unset):
+                    cfg.pop(k)
+
+            for k,v in cfg.items():
+                if isinstance(v, dict):
+                    changed += unset_key(prefix + [k], v)
+            return changed
+        #
+        if unset_key([], cfg):
+            with open(config_file, 'w') as config:
+                config.write(yaml.safe_dump(cfg, default_flow_style=False))
+        else:
+            env.logger.warning('{} does not match any configuration key'.format(', '.join(args.__unset_config__)))
     elif args.__set_config__:
         if os.path.isfile(config_file):
             try:
