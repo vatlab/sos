@@ -1209,22 +1209,22 @@ def cmd_remove(args, unknown_args):
 #
 def get_config_parser(desc_only=False):
     parser = argparse.ArgumentParser('config',
-        description='''Displays, set, and unset configuration
-            variables defined in global or local configuration files.''')
+        description='''Displays configurations in host, global, local, and user specified
+            configuration files. ''')
     parser.short_description = '''Read and write sos configuration files'''
     if desc_only:
         return parser
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-g', '--global', action='store_true', dest='__global_config__',
-        help='''If set, change global (~/.sos/config.yml) instead of local
-        (.sos/config.yml) configuration''')
+        help='''Set (--set) or unset (--unset) options in global (~/.sos/config.yml)
+            instead of local (.sos/config.yml) configuration file.''')
     group.add_argument('--hosts', action='store_true', dest='__hosts_config__',
-        help='''If set, change hosts (~/.sos/hosts.yml) instead of local
-        (.sos/config.yml) configuration''')
+        help='''Set (--set) or unset (--unset) options in hosts (~/.sos/hosts.yml) instead
+            of local (.sos/config.yml) configuration''')
     group.add_argument('-c', '--config', dest='__config_file__', metavar='CONFIG_FILE',
-        help='''User specified configuration file in YAML format. This file will not be
-        automatically loaded by SoS but can be specified using option `-c`''')
-    group = parser.add_mutually_exclusive_group(required=True)
+        help='''Set (--set) or unset (--unset) options in user specified configuration file,
+            or display options (--get) also in this file.''')
+    group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument('--get', nargs='*', metavar='OPTION', dest='__get_config__',
         help='''Display values of specified configuration from all configuration files.
         The arguments of this option can be a single configuration option or a list of
@@ -1256,26 +1256,16 @@ def cmd_config(args, workflow_args):
     if workflow_args:
         raise RuntimeError('Unrecognized arguments {}'.format(' '.join(workflow_args)))
     #
-    if args.__global_config__:
-        config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
-    elif args.__hosts_config__:
-        config_file = os.path.join(os.path.expanduser('~'), '.sos', 'hosts.yml')
-    elif args.__config_file__:
-        config_file = os.path.expanduser(args.__config_file__)
-    else:
-        config_file = 'config.yml'
-    if args.__get_config__ is not None:
-        cfg = load_config_files(args.__config_file__)
-        def disp_matched(obj, option, prefix=[]):
-            for k, v in obj.items():
-                if isinstance(v, dict):
-                    disp_matched(v, option, prefix + [k])
-                elif fnmatch.fnmatch(k, option):
-                    print('{}\t{!r}'.format('.'.join(prefix + [k]), v))
+    if args.__unset_config__:
+        if args.__global_config__:
+            config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
+        elif args.__hosts_config__:
+            config_file = os.path.join(os.path.expanduser('~'), '.sos', 'hosts.yml')
+        elif args.__config_file__:
+            config_file = os.path.expanduser(args.__config_file__)
+        else:
+            config_file = 'config.yml'
 
-        for option in (args.__get_config__ if args.__get_config__ else ['*']):
-            disp_matched(cfg, option)
-    elif args.__unset_config__:
         if os.path.isfile(config_file):
             try:
                 with open(config_file) as config:
@@ -1313,6 +1303,15 @@ def cmd_config(args, workflow_args):
         else:
             env.logger.warning('{} does not match any configuration key'.format(', '.join(args.__unset_config__)))
     elif args.__set_config__:
+        if args.__global_config__:
+            config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
+        elif args.__hosts_config__:
+            config_file = os.path.join(os.path.expanduser('~'), '.sos', 'hosts.yml')
+        elif args.__config_file__:
+            config_file = os.path.expanduser(args.__config_file__)
+        else:
+            config_file = 'config.yml'
+
         if os.path.isfile(config_file):
             try:
                 with open(config_file) as config:
@@ -1373,6 +1372,23 @@ def cmd_config(args, workflow_args):
         #
         with open(config_file, 'w') as config:
             config.write(yaml.safe_dump(cfg, default_flow_style=False))
+    elif args.__get_config__ is not None:
+        cfg = load_config_files(args.__config_file__)
+        def disp_matched(obj, option, prefix=[]):
+            for k, v in obj.items():
+                if isinstance(v, dict):
+                    disp_matched(v, option, prefix + [k])
+                elif fnmatch.fnmatch(k, option):
+                    print('{}\t{!r}'.format('.'.join(prefix + [k]), v))
+
+        for option in (args.__get_config__ if args.__get_config__ else ['*']):
+            disp_matched(cfg, option)
+    else:
+        from pprint import PrettyPrinter
+        pp = PrettyPrinter(indent=2)
+        cfg = load_config_files(args.__config_file__)
+        pp.pprint(cfg)
+        
 
 
 #
