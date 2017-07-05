@@ -266,7 +266,7 @@ Python2 = sos.Python2.kernel:sos_Python2
 Python3 = sos.Python3.kernel:sos_Python3
 Bash = sos.Bash.kernel:sos_Bash
 JavaScript = sos.JavaScript.kernel:sos_JavaScript
-SAS = sos.SAS.kernel:sos_SAS
+SAS = sos.SAS.kernel:sos_SAS [sas]
 Matlab = sos.SAS.kernel:sos_Matlab
 
 [sos_converters]
@@ -314,6 +314,7 @@ ipynb-md.func = sos.jupyter.converter:notebook_to_md
         'dot':      ['graphviz'],
         # docker-py is not working on windows 10 (as of Jan 2017)
         'docker':   ['docker'],
+        'sas':      ['saspy'],
         #'spyder':   ['spyder'],
     }
 )
