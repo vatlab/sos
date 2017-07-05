@@ -31,7 +31,7 @@ class sos_SAS(SASsessionSTDIO):
     def __init__(self, sos_kernel):
         self.sos_kernel = sos_kernel
         self.kernel_name = 'sas'
-        self.background_color = 'teal'
+        self.background_color = '#dcb9b9'
         self.init_statements = ''
         #
         # we intentionally do not call SASsessionSTDIO's constructor, which needs to read
@@ -64,7 +64,7 @@ class sos_SAS(SASsessionSTDIO):
                     self.sos_kernel.warn('Cannot transfer a non DataFrame object {} of type {} to SAS'.format(name, env.sos_dict[name].__class__.__name__))
                 continue
             # sas cannot handle columns with non-string header
-            data = env.sos_dict[name].rename([str(x) for x in env.sos_dict[name].columns])
+            data = env.sos_dict[name].rename(columns={x:str(x) for x in env.sos_dict[name].columns})
             # convert dataframe to SAS
             self.dataframe2sasdata(data, name, "")
             sas_code = self.stdin.getvalue().decode('utf-8')
