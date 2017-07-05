@@ -228,10 +228,10 @@ class WorkflowDict(object):
             return
         if key in self._dict and self._dict[key] != self._readonly_vars[key]:
             if self._change_all_cap_vars == 'warning':
-                env.logger.warning('Value of readonly variable {} is changed from {} to {}'.format(
+                env.logger.warning('Value of readonly variable {} is changed from {} to {}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the warning."'.format(
                     key, self._readonly_vars[key], self._dict[key]))
             else:
-                raise RuntimeError('Value of readonly variable {} is changed from {} to {}'.format(
+                raise RuntimeError('Value of readonly variable {} is changed from {} to {}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the warning."'.format(
                     key, self._readonly_vars[key], self._dict[key]))
             if hasattr(self._dict[key], '__dict__'):
                 self._readonly_vars.pop(key)
@@ -239,15 +239,15 @@ class WorkflowDict(object):
                 self._readonly_vars[key] = self._dict[key]
 
     def check_readonly_vars(self):
-        if self._readonly_vars is None:
+        if self._change_all_cap_vars is None:
             return
         for key in self._readonly_vars:
             if key in self._dict and (hasattr(self._dict[key], '__dict__') or self._dict[key] != self._readonly_vars[key]):
                 if self._change_all_cap_vars == 'warning':
-                    env.logger.warning('Value of readonly variable {} is changed from {} to {}'.format(
+                    env.logger.warning('Value of readonly variable {} is changed from {} to {}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the warning."'.format(
                         key, self._readonly_vars[key], self._dict[key]))
                 else:
-                    raise RuntimeError('Value of readonly variable {} is changed from {} to {}'.format(
+                    raise RuntimeError('Value of readonly variable {} is changed from {} to {}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the error."'.format(
                         key, self._readonly_vars[key], self._dict[key]))
                 if hasattr(self._dict[key], '__dict__'):
                     self._readonly_vars.pop(key)
