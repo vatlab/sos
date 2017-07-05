@@ -25,7 +25,7 @@ from sos.utils import env
 
 from saspy.sasiostdio import SASsessionSTDIO
 
-from io import StringIO
+from io import BytesIO
 
 class sos_SAS(SASsessionSTDIO):
     def __init__(self, sos_kernel):
@@ -48,7 +48,7 @@ class sos_SAS(SASsessionSTDIO):
         #self._sb      = kwargs.get('sb', None)
 
         #self._startsas()
-        self.stdin = StringIO()
+        self.stdin = BytesIO()
         self.pid = None
         # mimick a sascfg object with argparse Namespace
         self.sascfg = argparse.Namespace()
