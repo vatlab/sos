@@ -31,7 +31,7 @@ from itertools import tee, combinations
 from .utils import env, AbortExecution, short_repr, stable_repr,\
     get_traceback, transcribe, ActivityNotifier, expand_size, format_HHMMSS
 from .pattern import extract_pattern
-from .sos_eval import SoS_eval, SoS_exec, Undetermined, param_of, interpolate
+from .sos_eval import SoS_eval, SoS_exec, Undetermined, interpolate
 from .target import BaseTarget, FileTarget, remote, local, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
@@ -83,8 +83,6 @@ def analyze_section(section, default_input=None):
     step_input = Undetermined()
     step_output = Undetermined()
     step_depends = []
-    step_local_input = []
-    step_local_output = []
     environ_vars = set()
     signature_vars = set()
     changed_vars = set()
@@ -240,34 +238,6 @@ def analyze_section(section, default_input=None):
                 env.logger.debug("Args {} cannot be determined: {}".format(value, e))
         else: # statement
             signature_vars |= accessed_vars(statement[1], section.sigil)
-            # we also need to check the specification of input and output
-            input_param = param_of('input', statement[1])
-            for param in input_param:
-                try:
-                    value = SoS_eval(param, section.sigil)
-                    if isinstance(value, str):
-                        step_local_input.append(value)
-                    elif isinstance(value, Sequence):
-                        step_local_input.extend(value)
-                    else:
-                        step_local_input = Undetermined()
-                except Exception as e:
-                    env.logger.debug('Args {} of input cannot be determined: {}'.format(param, e))
-                    step_local_input = Undetermined()
-            #
-            output_param = param_of('output', statement[1])
-            for param in output_param:
-                try:
-                    value = SoS_eval(param, section.sigil)
-                    if isinstance(value, str):
-                        step_local_output.append(value)
-                    elif isinstance(value, Sequence):
-                        step_local_output.extend(value)
-                    else:
-                        step_local_output = Undetermined()
-                except Exception as e:
-                    env.logger.debug('Args {} of input cannot be determined: {}'.format(param, e))
-                    step_local_output = Undetermined()
     # finally, tasks..
     if section.task:
         signature_vars |= accessed_vars(section.task, section.sigil)
@@ -276,8 +246,6 @@ def analyze_section(section, default_input=None):
         'step_input': step_input,
         'step_output': step_output,
         'step_depends': step_depends,
-        'step_local_input': step_local_input,
-        'step_local_output': step_local_output,
         # variables starting with __ are internals...
         'environ_vars': {x for x in environ_vars - local_vars if not x.startswith('__')},
         'signature_vars': {x for x in signature_vars if not x.startswith('__')},
@@ -662,8 +630,6 @@ class Base_Step_Executor:
 
         task_vars = env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
                     | {'_input', '_output', '_depends', 'input', 'output', 'depends',
-                    '_local_input_{}'.format(env.sos_dict['_index']),
-                    '_local_output_{}'.format(env.sos_dict['_index']),
                     '_index', '__args__', 'step_name', '_runtime',
                     'CONFIG', '__signature_vars__', '__step_context__',
                     })
@@ -801,19 +767,11 @@ class Base_Step_Executor:
 
     def execute(self, stmt, sig=None):
         try:
-            env.sos_dict.set('__local_input__', [])
-            env.sos_dict.set('__local_output__', [])
             if sig is None:
                 env.sos_dict.set('__step_sig__', None)
             else:
                 env.sos_dict.set('__step_sig__', os.path.basename(sig.proc_info).split('.')[0])
             self.last_res = SoS_exec(stmt, self.step.sigil)
-            if env.sos_dict['__local_input__']:
-                env.sos_dict['_local_input_{}'.format(env.sos_dict['_index'])].extend(env.sos_dict['__local_input__'])
-                env.sos_dict['local_input'].extend(env.sos_dict['__local_input__'])
-            if env.sos_dict['__local_output__']:
-                env.sos_dict['_local_output_{}'.format(env.sos_dict['_index'])].extend(env.sos_dict['__local_output__'])
-                env.sos_dict['local_output'].extend(env.sos_dict['__local_output__'])
         except (AbortExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks):
             raise
         except Exception as e:
@@ -831,8 +789,6 @@ class Base_Step_Executor:
         result = {
             '__step_input__': env.sos_dict['input'],
             '__step_output__': env.sos_dict['output'],
-            '__step_local_input__': env.sos_dict['local_input'],
-            '__step_local_output__': env.sos_dict['local_output'],
             '__step_depends__': env.sos_dict['depends'],
             '__step_name__': env.sos_dict['step_name'],
         }
@@ -911,10 +867,6 @@ class Base_Step_Executor:
             env.sos_dict.set('_output', None)
         env.sos_dict.set('depends', None)
         env.sos_dict.set('_depends', None)
-        env.sos_dict.set('local_input', [])
-        env.sos_dict.set('local_output', [])
-        env.sos_dict.set('_local_input_0', [])
-        env.sos_dict.set('_local_output_0', [])
         # _index is needed for pre-input action's active option and for debug output of scripts
         env.sos_dict.set('_index', 0)
 
@@ -988,10 +940,6 @@ class Base_Step_Executor:
         try:
             for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
                 # other variables
-                # side input and outputs are tracked for each execution unit
-                # to keep the signature clean
-                env.sos_dict.set('_local_input_{}'.format(idx), [])
-                env.sos_dict.set('_local_output_{}'.format(idx), [])
                 #
                 env.sos_dict.update(v)
                 env.sos_dict.set('_input', g)
@@ -1043,10 +991,6 @@ class Base_Step_Executor:
                                             env.sos_dict.set('_input', matched['input'])
                                             env.sos_dict.set('_depends', matched['depends'])
                                             env.sos_dict.set('_output', matched['output'])
-                                            env.sos_dict.set('_local_input', matched['local_output'])
-                                            env.sos_dict.set('_local_output', matched['local_output'])
-                                            env.sos_dict['local_input'].extend(env.sos_dict['_local_input'])
-                                            env.sos_dict['local_output'].extend(env.sos_dict['_local_output'])
                                             env.sos_dict.update(matched['vars'])
                                             env.logger.info('Step ``{}`` (index={}) is ``ignored`` due to saved signature'.format(env.sos_dict['step_name'], idx))
                                             skip_index = True
@@ -1060,19 +1004,12 @@ class Base_Step_Executor:
                                             env.sos_dict.set('_input', matched['input'])
                                             env.sos_dict.set('_depends', matched['depends'])
                                             env.sos_dict.set('_output', matched['output'])
-                                            env.sos_dict.set('_local_input', matched['local_output'])
-                                            env.sos_dict.set('_local_output', matched['local_output'])
-                                            env.sos_dict['local_input'].extend(env.sos_dict['_local_input'])
-                                            env.sos_dict['local_output'].extend(env.sos_dict['_local_output'])
                                             env.sos_dict.update(matched['vars'])
                                             env.logger.info('Step ``{}`` (index={}) is ``ignored`` with matching signature'.format(env.sos_dict['step_name'], idx))
                                             skip_index = True
                                     elif env.config['sig_mode'] == 'build':
                                         # build signature require existence of files
-                                        if signatures[idx].write(
-                                            env.sos_dict['_local_input_{}'.format(idx)],
-                                            env.sos_dict['_local_output_{}'.format(idx)],
-                                            rebuild=True):
+                                        if signatures[idx].write(rebuild=True):
                                             env.logger.info('Step ``{}`` (index={}) is ``ignored`` with signature constructed'.format(env.sos_dict['step_name'], idx))
                                             skip_index = True
                                     elif env.config['sig_mode'] == 'force':
@@ -1122,9 +1059,7 @@ class Base_Step_Executor:
                 # finally, tasks..
                 if not self.step.task:
                     if signatures[idx] is not None:
-                        signatures[idx].write(
-                            env.sos_dict['_local_input_{}'.format(idx)],
-                            env.sos_dict['_local_output_{}'.format(idx)])
+                        signatures[idx].write()
                         signatures[idx].release()
                         signatures[idx] = None
                     continue
@@ -1169,9 +1104,7 @@ class Base_Step_Executor:
             for idx,res in enumerate(self.proc_results):
                 if signatures[idx] is not None:
                     if res['ret_code'] == 0:
-                        signatures[idx].write(
-                            env.sos_dict['_local_input_{}'.format(idx)],
-                            env.sos_dict['_local_output_{}'.format(idx)])
+                        signatures[idx].write()
                     signatures[idx].release()
                     signatures[idx] = None
             # check results

@@ -473,8 +473,7 @@ class Base_Executor:
                 # with identical names.
                 dag.add_step(section.uuid, '{} {}'.format(section.step_name(),
                     short_repr(env.sos_dict['__default_output__'])), None, res['step_input'],
-                    res['step_depends'], res['step_output'],
-                    res['step_local_input'], res['step_local_output'], context=context)
+                    res['step_depends'], res['step_output'], context=context)
                 added_node += 1
                 resolved += 1
 
@@ -529,8 +528,7 @@ class Base_Executor:
                 # with identical names.
                 dag.add_step(section.uuid, '{} {}'.format(section.step_name(),
                     short_repr(env.sos_dict['__default_output__'])), None, res['step_input'],
-                    res['step_depends'], res['step_output'],
-                    res['step_local_input'], res['step_local_output'], context=context)
+                    res['step_depends'], res['step_output'], context=context)
                 #
                 added_node += 1
                 # this case do not count as resolved
@@ -587,8 +585,6 @@ class Base_Executor:
                 res['step_input'],
                 res['step_depends'],
                 res['step_output'],
-                res['step_local_input'],
-                res['step_local_output'],
                 context = context)
             default_input = res['step_output']
         #
@@ -858,9 +854,7 @@ class Base_Executor:
                             node._context['__completed__'].append(res['__step_name__'])
                         dag.update_step(runnable, env.sos_dict['__step_input__'],
                             env.sos_dict['__step_output__'],
-                            env.sos_dict['__step_depends__'],
-                            env.sos_dict['__step_local_input__'],
-                            env.sos_dict['__step_local_output__'])
+                            env.sos_dict['__step_depends__'])
                         runnable._status = 'completed'
                         prog.update(1)
                     elif '__workflow_id__' in res:

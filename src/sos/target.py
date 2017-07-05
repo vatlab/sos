@@ -527,9 +527,6 @@ class RuntimeInfo:
         else:
             raise RuntimeError('Output files must be a list of filenames or Undetermined for runtime signature.')
 
-        self.local_input_files = []
-        self.local_output_files = []
-
         self.signature_vars = {} if signature_vars is None else {x: sdict[x] if x in sdict else Undetermined() for x in signature_vars}
 
         sig_vars = [] if signature_vars is None else sorted([x for x in signature_vars if x in sdict and isPrimitive(sdict[x])])
@@ -547,8 +544,6 @@ class RuntimeInfo:
                 'input_files': self.input_files,
                 'output_files': self.output_files,
                 'dependent_files': self.dependent_files,
-                'local_input_files': self.local_input_files,
-                'local_output_files': self.local_output_files,
                 'signature_vars': self.signature_vars,
                 'script': self.script}
 
@@ -556,8 +551,6 @@ class RuntimeInfo:
         self.step_md5 = sdict['step_md5']
         self.input_files = sdict['input_files']
         self.output_files = sdict['output_files']
-        self.local_input_files = sdict['local_input_files']
-        self.local_output_files = sdict['local_output_files']
         self.dependent_files = sdict['dependent_files']
         self.signature_vars = sdict['signature_vars']
         self.script = sdict['script']
@@ -592,7 +585,7 @@ class RuntimeInfo:
         else:
             raise RuntimeError('Invalid signature file type {}'.format(file_type))
 
-    def write(self, local_input_files, local_output_files, rebuild=False):
+    def write(self, rebuild=False):
         '''Write signature file with signature of script, input, output and dependent files.
         Because local input and output files can only be determined after the execution
         of workflow. They are not part of the construction...
@@ -636,28 +629,6 @@ class RuntimeInfo:
                 else:
                     env.logger.warning('Failed to create signature: dependent target {} does not exist'.format(f))
                     return False
-            md5.write('# local input\n')
-            for f in [FileTarget(x) if isinstance(x, str) else x for x in local_input_files]:
-                if f.exists('target'):
-                    # this calculates file MD5
-                    f.write_sig()
-                    md5.write('{}\t{}\n'.format(f, f.signature()))
-                elif not rebuild and f.exists('signature'):
-                    md5.write('{}\t{}\n'.format(f, f.signature()))
-                else:
-                    env.logger.warning('Failed to create signature: local input target {} does not exist'.format(f))
-                    return False
-            md5.write('# local output\n')
-            for f in [FileTarget(x) if isinstance(x, str) else x for x in local_output_files]:
-                if f.exists('target'):
-                    # this calculates file MD5
-                    f.write_sig()
-                    md5.write('{}\t{}\n'.format(f, f.signature()))
-                elif not rebuild and f.exists('signature'):
-                    md5.write('{}\t{}\n'.format(f, f.signature()))
-                else:
-                    env.logger.warning('Failed to create signature: local output target {} does not exist'.format(f))
-                    return False
             # context that will be needed for validation
             md5.write('# init context\n')
             for var in sorted(self.signature_vars.keys()):
@@ -697,12 +668,6 @@ class RuntimeInfo:
                     for f in self.output_files:
                         if isinstance(f, FileTarget):
                             wf.write('OUT_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.signature()))
-                    for f in self.local_input_files:
-                        if isinstance(f, FileTarget):
-                            wf.write('IN_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.signature()))
-                    for f in self.local_output_files:
-                        if isinstance(f, FileTarget):
-                            wf.write('OUT_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.signature()))
         return True
 
     def validate(self):
@@ -720,7 +685,7 @@ class RuntimeInfo:
                 return 'Missing target {}'.format(x)
         #
         files_checked = {x.name():False for x in sig_files if not isinstance(x, Undetermined)}
-        res = {'input': [], 'output': [], 'depends': [], 'local_input': [], 'local_output': [], 'vars': {}}
+        res = {'input': [], 'output': [], 'depends': [], 'vars': {}}
         cur_type = 'input'
         with open(self.proc_info) as md5:
             cmdMD5 = md5.readline().strip()   # command
@@ -736,10 +701,6 @@ class RuntimeInfo:
                         cur_type = 'output'
                     elif line == '# dependent\n':
                         cur_type = 'depends'
-                    elif line == '# local input\n':
-                        cur_type = 'local_input'
-                    elif line == '# local output\n':
-                        cur_type = 'local_output'
                     elif line == '# init context\n':
                         cur_type = 'init context'
                     elif line == '# end context\n':

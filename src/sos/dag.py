@@ -94,15 +94,13 @@ from .target import FileTarget, sos_variable, textMD5, sos_step
 #
 class SoS_Node(object):
     def __init__(self, step_uuid, node_name, node_index, input_targets=None, depends_targets=None,
-        output_targets=None, local_input_targets=None, local_output_targets=None, context=None):
+        output_targets=None, context=None):
         self._step_uuid = step_uuid
         self._node_id = node_name
         self._node_index = node_index
         self._input_targets = Undetermined() if input_targets is None else copy.deepcopy(input_targets)
         self._depends_targets = [] if depends_targets is None else copy.deepcopy(depends_targets)
         self._output_targets = Undetermined() if output_targets is None else copy.deepcopy(output_targets)
-        self._local_input_targets = [] if local_input_targets is None else copy.deepcopy(local_input_targets)
-        self._local_output_targets = [] if local_output_targets is None else copy.deepcopy(local_output_targets)
         #env.logger.error('Note {}: Input: {} Depends: {} Output: {}'.format(self._node_id, self._input_targets,
         #      self._depends_targets,  self._output_targets))
         self._context = {} if context is None else copy.deepcopy(context)
@@ -133,9 +131,9 @@ class SoS_DAG(nx.DiGraph):
         return nx.number_of_nodes(self)
 
     def add_step(self, step_uuid, node_name, node_index, input_targets, depends_targets,
-        output_targets, local_input_targets, local_output_targets, context=None):
+        output_targets, context=None):
         node = SoS_Node(step_uuid, node_name, node_index, input_targets, depends_targets,
-            output_targets, local_input_targets, local_output_targets, context)
+            output_targets, context)
         if node._node_uuid in [x._node_uuid for x in self.nodes()]:
             return
         # adding a step would add a sos_step target to met the depends on sos_step
@@ -150,19 +148,12 @@ class SoS_DAG(nx.DiGraph):
         if not isinstance(output_targets, (type(None), Undetermined)):
             for x in output_targets:
                 self._all_output_files[x].append(node)
-        if not isinstance(local_input_targets, (type(None), Undetermined)):
-            for x in local_input_targets:
-                self._all_dependent_files[x].append(node)
-        if not isinstance(local_output_targets, (type(None), Undetermined)):
-            for x in local_output_targets:
-                self._all_output_files[x].append(node)
         if context is not None:
             for x in context['__changed_vars__']:
                 self._all_output_files[sos_variable(x)].append(node)
         self.add_node(node)
 
-    def update_step(self, node, input_targets, depends_targets,
-        output_targets, local_input_targets, local_output_targets):
+    def update_step(self, node, input_targets, depends_targets, output_targets):
         if not isinstance(input_targets, (type(None), Undetermined)):
             for x in input_targets:
                 self._all_dependent_files[x].append(node)
@@ -171,12 +162,6 @@ class SoS_DAG(nx.DiGraph):
                 self._all_dependent_files[x].append(node)
         if not isinstance(output_targets, (type(None), Undetermined)):
             for x in output_targets:
-                self._all_output_files[x].append(node)
-        if not isinstance(local_input_targets, (type(None), Undetermined)):
-            for x in local_input_targets:
-                self._all_dependent_files[x].append(node)
-        if not isinstance(local_output_targets, (type(None), Undetermined)):
-            for x in local_output_targets:
                 self._all_output_files[x].append(node)
 
     def find_executable(self):

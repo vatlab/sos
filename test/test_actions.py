@@ -601,7 +601,7 @@ script: interpreter='python'
         here is the 'input' parameter of report.'''
         script = SoS_Script(r'''
 [A_1]
-output: 'a1.txt'
+output: 'a1.txt', 'a1.md'
 run:
     echo 'a1' >> a1.txt
 
@@ -609,13 +609,15 @@ report: output='a1.md'
     a1
 
 [A_2]
-output: 'a2.txt'
+output: 'a2.txt', 'a2.md'
 run:
     echo 'a2' >> a2.txt
 report: output='a2.md'
     a2
 
 [A_3]
+input: 'a1.md', 'a2.md'
+output: 'out.md'
 report:     input=['a1.md', 'a2.md'], output='out.md'
 ''')
         wf = script.workflow()

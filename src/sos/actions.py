@@ -44,7 +44,7 @@ import multiprocessing as mp
 from tqdm import tqdm as ProgressBar
 from .utils import env, transcribe, AbortExecution, short_repr, get_traceback
 from .sos_eval import Undetermined, interpolate
-from .target import FileTarget, fileMD5, executable, UnknownTarget, BaseTarget
+from .target import FileTarget, fileMD5, executable, UnknownTarget
 
 __all__ = ['SoS_Action', 'script', 'sos_run',
     'fail_if', 'warn_if', 'stop_if',
@@ -94,28 +94,6 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                 for k,v in kwargs.items():
                     if k in SOS_RUNTIME_OPTIONS and k not in SOS_ACTION_OPTIONS:
                         env.logger.warning('Passing runtime option "{0}" to action is deprecated. Please use "task: {0}={1}" before action instead.'.format(k, v))
-            if 'input' in kwargs and '__local_input__' in env.sos_dict:
-                if isinstance(kwargs['input'], (str, BaseTarget)):
-                    env.sos_dict['__local_input__'].append(kwargs['input'])
-                elif isinstance(kwargs['input'], Sequence):
-                    env.sos_dict['__local_input__'].extend(kwargs['input'])
-                else:
-                    env.logger.warning('Parameter input of action should be string or list of strings')
-                for item in env.sos_dict['__local_input__']:
-                    if isinstance(item, str):
-                        if not FileTarget(item).exists('target'):
-                            FileTarget(item).remove_sig()
-                            raise UnknownTarget(item)
-                    elif not item.exists('target'):
-                        item.remove_sig()
-                        raise UnknownTarget(item)
-            if 'output' in kwargs and '__local_output__' in env.sos_dict:
-                if isinstance(kwargs['output'], (str, BaseTarget)):
-                    env.sos_dict['__local_output__'].append(kwargs['output'])
-                elif isinstance(kwargs['output'], Sequence):
-                    env.sos_dict['__local_output__'].extend(kwargs['output'])
-                else:
-                    env.logger.warnoutg('Parameter output of action should be stroutg or list of strings')
             if 'active' in kwargs:
                 if isinstance(kwargs['active'], int):
                     if kwargs['active'] >= 0 and env.sos_dict['_index'] != kwargs['active']:

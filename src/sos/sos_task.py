@@ -372,10 +372,6 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                 env.sos_dict.set('_input', matched['input'])
                 env.sos_dict.set('_depends', matched['depends'])
                 env.sos_dict.set('_output', matched['output'])
-                env.sos_dict.set('_local_input', matched['local_output'])
-                env.sos_dict.set('_local_output', matched['local_output'])
-                env.sos_dict.set('local_input', env.sos_dict['_local_input'])
-                env.sos_dict.set('local_output', env.sos_dict['_local_output'])
                 env.sos_dict.update(matched['vars'])
                 env.logger.info('Task ``{}`` (index={}) is ``ignored`` due to saved signature'.format(env.sos_dict['step_name'], idx))
                 skipped = True
@@ -387,19 +383,12 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                 env.sos_dict.set('_input', matched['input'])
                 env.sos_dict.set('_depends', matched['depends'])
                 env.sos_dict.set('_output', matched['output'])
-                env.sos_dict.set('_local_input', matched['local_output'])
-                env.sos_dict.set('_local_output', matched['local_output'])
-                env.sos_dict['local_input'].extend(env.sos_dict['_local_input'])
-                env.sos_dict['local_output'].extend(env.sos_dict['_local_output'])
                 env.sos_dict.update(matched['vars'])
                 env.logger.info('Step ``{}`` (index={}) is ``ignored`` with matching signature'.format(env.sos_dict['step_name'], idx))
                 skipped = True
         elif env.config['sig_mode'] == 'build':
             # build signature require existence of files
-            if sig.write(
-                env.sos_dict['_local_input_{}'.format(idx)],
-                env.sos_dict['_local_output_{}'.format(idx)],
-                rebuild=True):
+            if sig.write(rebuild=True):
                 env.logger.info('Task ``{}`` (index={}) is ``ignored`` with signature constructed'.format(env.sos_dict['step_name'], idx))
                 skipped = True
             else:
@@ -508,8 +497,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
         os.chdir(orig_dir)
 
     if sig:
-        sig.write(env.sos_dict['_local_input_{}'.format(env.sos_dict['_index'])],
-            env.sos_dict['_local_output_{}'.format(env.sos_dict['_index'])])
+        sig.write()
         sig.release()
 
     # the final result should be relative to cur_dir, not workdir
