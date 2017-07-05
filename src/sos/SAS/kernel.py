@@ -76,10 +76,16 @@ class sos_SAS(SASsessionSTDIO):
     def put_vars(self, items, to_kernel=None):
         # put SAS dataset to Python as dataframe
         for item in items:
-            # separate function from SASsessionSTDIO
-            self.sasdata2dataframe_code(item)
-            code = self.stdin.getvalue().decode('utf-8')
-            self.sos_kernel.warn(code)
+            try:
+                sas_code = self.sasdata2dataframe_code(item)
+                #code = self.stdin.getvalue().decode('utf-8')
+                response = self.sos_kernel.get_response(sas_code, ('stream',), name=('stdout',))[0][1]
+                self.sos_kernel.warn(response)
+                sas_code = self.analyze_output(response['text'])
+                # try to grab output
+                self.sos_kernel.warn(sas_code)
+            except Exception as e:
+                self.sos_kernel.warn(e)
         return {}
 
     def sessioninfo(self):
@@ -112,10 +118,10 @@ class sos_SAS(SASsessionSTDIO):
         code += "put vt;\n"
         code += "do i = 1 to nvars; var = vartype(d, i); put var; end;\n"
         code += "run;"
+        return code
 
-        ll = self.submit(code, "text")
-
-        l2 = ll['LOG'].rpartition("LRECL= ")
+    def analyze_output(self, ll):
+        l2 = ll.rpartition("LRECL= ")
         l2 = l2[2].partition("\n")
         #lrecl = int(l2[0])
 
