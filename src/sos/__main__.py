@@ -1266,12 +1266,12 @@ def cmd_config(args, workflow_args):
         config_file = 'config.yml'
     if args.__get_config__ is not None:
         cfg = load_config_files(args.__config_file__)
-        def disp_matched(obj, option, prefix=''):
+        def disp_matched(obj, option, prefix=[]):
             for k, v in obj.items():
-                if fnmatch.fnmatch(k, option):
-                    print('{}{}\t{!r}'.format(prefix + '.', k, v))
                 if isinstance(v, dict):
-                    disp_matched(v, option, k)
+                    disp_matched(v, option, prefix + [k])
+                elif fnmatch.fnmatch(k, option):
+                    print('{}\t{!r}'.format('.'.join(prefix + [k]), v))
 
         for option in (args.__get_config__ if args.__get_config__ else ['*']):
             disp_matched(cfg, option)
