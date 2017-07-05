@@ -30,7 +30,7 @@ from io import StringIO
 class sos_SAS(SASsessionSTDIO):
     def __init__(self, sos_kernel):
         self.sos_kernel = sos_kernel
-        self.kernel_name = 'sas_kernel'
+        self.kernel_name = 'sas'
         self.background_color = 'teal'
         self.init_statements = ''
         #
