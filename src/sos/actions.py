@@ -137,14 +137,6 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                         res = None
                     else:
                         raise
-            if '__local_output__' in env.sos_dict:
-                for item in env.sos_dict['__local_output__']:
-                    if isinstance(item, str):
-                        if not FileTarget(item).exists():
-                            raise RuntimeError("Target {} does not exist after execution of action".format(item))
-                    elif not item.exists():
-                            raise RuntimeError("Target {} does not exist after execution of action".format(item))
-
             return res
         action_wrapper.run_mode = run_mode
         return action_wrapper
