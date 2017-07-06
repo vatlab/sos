@@ -1355,6 +1355,8 @@ Available subkernels:\n{}'''.format(
             try:
                 self.switch_kernel(from_kernel)
                 self.handle_magic_put(items)
+            except Exception as e:
+                self.warn('Failed to get {} from {}: {}'.format(', '.join(items), from_kernel, e))
             finally:
                 self.switch_kernel('SoS')
         else:
@@ -1365,6 +1367,8 @@ Available subkernels:\n{}'''.format(
                 self.switch_kernel(from_kernel)
                 # put stuff to sos or my_kernel directly
                 self.handle_magic_put(items, to_kernel=my_kernel, explicit=explicit)
+            except Exception as e:
+                self.warn('Failed to get {} from {}: {}'.format(', '.join(items), from_kernel, e))
             finally:
                 # then switch back
                 self.switch_kernel(my_kernel)
