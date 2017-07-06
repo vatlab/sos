@@ -1408,6 +1408,8 @@ Available subkernels:\n{}'''.format(
             try:
                 # switch to kernel and bring in items
                 self.switch_kernel(to_kernel, in_vars=items)
+            except Exception as e:
+                self.warn('Failed to put {} to {}: {}'.format(', '.join(items), to_kernel, e))
             finally:
                 # switch back
                 self.switch_kernel('SoS')
@@ -1434,7 +1436,7 @@ Available subkernels:\n{}'''.format(
                 try:
                     env.sos_dict.update(objects)
                 except Exception as e:
-                    self.warn('Failed to execute %put: {}'.format(e))
+                    self.warn('Failed to put {} to {}: {}'.format(', '.join(items), to_kernel, e))
                     return
 
                 if to_kernel is None:
@@ -1445,6 +1447,8 @@ Available subkernels:\n{}'''.format(
                     my_kernel = self.kernel
                     # switch to the destination kernel and bring in vars
                     self.switch_kernel(to_kernel, in_vars=items)
+                except Exception as e:
+                    self.warn('Failed to put {} to {}: {}'.format(', '.join(items), to_kernel, e))
                 finally:
                     # switch back to the original kernel
                     self.switch_kernel(my_kernel)
@@ -1464,6 +1468,8 @@ Available subkernels:\n{}'''.format(
                     self.switch_kernel(to_kernel)
                     # execute the statement to pass variables directly to destination kernel
                     self.run_cell(objects, True, False)
+                except Exception as e:
+                    self.warn('Failed to put {} to {}: {}'.format(', '.join(items), to_kernel, e))
                 finally:
                     # switch back to the original kernel
                     self.switch_kernel(my_kernel)
