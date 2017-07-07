@@ -140,6 +140,9 @@ class LocalHost:
         if not os.path.isdir(self.task_dir):
             os.mkdir(self.task_dir)
 
+    def send_to_host(self, items):
+        pass
+
     def prepare_task(self, task_id):
         def_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
         task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.task')
@@ -197,7 +200,7 @@ class LocalHost:
     def check_output(self, cmd):
         # get the output of command
         try:
-            return subprocess.check_output(cmd, shell=True).decode()
+            return subprocess.check_output(cmd, shell=isinstance(cmd, str)).decode()
         except Exception as e:
             env.logger.warning('Check output of {} failed: {}'.format(cmd, e))
             raise
@@ -302,7 +305,7 @@ class RemoteHost:
 
     def _get_execute_cmd(self):
         return self.config.get('execute_cmd',
-            '''ssh -q ${host} -p ${port} "bash --login -c '${cmd}'" ''')
+            '''ssh -q ${host} -p ${port} "bash --login -c '[ -d ${cur_dir} ] || mkdir -p ${cur_dir}; cd ${cur_dir} && ${cmd}'" ''')
 
     def _get_query_cmd(self):
         return self.config.get('query_cmd',
@@ -372,7 +375,7 @@ class RemoteHost:
             env.logger.debug('Ignore unmappable source {}'.format(source))
             return source
 
-    def _send_to_host(self, items):
+    def send_to_host(self, items):
         # we only copy files and directories, not other types of targets
         if isinstance(items, str):
             items = [items]
@@ -478,10 +481,10 @@ class RemoteHost:
                 task_id, task_vars['_runtime']['walltime'], self.config['max_walltime']))
 
         if task_vars['_input'] and not isinstance(task_vars['_input'], Undetermined):
-            self._send_to_host(task_vars['_input'])
+            self.send_to_host(task_vars['_input'])
             env.logger.info('{} ``send`` {}'.format(task_id, short_repr(task_vars['_input'])))
         if task_vars['_depends'] and not isinstance(task_vars['_depends'], Undetermined):
-            self._send_to_host(task_vars['_depends'])
+            self.send_to_host(task_vars['_depends'])
             env.logger.info('{} ``send`` {}'.format(task_id, short_repr(task_vars['_depends'])))
         if 'to_host' in task_vars['_runtime']:
             if isinstance(task_vars['_runtime']['to_host'], dict):
@@ -493,9 +496,9 @@ class RemoteHost:
                         th[x] = self._map_var(task_vars['_runtime']['home_dir']) + y[1:]
                     else:
                         th[x] = self._map_var(task_vars['_runtime']['cur_dir']) + '/' + y
-                self._send_to_host(th)
+                self.send_to_host(th)
             else:
-                self._send_to_host(task_vars['_runtime']['to_host'])
+                self.send_to_host(task_vars['_runtime']['to_host'])
             env.logger.info('{} ``send`` {}'.format(task_id, short_repr(task_vars['_runtime']['to_host'])))
 
         # map variables
@@ -558,10 +561,12 @@ class RemoteHost:
             raise RuntimeError('Failed to copy job {} to {} using command {}: {}'.format(task_file, self.alias, send_cmd, e))
 
     def check_output(self, cmd):
+        if isinstance(cmd, list):
+            cmd = subprocess.list2cmdline(cmd)
         try:
             cmd = interpolate(self.execute_cmd, '${ }', {
                 'host': self.address, 'port': self.port,
-                'cmd': cmd})
+                'cmd': cmd, 'cur_dir': self._map_var(os.getcwd())})
         except Exception as e:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
         env.logger.debug('Executing command ``{}``'.format(cmd))

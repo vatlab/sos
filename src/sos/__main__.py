@@ -208,10 +208,17 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         help='''Do not wait for the completion of external tasks and quit SoS
             if all tasks are being executed by external task queues. This option
             overrides the default wait setting of task queues.''')
-    parser.add_argument('-r', dest='__remote__', action='store_true',
-        help='''Forcing all targets specified in input, output, and
-            depends are remote targets so that they are not synchronized
-            between local and remote hosts.''')
+    parser.add_argument('-r', dest='__remote__', nargs='?',
+        help='''Execute the workflow in specified remote host, which should
+            be defined under key host of sos configuration files (preferrably
+            in ~/.sos/hosts.yml). This option basically copy the workflow
+            to remote host and invoke sos command there. No path translation
+            and input/output file synchronization will be performed before or
+            after the execution of the workflow.''')
+    #parser.add_argument('-r', dest='__remote__', action='store_true',
+    #    help='''Forcing all targets specified in input, output, and
+    #        depends are remote targets so that they are not synchronized
+    #        between local and remote hosts.''')
     #parser.add_argument('-t', dest='__transcript__', nargs='?',
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(title='Run mode options',
@@ -266,6 +273,29 @@ def cmd_run(args, workflow_args):
     if args.__wait__ and args.__no_wait__:
         sys.exit('Please specify only one of -w (wait) or -W (no-wait)')
 
+    if args.__remote__:
+        # if executing on a remote host...
+        from .hosts import Host
+        host = Host(args.__remote__)
+        #
+        host.send_to_host(args.script)
+        r_idx = [idx for idx, x in enumerate(sys.argv) if x.startswith('-r')][0]
+        if sys.argv[r_idx] == '-r':
+            # in case of -r host
+            argv = sys.argv[:r_idx] + sys.argv[r_idx+2:]
+        else:
+            # in case of -r=host...
+            argv = sys.argv[:r_idx] + sys.argv[r_idx+1:]
+        # replace absolute path with relative one because remote sos might have
+        # a different path.
+        if os.path.basename(argv[0]) == 'sos':
+            argv[0] = 'sos'
+        elif os.path.basename(argv[0]) == 'sos-runner':
+            argv[0] = 'sos-runner'
+        # copy script to remote host...
+        sys.exit(host._host_agent.check_output(argv))
+
+
     # '' means no -d
     if args.__dag__ is None:
         args.__dag__ = '-'
@@ -304,7 +334,7 @@ def cmd_run(args, workflow_args):
                 'run_mode': 'dryrun' if args.dryrun else 'run',
                 'resume_mode': getattr(args, '__resume__', False),
                 'verbosity': args.verbosity,
-                'remote_targets': getattr(args, '__remote__', False),
+                #'remote_targets': getattr(args, '__remote__', False),
                 # for infomration and resume only
                 'workdir': os.getcwd(),
                 'script': args.script,
@@ -1388,7 +1418,7 @@ def cmd_config(args, workflow_args):
         pp = PrettyPrinter(indent=2)
         cfg = load_config_files(args.__config_file__)
         pp.pprint(cfg)
-        
+
 
 
 #
