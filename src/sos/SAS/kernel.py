@@ -113,8 +113,24 @@ run;
             shutil.rmtree(temp_dir)
         return res
 
+    def parse_response(self, html):
+        # separate response into LOG (with class err) and LST (with class s)
+        LOG = ''
+        LST = ''
+        for line in html.split('</span>'):
+            if 'class="err"' in line:
+                LOG += line.replace('<br>', '\n').replace('<span class="err">', '') + ' '
+            elif 'class="s"' in line:
+                LST += line.replace('<br>', '\n').replace('<span class="s">', '') + ' '
+        return {'LOG':LOG, 'LST':LST}
+        
     def sessioninfo(self):
         # return information of the kernel
-        pass
+        sas_code = '''\
+PROC PRODUCT_STATUS;
+run;
+'''
+        response = self.sos_kernel.get_response(sas_code, ('execute_result',))[0][1]['data']['text/html']
+        return self.parse_response(response)['LOG']
 
 
