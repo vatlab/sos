@@ -112,6 +112,19 @@ class DaemonizedProcess(mp.Process):
         subprocess.Popen(self.cmd, shell=True, close_fds=True)
         return
 
+def _show_err_and_out(task_id):
+    sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
+    out_file = os.path.join(sys_task_dir, task_id + '.out')
+    err_file = os.path.join(sys_task_dir, task_id + '.err')
+    if os.path.isfile(out_file):
+        env.logger.info('{}.out:'.format(task_id))
+        with open(out_file) as out:
+            print(out.read())
+    if os.path.isfile(err_file):
+        env.logger.info('{}.err:'.format(task_id))
+        with open(err_file) as err:
+            print(err.read())
+
 class LocalHost:
     '''For local host, no path map, send and receive ...'''
 
@@ -200,23 +213,15 @@ class LocalHost:
 
     def receive_result(self, task_id):
         sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
-        if env.verbosity >= 2:
-            out_file = os.path.join(sys_task_dir, task_id + '.out')
-            err_file = os.path.join(sys_task_dir, task_id + '.err')
-            if os.path.isfile(out_file):
-                env.logger.info('{}.out:'.format(task_id))
-                with open(out_file) as out:
-                    print(out.read())
-            if os.path.isfile(err_file):
-                env.logger.info('{}.err:'.format(task_id))
-                with open(err_file) as err:
-                    print(err.read())
 
         res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.res')
         try:
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
+            if res['ret_code'] != 0 or env.verbosity >= 3:
+                _show_err_and_out(task_id)
         except Exception:
+            _show_err_and_out(task_id)
             env.logger.warning('Result for {} is not received'.format(task_id))
             return {'ret_code': 1, 'output': {}}
 
@@ -605,21 +610,9 @@ class RemoteHost:
             ret = subprocess.call(receive_cmd, shell=True)
             if (ret != 0):
                 raise RuntimeError('Failed to retrieve result of job {} from {} with cmd\n{}'.format(task_id, self.alias, receive_cmd))
-        # show results? Not sure if this is a good idea but helps debugging at this point
-        if env.verbosity >= 2:
-            out_file = os.path.join(sys_task_dir, task_id + '.out')
-            err_file = os.path.join(sys_task_dir, task_id + '.err')
-            if os.path.isfile(out_file):
-                env.logger.info('{}.out:'.format(task_id))
-                with open(out_file) as out:
-                    print(out.read())
-            if os.path.isfile(err_file):
-                env.logger.info('{}.err:'.format(task_id))
-                with open(err_file) as err:
-                    print(err.read())
-
         res_file = os.path.join(sys_task_dir, task_id + '.res')
         if not os.path.isfile(res_file):
+            _show_err_and_out(task_id)
             env.logger.debug('Result for {} is not received'.format(task_id))
             return {'ret_code': 1, 'output': {}}
 
@@ -627,8 +620,11 @@ class RemoteHost:
             res = pickle.load(result)
 
         if ('ret_code' in res and res['ret_code'] != 0) or ('succ' in res and res['succ'] != 0):
+            _show_err_and_out(task_id)
             env.logger.info('Ignore remote results for failed job {}'.format(task_id))
         else:
+            if env.verbosity >= 3:
+                _show_err_and_out(task_id)
             # do we need to copy files? We need to consult original task file
             # not the converted one
             task_file = os.path.join(sys_task_dir, task_id + '.def')

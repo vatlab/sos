@@ -299,8 +299,8 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
     env.sos_dict.set('__std_err__', os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'))
     env.logfile = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
 
-    SoS_exec('import os, sys, glob', None)
-    SoS_exec('from sos.runtime import *', None)
+    if verbosity is not None:
+        env.verbosity = verbosity
     try:
         # global def could fail due to execution on remote host...
         # we also execute global_def way before others and allows variables set by
@@ -308,7 +308,12 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
         #
         # note that we do not handle parameter in tasks because values should already be
         # in sos_task dictionary
-        SoS_exec('del sos_handle_parameter_\n' + global_def, None)
+        SoS_exec('''\
+import os, sys, glob
+from sos.runtime import *
+CONFIG = {}
+del sos_handle_parameter_
+''' + global_def, '${ }')
     except Exception as e:
         env.logger.debug('Failed to execute global definition {}: {}'.format(global_def, e))
 
@@ -323,8 +328,6 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
         max_procs=sos_dict['_runtime'].get('max_procs', None))
 
     m.start()
-    if verbosity is not None:
-        env.verbosity = verbosity
     if sigmode is not None:
         env.config['sig_mode'] = sigmode
     env.config['run_mode'] = runmode
