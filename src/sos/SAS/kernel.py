@@ -83,7 +83,6 @@ class sos_SAS(SASsessionSTDIO):
 
     def put_vars(self, items, to_kernel=None):
         # put SAS dataset to Python as dataframe
-        from sas7bdat import SAS7BDAT
         temp_dir = tempfile.mkdtemp()
         res = {}
         try:
@@ -103,8 +102,7 @@ run;
                         self.sos_kernel.warn('Failed to save dataset {} to {}'.format(item, saved_file))
                         continue
                     # now try to read it with Python
-                    with SAS7BDAT(saved_file) as sas_file:
-                         df = sas_file.to_data_frame()
+                    df = pd.read_sas(saved_file, encoding='utf-8')
                     res[item] = df
                 except Exception as e:
                     self.sos_kernel.warn('Failed to get dataset {} from SAS: {}'.format(item, e))

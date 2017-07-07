@@ -314,7 +314,7 @@ ipynb-md.func = sos.jupyter.converter:notebook_to_md
         'dot':      ['graphviz'],
         # docker-py is not working on windows 10 (as of Jan 2017)
         'docker':   ['docker'],
-        'sas':      ['saspy', 'sas7bdat'],
+        'sas':      ['saspy'],
         #'spyder':   ['spyder'],
     }
 )
