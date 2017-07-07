@@ -205,6 +205,14 @@ class LocalHost:
             env.logger.warning('Check output of {} failed: {}'.format(cmd, e))
             raise
 
+    def check_call(self, cmd):
+        # get the output of command
+        try:
+            return subprocess.check_call(cmd, shell=isinstance(cmd, str)).decode()
+        except Exception as e:
+            env.logger.warning('Check output of {} failed: {}'.format(cmd, e))
+            raise
+
     def run_command(self, cmd, wait_for_task):
         # run command but does not wait for result.
         if wait_for_task or sys.platform == 'win32':
@@ -556,7 +564,7 @@ class RemoteHost:
                 '${ }', {'job_file': job_file, 'address': self.address, 'port': self.port})
         # use scp for this simple case
         try:
-            subprocess.check_output(send_cmd, shell=True)
+            subprocess.check_call(send_cmd, shell=True)
         except subprocess.CalledProcessError as e:
             raise RuntimeError('Failed to copy job {} to {} using command {}: {}'.format(task_file, self.alias, send_cmd, e))
 
@@ -572,6 +580,22 @@ class RemoteHost:
         env.logger.debug('Executing command ``{}``'.format(cmd))
         try:
             return subprocess.check_output(cmd, shell=True).decode()
+        except Exception as e:
+            env.logger.debug('Check output of {} failed: {}'.format(cmd, e))
+            raise
+
+    def check_call(self, cmd):
+        if isinstance(cmd, list):
+            cmd = subprocess.list2cmdline(cmd)
+        try:
+            cmd = interpolate(self.execute_cmd, '${ }', {
+                'host': self.address, 'port': self.port,
+                'cmd': cmd, 'cur_dir': self._map_var(os.getcwd())})
+        except Exception as e:
+            raise ValueError('Failed to run command {}: {}'.format(cmd, e))
+        env.logger.debug('Executing command ``{}``'.format(cmd))
+        try:
+            return subprocess.check_call(cmd, shell=True).decode()
         except Exception as e:
             env.logger.debug('Check output of {} failed: {}'.format(cmd, e))
             raise

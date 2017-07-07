@@ -208,7 +208,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         help='''Do not wait for the completion of external tasks and quit SoS
             if all tasks are being executed by external task queues. This option
             overrides the default wait setting of task queues.''')
-    parser.add_argument('-r', dest='__remote__', nargs='?',
+    parser.add_argument('-r', dest='__remote__', 
         help='''Execute the workflow in specified remote host, which should
             be defined under key host of sos configuration files (preferrably
             in ~/.sos/hosts.yml). This option basically copy the workflow
@@ -278,6 +278,7 @@ def cmd_run(args, workflow_args):
         from .hosts import Host
         host = Host(args.__remote__)
         #
+        # copy script to remote host...
         host.send_to_host(args.script)
         r_idx = [idx for idx, x in enumerate(sys.argv) if x.startswith('-r')][0]
         if sys.argv[r_idx] == '-r':
@@ -292,8 +293,8 @@ def cmd_run(args, workflow_args):
             argv[0] = 'sos'
         elif os.path.basename(argv[0]) == 'sos-runner':
             argv[0] = 'sos-runner'
-        # copy script to remote host...
-        sys.exit(host._host_agent.check_output(argv))
+        # execute the command on remote host
+        sys.exit(host._host_agent.check_call(argv))
 
 
     # '' means no -d
@@ -386,6 +387,9 @@ def get_resume_parser(interactive=False, with_workflow=True, desc_only=False):
             overrides option "max_running_jobs" of a task queue (option -q)
             so that you can, for example, submit one job at a time (with
             -J 1) to test the task queue.''')
+    parser.add_argument('-r', dest='__remote__',
+        help='''Resume workflow that was executed on remote host (sos run with
+            option -r)''')
     parser.set_defaults(func=cmd_resume)
     return parser
 
@@ -460,6 +464,25 @@ def cmd_resume(args, workflow_args):
     if workflow_args:
         sys.exit('No additional parameter is allowed for command resume: {} provided'.format(workflow_args))
 
+    if args.__remote__:
+        # resume executing on a remote host...
+        from .hosts import Host
+        host = Host(args.__remote__)
+        #
+        r_idx = [idx for idx, x in enumerate(sys.argv) if x.startswith('-r')][0]
+        if sys.argv[r_idx] == '-r':
+            # in case of -r host
+            argv = sys.argv[:r_idx] + sys.argv[r_idx+2:]
+        else:
+            # in case of -r=host...
+            argv = sys.argv[:r_idx] + sys.argv[r_idx+1:]
+        # replace absolute path with relative one because remote sos might have
+        # a different path.
+        if os.path.basename(argv[0]) == 'sos':
+            argv[0] = 'sos'
+        # execute the command on remote host
+        sys.exit(host._host_agent.check_call(argv))
+
     import glob
     import time
     from .utils import env, PrettyRelativeTime
@@ -502,7 +525,7 @@ def cmd_resume(args, workflow_args):
     args.__sig_mode__ = res['sig_mode']
     args.__max_procs__ = args.__max_procs__ if args.__max_procs__ != 4 else res['max_procs']
     args.__resume__ = True
-    args.__remote__ = res['remote_targets']
+    #args.__remote__ = res['remote_targets']
     args.__max_running_jobs__ = args.__max_running_jobs__ if args.__max_running_jobs__ is not None else res['max_running_jobs']
     args.dryrun = False
     args.__wait__ = args.__wait__ if args.__wait__ is True else None
