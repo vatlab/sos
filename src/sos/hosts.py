@@ -580,7 +580,7 @@ class RemoteHost:
         try:
             cmd = interpolate(self.execute_cmd, '${ }', {
                 'host': self.address, 'port': self.port,
-                'cmd': cmd})
+                'cmd': cmd, 'cur_dir': self._map_var(os.getcwd()) })
         except Exception as e:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
         env.logger.debug('Executing command ``{}``'.format(cmd))

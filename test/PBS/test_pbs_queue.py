@@ -594,13 +594,13 @@ run:
         FileTarget('test.py.bak').remove('both')
         script = SoS_Script('''
 [10]
-output: 'test.py'
+output: remote('test.py')
 task:
 run:
     touch test.py
 
 [20]
-output: "${input!R}.bak"
+output: remote("${input!R}.bak")
 task:
 run:
     cp ${input} ${output}
@@ -611,7 +611,6 @@ run:
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker',
-                'remote_targets': True,
                 'sig_mode': 'force',
                 }).run()
         # this file is remote only
