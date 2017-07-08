@@ -208,7 +208,7 @@ class LocalHost:
     def check_call(self, cmd):
         # get the output of command
         try:
-            return subprocess.check_call(cmd, shell=isinstance(cmd, str)).decode()
+            return subprocess.check_call(cmd, shell=isinstance(cmd, str))
         except Exception as e:
             env.logger.warning('Check output of {} failed: {}'.format(cmd, e))
             raise
@@ -595,7 +595,7 @@ class RemoteHost:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
         env.logger.debug('Executing command ``{}``'.format(cmd))
         try:
-            return subprocess.check_call(cmd, shell=True).decode()
+            return subprocess.check_call(cmd, shell=True)
         except Exception as e:
             env.logger.debug('Check output of {} failed: {}'.format(cmd, e))
             raise

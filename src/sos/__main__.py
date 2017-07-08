@@ -262,7 +262,7 @@ def cmd_run(args, workflow_args):
     #if sys.platform != 'win32':
     #    mp.set_start_method('forkserver')
 
-    from .utils import env, get_traceback
+    from .utils import env, get_traceback, load_config_files
     from .sos_script import SoS_Script
 
     if args.__queue__ == '':
@@ -276,17 +276,29 @@ def cmd_run(args, workflow_args):
     if args.__remote__:
         # if executing on a remote host...
         from .hosts import Host
+        cfg = load_config_files(args.__config__)
+        env.sos_dict.set('CONFIG', cfg) 
         host = Host(args.__remote__)
         #
         # copy script to remote host...
         host.send_to_host(args.script)
-        r_idx = [idx for idx, x in enumerate(sys.argv) if x.startswith('-r')][0]
-        if sys.argv[r_idx] == '-r':
-            # in case of -r host
-            argv = sys.argv[:r_idx] + sys.argv[r_idx+2:]
-        else:
-            # in case of -r=host...
-            argv = sys.argv[:r_idx] + sys.argv[r_idx+1:]
+
+        def remove_arg(argv, arg):
+            r_idx = [idx for idx, x in enumerate(argv) if x.startswith(arg)]
+            if not r_idx:
+                return argv
+            else:
+                r_idx = r_idx[0]
+            if sys.argv[r_idx] == arg:
+                # in case of -r host
+                argv = argv[:r_idx] + argv[r_idx+2:]
+            else:
+                # in case of -r=host...
+                argv = argv[:r_idx] + argv[r_idx+1:]
+            return argv
+        argv = remove_arg(sys.argv, '-r')
+        # -c only point to local config file.
+        argv = remove_arg(argv, '-c')
         # replace absolute path with relative one because remote sos might have
         # a different path.
         if os.path.basename(argv[0]) == 'sos':
