@@ -227,7 +227,7 @@ class Interactive_Executor(Base_Executor):
 # function runfile that is used by spyder to execute complete script
 #
 
-def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
+def runfile(script=None, raw_args='', wdir='.', code=None, kernel=None, **kwargs):
     # this has something to do with Prefix matching rule of parse_known_args
     #
     # That is to say
@@ -244,8 +244,7 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
     #
     # we then have to change the parse to disable args.workflow when
     # there is no workflow option.
-    if isinstance(args, str):
-        args = shlex.split(args)
+    args = raw_args if isinstance(raw_args, str) else shlex.split(raw_args)
     if (script is None and code is None) or '-h' in args:
         parser = get_run_parser(interactive=True, with_workflow=True)
         parser.print_help()
@@ -268,6 +267,30 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
         from sos.hosts import list_queues
         list_queues(args.__config__, args.verbosity)
         return
+
+    if args.__remote__:
+        # if executing on a remote host...
+        from sos.hosts import Host
+        host = Host(args.__remote__)
+        #
+        if script is None:
+            if not code.strip():
+                return
+            script = os.path.join('.sos', '__interactive__.sos')
+            with open(script, 'w') as s:
+                s.write(code)
+
+        # copy script to remote host...
+        host.send_to_host(script)
+        r_idx = [idx for idx, x in enumerate(sys.argv) if x.startswith('-r')][0]
+        if sys.argv[r_idx] == '-r':
+            # in case of -r host
+            argv = sys.argv[:r_idx] + sys.argv[r_idx+2:]
+        else:
+            # in case of -r=host...
+            argv = sys.argv[:r_idx] + sys.argv[r_idx+1:]
+        # execute the command on remote host
+        return host._host_agent.check_call(['sos', 'run', script] + argv)
 
     if args.__bin_dirs__:
         import fasteners
@@ -320,7 +343,7 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
             'resume_mode': kernel is not None and kernel._resume_execution,
             'run_mode': 'dryrun' if args.dryrun else 'interactive',
             'verbosity': args.verbosity,
-            'remote_targets': getattr(args, '__remote__', False),
+            #'remote_targets': getattr(args, '__remote__', False),
 
             # wait if -w or in dryrun mode, not wait if -W, otherwise use queue default
             'max_procs': 1,
