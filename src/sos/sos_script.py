@@ -1145,6 +1145,7 @@ for __n, __v in {}.items():
                 self.sections[-1].statements.extend(section.statements)
                 self.sections[-1].task = section.task
                 self.global_def = ''
+                global_parameters.update(section.parameters)
             # determine script and parameter etc, although there should not be any task
             self.sections[-1].finalize()
         else:
