@@ -2167,9 +2167,16 @@ Available subkernels:\n{}'''.format(
             self.options = options + ' ' + self.options
             self.options = self._interpolate_option(self.options, quiet=False)
             try:
+                # %run is executed in its own namespace
+                old_dict = env.sos_dict
+                self._reset_dict()
                 self._workflow_mode = True
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            except Exception as e:
+                self.warn('Failed to execute workflow: {}'.format(e))
+                raise
             finally:
+                env.sos_dict = old_dict
                 self._workflow_mode = False
                 self.options = old_options
         elif self.MAGIC_SOSRUN.match(code):
@@ -2178,10 +2185,17 @@ Available subkernels:\n{}'''.format(
             old_options = self.options
             self.options = options + ' ' + self.options
             try:
+                # %run is executed in its own namespace
+                old_dict = env.sos_dict
+                self._reset_dict()
                 self._workflow_mode = True
                 #self.send_frontend_msg('preview-workflow', self._workflow)
                 self._do_execute(self._workflow, silent, store_history, user_expressions, allow_stdin)
+            except Exception as e:
+                self.warn('Failed to execute workflow: {}'.format(e))
+                raise
             finally:
+                env.sos_dict = old_dict
                 self._workflow_mode = False
                 self.options = old_options
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
