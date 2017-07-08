@@ -453,7 +453,7 @@ define([
                     }
                 }
 
-                //
+                /*
                 for (j = 0; j < nb.metadata["sos"]["kernels"].length; j++) {
                     var kdef = nb.metadata["sos"]["kernels"][j];
                     // if local environment has kernel, ok...
@@ -464,6 +464,7 @@ define([
                             ") is unavailable.");
                     }
                 }
+                */
 
                 for (i = 0; i < data.length; i++) {
                     // BackgroundColor is color
