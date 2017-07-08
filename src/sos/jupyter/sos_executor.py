@@ -244,7 +244,7 @@ def runfile(script=None, raw_args='', wdir='.', code=None, kernel=None, **kwargs
     #
     # we then have to change the parse to disable args.workflow when
     # there is no workflow option.
-    args = raw_args if isinstance(raw_args, str) else shlex.split(raw_args)
+    args = shlex.split(raw_args) if isinstance(raw_args, str) else raw_args
     if (script is None and code is None) or '-h' in args:
         parser = get_run_parser(interactive=True, with_workflow=True)
         parser.print_help()

@@ -208,7 +208,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         help='''Do not wait for the completion of external tasks and quit SoS
             if all tasks are being executed by external task queues. This option
             overrides the default wait setting of task queues.''')
-    parser.add_argument('-r', dest='__remote__', 
+    parser.add_argument('-r', dest='__remote__', metavar='HOST',
         help='''Execute the workflow in specified remote host, which should
             be defined under key host of sos configuration files (preferrably
             in ~/.sos/hosts.yml). This option basically copy the workflow
@@ -599,6 +599,7 @@ def cmd_dryrun(args, workflow_args):
     args.__wait__ = True
     args.__no_wait__ = False
     args.__bin_dirs__ = []
+    args.__remote__ = None
     cmd_run(args, workflow_args)
 
 

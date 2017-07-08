@@ -1615,7 +1615,7 @@ Available subkernels:\n{}'''.format(
             try:
                 # record input and output
                 fopt = ''
-                res = runfile(code=code, args=self.options + fopt, kernel=self)
+                res = runfile(code=code, raw_args=self.options + fopt, kernel=self)
                 self.send_result(res, silent)
             except PendingTasks as e:
                 # send cell index and task IDs to frontend
@@ -2176,6 +2176,7 @@ Available subkernels:\n{}'''.format(
                 self.warn('Failed to execute workflow: {}'.format(e))
                 raise
             finally:
+                old_dict.quick_update(env.sos_dict._dict)
                 env.sos_dict = old_dict
                 self._workflow_mode = False
                 self.options = old_options
@@ -2195,6 +2196,7 @@ Available subkernels:\n{}'''.format(
                 self.warn('Failed to execute workflow: {}'.format(e))
                 raise
             finally:
+                old_dict.quick_update(env.sos_dict._dict)
                 env.sos_dict = old_dict
                 self._workflow_mode = False
                 self.options = old_options
@@ -2313,11 +2315,18 @@ Available subkernels:\n{}'''.format(
             self.options = options + ' ' + self.options
             try:
                 self._workflow_mode = True
+                old_dict = env.sos_dict
+                self._reset_dict()
                 if not self.last_executed_code:
                     self.warn('No saved script')
                     self.last_executed_code = ''
                 return self._do_execute(self.last_executed_code, silent, store_history, user_expressions, allow_stdin)
+            except Exception as e:
+                self.warn('Failed to execute workflow: {}'.format(e))
+                raise
             finally:
+                old_dict.quick_update(env.sos_dict._dict)
+                env.sos_dict = old_dict
                 self.options = old_options
                 self._workflow_mode = False
         elif self.MAGIC_SANDBOX.match(code):
