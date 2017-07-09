@@ -45,7 +45,7 @@ def preview_pdf(filename, kernel=None, style=None):
     use_png = False
     if style is not None and 'style' in style:
         if style['style'] != 'png':
-            if kernel is not None:
+            if kernel is not None and style['style'] is not None:
                 kernel.warn('Option --style of PDF preview only accept parameter png: {} provided'.format(style['style']))
         else:
             use_png = True
