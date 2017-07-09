@@ -1569,7 +1569,7 @@ Available subkernels:\n{}'''.format(
                             self.send_frontend_msg(response[0], response[1])
                 except Exception as e:
                     self.send_frontend_msg('stream',
-                        {'name': 'stderr', 'text': '> Failed to preview file or expression {}: {}'.format(item, e)})
+                        {'name': 'stderr', 'text': '> Failed to preview file or expression {}'.format(item)})
         finally:
             self.switch_kernel(orig_kernel)
 
