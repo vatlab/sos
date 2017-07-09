@@ -419,7 +419,7 @@ class RemoteHost:
                 env.logger.debug('Skip sending {} on shared file system'.format(source))
             else:
                 dest = sending[source]
-                env.logger.info('Sending ``{}`` to {}:{}'.format(source, self.alias, dest))
+                env.logger.debug('Sending ``{}`` to {}:{}'.format(source, self.alias, dest))
                 cmd = interpolate(self._get_send_cmd(rename=os.path.basename(source) != os.path.basename(dest)),
                         '${ }', {'source': source.rstrip('/'), 'dest': dest, 'host': self.address, 'port': self.port})
                 env.logger.debug(cmd)
