@@ -282,15 +282,14 @@ def runfile(script=None, raw_args='', wdir='.', code=None, kernel=None, **kwargs
 
         # copy script to remote host...
         host.send_to_host(script)
-        r_idx = [idx for idx, x in enumerate(sys.argv) if x.startswith('-r')][0]
-        if sys.argv[r_idx] == '-r':
-            # in case of -r host
-            argv = sys.argv[:r_idx] + sys.argv[r_idx+2:]
-        else:
-            # in case of -r=host...
-            argv = sys.argv[:r_idx] + sys.argv[r_idx+1:]
+        from sos.utils import remove_arg
+        argv = shlex.split(raw_args) if isinstance(raw_args, str) else raw_args
+        argv = remove_arg(argv, '-r')
+        argv = remove_arg(argv, '-c')
         # execute the command on remote host
-        return host._host_agent.check_call(['sos', 'run', script] + argv)
+        out = host._host_agent.check_output(['sos', 'run', script] + argv)
+        print(out)
+        return
 
     if args.__bin_dirs__:
         import fasteners
