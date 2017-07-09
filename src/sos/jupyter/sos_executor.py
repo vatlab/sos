@@ -269,6 +269,16 @@ def runfile(script=None, raw_args='', wdir='.', code=None, kernel=None, **kwargs
         return
 
     if args.__remote__:
+        if args.__remote__ == '':
+            from sos.utils import load_config_files
+            cfg = load_config_files(args.config)
+            if 'default_host' in cfg:
+                args.__remote__ = cfg['default_host']
+            else:
+                from .hosts import list_queues
+                list_queues(cfg, args.verbosity)
+                return
+
         # if executing on a remote host...
         from sos.hosts import Host
         host = Host(args.__remote__)

@@ -860,9 +860,7 @@ class Host:
         return {task: self._host_agent.receive_result(task) for task in tasks}
 
 
-def list_queues(config_file, verbosity = 1):
-    cfg = load_config_files(config_file)
-    env.sos_dict.set('CONFIG', cfg)
+def list_queues(cfg, verbosity = 1):
     hosts = cfg.get('hosts', [])
     if not hosts:
         env.logger.warning("No remote host or task queue is defined in ~/.sos/hosts.yml.")
