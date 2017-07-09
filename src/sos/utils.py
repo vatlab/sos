@@ -1149,3 +1149,17 @@ def convertAnsi2html(txt):
 def log_to_file(msg):
     with open(os.path.join(os.path.expanduser('~'), 'jupyter_debug.txt'), 'a') as log:
         log.write('{}\n'.format(msg))
+
+def remove_arg(argv, arg):
+    r_idx = [idx for idx, x in enumerate(argv) if x.startswith(arg)]
+    if not r_idx:
+        return argv
+    else:
+        r_idx = r_idx[0]
+    if argv[r_idx] == arg:
+        # in case of -r host
+        argv = argv[:r_idx] + argv[r_idx+2:]
+    else:
+        # in case of -r=host...
+        argv = argv[:r_idx] + argv[r_idx+1:]
+    return argv        
