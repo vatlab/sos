@@ -279,23 +279,11 @@ def cmd_run(args, workflow_args):
         cfg = load_config_files(args.__config__)
         env.sos_dict.set('CONFIG', cfg) 
         host = Host(args.__remote__)
+        from .utils import remove_arg
         #
         # copy script to remote host...
         host.send_to_host(args.script)
 
-        def remove_arg(argv, arg):
-            r_idx = [idx for idx, x in enumerate(argv) if x.startswith(arg)]
-            if not r_idx:
-                return argv
-            else:
-                r_idx = r_idx[0]
-            if sys.argv[r_idx] == arg:
-                # in case of -r host
-                argv = argv[:r_idx] + argv[r_idx+2:]
-            else:
-                # in case of -r=host...
-                argv = argv[:r_idx] + argv[r_idx+1:]
-            return argv
         argv = remove_arg(sys.argv, '-r')
         # -c only point to local config file.
         argv = remove_arg(argv, '-c')
@@ -1291,12 +1279,9 @@ def get_config_parser(desc_only=False):
         help='''Set (--set) or unset (--unset) options in user specified configuration file,
             or display options (--get) also in this file.''')
     group = parser.add_mutually_exclusive_group(required=False)
-    group.add_argument('--get', nargs='*', metavar='OPTION', dest='__get_config__',
-        help='''Display values of specified configuration from all configuration files.
-        The arguments of this option can be a single configuration option or a list of
-        option. Wildcard characters are allowed to match more options (e.g. '*timeout',
-        quotation is needed to avoid shell expansion). If no option is given, all options
-        will be outputted.''')
+    group.add_argument('--get', nargs='+', metavar='OPTION', dest='__get_config__',
+        help='''Display values of options that contain one of the specified words
+            from all configuration files.''')
     group.add_argument('--unset', nargs='+', metavar='OPTION',  dest='__unset_config__',
         help='''Unset (remove) settings for specified options. The arguments of this
         option can be a single configuration option or a list of option. Wildcard
@@ -1440,15 +1425,15 @@ def cmd_config(args, workflow_args):
             config.write(yaml.safe_dump(cfg, default_flow_style=False))
     elif args.__get_config__ is not None:
         cfg = load_config_files(args.__config_file__)
-        def disp_matched(obj, option, prefix=[]):
+        def disp_matched(obj, options, prefix=[]):
             for k, v in obj.items():
+                key = '.'.join(prefix + [k])
                 if isinstance(v, dict):
-                    disp_matched(v, option, prefix + [k])
-                elif fnmatch.fnmatch(k, option):
-                    print('{}\t{!r}'.format('.'.join(prefix + [k]), v))
+                    disp_matched(v, options, prefix + [k])
+                elif any(option in key for option in options):
+                    print('{}\t{!r}'.format(key, v))
 
-        for option in (args.__get_config__ if args.__get_config__ else ['*']):
-            disp_matched(cfg, option)
+        disp_matched(cfg, args.__get_config__)
     else:
         from pprint import PrettyPrinter
         pp = PrettyPrinter(indent=2)
