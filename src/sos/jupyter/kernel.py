@@ -173,6 +173,8 @@ class SoS_Kernel(IPythonKernel):
         'matplotlib',
         'paste',
         'preview',
+        'pull',
+        'push',
         'put',
         'render',
         'rerun',
@@ -200,6 +202,8 @@ class SoS_Kernel(IPythonKernel):
     MAGIC_FRONTEND = re.compile('^%frontend(\s|$)')
     MAGIC_USE = re.compile('^%use(\s|$)')
     MAGIC_GET = re.compile('^%get(\s|$)')
+    MAGIC_PULL = re.compile('^%pull(\s|$)')
+    MAGIC_PUSH = re.compile('^%push(\s|$)')
     MAGIC_PUT = re.compile('^%put(\s|$)')
     MAGIC_PASTE = re.compile('^%paste(\s|$)')
     MAGIC_RUN = re.compile('^%run(\s|$)')
@@ -444,6 +448,49 @@ class SoS_Kernel(IPythonKernel):
                 Default to the SoS kernel.''')
         parser.add_argument('vars', nargs='*',
             help='''Names of SoS variables''')
+        parser.error = self._parse_error
+        return parser
+
+    def get_pull_parser(self):
+        parser = argparse.ArgumentParser('pull',
+            description='''Pull files or directories from remote host to local host''')
+        parser.add_argument('items', nargs='+', help='''Files or directories to be
+            retrieved from remote host. The files should be relative to local file
+            system. The files to retrieve are determined by "path_map"
+            determined by "paths" definitions of local and remote hosts.''')
+        group = parser.add_mutually_exclusive_group(required=True)
+        group.add_argument('-q', '--queue', nargs='?', const='',
+            help='''Remote host to which the files will be sent. SoS will use value
+            specified by configuration key `default_queue`, or list all configured
+            queues if no such key is defined''')
+        group.add_argument('-r', '--host', nargs='?', const='',
+            help='''Remote host to which the files will be sent. SoS will use value
+            specified by configuration key `default_host`, or list all configured
+            queues if no such key is defined''')
+        parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
+            help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
+                information to standard output (default to 2).''')
+        parser.error = self._parse_error
+        return parser
+
+    def get_push_parser(self):
+        parser = argparse.ArgumentParser('push',
+            description='''Push local files or directory to a remote host''')
+        parser.add_argument('items', nargs='+', help='''Files or directories to be sent
+            to remote host. The location of remote files are determined by "path_map"
+            determined by "paths" definitions of local and remote hosts.''')
+        group = parser.add_mutually_exclusive_group(required=True)
+        group.add_argument('-q', '--queue', nargs='?', const='',
+            help='''Remote host to which the files will be sent. SoS will use value
+            specified by configuration key `default_queue`, or list all configured
+            queues if no such key is defined''')
+        group.add_argument('-r', '--host', nargs='?', const='',
+            help='''Remote host to which the files will be sent. SoS will use value
+            specified by configuration key `default_host`, or list all configured
+            queues if no such key is defined''')
+        parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
+            help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
+                information to standard output (default to 2).''')
         parser.error = self._parse_error
         return parser
 
@@ -1477,6 +1524,73 @@ Available subkernels:\n{}'''.format(
                 self.warn('Unrecognized return value of type {} for action %put'.format(object.__class__.__name__))
                 return
 
+    def handle_magic_pull(self, args):
+        from sos.hosts import Host
+        cfg = env.sos_dict['CONFIG']
+        if args.queue == '':
+            if 'default_queue' in cfg:
+                args.queue = cfg['default_queue']
+            else:
+                from sos.hosts import list_queues
+                list_queues(cfg, args.verbosity)
+                return
+        elif args.host == '':
+            if 'default_queue' in cfg:
+                args.host = cfg['default_queue']
+            else:
+                from sos.hosts import list_queues
+                list_queues(cfg, args.verbosity)
+                return
+        try:
+            host = Host(args.queue if args.queue else args.host)
+            #
+            received = host.receive_from_host(args.items)
+            #
+            msg = '{} item{} received:<br>{}'.format(len(received),
+                ' is' if len(received) <= 1 else 's are',
+                '<br>'.join(['{} <= {}'.format(x, received[x]) for x in sorted(received.keys())]))
+            self.send_response(self.iopub_socket, 'display_data',
+                {
+                    'source': 'SoS',
+                    'metadata': {},
+                    'data': { 'text/html': HTML('<div class="sos_hint">{}</div>'.format(msg)).data}
+                })
+        except Exception as e:
+            self.warn('Failed to retrieve {}: {}'.format(', '.join(args.items), e))
+
+    def handle_magic_push(self, args):
+        from sos.hosts import Host
+        cfg = env.sos_dict['CONFIG']
+        if args.queue == '':
+            if 'default_queue' in cfg:
+                args.queue = cfg['default_queue']
+            else:
+                from .hosts import list_queues
+                list_queues(cfg, args.verbosity)
+                return
+        elif args.host == '':
+            if 'default_queue' in cfg:
+                args.host = cfg['default_queue']
+            else:
+                from .hosts import list_queues
+                list_queues(cfg, args.verbosity)
+                return
+        try:
+            host = Host(args.queue if args.queue else args.host)
+            #
+            sent = host.send_to_host(args.items)
+            #
+            msg = '{} item{} sent:\n{}'.format(len(sent),
+                ' is' if len(sent) <= 1 else 's are',
+                '\n'.join(['{} => {}'.format(x, sent[x]) for x in sorted(sent.keys())]))
+            self.send_response(self.iopub_socket, 'display_data',
+                {
+                    'source': 'SoS',
+                    'metadata': {},
+                    'data': { 'text/html': HTML('<div class="sos_hint">{}</div>'.format(msg)).data}
+                })
+        except Exception as e:
+            self.warn('Failed to send {}: {}'.format(', '.join(args.items), e))
 
     def _interpolate_option(self, option, quiet=False):
         # interpolate command
@@ -2142,6 +2256,42 @@ Available subkernels:\n{}'''.format(
                     'execution_count': self._execution_count,
                    }
             self.handle_magic_put(args.vars, args.__to__, explicit=True)
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+        elif self.MAGIC_PUSH.match(code):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            try:
+                parser = self.get_push_parser()
+                try:
+                    args = parser.parse_args(options.split())
+                except SystemExit:
+                    return
+            except Exception as e:
+                self.warn('Invalid option "{}": {}\n'.format(options, e))
+                return {'status': 'error',
+                    'ename': e.__class__.__name__,
+                    'evalue': str(e),
+                    'traceback': [],
+                    'execution_count': self._execution_count,
+                   }
+            self.handle_magic_push(args)
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+        elif self.MAGIC_PULL.match(code):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            try:
+                parser = self.get_pull_parser()
+                try:
+                    args = parser.parse_args(options.split())
+                except SystemExit:
+                    return
+            except Exception as e:
+                self.warn('Invalid option "{}": {}\n'.format(options, e))
+                return {'status': 'error',
+                    'ename': e.__class__.__name__,
+                    'evalue': str(e),
+                    'traceback': [],
+                    'execution_count': self._execution_count,
+                   }
+            self.handle_magic_pull(args)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_PASTE.match(code):
             options, remaining_code = self.get_magic_and_code(code, True)
