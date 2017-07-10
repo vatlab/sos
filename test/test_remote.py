@@ -21,12 +21,9 @@
 #
 
 import os
-import sys
 import unittest
 
-from sos.sos_script import SoS_Script
 from sos.utils import env
-from sos.sos_executor import Base_Executor
 from sos.target import FileTarget
 from sos.hosts import Host
 import subprocess
@@ -78,6 +75,8 @@ run:
 ''')
         self.assertEqual(subprocess.call('sos run test_remote.sos -c ~/docker.yml -r docker -s force -w', shell=True), 0)
         self.assertFalse(FileTarget('result_remote.txt').exists())
+        self.assertEqual(subprocess.call('sos pull result_remote.txt -c ~/docker.yml -r docker', shell=True), 0)
+        self.assertTrue(FileTarget('result_remote.txt').exists())
 
 if __name__ == '__main__':
     unittest.main()
