@@ -31,7 +31,7 @@ import glob
 import pkg_resources
 from collections.abc import Sequence
 
-from .utils import env, short_repr, load_config_files, expand_size, format_HHMMSS, expand_time
+from .utils import env, short_repr, expand_size, format_HHMMSS, expand_time
 from .sos_eval import interpolate, Undetermined
 from .sos_task import BackgroundProcess_TaskEngine, TaskParams, loadTask
 
@@ -141,7 +141,10 @@ class LocalHost:
             os.mkdir(self.task_dir)
 
     def send_to_host(self, items):
-        pass
+        return {x:x for x in items}
+
+    def receive_from_host(self, items):
+        return {x:x for x in items}
 
     def prepare_task(self, task_id):
         def_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
@@ -398,7 +401,7 @@ class RemoteHost:
             items = {x:y for x,y in items.items() if isinstance(x, str) and isinstance(y, str)}
         else:
             env.logger.warning('Unrecognized items to be sent to host: {}'.format(items))
-            return
+            return {}
 
         if isinstance(items, Sequence):
             from .utils import find_symbolic_links
@@ -414,6 +417,7 @@ class RemoteHost:
         else:
             sending = items
 
+        sent = {}
         for source in sorted(sending.keys()):
             if self.is_shared(source):
                 env.logger.debug('Skip sending {} on shared file system'.format(source))
@@ -426,8 +430,10 @@ class RemoteHost:
                 ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                 if (ret != 0):
                     raise RuntimeError('Failed to copy {} to {} using command "{}". The remote host might be unavailable.'.format(source, self.alias, cmd))
+                sent[source] = dest
+        return sent
 
-    def _receive_from_host(self, items):
+    def receive_from_host(self, items):
         if isinstance(items, dict):
             # specify as local:remote
             # needs remote:local
@@ -435,7 +441,7 @@ class RemoteHost:
         else:
             receiving = {y:x for x,y in self._map_path(items).items()}
         #
-        received = []
+        received = {}
         for source in sorted(receiving.keys()):
             dest = receiving[source]
             dest_dir = os.path.dirname(dest)
@@ -454,7 +460,7 @@ class RemoteHost:
                     ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                     if (ret != 0):
                         raise RuntimeError('command return {}'.format(ret))
-                    received.append(dest)
+                    received[dest] = source
                 except Exception as e:
                     raise  RuntimeError('Failed to copy {} from {} using command "{}": {}'.format(source, self.alias, cmd, e))
         return received
@@ -661,9 +667,9 @@ class RemoteHost:
             job_dict = params.sos_dict
             #
             if job_dict['_output'] and not isinstance(job_dict['_output'], Undetermined):
-                received = self._receive_from_host([x for x in job_dict['_output'] if isinstance(x, str)])
+                received = self.receive_from_host([x for x in job_dict['_output'] if isinstance(x, str)])
                 if received:
-                    env.logger.info('{} ``received`` {}'.format(task_id, short_repr(received)))
+                    env.logger.info('{} ``received`` {}'.format(task_id, short_repr(received.keys())))
             if 'from_host' in job_dict['_runtime']:
                 if isinstance(job_dict['_runtime']['from_host'], dict):
                     fh = {}
@@ -674,11 +680,11 @@ class RemoteHost:
                             fh[x] = self._map_var(job_dict['_runtime']['home_dir']) + y[1:]
                         else:
                             fh[x] = self._map_var(job_dict['_runtime']['cur_dir']) + '/' + y
-                    received = self._receive_from_host(fh)
+                    received = self.receive_from_host(fh)
                 else:
-                    received = self._receive_from_host(job_dict['_runtime']['from_host'])
+                    received = self.receive_from_host(job_dict['_runtime']['from_host'])
                 if received:
-                    env.logger.info('{} ``received`` {}'.format(task_id, short_repr(received)))
+                    env.logger.info('{} ``received`` {}'.format(task_id, short_repr(received.keys())))
         return res
 
 

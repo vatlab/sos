@@ -293,7 +293,7 @@ def cmd_run(args, workflow_args):
         # if executing on a remote host...
         from .hosts import Host
         cfg = load_config_files(args.__config__)
-        env.sos_dict.set('CONFIG', cfg) 
+        env.sos_dict.set('CONFIG', cfg)
         host = Host(args.__remote__)
         from .utils import remove_arg
         #
@@ -482,6 +482,7 @@ def cmd_resume(args, workflow_args):
 
     if args.__remote__ is not None:
         if args.__remote__ == '':
+            from .utils import load_config_files
             cfg = load_config_files(args.config)
             if 'default_host' in cfg:
                 args.__remote__ = cfg['default_host']
@@ -628,6 +629,135 @@ def cmd_dryrun(args, workflow_args):
     args.__remote__ = None
     cmd_run(args, workflow_args)
 
+#
+# subcommand push
+#
+def get_push_parser(desc_only=False):
+    parser = argparse.ArgumentParser('push',
+        description='''Push local files or directory to a remote host''')
+    if desc_only:
+        return parser
+    parser.add_argument('items', nargs='+', help='''Files or directories to be sent
+        to remote host. The location of remote files are determined by "path_map"
+        determined by "paths" definitions of local and remote hosts.''')
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-q', '--queue', nargs='?', const='',
+        help='''Remote host to which the files will be sent. SoS will use value
+        specified by configuration key `default_queue`, or list all configured
+        queues if no such key is defined''')
+    group.add_argument('-r', '--host', nargs='?', const='',
+        help='''Remote host to which the files will be sent. SoS will use value
+        specified by configuration key `default_host`, or list all configured
+        queues if no such key is defined''')
+    parser.add_argument('-c', '--config', help='''A configuration file with host
+        definitions, in case the definitions are not defined in global or local
+        sos config.yml files.''')
+    parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
+        help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
+            information to standard output (default to 2).''')
+    parser.set_defaults(func=cmd_push)
+    return parser
+
+
+def cmd_push(args, workflow_args):
+    from .utils import env, load_config_files
+    from .hosts import Host
+    env.verbosity = args.verbosity
+    cfg = load_config_files(args.config)
+    env.sos_dict.set('CONFIG', cfg)
+    if args.queue == '':
+        if 'default_queue' in cfg:
+            args.queue = cfg['default_queue']
+        else:
+            from .hosts import list_queues
+            list_queues(cfg, args.verbosity)
+            return
+    elif args.host == '':
+        if 'default_queue' in cfg:
+            args.host = cfg['default_queue']
+        else:
+            from .hosts import list_queues
+            list_queues(cfg, args.verbosity)
+            return
+    try:
+        host = Host(args.queue if args.queue else args.host)
+        #
+        sent = host.send_to_host(args.items)
+        #
+        print('{} item{} sent:\n{}'.format(len(sent),
+            ' is' if len(sent) <= 1 else 's are',
+            '\n'.join(['{} => {}'.format(x, sent[x]) for x in sorted(sent.keys())])))
+    except Exception as e:
+        from .utils import get_traceback
+        if args.verbosity and args.verbosity > 2:
+            sys.stderr.write(get_traceback())
+        env.logger.error(e)
+        sys.exit(1)
+#
+# subcommand pull
+#
+def get_pull_parser(desc_only=False):
+    parser = argparse.ArgumentParser('pull',
+        description='''Pull files or directories from remote host to local host''')
+    if desc_only:
+        return parser
+    parser.add_argument('items', nargs='+', help='''Files or directories to be
+        retrieved from remote host. The files should be relative to local file
+        system. The files to retrieve are determined by "path_map"
+        determined by "paths" definitions of local and remote hosts.''')
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-q', '--queue', nargs='?', const='',
+        help='''Remote host to which the files will be sent. SoS will use value
+        specified by configuration key `default_queue`, or list all configured
+        queues if no such key is defined''')
+    group.add_argument('-r', '--host', nargs='?', const='',
+        help='''Remote host to which the files will be sent. SoS will use value
+        specified by configuration key `default_host`, or list all configured
+        queues if no such key is defined''')
+    parser.add_argument('-c', '--config', help='''A configuration file with host
+        definitions, in case the definitions are not defined in global or local
+        sos config.yml files.''')
+    parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
+        help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
+            information to standard output (default to 2).''')
+    parser.set_defaults(func=cmd_pull)
+    return parser
+
+
+def cmd_pull(args, workflow_args):
+    from .utils import env, load_config_files
+    from .hosts import Host
+    env.verbosity = args.verbosity
+    cfg = load_config_files(args.config)
+    env.sos_dict.set('CONFIG', cfg)
+    if args.queue == '':
+        if 'default_queue' in cfg:
+            args.queue = cfg['default_queue']
+        else:
+            from .hosts import list_queues
+            list_queues(cfg, args.verbosity)
+            return
+    elif args.host == '':
+        if 'default_queue' in cfg:
+            args.host = cfg['default_queue']
+        else:
+            from .hosts import list_queues
+            list_queues(cfg, args.verbosity)
+            return
+    try:
+        host = Host(args.queue if args.queue else args.host)
+        #
+        received = host.receive_from_host(args.items)
+        #
+        print('{} item{} received:\n{}'.format(len(received),
+            ' is' if len(received) <= 1 else 's are',
+            '\n'.join(['{} <= {}'.format(x, received[x]) for x in sorted(received.keys())])))
+    except Exception as e:
+        from .utils import get_traceback
+        if args.verbosity and args.verbosity > 2:
+            sys.stderr.write(get_traceback())
+        env.logger.error(e)
+        sys.exit(1)
 
 #
 # subcommand execute
@@ -1931,6 +2061,12 @@ def main():
         #
         # command status
         add_sub_parser(subparsers, get_status_parser(desc_only='status'!=subcommand))
+        #
+        # command push
+        add_sub_parser(subparsers, get_push_parser(desc_only='push'!=subcommand))
+        #
+        # command pull
+        add_sub_parser(subparsers, get_pull_parser(desc_only='pull'!=subcommand))
         #
         # command execute
         add_sub_parser(subparsers, get_execute_parser(desc_only='execute'!=subcommand))
