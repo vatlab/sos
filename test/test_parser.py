@@ -866,7 +866,7 @@ a = parB + 1
 print(CONFIG['StoreOwner'])
 print(CONFIG.get('StoreOwner', 'something'))
 print(CONFIG.get('StoreOwnerSpouse', 'someone else'))
-print(CONFIG.StoreOwner)
+#print(CONFIG.StoreOwner)
 '''
 )
         # run the command

@@ -574,52 +574,6 @@ def stable_repr(obj):
     else:
         return repr(obj)
 
-# frozen dict makes it extremely difficult to transfer CONFIG from
-# one process to another...
-class frozendict(dict):
-    '''A fronzen dictionary that disallow changing of its elements
-    Copied from http://code.activestate.com/recipes/414283/
-    '''
-#    def _blocked_attribute(obj):
-#        raise RuntimeError("Cannot modify a readonly dictionary.")
-#    _blocked_attribute = property(_blocked_attribute)
-#
-#    __delitem__ = __setitem__ = clear = _blocked_attribute
-#    pop = popitem = setdefault = update = _blocked_attribute
-#
-#    def __new__(cls, *args):
-#        new = dict.__new__(cls)
-#        dict.__init__(new, *args)
-#        return new
-#
-    def __init__(self, *args, **kwargs):
-        super(frozendict, self).__init__(*args, **kwargs)
-#
-#    def __hash__(self):
-#        try:
-#            return self._cached_hash
-#        except AttributeError:
-#            h = self._cached_hash = hash(tuple(sorted(self.items())))
-#            return h
-#
-    def __getattr__(self, key):
-        return dict.__getitem__(self, key)
-
-    def __setattr__(self, key, value):
-        raise RuntimeError('Cannot modify a readonly dictionary')
-
-    def __repr__(self):
-        return stable_repr(self)
-
-    def __getstate__(self):
-        return {x:y for x,y in self.items()}
-
-    def __setstate__(self, other):
-        self.update(other)
-
-    def __deepcopy__(self, memo):
-        return frozendict(self)
-
 #
 # A utility function that returns output of a command
 def get_output(cmd, show_command=False, prompt='$ '):

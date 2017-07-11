@@ -100,10 +100,8 @@ def get_result(iopub):
             # other output, ignored
             pass
     # text/plain can have fronzen dict, this is ok,
-    from sos.utils import frozendict
     from numpy import array, matrix
     # suppress pyflakes warning
-    frozendict
     array
     matrix
     # it can also have dict_keys, we will have to redefine it

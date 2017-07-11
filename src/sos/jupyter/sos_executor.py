@@ -25,7 +25,7 @@ import shlex
 import keyword
 import tempfile
 import time
-from sos.utils import env, frozendict, _parse_error, get_traceback, load_config_files
+from sos.utils import env, _parse_error, get_traceback, load_config_files
 from sos.sos_eval import SoS_exec, get_default_global_sigil
 from sos._version import __version__
 from sos.__main__ import get_run_parser
@@ -78,7 +78,7 @@ class Interactive_Executor(Base_Executor):
                 env.logger.error('Configuration sos.change_all_cap_vars can only be warning or error: {} provided'.format(cfg['sos']['change_all_cap_vars']))
             else:
                 env.sos_dict._change_all_cap_vars = cfg['sos']['change_all_cap_vars']
-        env.sos_dict.set('CONFIG', frozendict(cfg))
+        env.sos_dict.set('CONFIG', cfg)
         # set config to CONFIG
         FileTarget('config.yml').remove('both')
 
