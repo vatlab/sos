@@ -1636,7 +1636,8 @@ Available subkernels:\n{}'''.format(
                             self.send_frontend_msg(response[0], response[1])
                 except Exception as e:
                     self.send_frontend_msg('stream',
-                        {'name': 'stderr', 'text': '> Failed to preview file or expression {}'.format(item)})
+                        {'name': 'stderr', 'text': '> Failed to preview file or expression {}{}'.format(item,
+                            ': {}'.format(e) if self._debug_mode else '')})
         finally:
             self.switch_kernel(orig_kernel)
 
@@ -2510,12 +2511,24 @@ Available subkernels:\n{}'''.format(
                     self.send_frontend_msg('stream',
                         {'name': 'stdout', 'text': self._workflow})
                 if not args.off and args.items:
-                    if args.host is not None:
-                        msgs = eval(subprocess.check_output(['sos', 'preview'] + options))
+                    if args.host is None:
+                        self.handle_magic_preview(args.items, args.kernel, style)
+                    elif args.workflow:
+                        self.warn('Invalid option --kernel with -r (--host)')
+                    elif args.kernel:
+                        self.warn('Invalid option --kernel with -r (--host)')
+                    else:
+                        try:
+                            rargs = ['sos', 'preview', '--html'] + options
+                            rargs = [x for x in rargs if x not in ('-n', '--notebook', '-p', '--panel')]
+                            if self._debug_mode:
+                                self.warn('Running "{}"'.format(' '.join(rargs)))
+                            msgs = eval(subprocess.check_output(rargs))
+                        except Exception as e:
+                            self.warn('Failed to preview {} on remote host {}{}'.formt(
+                                args.items, args.host, ': {}'.format(e) if self._debug_mode else ''))
                         for msg in msgs:
                             self.send_frontend_msg(msg[0], msg[1])
-                    else:
-                        self.handle_magic_preview(args.items, args.kernel, style)
         elif self.MAGIC_CD.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_cd(options)
@@ -2528,6 +2541,8 @@ Available subkernels:\n{}'''.format(
             except SystemExit:
                 return
             self._debug_mode = args.status == 'on'
+            if self._debug_mode:
+                self.warn(remaining_code)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_TASKINFO.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)

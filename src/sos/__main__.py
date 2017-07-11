@@ -876,8 +876,9 @@ def cmd_preview(args, unknown_args):
         from sos.jupyter.preview import get_previewers
         previewers = get_previewers()
         msgs = []
+        style = {'style': args.style, 'options': unknown_args } if args.style else None
         for filename in args.items:
-            msgs.extend(preview_file(previewers, filename))
+            msgs.extend(preview_file(previewers, filename, style))
     if args.html:
         print(msgs)
     else:
