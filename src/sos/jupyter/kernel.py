@@ -117,39 +117,6 @@ def clipboard_get():
         return tkinter_clipboard_get()
 
 
-def get_previewers():
-    # Note: data is zest.releaser specific: we want to pass
-    # something to the plugin
-    group = 'sos_previewers'
-    result = []
-    for entrypoint in pkg_resources.iter_entry_points(group=group):
-        # if ':' in entry point name, it should be a function
-        try:
-            name, priority = entrypoint.name.split(',', 1)
-            priority = int(priority)
-        except Exception as e:
-            env.logger.warning('Ignore incorrect previewer entry point {}: {}'.format(entrypoint, e))
-            continue
-        # If name points to a function in a module. Let us try to import the module
-        if ':' in name:
-            import importlib
-            try:
-                mod, func = name.split(':')
-                imported = importlib.import_module(mod)
-                result.append((getattr(imported, func), entrypoint, priority))
-            except ImportError:
-                env.logger.warning('Failed to load function {}:{}'.format(mod, func))
-        else:
-            result.append((name, entrypoint, priority))
-    #
-    result.sort(key=lambda x: -x[2])
-    # we put string infront of functions so that filename matching will be used before
-    # content matching. For example, the xlsx file is actually a zip file so it could be
-    # previewed as a zip file first.
-    return [x for x in result if isinstance(x[0], str) and x[0] != '*'] + \
-            [x for x in result if not isinstance(x[0], str)] + \
-            [x for x in result if x[0] == '*']
-
 class SoS_Kernel(IPythonKernel):
     implementation = 'SOS'
     implementation_version = __version__
@@ -341,6 +308,12 @@ class SoS_Kernel(IPythonKernel):
             keyword arguments, which would be interpreted by individual style. Passing
             '-h' with '--style' would display the usage information of particular
             style.''')
+        parser.add_argument('-r', '--host', dest='host', metavar='HOST', nargs='?', const='',
+            help='''Preview files on specified remote host, which should
+            be defined under key host of sos configuration files (preferrably
+            in ~/.sos/hosts.yml). If this option is specified without
+            value, SoS will use value specified by configuration key `default_host`,
+            or list all configured queues if no such key is defined''')
         parser.add_argument('--off', action='store_true',
             help='''Turn off file preview''')
         loc = parser.add_mutually_exclusive_group()
@@ -1841,6 +1814,7 @@ Available subkernels:\n{}'''.format(
         previewer_func = None
         # lazy import of previewers
         if self.previewers is None:
+            from .preview import get_previewers
             self.previewers = get_previewers()
         for x, y, _ in self.previewers:
             if isinstance(x, str):
@@ -2536,7 +2510,12 @@ Available subkernels:\n{}'''.format(
                     self.send_frontend_msg('stream',
                         {'name': 'stdout', 'text': self._workflow})
                 if not args.off and args.items:
-                    self.handle_magic_preview(args.items, args.kernel, style)
+                    if args.host is not None:
+                        msgs = eval(subprocess.check_output(['sos', 'preview'] + options))
+                        for msg in msgs:
+                            self.send_frontend_msg(msg[0], msg[1])
+                    else:
+                        self.handle_magic_preview(args.items, args.kernel, style)
         elif self.MAGIC_CD.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_cd(options)

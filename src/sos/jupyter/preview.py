@@ -23,6 +23,41 @@ import base64
 from IPython.core.display import HTML
 from sos.utils import env, dehtml
 
+import pkg_resources
+
+def get_previewers():
+    # Note: data is zest.releaser specific: we want to pass
+    # something to the plugin
+    group = 'sos_previewers'
+    result = []
+    for entrypoint in pkg_resources.iter_entry_points(group=group):
+        # if ':' in entry point name, it should be a function
+        try:
+            name, priority = entrypoint.name.split(',', 1)
+            priority = int(priority)
+        except Exception as e:
+            env.logger.warning('Ignore incorrect previewer entry point {}: {}'.format(entrypoint, e))
+            continue
+        # If name points to a function in a module. Let us try to import the module
+        if ':' in name:
+            import importlib
+            try:
+                mod, func = name.split(':')
+                imported = importlib.import_module(mod)
+                result.append((getattr(imported, func), entrypoint, priority))
+            except ImportError:
+                env.logger.warning('Failed to load function {}:{}'.format(mod, func))
+        else:
+            result.append((name, entrypoint, priority))
+    #
+    result.sort(key=lambda x: -x[2])
+    # we put string infront of functions so that filename matching will be used before
+    # content matching. For example, the xlsx file is actually a zip file so it could be
+    # previewed as a zip file first.
+    return [x for x in result if isinstance(x[0], str) and x[0] != '*'] + \
+            [x for x in result if not isinstance(x[0], str)] + \
+            [x for x in result if x[0] == '*']
+
 def preview_img(filename, kernel=None, style=None):
     with open(filename, 'rb') as f:
         image = f.read()

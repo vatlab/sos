@@ -739,6 +739,148 @@ def cmd_pull(args, workflow_args):
         env.logger.error(e)
         sys.exit(1)
 
+#
+# command preview
+#
+def get_preview_parser(desc_only=False):
+    parser = argparse.ArgumentParser(prog='preview',
+        description='''Preview files, sos variables, or expressions in the
+            side panel, or notebook if side panel is not opened, unless
+            options --panel or --notebook is specified.''')
+    parser.short_description = '''Preview specified files'''
+    if desc_only:
+        return parser
+    parser.add_argument('items', nargs='*',
+        help='''Filename, variable name, or expression. Wildcard characters
+            such as '*' and '?' are allowed for filenames.''')
+    # this option is currently hidden
+    parser.add_argument('-s', '--style', choices=['table', 'scatterplot', 'png'],
+        help='''Option for preview file or variable, which by default is "table"
+        for Pandas DataFrame. The %%preview magic also accepts arbitrary additional
+        keyword arguments, which would be interpreted by individual style. Passing
+        '-h' with '--style' would display the usage information of particular
+        style.''')
+    parser.add_argument('-r', '--host', dest='host', metavar='HOST', nargs='?', const='',
+        help='''Preview files on specified remote host, which should
+        be defined under key host of sos configuration files (preferrably
+        in ~/.sos/hosts.yml). This option basically copy the workflow
+        to remote host and invoke sos command there. No path translation
+        and input/output file synchronization will be performed before or
+        after the execution of the workflow. If this option is specified without
+        value, SoS will use value specified by configuration key `default_host`,
+        or list all configured queues if no such key is defined''')
+    parser.add_argument('--html', action='store_true',
+        help='''Return preview result in HTML instead of plan text''')
+    parser.add_argument('-c', '--config', help='''A configuration file with host
+        definitions, in case the definitions are not defined in global or local
+        sos config.yml files.''')
+    parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
+        help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
+            information to standard output (default to 2).''')
+    parser.set_defaults(func=cmd_preview)
+    return parser
+
+
+def preview_file(previewers, filename, style=None):
+    from .utils import pretty_size
+    from IPython.core.display import HTML
+    msg = []
+    if not os.path.isfile(filename):
+        msg.append(['stream', {
+                        'name': 'stderr',
+                        'text': '\n> ' + filename + ' does not exist'}])
+        return msg
+    msg.append(['display_data',
+         {'metadata': {},
+         'data': {
+             'text/plain': '\n> {} ({}):'.format(filename, pretty_size(os.path.getsize(filename))),
+             'text/html': HTML('<div class="sos_hint">> {} ({}):</div>'.format(filename, pretty_size(os.path.getsize(filename)))).data,
+            }
+         }])
+    previewer_func = None
+    # lazy import of previewers
+    import fnmatch
+    for x, y, _ in previewers:
+        if isinstance(x, str):
+            if fnmatch.fnmatch(os.path.basename(filename), x):
+                # we load entrypoint only before it is used. This is to avoid
+                # loading previewers that require additional external modules
+                # we can cache the loaded function but there does not seem to be
+                # a strong performance need for this.
+                previewer_func = y.load()
+                break
+        else:
+            # it should be a function
+            try:
+                if x(filename):
+                    try:
+                        previewer_func = y.load()
+                    except Exception as e:
+                        msg.append(['stream', {
+                            'name': 'stderr',
+                            'text': 'Failed to load previewer {}: {}'.format(y, e) }])
+                        continue
+                    break
+            except Exception as e:
+                msg.append(['stream', {
+                            'name': 'stderr',
+                            'text': str(e)}])
+                continue
+    #
+    # if no previewer can be found
+    if previewer_func is None:
+        return msg
+    try:
+        result = previewer_func(filename, None, style)
+        if not result:
+            return msg
+        if isinstance(result, str):
+            msg.append(['stream',
+                {'name': 'stdout', 'text': result}])
+        elif isinstance(result, dict):
+            msg.append(['display_data',
+                {'source': filename, 'data': result, 'metadata': {}}])
+        elif isinstance(result, [list, tuple]) and len(result) == 2:
+            msg.append(['display_data',
+                {'source': filename, 'data': result[0], 'metadata': result[1]}])
+        else:
+            msg.append(['stream', {
+                'name': 'stderr',
+                'text': 'Unrecognized preview content: {}'.format(result)}])
+    except Exception as e:
+        msg.append(['stream', {
+            'name': 'stderr',
+            'text': 'Failed to preview {}: {}'.format(filename, e)}])
+    return msg
+
+
+def cmd_preview(args, unknown_args):
+    from .utils import env, load_config_files
+    from .hosts import Host
+    cfg = load_config_files(args.config)
+    env.sos_dict.set('CONFIG', cfg)
+    env.verbosity = args.verbosity
+    if args.host == '':
+        if 'default_host' in cfg:
+            args.host = cfg['default_host']
+        else:
+            from .hosts import list_queues
+            list_queues(cfg, args.verbosity)
+            return
+    if args.host:
+        # remote host?
+        host = Host(args.queue)
+        print(host._host_agent.check_output(['sos', 'preview'] + args.items))
+    else:
+        from sos.jupyter.preview import get_previewers
+        previewers = get_previewers()
+        msg = []
+        for filename in args.items:
+            msg.extend(preview_file(previewers, filename))
+        print(msg)
+        return
+
+
 
 #
 # subcommand execute
@@ -2047,6 +2189,9 @@ def main():
         #
         # command pull
         add_sub_parser(subparsers, get_pull_parser(desc_only='pull'!=subcommand))
+        #
+        # command preview
+        add_sub_parser(subparsers, get_preview_parser(desc_only='preview'!=subcommand))
         #
         # command execute
         add_sub_parser(subparsers, get_execute_parser(desc_only='execute'!=subcommand))
