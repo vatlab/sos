@@ -640,8 +640,7 @@ def get_push_parser(desc_only=False):
     parser.add_argument('items', nargs='+', help='''Files or directories to be sent
         to remote host. The location of remote files are determined by "path_map"
         determined by "paths" definitions of local and remote hosts.''')
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('-t', '--to', dest='host', nargs='?', const='',
+    parser.add_argument('-t', '--to', dest='host', nargs='?', const='',
         help='''Remote host to which the files will be sent. SoS will use value
         specified by configuration key `default_queue`, or list all configured
         queues if no such key is defined''')
@@ -696,8 +695,7 @@ def get_pull_parser(desc_only=False):
         retrieved from remote host. The files should be relative to local file
         system. The files to retrieve are determined by "path_map"
         determined by "paths" definitions of local and remote hosts.''')
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('-f', '--from', dest='host', nargs='?', const='',
+    parser.add_argument('-f', '--from', dest='host', nargs='?', const='',
         help='''Remote host to which the files will be sent. SoS will use value
         specified by configuration key `default_queue`, or list all configured
         queues if no such key is defined''')
@@ -740,6 +738,7 @@ def cmd_pull(args, workflow_args):
             sys.stderr.write(get_traceback())
         env.logger.error(e)
         sys.exit(1)
+
 
 #
 # subcommand execute

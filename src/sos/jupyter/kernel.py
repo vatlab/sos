@@ -458,15 +458,10 @@ class SoS_Kernel(IPythonKernel):
             retrieved from remote host. The files should be relative to local file
             system. The files to retrieve are determined by "path_map"
             determined by "paths" definitions of local and remote hosts.''')
-        group = parser.add_mutually_exclusive_group(required=True)
-        group.add_argument('-q', '--queue', nargs='?', const='',
+        parser.add_argument('-f', '--from', dest='host', nargs='?', const='',
             help='''Remote host to which the files will be sent. SoS will use value
             specified by configuration key `default_queue`, or list all configured
-            queues if no such key is defined''')
-        group.add_argument('-r', '--host', nargs='?', const='',
-            help='''Remote host to which the files will be sent. SoS will use value
-            specified by configuration key `default_host`, or list all configured
-            queues if no such key is defined''')
+            queues if no such key is defined''') 
         parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
             help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
                 information to standard output (default to 2).''')
@@ -479,14 +474,9 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('items', nargs='+', help='''Files or directories to be sent
             to remote host. The location of remote files are determined by "path_map"
             determined by "paths" definitions of local and remote hosts.''')
-        group = parser.add_mutually_exclusive_group(required=True)
-        group.add_argument('-q', '--queue', nargs='?', const='',
+        parser.add_argument('-t', '--to', dest='host', nargs='?', const='',
             help='''Remote host to which the files will be sent. SoS will use value
             specified by configuration key `default_queue`, or list all configured
-            queues if no such key is defined''')
-        group.add_argument('-r', '--host', nargs='?', const='',
-            help='''Remote host to which the files will be sent. SoS will use value
-            specified by configuration key `default_host`, or list all configured
             queues if no such key is defined''')
         parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
             help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
@@ -1527,22 +1517,17 @@ Available subkernels:\n{}'''.format(
     def handle_magic_pull(self, args):
         from sos.hosts import Host
         cfg = env.sos_dict['CONFIG']
-        if args.queue == '':
-            if 'default_queue' in cfg:
-                args.queue = cfg['default_queue']
-            else:
-                from sos.hosts import list_queues
-                list_queues(cfg, args.verbosity)
-                return
-        elif args.host == '':
-            if 'default_queue' in cfg:
+        if args.host == '':
+            if 'default_host' in cfg:
+                args.host = cfg['default_host']
+            elif 'default_queue' in cfg:
                 args.host = cfg['default_queue']
             else:
                 from sos.hosts import list_queues
                 list_queues(cfg, args.verbosity)
                 return
         try:
-            host = Host(args.queue if args.queue else args.host)
+            host = Host(args.host)
             #
             received = host.receive_from_host(args.items)
             #
@@ -1561,22 +1546,17 @@ Available subkernels:\n{}'''.format(
     def handle_magic_push(self, args):
         from sos.hosts import Host
         cfg = env.sos_dict['CONFIG']
-        if args.queue == '':
-            if 'default_queue' in cfg:
-                args.queue = cfg['default_queue']
-            else:
-                from .hosts import list_queues
-                list_queues(cfg, args.verbosity)
-                return
-        elif args.host == '':
-            if 'default_queue' in cfg:
+        if args.host == '':
+            if 'default_host' in cfg:
+                args.host = cfg['default_host']
+            elif 'default_queue' in cfg:
                 args.host = cfg['default_queue']
             else:
-                from .hosts import list_queues
-                list_queues(cfg, args.verbosity)
+                from .hosts import list_hosts
+                list_hosts(cfg, args.verbosity)
                 return
         try:
-            host = Host(args.queue if args.queue else args.host)
+            host = Host(args.host)
             #
             sent = host.send_to_host(args.items)
             #
