@@ -986,6 +986,7 @@ def load_config_files(filename=None):
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
                 raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(filename, e))
+    env.sos_dict.set('CONFIG', cfg)
     return cfg
 
 def format_HHMMSS(v):

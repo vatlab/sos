@@ -321,6 +321,9 @@ class SoS_Kernel(IPythonKernel):
             help='''Preview in side panel even if the panel is currently closed''')
         loc.add_argument('-n', '--notebook', action='store_true',
             help='''Preview in the main notebook.''')
+        parser.add_argument('-c', '--config', help='''A configuration file with host
+            definitions, in case the definitions are not defined in global or local
+            sos config.yml files.''')
         parser.error = self._parse_error
         return parser
 
@@ -434,7 +437,7 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('-f', '--from', dest='host', nargs='?', const='',
             help='''Remote host to which the files will be sent. SoS will use value
             specified by configuration key `default_queue`, or list all configured
-            queues if no such key is defined''') 
+            queues if no such key is defined''')
         parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
             help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
                 information to standard output (default to 2).''')
@@ -486,6 +489,9 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('task', help='ID of task')
         parser.add_argument('-q', '--queue',
             help='''Task queue on which the task is executed.''')
+        parser.add_argument('-c', '--config', help='''A configuration file with host
+            definitions, in case the definitions are not defined in global or local
+            sos config.yml files.''')
         parser.error = self._parse_error
         return parser
 
@@ -501,6 +507,9 @@ class SoS_Kernel(IPythonKernel):
             (default) or within specified age. Value of this parameter can be in units
             s (second), m (minute), h (hour), or d (day, default), with optional
             prefix + for older (default) and - for younder than specified age.''')
+        parser.add_argument('-c', '--config', help='''A configuration file with host
+            definitions, in case the definitions are not defined in global or local
+            sos config.yml files.''')
         parser.error = self._parse_error
         return parser
 
@@ -2518,17 +2527,20 @@ Available subkernels:\n{}'''.format(
                     elif args.kernel:
                         self.warn('Invalid option --kernel with -r (--host)')
                     else:
+                        if args.config:
+                            from sos.utils import load_config_files
+                            load_config_files(args.config)
                         try:
                             rargs = ['sos', 'preview', '--html'] + options
                             rargs = [x for x in rargs if x not in ('-n', '--notebook', '-p', '--panel')]
                             if self._debug_mode:
                                 self.warn('Running "{}"'.format(' '.join(rargs)))
-                            msgs = eval(subprocess.check_output(rargs))
+                            self.send_frontend_msg('preview-input', '%preview {} -r {}'.format(' '.join(args.items), args.host))
+                            for msg in eval(subprocess.check_output(rargs)):
+                                self.send_frontend_msg(msg[0], msg[1])
                         except Exception as e:
-                            self.warn('Failed to preview {} on remote host {}{}'.formt(
+                            self.warn('Failed to preview {} on remote host {}{}'.format(
                                 args.items, args.host, ': {}'.format(e) if self._debug_mode else ''))
-                        for msg in msgs:
-                            self.send_frontend_msg(msg[0], msg[1])
         elif self.MAGIC_CD.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_cd(options)
@@ -2551,6 +2563,9 @@ Available subkernels:\n{}'''.format(
                 args = parser.parse_args(options.split())
             except SystemExit:
                 return
+            if args.config:
+                from sos.utils import load_cfg_files
+                load_cfg_files(args.config)
             self.handle_taskinfo(args.task, args.queue)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_TASKS.match(code):
@@ -2560,6 +2575,9 @@ Available subkernels:\n{}'''.format(
                 args = parser.parse_args(options.split())
             except SystemExit:
                 return
+            if args.config:
+                from sos.utils import load_cfg_files
+                load_cfg_files(args.config)
             self.handle_tasks(args.tasks, args.queue if args.queue else 'localhost', args.status, args.age)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('!'):

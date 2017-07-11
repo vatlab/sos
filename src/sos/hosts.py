@@ -717,7 +717,7 @@ class Host:
     def _get_config(self, alias):
         if 'CONFIG' not in env.sos_dict:
             from .utils import load_config_files
-            env.sos_dict.set('CONFIG', load_config_files())
+            load_config_files()
         if not alias or alias == 'localhost':
             # if no alias is specified, we are using localhost  ->  localhost
             if 'localhost' not in env.sos_dict['CONFIG']:

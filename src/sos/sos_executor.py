@@ -31,7 +31,7 @@ from tqdm import tqdm as ProgressBar
 from io import StringIO
 from ._version import __version__
 from .sos_step import Step_Executor, analyze_section, PendingTasks
-from .utils import env, Error, WorkflowDict, get_traceback, frozendict, short_repr, pickleable, \
+from .utils import env, Error, WorkflowDict, get_traceback, short_repr, pickleable, \
     load_config_files, save_var, load_var
 from .sos_eval import SoS_exec, get_default_global_sigil
 from .dag import SoS_DAG
@@ -117,8 +117,7 @@ class SoS_Worker(mp.Process):
         env.sos_dict.set('__step_output__', [])
 
         # load configuration files
-        cfg = load_config_files(self.config['config_file'])
-        env.sos_dict.set('CONFIG', frozendict(cfg))
+        load_config_files(self.config['config_file'])
 
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
@@ -339,7 +338,6 @@ class Base_Executor:
                 env.logger.error('Configuration sos.change_all_cap_vars can only be warning or error: {} provided'.format(cfg['sos']['change_all_cap_vars']))
             else:
                 env.sos_dict._change_all_cap_vars = cfg['sos']['change_all_cap_vars']
-        env.sos_dict.set('CONFIG', frozendict(cfg))
 
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)

@@ -27,12 +27,9 @@ from ipykernel.tests.utils import assemble_output, execute, wait_for_idle
 from sos.jupyter.test_utils import sos_kernel, get_display_data
 
 class TestSoSMagics(unittest.TestCase):
-    #
-
     def testHelp(self):
         '''Test help messages'''
         with sos_kernel() as kc:
-            iopub = kc.iopub_channel
             # create a data frame
             execute(kc=kc, code='\n'.join('%{} -h'.format(magic) for magic in (
                 'cd', 'debug', 'dict', 'get', 'matplotlib', 'paste', 'preview',
@@ -44,14 +41,12 @@ class TestSoSMagics(unittest.TestCase):
     def testMagicConnectInfo(self):
         '''Test connect info'''
         with sos_kernel() as kc:
-            iopub = kc.iopub_channel
             # create a data frame
             execute(kc=kc, code='%connectinfo')
             wait_for_idle(kc)
 
     def testMagicMatplotlib(self):
         with sos_kernel() as kc:
-            iopub = kc.iopub_channel
             # create a data frame
             execute(kc=kc, code='''
 %matplotlib inline
@@ -296,6 +291,21 @@ graph graphname {
 ''')
             res = get_display_data(iopub, 'image/png')
             self.assertGreater(len(res), 1000, 'Expect a image {}'.format(res))
+
+    def testMagicRemotePreview(self):
+        # test preview of remote file
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            # preview variable
+            execute(kc=kc, code='''
+%run -r docker -c ~/docker.yml
+%preview -n abc.txt -c ~/docker.yml -r docker
+sh:
+   echo abc > abc.txt
+''')
+        stdout, stderr = assemble_output(iopub)
+        self.assertEqual(stderr, '', 'Got error {}'.format(stderr))
+        self.assertTrue('abc' in stdout, 'Got stdout "{}"'.format(stdout))
 
     def testMagicSandbox(self):
         with sos_kernel() as kc:

@@ -269,9 +269,10 @@ def runfile(script=None, raw_args='', wdir='.', code=None, kernel=None, **kwargs
         return
 
     if args.__remote__:
+        from sos.utils import load_config_files
+        cfg = load_config_files(args.__config__)
+        env.sos_dict.set('CONFIG', cfg)
         if args.__remote__ == '':
-            from sos.utils import load_config_files
-            cfg = load_config_files(args.config)
             if 'default_host' in cfg:
                 args.__remote__ = cfg['default_host']
             else:

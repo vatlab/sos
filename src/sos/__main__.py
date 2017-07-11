@@ -293,7 +293,6 @@ def cmd_run(args, workflow_args):
         # if executing on a remote host...
         from .hosts import Host
         cfg = load_config_files(args.__config__)
-        env.sos_dict.set('CONFIG', cfg)
         host = Host(args.__remote__)
         from .utils import remove_arg
         #
@@ -463,8 +462,7 @@ def workflow_status(workflow):
                 status = buf.getvalue().strip().split('\n')
         else:
             # remote host?
-            cfg = load_config_files(config_file)
-            env.sos_dict.set('CONFIG', cfg)
+            load_config_files(config_file)
             try:
                 host = Host(k)
                 status = host._task_engine.query_tasks(v, 0, False, False, None).strip().split('\n')
@@ -659,7 +657,6 @@ def cmd_push(args, workflow_args):
     from .hosts import Host
     env.verbosity = args.verbosity
     cfg = load_config_files(args.config)
-    env.sos_dict.set('CONFIG', cfg)
     if args.host == '':
         if 'default_host' in cfg:
             args.host = cfg['default_host']
@@ -714,7 +711,6 @@ def cmd_pull(args, workflow_args):
     from .hosts import Host
     env.verbosity = args.verbosity
     cfg = load_config_files(args.config)
-    env.sos_dict.set('CONFIG', cfg)
     if args.host == '':
         if 'default_host' in cfg:
             args.host = cfg['default_host']
@@ -855,7 +851,6 @@ def cmd_preview(args, unknown_args):
     from .utils import env, load_config_files
     from .hosts import Host
     cfg = load_config_files(args.config)
-    env.sos_dict.set('CONFIG', cfg)
     env.verbosity = args.verbosity
     if args.host == '':
         if 'default_host' in cfg:
@@ -1011,7 +1006,6 @@ def cmd_execute(args, workflow_args):
     # will prepare the task, sync files, and execute this command remotely
     # if needed.
     cfg = load_config_files(args.config)
-    env.sos_dict.set('CONFIG', cfg)
     env.verbosity = args.verbosity
     env.config['sig_mode'] = args.__sig_mode__
     env.config['run_mode'] = 'dryrun' if args.dryrun else 'run'
@@ -1091,7 +1085,6 @@ def cmd_status(args, workflow_args):
     env.verbosity = args.verbosity
     try:
         cfg = load_config_files(args.config)
-        env.sos_dict.set('CONFIG', cfg)
         if args.queue == '':
             if 'default_queue' in cfg:
                 args.queue = cfg['default_queue']
@@ -1180,7 +1173,6 @@ def cmd_purge(args, workflow_args):
         else:
             # remote host?
             cfg = load_config_files(args.config)
-            env.sos_dict.set('CONFIG', cfg)
             host = Host(args.queue)
             print(host._task_engine.purge_tasks(args.tasks, args.all, args.workflows, args.age, args.status, args.verbosity))
     except Exception as e:
@@ -1247,7 +1239,6 @@ def cmd_kill(args, workflow_args):
     else:
         # remote host?
         cfg = load_config_files(args.config)
-        env.sos_dict.set('CONFIG', cfg)
         host = Host(args.queue)
         print(host._task_engine.kill_tasks(args.tasks, all_tasks=args.all))
 
