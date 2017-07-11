@@ -48,6 +48,66 @@ import fasteners
 __all__ = ['logger', 'get_output']
 
 
+COLOR_CODE={
+    'ENDC':0,  # RESET COLOR
+    'BOLD':1,
+    'UNDERLINE':4,
+    'BLINK':5,
+    'INVERT':7,
+    'CONCEALD':8,
+    'STRIKE':9,
+    'GREY30':90,
+    'GREY40':2,
+    'GREY65':37,
+    'GREY70':97,
+    'GREY20_BG':40,
+    'GREY33_BG':100,
+    'GREY80_BG':47,
+    'GREY93_BG':107,
+    'DARK_RED':31,
+    'RED':91,
+    'RED_BG':41,
+    'LIGHT_RED_BG':101,
+    'DARK_YELLOW':33,
+    'YELLOW':93,
+    'YELLOW_BG':43,
+    'LIGHT_YELLOW_BG':103,
+    'DARK_BLUE':34,
+    'BLUE':94,
+    'BLUE_BG':44,
+    'LIGHT_BLUE_BG':104,
+    'DARK_MAGENTA':35,
+    'PURPLE':95,
+    'MAGENTA_BG':45,
+    'LIGHT_PURPLE_BG':105,
+    'DARK_CYAN':36,
+    'AUQA':96,
+    'CYAN_BG':46,
+    'LIGHT_AUQA_BG':106,
+    'DARK_GREEN':32,
+    'GREEN':92,
+    'GREEN_BG':42,
+    'LIGHT_GREEN_BG':102,
+    'BLACK':30,
+}
+
+def colorstr(astr, color=None):
+    color_code = 0 if color is None else COLOR_CODE[color]
+    if sys.platform == 'win32':
+        return astr
+    else:
+        return '\033[{}m{}\033[0m'.format(color_code, astr)
+
+def emphasize(msg, color=None):
+    level_color = 0 if color is None else COLOR_CODE[color]
+    # display text within `` and `` in green
+    if sys.platform == 'win32':
+        return str(msg).replace('``', '')
+    elif level_color == 0:
+        return re.sub(r'``([^`]*)``', '\033[32m\\1\033[0m', str(msg))
+    else:
+        return re.sub(r'``([^`]*)``', '\033[0m\033[32m\\1\033[0m\033[{}m'.format(level_color), str(msg))
+
 class ColoredFormatter(logging.Formatter):
     ''' A logging formatter that uses color to differntiate logging messages
     and emphasize texts. Texts that would be empahsized are quoted with
@@ -65,75 +125,18 @@ class ColoredFormatter(logging.Formatter):
             'ERROR': 'RED',
             'CRITICAL': 'RED_BG',
         }
-        self.COLOR_CODE={
-            'ENDC':0,  # RESET COLOR
-            'BOLD':1,
-            'UNDERLINE':4,
-            'BLINK':5,
-            'INVERT':7,
-            'CONCEALD':8,
-            'STRIKE':9,
-            'GREY30':90,
-            'GREY40':2,
-            'GREY65':37,
-            'GREY70':97,
-            'GREY20_BG':40,
-            'GREY33_BG':100,
-            'GREY80_BG':47,
-            'GREY93_BG':107,
-            'DARK_RED':31,
-            'RED':91,
-            'RED_BG':41,
-            'LIGHT_RED_BG':101,
-            'DARK_YELLOW':33,
-            'YELLOW':93,
-            'YELLOW_BG':43,
-            'LIGHT_YELLOW_BG':103,
-            'DARK_BLUE':34,
-            'BLUE':94,
-            'BLUE_BG':44,
-            'LIGHT_BLUE_BG':104,
-            'DARK_MAGENTA':35,
-            'PURPLE':95,
-            'MAGENTA_BG':45,
-            'LIGHT_PURPLE_BG':105,
-            'DARK_CYAN':36,
-            'AUQA':96,
-            'CYAN_BG':46,
-            'LIGHT_AUQA_BG':106,
-            'DARK_GREEN':32,
-            'GREEN':92,
-            'GREEN_BG':42,
-            'LIGHT_GREEN_BG':102,
-            'BLACK':30,
-        }
-
-    def colorstr(self, astr, color):
-        if sys.platform == 'win32':
-            return astr
-        else:
-            return '\033[{}m{}\033[0m'.format(color, astr)
-
-    def emphasize(self, msg, level_color=0):
-        # display text within `` and `` in green
-        if sys.platform == 'win32':
-            return str(msg).replace('``', '')
-        elif level_color == 0:
-            return re.sub(r'``([^`]*)``', '\033[32m\\1\033[0m', str(msg))
-        else:
-            return re.sub(r'``([^`]*)``', '\033[0m\033[32m\\1\033[0m\033[{}m'.format(level_color), str(msg))
 
     def format(self, record):
         level_name = record.levelname
         if level_name in self.LEVEL_COLOR:
-            level_color = self.COLOR_CODE[self.LEVEL_COLOR[level_name]]
-            record.color_levelname = self.colorstr(level_name, level_color)
-            record.color_name = self.colorstr(record.name, level_color)
-            record.color_msg = self.colorstr(self.emphasize(record.msg, level_color), level_color)
+            level_color = self.LEVEL_COLOR[level_name]
+            record.color_levelname = colorstr(level_name, level_color)
+            record.color_name = colorstr(record.name, level_color)
+            record.color_msg = colorstr(self.emphasize(record.msg, level_color), level_color)
         else:
             # for INFO, use default color
             record.color_levelname = record.levelname
-            record.color_msg = self.emphasize(record.msg)
+            record.color_msg = emphasize(record.msg)
         return logging.Formatter.format(self, record)
 
 

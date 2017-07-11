@@ -747,7 +747,7 @@ def get_preview_parser(desc_only=False):
         description='''Preview files, sos variables, or expressions in the
             side panel, or notebook if side panel is not opened, unless
             options --panel or --notebook is specified.''')
-    parser.short_description = '''Preview specified files'''
+    parser.short_description = '''Preview files on local or remote host'''
     if desc_only:
         return parser
     parser.add_argument('items', nargs='*',
@@ -763,14 +763,11 @@ def get_preview_parser(desc_only=False):
     parser.add_argument('-r', '--host', dest='host', metavar='HOST', nargs='?', const='',
         help='''Preview files on specified remote host, which should
         be defined under key host of sos configuration files (preferrably
-        in ~/.sos/hosts.yml). This option basically copy the workflow
-        to remote host and invoke sos command there. No path translation
-        and input/output file synchronization will be performed before or
-        after the execution of the workflow. If this option is specified without
+        in ~/.sos/hosts.yml). If this option is specified without
         value, SoS will use value specified by configuration key `default_host`,
         or list all configured queues if no such key is defined''')
     parser.add_argument('--html', action='store_true',
-        help='''Return preview result in HTML instead of plan text''')
+        help=argparse.SUPPRESS)
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global or local
         sos config.yml files.''')
@@ -870,17 +867,34 @@ def cmd_preview(args, unknown_args):
     if args.host:
         # remote host?
         host = Host(args.queue)
-        print(host._host_agent.check_output(['sos', 'preview'] + args.items))
+        args = ['sos', 'preview'] + args.items
+        if args.style:
+            args += ['--html', '-s', args.style] + unknown_args
+        env.logger.debug('Running "{}"'.format(' '.join(args)))
+        msgs = host._host_agent.check_output(args)
     else:
         from sos.jupyter.preview import get_previewers
         previewers = get_previewers()
-        msg = []
+        msgs = []
         for filename in args.items:
-            msg.extend(preview_file(previewers, filename))
-        print(msg)
-        return
-
-
+            msgs.extend(preview_file(previewers, filename))
+    if args.html:
+        print(msgs)
+    else:
+        from .utils import colorstr, dehtml
+        for msg in msgs:
+            if msg[0] == 'stream':
+                if msg[1]['name'] == 'stdout':
+                    print(msg[1]['text'])
+                else:
+                    print(colorstr(msg[1]['text'], 'PURPLE'))
+            elif msg[0] == 'display_data':
+                if 'text/plain' in msg[1]['data']:
+                    print(msg[1]['data']['text/plain'])
+                elif 'text/HTML' in msg[1]['data']:
+                    print(dehtml(msg[1]['data']['text/html']))
+                else:
+                    print('BINARY DATA of type {}'.format(', '.join(msg[1]['data'].keys())))
 
 #
 # subcommand execute
