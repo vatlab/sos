@@ -132,7 +132,7 @@ class ColoredFormatter(logging.Formatter):
             level_color = self.LEVEL_COLOR[level_name]
             record.color_levelname = colorstr(level_name, level_color)
             record.color_name = colorstr(record.name, level_color)
-            record.color_msg = colorstr(self.emphasize(record.msg, level_color), level_color)
+            record.color_msg = colorstr(emphasize(record.msg, level_color), level_color)
         else:
             # for INFO, use default color
             record.color_levelname = record.levelname

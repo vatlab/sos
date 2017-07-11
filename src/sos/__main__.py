@@ -866,12 +866,12 @@ def cmd_preview(args, unknown_args):
             return
     if args.host:
         # remote host?
-        host = Host(args.queue)
-        args = ['sos', 'preview'] + args.items
+        host = Host(args.host)
+        rargs = ['sos', 'preview'] + args.items + ['--html']
         if args.style:
-            args += ['--html', '-s', args.style] + unknown_args
-        env.logger.debug('Running "{}"'.format(' '.join(args)))
-        msgs = host._host_agent.check_output(args)
+            rargs += ['-s', args.style] + unknown_args
+        env.logger.debug('Running "{}"'.format(' '.join(rargs)))
+        msgs = eval(host._host_agent.check_output(rargs))
     else:
         from sos.jupyter.preview import get_previewers
         previewers = get_previewers()
@@ -895,6 +895,8 @@ def cmd_preview(args, unknown_args):
                     print(dehtml(msg[1]['data']['text/html']))
                 else:
                     print('BINARY DATA of type {}'.format(', '.join(msg[1]['data'].keys())))
+            else:
+                raise RuntimeError('Unrecognized preview output: {}'.format(msg))
 
 #
 # subcommand execute
