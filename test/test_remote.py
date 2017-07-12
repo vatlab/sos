@@ -63,14 +63,21 @@ class TestRemote(unittest.TestCase):
     def testRemoteExecute(self):
         if os.path.isfile('result_remote.txt'):
             os.remove('result_remote.txt')
+        if os.path.isfile('local.txt'):
+            os.remove('local.txt')
+        with open('local.txt', 'w') as w:
+            w.write('something')
+        self.assertEqual(subprocess.call('sos push local.txt -c ~/docker.yml --to docker', shell=True), 0)
         with open('test_remote.sos', 'w') as tr:
             tr.write('''
 [10]
+input: 'local.txt'
 output: 'result_remote.txt'
 task:
 
 run:
-  echo 'a' > 'result_remote.txt'
+  cp local.txt result_remote.txt
+  echo 'adf' >> 'result_remote.txt'
 
 ''')
         self.assertEqual(subprocess.call('sos run test_remote.sos -c ~/docker.yml -r docker -s force -w', shell=True), 0)
@@ -80,6 +87,10 @@ run:
         self.assertEqual(subprocess.call('sos pull result_remote.txt -c ~/docker.yml --from docker', shell=True), 0)
         self.assertTrue(FileTarget('result_remote.txt').exists())
         self.assertEqual(subprocess.call('sos preview result_remote.txt', shell=True), 0)
+        with open('result_remote.txt') as w:
+            content = w.read()
+            self.assertTrue('something' in content, 'Got {}'.format(content))
+            self.assertTrue('adf' in content, 'Got {}'.format(content))
 
 if __name__ == '__main__':
     unittest.main()
