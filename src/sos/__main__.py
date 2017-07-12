@@ -141,20 +141,17 @@ def print_converter_help():
 
 def cmd_convert(args, unknown_args):
     from .utils import env, get_traceback
-    try:
-        for entrypoint in pkg_resources.iter_entry_points(group='sos_converters'):
-            try:
-                if entrypoint.name == args.converter_name + '.func':
-                    func = entrypoint.load()
-                    func(args.from_file, args.to_file, args, unknown_args)
-            except Exception as e:
-                raise RuntimeError('Failed to execute converter {}: {}'.format(entrypoint.name.rsplit('.', 1)[0], e))
-    except Exception as e:
-        # if no other parameter, with option list all
-        if args.verbosity and args.verbosity > 2:
-            sys.stderr.write(get_traceback())
-        env.logger.error(e)
-        sys.exit(1)
+    for entrypoint in pkg_resources.iter_entry_points(group='sos_converters'):
+        try:
+            if entrypoint.name == args.converter_name + '.func':
+                func = entrypoint.load()
+                func(args.from_file, args.to_file, args, unknown_args)
+        except Exception as e:
+            # if no other parameter, with option list all
+            if args.verbosity and args.verbosity > 2:
+                sys.stderr.write(get_traceback())
+            env.logger.error('Failed to execute converter {}: {}'.format(entrypoint.name.rsplit('.', 1)[0], e))
+            sys.exit(1)
 
 #
 # subcommand run
