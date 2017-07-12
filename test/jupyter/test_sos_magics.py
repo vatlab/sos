@@ -292,6 +292,7 @@ graph graphname {
             res = get_display_data(iopub, 'image/png')
             self.assertGreater(len(res), 1000, 'Expect a image {}'.format(res))
 
+    @unittest.skipIf(sys.platform == 'win32', 'AppVeyor does not support linux based docker')
     def testMagicRemotePreview(self):
         # test preview of remote file
         with sos_kernel() as kc:
