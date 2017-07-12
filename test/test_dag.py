@@ -168,7 +168,7 @@ input: 'b.txt'
 output: 'c.txt'
 
 [B_3]
-input: []
+input: None
 output: 'd.txt'
 
 [B_4]
