@@ -58,14 +58,6 @@ def tag_remote(obj):
         raise ValueError('Unrecognized input target of type {}: {}'.format(obj.__class__.__name__, obj))
     return rargs
 
-def parse_stmt(stmt, sigil, force_remote):
-    if force_remote:
-        args, kwargs = SoS_eval('__null_func__({})'.format(stmt), sigil)
-        # now if local, we need to interpolate
-        args = [interpolate(x, sigil, env.sos_dict._dict) if isinstance(x, str) else x for x in tag_remote(args)]
-    else:
-        args, kwargs = SoS_eval('__null_func__({})'.format(stmt), sigil)
-    return args, kwargs
 
 def analyze_section(section, default_input=None):
     '''Analyze a section for how it uses input and output, what variables
@@ -101,11 +93,6 @@ def analyze_section(section, default_input=None):
         env.sos_dict.set('SOS_VERSION', __version__)
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
-
-    if 'local' in section.options and 'remote' in section.options:
-        raise ValueError('Conflicting section option local and remote')
-
-    force_remote = (env.config.get('remote_targets', False) and 'local' not in section.options) or 'remote' in section.options
 
     #
     # Here we need to get "contant" values from the global section
@@ -174,7 +161,7 @@ def analyze_section(section, default_input=None):
         stmt = section.statements[input_statement_idx][2]
         try:
             environ_vars |= accessed_vars(stmt, section.sigil)
-            args, kwargs = parse_stmt(stmt, section.sigil, force_remote)
+            args, kwargs = SoS_eval('__null_func__({})'.format(stmt), section.sigil)
             if not args:
                 if default_input is None:
                     step_input = []
@@ -228,7 +215,7 @@ def analyze_section(section, default_input=None):
             environ_vars |= accessed_vars(value, section.sigil)
             # output, depends, and process can be processed multiple times
             try:
-                args, kwargs = parse_stmt(value, section.sigil, force_remote)
+                args, kwargs = SoS_eval('__null_func__({})'.format(value), section.sigil)
                 if not any(isinstance(x, dynamic) for x in args):
                     if key == 'output':
                         step_output = _expand_file_list(True, *args)
@@ -260,7 +247,6 @@ class Base_Step_Executor:
     def __init__(self, step):
         self.step = step
         self._task_defs = []
-        self.force_remote = (env.config.get('remote_targets', False) and 'local' not in self.step.options) or 'remote' in self.step.options
 
     def expand_input_files(self, value, *args):
         if self.run_mode == 'dryrun' and any(isinstance(x, dynamic) for x in args):
@@ -614,7 +600,7 @@ class Base_Step_Executor:
 
     def reevaluate_output(self):
         # re-process the output statement to determine output files
-        args, _ = parse_stmt(env.sos_dict['output'].expr, self.step.sigil, self.force_remote)
+        args, _ = SoS_eval('__null_func__({})'.format(env.sos_dict['output'].expr), self.step.sigil)
         # handle dynamic args
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
         env.sos_dict.set('output', self.expand_output_files('', *args))
@@ -890,7 +876,7 @@ class Base_Step_Executor:
                     if key != 'depends':
                         raise ValueError('Step input should be specified before {}'.format(key))
                     try:
-                        args, kwargs = parse_stmt(value, self.step.sigil, self.force_remote)
+                        args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
                         dfiles = self.expand_depends_files(*args)
                         # dfiles can be Undetermined
                         self.process_depends_args(dfiles, **kwargs)
@@ -907,7 +893,7 @@ class Base_Step_Executor:
             stmt = self.step.statements[input_statement_idx][2]
             self.log('input statement', stmt)
             try:
-                args, kwargs = parse_stmt(stmt, self.step.sigil, self.force_remote)
+                args, kwargs = SoS_eval('__null_func__({})'.format(stmt), self.step.sigil)
                 # Files will be expanded differently with different running modes
                 input_files = self.expand_input_files(stmt, *args)
                 self._groups, self._vars = self.process_input_args(input_files, **kwargs)
@@ -961,7 +947,7 @@ class Base_Step_Executor:
                         key, value = statement[1:]
                         # output, depends, and process can be processed multiple times
                         try:
-                            args, kwargs = parse_stmt(value, self.step.sigil, self.force_remote)
+                            args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
                             # dynamic output or dependent files
                             if key == 'output':
                                 # if output is defined, its default value needs to be cleared

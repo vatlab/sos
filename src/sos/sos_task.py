@@ -332,9 +332,6 @@ del sos_handle_parameter_
         env.config['sig_mode'] = sigmode
     env.config['run_mode'] = runmode
     #
-    # when the statements are executed in tasks, they are no longer remote_targets
-    env.config['remote_targets'] = False
-
     if subtask:
         env.logger.debug('{} ``started``'.format(task_id))
     else:

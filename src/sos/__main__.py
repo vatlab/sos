@@ -350,7 +350,6 @@ def cmd_run(args, workflow_args):
                 'run_mode': 'dryrun' if args.dryrun else 'run',
                 'resume_mode': getattr(args, '__resume__', False),
                 'verbosity': args.verbosity,
-                #'remote_targets': getattr(args, '__remote__', False),
                 # for infomration and resume only
                 'workdir': os.getcwd(),
                 'script': args.script,
@@ -549,7 +548,6 @@ def cmd_resume(args, workflow_args):
     args.__sig_mode__ = res['sig_mode']
     args.__max_procs__ = args.__max_procs__ if args.__max_procs__ != 4 else res['max_procs']
     args.__resume__ = True
-    #args.__remote__ = res['remote_targets']
     args.__max_running_jobs__ = args.__max_running_jobs__ if args.__max_running_jobs__ is not None else res['max_running_jobs']
     args.dryrun = False
     args.__wait__ = args.__wait__ if args.__wait__ is True else None
