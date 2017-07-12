@@ -563,30 +563,6 @@ run:
         self.assertTrue(os.path.isfile('test_file1.txt'))
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
-    def testRemoteSectionOption(self):
-        '''Test remote target'''
-        FileTarget('test1.txt').remove('both')
-        script = SoS_Script('''
-[10: remote]
-input: 'test_file.txt'
-output: local('test1.txt')
-task:
-run:
-    echo ${input} >> ${output}
-''')
-        wf = script.workflow()
-        Base_Executor(wf, config={
-                'config_file': '~/docker.yml',
-                # do not wait for jobs
-                'wait_for_task': True,
-                'default_queue': 'docker',
-                'sig_mode': 'force',
-                }).run()
-        #
-        self.assertFalse(os.path.isfile('test_file.txt'))
-        self.assertTrue(os.path.isfile('test1.txt'))
-
-    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testDelayedInterpolation(self):
         '''Test delayed interpolation with expression involving remote objects'''
         # purge all previous tasks

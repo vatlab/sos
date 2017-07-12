@@ -436,7 +436,6 @@ sh:
                 'default_queue': None,
                 'workflow': 'default',
                 'workdir': '.',
-                'remote_targets': False
                 }).run()
         self.assertEqual(len(res['pending_tasks']), 2)
         subprocess.call('sos resume -w', shell=True)
@@ -470,7 +469,6 @@ sh:
                 'default_queue': None,
                 'workflow': 'default',
                 'workdir': '.',
-                'remote_targets': False
                 }).run()
         self.assertEqual(len(res['pending_tasks']), 2)
         subprocess.call('sos resume -w', shell=True)
@@ -478,69 +476,6 @@ sh:
             self.assertTrue(os.path.isfile('{}.txt'.format(i)))
             FileTarget('{}.txt'.format(i)).remove('both')
         FileTarget('test_trunkworker.sos').remove()
-
-
-    def testLocalTarget(self):
-        '''Test the use of local target in remote mode'''
-        # this file does not exist on remote machine
-        shutil.copy(__file__, 'test_task.py.tmp')
-        script = SoS_Script('''
-[10]
-input: local('test_task.py.tmp')
-output: local('size.txt')
-sh:
-    wc -l ${input} > ${output}
-''')
-        wf = script.workflow()
-        Base_Executor(wf, config={
-                'wait_for_task': False,
-                'sig_mode': 'force',
-                'script': 'test_trunkworker.sos',
-                'max_running_jobs': 10,
-                'bin_dirs': [],
-                'workflow_args': [],
-                'output_dag': '',
-                'targets': [],
-                'max_procs': 4,
-                'default_queue': None,
-                'workflow': 'default',
-                'workdir': '.',
-                'remote_targets': True
-                }).run()
-        self.assertTrue(os.path.isfile('size.txt'))
-        FileTarget('size.txt').remove()
-        FileTarget('test_task.py.tmp')
-
-    def testLocalSectionOption(self):
-        '''Test the use of local target in remote mode'''
-        # this file does not exist on remote machine
-        shutil.copy(__file__, 'test_task.py.tmp')
-        script = SoS_Script('''
-[10: local]
-input: 'test_task.py.tmp'
-output: 'size.txt'
-sh:
-    wc -l ${input} > ${output}
-''')
-        wf = script.workflow()
-        Base_Executor(wf, config={
-                'wait_for_task': False,
-                'sig_mode': 'force',
-                'script': 'test_trunkworker.sos',
-                'max_running_jobs': 10,
-                'bin_dirs': [],
-                'workflow_args': [],
-                'output_dag': '',
-                'targets': [],
-                'max_procs': 4,
-                'default_queue': None,
-                'workflow': 'default',
-                'workdir': '.',
-                'remote_targets': True
-                }).run()
-        self.assertTrue(os.path.isfile('size.txt'))
-        FileTarget('size.txt').remove()
-        FileTarget('test_task.py.tmp')
 
 if __name__ == '__main__':
     unittest.main()
