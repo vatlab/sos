@@ -76,8 +76,10 @@ run:
         self.assertEqual(subprocess.call('sos run test_remote.sos -c ~/docker.yml -r docker -s force -w', shell=True), 0)
         self.assertFalse(FileTarget('result_remote.txt').exists())
         self.assertEqual(subprocess.call('sos preview result_remote.txt -c ~/docker.yml -r docker', shell=True), 0)
+        self.assertNotEqual(subprocess.call('sos preview result_remote.txt', shell=True), 0)
         self.assertEqual(subprocess.call('sos pull result_remote.txt -c ~/docker.yml --from docker', shell=True), 0)
         self.assertTrue(FileTarget('result_remote.txt').exists())
+        self.assertEqual(subprocess.call('sos preview result_remote.txt', shell=True), 0)
 
 if __name__ == '__main__':
     unittest.main()

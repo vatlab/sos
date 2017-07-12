@@ -893,6 +893,8 @@ def cmd_preview(args, unknown_args):
                     print('BINARY DATA of type {}'.format(', '.join(msg[1]['data'].keys())))
             else:
                 raise RuntimeError('Unrecognized preview output: {}'.format(msg))
+    # exit with code 1 if error happens
+    sys.exit(1 if any(msg[1]['name'] == 'stderr' for msg in msgs if msg[0] == 'stream') else 0)
 
 #
 # subcommand execute
