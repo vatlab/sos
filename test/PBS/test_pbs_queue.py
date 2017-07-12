@@ -535,6 +535,54 @@ run:
         self.assertFalse(os.path.isfile('test_file.txt'))
         self.assertTrue(os.path.isfile('test1.txt'))
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
+    def testMultipleRemoteInput(self):
+        '''Test remote target'''
+        script = SoS_Script('''
+[10]
+task:
+run:
+    echo A file >> "test_file_A.txt"
+    echo B file >> "test_file_B.txt"
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={
+                'config_file': '~/docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker',
+                'sig_mode': 'force',
+                }).run()
+        # this file is remote only
+        self.assertFalse(os.path.isfile('test_file_A.txt'))
+        self.assertFalse(os.path.isfile('test_file_B.txt'))
+        #
+        FileTarget('test1.txt').remove('both')
+        script = SoS_Script('''
+[10]
+A = 'test_file_A.txt'
+input: remote(A, ['test_file_B.txt'])
+output: 'test1.txt'
+task:
+run:
+    cat ${input} >> ${output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={
+                'config_file': '~/docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker',
+                'sig_mode': 'force',
+                }).run()
+        #
+        self.assertFalse(os.path.isfile('test_file_A.txt'))
+        self.assertFalse(os.path.isfile('test_file_B.txt'))
+        self.assertTrue(os.path.isfile('test1.txt'))
+        with open('test1.txt') as w:
+            content = w.read()
+            self.assertTrue('A file' in content, 'Got {}'.format(content))
+            self.assertTrue('B file' in content, 'Got {}'.format(content))
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testRemoteOutput(self):

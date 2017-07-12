@@ -32,7 +32,7 @@ from .utils import env, AbortExecution, short_repr, stable_repr,\
     get_traceback, transcribe, ActivityNotifier, expand_size, format_HHMMSS
 from .pattern import extract_pattern
 from .sos_eval import SoS_eval, SoS_exec, Undetermined, interpolate
-from .target import BaseTarget, FileTarget, remote, local, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
+from .target import BaseTarget, FileTarget, remote, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
 from .sos_task import TaskParams, MasterTaskParams
@@ -43,21 +43,6 @@ class PendingTasks(Exception):
     def __init__(self, tasks, *args, **kwargs):
         super(PendingTasks, self).__init__(*args, **kwargs)
         self.tasks = tasks
-
-def tag_remote(obj):
-    rargs = []
-    if isinstance(obj, local):
-        rargs.append(obj.resolve())
-    elif isinstance(obj, str):
-        # regular target
-        rargs.append(remote(obj))
-    elif isinstance(obj, Sequence):
-        for k in obj:
-            rargs.extend(tag_remote(k))
-    else:
-        raise ValueError('Unrecognized input target of type {}: {}'.format(obj.__class__.__name__, obj))
-    return rargs
-
 
 def analyze_section(section, default_input=None):
     '''Analyze a section for how it uses input and output, what variables

@@ -27,6 +27,8 @@ import shutil
 import fasteners
 import pkg_resources
 
+from collections.abc import Sequence
+
 from .utils import env, Error, short_repr, stable_repr, save_var, load_var, isPrimitive
 from .sos_eval import Undetermined
 
@@ -244,10 +246,16 @@ class dynamic(BaseTarget):
 
 class remote(BaseTarget):
     '''A remote target is not tracked and not translated during task execution'''
-    def __init__(self, target):
+    def __init__(self, *targets):
         super(remote, self).__init__()
         self.__unresolvable_object__ = True
-        self._target = target
+        if len(targets) == 1:
+            self._target = targets[0]
+        else:
+            # multi-item targets
+            self._target = targets
+        if isinstance(self._target, Sequence) and not isinstance(self._target, str):
+            self.__flattenable__ = True
 
     def name(self):
         if isinstance(self._target, str):
@@ -266,23 +274,8 @@ class remote(BaseTarget):
     def resolve(self):
         return self._target
 
-class local(BaseTarget):
-    '''A local target that counters remote() in -r mode'''
-    def __init__(self, target):
-        super(local, self).__init__()
-        self._target = target
-
-    def name(self):
-        return FileTarget(self._target).name() if isinstance(self._target, str) else self._target.name()
-
-    def exists(self, mode='any'):
-        return False
-
-    def signature(self, mode='any'):
-        return textMD5(self.name())
-
-    def resolve(self):
-        return self._target
+    def flatten(self):
+        return [remote(x) for x in self._target]
 
 class executable(BaseTarget):
     '''A target for an executable command.'''

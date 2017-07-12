@@ -76,7 +76,17 @@ class ExecuteError(Error):
 def __null_func__(*args, **kwargs):
     '''This function will be passed to SoS's namespace and be executed
     to evaluate functions of input, output, and depends directives.'''
-    return args, kwargs
+    def _flatten(x):
+        if isinstance(x, str):
+            return [x]
+        elif isinstance(x, Sequence):
+            return sum((_flatten(k) for k in x), [])
+        elif hasattr(x, '__flattenable__'):
+            return _flatten(x.flatten())
+        else:
+            return [x]
+
+    return _flatten(args), kwargs
 
 class SoS_Worker(mp.Process):
     '''
