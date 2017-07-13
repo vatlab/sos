@@ -33,6 +33,7 @@ define([
     window.DisplayName = {};
     window.KernelName = {};
     window.KernelList = [];
+    window.KernelOptions = {};
     window.events = require("base/js/events");
     window.utils = require("base/js/utils");
     window.Jupyter = require("base/js/namespace");
@@ -486,6 +487,10 @@ define([
                     // KernelList, use displayed name
                     if (window.KernelList.findIndex((item) => item[0] === data[i][0]) === -1) {
                         window.KernelList.push([data[i][0], data[i][0]]);
+                    }
+                    // if options ...
+                    if (data[i].length > 4) {
+                        window.KernelOptions[data[i][0]] = data[i][4];
                     }
 
                     // if the kernel is not in metadata, push it in
@@ -1322,17 +1327,13 @@ define([
             col = changeStyleOnKernel(panel_cell, panel_cell.metadata.kernel);
         }
         // if in sos mode and is single line, enable automatic preview
-        if ((cell.metadata.kernel === "SoS" || (cell.metadata.kernel === undefined && window.default_kernel === "SoS")) &&
-            text.indexOf("\n") === -1 && text.indexOf("%") !== 0) {
-            // if it is expression without space
-            if (text.indexOf("=") === -1) {
-                if (text.trim().match(/^[_A-Za-z0-9\.]+$/))
-                    text = "%preview " + text;
-            } else {
-                var varname = text.substring(0, text.indexOf("=")).trim();
-                // if there is no space and special characters.
-                if (varname.trim().match(/^[_A-Za-z0-9\.]+$/))
-                    text = "%preview " + varname + "\n" + text;
+        var cell_kernel = cell.metadata.kernel ? cell.metadata.kernel : window.default_kernel;
+        if (KernelOptions[cell_kernel]["variable_pattern"] && text.match(KernelOptions[cell_kernel]["variable_pattern"])) {
+            text = "%preview " + text;
+        } else if (KernelOptions[cell_kernel]["assignment_pattern"]) {
+            var matched = text.match(KernelOptions[cell_kernel]["assignment_pattern"]);
+            if (matched) {
+                text = "%preview " + matched[1] + "\n" + text;
             }
         }
         panel_cell.clear_input();

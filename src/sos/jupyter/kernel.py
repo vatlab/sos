@@ -597,7 +597,8 @@ class SoS_Kernel(IPythonKernel):
                         color = self._supported_languages[kdef[2]].background_color
                     else:
                         color = kdef[3]
-                new_def = add_or_replace([name, kdef[1], kdef[2], kdef[3] if color is None else color])
+                new_def = add_or_replace([name, kdef[1], kdef[2], kdef[3] if color is None else color,
+                    getattr(self._supported_languages[kdef[2]], 'options', {}) if kdef[2] else {}])
                 if notify_frontend:
                     self.send_frontend_msg('kernel-list', self.get_kernel_list())
                 return new_def
@@ -620,7 +621,8 @@ class SoS_Kernel(IPythonKernel):
                     #
                     if color == 'default':
                         color = plugin.background_color
-                    new_def = add_or_replace([name, kdef[1], kernel, kdef[3] if color is None else color])
+                    new_def = add_or_replace([name, kdef[1], kernel, kdef[3] if color is None else color,
+                        getattr(plugin, 'options', {})])
                 else:
                     # if should be defined ...
                     if language not in self._supported_languages:
@@ -629,7 +631,8 @@ class SoS_Kernel(IPythonKernel):
                     self._supported_languages[name] = self._supported_languages[language]
                     if color == 'default':
                         color = self._supported_languages[name].background_color
-                    new_def = add_or_replace([name, kdef[1], language, kdef[3] if color is None else color])
+                    new_def = add_or_replace([name, kdef[1], language, kdef[3] if color is None else color,
+                        getattr(self._supported_languages[name], 'options', {})])
                 if notify_frontend:
                     self.send_frontend_msg('kernel-list', self.get_kernel_list())
                 return new_def
@@ -652,7 +655,8 @@ class SoS_Kernel(IPythonKernel):
 
                 if color == 'default':
                     color = plugin.background_color
-                new_def = add_or_replace([name, plugin.kernel_name, plugin.kernel_name, plugin.background_color if color is None else color])
+                new_def = add_or_replace([name, plugin.kernel_name, plugin.kernel_name, plugin.background_color if color is None else color,
+                    getattr(plugin, 'options', {})])
             else:
                 # if should be defined ...
                 if language not in self._supported_languages:
@@ -664,7 +668,8 @@ class SoS_Kernel(IPythonKernel):
 
                 new_def = add_or_replace([
                     name, self._supported_languages[language].kernel_name, language,
-                        self._supported_languages[language].background_color if color is None or color == 'default' else color])
+                        self._supported_languages[language].background_color if color is None or color == 'default' else color,
+                        getattr(self._supported_languages[language], 'options', {})])
 
             self.send_frontend_msg('kernel-list', self.get_kernel_list())
             return new_def
@@ -1910,18 +1915,22 @@ Available subkernels:\n{}'''.format(
             specs = km.find_kernel_specs()
             # get supported languages
             self._kernel_list = []
-            lan_map = {self.supported_languages[x].kernel_name:(x, self.supported_languages[x].background_color) for x in self.supported_languages.keys()
+            lan_map = {self.supported_languages[x].kernel_name:(x, self.supported_languages[x].background_color,
+                getattr(self._supported_languages[x], 'options', {})) for x in self.supported_languages.keys()
                     if x != self.supported_languages[x].kernel_name}
             for spec in specs.keys():
                 if spec == 'sos':
                     # the SoS kernel will be default theme color.
-                    self._kernel_list.append(['SoS', 'sos', '', ''])
+                    self._kernel_list.append(['SoS', 'sos', '', '', {
+                        'variable_pattern': r'^[_A-Za-z0-9\.]+\s*$',
+                        'assignment_pattern': r'^([_A-Za-z0-9\.]+)\s*=.*$'}])
                 elif spec in lan_map:
                     # e.g. ir ==> R
-                    self._kernel_list.append([lan_map[spec][0], spec, lan_map[spec][0], lan_map[spec][1]])
+                    self._kernel_list.append([lan_map[spec][0], spec, lan_map[spec][0], lan_map[spec][1],
+                        lan_map[spec][2]])
                 else:
                     # undefined language also use default theme color
-                    self._kernel_list.append([spec, spec, '', ''])
+                    self._kernel_list.append([spec, spec, '', '', {}])
         # now, using a list of kernels sent from the kernel, we might need to adjust
         # our list or create new kernels.
         if notebook_kernel_list is not None:
