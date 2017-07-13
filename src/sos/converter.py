@@ -663,10 +663,6 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
     '''
     import tempfile
 
-    no_output_file = not html_file
-    if not html_file:
-        html_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.html', delete=False).name
-    #
     if unknown_args:
         raise ValueError('Unrecognized parameter {}'.format(unknown_args))
     if args:
@@ -674,7 +670,7 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
             **{x:y for x,y in vars(args).items() if x != ('raw', 'view')})
     else:
         formatter = ContinuousHtmlFormatter(cssclass="source", full=False)
-    with open(html_file, 'w') as html:
+    with StringIO() as html:
         html.write(template_pre_style % os.path.basename(script_file))
         html.write(inline_css)
         # remove background definition so that we can use our own
@@ -724,14 +720,23 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
             write_html_content(content_type, content, formatter, html)
         html.write('</table>')
         html.write(template_post_table)
-    #
-    if no_output_file:
-        if args and not args.view:
-            with open(html_file) as html:
-                sys.stdout.write(html.read())
+
+        html_content = html.getvalue()
+
+    if args and hasattr(args, 'return_html'):
+        return html_content
+
+    # need to save to a temp file to view
+    if html_file is None and args and args.view:
+        html_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.html', delete=False).name
+
+    if html_file is None:
+        sys.stdout.write(html_content)
     else:
+        with open(html_file, 'w') as out:
+            out.write(html_content)
         env.logger.info('SoS script saved to {}'.format(html_file))
-    #
+        #
     if args and args.view:
         url = 'file://{}'.format(html_file)
         env.logger.info('Viewing {} in a browser'.format(url))
