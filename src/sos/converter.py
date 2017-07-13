@@ -684,7 +684,7 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
             else:
                 raw_link = script_file
                 script_link = os.path.basename(script_file)
-            html.write(template_pre_table % (script_link, raw_link,
+            html.write(template_header % (script_link, raw_link,
                 pretty_size(len(script_file) if from_content else os.path.getsize(script_file))))
         #
         html.write('<table class="highlight tab-size js-file-line-container">')
