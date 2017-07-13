@@ -669,14 +669,15 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
             **{x:y for x,y in vars(args).items() if x != ('raw', 'view')})
     else:
         formatter = ContinuousHtmlFormatter(cssclass="source", full=False)
+
+    from_content = args and hasattr(args, 'from_content')
     with StringIO() as html:
-        html.write(template_pre_style % ('' if args and hasattr(args, 'from_content') else 
-            os.path.basename(script_file)))
+        html.write(template_pre_style % ('' if from_content else os.path.basename(script_file)))
         html.write(inline_css)
         # remove background definition so that we can use our own
         html.write('\n'.join(x for x in formatter.get_style_defs().split('\n') if 'background' not in x))
         html.write(template_pre_table)
-        if not args or not hasattr(args, 'from_content'):
+        if not from_content:
             if args and args.raw:
                 raw_link = '<a href="{}" class="commit-tease-sha">{}</a>'.format(args.raw, script_file)
                 script_link = '<a href="{}">{}</a>'.format(args.raw, os.path.basename(script_file))
@@ -684,14 +685,14 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
                 raw_link = script_file
                 script_link = os.path.basename(script_file)
             html.write(template_pre_table % (script_link, raw_link,
-                pretty_size(len(script_file) if  args and hasattr(args, 'from_content') else os.path.getsize(script_file))))
+                pretty_size(len(script_file) if from_content else os.path.getsize(script_file))))
         #
         html.write('<table class="highlight tab-size js-file-line-container">')
         content = []
         content_type = None
         content_number = None
         next_type = None
-        for line in transcribe_script(content=script_file) if args and hasattr(args, 'from_content') else transcribe_script(script_file):
+        for line in transcribe_script(content=script_file) if from_content else transcribe_script(script_file):
             line_type, line_no, script_line = line.split('\t', 2)
             # Does not follow section because it has to be one line
             if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
