@@ -624,15 +624,13 @@ def write_html_content(content_type, content, formatter, html):
 #
 # utility function
 #
-def transcribe_script(script_file):
-    import tempfile
-    transcript_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.trans', delete=False).name
-    with open(transcript_file, 'w') as transcript:
+def transcribe_script(filename=None, content=None):
+    with StringIO() as transcript:
         try:
-            SoS_Script(filename=script_file, transcript=transcript)
+            SoS_Script(filename=filename, content=content, transcript=transcript)
         except Exception as e:
-            raise ValueError('Failed to parse {}: {}'.format(script_file, e))
-    return transcript_file
+            raise ValueError('Failed to parse {}: {}'.format(filename, e))
+        return transcript.getvalue().splitlines()
 
 #
 # Converter to HTML
@@ -664,7 +662,6 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
     to embed a URL to the raw sos file.
     '''
     import tempfile
-    transcript_file = transcribe_script(script_file)
 
     no_output_file = not html_file
     if not html_file:
@@ -692,47 +689,41 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
             pretty_size(os.path.getsize(script_file))))
         #
         html.write('<table class="highlight tab-size js-file-line-container">')
-        with open(transcript_file) as script:
-            content = []
-            content_type = None
-            content_number = None
-            next_type = None
-            for line in script:
-                line_type, line_no, script_line = line.split('\t', 2)
-                # Does not follow section because it has to be one line
-                if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
-                    line_type = 'COMMENT'
-                if content_type == line_type or line_type == 'FOLLOW':
-                    if next_type is not None and not script_line.rstrip().endswith(','):
-                        formatter.linenostart = content_number
-                        write_html_content(content_type, content, formatter, html)
-                        content = [script_line]
-                        content_type = next_type
-                        content_number = int(line_no)
-                        next_type = None
-                    else:
-                        content.append(script_line)
-                else:
-                    if content:
-                        formatter.linenostart = content_number
-                        write_html_content(content_type, content, formatter, html)
-                    if line_type.startswith('SCRIPT_'):
-                        content_type = 'DIRECTIVE'
-                        next_type = line_type[7:]
-                    else:
-                        content_type = line_type
-                    content_number = int(line_no)
+        content = []
+        content_type = None
+        content_number = None
+        next_type = None
+        for line in transcribe_script(script_file):
+            line_type, line_no, script_line = line.split('\t', 2)
+            # Does not follow section because it has to be one line
+            if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
+                line_type = 'COMMENT'
+            if content_type == line_type or line_type == 'FOLLOW':
+                if next_type is not None and not script_line.rstrip().endswith(','):
+                    formatter.linenostart = content_number
+                    write_html_content(content_type, content, formatter, html)
                     content = [script_line]
+                    content_type = next_type
+                    content_number = int(line_no)
+                    next_type = None
+                else:
+                    content.append(script_line)
+            else:
+                if content:
+                    formatter.linenostart = content_number
+                    write_html_content(content_type, content, formatter, html)
+                if line_type.startswith('SCRIPT_'):
+                    content_type = 'DIRECTIVE'
+                    next_type = line_type[7:]
+                else:
+                    content_type = line_type
+                content_number = int(line_no)
+                content = [script_line]
         if content:
             formatter.linenostart = content_number
             write_html_content(content_type, content, formatter, html)
         html.write('</table>')
         html.write(template_post_table)
-    #
-    try:
-        os.remove(transcript_file)
-    except Exception:
-        pass
     #
     if no_output_file:
         if args and not args.view:
@@ -792,51 +783,44 @@ def script_to_markdown(script_file, markdown_file, style_args=None, unknown_args
     if unknown_args:
         raise ValueError('Unrecognized parameter {}'.format(unknown_args))
 
-    transcript_file = transcribe_script(script_file)
-
     if not markdown_file:
         markdown = sys.stdout
     else:
         markdown = open(markdown_file, 'w')
     # remove background definition so that we can use our own
-    with open(transcript_file) as script:
-        content = []
-        content_type = None
-        # content_number = None
-        next_type = None
-        for line in script:
-            line_type, _, script_line = line.split('\t', 2)
-            # Does not follow section because it has to be one line
-            if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
-                line_type = 'COMMENT'
-            if content_type == line_type or line_type == 'FOLLOW':
-                if next_type is not None and not script_line.rstrip().endswith(','):
-                    markdown_content(content_type, content, markdown)
-                    content = [script_line]
-                    content_type = next_type
-                    # content_number = int(line_no)
-                    next_type = None
-                else:
-                    content.append(script_line)
-            else:
-                if content:
-                    markdown_content(content_type, content, markdown)
-                if line_type.startswith('SCRIPT_'):
-                    content_type = 'DIRECTIVE'
-                    next_type = line_type[7:]
-                else:
-                    content_type = line_type
-                # content_number = int(line_no)
+    content = []
+    content_type = None
+    # content_number = None
+    next_type = None
+    for line in transcribe_script(script_file):
+        line_type, _, script_line = line.split('\t', 2)
+        # Does not follow section because it has to be one line
+        if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
+            line_type = 'COMMENT'
+        if content_type == line_type or line_type == 'FOLLOW':
+            if next_type is not None and not script_line.rstrip().endswith(','):
+                markdown_content(content_type, content, markdown)
                 content = [script_line]
+                content_type = next_type
+                # content_number = int(line_no)
+                next_type = None
+            else:
+                content.append(script_line)
+        else:
+            if content:
+                markdown_content(content_type, content, markdown)
+            if line_type.startswith('SCRIPT_'):
+                content_type = 'DIRECTIVE'
+                next_type = line_type[7:]
+            else:
+                content_type = line_type
+            # content_number = int(line_no)
+            content = [script_line]
     if content:
         markdown_content(content_type, content, markdown)
     if markdown != sys.stdout:
         markdown.close()
         env.logger.info('SoS script saved to {}'.format(markdown_file))
-    try:
-        os.remove(transcript_file)
-    except Exception:
-        pass
 
 #
 # Output to terminal
@@ -895,47 +879,39 @@ def script_to_term(script_file, output_file, args, unknown_args=None):
     --bg [light|dark] for light or dark theme, and --linenos for output
     lineno.
     '''
-    transcript_file = transcribe_script(script_file)
 
     if unknown_args:
         raise ValueError('Unrecognized parameter {}'.format(unknown_args))
 
     formatter = TerminalFormatter(**vars(args))
     # remove background definition so that we can use our own
-    with open(transcript_file) as script:
-        content = []
-        content_type = None
-        # content_number = None
-        next_type = None
-        for line in script:
-            line_type, _, script_line = line.split('\t', 2)
-            # Does not follow section because it has to be one line
-            if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
-                line_type = 'COMMENT'
-            if content_type == line_type or line_type == 'FOLLOW':
-                if next_type is not None and not script_line.rstrip().endswith(','):
-                    write_content(content_type, content, formatter)
-                    content = [script_line]
-                    content_type = next_type
-                    # content_number = int(line_no)
-                    next_type = None
-                else:
-                    content.append(script_line)
-            else:
-                if content:
-                    write_content(content_type, content, formatter)
-                if line_type.startswith('SCRIPT_'):
-                    content_type = 'DIRECTIVE'
-                    next_type = line_type[7:]
-                else:
-                    content_type = line_type
-                # content_number = int(line_no)
+    content = []
+    content_type = None
+    # content_number = None
+    next_type = None
+    for line in transcribe_script(script_file):
+        line_type, _, script_line = line.split('\t', 2)
+        # Does not follow section because it has to be one line
+        if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
+            line_type = 'COMMENT'
+        if content_type == line_type or line_type == 'FOLLOW':
+            if next_type is not None and not script_line.rstrip().endswith(','):
+                write_content(content_type, content, formatter)
                 content = [script_line]
+                content_type = next_type
+                # content_number = int(line_no)
+                next_type = None
+            else:
+                content.append(script_line)
+        else:
+            if content:
+                write_content(content_type, content, formatter)
+            if line_type.startswith('SCRIPT_'):
+                content_type = 'DIRECTIVE'
+                next_type = line_type[7:]
+            else:
+                content_type = line_type
+            # content_number = int(line_no)
+            content = [script_line]
     if content:
         write_content(content_type, content, formatter)
-    #
-    try:
-        os.remove(transcript_file)
-    except Exception:
-        pass
-
