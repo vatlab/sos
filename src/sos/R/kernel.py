@@ -241,6 +241,9 @@ class sos_R:
         self.kernel_name = 'ir'
         self.background_color = '#FDEDEC'
         self.init_statements = R_init_statements
+        self.options = {
+            'assignment_pattern': r'^([_A-Za-z0-9\.]+)\s*(=|<-).*$'
+            }
 
     def get_vars(self, names):
         for name in names:

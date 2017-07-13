@@ -57,6 +57,10 @@ class sos_Python3:
         self.kernel_name = 'python3'
         self.background_color = '#EAFAF1'
         self.init_statements = __init_statement__
+        self.options = {
+            'variable_pattern': r'^[_A-Za-z0-9\.]+\s*$',
+            'assignment_pattern': r'^([_A-Za-z0-9\.]+)\s*=.*$'
+            }
 
     def get_vars(self, names):
         stmt = "import pickle\n"

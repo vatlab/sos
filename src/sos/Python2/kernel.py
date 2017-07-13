@@ -56,6 +56,10 @@ class sos_Python2:
         self.kernel_name = 'python2'
         self.background_color = '#F6FAEA'
         self.init_statements = __init_statement__
+        self.options = {
+            'variable_pattern': r'^[_A-Za-z0-9\.]+\s*$',
+            'assignment_pattern': r'^([_A-Za-z0-9\.]+)\s*=.*$'
+            }
 
     def get_vars(self, names):
         self.sos_kernel.run_cell("import pickle", True, False)

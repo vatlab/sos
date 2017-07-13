@@ -496,7 +496,7 @@ define([
                     // if the kernel is not in metadata, push it in
                     k_idx = nb.metadata["sos"]["kernels"].findIndex((item) => item[0] === data[i][0]);
                     if (k_idx === -1) {
-                        nb.metadata["sos"]["kernels"].push(data[i]);
+                        nb.metadata["sos"]["kernels"].push(data[i].slice(0,4));
                     } else {
                         var r;
                         // if kernel exist update the rest of the information, but warn users first on
