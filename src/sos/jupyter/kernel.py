@@ -2526,8 +2526,20 @@ Available subkernels:\n{}'''.format(
             finally:
                 # preview workflow
                 if args.workflow:
-                    self.send_frontend_msg('stream',
-                        {'name': 'stdout', 'text': self._workflow})
+                    #self.send_frontend_msg('stream',
+                    #    {'name': 'stdout', 'text': self._workflow})
+                    from sos.converter import script_to_html
+                    sargs = argparse.Namespace()
+                    sargs.return_html = True
+                    sargs.raw = None
+                    sargs.from_content = True
+                    content = script_to_html(script_file=self._workflow, html_file=None, args=sargs)
+                    self.send_frontend_msg('display_data',
+                        {'metadata': {},
+                         'data':
+                            {'text/plain': self._workflow,
+                             'text/html': HTML(content).data
+                      }})
                 if not args.off and args.items:
                     if args.host is None:
                         self.handle_magic_preview(args.items, args.kernel, style)

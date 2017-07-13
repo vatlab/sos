@@ -46,6 +46,7 @@ from .sos_syntax import SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS, SOS_DEPENDS_OPTIO
 #
 # CSS style for the output of html format, extracted from github :-)
 inline_css = '''
+<style type="text/css">
 html {
   font-family: sans-serif;
   -ms-text-size-adjust: 100%;
@@ -410,6 +411,7 @@ body {
   display: none;
 }
 
+
 '''
 
 template_pre_style = '''
@@ -417,21 +419,19 @@ template_pre_style = '''
 <html>
 <head>
     <meta charset='utf-8'>
-
-
-
  <title>%s</title>
 <meta http-equiv="content-type" content="text/html; charset=None">
-<style type="text/css">
 '''
 
 template_pre_table = '''
-
  </style>
 </head>
 <body>
 
 
+'''
+
+template_header = '''
 <div class="container new-discussion-timeline experiment-repo-nav">
 
  <div class="commit-tease">
@@ -569,15 +569,14 @@ def write_html_content(content_type, content, formatter, html):
     # dedent content but still keeps empty lines
     old_class = formatter.cssclass
     nlines = len(content)
-    content = dedent(''.join(content))
+    content = dedent('\n'.join(content))
     # ' ' to keep pygments from removing empty lines
     # split, merge by \n can introduce one additional line
     content = [' \n' if x == '' else x + '\n' for x in content.split('\n')][:nlines]
     #
     if content_type == 'COMMENT':
         formatter.cssclass = 'source blob-code sos-comment'
-        html.write('{}\n'.format(highlight(''.join(content),
-            SoS_Lexer(), formatter)))
+        html.write('\n'.join(highlight(x, SoS_Lexer(), formatter) for x in content))
     elif content_type in ('REPORT', 'report'):
         formatter.cssclass = 'source blob-code sos-report'
         html.write('{}\n'.format(highlight(''.join(content),
@@ -671,25 +670,28 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
     else:
         formatter = ContinuousHtmlFormatter(cssclass="source", full=False)
     with StringIO() as html:
-        html.write(template_pre_style % os.path.basename(script_file))
+        html.write(template_pre_style % ('' if args and hasattr(args, 'from_content') else 
+            os.path.basename(script_file)))
         html.write(inline_css)
         # remove background definition so that we can use our own
         html.write('\n'.join(x for x in formatter.get_style_defs().split('\n') if 'background' not in x))
-        if args and args.raw:
-            raw_link = '<a href="{}" class="commit-tease-sha">{}</a>'.format(args.raw, script_file)
-            script_link = '<a href="{}">{}</a>'.format(args.raw, os.path.basename(script_file))
-        else:
-            raw_link = script_file
-            script_link = os.path.basename(script_file)
-        html.write(template_pre_table % (script_link, raw_link,
-            pretty_size(os.path.getsize(script_file))))
+        html.write(template_pre_table)
+        if not args or not hasattr(args, 'from_content'):
+            if args and args.raw:
+                raw_link = '<a href="{}" class="commit-tease-sha">{}</a>'.format(args.raw, script_file)
+                script_link = '<a href="{}">{}</a>'.format(args.raw, os.path.basename(script_file))
+            else:
+                raw_link = script_file
+                script_link = os.path.basename(script_file)
+            html.write(template_pre_table % (script_link, raw_link,
+                pretty_size(len(script_file) if  args and hasattr(args, 'from_content') else os.path.getsize(script_file))))
         #
         html.write('<table class="highlight tab-size js-file-line-container">')
         content = []
         content_type = None
         content_number = None
         next_type = None
-        for line in transcribe_script(script_file):
+        for line in transcribe_script(content=script_file) if args and hasattr(args, 'from_content') else transcribe_script(script_file):
             line_type, line_no, script_line = line.split('\t', 2)
             # Does not follow section because it has to be one line
             if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
