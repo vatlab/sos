@@ -560,10 +560,16 @@ define([
                 cell.set_text("%preview --workflow");
                 cell.clear_output();
                 cell.output_area.append_output({
-                    "output_type": "stream",
-                    "text": data,
-                    "name": "stdout"
+                    "output_type": "display_data",
+                    "metadata": {},
+                    "data": {
+                             "text/html": "<textarea id='panel_preview_workflow'>" + data + "</textarea>"
+                    }
                 });
+                // <textarea id="side_panel_code">{}</textarea>'
+                CodeMirror.fromTextArea(document.getElementById("panel_preview_workflow"),
+                    {'mode': 'sos'})
+
             } else if (msg_type === "tasks-pending") {
                 // console.log(data);
                 /* we record the pending tasks of cells so that we could
