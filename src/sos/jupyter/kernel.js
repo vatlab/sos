@@ -554,22 +554,21 @@ define([
                 cell.clear_output();
             } else if (msg_type === "preview-kernel") {
                 changeStyleOnKernel(window.my_panel.cell, data);
-            } else if (msg_type === "preview-workflow") {
-                cell = window.my_panel.cell;
-                cell.clear_input();
-                cell.set_text("%preview --workflow");
-                cell.clear_output();
-                cell.output_area.append_output({
-                    "output_type": "display_data",
-                    "metadata": {},
-                    "data": {
-                             "text/html": "<textarea id='panel_preview_workflow'>" + data + "</textarea>"
-                    }
-                });
+            } else if (msg_type === "highlight-workflow") {
+                //cell = window.my_panel.cell;
+                //cell.clear_input();
+                //cell.set_text("%preview --workflow");
+                //cell.clear_output();
+                //cell.output_area.append_output({
+                //    "output_type": "display_data",
+                //    "metadata": {},
+                //    "data": {
+                //             "text/html": "<textarea id='panel_preview_workflow'>" + data + "</textarea>"
+                //    }
+                //});
                 // <textarea id="side_panel_code">{}</textarea>'
-                CodeMirror.fromTextArea(document.getElementById("panel_preview_workflow"),
+                CodeMirror.fromTextArea(document.getElementById(data),
                     {"mode": "sos", "theme": "ipython"})
-
             } else if (msg_type === "tasks-pending") {
                 // console.log(data);
                 /* we record the pending tasks of cells so that we could

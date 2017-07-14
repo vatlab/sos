@@ -2526,7 +2526,15 @@ Available subkernels:\n{}'''.format(
             finally:
                 # preview workflow
                 if args.workflow:
-                    self.send_frontend_msg('preview-workflow', self._workflow)
+                    import random
+                    ta_id = 'preview_wf_{}'.format(random.randint(1, 1000000))
+                    self.send_response(self.iopub_socket, 'display_data',
+                        {'metadata': {},
+                         'data':
+                            {'text/plain': self._workflow,
+                             'text/html': HTML('<textarea id="{}">{}</textarea>'.format(ta_id, self._workflow)).data
+                      }})
+                    self.send_frontend_msg('highlight-workflow', ta_id)
                 if not args.off and args.items:
                     if args.host is None:
                         self.handle_magic_preview(args.items, args.kernel, style)
