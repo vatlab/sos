@@ -248,38 +248,42 @@ pre {
 }
 
 .sos-comment {
-  background: #f7f7f7;
+  /* background: #f7f7f7; */
 }
 .sos-report {
   background: #FAFAD2;
   padding-top: 5px;
 }
 .sos-header {
-  margin-top: 20px;
+  margin-top: 5px;
   margin-bottom: 0px;
   padding-top: 5px;
-  background-color: #C0C0C0;
-  border-bottom-color: #dde4e6;
+  padding-bottom: 5px;
+  background-color: #ddd;
+  /* border-bottom-color: #dde4e6; */
+  color: darkblue;
+  border-top-style: solid;
 
 }
 .sos-directive {
   padding-top: 5px;
-  background-color: #fff9ea;
+  /* background-color: #fff9ea; */
   border-color: #f1c0c0;
 }
 .sos-statement {
   padding-top: 5px;
-  background-color: #f2f9fc;
+  /* background-color: #f2f9fc; */
 }
 .sos-error {
-  background: #ffdddd;
+  /* background: #ffdddd; */
+  color: red;
 }
 .sos-script {
   position: relative;
   padding-right: 10px;
   padding-left: 30px;
   vertical-align: top;
-  background-color: #eff0f1;
+  /* background-color: #eff0f1; */
 }
 
 
