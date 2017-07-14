@@ -568,7 +568,7 @@ define([
                 });
                 // <textarea id="side_panel_code">{}</textarea>'
                 CodeMirror.fromTextArea(document.getElementById("panel_preview_workflow"),
-                    {'mode': 'sos'})
+                    {"mode": "sos", "theme": "ipython"})
 
             } else if (msg_type === "tasks-pending") {
                 // console.log(data);
