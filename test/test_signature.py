@@ -583,5 +583,27 @@ run:
         Base_Executor(wf).run()
         self.assertEqual(ts,  os.path.getmtime('b2.out'))
 
+    def testActionSignature(self):
+        '''Test action signature'''
+        with open('test_action.txt', 'w') as ta:
+            ta.write('something')
+        script = SoS_Script(r'''
+[1]
+input: 'test_action.txt'
+python: input='test_action.txt', output='lc.txt'
+    with open('${input[0]}') as ifile:
+        lc = ifile.read().count('\n')
+    with open('lc.txt', 'w') as ofile:
+        ofile.write('{}\n'.format(lc))
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # the second time, should skip
+        Base_Executor(wf).run()
+        # force
+        env.config['sig_mode'] = 'build'
+        Base_Executor(wf).run()
+
+
 if __name__ == '__main__':
     unittest.main()

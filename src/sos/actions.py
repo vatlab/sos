@@ -110,6 +110,39 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                         return None
                 else:
                     raise RuntimeError('Unacceptable value for option active: {}'.format(kwargs['active']))
+            # if there are parameters input and output, the action is subject to signature verification
+            sig = None
+            if 'input' in kwargs and 'output' in kwargs:
+                if args and isinstance(args[0], str):
+                    script = args[0]
+                elif 'script' in kwargs:
+                    script = kwargs['script']
+                else:
+                    script = ''
+                # 
+                from .target import RuntimeInfo
+                sig = RuntimeInfo(func.__name__, script, [kwargs['input']] if isinstance(kwargs['input'], str) else kwargs['input'],
+                        [kwargs['output']] if isinstance(kwargs['output'], str) else kwargs['output'], [], kwargs)
+                sig.lock()
+                if env.config['sig_mode'] == 'default':
+                    matched = sig.validate()
+                    if isinstance(matched, dict):
+                        env.logger.info('Action ``{}`` is ``ignored`` due to saved signature'.format(func.__name__))
+                        return None
+                    else:
+                        env.logger.debug('Signature mismatch: {}'.format(matched))
+                elif env.config['sig_mode'] == 'assert':
+                    matched = sig.validate()
+                    if isinstance(matched, str):
+                        raise RuntimeError('Signature mismatch: {}'.format(matched))
+                    else:
+                        env.logger.info('Action ``{}`` is ``ignored`` with matching signature'.format(func.__name__))
+                        return None
+                elif env.config['sig_mode'] == 'build':
+                    # build signature require existence of files
+                    if sig.write(rebuild=True):
+                        env.logger.info('Action ``{}`` is ``ignored`` with signature constructed'.format(func.__name__))
+                        return None
             if 'workdir' in kwargs:
                 if not kwargs['workdir'] or not isinstance(kwargs['workdir'], str):
                     raise RuntimeError('workdir option should be a path, {} provided'.format(kwargs['workdir']))
@@ -137,6 +170,9 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                         res = None
                     else:
                         raise
+            if sig:
+                sig.write()
+                sig.release()
             return res
         action_wrapper.run_mode = run_mode
         return action_wrapper
