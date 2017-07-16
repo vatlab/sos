@@ -44,7 +44,7 @@ import multiprocessing as mp
 from tqdm import tqdm as ProgressBar
 from .utils import env, transcribe, AbortExecution, short_repr, get_traceback
 from .sos_eval import Undetermined, interpolate
-from .target import FileTarget, fileMD5, executable, UnknownTarget
+from .target import FileTarget, fileMD5, executable, UnknownTarget, BaseTarget
 
 __all__ = ['SoS_Action', 'script', 'sos_run',
     'fail_if', 'warn_if', 'stop_if',
@@ -170,6 +170,17 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                         res = None
                     else:
                         raise
+            if 'output' in kwargs:
+                ofiles = [kwargs['output']] if isinstance(kwargs['output'], str) else kwargs['output']
+                for ofile in ofiles:
+                    if isinstance(ofile, str):
+                        if not FileTarget(ofile).exists('any'):
+                            raise RuntimeError('Output target {} does not exist after completion of action {}'.format(ofile, func.__name__))
+                    elif isinstance(ofile, BaseTarget):
+                        if not ofile.exists('any'):
+                            raise RuntimeError('Output target {} does not exist after completion of action {}'.format(ofile, func.__name__))
+                    else:
+                        raise ValueError('Unrecognized output target {} with type {}'.format(ofile, ofile.__class__.__name__))
             if sig:
                 sig.write()
                 sig.release()
