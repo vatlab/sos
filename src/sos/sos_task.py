@@ -235,7 +235,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
         master_out = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out')
         master_err = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
         # if this is a master task, calling each sub task
-        with open(master_out, 'ab') as out, open(master_err, 'ab') as err:
+        with open(master_out, 'wb') as out, open(master_err, 'wb') as err:
             def copy_out_and_err(result):
                 tid = result['task']
                 out.write('{}: {}\n'.format(tid, 'completed' if result['ret_code'] == 0 else 'failed').encode())
@@ -298,6 +298,11 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
     env.sos_dict.set('__std_out__', os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out'))
     env.sos_dict.set('__std_err__', os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'))
     env.logfile = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
+    # clear the content of existing .out and .err file if exists, but do not create one if it does not exist
+    if os.path.exists(env.sos_dict['__std_out__']):
+        open(env.sos_dict['__std_out__'], 'w').close()
+    if os.path.exists(env.sos_dict['__std_err__']):
+        open(env.sos_dict['__std_err__'], 'w').close()
 
     if verbosity is not None:
         env.verbosity = verbosity
