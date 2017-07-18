@@ -194,7 +194,6 @@ sos = sos.converter:SoS_Lexer
 [sos_targets]
 dynamic = sos.target:dynamic
 remote = sos.target:remote
-local = sos.target:local
 executable = sos.target:executable
 sos_variable = sos.target:sos_variable
 sos_step = sos.target:sos_step
