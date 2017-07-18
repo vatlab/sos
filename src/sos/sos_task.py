@@ -320,7 +320,7 @@ CONFIG = {}
 del sos_handle_parameter_
 ''' + global_def, '${ }')
     except Exception as e:
-        env.logger.debug('Failed to execute global definition {}: {}'.format(global_def, e))
+        env.logger.trace('Failed to execute global definition {}: {}'.format(global_def, e))
 
     if '_runtime' not in sos_dict:
         sos_dict['_runtime'] = {}
