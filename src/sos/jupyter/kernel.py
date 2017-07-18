@@ -779,8 +779,8 @@ class SoS_Kernel(IPythonKernel):
         # task engine knows (e.g. a task is rerun outside of jupyter). In this case, since we
         # already get the status, we should update the task engine...
         #
-        # <tr><th align="right"  width="30%">Status</th><td align="left">completed</td></tr>
-        status = result.split('>Status<', 1)[-1].split('</td',1)[0].split('>')[-1]
+        # <tr><th align="right"  width="30%">Status</th><td align="left"><div class="one_liner">completed</div></td></tr>
+        status = result.split('>Status<', 1)[-1].split('</div',1)[0].split('>')[-1]
         host._task_engine.update_task_status(task_id, status)
 
 
