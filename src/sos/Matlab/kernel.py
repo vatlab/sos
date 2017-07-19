@@ -62,6 +62,7 @@ def _Matlab_repr(obj):
     elif isinstance(obj, set):
         return '{' + ','.join(_Matlab_repr(x) for x in obj) + '}'
     else:
+        # FIXME
         import numpy
         import pandas
         if isinstance(obj, (numpy.intc, numpy.intp, numpy.int8, numpy.int16, numpy.int32, numpy.int64,\
@@ -70,7 +71,7 @@ def _Matlab_repr(obj):
             return repr(obj)
         elif isinstance(obj, numpy.matrixlib.defmatrix.matrix):
             try:
-                import mat
+                from scipy.io import savemat
             except ImportError:
                 raise UsageError('The mat-format module is required to pass numpy matrix as R matrix'
                     'See https://github.com/wesm/mat/tree/master/python for details.')
@@ -78,12 +79,12 @@ def _Matlab_repr(obj):
             mat.write_dataframe(pandas.DataFrame(obj).copy(), mat_tmp_)
             return 'data.matrix(..read.mat({!r}))'.format(mat_tmp_)
         elif isinstance(obj, numpy.ndarray):
-            return 'c(' + ','.join(_Matlab_repr(x) for x in obj) + ')'
+            return 'FIXME'
         elif isinstance(obj, pandas.DataFrame):
             try:
-                import mat
+                from scipy.io import savemat
             except ImportError:
-                raise UsageError('The mat-format module is required to pass pandas DataFrame as R data.frame'
+                raise UsageError('The scipy module is required to pass pandas DataFrame as R data.frame'
                     'See https://github.com/wesm/mat/tree/master/python for details.')
             mat_tmp_ = tempfile.NamedTemporaryFile(suffix='.mat', delete=False).name
             try:
@@ -110,28 +111,10 @@ def _Matlab_repr(obj):
         else:
             return repr('Unsupported datatype {}'.format(short_repr(obj)))
 
-
-
-# Matlab    length (n)    Python
-# NULL        NaN
-# logical    1    boolean
-# integer    1    integer
-# numeric    1    double
-# character    1    unicode
-# logical    n > 1    array
-# integer    n > 1    array
-# numeric    n > 1    list
-# character    n > 1    list
-# list without names    n > 0    list
-# list with names    n > 0    dict
-# matrix    n > 0    array
-# data.frame    n > 0    DataFrame
-
 Matlab_init_statements = r'''
 path(path, {!r})
 '''.format(os.path.split(__file__)[0])
 print(Matlab_init_statements)
-
 
 class sos_Matlab:
     def __init__(self, sos_kernel):
@@ -141,15 +124,15 @@ class sos_Matlab:
         self.init_statements = Matlab_init_statements
 
     def get_vars(self, names):
-        #for name in names:
+        for name in names:
         #    if name.startswith('_'):
         #        self.sos_kernel.warn('Variable {} is passed from SoS to kernel {} as {}'.format(name, self.kernel_name, '.' + name[1:]))
         #        newname = '.' + name[1:]
         #    else:
         #        newname = name
-        #    matlab_repr = _Matlab_repr(env.sos_dict[name])
-        #    self.sos_kernel.run_cell('{} = {}'.format(newname, matlab_repr), True, False, on_error='Failed to get variable {} to R'.format(name))
-        pass
+            matlab_repr = _Matlab_repr(env.sos_dict[name])
+            self.sos_kernel.run_cell('{} = {}'.format(name, matlab_repr), True, False,
+                    on_error='Failed to get variable {} of type {} to Matlab'.format(name, env.sos_dict[name].__class__.__name__))
 
     def put_vars(self, items, to_kernel=None):
         # first let us get all variables with names starting with sos
