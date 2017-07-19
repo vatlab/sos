@@ -237,7 +237,7 @@ __read_mat <- function(filename, index=NULL) {
 class sos_Matlab:
     def __init__(self, sos_kernel):
         self.sos_kernel = sos_kernel
-        self.kernel_name = 'matlab_kernel'
+        self.kernel_name = 'matlab'
         self.background_color = '#FA8072'
         self.init_statements = Matlab_init_statements
 
