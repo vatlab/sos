@@ -54,7 +54,9 @@ def __loaded_modules__():
 class sos_Python3:
     def __init__(self, sos_kernel):
         self.sos_kernel = sos_kernel
+        # will be replaced with name of the actual kernel used
         self.kernel_name = 'python3'
+        self.supported_kernels = ['python3']
         self.background_color = '#EAFAF1'
         self.init_statements = __init_statement__
         self.options = {

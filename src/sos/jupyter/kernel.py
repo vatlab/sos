@@ -614,8 +614,9 @@ class SoS_Kernel(IPythonKernel):
                         self._supported_languages[name] = plugin
                         # for convenience, we create two entries for, e.g. R and ir
                         # but only if there is no existing definition
-                        if name != plugin.kernel_name and plugin.kernel_name not in self._supported_languages:
-                            self._supported_languages[plugin.kernel_name] = plugin
+                        for supported_kernel in plugin.supported_kernels:
+                            if name != supported_kernel and supported_kernel not in self._supported_languages:
+                                self._supported_languages[supported_kernel] = plugin
                     except Exception as e:
                         raise RuntimeError('Failed to load language {}: {}'.format(language, e))
                     #
@@ -649,25 +650,27 @@ class SoS_Kernel(IPythonKernel):
                 except Exception as e:
                     raise RuntimeError('Failed to load language {}: {}'.format(language, e))
                 #
-                if plugin.kernel_name not in [x[1] for x in self._kernel_list]:
-                    raise ValueError('Unrecognized Jupyter kernel name {} defined by language {}. Please make sure it is properly installed and appear in the output of command "jupyter kenelspec list"'.format(
-                        plugin.kernel_name, language))
-
+                avail_kernels = [x in [x[1] for x in self._kernel_list] for x in plugin.supported_kernels]
+                if not avail_kernels:
+                    raise ValueError('Failed to find any of the kernels {} supported by language {}. Please make sure it is properly installed and appear in the output of command "jupyter kenelspec list"'.format(
+                        ', '.join(plugin.supported_kernels), language))
+                # use the first available kernel
                 if color == 'default':
                     color = plugin.background_color
-                new_def = add_or_replace([name, plugin.kernel_name, plugin.kernel_name, plugin.background_color if color is None else color,
+                new_def = add_or_replace([name, avail_kernels[0], avail_kernels[0], plugin.background_color if color is None else color,
                     getattr(plugin, 'options', {})])
             else:
                 # if should be defined ...
                 if language not in self._supported_languages:
                     raise RuntimeError('Unrecognized language definition {}'.format(language))
                 #
-                if self._supported_languages[language].kernel_name not in [x[1] for x in self._kernel_list]:
-                    raise ValueError('Unrecognized Jupyter kernel name {} defined by language {}. Please make sure it is properly installed and appear in the output of command "jupyter kenelspec list"'.format(
-                        self._supported_languages[language].kernel_name, language))
+                avail_kernels = [x in [x[1] for x in self._kernel_list] for x in self._supported_languages[language].supported_kernels]
+                if not avail_kernels:
+                    raise ValueError('Failed to find any of the kernels {} supported by language {}. Please make sure it is properly installed and appear in the output of command "jupyter kenelspec list"'.format(
+                        ', '.join(self._supported_languages[language].supported_kernels), language))
 
                 new_def = add_or_replace([
-                    name, self._supported_languages[language].kernel_name, language,
+                    name, avail_kernels[0], language,
                         self._supported_languages[language].background_color if color is None or color == 'default' else color,
                         getattr(self._supported_languages[language], 'options', {})])
 
@@ -694,8 +697,9 @@ class SoS_Kernel(IPythonKernel):
                 plugin = entrypoint.load()(self)
                 self._supported_languages[name] = plugin
                 # for convenience, we create two entries for, e.g. R and ir
-                if name != plugin.kernel_name:
-                    self._supported_languages[plugin.kernel_name] = plugin
+                for kname in plugin.supported_kernels:
+                    if name != kname:
+                        self._supported_languages[kname] = plugin
             except Exception as e:
                 pass #self.log.error('Failed to load language {}: {}'.format(entrypoint.name, e))
         return self._supported_languages
@@ -1919,9 +1923,12 @@ Available subkernels:\n{}'''.format(
             specs = km.find_kernel_specs()
             # get supported languages
             self._kernel_list = []
-            lan_map = {self.supported_languages[x].kernel_name:(x, self.supported_languages[x].background_color,
-                getattr(self._supported_languages[x], 'options', {})) for x in self.supported_languages.keys()
-                    if x != self.supported_languages[x].kernel_name}
+            lan_map = {}
+            for x in self.supported_langauges.keys():
+                for kname in self.supported_languages[x].supported_kernels:
+                    if x != kname:
+                        lan_map[kname] = (x, self.supported_languages[x].background_color,
+                            getattr(self._supported_languages[x], 'options', {}))
             for spec in specs.keys():
                 if spec == 'sos':
                     # the SoS kernel will be default theme color.

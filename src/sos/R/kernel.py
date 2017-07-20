@@ -238,6 +238,7 @@ R_init_statements = r'''
 class sos_R:
     def __init__(self, sos_kernel):
         self.sos_kernel = sos_kernel
+        # will be replaced with name of the actual kernel used
         self.kernel_name = 'ir'
         self.background_color = '#FDEDEC'
         self.init_statements = R_init_statements

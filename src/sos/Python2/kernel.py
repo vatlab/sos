@@ -53,7 +53,9 @@ class sos_Python2:
 
     def __init__(self, sos_kernel):
         self.sos_kernel = sos_kernel
+        # will be replaced with name of the actual kernel used
         self.kernel_name = 'python2'
+        self.supported_kernels = ['python2']
         self.background_color = '#F6FAEA'
         self.init_statements = __init_statement__
         self.options = {

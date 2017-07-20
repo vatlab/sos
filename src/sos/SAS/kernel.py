@@ -33,7 +33,9 @@ from io import BytesIO
 class sos_SAS(SASsessionSTDIO):
     def __init__(self, sos_kernel):
         self.sos_kernel = sos_kernel
+        # will be replaced with name of the actual kernel used
         self.kernel_name = 'sas'
+        self.supported_kernels = ['sas']
         self.background_color = '#dcb9b9'
         self.init_statements = ''
         #

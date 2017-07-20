@@ -119,7 +119,9 @@ print(Matlab_init_statements)
 class sos_Matlab:
     def __init__(self, sos_kernel):
         self.sos_kernel = sos_kernel
+        # will be replaced with name of the actual kernel used
         self.kernel_name = 'matlab'
+        self.supported_kernels = ['matlab', 'imatlab', 'octave']
         self.background_color = '#FA8072'
         self.init_statements = Matlab_init_statements
 

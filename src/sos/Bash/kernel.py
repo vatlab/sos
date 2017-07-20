@@ -53,7 +53,9 @@ def _Bash_repr(obj):
 class sos_Bash:
     def __init__(self, sos_kernel):
         self.sos_kernel = sos_kernel
+        # will be replaced with name of the actual kernel used
         self.kernel_name = 'bash'
+        self.supported_kernels = ['bash']
         self.background_color = '#E6EEFF'
         self.init_statements = ''
 
