@@ -267,6 +267,7 @@ Bash = sos.Bash.kernel:sos_Bash
 JavaScript = sos.JavaScript.kernel:sos_JavaScript
 SAS = sos.SAS.kernel:sos_SAS [sas]
 Matlab = sos.Matlab.kernel:sos_Matlab
+Octave = sos.Matlab.kernel:sos_Matlab
 
 [sos_converters]
 sos-html.parser = sos.converter:get_script_to_html_parser
