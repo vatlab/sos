@@ -1634,6 +1634,7 @@ def cmd_config(args, workflow_args):
                 sys.exit(1)
         else:
             env.logger.error('Config file {} does not exist'.format(config_file))
+            sys.exit(1)
         #
         def unset_key(prefix, cfg):
             changed = 0
