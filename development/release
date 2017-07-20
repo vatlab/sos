@@ -111,6 +111,15 @@ run: workdir='../docs/doc/examples'
 	cp ${_input!a} .
 	sos convert ${_input!b} ${_output!b} --template sos-full
 
+[convert-example-report]
+input:  '../docs/src/examples/Preview_and_Report_Generation.ipynb', group_by=1
+depends: '../src/sos/jupyter/sos-report.tpl'
+output: "../docs/doc/examples/${_input!bn}_report.html"
+
+run: workdir='../docs/doc/examples'
+	cp ${_input!a} .
+	sos convert ${_input!b} ${_output!b} --template sos-full
+
 [convert-large-examples]
 input:  '../docs/src/examples/*/*.sos', group_by=1
 output: "../docs/doc/examples/${_input!db}/${_input!bn}.html"
@@ -131,6 +140,7 @@ sos_run('convert-tutorials')
 sos_run('convert-homepage')
 sos_run('convert-example-scripts')
 sos_run('convert-example-notebooks')
+sos_run('convert-example-report')
 sos_run('convert-large-examples')
 
 # push changes to website
