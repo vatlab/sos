@@ -312,8 +312,7 @@ class SoS_Kernel(IPythonKernel):
             help='''Preview files on specified remote host, which should
             be defined under key host of sos configuration files (preferrably
             in ~/.sos/hosts.yml). If this option is specified without
-            value, SoS will use value specified by configuration key `default_host`,
-            or list all configured queues if no such key is defined''')
+            value, SoS will list all configured queues and stop.''')
         parser.add_argument('--off', action='store_true',
             help='''Turn off file preview''')
         loc = parser.add_mutually_exclusive_group()
@@ -435,9 +434,8 @@ class SoS_Kernel(IPythonKernel):
             system. The files to retrieve are determined by "path_map"
             determined by "paths" definitions of local and remote hosts.''')
         parser.add_argument('-f', '--from', dest='host', nargs='?', const='',
-            help='''Remote host to which the files will be sent. SoS will use value
-            specified by configuration key `default_queue`, or list all configured
-            queues if no such key is defined''')
+            help='''Remote host to which the files will be sent. SoS will list all
+            configured queues and stop''')
         parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
             help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
                 information to standard output (default to 2).''')
@@ -451,9 +449,8 @@ class SoS_Kernel(IPythonKernel):
             to remote host. The location of remote files are determined by "path_map"
             determined by "paths" definitions of local and remote hosts.''')
         parser.add_argument('-t', '--to', dest='host', nargs='?', const='',
-            help='''Remote host to which the files will be sent. SoS will use value
-            specified by configuration key `default_queue`, or list all configured
-            queues if no such key is defined''')
+            help='''Remote host to which the files will be sent. SoS will list all
+            configured queues if no such key is defined''')
         parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
             help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
                 information to standard output (default to 2).''')
@@ -1515,14 +1512,9 @@ Available subkernels:\n{}'''.format(
         from sos.hosts import Host
         cfg = env.sos_dict['CONFIG']
         if args.host == '':
-            if 'default_host' in cfg:
-                args.host = cfg['default_host']
-            elif 'default_queue' in cfg:
-                args.host = cfg['default_queue']
-            else:
-                from sos.hosts import list_queues
-                list_queues(cfg, args.verbosity)
-                return
+            from sos.hosts import list_queues
+            list_queues(cfg, args.verbosity)
+            return
         try:
             host = Host(args.host)
             #
@@ -1544,14 +1536,9 @@ Available subkernels:\n{}'''.format(
         from sos.hosts import Host
         cfg = env.sos_dict['CONFIG']
         if args.host == '':
-            if 'default_host' in cfg:
-                args.host = cfg['default_host']
-            elif 'default_queue' in cfg:
-                args.host = cfg['default_queue']
-            else:
-                from .hosts import list_hosts
-                list_hosts(cfg, args.verbosity)
-                return
+            from .hosts import list_hosts
+            list_hosts(cfg, args.verbosity)
+            return
         try:
             host = Host(args.host)
             #

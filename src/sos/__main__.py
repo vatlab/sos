@@ -196,9 +196,8 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             workflow. The queue can be defined in global or local sos
             configuration file, or a file specified by option  --config. A host is
             assumed to be a remote machine with process type if no configuration
-            is found. If this option is specified without value, SoS will use value
-            specified by configuration key `default_queue`, or list all configured
-            queues if no such key is defined''')
+            is found. If this option is specified without value, SoS will list
+            all configured queues and exit.''')
     parser.add_argument('-w', dest='__wait__', action='store_true',
         help='''Wait for the completion of external tasks regardless of the
             setting of individual task queue.''')
@@ -213,8 +212,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             to remote host and invoke sos command there. No path translation
             and input/output file synchronization will be performed before or
             after the execution of the workflow. If this option is specified without
-            value, SoS will use value specified by configuration key `default_host`,
-            or list all configured queues if no such key is defined''')
+            value, SoS will list all configured queues and exit.''')
     #parser.add_argument('-r', dest='__remote__', action='store_true',
     #    help='''Forcing all targets specified in input, output, and
     #        depends are remote targets so that they are not synchronized
@@ -267,12 +265,9 @@ def cmd_run(args, workflow_args):
 
     if args.__queue__ == '':
         cfg = load_config_files(args.__config__)
-        if 'default_queue' in cfg:
-            args.__queue__ = cfg['default_queue']
-        else:
-            from .hosts import list_queues
-            list_queues(cfg, args.verbosity)
-            return
+        from .hosts import list_queues
+        list_queues(cfg, args.verbosity)
+        return
 
     if args.__wait__ and args.__no_wait__:
         sys.exit('Please specify only one of -w (wait) or -W (no-wait)')
@@ -280,12 +275,9 @@ def cmd_run(args, workflow_args):
     if args.__remote__ is not None:
         if args.__remote__ == '':
             cfg = load_config_files(args.config)
-            if 'default_host' in cfg:
-                args.__remote__ = cfg['default_host']
-            else:
-                from .hosts import list_queues
-                list_queues(cfg, args.verbosity)
-                return
+            from .hosts import list_queues
+            list_queues(cfg, args.verbosity)
+            return
 
         # if executing on a remote host...
         from .hosts import Host
@@ -477,13 +469,10 @@ def cmd_resume(args, workflow_args):
     if args.__remote__ is not None:
         if args.__remote__ == '':
             from .utils import load_config_files
+            from .hosts import list_queues
             cfg = load_config_files(args.config)
-            if 'default_host' in cfg:
-                args.__remote__ = cfg['default_host']
-            else:
-                from .hosts import list_queues
-                list_queues(cfg, args.verbosity)
-                return
+            list_queues(cfg, args.verbosity)
+            return
 
         # resume executing on a remote host...
         from .hosts import Host
@@ -592,9 +581,8 @@ def get_dryrun_parser(desc_only=False):
             workflow. The queue can be defined in global or local sos
             configuration file, or a file specified by option  --config. A host is
             assumed to be a remote machine with process type if no configuration
-            is found. If this option is specified without value, SoS will use value
-            specified by configuration key `default_queue`, or list all configured
-            queues if no such key is defined''')
+            is found. If this option is specified without value, SoS will list all
+            configured queues and exit.''')
     output = parser.add_argument_group(title='Output options',
         description='''Output of workflow''')
     output.add_argument('-d', nargs='?', default='', metavar='DAG', dest='__dag__',
@@ -634,9 +622,8 @@ def get_push_parser(desc_only=False):
         to remote host. The location of remote files are determined by "path_map"
         determined by "paths" definitions of local and remote hosts.''')
     parser.add_argument('-t', '--to', dest='host', nargs='?', const='',
-        help='''Remote host to which the files will be sent. SoS will use value
-        specified by configuration key `default_queue`, or list all configured
-        queues if no such key is defined''')
+        help='''Remote host to which the files will be sent. SoS will list all configured
+        queues and exit''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global or local
         sos config.yml files.''')
@@ -653,14 +640,9 @@ def cmd_push(args, workflow_args):
     env.verbosity = args.verbosity
     cfg = load_config_files(args.config)
     if args.host == '':
-        if 'default_host' in cfg:
-            args.host = cfg['default_host']
-        elif 'default_queue' in cfg:
-            args.host = cfg['default_queue']
-        else:
-            from .hosts import list_queues
-            list_queues(cfg, args.verbosity)
-            return
+        from .hosts import list_queues
+        list_queues(cfg, args.verbosity)
+        return
     try:
         host = Host(args.host)
         #
@@ -688,9 +670,8 @@ def get_pull_parser(desc_only=False):
         system. The files to retrieve are determined by "path_map"
         determined by "paths" definitions of local and remote hosts.''')
     parser.add_argument('-f', '--from', dest='host', nargs='?', const='',
-        help='''Remote host to which the files will be sent. SoS will use value
-        specified by configuration key `default_queue`, or list all configured
-        queues if no such key is defined''')
+        help='''Remote host to which the files will be sent. SoS will list all configured
+        queues and exit''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global or local
         sos config.yml files.''')
@@ -707,14 +688,9 @@ def cmd_pull(args, workflow_args):
     env.verbosity = args.verbosity
     cfg = load_config_files(args.config)
     if args.host == '':
-        if 'default_host' in cfg:
-            args.host = cfg['default_host']
-        elif 'default_queue' in cfg:
-            args.host = cfg['default_queue']
-        else:
-            from .hosts import list_queues
-            list_queues(cfg, args.verbosity)
-            return
+        from .hosts import list_queues
+        list_queues(cfg, args.verbosity)
+        return
     try:
         host = Host(args.host)
         #
@@ -755,8 +731,7 @@ def get_preview_parser(desc_only=False):
         help='''Preview files on specified remote host, which should
         be defined under key host of sos configuration files (preferrably
         in ~/.sos/hosts.yml). If this option is specified without
-        value, SoS will use value specified by configuration key `default_host`,
-        or list all configured queues if no such key is defined''')
+        value, SoS will list all configured queues and exit.''')
     parser.add_argument('--html', action='store_true',
         help=argparse.SUPPRESS)
     parser.add_argument('-c', '--config', help='''A configuration file with host
@@ -848,12 +823,9 @@ def cmd_preview(args, unknown_args):
     cfg = load_config_files(args.config)
     env.verbosity = args.verbosity
     if args.host == '':
-        if 'default_host' in cfg:
-            args.host = cfg['default_host']
-        else:
-            from .hosts import list_queues
-            list_queues(cfg, args.verbosity)
-            return
+        from .hosts import list_queues
+        list_queues(cfg, args.verbosity)
+        return
     if args.host:
         # remote host?
         host = Host(args.host)
@@ -924,9 +896,8 @@ def get_execute_parser(desc_only=False):
         if the tasks . The queue can be defined in global or local sos
         configuration file, or a file specified by option  --config. A host is
         assumed to be a remote machine with process type if no configuration
-        is found. If this option is specified without value, SoS will use value
-        specified by configuration key `default_queue`, or list all configured
-        queues if no such key is defined''')
+        is found. If this option is specified without value, SoS will list all
+        configured queues and exit.''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global or local
         sos config.yml files.''')
@@ -990,12 +961,9 @@ def cmd_execute(args, workflow_args):
         sys.exit(sum(exit_code))
     elif args.queue == '':
         cfg = load_config_files(args.config)
-        if 'default_queue' in cfg:
-            args.queue = cfg['default_queue']
-        else:
-            from .hosts import list_queues
-            list_queues(cfg, args.verbosity)
-            return
+        from .hosts import list_queues
+        list_queues(cfg, args.verbosity)
+        return
     # with queue definition
     from .hosts import Host
     import time
@@ -1050,9 +1018,8 @@ def get_status_parser(desc_only=False):
         if the tasks . The queue can be defined in global or local sos
         configuration file, or a file specified by option  --config. A host is
         assumed to be a remote machine with process type if no configuration
-        is found. If this option is specified without value, SoS will use value
-        specified by configuration key `default_queue`, or list all configured
-        queues if no such key is defined''')
+        is found. If this option is specified without value, SoS will list all
+        configured queues and exit.''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global or local
         sos config.yml files.''')
@@ -1083,12 +1050,9 @@ def cmd_status(args, workflow_args):
     try:
         cfg = load_config_files(args.config)
         if args.queue == '':
-            if 'default_queue' in cfg:
-                args.queue = cfg['default_queue']
-            else:
-                from .hosts import list_queues
-                list_queues(cfg, args.verbosity)
-                return
+            from .hosts import list_queues
+            list_queues(cfg, args.verbosity)
+            return
         if not args.queue:
             check_tasks(args.tasks, args.verbosity, args.html, args.start_time, args.age)
         else:
@@ -1129,9 +1093,8 @@ def get_purge_parser(desc_only=False):
         if the tasks . The queue can be defined in global or local sos
         configuration file, or a file specified by option  --config. A host is
         assumed to be a remote machine with process type if no configuration
-        is found. If this option is specified without value, SoS will use value
-        specified by configuration key `default_queue`, or list all configured
-        queues if no such key is defined''')
+        is found. If this option is specified without value, SoS will list all
+        configured queues and exit.''')
     parser.add_argument('-w', '--workflows', nargs='*', help='''Remove tasks generated
         by specified task IDs. If no workflow is specified, all workflows in the
         current project will be assumed.''')
@@ -1154,12 +1117,9 @@ def cmd_purge(args, workflow_args):
     try:
         if args.queue == '':
             cfg = load_config_files(args.config)
-            if 'default_queue' in cfg:
-                args.queue = cfg['default_queue']
-            else:
-                from .hosts import list_queues
-                list_queues(cfg, args.verbosity)
-                return
+            from .hosts import list_queues
+            list_queues(cfg, args.verbosity)
+            return
         if not args.all and not args.tasks and not args.workflows:
             import glob
             sig_files = glob.glob('.sos/*.sig')
@@ -1197,9 +1157,8 @@ def get_kill_parser(desc_only=False):
         if the tasks . The queue can be defined in global or local sos
         configuration file, or a file specified by option  --config. A host is
         assumed to be a remote machine with process type if no configuration
-        is found. If this option is specified without value, SoS will use value
-        specified by configuration key `default_queue`, or list all configured
-        queues if no such key is defined''')
+        is found. If this option is specified without value, SoS will list all
+        configured queues and exit.''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global or local
         sos config.yml files.''')
@@ -1217,12 +1176,9 @@ def cmd_kill(args, workflow_args):
     env.verbosity = args.verbosity
     if args.queue == '':
         cfg = load_config_files(args.config)
-        if 'default_queue' in cfg:
-            args.queue = cfg['default_queue']
-        else:
-            from .hosts import list_queues
-            list_queues(cfg, args.verbosity)
-            return
+        from .hosts import list_queues
+        list_queues(cfg, args.verbosity)
+        return
     if not args.queue:
         if args.all:
             if args.tasks:

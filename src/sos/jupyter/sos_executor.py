@@ -273,12 +273,9 @@ def runfile(script=None, raw_args='', wdir='.', code=None, kernel=None, **kwargs
         cfg = load_config_files(args.__config__)
         env.sos_dict.set('CONFIG', cfg)
         if args.__remote__ == '':
-            if 'default_host' in cfg:
-                args.__remote__ = cfg['default_host']
-            else:
-                from .hosts import list_queues
-                list_queues(cfg, args.verbosity)
-                return
+            from .hosts import list_queues
+            list_queues(cfg, args.verbosity)
+            return
 
         # if executing on a remote host...
         from sos.hosts import Host
