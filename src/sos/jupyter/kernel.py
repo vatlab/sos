@@ -1090,7 +1090,7 @@ class SoS_Kernel(IPythonKernel):
         remaining_code = lines[1] if len(lines) > 1 else ''
         if warn_remaining and remaining_code.strip():
             self.warn('Statement {} ignored'.format(short_repr(remaining_code)))
-        return command_line, remaining_code
+        return self._interpolate_option(command_line, quiet=False), remaining_code
 
     def run_cell(self, code, silent, store_history, on_error=None):
         #
@@ -1666,9 +1666,7 @@ Available subkernels:\n{}'''.format(
             self.switch_kernel(orig_kernel)
 
     def handle_magic_cd(self, option):
-        # interpolate command
-        option = self._interpolate_option(option, quiet=True)
-        if option is None:
+        if not option:
             return
         to_dir = option.strip()
         try:
@@ -1680,8 +1678,7 @@ Available subkernels:\n{}'''.format(
 
     def handle_shell_command(self, cmd):
         # interpolate command
-        cmd = self._interpolate_option(cmd, quiet=False)
-        if cmd is None:
+        if not cmd:
             return
         with self.redirect_sos_io():
             try:
@@ -2301,7 +2298,6 @@ Available subkernels:\n{}'''.format(
             options, remaining_code = self.get_magic_and_code(code, False)
             old_options = self.options
             self.options = options + ' ' + self.options
-            self.options = self._interpolate_option(self.options, quiet=False)
             try:
                 # %run is executed in its own namespace
                 old_dict = env.sos_dict
@@ -2318,7 +2314,6 @@ Available subkernels:\n{}'''.format(
                 self.options = old_options
         elif self.MAGIC_SOSRUN.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
-            options = self._interpolate_option(options, quiet=False)
             old_options = self.options
             self.options = options + ' ' + self.options
             try:
@@ -2349,8 +2344,7 @@ Available subkernels:\n{}'''.format(
                     args = parser.parse_args(shlex.split(options))
                 except SystemExit:
                     return
-                filename = self._interpolate_option(args.filename, quiet=False).strip()
-                filename = os.path.expanduser(filename)
+                filename = os.path.expanduser(args.filename)
                 if os.path.isfile(filename) and not args.force:
                     raise ValueError('Cannot overwrite existing output file {}'.format(filename))
 
@@ -2386,7 +2380,7 @@ Available subkernels:\n{}'''.format(
                 except SystemExit:
                     return
                 if args.filename:
-                    filename = self._interpolate_option(args.filename, quiet=False).strip()
+                    filename = args.filename
                     if filename.lower().endswith('.html'):
                         if args.__to__ is None:
                             ftype = 'html'
@@ -2508,7 +2502,6 @@ Available subkernels:\n{}'''.format(
                 #env.exec_dir = old_dir
         elif self.MAGIC_PREVIEW.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
-            options = self._interpolate_option(options, quiet=True)
             parser = self.get_preview_parser()
             options = shlex.split(options, posix=False)
             help_option = []
