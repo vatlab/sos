@@ -1082,7 +1082,7 @@ class SoS_Kernel(IPythonKernel):
         else:
             lines[0] = code.split('\n', 1)
 
-        pieces = lines[0].strip().split(None, 1)
+        pieces = self._interpolate_text(lines[0], quiet=False).strip().split(None, 1)
         if len(pieces) == 2:
             command_line = pieces[1]
         else:
@@ -1090,7 +1090,7 @@ class SoS_Kernel(IPythonKernel):
         remaining_code = lines[1] if len(lines) > 1 else ''
         if warn_remaining and remaining_code.strip():
             self.warn('Statement {} ignored'.format(short_repr(remaining_code)))
-        return self._interpolate_option(command_line, quiet=False), remaining_code
+        return command_line, remaining_code
 
     def run_cell(self, code, silent, store_history, on_error=None):
         #
@@ -1528,8 +1528,8 @@ Available subkernels:\n{}'''.format(
             #
             received = host.receive_from_host(args.items)
             #
-            msg = '{} item{} received:<br>{}'.format(len(received),
-                ' is' if len(received) <= 1 else 's are',
+            msg = '{} item{} received from {}:<br>{}'.format(len(received),
+                ' is' if len(received) <= 1 else 's are', args.host,
                 '<br>'.join(['{} <= {}'.format(x, received[x]) for x in sorted(received.keys())]))
             self.send_response(self.iopub_socket, 'display_data',
                 {
@@ -1557,9 +1557,9 @@ Available subkernels:\n{}'''.format(
             #
             sent = host.send_to_host(args.items)
             #
-            msg = '{} item{} sent:\n{}'.format(len(sent),
-                ' is' if len(sent) <= 1 else 's are',
-                '\n'.join(['{} => {}'.format(x, sent[x]) for x in sorted(sent.keys())]))
+            msg = '{} item{} sent to {}:<br>{}'.format(len(sent),
+                ' is' if len(sent) <= 1 else 's are', args.host,
+                '<br>'.join(['{} => {}'.format(x, sent[x]) for x in sorted(sent.keys())]))
             self.send_response(self.iopub_socket, 'display_data',
                 {
                     'source': 'SoS',
@@ -1569,22 +1569,22 @@ Available subkernels:\n{}'''.format(
         except Exception as e:
             self.warn('Failed to send {}: {}'.format(', '.join(args.items), e))
 
-    def _interpolate_option(self, option, quiet=False):
+    def _interpolate_text(self, text, quiet=False):
         # interpolate command
         try:
-            new_option = interpolate(option, sigil='${ }', local_dict=env.sos_dict._dict)
-            if new_option != option and not quiet:
+            new_text = interpolate(text, sigil='${ }', local_dict=env.sos_dict._dict)
+            if new_text != text and not quiet:
                 self.send_response(self.iopub_socket, 'display_data',
                     {
                         'source': 'SoS',
                         'metadata': {},
                         'data': {
-                            'text/html': HTML('<div class="sos_hint">{}</div>'.format(
-                            new_option.strip() + '<br>## -- End interpolated command --<br>')).data }
+                            'text/html': HTML('<div class="sos_hint">> {}</div>'.format(
+                            new_text.strip() + '<br>')).data }
                         })
-            return new_option
+            return new_text
         except Exception as e:
-            self.warn('Failed to interpolate {}: {}\n'.format(short_repr(option), e))
+            self.warn('Failed to interpolate {}: {}\n'.format(short_repr(text), e))
             return None
 
     def handle_magic_preview(self, items, kernel=None, style=None):
@@ -2610,7 +2610,7 @@ Available subkernels:\n{}'''.format(
             # handle string interpolation before sending to the underlying kernel
             if code:
                 self.last_executed_code = code
-            code = self._interpolate_option(code, quiet=False)
+            code = self._interpolate_text(code, quiet=False)
             if self.cell_idx is not None:
                 self.send_frontend_msg('cell-kernel', [self.cell_idx, self.kernel])
                 self.cell_idx = None

@@ -419,10 +419,10 @@ class RemoteHost:
 
         sent = {}
         for source in sorted(sending.keys()):
+            dest = sending[source]
             if self.is_shared(source):
                 env.logger.debug('Skip sending {} on shared file system'.format(source))
             else:
-                dest = sending[source]
                 env.logger.debug('Sending ``{}`` to {}:{}'.format(source, self.alias, dest))
                 cmd = interpolate(self._get_send_cmd(rename=os.path.basename(source) != os.path.basename(dest)),
                         '${ }', {'source': source.rstrip('/'), 'dest': dest, 'host': self.address, 'port': self.port})
@@ -430,7 +430,7 @@ class RemoteHost:
                 ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                 if (ret != 0):
                     raise RuntimeError('Failed to copy {} to {} using command "{}". The remote host might be unavailable.'.format(source, self.alias, cmd))
-                sent[source] = dest
+            sent[source] = dest
         return sent
 
     def receive_from_host(self, items):
@@ -452,6 +452,7 @@ class RemoteHost:
                     env.logger.error('Failed to create destination directory {}'.format(dest_dir))
             if self.is_shared(dest) and os.path.basename(source) == os.path.basename(dest):
                 env.logger.debug('Skip retrieving ``{}`` from shared file system'.format(dest))
+                received[dest] = source
             else:
                 cmd = interpolate(self._get_receive_cmd(rename=os.path.basename(source) != os.path.basename(dest)),
                     '${ }', {'source': source.rstrip('/'), 'dest': dest, 'host': self.address, 'port': self.port})

@@ -48,7 +48,8 @@ class Visualizer:
             self.options = style['options']
 
     def _parse_error(self, msg):
-        self.kernel.warn(msg)
+        if self.kernel:
+            self.kernel.warn(msg)
 
     def preview(self, df):
         if self.style == 'table':
@@ -59,6 +60,9 @@ class Visualizer:
             raise ValueError('Unknown style {}'.format(self.style))
 
     def get_tid(self, vis_type):
+        if not self.kernel:
+            import random
+            return random.randint(0, 1000000)
         if not hasattr(self.kernel, '_tid'):
             self.kernel._tid = { vis_type: 1 }
         elif vis_type not in self.kernel._tid:
@@ -99,7 +103,7 @@ class Visualizer:
         tid = self.get_tid('table')
 
         # if the user already specified a value other than 200, we do not display the warning
-        if df.shape[0] > args.limit and args.limit == 200:
+        if df.shape[0] > args.limit and args.limit == 200 and self.kernel:
             self.kernel.warn("Only the first {} of the {} records are previewed. Use option --limit to set a new limit.".format(args.limit, df.shape[0]))
         code = df.head(args.limit).to_html(index=True).replace('class="', 'id="dataframe_{}" class="sos_dataframe '.format(tid), 1)
 
@@ -174,7 +178,7 @@ class Visualizer:
 
         tid = str(self.get_tid('scatterplot'))
 
-        if df.shape[0] > args.limit:
+        if df.shape[0] > args.limit and self.kernel:
             self.kernel.warn("Only the first {} of the {} records are plotted. Use option --limit to set a new limit.".format(args.limit, df.shape[0]))
 
         # replacing ' ' with &nbsp and '-' with unicode hyphen will disallow webpage to separate words
