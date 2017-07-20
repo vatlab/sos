@@ -62,12 +62,13 @@ def _JS_repr(obj):
 
 
 class sos_JavaScript:
-    def __init__(self, sos_kernel):
+    supported_kernels = ['javascript', 'nodejs']
+    background_color = '#00ff80'
+    options = {}
+
+    def __init__(self, sos_kernel, kernel_name='javascript'):
         self.sos_kernel = sos_kernel
-        # will be replaced with name of the actual kernel used
-        self.kernel_name = 'javascript'
-        self.supported_kernels = ['javascript', 'nodejs']
-        self.background_color = '#00ff80'
+        self.kernel_name = kernel_name
         self.init_statements = JS_init_statement
 
     def get_vars(self, names):

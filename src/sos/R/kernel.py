@@ -236,15 +236,16 @@ R_init_statements = r'''
 
 
 class sos_R:
-    def __init__(self, sos_kernel):
+    background_color = '#FDEDEC'
+    supported_kernels = ['ir']
+    options = {
+        'assignment_pattern': r'^([_A-Za-z0-9\.]+)\s*(=|<-).*$'
+        }
+
+    def __init__(self, sos_kernel, kernel_name='ir'):
         self.sos_kernel = sos_kernel
-        # will be replaced with name of the actual kernel used
-        self.kernel_name = 'ir'
-        self.background_color = '#FDEDEC'
+        self.kernel_name = kernel_name
         self.init_statements = R_init_statements
-        self.options = {
-            'assignment_pattern': r'^([_A-Za-z0-9\.]+)\s*(=|<-).*$'
-            }
 
     def get_vars(self, names):
         for name in names:

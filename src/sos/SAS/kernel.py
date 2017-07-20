@@ -31,12 +31,13 @@ from saspy.sasiostdio import SASsessionSTDIO
 from io import BytesIO
 
 class sos_SAS(SASsessionSTDIO):
-    def __init__(self, sos_kernel):
+    supported_kernels = ['sas']
+    background_color = '#dcb9b9'
+    options = {}
+
+    def __init__(self, sos_kernel, kernel_name='sas'):
         self.sos_kernel = sos_kernel
-        # will be replaced with name of the actual kernel used
-        self.kernel_name = 'sas'
-        self.supported_kernels = ['sas']
-        self.background_color = '#dcb9b9'
+        self.kernel_name = kernel_name
         self.init_statements = ''
         #
         # we intentionally do not call SASsessionSTDIO's constructor, which needs to read

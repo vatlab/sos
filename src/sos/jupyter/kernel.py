@@ -645,12 +645,12 @@ class SoS_Kernel(IPythonKernel):
                 mn, attr = language.split(':', 1)
                 ep = EntryPoint(name='__unknown__', module_name=mn, attrs=tuple(attr.split('.')))
                 try:
-                    plugin = ep.resolve()(self)
+                    plugin = ep.resolve()
                     self._supported_languages[name] = plugin
                 except Exception as e:
                     raise RuntimeError('Failed to load language {}: {}'.format(language, e))
                 #
-                avail_kernels = [x in [x[1] for x in self._kernel_list] for x in plugin.supported_kernels]
+                avail_kernels = [x for x in plugin.supported_kernels if x in [y[1] for y in self._kernel_list]]
                 if not avail_kernels:
                     raise ValueError('Failed to find any of the kernels {} supported by language {}. Please make sure it is properly installed and appear in the output of command "jupyter kenelspec list"'.format(
                         ', '.join(plugin.supported_kernels), language))
@@ -664,7 +664,7 @@ class SoS_Kernel(IPythonKernel):
                 if language not in self._supported_languages:
                     raise RuntimeError('Unrecognized language definition {}'.format(language))
                 #
-                avail_kernels = [x in [x[1] for x in self._kernel_list] for x in self._supported_languages[language].supported_kernels]
+                avail_kernels = [x for x in plugin.supported_kernels if x in [y[1] for y in self._kernel_list]]
                 if not avail_kernels:
                     raise ValueError('Failed to find any of the kernels {} supported by language {}. Please make sure it is properly installed and appear in the output of command "jupyter kenelspec list"'.format(
                         ', '.join(self._supported_languages[language].supported_kernels), language))
@@ -681,7 +681,7 @@ class SoS_Kernel(IPythonKernel):
             for entrypoint in pkg_resources.iter_entry_points(group='sos_languages'):
                 if entrypoint.name == name:
                     # there must be something wrong, let us trigger the exception here
-                    entrypoint.load()(self)
+                    entrypoint.load()
             # if nothing is triggerred, kernel is not defined, return a general message
             raise ValueError('No pre-defined subkernel named {} is found. Please define it with one or both of parameters --kernel and --language'.format(name))
 
@@ -694,7 +694,7 @@ class SoS_Kernel(IPythonKernel):
             # Grab the function that is the actual plugin.
             name = entrypoint.name
             try:
-                plugin = entrypoint.load()(self)
+                plugin = entrypoint.load()
                 self._supported_languages[name] = plugin
                 # for convenience, we create two entries for, e.g. R and ir
                 for kname in plugin.supported_kernels:
@@ -822,7 +822,7 @@ class SoS_Kernel(IPythonKernel):
                 lan = self.supported_languages[kernel]
                 if hasattr(lan, 'sessioninfo'):
                     try:
-                        sinfo = lan.sessioninfo()
+                        sinfo = lan(self, kinfo[1]).sessioninfo()
                         if isinstance(sinfo, str):
                             result[kernel].append([sinfo])
                         elif isinstance(sinfo, dict):
@@ -1220,7 +1220,7 @@ Available subkernels:\n{}'''.format(
             self.RET_VARS = [] if ret_vars is None else ret_vars
             self.kernel = kinfo[0]
             if new_kernel and self.kernel in self.supported_languages:
-                init_stmts = self.supported_languages[self.kernel].init_statements
+                init_stmts = self.supported_languages[self.kernel](self, kinfo[1]).init_statements
                 if init_stmts:
                     self.run_cell(init_stmts, True, False)
             #
@@ -1365,8 +1365,9 @@ Available subkernels:\n{}'''.format(
                 return
             if self.kernel in self.supported_languages:
                 lan = self.supported_languages[self.kernel]
+                kinfo = self.find_kernel(self.kernel)
                 try:
-                    lan.get_vars(items)
+                    lan(self, kinfo[1]).get_vars(items)
                 except Exception as e:
                     self.warn('Failed to get variable: {}\n'.format(e))
                     return
@@ -1458,11 +1459,12 @@ Available subkernels:\n{}'''.format(
                 return
             #
             lan = self.supported_languages[self.kernel]
+            kinfo = self.find_kernel(self.kernel)
             # pass language name to to_kernel
             if to_kernel:
-                objects = lan.put_vars(items, to_kernel=self.find_kernel(to_kernel)[2])
+                objects = lan(self, kinfo[1]).put_vars(items, to_kernel=self.find_kernel(to_kernel)[2])
             else:
-                objects = lan.put_vars(items, to_kernel='SoS')
+                objects = lan(self, kinfo[1]).put_vars(items, to_kernel='SoS')
             if isinstance(objects, dict):
                 # returns a SOS dictionary
                 try:
@@ -1924,7 +1926,7 @@ Available subkernels:\n{}'''.format(
             # get supported languages
             self._kernel_list = []
             lan_map = {}
-            for x in self.supported_langauges.keys():
+            for x in self.supported_languages.keys():
                 for kname in self.supported_languages[x].supported_kernels:
                     if x != kname:
                         lan_map[kname] = (x, self.supported_languages[x].background_color,

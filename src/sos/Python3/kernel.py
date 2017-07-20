@@ -52,17 +52,17 @@ def __loaded_modules__():
 
 
 class sos_Python3:
-    def __init__(self, sos_kernel):
+    supported_kernels = ['python3']
+    background_color = '#EAFAF1'
+    options = {
+        'variable_pattern': r'^[_A-Za-z0-9\.]+\s*$',
+        'assignment_pattern': r'^([_A-Za-z0-9\.]+)\s*=.*$'
+        }
+
+    def __init__(self, sos_kernel, kernel_name='python3'):
         self.sos_kernel = sos_kernel
-        # will be replaced with name of the actual kernel used
-        self.kernel_name = 'python3'
-        self.supported_kernels = ['python3']
-        self.background_color = '#EAFAF1'
+        self.kernel_name = kernel_name
         self.init_statements = __init_statement__
-        self.options = {
-            'variable_pattern': r'^[_A-Za-z0-9\.]+\s*$',
-            'assignment_pattern': r'^([_A-Za-z0-9\.]+)\s*=.*$'
-            }
 
     def get_vars(self, names):
         stmt = "import pickle\n"

@@ -50,18 +50,17 @@ def __loaded_modules__():
 
 
 class sos_Python2:
+    supported_kernels = ['python2']
+    background_color = '#F6FAEA'
+    options = {
+        'variable_pattern': r'^[_A-Za-z0-9\.]+\s*$',
+        'assignment_pattern': r'^([_A-Za-z0-9\.]+)\s*=.*$'
+        }
 
-    def __init__(self, sos_kernel):
+    def __init__(self, sos_kernel, kernel_name='python2'):
         self.sos_kernel = sos_kernel
-        # will be replaced with name of the actual kernel used
-        self.kernel_name = 'python2'
-        self.supported_kernels = ['python2']
-        self.background_color = '#F6FAEA'
+        self.kernel_name = kernel_name
         self.init_statements = __init_statement__
-        self.options = {
-            'variable_pattern': r'^[_A-Za-z0-9\.]+\s*$',
-            'assignment_pattern': r'^([_A-Za-z0-9\.]+)\s*=.*$'
-            }
 
     def get_vars(self, names):
         self.sos_kernel.run_cell("import pickle", True, False)
