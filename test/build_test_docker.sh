@@ -2,7 +2,7 @@
 
 #
 # Make sure we have local public key
-# 
+#
 instance=$(docker ps | grep test_sos)
 if [ "${instance}" != "" ]
 then
@@ -20,7 +20,7 @@ docker rmi eg_sshd
 cp ~/.ssh/id_rsa.pub authorized_keys
 
 # create a docker file
-# 
+#
 cat > Dockerfile << 'HERE'
 FROM python:3.6
 
@@ -76,6 +76,7 @@ ssh  -o 'StrictHostKeyChecking no' -p $PORT22 root@localhost exit
 # write a host file
 cat > ~/docker.yml << HERE
 localhost: me
+remote_user: root
 hosts:
     me:
         description: localhost
@@ -83,10 +84,10 @@ hosts:
         paths:
             home: $HOME
     docker:
-        address: root@localhost
+        address: ${remote_user}@localhost
         port: $PORT22
         paths:
-            home: /root
+            home: /${remote_user}
     local_limited:
         address: localhost
         max_mem: 1G
@@ -95,13 +96,13 @@ hosts:
         paths:
             home: $HOME
     docker_limited:
-        address: root@localhost
+        address: ${remote_user}@localhost
         port: $PORT22
         max_mem: 1G
         max_cores: 1
         max_walltime: 10
         paths:
-            home: /root            
+            home: /${remote_user}
     local_rq:
         description: rq server with worker
         address: localhost
@@ -113,14 +114,14 @@ hosts:
             home: $HOME
     ts:
         description: task spooler on the docker machine
-        address: root@localhost
+        address: ${remote_user}@localhost
         port: $PORT22
 HERE
 
 # this part is not interpolated
 cat >> ~/docker.yml << 'HERE'
         paths:
-            home: /root
+            home: /${remote_user}
         queue_type: pbs
         status_check_interval: 5
         job_template: |
