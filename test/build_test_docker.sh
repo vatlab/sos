@@ -84,10 +84,10 @@ hosts:
         paths:
             home: $HOME
     docker:
-        address: ${remote_user}@localhost
+        address: \${remote_user}@localhost
         port: $PORT22
         paths:
-            home: /${remote_user}
+            home: /\${remote_user}
     local_limited:
         address: localhost
         max_mem: 1G
@@ -96,13 +96,13 @@ hosts:
         paths:
             home: $HOME
     docker_limited:
-        address: ${remote_user}@localhost
+        address: \${remote_user}@localhost
         port: $PORT22
         max_mem: 1G
         max_cores: 1
         max_walltime: 10
         paths:
-            home: /${remote_user}
+            home: /\${remote_user}
     local_rq:
         description: rq server with worker
         address: localhost
@@ -114,7 +114,7 @@ hosts:
             home: $HOME
     ts:
         description: task spooler on the docker machine
-        address: ${remote_user}@localhost
+        address: \${remote_user}@localhost
         port: $PORT22
 HERE
 
