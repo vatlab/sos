@@ -693,10 +693,6 @@ class SoS_Kernel(IPythonKernel):
             try:
                 plugin = entrypoint.load()
                 self._supported_languages[name] = plugin
-                # for convenience, we create two entries for, e.g. R and ir
-                for kname in plugin.supported_kernels:
-                    if name != kname:
-                        self._supported_languages[kname] = plugin
             except Exception as e:
                 pass #self.log.error('Failed to load language {}: {}'.format(entrypoint.name, e))
         return self._supported_languages
