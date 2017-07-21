@@ -425,7 +425,8 @@ class RemoteHost:
             else:
                 env.logger.debug('Sending ``{}`` to {}:{}'.format(source, self.alias, dest))
                 cmd = interpolate(self._get_send_cmd(rename=os.path.basename(source) != os.path.basename(dest)),
-                        '${ }', {'source': source.rstrip('/'), 'dest': dest, 'host': self.address, 'port': self.port})
+                        '${ }', {'source': source.rstrip('/'), 'dest': dest, 'host': self.address, 'port': self.port},
+                        env.sos_dict.get('CONFIG', {}))
                 env.logger.debug(cmd)
                 ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                 if (ret != 0):
@@ -455,7 +456,8 @@ class RemoteHost:
                 received[dest] = source
             else:
                 cmd = interpolate(self._get_receive_cmd(rename=os.path.basename(source) != os.path.basename(dest)),
-                    '${ }', {'source': source.rstrip('/'), 'dest': dest, 'host': self.address, 'port': self.port})
+                    '${ }', {'source': source.rstrip('/'), 'dest': dest, 'host': self.address, 'port': self.port},
+                    env.sos_dict.get('CONFIG', {}))
                 env.logger.debug(cmd)
                 try:
                     ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
@@ -568,7 +570,8 @@ class RemoteHost:
     def send_task_file(self, task_file):
         job_file = os.path.join(self.task_dir, task_file)
         send_cmd = interpolate('ssh -q ${address} -p ${port} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks" && scp -q -P ${port} ${job_file!ap} ${address}:.sos/tasks/',
-                '${ }', {'job_file': job_file, 'address': self.address, 'port': self.port})
+                '${ }', {'job_file': job_file, 'address': self.address, 'port': self.port},
+                env.sos_dict.get('CONFIG', {}))
         # use scp for this simple case
         try:
             subprocess.check_call(send_cmd, shell=True)
@@ -581,7 +584,8 @@ class RemoteHost:
         try:
             cmd = interpolate(self.execute_cmd, '${ }', {
                 'host': self.address, 'port': self.port,
-                'cmd': cmd, 'cur_dir': self._map_var(os.getcwd())})
+                'cmd': cmd, 'cur_dir': self._map_var(os.getcwd())},
+                env.sos_dict.get('CONFIG', {}))
         except Exception as e:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
         env.logger.debug('Executing command ``{}``'.format(cmd))
@@ -597,7 +601,8 @@ class RemoteHost:
         try:
             cmd = interpolate(self.execute_cmd, '${ }', {
                 'host': self.address, 'port': self.port,
-                'cmd': cmd, 'cur_dir': self._map_var(os.getcwd())})
+                'cmd': cmd, 'cur_dir': self._map_var(os.getcwd())},
+                env.sos_dict.get('CONFIG', {}))
         except Exception as e:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
         env.logger.debug('Executing command ``{}``'.format(cmd))
@@ -611,7 +616,8 @@ class RemoteHost:
         try:
             cmd = interpolate(self.execute_cmd, '${ }', {
                 'host': self.address, 'port': self.port,
-                'cmd': cmd, 'cur_dir': self._map_var(os.getcwd()) })
+                'cmd': cmd, 'cur_dir': self._map_var(os.getcwd()) },
+                env.sos_dict.get('CONFIG', {}))
         except Exception as e:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
         env.logger.debug('Executing command ``{}``'.format(cmd))
@@ -629,7 +635,8 @@ class RemoteHost:
         sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
         # use -p to preserve modification times so that we can keep the job status locally.
         receive_cmd = interpolate("scp -P ${port} -p -q ${address}:.sos/tasks/${task}.* ${sys_task_dir}",
-                '${ }', {'port': self.port, 'address': self.address, 'task': task_id, 'sys_task_dir': sys_task_dir})
+                '${ }', {'port': self.port, 'address': self.address, 'task': task_id, 'sys_task_dir': sys_task_dir},
+                env.sos_dict.get('CONFIG', {}))
         # it is possible that local files are readonly (e.g. a pluse file) so we first need to
         # make sure the files are readable and remove them. Also, we do not want any file that is
         # obsolete to appear as new after copying

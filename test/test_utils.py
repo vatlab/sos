@@ -194,6 +194,13 @@ class TestUtils(unittest.TestCase):
         # 5:.5.0f does not work.
         self.assertRaises(InterpolationError, interpolate, '${5:.${4/2.}f}', '${ }')
 
+    def testLocalAndGlobalDict(self):
+        '''Test interpolation with two dictionaries'''
+        dict_A = {'a': 123, 'c': '${b+2}'}
+        dict_B = {'b': 235}
+        self.assertEqual(interpolate('${a+b}', '${ }', dict_A, dict_B), '358', 'Obtained {}'.format(interpolate('${a+b}', '${ }', dict_A, dict_B)))
+        self.assertEqual(interpolate('${${c}+2}', '${ }', dict_A, dict_B), '239', 'Obtained {}'.format(interpolate('${${c}+2}', '${ }', dict_A, dict_B)))
+
     def testEval(self):
         '''Test the evaluation of SoS expression'''
         env.sos_dict = WorkflowDict({

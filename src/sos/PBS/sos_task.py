@@ -83,9 +83,9 @@ class PBS_TaskEngine(TaskEngine):
         runtime['sig_mode'] = env.config['sig_mode']
         runtime['run_mode'] = env.config['run_mode']
         if 'name' in runtime:
-            runtime['job_name'] = interpolate(runtime['name'], '${ }', sos_dict)
+            runtime['job_name'] = interpolate(runtime['name'], '${ }', sos_dict, env.sos_dict.get('CONFIG', {}))
         else:
-            runtime['job_name'] = interpolate('${step_name}_${_index}', '${ }', sos_dict)
+            runtime['job_name'] = interpolate('${step_name}_${_index}', '${ }', sos_dict, env.sos_dict.get('CONFIG', {}))
         if 'nodes' not in runtime:
             runtime['nodes'] = 1
         if 'cores' not in runtime:
@@ -95,7 +95,7 @@ class PBS_TaskEngine(TaskEngine):
 
         # let us first prepare a task file
         try:
-            job_text = interpolate(self.job_template, '${ }', runtime)
+            job_text = interpolate(self.job_template, '${ }', runtime, env.sos_dict.get('CONFIG', {}))
         except Exception as e:
             raise ValueError('Failed to generate job file for task {}: {}'.format(task_id, e))
 
@@ -119,7 +119,7 @@ class PBS_TaskEngine(TaskEngine):
             #
             # now we need to figure out a command to submit the task
             try:
-                cmd = interpolate(self.submit_cmd, '${ }', runtime)
+                cmd = interpolate(self.submit_cmd, '${ }', runtime, env.sos_dict.get('CONFIG', {}))
             except Exception as e:
                 raise ValueError('Failed to generate job submission command from template "{}": {}'.format(
                     self.submit_cmd, e))
@@ -178,7 +178,7 @@ class PBS_TaskEngine(TaskEngine):
 
     def _query_job_status(self, job_id, task_id):
         job_id.update({'task': task_id, 'verbosity': 1})
-        cmd = interpolate(self.status_cmd, '${ }', job_id)
+        cmd = interpolate(self.status_cmd, '${ }', job_id, env.sos_dict.get('CONFIG', {}))
         return self.agent.check_output(cmd)
 
     def query_tasks(self, tasks=None, verbosity=1, html=False, start_time=True, age=None):
@@ -263,7 +263,7 @@ class PBS_TaskEngine(TaskEngine):
                 continue
             try:
                 job_id.update({'task': task_id})
-                cmd = interpolate(self.kill_cmd, '${ }', job_id)
+                cmd = interpolate(self.kill_cmd, '${ }', job_id, env.sos_dict.get('CONFIG', {}))
                 env.logger.debug('Running {}'.format(cmd))
                 res += self.agent.check_output(cmd) + '\n'
             except Exception as e:
