@@ -27,6 +27,7 @@ import copy
 import types
 import logging
 import math
+import pwd
 import collections
 import traceback
 import threading
@@ -940,6 +941,8 @@ def load_config_files(filename=None):
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
                 raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(filename, e))
+    if 'user_name' not in cfg:
+        cfg['user_name'] = pwd.getpwuid( os.getuid() ).pw_name
     env.sos_dict.set('CONFIG', cfg)
     return cfg
 
