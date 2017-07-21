@@ -32,7 +32,7 @@ import pkg_resources
 from collections.abc import Sequence
 
 from .utils import env, short_repr, expand_size, format_HHMMSS, expand_time
-from .sos_eval import interpolate, Undetermined
+from .sos_eval import interpolate, Undetermined, cfg_interpolate
 from .sos_task import BackgroundProcess_TaskEngine, TaskParams, loadTask
 
 #
@@ -775,13 +775,14 @@ class Host:
                 if 'address' not in env.sos_dict['CONFIG']['hosts'][REMOTE]:
                     raise ValueError('No address defined for remote host {}'.format(REMOTE))
                 self.config['path_map'] = []
-                def append_slash(x):
+                def normalize_value(x):
+                    x = cfg_interpolate(x)
                     return x if x.endswith(os.sep) else (x + os.sep)
                 if 'shared' in cfg[LOCAL] and 'shared' in cfg[REMOTE]:
                     common = set(cfg[LOCAL]['shared'].keys()) & set(cfg[REMOTE]['shared'].keys())
                     if common:
-                        self.config['shared'] = [append_slash(cfg[LOCAL]['shared'][x]) for x in common]
-                        self.config['path_map'] = ['{} -> {}'.format(append_slash(cfg[LOCAL]['shared'][x]), append_slash(cfg[REMOTE]['shared'][x])) \
+                        self.config['shared'] = [normalize_value(cfg[LOCAL]['shared'][x]) for x in common]
+                        self.config['path_map'] = ['{} -> {}'.format(normalize_value(cfg[LOCAL]['shared'][x]), normalize_value(cfg[REMOTE]['shared'][x])) \
                             for x in common]
                 # if paths are defined for both local and remote host, define path_map
                 if ('paths' in cfg[LOCAL] and cfg[LOCAL]['paths']) and ('paths' in cfg[REMOTE] and cfg[REMOTE]['paths']):
@@ -789,7 +790,7 @@ class Host:
                         raise ValueError('One or more local paths {} cannot be mapped to remote host {} with paths {}'.format(
                             ','.join(cfg[LOCAL]['paths'].keys()), REMOTE, ','.join(cfg[REMOTE]['paths'].keys())))
                     #
-                    self.config['path_map'].extend(['{} -> {}'.format(append_slash(cfg[LOCAL]['paths'][x]), append_slash(cfg[REMOTE]['paths'][x])) \
+                    self.config['path_map'].extend(['{} -> {}'.format(normalize_value(cfg[LOCAL]['paths'][x]), normalize_value(cfg[REMOTE]['paths'][x])) \
                         for x in cfg[LOCAL]['paths'].keys()])
         elif LOCAL == REMOTE:
             # now we have checked local and remote are not defined, but they are the same, so
