@@ -25,16 +25,16 @@ from sos.utils import env
 from rq import Queue as rqQueue
 from redis import Redis
 from sos.sos_task import TaskEngine, execute_task, loadTask
-from sos.sos_eval import interpolate
+from sos.sos_eval import cfg_interpolate
 
 class RQ_TaskEngine(TaskEngine):
 
     def __init__(self, agent):
         super(RQ_TaskEngine, self).__init__(agent)
         #
-        self.redis_host = self.config.get('redis_host', self.config.get('address', 'localhost'))
+        self.redis_host = cfg_interpolate(self.config.get('redis_host', self.config.get('address', 'localhost')))
         self.redis_port = self.config.get('redis_port', 6379)
-        self.redis_queue = self.config.get('queue', 'default')
+        self.redis_queue = cfg_interpolate(self.config.get('queue', 'default'))
 
         try:
             env.logger.debug('Connecting to redis server {} at port {}'.format(self.redis_host, self.redis_port))
@@ -62,9 +62,9 @@ class RQ_TaskEngine(TaskEngine):
         runtime['sig_mode'] = env.config['sig_mode']
         runtime['run_mode'] = env.config['run_mode']
         if 'name' in runtime:
-            runtime['job_name'] = interpolate(runtime['name'], '${ }', sos_dict)
+            runtime['job_name'] = cfg_interpolate(runtime['name'], sos_dict)
         else:
-            runtime['job_name'] = interpolate('${step_name}_${_index}', '${ }', sos_dict)
+            runtime['job_name'] = cfg_interpolate('${step_name}_${_index}', sos_dict)
         if 'nodes' not in runtime:
             runtime['nodes'] = 1
         if 'cores' not in runtime:

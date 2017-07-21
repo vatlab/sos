@@ -106,7 +106,7 @@ hosts:
         based_on: hosts.localhost
         description: rq server with worker
         queue_type: rq
-        redis_host: hosts.localhost
+        redis_host: localhost
         redis_port: 6379
         queue: high
     ts:
