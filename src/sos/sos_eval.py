@@ -101,7 +101,7 @@ class SoS_String:
         'R': lambda x: x,
         }
 
-    def __init__(self, sigil, local_dict=None, trace_vars=False):
+    def __init__(self, sigil, local_dict=None, global_dict=None, trace_vars=False):
         # do not check sigil here because the function will be called quite frequently
         # the sigil will be checked when it is entered in SoS script.
         self.l, self.r = sigil.split(' ')
@@ -111,6 +111,7 @@ class SoS_String:
         self.left_pattern = self.LEFT_PATTERNS[self.l]
         self.error_count = 0
         self.local_dict = {} if local_dict is None else local_dict
+        self.global_dict = env.sos_dict._dict if global_dict is None else global_dict
         self.my_eval = eval
         self.last_text = None
         if trace_vars:
@@ -173,7 +174,7 @@ class SoS_String:
                     expr = pieces[i]
                     fmt = None
                     conversion = None
-                pieces[i] = self._repr(eval(expr, env.sos_dict._dict, self.local_dict), fmt, conversion)
+                pieces[i] = self._repr(eval(expr, self.global_dict, self.local_dict), fmt, conversion)
         return ''.join(pieces)
 
     def _interpolate(self, text, start_nested=0):
@@ -251,7 +252,7 @@ class SoS_String:
                             self.accessed_vars |= accessed_vars(expr, self.l + ' ' + self.r)
                             return self.interpolate(text[j+len(self.r):])
                         else:
-                            result = eval(expr, env.sos_dict._dict, self.local_dict)
+                            result = eval(expr, self.global_dict, self.local_dict)
                             return self._repr(result, fmt, conversion) + self.interpolate(text[j+len(self.r):])
                     except Exception as e:
                         raise InterpolationError(expr, e)
@@ -305,10 +306,10 @@ class SoS_String:
         else:
             return repr(obj) if fmt is None and conversion is None else self._format(obj, fmt, conversion)
 
-def interpolate(text, sigil, local_dict=None):
+def interpolate(text, sigil, local_dict=None, global_dict=None):
     '''Evaluate expressions in `text` marked by specified `sigil` using provided
     global and local dictionaries, and replace the expressions with their formatted strings.'''
-    return SoS_String(sigil, local_dict).interpolate(text)
+    return SoS_String(sigil, local_dict, global_dict).interpolate(text)
 
 
 default_global_sigil = '${ }'
@@ -385,7 +386,7 @@ def accessed_vars(statement, sigil):
         if toknum == STRING and left_sigil is not None and left_sigil in tokval:
             # if it is a string, check if variables used during
             # string interpolation
-            ss = SoS_String(sigil, {}, True)
+            ss = SoS_String(sigil, {}, None, trace_vars=True)
             ss.interpolate(eval(tokval))
             result |= ss.accessed_vars
         prev_tok = tokval
