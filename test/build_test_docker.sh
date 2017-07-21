@@ -84,6 +84,7 @@ limited:
 hosts:
     localhost:
         description: localhost
+        address: localhost
         paths:
             home: $HOME
     docker:
