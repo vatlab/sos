@@ -20,6 +20,9 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 import pandas as pd
+import numpy as np
+import scipy.io as sio
+
 
 import os
 from collections import Sequence
