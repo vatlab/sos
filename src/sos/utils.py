@@ -942,8 +942,46 @@ def load_config_files(filename=None):
             except Exception as e:
                 raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(filename, e))
     if 'user_name' not in cfg:
-        cfg['user_name'] = pwd.getpwuid( os.getuid() ).pw_name
+        cfg['user_name'] = pwd.getpwuid( os.getuid() ).pw_name.lower()
     env.sos_dict.set('CONFIG', cfg)
+    # handle keyword "based_on", which should fill the dictionary with others.
+    def process_based_on(cfg, item):
+        if 'based_on' in item:
+            if not isinstance(item['based_on'], (str, list)) or not item['based_on']:
+                raise ValueError('A string is expected for key based_on. {} obtained'.format(item['based_on']))
+            
+            referred_keys = [item['based_on']] if isinstance(item['based_on'], str) else item['based_on']
+            item.pop('based_on')
+            for rkey in referred_keys:
+                # find item...
+                val = cfg
+                for key in rkey.split('.'):
+                    if not isinstance(val, dict):
+                        raise ValueError('Based on key {} not found'.format(item))
+                    if key not in val:
+                        raise ValueError('Based on key {} not found in config'.format(key))
+                    else:
+                        val = val[key]
+                #
+                if not isinstance(val, dict):
+                    raise ValueError('Based on item must be a dictionary')
+                if 'based_on' in val:
+                    val = process_based_on(cfg, val)
+                # ok, we have got a dictionary, let us use it to replace item
+                for k, v in val.items():
+                    if k not in item:
+                        item[k] = v
+            return item
+        else:
+            for k, v in item.items():
+                if isinstance(v, dict):
+                    # v should be processed in place
+                    process_based_on(cfg, v)
+            return item
+    #
+    for k, v in cfg.items():
+        if isinstance(v, dict):
+            process_based_on(cfg, v)
     return cfg
 
 def format_HHMMSS(v):

@@ -75,12 +75,15 @@ ssh  -o 'StrictHostKeyChecking no' -p $PORT22 root@localhost exit
 
 # write a host file
 cat > ~/docker.yml << HERE
-localhost: me
+localhost: localhost
 remote_user: root
+limited:
+    max_cores: 1
+    max_mem: 1G
+   
 hosts:
-    me:
+    localhost:
         description: localhost
-        alias: localhost
         paths:
             home: $HOME
     docker:
@@ -89,39 +92,29 @@ hosts:
         paths:
             home: /\${remote_user}
     local_limited:
-        address: localhost
-        max_mem: 1G
-        max_cores: 1
+        based_on:
+           - hosts.localhost
+           - limited
         max_walltime: 10
-        paths:
-            home: $HOME
     docker_limited:
-        address: \${remote_user}@localhost
-        port: $PORT22
-        max_mem: 1G
-        max_cores: 1
+        based_on:
+           - hosts.docker
+           - limited
         max_walltime: 10
-        paths:
-            home: /\${remote_user}
     local_rq:
+        based_on: hosts.localhost
         description: rq server with worker
-        address: localhost
         queue_type: rq
-        redis_host: localhost
+        redis_host: hosts.localhost
         redis_port: 6379
         queue: high
-        paths:
-            home: $HOME
     ts:
         description: task spooler on the docker machine
-        address: \${remote_user}@localhost
-        port: $PORT22
+        based_on: hosts.docker
 HERE
 
 # this part is not interpolated
 cat >> ~/docker.yml << 'HERE'
-        paths:
-            home: /${remote_user}
         queue_type: pbs
         status_check_interval: 5
         job_template: |
