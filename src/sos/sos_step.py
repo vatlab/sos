@@ -564,8 +564,17 @@ class Base_Step_Executor:
                     parent_dir = os.path.split(os.path.expanduser(ofile))[0]
                     if parent_dir and not os.path.isdir(parent_dir):
                         os.makedirs(parent_dir)
-        # set variables
-        env.sos_dict.set('_output', ofiles)
+
+        if 'group_by' in kwargs:
+            _ogroups = Base_Step_Executor.handle_group_by(ofiles, kwargs['group_by'])
+            if len(_ogroups) != len(self._groups):
+                raise RuntimeError('Output option group_by produces {} output groups which is different from the number of input groups ({}).'.format(
+                    len(_ogroups), len(self._groups)))
+            env.sos_dict.set('_output', _ogroups[env.sos_dict['_index'])
+        else:
+            # set variables
+            env.sos_dict.set('_output', ofiles)
+        #
         if isinstance(env.sos_dict['output'], (type(None), Undetermined)):
             env.sos_dict.set('output', copy.deepcopy(ofiles))
         elif not isinstance(env.sos_dict['output'], Undetermined) and env.sos_dict['output'] != ofiles:
