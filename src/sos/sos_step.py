@@ -570,10 +570,10 @@ class Base_Step_Executor:
             if len(_ogroups) != len(self._groups):
                 raise RuntimeError('Output option group_by produces {} output groups which is different from the number of input groups ({}).'.format(
                     len(_ogroups), len(self._groups)))
-            env.sos_dict.set('_output', _ogroups[env.sos_dict['_index']])
-        else:
-            # set variables
-            env.sos_dict.set('_output', ofiles)
+            ofiles = _ogroups[env.sos_dict['_index']]
+
+        # set variables
+        env.sos_dict.set('_output', ofiles)
         #
         if isinstance(env.sos_dict['output'], (type(None), Undetermined)):
             env.sos_dict.set('output', copy.deepcopy(ofiles))
@@ -637,14 +637,13 @@ class Base_Step_Executor:
         # it is possible that identical tasks are executed (with different underlying random numbers)
         # we should either give a warning or produce different ids...
         if task_id in [x[0] for x in self._task_defs]:
-            env.logger.warning('Identical task generated from _index={} is ignored.'.format(env.sos_dict['_index']))
+            raise RuntimeError('Identical task generated from _index={}.'.format(env.sos_dict['_index']))
         elif task_vars['_output'] and self._task_defs:
             all_previous_outputs = sum([x[2] for x in self._task_defs if isinstance(x[2], Sequence)], [])
             if any(x in all_previous_outputs for x in task_vars['_output']):
                 overlap = [x for x in task_vars['_output'] if x in all_previous_outputs]
                 raise RuntimeError('Task produces output files {} that are output of other tasks.'.format(', '.join(overlap)))
-        else:
-            self._task_defs.append((task_id, taskdef, task_vars['_output']))
+        self._task_defs.append((task_id, taskdef, task_vars['_output']))
         return task_id
 
     def wait_for_results(self):
