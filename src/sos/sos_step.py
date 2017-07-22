@@ -570,7 +570,7 @@ class Base_Step_Executor:
             if len(_ogroups) != len(self._groups):
                 raise RuntimeError('Output option group_by produces {} output groups which is different from the number of input groups ({}).'.format(
                     len(_ogroups), len(self._groups)))
-            env.sos_dict.set('_output', _ogroups[env.sos_dict['_index'])
+            env.sos_dict.set('_output', _ogroups[env.sos_dict['_index']])
         else:
             # set variables
             env.sos_dict.set('_output', ofiles)
