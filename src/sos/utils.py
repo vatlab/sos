@@ -27,7 +27,7 @@ import copy
 import types
 import logging
 import math
-import pwd
+import getpass
 import collections
 import traceback
 import threading
@@ -954,7 +954,7 @@ def load_config_files(filename=None):
             except Exception as e:
                 raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(filename, e))
     if 'user_name' not in cfg:
-        cfg['user_name'] = pwd.getpwuid( os.getuid() ).pw_name.lower()
+        cfg['user_name'] = getpass.getuser().lower()
     env.sos_dict.set('CONFIG', cfg)
     # handle keyword "based_on", which should fill the dictionary with others.
     def process_based_on(cfg, item):
