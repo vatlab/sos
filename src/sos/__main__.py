@@ -1531,6 +1531,9 @@ def get_config_parser(desc_only=False):
     if desc_only:
         return parser
     group = parser.add_mutually_exclusive_group()
+    group.add_argument('-s', '--site', action='store_true', dest='__site_config__',
+        help='''Set (--set) or unset (--unset) options in system site configuration file
+            (${SOS}/site_config.yml) instead of local (.sos/config.yml) configuration file.''')
     group.add_argument('-g', '--global', action='store_true', dest='__global_config__',
         help='''Set (--set) or unset (--unset) options in global (~/.sos/config.yml)
             instead of local (.sos/config.yml) configuration file.''')
@@ -1570,7 +1573,9 @@ def cmd_config(args, workflow_args):
         raise RuntimeError('Unrecognized arguments {}'.format(' '.join(workflow_args)))
     #
     if args.__unset_config__:
-        if args.__global_config__:
+        if args.__site_config__:
+            config_file = os.path.join(os.path.split(__file__)[0], 'site_config.yml')
+        elif args.__global_config__:
             config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
         elif args.__hosts_config__:
             config_file = os.path.join(os.path.expanduser('~'), '.sos', 'hosts.yml')
@@ -1617,7 +1622,9 @@ def cmd_config(args, workflow_args):
         else:
             env.logger.warning('{} does not match any configuration key'.format(', '.join(args.__unset_config__)))
     elif args.__set_config__:
-        if args.__global_config__:
+        if args.__site_config__:
+            config_file = os.path.join(os.path.split(__file__)[0], 'site_config.yml')
+        elif args.__global_config__:
             config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
         elif args.__hosts_config__:
             config_file = os.path.join(os.path.expanduser('~'), '.sos', 'hosts.yml')
