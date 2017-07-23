@@ -413,9 +413,15 @@ del sos_handle_parameter_
             if not os.path.isdir(os.path.expanduser(sos_dict['_runtime']['cur_dir'])):
                 try:
                     os.makedirs(os.path.expanduser(sos_dict['_runtime']['cur_dir']))
+                    os.chdir(os.path.expanduser(sos_dict['_runtime']['cur_dir']))
                 except Exception as e:
-                    raise RuntimeError('Failed to create cur_dir {}'.format(sos_dict['_runtime']['cur_dir']))
-            os.chdir(os.path.expanduser(sos_dict['_runtime']['cur_dir']))
+                    # sometimes it is not possible to go to a "cur_dir" because of
+                    # file system differences, but this should be ok if a work_dir
+                    # has been specified.
+                    env.logger.debug('Failed to create cur_dir {}'.format(sos_dict['_runtime']['cur_dir']))
+            else:
+                os.chdir(os.path.expanduser(sos_dict['_runtime']['cur_dir']))
+        #
         orig_dir = os.getcwd()
 
         if runmode != 'dryrun':
