@@ -42,7 +42,7 @@ from functools import wraps
 from collections.abc import Sequence
 import multiprocessing as mp
 from tqdm import tqdm as ProgressBar
-from .utils import env, transcribe, AbortExecution, short_repr, get_traceback
+from .utils import env, transcribe, StopInputGroup, TerminateExecution, short_repr, get_traceback
 from .sos_eval import Undetermined, interpolate
 from .target import FileTarget, fileMD5, executable, UnknownTarget, BaseTarget
 
@@ -405,7 +405,7 @@ def script(script, interpreter, suffix='', args='', **kwargs):
 def fail_if(expr, msg=''):
     '''Raise an exception with `msg` if condition `expr` is False'''
     if expr:
-        raise RuntimeError(msg)
+        raise TerminateExecution(msg if msg else 'error triggered by action fail_if')
     return 0
 
 @SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['expr', 'msg'])
@@ -420,7 +420,7 @@ def stop_if(expr, msg=''):
     '''Abort the execution of the current step or loop and yield
     an warning message `msg` if `expr` is False '''
     if expr:
-        raise AbortExecution(msg)
+        raise StopInputGroup(msg)
     return 0
 
 #

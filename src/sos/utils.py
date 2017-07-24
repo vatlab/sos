@@ -500,7 +500,12 @@ class Error(Exception):
     __str__ = __repr__
 
 
-class AbortExecution(Error):
+class StopInputGroup(Error):
+    '''Abort a step and continue'''
+    def __init__(self, msg):
+        Error.__init__(self, msg)
+
+class TerminateExecution(Error):
     '''Abort a step and continue'''
     def __init__(self, msg):
         Error.__init__(self, msg)
