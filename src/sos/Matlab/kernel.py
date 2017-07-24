@@ -89,8 +89,8 @@ def _Matlab_repr(obj):
         dic = tempfile.tempdir
         os.chdir(dic)
         sio.savemat('mat2mtlb.mat', {'obj': obj})
-        return 'load(fullfile(' + '\'' + dic + '\'' + ',' \
-            + '\'mat2mtlb.mat\'))'
+        return 'cell2mat(struct2cell(load(fullfile(' + '\'' + dic + '\'' + ',' \
+            + '\'mat2mtlb.mat\'))))'
     elif isinstance(obj, np.ndarray):
         dic = tempfile.tempdir
         os.chdir(dic)
