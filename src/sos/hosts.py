@@ -198,7 +198,8 @@ class LocalHost:
     def send_task_file(self, task_file):
         # on the same file system, no action is needed.
         dest_task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', os.path.basename(task_file))
-        shutil.copyfile(task_file, dest_task_file)
+        if not os.path.samefile(task_file, dest_task_file):
+            shutil.copyfile(task_file, dest_task_file)
 
     def check_output(self, cmd):
         # get the output of command
@@ -565,12 +566,11 @@ class RemoteHost:
         )
         task_file = os.path.join(self.task_dir, task_id + '.task')
         new_param.save(task_file)
-        self.send_task_file(task_id + '.task')
+        self.send_task_file(task_file)
 
     def send_task_file(self, task_file):
-        job_file = os.path.join(self.task_dir, task_file)
         send_cmd = interpolate('ssh -q ${address} -p ${port} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks" && scp -q -P ${port} ${job_file!ap} ${address}:.sos/tasks/',
-                '${ }', {'job_file': job_file, 'address': self.address, 'port': self.port},
+                '${ }', {'job_file': task_file, 'address': self.address, 'port': self.port},
                 env.sos_dict.get('CONFIG', {}))
         # use scp for this simple case
         try:
