@@ -1034,11 +1034,13 @@ class Base_Executor:
                 env.logger.info(task[1])
             # close all processes
         except Exception as e:
+            procs = [x for x in procs if x is not None]
             for p, _, _ in procs + pool:
                 p.terminate()
             raise e
         finally:
             if not nested:
+                procs = [x for x in procs if x is not None]
                 for _, p, _ in procs + pool:
                     p.send(None)
                 time.sleep(0.1)
