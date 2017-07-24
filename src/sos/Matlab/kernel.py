@@ -47,7 +47,7 @@ def homogeneous_type(seq):
 def _Matlab_repr(obj):
     if isinstance(obj, bool):
         return 'true' if obj else 'false'
-    elif isinstance(obj, (int, float, str)):
+    elif isinstance(obj, (int, float, str, complex)):
         return repr(obj)
     elif isinstance(obj, Sequence):
         if len(obj) == 0:
