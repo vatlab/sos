@@ -914,7 +914,7 @@ class SoS_Kernel(IPythonKernel):
             'completed': 'fa-check-square-o',
             'failed': 'fa-times-circle-o',
             'aborted': 'fa-frown-o',
-            'result-mismatch': 'fa-question',
+            'signature-mismatch': 'fa-question',
             'unknown': 'fa-question',
             }
 
@@ -926,7 +926,7 @@ class SoS_Kernel(IPythonKernel):
             'completed': 'fa-play',
             'failed':  'fa-play',
             'aborted':  'fa-play',
-            'result-mismatch': 'fa-play',
+            'signature-mismatch': 'fa-play',
             'unknown': 'fa-question',
         }
 
@@ -938,7 +938,7 @@ class SoS_Kernel(IPythonKernel):
             'completed': 'resume_task',
             'failed':  'resume_task',
             'aborted':  'resume_task',
-            'result-mismatch': 'resume_task',
+            'signature-mismatch': 'resume_task',
             'unknown': 'function(){}',
         }
 
