@@ -28,11 +28,11 @@ import fnmatch
 from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
 
-from .utils import env, AbortExecution, short_repr, stable_repr,\
+from .utils import env, StopInputGroup, TerminateExecution, short_repr, stable_repr,\
     get_traceback, transcribe, ActivityNotifier, expand_size, format_HHMMSS
 from .pattern import extract_pattern
-from .sos_eval import SoS_eval, SoS_exec, Undetermined, interpolate
-from .target import BaseTarget, FileTarget, remote, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
+from .sos_eval import SoS_eval, SoS_exec, Undetermined
+from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
 from .sos_task import TaskParams, MasterTaskParams
@@ -564,8 +564,17 @@ class Base_Step_Executor:
                     parent_dir = os.path.split(os.path.expanduser(ofile))[0]
                     if parent_dir and not os.path.isdir(parent_dir):
                         os.makedirs(parent_dir)
+
+        if 'group_by' in kwargs:
+            _ogroups = Base_Step_Executor.handle_group_by(ofiles, kwargs['group_by'])
+            if len(_ogroups) != len(self._groups):
+                raise RuntimeError('Output option group_by produces {} output groups which is different from the number of input groups ({}).'.format(
+                    len(_ogroups), len(self._groups)))
+            ofiles = _ogroups[env.sos_dict['_index']]
+
         # set variables
         env.sos_dict.set('_output', ofiles)
+        #
         if isinstance(env.sos_dict['output'], (type(None), Undetermined)):
             env.sos_dict.set('output', copy.deepcopy(ofiles))
         elif not isinstance(env.sos_dict['output'], Undetermined) and env.sos_dict['output'] != ofiles:
@@ -628,9 +637,13 @@ class Base_Step_Executor:
         # it is possible that identical tasks are executed (with different underlying random numbers)
         # we should either give a warning or produce different ids...
         if task_id in [x[0] for x in self._task_defs]:
-            env.logger.warning('Identical task generated from _index={} is ignored.'.format(env.sos_dict['_index']))
-        else:
-            self._task_defs.append((task_id, taskdef))
+            raise RuntimeError('Identical task generated from _index={}.'.format(env.sos_dict['_index']))
+        elif task_vars['_output'] and self._task_defs:
+            all_previous_outputs = sum([x[2] for x in self._task_defs if isinstance(x[2], Sequence)], [])
+            if any(x in all_previous_outputs for x in task_vars['_output']):
+                overlap = [x for x in task_vars['_output'] if x in all_previous_outputs]
+                raise RuntimeError('Task produces output files {} that are output of other tasks.'.format(', '.join(overlap)))
+        self._task_defs.append((task_id, taskdef, task_vars['_output']))
         return task_id
 
     def wait_for_results(self):
@@ -651,13 +664,13 @@ class Base_Step_Executor:
         ids = []
         # single jobs
         if trunk_size == 1 or len(self._task_defs) == 1:
-            for task_id, taskdef in self._task_defs:
+            for task_id, taskdef, _ in self._task_defs:
                 job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
                 taskdef.save(job_file)
                 ids.append(task_id)
         else:
             master = None
-            for task_id, taskdef in self._task_defs:
+            for task_id, taskdef, _ in self._task_defs:
                 if master is not None and master.num_tasks() == trunk_size:
                     job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', master.ID + '.def')
                     ids.append(master.ID)
@@ -743,7 +756,7 @@ class Base_Step_Executor:
             else:
                 env.sos_dict.set('__step_sig__', os.path.basename(sig.proc_info).split('.')[0])
             self.last_res = SoS_exec(stmt, self.step.sigil)
-        except (AbortExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks):
+        except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks):
             raise
         except Exception as e:
             raise RuntimeError('Failed to process statement {} ({}): {}'.format(short_repr(stmt), e.__class__.__name__, e))
@@ -870,7 +883,7 @@ class Base_Step_Executor:
                 else:
                     try:
                         self.execute(statement[1])
-                    except AbortExecution as e:
+                    except StopInputGroup as e:
                         if e.message:
                             env.logger.warning(e)
                         return self.collect_result()
@@ -1014,10 +1027,10 @@ class Base_Step_Executor:
                         try:
                             self.verify_input()
                             self.execute(statement[1], signatures[idx])
-                        except AbortExecution as e:
+                        except StopInputGroup as e:
                             self.output_groups[idx] = []
                             if e.message:
-                                env.logger.warning(e)
+                                env.logger.info(e)
                             skip_index = True
                             break
                 # if this index is skipped, go directly to the next one

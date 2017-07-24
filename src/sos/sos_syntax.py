@@ -24,7 +24,7 @@ import re
 import keyword
 
 SOS_INPUT_OPTIONS = ['group_by', 'filetype', 'paired_with', 'for_each', 'pattern']
-SOS_OUTPUT_OPTIONS = []
+SOS_OUTPUT_OPTIONS = ['group_by']
 SOS_DEPENDS_OPTIONS = []
 SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'active', 'walltime', 'nodes', 'cores', 'mem', 'shared',
     'env', 'prepend_path', 'queue', 'to_host', 'from_host', 'map_vars', 'name', 'trunk_size', 'trunk_workers']

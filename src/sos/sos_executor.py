@@ -52,7 +52,7 @@ class ExecuteError(Error):
     """An exception to collect exceptions raised during run time so that
     other branches of the DAG would continue if some nodes fail to execute."""
     def __init__(self, workflow):
-        Error.__init__(self, 'Failed to execute workflow %s' % workflow)
+        Error.__init__(self)
         self.workflow = workflow
         self.errors = []
         self.traces = []
@@ -68,10 +68,7 @@ class ExecuteError(Error):
             return
         self.errors.append(short_line)
         self.traces.append(get_traceback())
-        if isinstance(error, Exception):
-            self.message += '\n[%s] %s:\n\t%s' % (short_line, error.__class__.__name__, error)
-        else:
-            self.message += '\n[%s]:\n\t%s' % (short_line, error)
+        self.message += '{}[{}]: {}'.format('\n' if self.message else '', short_line, error)
 
 def __null_func__(*args, **kwargs):
     '''This function will be passed to SoS's namespace and be executed
@@ -1053,11 +1050,11 @@ class Base_Executor:
         #
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
-            if failed_steps:
-                sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in failed_steps]
-                exec_error.append(self.workflow.name,
-                    RuntimeError('{} failed step{}: {}'.format(len(sections),
-                        's' if len(sections) > 1 else '', ', '.join(sections))))
+            #if failed_steps:
+                #sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in failed_steps]
+                #exec_error.append(self.workflow.name,
+                #    RuntimeError('{} failed step{}: {}'.format(len(sections),
+                #        's' if len(sections) > 1 else '', ', '.join(sections))))
             if pending_steps:
                 sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in pending_steps]
                 exec_error.append(self.workflow.name,

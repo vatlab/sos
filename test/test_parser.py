@@ -741,6 +741,25 @@ executed.append(_input)
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run, mode="dryrun")
 
+    def testOutputGroupBy(self):
+        '''Test group_by parameter of step output'''
+        # group_by = 'all'
+        self.touch(['a{}.txt'.format(x) for x in range(4)])
+        #
+        script = SoS_Script('''
+[0: shared='executed']
+
+executed = []
+input: ['a{}.txt'.format(x) for x in range(4)], group_by=2
+output: ['a{}.txt.bak'.format(x) for x in range(4)], group_by=2
+
+executed.append(_output)
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['executed'], [['a0.txt.bak', 'a1.txt.bak'], ['a2.txt.bak', 'a3.txt.bak']])
+
     def testSectionActions(self):
         '''Test actions of sections'''
         SoS_Script(
