@@ -198,7 +198,7 @@ class LocalHost:
     def send_task_file(self, task_file):
         # on the same file system, no action is needed.
         dest_task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', os.path.basename(task_file))
-        if not os.path.samefile(task_file, dest_task_file):
+        if task_file != dest_task_file:
             shutil.copyfile(task_file, dest_task_file)
 
     def check_output(self, cmd):
