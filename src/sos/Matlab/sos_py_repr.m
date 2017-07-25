@@ -56,7 +56,7 @@ if isnumeric(obj)
     end
 % string
 elseif isstr(obj)
-    repr = string(obj);
+    repr =strcat('"""',obj,'"""');
 % structure
 elseif isstruct(obj)
     save(fullfile(tempdir, 'stru2py.mat'), 'obj');
