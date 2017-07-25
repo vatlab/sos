@@ -126,6 +126,7 @@ class sos_Matlab:
 
     def get_vars(self, names):
         for name in names:
+            # add 'm' to any variable beginning with '_'
             if name.startswith('_'):
                 self.sos_kernel.warn('Variable {} is passed from SoS to kernel {} as {}'.format(name, self.kernel_name, 'm' + name))
                 newname = 'm' + name
