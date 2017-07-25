@@ -27,15 +27,15 @@ if isnumeric(obj)
         else
             repr = '-np.inf';
         end
-    %complex
+    % complex
     elseif isreal(obj) == 0
         rl = num2str(real(obj));
         im = num2str(imag(obj));
         repr = strcat('complex(', rl, ',', im, ')');
-    %none
+    % none
     elseif isnan(obj)
         repr = 'None';
-    %vector, includes integer and float
+    % vector, includes integer and float
     elseif isvector(obj)
         % integer and float
         if length(obj) == 1
@@ -46,36 +46,36 @@ if isnumeric(obj)
             nu = nu(1:end - 1);
             repr = strcat('np.array([', nu, '])');
         end
-    %martix
+    % martix
     elseif ismatrix(obj)
         save(fullfile(tempdir, 'mat2py.mat'), 'obj');
         repr = strcat('sio.loadmat(''', tempdir, 'mat2py.mat'')', '[''', 'obj', ''']');
-    %other, maybe canbe improved with the vector's block
+    % other, maybe canbe improved with the vector's block
     else
         repr = num2str(obj);
     end
-%string
+% string
 elseif isstr(obj)
     repr = num2str(obj);
-%structure
+% structure
 elseif isstruct(obj)
     save(fullfile(tempdir, 'stru2py.mat'), 'obj');
     dirpath = tempdir;
     repr = strcat('sio.loadmat(''', tempdir, 'stru2py.mat'')', '[''', 'obj', ''']');
-%cell
+% cell
 elseif iscell(obj)
     save(fullfile(tempdir, 'cell2py.mat'), 'obj');
     dirpath = tempdir;
     repr = strcat('sio.loadmat(''', tempdir, 'cell2py.mat'')', '[''', 'obj', ''']');
-%boolean
+% boolean
 elseif islogical(obj)
     if obj
         repr = 'True';
     else
         repr = 'False';
     end
-%table, table usually is also real, and can be a vector and matrix
-%sometimes, so it needs to be put in front of them.
+% table, table usually is also real, and can be a vector and matrix
+% sometimes, so it needs to be put in front of them.
 elseif istable(obj)
 cd (tempdir);
 writetable(obj,'tab2py.csv','Delimiter',',','QuoteStrings',true);
