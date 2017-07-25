@@ -126,9 +126,11 @@ class sos_Matlab:
 
     def get_vars(self, names):
         for name in names:
+            #Fix me
             if name.startswith('_'):
-                self.sos_kernel.warn('Variable {} is passed from SoS to kernel {} as {}'.format(name, self.kernel_name, 'Ml_' + name[1:]))
-                newname = 'Ml' + name[1:]
+                self.sos_kernel.warn('Variable {} is passed from SoS to kernel {} as {}'.format(name, self.kernel_name, 'm_' + name[1:]))
+                newname = 'm_' + name[1:]
+            #Fix me end
             else:
                 newname = name
             matlab_repr = _Matlab_repr(env.sos_dict[name])
