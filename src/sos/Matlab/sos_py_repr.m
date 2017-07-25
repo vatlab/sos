@@ -54,6 +54,9 @@ if isnumeric(obj)
     else
         repr = num2str(obj);
     end
+%string
+elseif isstr(obj)
+    repr = num2str(obj);
 %structure
 elseif isstruct(obj)
     save(fullfile(tempdir, 'stru2py.mat'), 'obj');
