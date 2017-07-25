@@ -45,6 +45,8 @@ def _R_repr(obj):
         return 'TRUE' if obj else 'FALSE'
     elif isinstance(obj, (int, float, str)):
         return repr(obj)
+    elif isinstance(obj, complex):
+        return 'complex(real = ' + str(obj.real) + ', imaginary = ' + str(obj.imag) + ')'
     elif isinstance(obj, Sequence):
         if len(obj) == 0:
             return 'c()'
