@@ -50,7 +50,7 @@ def __loaded_modules__():
 
 
 class sos_Python2:
-    supported_kernels = ['python2']
+    supported_kernels = {'Python2': ['python2']}
     background_color = '#F6FAEA'
     options = {
         'variable_pattern': r'^[_A-Za-z0-9\.]+\s*$',

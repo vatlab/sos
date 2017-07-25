@@ -31,7 +31,7 @@ from saspy.sasiostdio import SASsessionSTDIO
 from io import BytesIO
 
 class sos_SAS(SASsessionSTDIO):
-    supported_kernels = ['sas']
+    supported_kernels = {'SAS': ['sas']}
     background_color = '#dcb9b9'
     options = {}
 

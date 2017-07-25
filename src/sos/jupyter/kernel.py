@@ -611,9 +611,12 @@ class SoS_Kernel(IPythonKernel):
                         self._supported_languages[name] = plugin
                         # for convenience, we create two entries for, e.g. R and ir
                         # but only if there is no existing definition
-                        for supported_kernel in plugin.supported_kernels:
-                            if name != supported_kernel and supported_kernel not in self._supported_languages:
-                                self._supported_languages[supported_kernel] = plugin
+                        for supported_lan, supported_kernels in plugin.supported_kernels.items():
+                            for supported_kernel in supported_kernels:
+                                if name != supported_kernel and supported_kernel not in self._supported_languages:
+                                    self._supported_languages[supported_kernel] = plugin
+                            if supported_lan not in self._supported_languages:
+                                self._supported_languages[supported_lan] = plugin
                     except Exception as e:
                         raise RuntimeError('Failed to load language {}: {}'.format(language, e))
                     #
@@ -646,25 +649,36 @@ class SoS_Kernel(IPythonKernel):
                     self._supported_languages[name] = plugin
                 except Exception as e:
                     raise RuntimeError('Failed to load language {}: {}'.format(language, e))
-                #
-                avail_kernels = [x for x in plugin.supported_kernels if x in [y[1] for y in self._kernel_list]]
+                if name in plugin.supported_kernels:
+                    # if name is defined in the module, only search kernels for this language
+                    avail_kernels = [x for x in plugin.supported_kernels[name] if x in [y[1] for y in self._kernel_list]]
+                else:
+                    # otherwise we search all supported kernels
+                    avail_kernels = [x for x in sum(plugin.supported_kernels.values(), []) if x in [y[1] for y in self._kernel_list]]
+
                 if not avail_kernels:
                     raise ValueError('Failed to find any of the kernels {} supported by language {}. Please make sure it is properly installed and appear in the output of command "jupyter kenelspec list"'.format(
-                        ', '.join(plugin.supported_kernels), language))
+                        ', '.join(sum(plugin.supported_kernels.values(), [])), language))
                 # use the first available kernel
                 if color == 'default':
                     color = plugin.background_color
-                new_def = add_or_replace([name, avail_kernels[0], avail_kernels[0], plugin.background_color if color is None else color,
+                # find the language that has the kernel
+                lan_name = {x:y for x,y in plugin.supported_kernels.items() if avail_kernels[0] in y}.keys()[0]
+                new_def = add_or_replace([name, avail_kernels[0], lan_name, plugin.background_color if color is None else color,
                     getattr(plugin, 'options', {})])
             else:
-                # if should be defined ...
+                # if a language name is specified (not a path to module), if should be defined in setup.py
                 if language not in self._supported_languages:
                     raise RuntimeError('Unrecognized language definition {}'.format(language))
                 #
-                avail_kernels = [x for x in plugin.supported_kernels if x in [y[1] for y in self._kernel_list]]
+                plugin = self._supported_languages[language]
+                if language in plugin.supported_kernels:
+                    avail_kernels = [x for x in plugin.supported_kernels[language] if x in [y[1] for y in self._kernel_list]]
+                else:
+                    avail_kernels = [x for x in sum(plugin.supported_kernels.values(), []) if x in [y[1] for y in self._kernel_list]]
                 if not avail_kernels:
                     raise ValueError('Failed to find any of the kernels {} supported by language {}. Please make sure it is properly installed and appear in the output of command "jupyter kenelspec list"'.format(
-                        ', '.join(self._supported_languages[language].supported_kernels), language))
+                        ', '.join(sum(self._supported_languages[language].supported_kernels.values(), [])), language))
 
                 new_def = add_or_replace([
                     name, avail_kernels[0], language,
@@ -1907,10 +1921,17 @@ Available subkernels:\n{}'''.format(
             self._kernel_list = []
             lan_map = {}
             for x in self.supported_languages.keys():
-                for kname in self.supported_languages[x].supported_kernels:
-                    if x != kname:
-                        lan_map[kname] = (x, self.supported_languages[x].background_color,
-                            getattr(self._supported_languages[x], 'options', {}))
+                for lname, knames in self.supported_languages[x].supported_kernels.items():
+                    for kname in knames:
+                        if x != kname:
+                            lan_map[kname] = (lname, self.supported_languages[x].background_color,
+                                getattr(self._supported_languages[x], 'options', {}))
+            # kernel_list has the following items
+            #
+            # 1. displayed name
+            # 2. kernel name
+            # 3. language name
+            # 4. color
             for spec in specs.keys():
                 if spec == 'sos':
                     # the SoS kernel will be default theme color.

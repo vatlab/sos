@@ -119,7 +119,7 @@ path(path, {!r})
 print(Matlab_init_statements)
 
 class sos_Matlab:
-    supported_kernels = ['matlab', 'imatlab', 'octave']
+    supported_kernels = {'Matlab': ['matlab', 'imatlab'], 'Octave': ['octave']}
     background_color = '#FA8072'
     options = {}
 

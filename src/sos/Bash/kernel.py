@@ -51,7 +51,7 @@ def _Bash_repr(obj):
         return repr('Unsupported datatype {}'.format(short_repr(obj)))
 
 class sos_Bash:
-    supported_kernels = ['bash']
+    supported_kernels = {'Bash': ['bash']}
     background_color = '#E6EEFF'
     options = {}
 

@@ -52,7 +52,7 @@ def __loaded_modules__():
 
 
 class sos_Python3:
-    supported_kernels = ['python3']
+    supported_kernels = {'Python3': ['python3']}
     background_color = '#EAFAF1'
     options = {
         'variable_pattern': r'^[_A-Za-z0-9\.]+\s*$',
