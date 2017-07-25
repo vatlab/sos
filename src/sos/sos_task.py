@@ -1220,7 +1220,7 @@ class TaskEngine(threading.Thread):
                 else:
                     self.notify('{} ``restart`` from status ``{}``'.format(task_id, self.task_status[task_id]))
 
-            self.notify('{} ``queued``'.format(task_id))
+            #self.notify('{} ``queued``'.format(task_id))
             self.pending_tasks.append(task_id)
             if task_id in self.canceled_tasks:
                 self.canceled_tasks.remove(task_id)
