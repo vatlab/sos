@@ -71,6 +71,12 @@ elseif islogical(obj)
     else
         repr = 'False';
     end
+%table, table usually is also real, and can be a vector and matrix
+%sometimes, so it needs to be put in front of them.
+elseif istable(obj)
+cd (tempdir);
+writetable(obj,'tab2py.csv','Delimiter',',','QuoteStrings',true);
+repr = strcat('pd.read_csv(''', tempdir, 'tab2py.csv''', ')');
 else
     % unrecognized/unsupported datatype is transferred from
     % matlab to Python as None
