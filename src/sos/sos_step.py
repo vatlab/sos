@@ -28,11 +28,11 @@ import fnmatch
 from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
 
-from .utils import env, AbortExecution, short_repr, stable_repr,\
+from .utils import env, StopInputGroup, TerminateExecution, short_repr, stable_repr,\
     get_traceback, transcribe, ActivityNotifier, expand_size, format_HHMMSS
 from .pattern import extract_pattern
-from .sos_eval import SoS_eval, SoS_exec, Undetermined, interpolate
-from .target import BaseTarget, FileTarget, remote, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
+from .sos_eval import SoS_eval, SoS_exec, Undetermined
+from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
 from .sos_task import TaskParams, MasterTaskParams
@@ -756,7 +756,7 @@ class Base_Step_Executor:
             else:
                 env.sos_dict.set('__step_sig__', os.path.basename(sig.proc_info).split('.')[0])
             self.last_res = SoS_exec(stmt, self.step.sigil)
-        except (AbortExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks):
+        except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks):
             raise
         except Exception as e:
             raise RuntimeError('Failed to process statement {} ({}): {}'.format(short_repr(stmt), e.__class__.__name__, e))
@@ -883,7 +883,7 @@ class Base_Step_Executor:
                 else:
                     try:
                         self.execute(statement[1])
-                    except AbortExecution as e:
+                    except StopInputGroup as e:
                         if e.message:
                             env.logger.warning(e)
                         return self.collect_result()
@@ -1027,10 +1027,10 @@ class Base_Step_Executor:
                         try:
                             self.verify_input()
                             self.execute(statement[1], signatures[idx])
-                        except AbortExecution as e:
+                        except StopInputGroup as e:
                             self.output_groups[idx] = []
                             if e.message:
-                                env.logger.warning(e)
+                                env.logger.info(e)
                             skip_index = True
                             break
                 # if this index is skipped, go directly to the next one

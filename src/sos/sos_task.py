@@ -182,14 +182,10 @@ def collect_task_result(task_id, sigil, sos_dict):
         env.logger.debug('task {} (index={}) return shared variable {}'.format(task_id, env.sos_dict['_index'], shared))
     # the difference between sos_dict and env.sos_dict is that sos_dict (the original version) can have remote() targets
     # which should not be reported.
-    if env.sos_dict['_output'] is None:
-        output = {}
-    elif sos_dict['_output'] is None:
-        output = {}
-    else:
-        output = {x:FileTarget(x).signature() for x in sos_dict['_output'] if isinstance(x, str)}
-    return {'ret_code': 0, 'task': task_id,
-            'output': output,
+    output = {} if env.sos_dict['_output'] is None or sos_dict['_output'] is None else {x:FileTarget(x).signature() for x in sos_dict['_output'] if isinstance(x, str)}
+    input = {} if env.sos_dict['_input'] is None or sos_dict['_input'] is None else {x:FileTarget(x).signature() for x in sos_dict['_input'] if isinstance(x, str)}
+    depends = {} if env.sos_dict['_depends'] is None or sos_dict['_depends'] is None else {x:FileTarget(x).signature() for x in sos_dict['_depends'] if isinstance(x, str)}
+    return {'ret_code': 0, 'task': task_id, 'input': input, 'output': output, 'depends': depends,
             'shared': {env.sos_dict['_index']: shared} }
 
 def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_interval=5,
@@ -546,17 +542,14 @@ def check_task(task):
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
             if ('ret_code' in res and res['ret_code'] == 0) or ('succ' in res and res['succ'] == 0):
-                if isinstance(res['output'], dict):
-                    for x,y in res['output'].items():
+                for var in ('input', 'output', 'depends'):
+                    if var not in res or not isinstance(res[var], dict):
+                        continue
+                    for x,y in res[var].items():
                         if not FileTarget(x).exists() or FileTarget(x).signature() != y:
                             env.logger.debug('{} not found or signature mismatch'.format(x))
-                            return 'result-mismatch'
-                            # otherwise, it can be submitted or pending...
-                    # this is called "completed" remotely but will be
-                    # translated to either completed or result-ready locally
-                    return 'completed'
-                else:
-                    return 'completed'
+                            return 'signature-mismatch'
+                return 'completed'
             else:
                 return 'failed'
         except Exception as e:
@@ -1271,7 +1264,7 @@ class TaskEngine(threading.Thread):
             if status == 'running' and task_id not in self.running_tasks:
                 self.running_tasks.append(task_id)
             # terminal states, remove tasks from task list
-            if status in ('completed', 'failed', 'aborted', 'result-mismatch') and task_id in self.running_tasks:
+            if status in ('completed', 'failed', 'aborted', 'signature-mismatch') and task_id in self.running_tasks:
                 self.running_tasks.remove(task_id)
 
     def remove_tasks(self, tasks):
@@ -1332,7 +1325,7 @@ class TaskEngine(threading.Thread):
         with threading.Lock():
             # it is possible that a task is aborted from an opened notebook with aborted status
             if task not in self.task_status or \
-                    self.task_status[task] not in ('completed', 'failed', 'result-mismatch', 'aborted'):
+                    self.task_status[task] not in ('completed', 'failed', 'signature-mismatch', 'aborted'):
                 env.logger.warning('Resume task called for non-canceled or non-completed/failed task {}'.format(task))
                 return
             # the function might have been used multiple times (frontend multiple clicks)

@@ -295,8 +295,22 @@ def runfile(script=None, raw_args='', wdir='.', code=None, kernel=None, **kwargs
         argv = remove_arg(argv, '-r')
         argv = remove_arg(argv, '-c')
         # execute the command on remote host
-        out = host._host_agent.check_output(['sos', 'run', script] + argv)
-        print(out)
+        try:
+            import subprocess
+            p = host._host_agent.run_command(['sos', 'run', script] + argv, wait_for_task=True,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, err = p.communicate()
+            sys.stdout.write(out.decode())
+            sys.stderr.write(err.decode())
+            # ret = p.returncode
+            sys.stderr.flush()
+            sys.stdout.flush()
+        except Exception as e:
+            sys.stderr.flush()
+            sys.stdout.flush()
+            if kernel:
+                kernel.send_response(kernel.iopub_socket, 'stream',
+                    {'name': 'stdout', 'text': str(e)})
         return
 
     if args.__bin_dirs__:

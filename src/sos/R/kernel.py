@@ -45,6 +45,8 @@ def _R_repr(obj):
         return 'TRUE' if obj else 'FALSE'
     elif isinstance(obj, (int, float, str)):
         return repr(obj)
+    elif isinstance(obj, complex):
+        return 'complex(real = ' + str(obj.real) + ', imaginary = ' + str(obj.imag) + ')'
     elif isinstance(obj, Sequence):
         if len(obj) == 0:
             return 'c()'
@@ -140,6 +142,11 @@ R_init_statements = r'''
 ..py.repr.double.1 <- function(obj) {
     as.character(obj)
 }
+..py.repr.complex.1 <- function(obj) {
+    rl = Re(obj)
+    im = Im(obj)
+    paste0('complex(', rl, ',', im, ')')
+}
 ..py.repr.character.1 <- function(obj) {
     paste0('r"""', obj, '"""')
 }
@@ -189,6 +196,11 @@ R_init_statements = r'''
             ..py.repr.integer.1(obj)
         else
             paste("[", paste(obj, collapse=','), "]")
+    } else if (is.complex(obj)) {
+        if (length(obj) == 1)
+            ..py.repr.complex.1(obj)
+        else
+            paste("[", paste(..py.repr.complex.1(obj), collapse=','), "]")
     } else if (is.double(obj)){
         if (length(obj) == 1)
             ..py.repr.double.1(obj)

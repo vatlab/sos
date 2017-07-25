@@ -22,7 +22,6 @@
 import pandas as pd
 import numpy as np
 import scipy.io as sio
-
 import os
 from collections import Sequence
 import tempfile
@@ -47,12 +46,14 @@ def homogeneous_type(seq):
 def _Matlab_repr(obj):
     if isinstance(obj, bool):
         return 'true' if obj else 'false'
-    elif isinstance(obj, (int, float, str)):
+    elif isinstance(obj, (int, float, str, complex)):
         return repr(obj)
     elif isinstance(obj, Sequence):
         if len(obj) == 0:
             return '[]'
+        
         # if the data is of homogeneous type, let us use []
+        
         if homogeneous_type(obj):
             return '[' + ','.join(_Matlab_repr(x) for x in obj) + ']'
         else:
@@ -60,58 +61,53 @@ def _Matlab_repr(obj):
     elif obj is None:
         return 'NaN'
     elif isinstance(obj, dict):
-        return 'struct(' + ','.join('{},{}'.format(_Matlab_repr(x), _Matlab_repr(y)) for x,y in obj.items()) + ')'
+        return 'struct(' + ','.join('{},{}'.format(_Matlab_repr(x),
+                                                   _Matlab_repr(y)) for (x, y) in
+                                    obj.items()) + ')'
+
+
     elif isinstance(obj, set):
         return '{' + ','.join(_Matlab_repr(x) for x in obj) + '}'
-    else:
-        # FIXME
-        import numpy
-        import pandas
-        if isinstance(obj, (numpy.intc, numpy.intp, numpy.int8, numpy.int16, numpy.int32, numpy.int64,\
-                numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64, numpy.float16, numpy.float32, \
-                numpy.float64)):
-            return repr(obj)
-        elif isinstance(obj, numpy.matrixlib.defmatrix.matrix):
-            try:
-                from scipy.io import savemat
-            except ImportError:
-                raise UsageError('The mat-format module is required to pass numpy matrix as R matrix'
-                    'See https://github.com/wesm/mat/tree/master/python for details.')
-            mat_tmp_ = tempfile.NamedTemporaryFile(suffix='.mat', delete=False).name
-            mat.write_dataframe(pandas.DataFrame(obj).copy(), mat_tmp_)
-            return 'data.matrix(..read.mat({!r}))'.format(mat_tmp_)
-        elif isinstance(obj, numpy.ndarray):
-            return 'FIXME'
-        elif isinstance(obj, pandas.DataFrame):
-            try:
-                from scipy.io import savemat
-            except ImportError:
-                raise UsageError('The scipy module is required to pass pandas DataFrame as R data.frame'
-                    'See https://github.com/wesm/mat/tree/master/python for details.')
-            mat_tmp_ = tempfile.NamedTemporaryFile(suffix='.mat', delete=False).name
-            try:
-                data = obj.copy()
-                # if the dataframe has index, it would not be transferred due to limitations
-                # of mat. We will have to do something to save the index separately and
-                # recreate it. (#397)
-                if isinstance(data.index, pandas.Index):
-                    df_index = list(data.index)
-                elif not isinstance(data.index, pandas.RangeIndex):
-                    # we should give a warning here
-                    df_index=None
-                mat.write_dataframe(data, mat_tmp_)
-            except Exception:
-                # if data cannot be written, we try to manipulate data
-                # frame to have consistent types and try again
-                for c in data.columns:
-                    if not homogeneous_type(data[c]):
-                        data[c] = [str(x) for x in data[c]]
-                mat.write_dataframe(data, mat_tmp_)
-                # use {!r} for path because the string might contain c:\ which needs to be
-                # double quoted.
-            return '..read.mat({!r}, index={})'.format(mat_tmp_, _Matlab_repr(df_index))
-        else:
-            return repr('Unsupported datatype {}'.format(short_repr(obj)))
+    elif isinstance(obj, (
+                          np.intc,
+                          np.intp,
+                          np.int8,
+                          np.int16,
+                          np.int32,
+                          np.int64,
+                          np.uint8,
+                          np.uint16,
+                          np.uint32,
+                          np.uint64,
+                          np.float16,
+                          np.float32,
+                          np.float64,
+                          )):
+        return repr(obj)
+
+    elif isinstance(obj, np.matrixlib.defmatrix.matrix):
+        dic = tempfile.tempdir
+        os.chdir(dic)
+        sio.savemat('mat2mtlb.mat', {'obj': obj})
+        return 'cell2mat(struct2cell(load(fullfile(' + '\'' + dic + '\'' + ',' \
+            + '\'mat2mtlb.mat\'))))'
+    elif isinstance(obj, np.ndarray):
+        dic = tempfile.tempdir
+        os.chdir(dic)
+        sio.savemat('ary2mtlb.mat', {'obj': obj})
+        return 'load(fullfile(' + '\'' + dic + '\'' + ',' \
+            + '\'ary2mtlb.mat\'))'
+    elif isinstance(obj, dict):
+        dic = tempfile.tempdir
+        os.chdir(dic)
+        sio.savemat('dict2mtlb.mat', {'obj': obj})
+        return 'load(fullfile(' + '\'' + dic + '\'' + ',' \
+            + '\'dict2mtlb.mat\'))'
+    elif isinstance(obj, pd.DataFrame):
+        dic = tempfile.tempdir
+        os.chdir(dic)
+        obj.to_csv('df2mtlb.csv', index=False)
+        return 'readtable(' + '\'' + dic + '/' + 'df2mtlb.csv\')'
 
 Matlab_init_statements = r'''
 path(path, {!r})
@@ -130,13 +126,14 @@ class sos_Matlab:
 
     def get_vars(self, names):
         for name in names:
-        #    if name.startswith('_'):
-        #        self.sos_kernel.warn('Variable {} is passed from SoS to kernel {} as {}'.format(name, self.kernel_name, '.' + name[1:]))
-        #        newname = '.' + name[1:]
-        #    else:
-        #        newname = name
+            # add 'm' to any variable beginning with '_'
+            if name.startswith('_'):
+                self.sos_kernel.warn('Variable {} is passed from SoS to kernel {} as {}'.format(name, self.kernel_name, 'm' + name))
+                newname = 'm' + name
+            else:
+                newname = name
             matlab_repr = _Matlab_repr(env.sos_dict[name])
-            self.sos_kernel.run_cell('{} = {}'.format(name, matlab_repr), True, False,
+            self.sos_kernel.run_cell('{} = {}'.format(newname, matlab_repr), True, False,
                     on_error='Failed to get variable {} of type {} to Matlab'.format(name, env.sos_dict[name].__class__.__name__))
 
     def put_vars(self, items, to_kernel=None):

@@ -980,15 +980,15 @@ def cmd_execute(args, workflow_args):
     failed_tasks = set()
     while True:
         res = host.check_status(args.tasks)
-        if any(x in ('failed', 'aborted', 'result-mismatch') for x in res):
+        if any(x in ('failed', 'aborted', 'signature-mismatch') for x in res):
             for t, s in zip(args.tasks, res):
-                if s in ('failed', 'aborted', 'result-mismatch') and t not in failed_tasks:
+                if s in ('failed', 'aborted', 'signature-mismatch') and t not in failed_tasks:
                     env.logger.warning('{} ``{}``'.format(t, s))
                     failed_tasks.add(t)
-            if all(x in ('completed', 'failed', 'aborted', 'result-mismatch') for x in res):
-                raise RuntimeError('{} completed, {} failed, {} aborted, {} result-mismatch)'.format(
+            if all(x in ('completed', 'failed', 'aborted', 'signature-mismatch') for x in res):
+                raise RuntimeError('{} completed, {} failed, {} aborted, {} signature-mismatch)'.format(
                     len([x for x in res if x == 'completed']), len([x for x in res if x=='failed']),
-                    len([x for x in res if x.startswith('aborted')]), len([x for x in res if x=='result-mismatch'])))
+                    len([x for x in res if x.startswith('aborted')]), len([x for x in res if x=='signature-mismatch'])))
         if all(x == 'completed' for x in res):
             env.logger.debug('Put results for {}'.format(args.tasks))
             res = host.retrieve_results(args.tasks)
@@ -1087,7 +1087,7 @@ def get_purge_parser(desc_only=False):
         specified age.''')
     parser.add_argument('-s', '--status', nargs='+', help='''Only remove tasks with
         specified status, which can be pending, submitted, running, completed, failed,
-        aborted, and result-mismatch. One of more status can be specified.''')
+        aborted, and signature-mismatch. One of more status can be specified.''')
     parser.add_argument('-q', '--queue', nargs='?', const='',
         help='''Remove tasks on specified tasks queue or remote host
         if the tasks . The queue can be defined in global or local sos

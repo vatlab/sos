@@ -375,7 +375,7 @@ class FileTarget(BaseTarget):
             self._md5 = fileMD5(self.fullname())
         if self._md5 is not None:
             return self._md5
-        if os.path.isfile(self.sig_file()):
+        if os.path.isfile(self.sig_file()) and (not os.path.isfile(self.fullname()) or os.path.getmtime(self.sig_file()) > os.path.getmtime(self.fullname())):
             with open(self.sig_file()) as md5:
                 try:
                     line = md5.readline()

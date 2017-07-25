@@ -52,7 +52,7 @@ class ExecuteError(Error):
     """An exception to collect exceptions raised during run time so that
     other branches of the DAG would continue if some nodes fail to execute."""
     def __init__(self, workflow):
-        Error.__init__(self, 'Failed to execute workflow %s' % workflow)
+        Error.__init__(self)
         self.workflow = workflow
         self.errors = []
         self.traces = []
@@ -68,10 +68,7 @@ class ExecuteError(Error):
             return
         self.errors.append(short_line)
         self.traces.append(get_traceback())
-        if isinstance(error, Exception):
-            self.message += '\n[%s] %s:\n\t%s' % (short_line, error.__class__.__name__, error)
-        else:
-            self.message += '\n[%s]:\n\t%s' % (short_line, error)
+        self.message += '{}[{}]: {}'.format('\n' if self.message else '', short_line, error)
 
 def __null_func__(*args, **kwargs):
     '''This function will be passed to SoS's namespace and be executed
@@ -887,15 +884,15 @@ class Base_Executor:
                     if proc[2]._status == 'task_pending':
                         res = proc[2]._host.check_status(proc[2]._pending_tasks)
                         #env.logger.warning(res)
-                        if any(x in ('aborted', 'failed', 'result-mismatch') for x in res):
+                        if any(x in ('aborted', 'failed', 'signature-mismatch') for x in res):
                             for t, s in zip(proc[2]._pending_tasks, res):
-                                if s in ('aborted', 'failed', 'result-mismatch') and not (hasattr(proc[2], '_killed_tasks') and t in proc[2]._killed_tasks):
+                                if s in ('aborted', 'failed', 'signature-mismatch') and not (hasattr(proc[2], '_killed_tasks') and t in proc[2]._killed_tasks):
                                     env.logger.warning('{} ``{}``'.format(t, s))
                                     if not hasattr(proc[2], '_killed_tasks'):
                                         proc[2]._killed_tasks = {t}
                                     else:
                                         proc[2]._killed_tasks.add(t)
-                            if all(x in ('completed', 'aborted', 'failed', 'result-mismatch') for x in res):
+                            if all(x in ('completed', 'aborted', 'failed', 'signature-mismatch') for x in res):
                                 # we try to get .err .out etc even when jobs are failed.
                                 task_status = proc[2]._host.retrieve_results(proc[2]._pending_tasks)
                                 proc[1].send(task_status)
@@ -903,7 +900,7 @@ class Base_Executor:
                                 status = [('completed', len([x for x in res if x=='completed'])),
                                     ('failed', len([x for x in res if x=='failed'])),
                                     ('aborted', len([x for x in res if x=='aborted'])),
-                                    ('result mismatch', len([x for x in res if x=='result-mismatch']))]
+                                    ('result mismatch', len([x for x in res if x=='signature-mismatch']))]
                                 raise RuntimeError(', '.join(['{} job{} {}'.format(y, 's' if y > 1 else '', x) for x,y in status if y > 0]))
                         if any(x in ('pending', 'submitted', 'running') for x in res):
                             continue
@@ -1037,11 +1034,13 @@ class Base_Executor:
                 env.logger.info(task[1])
             # close all processes
         except Exception as e:
+            procs = [x for x in procs if x is not None]
             for p, _, _ in procs + pool:
                 p.terminate()
             raise e
         finally:
             if not nested:
+                procs = [x for x in procs if x is not None]
                 for _, p, _ in procs + pool:
                     p.send(None)
                 time.sleep(0.1)
@@ -1053,11 +1052,11 @@ class Base_Executor:
         #
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
-            if failed_steps:
-                sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in failed_steps]
-                exec_error.append(self.workflow.name,
-                    RuntimeError('{} failed step{}: {}'.format(len(sections),
-                        's' if len(sections) > 1 else '', ', '.join(sections))))
+            #if failed_steps:
+                #sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in failed_steps]
+                #exec_error.append(self.workflow.name,
+                #    RuntimeError('{} failed step{}: {}'.format(len(sections),
+                #        's' if len(sections) > 1 else '', ', '.join(sections))))
             if pending_steps:
                 sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in pending_steps]
                 exec_error.append(self.workflow.name,

@@ -107,7 +107,7 @@ class PBS_TaskEngine(TaskEngine):
             job.write(job_text)
 
         # then copy the job file to remote host if necessary
-        self.agent.send_task_file(task_id + '.sh')
+        self.agent.send_task_file(job_file)
 
         if env.config['run_mode'] == 'dryrun':
             try:
