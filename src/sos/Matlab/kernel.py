@@ -139,10 +139,14 @@ class sos_Matlab:
     def put_vars(self, items, to_kernel=None):
         # first let us get all variables with names starting with sos
         response = self.sos_kernel.get_response("display(cell2mat(who('sos*')))", ('stream',), name=('stdout',), debug=True)[0][1]
-        all_vars = response['text'].strip().split()
+        all_vars = response['text'].strip()
         # in case there is no var with name starts with sos, the response would be
         #      []\n\n\n
-        items += [x for x in all_vars if x != '[]']
+        # for matlab, and
+        #      [](0x0)\n\n]n
+        # for Octave
+        if '[]' not in all_vars:
+            items += [x for x in all_vars.split()]
 
         if not items:
             return {}
