@@ -80,7 +80,7 @@ writetable(obj,'tab2py.csv','Delimiter',',','QuoteStrings',true);
 repr = strcat('pd.read_csv(''', tempdir, 'tab2py.csv''', ')');
 else
     % unrecognized/unsupported datatype is transferred from
-    % matlab to Python as None
-    repr = 'None';
+    % matlab to Python as string "Unsupported datatype"
+    repr = 'Unsupported datatype';
 end
 end
