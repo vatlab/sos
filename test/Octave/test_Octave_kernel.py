@@ -79,7 +79,7 @@ from ipykernel.tests.utils import assemble_output, execute, wait_for_idle
 from sos.jupyter.test_utils import sos_kernel, get_result, get_display_data, \
     clear_channels
 
-class TestMatlabKernel(unittest.TestCase):
+class TestOctaveKernel(unittest.TestCase):
     #
     # Beacuse these tests would be called from sos/test, we
     # should switch to this directory so that some location
@@ -94,7 +94,7 @@ class TestMatlabKernel(unittest.TestCase):
         os.chdir(self.olddir)
     
     # Fixme
-    def testGetPythonDataFrameFromMatlab(self):
+    def testGetPythonDataFrameFromOctave(self):
         # Python -> Matlab/Octave
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
@@ -108,7 +108,7 @@ arr[::10] = np.nan
 df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
 ''')
             clear_channels(iopub)
-            execute(kc=kc, code="%use Matlab")
+            execute(kc=kc, code="%use Octave")
             _, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
             execute(kc=kc, code="%get df")
@@ -120,7 +120,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             wait_for_idle(kc)
     #
 
-    def testGetPythonDataFromMatlab(self):
+    def testGetPythonDataFromOctave(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             execute(kc=kc, code='''
@@ -141,7 +141,7 @@ recursive_var = {'a': {'b': 123}, 'c': True}
 ''')
             wait_for_idle(kc)
             execute(kc=kc, code='''
-%use Matlab
+%use Octave
 %get null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var recursive_var
 %dict -r
 %put null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var recursive_var
@@ -162,13 +162,13 @@ recursive_var = {'a': {'b': 123}, 'c': True}
             self.assertEqual(res['mat_var'].shape, (2,2))
             self.assertEqual(res['recursive_var'],  {'a': {'b': 123}, 'c': True})
 
-#def testPutMatlabDataFrameToPython(self):
-    # Matlab -> Python
+#def testPutOctaveDataFrameToPython(self):
+    # Octave -> Python
     # Fixme
     #with sos_kernel() as kc:
     #iopub = kc.iopub_channel
             # create a data frame
-            # execute(kc=kc, code='%use Matlab')
+            # execute(kc=kc, code='%use Octave')
             # wait_for_idle(kc)
             #  execute(kc=kc, code="%put mtcars")
             #  assemble_output(iopub)
@@ -183,11 +183,11 @@ recursive_var = {'a': {'b': 123}, 'c': True}
             #res = get_result(iopub)
 #self.assertEqual(res, 'Mazda RX4')
 
-    def testPutMatlabDataToPython(self):
+    def testPutOctaveDataToPython(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             # create a data frame
-            execute(kc=kc, code='%use Matlab')
+            execute(kc=kc, code='%use Octave')
             wait_for_idle(kc)
             execute(kc=kc, code="null_var = NaN")
             wait_for_idle(kc)
@@ -205,12 +205,12 @@ recursive_var = {'a': {'b': 123}, 'c': True}
             wait_for_idle(kc)
             execute(kc=kc, code="list_var = list(1, 2, '3')")
             wait_for_idle(kc)
-            # Not in Matlab
+            # Not in Octave
             #execute(kc=kc, code="named_list_var = list(a=1, b=2, c='3')")
             #wait_for_idle(kc)
             execute(kc=kc, code="mat_var = [1:3; 2:4]")
             wait_for_idle(kc)
-            # Not in Matlab
+            # Not in Octave
             #execute(kc=kc, code="recursive_var = list(a=1, b=list(c=3, d='whatever'))")
             #wait_for_idle(kc)
             execute(kc=kc, code="%put null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var list_var")
