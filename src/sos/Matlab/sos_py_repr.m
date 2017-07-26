@@ -48,24 +48,22 @@ if isnumeric(obj)
         end
     % martix
     elseif ismatrix(obj)
-        save(fullfile(tempdir, 'mat2py.mat'), 'obj');
+        save('-v6', fullfile(tempdir, 'mat2py.mat'), 'obj');
         repr = strcat('sio.loadmat(''', tempdir, 'mat2py.mat'')', '[''', 'obj', ''']');
     % other, maybe canbe improved with the vector's block
     else
         repr = num2str(obj);
     end
 % string
-elseif isstr(obj)
+elseif ischar(obj)
     repr =strcat('r"""',obj,'"""');
 % structure
 elseif isstruct(obj)
-    save(fullfile(tempdir, 'stru2py.mat'), 'obj');
-    dirpath = tempdir;
+    save('-v6', fullfile(tempdir, 'stru2py.mat'), 'obj');
     repr = strcat('sio.loadmat(''', tempdir, 'stru2py.mat'')', '[''', 'obj', ''']');
 % cell
 elseif iscell(obj)
-    save(fullfile(tempdir, 'cell2py.mat'), 'obj');
-    dirpath = tempdir;
+    save('-v6', fullfile(tempdir, 'cell2py.mat'), 'obj');
     repr = strcat('sio.loadmat(''', tempdir, 'cell2py.mat'')', '[''', 'obj', ''']');
 % boolean
 elseif islogical(obj)
