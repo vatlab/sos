@@ -21,7 +21,7 @@
 #
 
 import pickle
-from sos.utils import env, short_repr
+from sos.utils import short_repr, env
 
 __init_statement__ = '''
 def __version_info__(module):
@@ -39,6 +39,7 @@ def __version_info__(module):
         except Exception as e:
             return 'na'
 
+
 def __loaded_modules__():
     from types import ModuleType
     res = []
@@ -49,15 +50,16 @@ def __loaded_modules__():
 '''
 
 
-class sos_Python2:
-    supported_kernels = {'Python2': ['python2']}
-    background_color = '#F6FAEA'
+
+class sos_Python:
+    supported_kernels = {'Python3': ['python3'], 'Python2': ['python2']}
+    background_color = '#EAFAF1'
     options = {
         'variable_pattern': r'^[_A-Za-z0-9\.]+\s*$',
         'assignment_pattern': r'^([_A-Za-z0-9\.]+)\s*=.*$'
         }
 
-    def __init__(self, sos_kernel, kernel_name='python2'):
+    def __init__(self, sos_kernel, kernel_name='python3'):
         self.sos_kernel = sos_kernel
         self.kernel_name = kernel_name
         self.init_statements = __init_statement__
@@ -65,8 +67,11 @@ class sos_Python2:
     def get_vars(self, names):
         self.sos_kernel.run_cell("import pickle", True, False)
         for name in names:
-            stmt = "globals().update(pickle.loads({!r}))\n".format(pickle.dumps({name: env.sos_dict[name]}, protocol=2, fix_imports=True))
-            self.sos_kernel.run_cell(stmt, True, False, on_error='Failed to get variable {} from SoS to Python2'.format(name))
+            if self.kernel_name == 'python3':
+                stmt = "globals().update(pickle.loads({!r}))\n".format(pickle.dumps({name:env.sos_dict[name]}))
+            else:
+                stmt = "globals().update(pickle.loads({!r}))\n".format(pickle.dumps({name: env.sos_dict[name]}, protocol=2, fix_imports=True))
+            self.sos_kernel.run_cell(stmt, True, False, on_error='Failed to get variable {} from SoS to {}'.format(name, self.kernel_name))
 
     def load_pickled(self, item):
         if isinstance(item, bytes):
@@ -78,21 +83,21 @@ class sos_Python2:
             return {}
 
     def put_vars(self, items, to_kernel=None):
-        # python 2 uses protocol 2, which python 3 should be able to pick up
         stmt = 'import pickle\n__vars__={{ {} }}\n__vars__.update({{x:y for x,y in locals().items() if x.startswith("sos")}})\npickle.dumps(__vars__)'.format(','.join('"{0}":{0}'.format(x) for x in items))
         response = self.sos_kernel.get_response(stmt, ['execute_result'])[0][1]
-        if to_kernel == 'Python2':
+        # Python3 -> Python3
+        if (self.kernel_name == 'python3' and to_kernel == 'Python3') or \
+            (self.kernel_name == 'python2' and to_kernel == 'Python2'):
             # to self, this should allow all variables to be passed
             return 'import pickle\nglobals().update(pickle.loads({}))'.format(response['data']['text/plain'])
-        else:
-            try:
-                ret = self.load_pickled(eval(response['data']['text/plain']))
-                if self.sos_kernel._debug_mode:
-                    self.sos_kernel.warn('Get: {}'.format(ret))
-                return ret
-            except Exception as e:
-                self.sos_kernel.warn('Failed to import variables {}: {}'.format(items, e))
-                return {}
+        try:
+            ret = self.load_pickled(eval(response['data']['text/plain']))
+            if self.sos_kernel._debug_mode:
+                self.sos_kernel.warn('Get: {}'.format(ret))
+            return ret
+        except Exception as e:
+            self.sos_kernel.warn('Failed to import variables {}: {}'.format(items, e))
+            return {}
 
     def sessioninfo(self):
         modules = self.sos_kernel.get_response('import pickle;import sys;res=[("Version", sys.version)];res.extend(__loaded_modules__());pickle.dumps(res)', ['execute_result'])[0][1]
