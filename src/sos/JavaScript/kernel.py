@@ -62,7 +62,7 @@ def _JS_repr(obj):
 
 
 class sos_JavaScript:
-    supported_kernels = {'JavaScript': ['javascript', 'nodejs']}
+    supported_kernels = {'JavaScript': ['javascript', 'nodejs'], 'TypeScript': ['typescript']}
     background_color = '#00ff80'
     options = {}
 
