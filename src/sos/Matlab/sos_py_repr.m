@@ -70,8 +70,16 @@ elseif isstruct(obj)
     %repr = strcat('sio.loadmat(''', tempdir, 'stru2py.mat'')', '[''', 'obj', ''']');
 % cell
 elseif iscell(obj)
-    save('-v6', fullfile(tempdir, 'cell2py.mat'), 'obj');
-    repr = strcat('sio.loadmat(''', tempdir, 'cell2py.mat'')', '[''', 'obj', ''']');
+    if size(obj,1)==1
+        repr = '[';
+        for i = 1:size(obj,2)
+            repr = strcat(repr, sos_py_repr(obj{1,i}), ',');
+        end
+        repr = strcat(repr,']');
+    else
+        save('-v6', fullfile(tempdir, 'cell2py.mat'), 'obj');
+        repr = strcat('sio.loadmat(''', tempdir, 'cell2py.mat'')', '[''', 'obj', ''']');
+    end
 % boolean
 elseif islogical(obj)
     if length(obj)==1
