@@ -464,7 +464,7 @@ class Base_Executor:
                 res = analyze_section(section)
                 #
                 # build DAG with input and output files of step
-                env.logger.debug('Adding step {} with output {}'.format(res['step_name'], short_repr(res['step_output'])))
+                env.logger.debug('Adding step {} with output {} to resolve target {}'.format(res['step_name'], short_repr(res['step_output']), target))
                 if isinstance(mo[0][1], dict):
                     context = mo[0][1]
                 else:
@@ -519,7 +519,7 @@ class Base_Executor:
                 res = analyze_section(section)
                 #
                 # build DAG with input and output files of step
-                env.logger.debug('Adding step {} with output {}'.format(res['step_name'], short_repr(res['step_output'])))
+                env.logger.debug('Adding step {} with output {} to resolve target {}'.format(res['step_name'], short_repr(res['step_output']), target))
                 if isinstance(mo[0][1], dict):
                     context = mo[0][1]
                 else:
