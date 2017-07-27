@@ -16,6 +16,8 @@ before_install:
     - sudo apt-get install libmagickwand-dev libmagickcore5-extra graphviz redis-server
     - sudo apt-get install -y texlive-xetex texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended
     - sudo apt-get install octave
+      # install dataframe package for octave to test exchanging dataframe between sos and octave
+    - octave --eval 'pkg install -forge dataframe'
     # install JavaScript kernel
     # https://github.com/petethepig/devtools-terminal/issues/70
     # need to remove nodejs-5.x ppa, purge nodejs

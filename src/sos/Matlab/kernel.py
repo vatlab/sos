@@ -39,7 +39,6 @@ def homogeneous_type(seq):
 Matlab_init_statements = r'''
 path(path, {!r})
 '''.format(os.path.split(__file__)[0])
-print(Matlab_init_statements)
 
 class sos_Matlab:
     supported_kernels = {'Matlab': ['matlab', 'imatlab'], 'Octave': ['octave']}
@@ -50,6 +49,8 @@ class sos_Matlab:
         self.sos_kernel = sos_kernel
         self.kernel_name = kernel_name
         self.init_statements = Matlab_init_statements
+        if self.kernel_name == 'octave':
+            self.init_statements += 'pkg load dataframe\n'
 
     def _Matlab_repr(self, obj):
         #  Converting a Python object to a Matlab expression that will be executed
@@ -134,6 +135,8 @@ class sos_Matlab:
             else:
                 newname = name
             matlab_repr = self._Matlab_repr(env.sos_dict[name])
+            if self.sos_kernel._debug_mode:
+                self.sos_kernel.warn(matlab_repr)
             self.sos_kernel.run_cell('{} = {}'.format(newname, matlab_repr), True, False,
                     on_error='Failed to get variable {} of type {} to Matlab'.format(name, env.sos_dict[name].__class__.__name__))
 
