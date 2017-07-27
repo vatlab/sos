@@ -19,60 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-
-###############################################################################
-#                                                                             #
-# To test support for a language:                                             #
-#                                                                             #
-# 1. Import needed functions from ipykernel.tests.utils and                   #
-#    sos.jupyter.test.utils.                                                  #
-# 2. Define a test case with functions to get and put variables               #
-#                                                                             #
-# The following is a placeholder class for a new unittest. Please refer to    #
-# tests for other languages for details.                                      #
-#                                                                             #
-###############################################################################
-
-# import unittest
-# from ipykernel.tests.utils import execute, wait_for_idle
-# from sos.jupyter.test_utils import sos_kernel, get_result
-#
-# class TestKernel(unittest.TestCase):
-#     def setUp(self):
-#         self.olddir = os.getcwd()
-#         if os.path.dirname(__file__):
-#             os.chdir(os.path.dirname(__file__))
-#
-#     def tearDown(self):
-#         os.chdir(self.olddir)
-#
-#     def testGetData(self):
-#         with sos_kernel() as kc:
-#             iopub = kc.iopub_channel
-#             msg_id, content = execute(kc=kc, code='')
-#             wait_for_idle(kc)
-#             msg_id, content = execute(kc=kc, code="%use LAN")
-#             wait_for_idle(kc)
-#             msg_id, content = execute(kc=kc, code="%get VAR")
-#             wait_for_idle(kc)
-#
-#     def testPutData(self):
-#         with sos_kernel() as kc:
-#             iopub = kc.iopub_channel
-#             msg_id, content = execute(kc=kc, code="%use LAN")
-#             wait_for_idle(kc)
-#             msg_id, content = execute(kc=kc, code='')
-#             wait_for_idle(kc)
-#             msg_id, content = execute(kc=kc, code="%put VAR")
-#             wait_for_idle(kc)
-#
-#
-# if __name__ == '__main__':
-#     unittest.main()
-
-
-
-
 import os
 import unittest
 from ipykernel.tests.utils import assemble_output, execute, wait_for_idle
@@ -109,13 +55,14 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
 ''')
             clear_channels(iopub)
             execute(kc=kc, code="%use Octave")
-            _, stderr = assemble_output(iopub)
-            self.assertEqual(stderr, '')
+            wait_for_idle(kc)
+            #_, stderr = assemble_output(iopub)
+            #self.assertEqual(stderr, '')
             execute(kc=kc, code="%get df")
             wait_for_idle(kc)
-            execute(kc=kc, code="dim(df)")
-            res = get_display_data(iopub)
-            self.assertEqual(res, '[1] 1000   10')
+            execute(kc=kc, code="display(size(df))")
+            stdout, _ = assemble_output(iopub)
+            self.assertEqual(stdout.strip().split(), ['900', '10'])
             execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
     #
@@ -162,60 +109,26 @@ recursive_var = {'a': {'b': 123}, 'c': True}
             self.assertEqual(res['mat_var'].shape, (2,2))
             self.assertEqual(res['recursive_var'],  {'a': {'b': 123}, 'c': True})
 
-#def testPutOctaveDataFrameToPython(self):
-    # Octave -> Python
-    # Fixme
-    #with sos_kernel() as kc:
-    #iopub = kc.iopub_channel
-            # create a data frame
-            # execute(kc=kc, code='%use Octave')
-            # wait_for_idle(kc)
-            #  execute(kc=kc, code="%put mtcars")
-            #  assemble_output(iopub)
-            # the message can contain "Loading required package feathre"
-            #self.assertEqual(stderr, '')
-            #  execute(kc=kc, code="%use sos")
-            # wait_for_idle(kc)
-            # execute(kc=kc, code="mtcars.shape")
-            #res = get_result(iopub)
-            #self.assertEqual(res, (32, 11))
-            #execute(kc=kc, code="mtcars.index[0]")
-            #res = get_result(iopub)
-#self.assertEqual(res, 'Mazda RX4')
-
     def testPutOctaveDataToPython(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
-            # create a data frame
-            execute(kc=kc, code='%use Octave')
+            execute(kc=kc, code="""
+%use Octave
+null_var = NaN
+num_var = 123
+num_arr_var = [1, 2, 3]
+logic_var = true
+logic_arr_var = [true, false, true]
+char_var = '123'
+char_arr_var = ['1', '2', '3']
+mat_var = [1:3; 2:4]
+""")
             wait_for_idle(kc)
-            execute(kc=kc, code="null_var = NaN")
-            wait_for_idle(kc)
-            execute(kc=kc, code="num_var = 123")
-            wait_for_idle(kc)
-            execute(kc=kc, code="num_arr_var = [1, 2, 3]")
-            wait_for_idle(kc)
-            execute(kc=kc, code="logic_var = true")
-            wait_for_idle(kc)
-            execute(kc=kc, code="logic_arr_var = [true, false, true]")
-            wait_for_idle(kc)
-            execute(kc=kc, code="char_var = '1\"23'")
-            wait_for_idle(kc)
-            execute(kc=kc, code="char_arr_var = [1, 2, '3']")
-            wait_for_idle(kc)
-            execute(kc=kc, code="list_var = list(1, 2, '3')")
-            wait_for_idle(kc)
-            # Not in Octave
-            #execute(kc=kc, code="named_list_var = list(a=1, b=2, c='3')")
-            #wait_for_idle(kc)
-            execute(kc=kc, code="mat_var = [1:3; 2:4]")
-            wait_for_idle(kc)
-            # Not in Octave
-            #execute(kc=kc, code="recursive_var = list(a=1, b=list(c=3, d='whatever'))")
-            #wait_for_idle(kc)
-            execute(kc=kc, code="%put null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var list_var")
-            wait_for_idle(kc)
-            execute(kc=kc, code="%dict null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var list_var")
+            execute(kc=kc, code="""
+%dict -r
+%put null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var
+%dict null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var
+""")
             res = get_result(iopub)
             self.assertEqual(res['null_var'], None)
             self.assertEqual(res['num_var'], 123)
