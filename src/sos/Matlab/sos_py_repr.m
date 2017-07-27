@@ -49,7 +49,7 @@ if isnumeric(obj)
     % martix
     elseif ismatrix(obj)
         save('-v6', fullfile(tempdir, 'mat2py.mat'), 'obj');
-        repr = strcat('sio.loadmat(''', tempdir, 'mat2py.mat'')', '[''', 'obj', ''']');
+        repr = strcat('np.matrix(sio.loadmat(''', tempdir, 'mat2py.mat'')', '[''', 'obj', '''])');
     % other, maybe canbe improved with the vector's block
     else
         repr = num2str(obj);
@@ -59,7 +59,7 @@ elseif ischar(obj)
     repr =strcat('r"""',obj,'"""');
 % structure
 elseif isstruct(obj)
-    fields = fieldnames(obj)
+    fields = fieldnames(obj);
     repr = '{';
     for i = 1:numel(fields)
         repr = strcat(repr, '"', fields{i}, '":', sos_py_repr(obj.(fields{i})), ',');
