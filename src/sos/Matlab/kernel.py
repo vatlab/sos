@@ -36,85 +36,6 @@ def homogeneous_type(seq):
     else:
         return True if all(isinstance(x, first_type) for x in iseq) else False
 
-#
-#  support for %get
-#
-#  Converting a Python object to a Matlab expression that will be executed
-#  by the Matlab kernel.
-#
-#
-def _Matlab_repr(obj):
-    if isinstance(obj, bool):
-        return 'true' if obj else 'false'
-    elif isinstance(obj, (int, float, str, complex)):
-        return repr(obj)
-    elif isinstance(obj, Sequence):
-        if len(obj) == 0:
-            return '[]'
-        
-        # if the data is of homogeneous type, let us use []
-        
-        if homogeneous_type(obj):
-            return '[' + ','.join(_Matlab_repr(x) for x in obj) + ']'
-        else:
-            return '{' + ','.join(_Matlab_repr(x) for x in obj) + '}'
-    elif obj is None:
-        return 'NaN'
-    elif isinstance(obj, dict):
-        return 'struct(' + ','.join('{},{}'.format(_Matlab_repr(x),
-                                                   _Matlab_repr(y)) for (x, y) in
-                                    obj.items()) + ')'
-
-
-    elif isinstance(obj, set):
-        return '{' + ','.join(_Matlab_repr(x) for x in obj) + '}'
-    elif isinstance(obj, (
-                          np.intc,
-                          np.intp,
-                          np.int8,
-                          np.int16,
-                          np.int32,
-                          np.int64,
-                          np.uint8,
-                          np.uint16,
-                          np.uint32,
-                          np.uint64,
-                          np.float16,
-                          np.float32,
-                          np.float64,
-                          )):
-        return repr(obj)
-
-    elif isinstance(obj, np.matrixlib.defmatrix.matrix):
-        dic = tempfile.tempdir
-        os.chdir(dic)
-        sio.savemat('mat2mtlb.mat', {'obj': obj})
-        return 'cell2mat(struct2cell(load(fullfile(' + '\'' + dic + '\'' + ',' \
-            + '\'mat2mtlb.mat\'))))'
-    elif isinstance(obj, np.ndarray):
-        dic = tempfile.tempdir
-        os.chdir(dic)
-        sio.savemat('ary2mtlb.mat', {'obj': obj})
-        return 'load(fullfile(' + '\'' + dic + '\'' + ',' \
-            + '\'ary2mtlb.mat\'))'
-    elif isinstance(obj, dict):
-        dic = tempfile.tempdir
-        os.chdir(dic)
-        sio.savemat('dict2mtlb.mat', {'obj': obj})
-        return 'load(fullfile(' + '\'' + dic + '\'' + ',' \
-            + '\'dict2mtlb.mat\'))'
-    elif isinstance(obj, pd.DataFrame):
-        if self.kernel_name == 'matlab':
-            dic = tempfile.tempdir
-            os.chdir(dic)
-            obj.to_csv('df2mtlb.csv', index=False)
-            return 'readtable(' + '\'' + dic + '/' + 'df2mtlb.csv\')'
-        else:
-            dic = tempfile.tempdir
-            os.chdir(dic)
-            obj.to_csv('df2oct.csv', index=False)
-            return 'dataframe(' + '\'' + dic + '/' + 'df2oct.csv\')'
-
 Matlab_init_statements = r'''
 path(path, {!r})
 '''.format(os.path.split(__file__)[0])
@@ -130,6 +51,80 @@ class sos_Matlab:
         self.kernel_name = kernel_name
         self.init_statements = Matlab_init_statements
 
+    def _Matlab_repr(self, obj):
+        #  Converting a Python object to a Matlab expression that will be executed
+        #  by the Matlab kernel.
+        if isinstance(obj, bool):
+            return 'true' if obj else 'false'
+        elif isinstance(obj, (int, float, str, complex)):
+            return repr(obj)
+        elif isinstance(obj, Sequence):
+            if len(obj) == 0:
+                return '[]'
+
+            # if the data is of homogeneous type, let us use []
+
+            if homogeneous_type(obj):
+                return '[' + ','.join(self._Matlab_repr(x) for x in obj) + ']'
+            else:
+                return '{' + ','.join(self._Matlab_repr(x) for x in obj) + '}'
+        elif obj is None:
+            return 'NaN'
+        elif isinstance(obj, dict):
+            return 'struct(' + ','.join('{},{}'.format(self._Matlab_repr(x),
+                                                       self._Matlab_repr(y)) for (x, y) in
+                                        obj.items()) + ')'
+
+
+        elif isinstance(obj, set):
+            return '{' + ','.join(self._Matlab_repr(x) for x in obj) + '}'
+        elif isinstance(obj, (
+                              np.intc,
+                              np.intp,
+                              np.int8,
+                              np.int16,
+                              np.int32,
+                              np.int64,
+                              np.uint8,
+                              np.uint16,
+                              np.uint32,
+                              np.uint64,
+                              np.float16,
+                              np.float32,
+                              np.float64,
+                              )):
+            return repr(obj)
+
+        elif isinstance(obj, np.matrixlib.defmatrix.matrix):
+            dic = tempfile.tempdir
+            os.chdir(dic)
+            sio.savemat('mat2mtlb.mat', {'obj': obj})
+            return 'cell2mat(struct2cell(load(fullfile(' + '\'' + dic + '\'' + ',' \
+                + '\'mat2mtlb.mat\'))))'
+        elif isinstance(obj, np.ndarray):
+            dic = tempfile.tempdir
+            os.chdir(dic)
+            sio.savemat('ary2mtlb.mat', {'obj': obj})
+            return 'load(fullfile(' + '\'' + dic + '\'' + ',' \
+                + '\'ary2mtlb.mat\'))'
+        elif isinstance(obj, dict):
+            dic = tempfile.tempdir
+            os.chdir(dic)
+            sio.savemat('dict2mtlb.mat', {'obj': obj})
+            return 'load(fullfile(' + '\'' + dic + '\'' + ',' \
+                + '\'dict2mtlb.mat\'))'
+        elif isinstance(obj, pd.DataFrame):
+            if self.kernel_name == 'matlab':
+                dic = tempfile.tempdir
+                os.chdir(dic)
+                obj.to_csv('df2mtlb.csv', index=False)
+                return 'readtable(' + '\'' + dic + '/' + 'df2mtlb.csv\')'
+            else:
+                dic = tempfile.tempdir
+                os.chdir(dic)
+                obj.to_csv('df2oct.csv', index=False)
+                return 'dataframe(' + '\'' + dic + '/' + 'df2oct.csv\')'
+
     def get_vars(self, names):
         for name in names:
             # add 'm' to any variable beginning with '_'
@@ -138,7 +133,7 @@ class sos_Matlab:
                 newname = 'm' + name
             else:
                 newname = name
-            matlab_repr = _Matlab_repr(env.sos_dict[name])
+            matlab_repr = self._Matlab_repr(env.sos_dict[name])
             self.sos_kernel.run_cell('{} = {}'.format(newname, matlab_repr), True, False,
                     on_error='Failed to get variable {} of type {} to Matlab'.format(name, env.sos_dict[name].__class__.__name__))
 
