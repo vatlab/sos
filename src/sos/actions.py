@@ -493,7 +493,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                 prog.update()
                 prog.close()
                 return True
-            else:
+            elif env.config['sig_mode'] == 'default':
                 prog.update()
                 if sig.validate():
                     prog.set_description(message + ': \033[32m Validated\033[0m')
@@ -576,7 +576,9 @@ def downloadURL(URL, dest, decompress=False, index=None):
                 zfile.extractall(dest_dir)
                 names = zfile.namelist()
                 for name in names:
-                    if not os.path.isfile(os.path.join(dest_dir, name)):
+                    if os.path.isdir(os.path.join(dest_dir, name)):
+                        continue
+                    elif not os.path.isfile(os.path.join(dest_dir, name)):
                         return False
                     else:
                         sig.add(os.path.join(dest_dir, name))
