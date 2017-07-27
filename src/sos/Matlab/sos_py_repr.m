@@ -59,19 +59,35 @@ elseif ischar(obj)
     repr =strcat('r"""',obj,'"""');
 % structure
 elseif isstruct(obj)
-    save('-v6', fullfile(tempdir, 'stru2py.mat'), 'obj');
-    repr = strcat('sio.loadmat(''', tempdir, 'stru2py.mat'')', '[''', 'obj', ''']');
+    fields = fieldnames(obj)
+    repr = '{';
+    for i = 1:numel(fields)
+        repr = strcat(repr, '"', fields{i}, '":', sos_py_repr(obj.(fields{i})), ',');
+    end
+    repr = strcat(repr, '}');
+    
+    %save('-v6', fullfile(tempdir, 'stru2py.mat'), 'obj');
+    %repr = strcat('sio.loadmat(''', tempdir, 'stru2py.mat'')', '[''', 'obj', ''']');
 % cell
 elseif iscell(obj)
     save('-v6', fullfile(tempdir, 'cell2py.mat'), 'obj');
     repr = strcat('sio.loadmat(''', tempdir, 'cell2py.mat'')', '[''', 'obj', ''']');
 % boolean
 elseif islogical(obj)
-    if obj
-        repr = 'True';
-    else
-        repr = 'False';
+    if length(obj)==1
+        if obj
+            repr = 'True';
+        else
+            repr = 'False';
+        end
+    else 
+        repr = '[';
+        for i = 1:length(obj)
+            repr = strcat(repr, sos_py_repr(obj(i)), ',');
+        end
+        repr = strcat(repr,']');
     end
+            
 % table, table usually is also real, and can be a vector and matrix
 % sometimes, so it needs to be put in front of them.
 elseif istable(obj)
