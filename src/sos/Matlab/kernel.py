@@ -104,10 +104,16 @@ def _Matlab_repr(obj):
         return 'load(fullfile(' + '\'' + dic + '\'' + ',' \
             + '\'dict2mtlb.mat\'))'
     elif isinstance(obj, pd.DataFrame):
-        dic = tempfile.tempdir
-        os.chdir(dic)
-        obj.to_csv('df2mtlb.csv', index=False)
-        return 'readtable(' + '\'' + dic + '/' + 'df2mtlb.csv\')'
+        if self.kernel_name == 'matlab':
+            dic = tempfile.tempdir
+            os.chdir(dic)
+            obj.to_csv('df2mtlb.csv', index=False)
+            return 'readtable(' + '\'' + dic + '/' + 'df2mtlb.csv\')'
+        else:
+            dic = tempfile.tempdir
+            os.chdir(dic)
+            obj.to_csv('df2oct.csv', index=False)
+            return 'dataframe(' + '\'' + dic + '/' + 'df2oct.csv\')'
 
 Matlab_init_statements = r'''
 path(path, {!r})
