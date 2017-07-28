@@ -100,7 +100,7 @@ script:
            pytest -x -v --durations 20 . ;
        else
            pytest -x --cov sos --cov-config ../.coveragerc --cov-report= -v docker;
-           pytest -x --cov sos --cov-config ../.coveragerc --cov-report=xml --cov-append -v --durations 20 --ignore docker .;
+           pytest -x --cov sos --cov-config ../.coveragerc --cov-report=xml --cov-append -v --durations 20 --ignore docker --ignore Matlab .;
        fi'
       
 after_success:
