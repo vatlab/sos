@@ -329,6 +329,7 @@ run:
 
 [20]
 depends: sos_step('t1')
+task:
 run:
     touch 20.txt
 ''')
