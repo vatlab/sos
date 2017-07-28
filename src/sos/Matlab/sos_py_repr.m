@@ -49,7 +49,7 @@ if isnumeric(obj)
     % martix
     elseif ismatrix(obj)
         save('-v6', fullfile(tempdir, 'mat2py.mat'), 'obj');
-        repr = strcat('sio.loadmat(''', tempdir, 'mat2py.mat'')', '[''', 'obj', ''']');
+        repr = strcat('np.matrix(sio.loadmat(''', tempdir, 'mat2py.mat'')', '[''', 'obj', '''])');
     % other, maybe canbe improved with the vector's block
     else
         repr = num2str(obj);
@@ -59,7 +59,7 @@ elseif ischar(obj)
     repr =strcat('r"""',obj,'"""');
 % structure
 elseif isstruct(obj)
-    fields = fieldnames(obj)
+    fields = fieldnames(obj);
     repr = '{';
     for i = 1:numel(fields)
         repr = strcat(repr, '"', fields{i}, '":', sos_py_repr(obj.(fields{i})), ',');
@@ -70,8 +70,16 @@ elseif isstruct(obj)
     %repr = strcat('sio.loadmat(''', tempdir, 'stru2py.mat'')', '[''', 'obj', ''']');
 % cell
 elseif iscell(obj)
-    save('-v6', fullfile(tempdir, 'cell2py.mat'), 'obj');
-    repr = strcat('sio.loadmat(''', tempdir, 'cell2py.mat'')', '[''', 'obj', ''']');
+    if size(obj,1)==1
+        repr = '[';
+        for i = 1:size(obj,2)
+            repr = strcat(repr, sos_py_repr(obj{1,i}), ',');
+        end
+        repr = strcat(repr,']');
+    else
+        save('-v6', fullfile(tempdir, 'cell2py.mat'), 'obj');
+        repr = strcat('sio.loadmat(''', tempdir, 'cell2py.mat'')', '[''', 'obj', ''']');
+    end
 % boolean
 elseif islogical(obj)
     if length(obj)==1
