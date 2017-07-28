@@ -421,6 +421,61 @@ run:
             self.assertTrue(FileTarget(ofile).exists('target'))
             FileTarget(ofile).remove('both')
 
+    def testGroupWith(self):
+        '''Test option group_with '''
+        self.touch(['a.txt', 'b.txt'])
+        for ofile in ['a.txt1', 'b.txt2']:
+            FileTarget(ofile).remove('both')
+        #
+        # string input
+        script = SoS_Script(r'''
+[0]
+files = ['a.txt', 'b.txt']
+vars = [1, 2]
+
+input: files, group_with='vars', group_by=1
+output: "${_input}${_vars}"
+run:
+    touch ${output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for ofile in ['a.txt1', 'b.txt2']:
+            self.assertTrue(FileTarget(ofile).exists('target'))
+            FileTarget(ofile).remove('both')
+        #
+        # list input
+        script = SoS_Script(r'''
+[0]
+files = ['a.txt', 'b.txt']
+vars = [1]
+vars2 = ['a']
+
+input: files, group_with=('vars', 'vars2'), group_by=2
+output: "${_input[0]}${_vars}"
+run:
+    touch ${output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for ofile in ['a.txt1']:
+            self.assertTrue(FileTarget(ofile).exists('target'))
+            FileTarget(ofile).remove('both')
+        #
+        # dict input
+        script = SoS_Script(r'''
+[0]
+files = ['a.txt', 'b.txt']
+input: files, group_with={'var': [1], 'var2': ['a']}, group_by=2
+output: "${_input[0]}${var}"
+run:
+    touch ${output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for ofile in ['a.txt1']:
+            self.assertTrue(FileTarget(ofile).exists('target'))
+            FileTarget(ofile).remove('both')
 
 
     def testInputPattern(self):

@@ -167,6 +167,19 @@ def analyze_section(section, default_input=None):
                     environ_vars |= set()
                 else:
                     raise ValueError('Unacceptable value for parameter paired_with: {}'.format(pw))
+            if 'group_with' in kwargs:
+                pw = kwargs['group_with']
+                if pw is None or not pw:
+                    pass
+                elif isinstance(pw, str):
+                    environ_vars.add(pw)
+                elif isinstance(pw, Iterable):
+                    environ_vars |= set(pw)
+                elif isinstance(pw, Iterable):
+                    # value supplied, no environ var
+                    environ_vars |= set()
+                else:
+                    raise ValueError('Unacceptable value for parameter group_with: {}'.format(pw))                
             if 'for_each' in kwargs:
                 fe = kwargs['for_each']
                 if fe is None or not fe:
@@ -385,6 +398,45 @@ class Base_Step_Executor:
                 _vars[idx][vn] = [file_map[x] for x in grp]
 
     @staticmethod
+    def handle_group_with(group_with, ifiles, _groups, _vars):
+        '''Handle input option group_with'''
+        if group_with is None or not group_with:
+            var_name = []
+            var_value = []
+        elif isinstance(group_with, str):
+            var_name = ['_' + group_with]
+            if group_with not in env.sos_dict:
+                raise ValueError('Variable {} does not exist.'.format(group_with))
+            var_value = [env.sos_dict[group_with]]
+        elif isinstance(group_with, dict):
+            var_name = []
+            var_value = []
+            for k,v in group_with.items():
+                var_name.append(k)
+                var_value.append(v)
+        elif isinstance(group_with, Iterable):
+            try:
+                var_name = ['_'+x for x in group_with]
+            except Exception:
+                raise ValueError('Invalud value for option group_with {}'.format(group_with))
+            var_value = []
+            for vn in var_name:
+                if vn[1:] not in env.sos_dict:
+                    raise ValueError('Variable {} does not exist.'.format(vn[1:]))
+                var_value.append(env.sos_dict[vn[1:]])
+        else:
+            raise ValueError('Unacceptable value for parameter group_with: {}'.format(group_with))
+        #
+        for vn, vv in zip(var_name, var_value):
+            if isinstance(vv, str) or not isinstance(vv, Iterable):
+                raise ValueError('group_with variable {} is not a sequence ("{}")'.format(vn, vv))
+            if len(vv) != len(_groups):
+                raise ValueError('Length of variable {} (length {}) should match the number of input groups (length {}).'
+                    .format(vn, len(vv), len(_groups)))
+            for idx, grp in enumerate(_groups):
+                _vars[idx][vn] = vv[idx]
+
+    @staticmethod
     def handle_extract_pattern(pattern, ifiles, _groups, _vars):
         '''Handle input option pattern'''
         if pattern is None or not pattern:
@@ -538,6 +590,9 @@ class Base_Step_Executor:
         # handle pattern
         if 'pattern' in kwargs:
             Base_Step_Executor.handle_extract_pattern(kwargs['pattern'], ifiles, _groups, _vars)
+        # handle group_with
+        if 'group_with' in kwargs:
+            Base_Step_Executor.handle_group_with(kwargs['group_with'], ifiles,  _groups, _vars)
         # handle for_each
         if 'for_each' in kwargs:
             Base_Step_Executor.handle_for_each(kwargs['for_each'], _groups, _vars)
