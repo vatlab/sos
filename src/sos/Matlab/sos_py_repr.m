@@ -54,6 +54,13 @@ if isnumeric(obj)
     else
         repr = num2str(obj);
     end
+% char_arr_var
+elseif ischar(obj) && length(obj)>1 && size(obj,2)==1
+    repr = '[';
+    for i = 1:length(obj)
+        repr = strcat(repr, sos_py_repr(obj(i,1)), ',');
+    end
+    repr = strcat(repr,']');
 % string
 elseif ischar(obj)
     repr =strcat('r"""',obj,'"""');
