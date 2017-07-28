@@ -34,7 +34,7 @@ from sos.utils import env, short_repr, get_traceback, sample_of_file, tail_of_fi
     format_HHMMSS, expand_time, expand_size
 from sos.sos_eval import SoS_exec, SoS_eval
 
-from .target import textMD5, RuntimeInfo, Undetermined, FileTarget, UnknownTarget, remote
+from .target import textMD5, RuntimeInfo, Undetermined, FileTarget, UnknownTarget, remote, sos_step
 from .sos_eval import interpolate
 from .monitor import ProcessMonitor
 
@@ -351,7 +351,7 @@ del sos_handle_parameter_
     for key in ['input', '_input',  'output', '_output', 'depends', '_depends']:
         if key in sos_dict and isinstance(sos_dict[key], list):
             # resolve remote() target
-            env.sos_dict.set(key, [resolve_remote(x) for x in sos_dict[key]])
+            env.sos_dict.set(key, [resolve_remote(x) for x in sos_dict[key] if not isinstance(x, sos_step)])
 
     skipped = False
     if env.config['sig_mode'] == 'ignore':
@@ -432,7 +432,9 @@ del sos_handle_parameter_
                         # remove the signature and regenerate the file
                         FileTarget(target).remove_sig()
                         raise UnknownTarget(target)
-                elif not target.exists('target'):
+                # the sos_step target should not be checked in tasks because tasks are
+                # independently executable units.
+                elif not isinstance(target, sos_step) and not target.exists('target'):
                     target.remove_sig()
                     raise UnknownTarget(target)
 

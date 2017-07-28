@@ -933,6 +933,8 @@ class Base_Step_Executor:
                         dfiles = self.expand_depends_files(*args)
                         # dfiles can be Undetermined
                         self.process_depends_args(dfiles, **kwargs)
+                    except (UnknownTarget, RemovedTarget, UnavailableLock):
+                        raise
                     except Exception as e:
                         raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
                 else:
