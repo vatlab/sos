@@ -317,6 +317,9 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, **kwargs):
     extra sos files can be specified from paramter source. The workflow
     will be execute in the current step namespace with _input as workflow
     input. '''
+    if '__std_out__' in env.sos_dict and '__std_err__' in env.sos_dict:
+        raise RuntimeError('Executing nested workflow (action sos_run) in tasks is not supported.')
+
     script = SoS_Script(env.sos_dict['__step_context__'].content, env.sos_dict['__step_context__'].filename)
     wf = script.workflow(workflow, use_default=not targets)
     # if wf contains the current step or one of the previous one, this constitute
