@@ -104,7 +104,7 @@ recursive_var = {'a': {'b': 123}, 'c': True}
             self.assertEqual(res['char_var'], '1"23')
             self.assertEqual(list(res['list_var']), [1,2,'3'], 'Got {}'.format(res['list_var']))
             self.assertEqual(res['dict_var'], {'a': 1, 'b': 2, 'c': '3'})
-            self.assertEqual(res['set_var'], [1, 2, '3'])
+            self.assertTrue(len(res['set_var']) ==3 and '3' in res['set_var'] and 1 in res['set_var'] and 2 in res['set_var'])
             self.assertEqual(res['mat_var'].shape, (2,2))
             self.assertEqual(res['recursive_var'],  {'a': {'b': 123}, 'c': True})
             #self.assertEqual(res['char_arr_var'], ['1', '2', '3'])
