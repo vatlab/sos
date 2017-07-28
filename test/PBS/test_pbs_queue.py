@@ -723,8 +723,8 @@ sh:
     @unittest.skipIf(sys.platform == 'win32' or not has_docker, 'appveyor does not have docker with linux')
     def testRemoteTaskFromJupyter(self):
         '''Test the execution of tasks with -q '''
-        from ipykernel.tests.utils import wait_for_idle, execute
-        from sos.jupyter.test_utils import sos_kernel, get_display_data 
+        from ipykernel.tests.utils import execute
+        from sos.jupyter.test_utils import sos_kernel, get_display_data, assemble_output
         subprocess.call(['sos', 'purge'])
         with sos_kernel() as kc:
             # the cell will actually be executed several times
@@ -741,7 +741,9 @@ run:
 """
             # these should be automatically rerun by the frontend
             execute(kc=kc, code=code)
-            wait_for_idle(kc)
+            stdout, stderr = assemble_output(kc.iopub_channel)
+            self.assertEqual(stdout, '', 'Got {}'.format(stdout))
+            self.assertEqual(stderr, '', 'Got {}'.format(stderr))
             # check for task?
             execute(kc=kc, code='%tasks -q ts')
             res = get_display_data(kc.iopub_channel, 'text/html')
