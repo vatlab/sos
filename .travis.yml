@@ -97,7 +97,7 @@ before_script:
 script:
     # coverage does not seem to work well with python 3.6, but it does not really matter because we have coverage report from python 3.5 already
     - 'if [ $TRAVIS_PYTHON_VERSION == "3.6" ]; then
-           pytest -x -v --durations 20 . ;
+           pytest -x -v --durations 20 --ignore Matlab . ;
        else
            pytest -x --cov sos --cov-config ../.coveragerc --cov-report= -v docker;
            pytest -x --cov sos --cov-config ../.coveragerc --cov-report=xml --cov-append -v --durations 20 --ignore docker --ignore Matlab .;
