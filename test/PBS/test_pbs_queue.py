@@ -723,8 +723,8 @@ sh:
     @unittest.skipIf(sys.platform == 'win32' or not has_docker, 'appveyor does not have docker with linux')
     def testRemoteTaskFromJupyter(self):
         '''Test the execution of tasks with -q '''
-        from ipykernel.tests.utils import execute
-        from sos.jupyter.test_utils import sos_kernel, get_display_data, assemble_output
+        from ipykernel.tests.utils import execute, assemble_output
+        from sos.jupyter.test_utils import sos_kernel, get_display_data
         subprocess.call(['sos', 'purge'])
         with sos_kernel() as kc:
             # the cell will actually be executed several times
