@@ -240,11 +240,12 @@ sh:
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker',
+                'sig_mode': 'force',
                 }).run()
         self.assertTrue(os.path.isfile('3.txt'))
         with open('3.txt') as txt:
             content = txt.read()
-            self.assertEqual('1\n2\n', content, 'Expect {}'.format(content))
+            self.assertEqual('1\n2\n', content, 'Got {}'.format(content))
 
     @unittest.skipIf(sys.platform == 'win32' or not has_docker, 'No symbloc link problem under win32 or no docker')
     def testSendSymbolicLink(self):
