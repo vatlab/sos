@@ -115,16 +115,16 @@ class sos_Matlab:
             return 'load(fullfile(' + '\'' + dic + '\'' + ',' \
                 + '\'dict2mtlb.mat\'))'
         elif isinstance(obj, pd.DataFrame):
-            if self.kernel_name == 'matlab':
-                dic = tempfile.tempdir
-                os.chdir(dic)
-                obj.to_csv('df2mtlb.csv', index=False)
-                return 'readtable(' + '\'' + dic + '/' + 'df2mtlb.csv\')'
-            else:
+            if self.kernel_name == 'octave':
                 dic = tempfile.tempdir
                 os.chdir(dic)
                 obj.to_csv('df2oct.csv', index=False)
                 return 'dataframe(' + '\'' + dic + '/' + 'df2oct.csv\')'
+            else:
+                dic = tempfile.tempdir
+                os.chdir(dic)
+                obj.to_csv('df2mtlb.csv', index=False)
+                return 'readtable(' + '\'' + dic + '/' + 'df2mtlb.csv\')'
 
     def get_vars(self, names):
         for name in names:
