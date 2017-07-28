@@ -68,7 +68,7 @@ class sos_Matlab:
             if homogeneous_type(obj):
                 return '[' + ';'.join(self._Matlab_repr(x) for x in obj) + ']'
             else:
-                return '{' + ','.join(self._Matlab_repr(x) for x in obj) + '}'
+                return '{' + ';'.join(self._Matlab_repr(x) for x in obj) + '}'
         elif obj is None:
             return 'NaN'
         elif isinstance(obj, dict):

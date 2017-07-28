@@ -98,16 +98,16 @@ recursive_var = {'a': {'b': 123}, 'c': True}
             res = get_result(iopub)
             self.assertEqual(res['null_var'], None)
             self.assertEqual(res['num_var'], 123)
-            self.assertEqual(res['num_arr_var'], [1,2,3])
+            self.assertEqual(list(res['num_arr_var']), [1,2,3], "Got {}".format(res['num_arr_var']))
             self.assertEqual(res['logic_var'], True)
             self.assertEqual(res['logic_arr_var'], [True, False, True])
             self.assertEqual(res['char_var'], '1"23')
-            self.assertEqual(res['char_arr_var'], ['1', '2', '3'])
             self.assertEqual(res['list_var'], [1,2,'3'])
             self.assertEqual(res['dict_var'], {'a': 1, 'b': 2, 'c': '3'})
-            self.assertEqual(res['set_var'], {1, 2, '3'})
+            self.assertEqual(res['set_var'], [1, 2, '3'])
             self.assertEqual(res['mat_var'].shape, (2,2))
             self.assertEqual(res['recursive_var'],  {'a': {'b': 123}, 'c': True})
+            #self.assertEqual(res['char_arr_var'], ['1', '2', '3'])
 
     def testPutOctaveDataToPython(self):
         with sos_kernel() as kc:
@@ -119,8 +119,8 @@ num_var = 123
 num_arr_var = [1, 2, 3]
 logic_var = true
 logic_arr_var = [true, false, true]
-char_var = '123'
-char_arr_var = ['1', '2', '3']
+char_var = '1"23'
+char_arr_var = ['1'; '2'; '3']
 mat_var = [1:3; 2:4]
 """)
             wait_for_idle(kc)
@@ -132,14 +132,13 @@ mat_var = [1:3; 2:4]
             res = get_result(iopub)
             self.assertEqual(res['null_var'], None)
             self.assertEqual(res['num_var'], 123)
-            self.assertEqual(res['num_arr_var'], [1,2,3])
+            self.assertEqual(list(res['num_arr_var']), [1,2,3])
             self.assertEqual(res['logic_var'], True)
             self.assertEqual(res['logic_arr_var'], [True, False, True])
             self.assertEqual(res['char_var'], '1"23')
-            self.assertEqual(res['char_arr_var'], ['1', '2', '3'])
-            self.assertEqual(res['list_var'], [1,2,'3'])
             #self.assertEqual(res['named_list_var'], {'a': 1, 'b': 2, 'c': '3'})
-            self.assertEqual(res['mat_var'].shape, (2,2))
+            self.assertEqual(res['mat_var'].shape, (2,3))
+            self.assertEqual(res['char_arr_var'], ['1', '2', '3'])
             #self.assertEqual(res['recursive_var'], {'a': 1, 'b': {'c': 3, 'd': 'whatever'}})
             execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
