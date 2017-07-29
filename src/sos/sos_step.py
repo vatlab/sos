@@ -29,7 +29,7 @@ from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
 
 from .utils import env, StopInputGroup, TerminateExecution, short_repr, stable_repr,\
-    get_traceback, transcribe, ActivityNotifier, expand_size, format_HHMMSS
+    get_traceback, transcribe, expand_size, format_HHMMSS
 from .pattern import extract_pattern
 from .sos_eval import SoS_eval, SoS_exec, Undetermined
 from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
@@ -1293,7 +1293,7 @@ class Step_Executor(Base_Step_Executor):
     def run(self):
         try:
             # update every 60 seconds
-            notifier = ActivityNotifier('Running {}'.format(self.step.step_name()), delay=60)
+            #notifier = ActivityNotifier('Running {}'.format(self.step.step_name()), delay=60)
             res = Base_Step_Executor.run(self)
             if self.pipe is not None:
                 self.pipe.send(res)
@@ -1306,8 +1306,8 @@ class Step_Executor(Base_Step_Executor):
                 self.pipe.send(e)
             else:
                 raise e
-        finally:
-            notifier.stop()
+        #finally:
+        #    notifier.stop()
 
 
 

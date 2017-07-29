@@ -484,17 +484,17 @@ def SoS_exec(stmts, sigil, _dict=None):
         stmts = ConvertString(code, sigil)
         if not stmts.strip():
             continue
-        try:
-            if env.config['run_mode'] == 'interactive':
-                act = DelayedAction(env.logger.info, 'Running {}'.format(short_repr(code)))
-            else:
-                act = None
-            if idx + 1 == len(code_group) and _is_expr(stmts):
-                res = eval(stmts, _dict)
-            else:
-                exec(stmts, _dict)
-        finally:
-            del act
+        #try:
+            #if env.config['run_mode'] == 'interactive':
+            #    act = DelayedAction(env.logger.info, 'Running {}'.format(short_repr(code)))
+            #else:
+            #    act = None
+        if idx + 1 == len(code_group) and _is_expr(stmts):
+            res = eval(stmts, _dict)
+        else:
+            exec(stmts, _dict)
+        #finally:
+        #    del act
         executed += stmts + '\n'
     env.sos_dict.check_readonly_vars()
     return res
