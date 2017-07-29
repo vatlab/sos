@@ -57,51 +57,20 @@ from .inspector import SoS_Inspector
 from .sos_executor import runfile
 from .sos_step import PendingTasks
 
-class FlushableStringIO(StringIO):
+class FlushableStringIO:
     '''This is a string buffer for output, but it will only
     keep the first 200 lines and the last 10 lines.
     '''
     def __init__(self, kernel, name, *args, **kwargs):
-        StringIO.__init__(self, *args, **kwargs)
         self.kernel = kernel
         self.name = name
-        self.nlines = 0
 
     def write(self, content):
-        if self.nlines > 1000:
-            return
-        nlines = content.count('\n')
-        if self.nlines + nlines > 1000:
-            StringIO.write(self, '\n'.join(content.split('\n')[:200]))
-        else:
-            StringIO.write(self, content)
-        self.nlines += nlines
+        self.kernel.send_response(self.kernel.iopub_socket, 'stream',
+            {'name': self.name, 'text': content})
 
     def flush(self):
-        content = self.getvalue()
-        if self.nlines > 1000:
-            lines = content.split('\n')
-            content = '\n'.join(lines[:180]) + \
-                '\n-- {} more lines --\n'.format(self.nlines - 180)
-        elif self.nlines > 200:
-            lines = content.split('\n')
-            content = '\n'.join(lines[:180]) + \
-                '\n-- {} lines --\n'.format(self.nlines - 190) + \
-                '\n'.join(lines[-10:])
-        if content.strip():
-            if self.name == 'stdout' and self.kernel._render_result:
-                format_dict, md_dict = self.kernel.format_obj(self.kernel.render_result(content))
-                self.kernel.send_response(self.kernel.iopub_socket, 'display_data',
-                    {'source': 'SoS', 'metadata': md_dict,
-                     'data': format_dict
-                    })
-            else:
-                self.kernel.send_response(self.kernel.iopub_socket, 'stream',
-                    {'name': self.name, 'text': content})
-        self.truncate(0)
-        self.seek(0)
-        self.nlines = 0
-        return len(content.strip())
+        pass
 
 __all__ = ['SoS_Kernel']
 
