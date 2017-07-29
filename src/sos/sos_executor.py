@@ -173,7 +173,7 @@ class SoS_Worker(mp.Process):
 
 
     def run_step(self, section, context, shared, args, run_mode, sig_mode, verbosity):
-        env.logger.debug('Worker {} working on a step with args {}'.format(self.name, args))
+        env.logger.debug('Worker {} working on {} with args {}'.format(self.name, section.step_name(), args))
         env.config['run_mode'] = run_mode
         env.config['sig_mode'] = sig_mode
         env.verbosity = verbosity
@@ -786,7 +786,7 @@ class Base_Executor:
                     pool.append(procs[idx])
                     procs[idx] = None
 
-                    env.logger.debug('{} receive a result'.format(i_am()))
+                    env.logger.debug('{} receive a result {}'.format(i_am(), res))
                     if hasattr(runnable, '_from_nested'):
                         # if the runnable is from nested, we will need to send the result back to the workflow
                         env.logger.debug('{} send res to nested'.format(i_am()))
@@ -939,7 +939,7 @@ class Base_Executor:
                         runnable._from_nested = True
                         runnable._child_pipe = pipe
 
-                        env.logger.debug('{} sends {} from step queue with args {}'.format(i_am(), step_id, args))
+                        env.logger.debug('{} sends {} from step queue with args {} and context {}'.format(i_am(), section.step_name(), args, context))
                         q1.send(('step', section, context, shared, args, run_mode, sig_mode, verbosity))
                         procs.append( [worker, q1, runnable])
                         continue
@@ -997,7 +997,7 @@ class Base_Executor:
                     else:
                         # send the step to the parent
                         step_id = uuid.uuid4()
-                        env.logger.debug('{} send step {} to master with args {}'.format(i_am(), step_id, self.args))
+                        env.logger.debug('{} send step {} to master with args {} and context {}'.format(i_am(), section.step_name(), self.args, runnable._context))
                         parent_pipe.send('step {}'.format(step_id))
                         q = mp.Pipe()
                         parent_pipe.send((section, runnable._context, shared, self.args, env.config['run_mode'], env.config['sig_mode'], env.verbosity, q[1]))

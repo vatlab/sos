@@ -1296,6 +1296,7 @@ class Step_Executor(Base_Step_Executor):
             #notifier = ActivityNotifier('Running {}'.format(self.step.step_name()), delay=60)
             res = Base_Step_Executor.run(self)
             if self.pipe is not None:
+                env.logger.debug('Step {} sends result {}'.format(self.step.step_name(), res))
                 self.pipe.send(res)
             else:
                 return res
@@ -1303,6 +1304,7 @@ class Step_Executor(Base_Step_Executor):
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
             if self.pipe is not None:
+                env.logger.debug('Step {} sends exception {}'.format(self.step.step_name(), e))
                 self.pipe.send(e)
             else:
                 raise e
