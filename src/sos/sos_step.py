@@ -137,6 +137,13 @@ def analyze_section(section, default_input=None):
             elif statement[0] == ':':
                 if statement[1] == 'depends':
                     environ_vars |= accessed_vars(statement[2], section.sigil)
+                    key, value = statement[1:]
+                    try:
+                        args, kwargs = SoS_eval('__null_func__({})'.format(value), section.sigil)
+                        if not any(isinstance(x, dynamic) for x in args):
+                            step_depends = _expand_file_list(True, *args)
+                    except Exception as e:
+                        env.logger.debug("Args {} cannot be determined: {}".format(value, e))
                 else:
                     raise RuntimeError('Step input should be specified before {}'.format(statement[1]))
             else:
