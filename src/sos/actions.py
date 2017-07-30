@@ -283,12 +283,12 @@ class SoS_ExecuteScript:
                                     sys.stdout.write(child.before.decode() + '\n')
                             except pexpect.EOF:
                                 break
+                        child.wait()
+                        child.close()
+                        ret = child.exitstatus
                     except Exception as e:
                         sys.stderr.write(str(e))
-                    # NOTE:
-                    # because of the use of pexpect, we do not know the
-                    # return code of the process at all.
-                    ret = 0
+                        ret = 1
                 elif '__std_out__' in env.sos_dict and '__std_err__' in env.sos_dict:
                     if env.verbosity > 1:
                         with open(env.sos_dict['__std_out__'], 'ab') as so, open(env.sos_dict['__std_err__'], 'ab') as se:
