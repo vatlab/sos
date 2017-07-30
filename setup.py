@@ -181,6 +181,7 @@ setup(name = "sos",
           # for DAG
           'networkx',
           'pydotplus',
+          'pexpect',
       ],
     entry_points= '''
 [console_scripts]

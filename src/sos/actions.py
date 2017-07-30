@@ -270,15 +270,25 @@ class SoS_ExecuteScript:
                 #
                 if env.config['run_mode'] == 'interactive':
                     # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
-                    p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-                    out, err = p.communicate()
-                    if out and env.verbosity > 1:
-                        sys.stdout.write(out.decode())
-                    if err and env.verbosity > 0:
-                        sys.stderr.write(err.decode())
-                    ret = p.returncode
-                    sys.stdout.flush()
-                    sys.stderr.flush()
+                    import pexpect
+                    try:
+                        if isinstance(cmd, str):
+                            child = pexpect.spawn(cmd, timeout=None)
+                        else:
+                            child = pexpect.spawn(subprocess.list2cmdline(cmd), timeout=None)
+                        while True:
+                            try:
+                                child.expect('\n')
+                                if env.verbosity > 0:
+                                    sys.stdout.write(child.before.decode() + '\n')
+                            except pexpect.EOF:
+                                break
+                    except Exception as e:
+                        sys.stderr.write(str(e))
+                    # NOTE:
+                    # because of the use of pexpect, we do not know the
+                    # return code of the process at all.
+                    ret = 0
                 elif '__std_out__' in env.sos_dict and '__std_err__' in env.sos_dict:
                     if env.verbosity > 1:
                         with open(env.sos_dict['__std_out__'], 'ab') as so, open(env.sos_dict['__std_err__'], 'ab') as se:

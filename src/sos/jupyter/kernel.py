@@ -1646,21 +1646,21 @@ Available subkernels:\n{}'''.format(
         # interpolate command
         if not cmd:
             return
+        import pexpect
+
         with self.redirect_sos_io():
             try:
                 if isinstance(cmd, str):
-                    p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+                    child = pexpect.spawn(cmd, timeout=None)
                 else:
-                    p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-                out, err = p.communicate()
-                sys.stdout.write(out.decode())
-                sys.stderr.write(err.decode())
-                # ret = p.returncode
-                sys.stderr.flush()
-                sys.stdout.flush()
+                    child = pexpect.spawn(subprocess.list2cmdline(cmd), timeout=None)
+                while True:
+                    try:
+                        child.expect('\n')
+                        sys.stdout.write(child.before.decode() + '\n')
+                    except pexpect.EOF:
+                        break
             except Exception as e:
-                sys.stderr.flush()
-                sys.stdout.flush()
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stdout', 'text': str(e)})
 
