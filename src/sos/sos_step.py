@@ -794,7 +794,7 @@ class Base_Step_Executor:
                 env.logger.debug('_input: ``{}``'.format(short_repr(env.sos_dict['_input'])))
         elif stage == '_depends':
             if env.sos_dict['_depends'] is not None:
-                env.logger.info('_depends: ``{}``'.format(short_repr(env.sos_dict['_depends'])))
+                env.logger.debug('_depends: ``{}``'.format(short_repr(env.sos_dict['_depends'])))
         elif stage == 'input':
             if env.sos_dict['input'] is not None:
                 env.logger.info('input:    ``{}``'.format(short_repr(env.sos_dict['input'])))
