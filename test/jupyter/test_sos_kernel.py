@@ -46,18 +46,6 @@ class TestSoSKernel(unittest.TestCase):
     def tearDown(self):
         os.chdir(self.olddir)
 
-    def testOutputLength(self):
-        with sos_kernel() as kc:
-            iopub = kc.iopub_channel
-            execute(kc=kc, code='''
-for line in range(1000):
-    print("a=${line}")
-''')
-            stdout, stderr = assemble_output(iopub)
-            self.assertTrue('lines' in stdout, 'Should have ... lines in output: {}'.format(stdout))
-            self.assertLess(len(stdout.splitlines()), 200, 'Expect less than 1000 lines: {}'.format(stdout))
-            self.assertEqual(stderr, '')
-
     def testInterpolation(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
