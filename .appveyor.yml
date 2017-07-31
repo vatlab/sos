@@ -66,7 +66,20 @@ install:
 
 test_script:
     - cd test
-    - pytest --ignore JavaScript --ignore rq --ignore docker --ignore Bash --ignore Octave --ignore Matlab -v
+    - pytest -x -v core;
+    - pytest -x -v jupyter;
+    - pytest -x -v bioinfo;
+    - pytest -x -v PBS;
+      #- pytest -x -v rq;
+      #- pytest -x -v docker;
+      #- pytest -x -v Bash;
+      #- pytest -x -v JavaScript;
+    - pytest -x -v Python2;
+    - pytest -x -v Python3;
+    - pytest -x -v R;
+      #- pytest -x -v SAS;
+      #- pytest -x -v Matlab;
+      #- pytest -x -v Octave;
 
 #on_finish:
 #  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))

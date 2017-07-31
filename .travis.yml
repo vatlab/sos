@@ -96,11 +96,33 @@ before_script:
     - sh build_test_docker.sh
 script:
     # coverage does not seem to work well with python 3.6, but it does not really matter because we have coverage report from python 3.5 already
+    # SAS and Matlab are not tested
     - 'if [ $TRAVIS_PYTHON_VERSION == "3.6" ]; then
-           pytest -x -v --durations 20 --ignore Matlab . ;
+           pytest -x -v core;
+           pytest -x -v jupyter;
+           pytest -x -v bioinfo;
+           pytest -x -v PBS;
+           pytest -x -v rq;
+           pytest -x -v docker;
+           pytest -x -v Bash;
+           pytest -x -v JavaScript;
+           pytest -x -v Python2;
+           pytest -x -v Python3;
+           pytest -x -v R;
+           pytest -x -v Octave;
        else
-           pytest -x --cov sos --cov-config ../.coveragerc --cov-report= -v docker;
-           pytest -x --cov sos --cov-config ../.coveragerc --cov-report=xml --cov-append -v --durations 20 --ignore docker --ignore Matlab .;
+           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= core;
+           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append jupyter;
+           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append bioinfo;
+           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append PBS;
+           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append rq;
+           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report=xml --cov-append docker;
+           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append Bash;
+           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append JavaScript;
+           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append Python2;
+           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append Python3;
+           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append R;
+           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append Octave;
        fi'
       
 after_success:
