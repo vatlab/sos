@@ -283,7 +283,7 @@ class Base_Executor:
             delattr(env, 'accessed_vars')
 
     def save_dag(self, dag):
-        if self.config['output_dag'] is None:
+        if not self.config['output_dag']:
             return
         if not hasattr(self, 'dag_count'):
             self.dag_count = 1
@@ -620,8 +620,6 @@ class Base_Executor:
         # trim the DAG if targets are specified
         if targets:
             dag = dag.subgraph_from(targets)
-        # write DAG for debugging purposes
-        #dag.write_dot(os.path.join(env.exec_dir, '.sos', '{}.dot'.format(self.workflow.name)))
         # check error
         cycle = dag.circular_dependencies()
         if cycle:
