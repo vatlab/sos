@@ -1077,5 +1077,23 @@ depends: ['{}.txt'.format(i) for i in range(10, 20)]
         self.assertTrue(lc, 6)
 
 
+    def testAuxiliarySosStep(self):
+        '''Testing the use of sos_step with auxiliary step. #736'''
+        script = SoS_Script('''
+[default]
+depends: ['1.txt'] 
+
+[A_1]
+print("Hi")
+
+
+[C_1: provides = "1.txt"]
+depends: sos_step("A_1")
+run:
+touch 1.txt 
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
 if __name__ == '__main__':
     unittest.main()
