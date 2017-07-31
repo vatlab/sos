@@ -109,7 +109,7 @@ script:
            pytest -x -v Python2 &&
            pytest -x -v Python3 &&
            pytest -x -v R &&
-           pytest -x -v Octave
+           pytest -x -v Octave;
        else
            pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= core &&
            pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append jupyter &&
@@ -122,7 +122,7 @@ script:
            pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append Python2 &&
            pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append Python3 &&
            pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append R &&
-           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append Octave
+           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append Octave;
        fi'
       
 after_success:
@@ -130,7 +130,6 @@ after_success:
            coverage combine;
            ls -l coverage.xml;
            python-codacy-coverage -r coverage.xml;
-           also report coverage to coveralls;
            coveralls;
         fi'
 
