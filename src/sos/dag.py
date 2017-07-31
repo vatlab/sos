@@ -322,3 +322,12 @@ class SoS_DAG(nx.DiGraph):
             return nx.drawing.nx_pydot.to_pydot(self).to_string()
         except Exception as e:
             env.logger.warning('Failed to call to_pydot: {}'.format(e))
+
+    def write_dot(self, filename):
+        # write dot, used by tests
+        if not filename:
+            return
+        try:
+            nx.drawing.nx_pydot.write_dot(self, filename)
+        except Exception as e:
+            env.logger.warning('Failed to call write_dot: {}'.format(e))
