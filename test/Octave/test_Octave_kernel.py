@@ -21,6 +21,7 @@
 #
 import os
 import unittest
+import shutil
 from ipykernel.tests.utils import assemble_output, execute, wait_for_idle
 from sos.jupyter.test_utils import sos_kernel, get_result, get_display_data, \
     clear_channels
@@ -39,7 +40,7 @@ class TestOctaveKernel(unittest.TestCase):
     def tearDown(self):
         os.chdir(self.olddir)
     
-    # Fixme
+    @unittest.skipIf(not shutil.which('octave'), 'Octave not installed')
     def testGetPythonDataFrameFromOctave(self):
         # Python -> Matlab/Octave
         with sos_kernel() as kc:
@@ -65,8 +66,8 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             self.assertEqual(stdout.strip().split(), ['900', '10'])
             execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
-    #
 
+    @unittest.skipIf(not shutil.which('octave'), 'Octave not installed')
     def testGetPythonDataFromOctave(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
@@ -109,6 +110,7 @@ recursive_var = {'a': {'b': 123}, 'c': True}
             self.assertEqual(res['recursive_var'],  {'a': {'b': 123}, 'c': True})
             #self.assertEqual(res['char_arr_var'], ['1', '2', '3'])
 
+    @unittest.skipIf(not shutil.which('octave'), 'Octave not installed')
     def testPutOctaveDataToPython(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
