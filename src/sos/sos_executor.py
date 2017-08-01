@@ -381,7 +381,7 @@ class Base_Executor:
         if 'skip' in section.options:
             val_skip = section.options['skip']
             if val_skip is None or val_skip is True:
-                env.logger.info('Step ``{}`` is ``ignored`` due to skip option.'.format(section.step_name()))
+                env.logger.info('``{}`` is ``ignored`` due to skip option.'.format(section.step_name(True)))
                 return True
             elif val_skip is not False:
                 raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
@@ -820,7 +820,7 @@ class Base_Executor:
                         runnable._status = 'signature_pending'
                         runnable._signature = (res.output, res.sig_file)
                         section = self.workflow.section_by_id(runnable._step_uuid)
-                        env.logger.info('Waiting on another process for step {}'.format(section.step_name()))
+                        env.logger.info('Waiting on another process for step {}'.format(section.step_name(True)))
                     # if the job is failed
                     elif isinstance(res, Exception):
                         env.logger.debug('{} received an exception'.format(i_am()))
