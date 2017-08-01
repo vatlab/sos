@@ -1032,18 +1032,23 @@ class Base_Step_Executor:
                                         env.sos_dict['__signature_vars__'])
                                     signatures[idx].lock()
                                     if env.config['sig_mode'] == 'default':
-                                        matched = signatures[idx].validate()
-                                        if isinstance(matched, dict):
-                                            # in this case, an Undetermined output can get real output files
-                                            # from a signature
-                                            env.sos_dict.set('_input', matched['input'])
-                                            env.sos_dict.set('_depends', matched['depends'])
-                                            env.sos_dict.set('_output', matched['output'])
-                                            env.sos_dict.update(matched['vars'])
-                                            env.logger.info('Step ``{}`` (index={}) is ``ignored`` due to saved signature'.format(env.sos_dict['step_name'], idx))
-                                            skip_index = True
+                                        # if users use sos_run, the "scope" of the step goes beyong names in this step
+                                        # so we cannot save signatures for it.
+                                        if 'sos_run' in env.sos_dict['__signature_vars__']:
+                                            skip_index = False
                                         else:
-                                            env.logger.debug('Signature mismatch: {}'.format(matched))
+                                            matched = signatures[idx].validate()
+                                            if isinstance(matched, dict):
+                                                # in this case, an Undetermined output can get real output files
+                                                # from a signature
+                                                env.sos_dict.set('_input', matched['input'])
+                                                env.sos_dict.set('_depends', matched['depends'])
+                                                env.sos_dict.set('_output', matched['output'])
+                                                env.sos_dict.update(matched['vars'])
+                                                env.logger.info('Step ``{}`` (index={}) is ``ignored`` due to saved signature'.format(env.sos_dict['step_name'], idx))
+                                                skip_index = True
+                                            else:
+                                                env.logger.debug('Signature mismatch: {}'.format(matched))
                                     elif env.config['sig_mode'] == 'assert':
                                         matched = signatures[idx].validate()
                                         if isinstance(matched, str):
@@ -1057,7 +1062,9 @@ class Base_Step_Executor:
                                             skip_index = True
                                     elif env.config['sig_mode'] == 'build':
                                         # build signature require existence of files
-                                        if signatures[idx].write(rebuild=True):
+                                        if 'sos_run' in env.sos_dict['__signature_vars__']:
+                                            skip_index = True
+                                        elif signatures[idx].write(rebuild=True):
                                             env.logger.info('Step ``{}`` (index={}) is ``ignored`` with signature constructed'.format(env.sos_dict['step_name'], idx))
                                             skip_index = True
                                     elif env.config['sig_mode'] == 'force':
@@ -1107,7 +1114,8 @@ class Base_Step_Executor:
                 # finally, tasks..
                 if not self.step.task:
                     if signatures[idx] is not None:
-                        signatures[idx].write()
+                        if 'sos_run' in env.sos_dict['__signature_vars__']:
+                            signatures[idx].write()
                         signatures[idx].release()
                         signatures[idx] = None
                     continue

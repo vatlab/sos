@@ -129,7 +129,9 @@ class SoS_Worker(mp.Process):
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
         self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(keyword.kwlist)
-        self._base_symbols -= {'dynamic'}
+        # if users use sos_run, the "scope" of the step goes beyong names in this step
+        # so we cannot save signatures for it.
+        self._base_symbols -= {'dynamic', 'sos_run'}
 
         if isinstance(self.args, dict):
             for key, value in self.args.items():
