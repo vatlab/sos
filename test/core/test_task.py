@@ -57,27 +57,27 @@ class TestTask(unittest.TestCase):
         self.temp_files.extend(files)
 
 
-#    def testWorkdir(self):
-#        '''Test workdir option for runtime environment'''
-#        import tempfile
-#        tdir = tempfile.mkdtemp()
-#        with open(os.path.join(tdir, 'aaa.pp'), 'w') as aaa:
-#            aaa.write('something')
-#        script =  SoS_Script(r"""
-#[0]
-#task: workdir='{0}'
-#
-#with open('{1}/result.txt', 'w') as res:
-#   for file in os.listdir('{1}'):
-#       res.write(file + '\n')
-#""".format(tdir, os.path.split(tdir)[0], os.path.split(tdir)[1]))
-#        wf = script.workflow()
-#        env.config['sig_mode'] = 'force'
-#        env.config['wait_for_task'] = True
-#        Base_Executor(wf).run()
-#        with open(os.path.join(tdir, 'result.txt')) as res:
-#            content = [x.strip() for x in res.readlines()]
-#            self.assertTrue('aaa.pp' in content)
+    def testWorkdir(self):
+        '''Test workdir option for runtime environment'''
+        import tempfile
+        tdir = tempfile.mkdtemp()
+        with open(os.path.join(tdir, 'aaa.pp'), 'w') as aaa:
+            aaa.write('something')
+        script =  SoS_Script(r"""
+[0]
+task: workdir='{0}'
+
+with open('{1}/result.txt', 'w') as res:
+   for file in os.listdir('{1}'):
+       res.write(file + '\n')
+""".format(tdir, os.path.split(tdir)[0], os.path.split(tdir)[1]))
+        wf = script.workflow()
+        env.config['sig_mode'] = 'force'
+        env.config['wait_for_task'] = True
+        Base_Executor(wf).run()
+        with open(os.path.join(tdir, 'result.txt')) as res:
+            content = [x.strip() for x in res.readlines()]
+            self.assertTrue('aaa.pp' in content)
 
     def testSequential(self):
         '''Test concurrency option for runtime environment'''

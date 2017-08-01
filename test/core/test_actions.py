@@ -333,55 +333,53 @@ mean(nums)
         if not os.path.isdir('tmp'):
             os.makedirs('tmp')
         #
-        for name in ['hapmap_ASW_freq.ann', 'hapmap_ASW_freq-hg18_20100817.DB.gz', 'hapmap_CHB_freq.ann',
-                'vt_quickStartGuide.tar.gz']:
+        for name in os.listdir('tmp'):
             if os.path.isfile(os.path.join('tmp', name)):
                 os.remove(os.path.join('tmp', name))
         # test decompress tar.gz file
         script = SoS_Script(r'''
 [0]
-download(['http://bioinformatics.mdanderson.org/Software/VariantTools/repository/snapshot/vt_quickStartGuide.tar.gz'],
+download(['https://ftp.pcre.org/pub/pcre/pcre-8.01.tar.gz'],
     dest_dir='tmp', decompress=True)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(os.path.isfile('tmp/snapshot.proj'))
-        self.assertTrue(os.path.isfile('tmp/snapshot_genotype.DB'))
+        self.assertTrue(os.path.isdir('tmp/pcre-8.01'))
+        self.assertTrue(os.path.isfile('tmp/pcre-8.01/pcre_get.c'))
         #
         # testing the download of single file
         #
         script = SoS_Script(r'''
 [0]
-download: dest_file='tmp/test.ann'
-    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
+download: dest_file='tmp/pcre-8.01.zip.sig'
+    https://ftp.pcre.org/pub/pcre/pcre-8.01.zip.sig
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(os.path.isfile('tmp/test.ann'))
+        self.assertTrue(os.path.isfile('tmp/pcre-8.01.zip.sig'))
         # test option dest_dir
         script = SoS_Script(r'''
 [0]
 download: dest_dir='tmp'
-    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
+    https://ftp.pcre.org/pub/pcre/pcre-8.01.zip.sig
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq.ann'))
+        self.assertTrue(os.path.isfile('tmp/pcre-8.01.zip.sig'))
         #
         # this will take a while
         script = SoS_Script(r'''
 [0]
 download: dest_dir='tmp', decompress=True
-    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/non-existing.gz
-    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/programs/SCORE-Seq-3.0-linux-64.zip
-    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
-    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq-hg18_20100817.DB.gz
-    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_CHB_freq.ann
+    https://ftp.pcre.org/pub/pcre/non-existing.gz
+    https://ftp.pcre.org/pub/pcre/pcre-8.01.zip
+    https://ftp.pcre.org/pub/pcre/pcre-8.01.zip.sig
+    https://ftp.pcre.org/pub/pcre/pcre-8.01.tar.gz
 ''')
         start = time.time()
         wf = script.workflow()
         self.assertRaises(ExecuteError, Base_Executor(wf).run)
-        self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq-hg18_20100817.DB'))
+        self.assertTrue(os.path.isfile('tmp/pcre-8.01/pcre_get.c'))
         self.assertGreater(time.time() - start, 3)
         # this will be fast
         start = time.time()
@@ -393,9 +391,10 @@ download: dest_dir='tmp', decompress=True
         script = SoS_Script(r'''
 [0]
 download: dest_dir='tmp', decompress=True
-    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/programs/SKAT_0.82.tar.gz
-    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/programs/SCORE-Seq-3.0-linux-64.zip	
-    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq-hg18_20100817.DB.gz
+    https://ftp.pcre.org/pub/pcre/pcre-8.01.tar.gz
+    https://ftp.pcre.org/pub/pcre/pcre-8.01.zip
+    https://ftp.pcre.org/pub/pcre/pcre-8.01.tar.bz2
+    https://ftp.pcre.org/pub/pcre/pcre-8.01.zip.sig
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -403,9 +402,7 @@ download: dest_dir='tmp', decompress=True
         script = SoS_Script(r'''
 [0]
 download: dest_dir='tmp', decompress=True
-    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/programs/SKAT_0.82.tar.gz
-    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/programs/SCORE-Seq-3.0-linux-64.zip	
-    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq-hg18_20100817.DB.gz
+    https://ftp.pcre.org/pub/pcre/pcre-8.01.tar.gz
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={'sig_mode': 'build'}).run()
