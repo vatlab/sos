@@ -89,7 +89,7 @@ a =1
         # list queues
         self.assertEqual(subprocess.call('sos run test_cl -q', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos execute a23 -q', shell=True), 0)
-        self.assertEqual(subprocess.call('sos resume -r', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        #self.assertEqual(subprocess.call('sos resume -r', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos push something -t', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos pull something -f', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos preview something -r', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
