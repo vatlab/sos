@@ -1038,7 +1038,9 @@ class Base_Executor:
         except Exception as e:
             procs = [x for x in procs if x is not None]
             for p, _, _ in procs + pool:
-                p.terminate()
+                # p can be fake if from a nested workflow
+                if p:
+                    p.terminate()
             raise e
         finally:
             if not nested:
@@ -1047,7 +1049,7 @@ class Base_Executor:
                     p.send(None)
                 time.sleep(0.1)
                 for w, _, _ in procs + pool:
-                    if w.is_alive():
+                    if w and w.is_alive():
                         w.terminate()
                         w.join()
             prog.close()
