@@ -29,6 +29,59 @@ from sos.sos_script import SoS_Script, ParsingError
 from sos.sos_executor import Base_Executor
 from sos.target import FileTarget
 
+section1_sos = '''
+#!/usr/bin/env sos-runner
+#fileformat=SOS1.1
+
+#
+# this is a test sos script
+#
+var1='value1'
+var2 = 'value2'
+var3 = [var1,
+  var2]
+
+# section
+# description for workflow section
+#
+[parameters]
+# par1 string
+par1 = 'var1'
+
+# par2 list
+par2 = ['a', 'b', 'c']
+
+# par3 multiline
+par3 = ['a',
+	'b']
+
+[*_0]
+var0 = '0'
+
+[section_10]
+#
+#step 10
+var1 = 'a'
+
+[section_2 : shared='var3']
+var2 = 'a'
+input: var1
+output: var2
+
+var3 = 'a'
+
+[section_3, *_4 : shared='var4', skip ]
+output: 
+	var2,
+	var3
+
+print()
+var4= 'value4'
+
+[chapter_5]
+var4='5'
+ '''
+
 class TestParser(unittest.TestCase):
     def setUp(self):
         env.reset()
@@ -59,9 +112,9 @@ class TestParser(unittest.TestCase):
             '#fileformat=SOS1.0beta')
         #
         # parse a larger script with gormat 1.1
-        script = SoS_Script(filename='scripts/section1.sos')
+        script = SoS_Script(section1_sos)
         # not the default value of 1.0
-        self.assertEqual(script.format_version, '1.1')
+        #self.assertEqual(script.format_version, '1.1')
 
     def testSetSigil(self):
         '''Test %set_options sigil'''
@@ -195,7 +248,7 @@ string """
 ]
 ''')
         #
-        SoS_Script(filename='scripts/section1.sos')
+        SoS_Script(section1_sos)
         # not the default value of 1.0
         #
         script = SoS_Script('''
@@ -211,7 +264,7 @@ print(a)
     def testParameters(self):
         '''Test parameters section'''
         # directive not allowed in parameters
-        script = SoS_Script(filename='scripts/section1.sos')
+        script = SoS_Script(section1_sos)
         wf = script.workflow('chapter:0')
         #self.assertRaises(ArgumentError, Base_Executor(wf).run,
         #    args=['--not_exist'])

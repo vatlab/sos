@@ -189,14 +189,16 @@ input: myfunc(['a.txt', 'b.txt'])
 
     def testInput(self):
         '''Test input specification'''
+        self.touch(['test_input.txt', 'test_input1.txt'])
         script = SoS_Script(r"""
 [0: shared={'res':'output'}]
-input: '*.py'
+input: '*.txt'
 output: [x + '.res' for x in _input]
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertTrue('test_execute.py.res' in env.sos_dict['res'])
+        self.assertTrue('test_input.txt.res' in env.sos_dict['res'])
+        self.assertTrue('test_input1.txt.res' in env.sos_dict['res'])
 
     def testForEach(self):
         '''Test for_each option of input'''
