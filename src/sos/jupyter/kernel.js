@@ -25,7 +25,6 @@ define([
     "base/js/utils",
     "codemirror/lib/codemirror",
     "codemirror/addon/selection/active-line",
-    "codemirror/addon/selection/active-line",
     "codemirror/addon/fold/foldcode",
     "codemirror/addon/fold/foldgutter",
     "codemirror/addon/fold/indent-fold"
@@ -302,7 +301,7 @@ define([
         loadFile(0);
     }
 
-    
+
     function changeStyleOnKernel(cell, type) {
         // type should be  displayed name of kernel
         var sel = cell.element[0].getElementsByClassName("cell_kernel_selector")[0];
@@ -352,7 +351,7 @@ define([
         return col;
     }
 
-    
+
     function load_select_kernel() {
         // this function will be called twice, the first time when the notebook is loaded
         // to create UT elements using the information from notebook metadata. The second
@@ -733,14 +732,17 @@ define([
         }
     };
 
+    function enable_fold_gutter(cell) {
+        cell.code_mirror.setOption("gutters", ["CodeMirror-foldgutter"]);
+        cell.code_mirror.setOption("foldGutter", true);
+    };
+
     function set_codemirror_option(evt, param) {
         var cells = nb.get_cells();
         var i;
         for (i = cells.length - 1; i >= 0; --i) {
             cells[i].code_mirror.setOption("styleActiveLine", cells[i].selected);
         }
-        param.cell.code_mirror.setOption("gutters", ["CodeMirror-foldgutter"]);
-        param.cell.code_mirror.setOption("foldGutter", true);
         return true;
     }
 
@@ -1610,7 +1612,6 @@ define([
     border: 1px solid #ddd;
     margin-bottom: 5px;
 }
-
 .scatterplot_by_rowname div.xAxis div.tickLabel {
     transform: translateY(15px) translateX(15px) rotate(45deg);
     -ms-transform: translateY(15px) translateX(15px) rotate(45deg);
@@ -1838,6 +1839,7 @@ define([
         events.on("rendered.MarkdownCell", update_toc);
         events.on("create.Cell", function(evt, param) {
             add_lan_selector(param.cell);
+            enable_fold_gutter(param.cell);
         });
         // I assume that Jupyter would load the notebook before it tries to connect
         // to the kernel, so kernel_connected.kernel is the right time to show toc
@@ -1874,8 +1876,7 @@ define([
             var cells = nb.get_cells();
             var i;
             for (i = cells.length - 1; i >= 0; --i) {
-                cells[i].code_mirror.setOption("gutters", ["CodeMirror-foldgutter"]);
-                cells[i].code_mirror.setOption("foldGutter", true);
+                enable_fold_gutter(cells[i]);
             }
         }, 1000);
 
