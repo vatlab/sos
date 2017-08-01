@@ -292,6 +292,22 @@ graph graphname {
             res = get_display_data(iopub, 'image/png')
             self.assertGreater(len(res), 1000, 'Expect a image {}'.format(res))
 
+    def testMagicSet(self):
+        # test preview of remote file
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            # preview variable
+            execute(kc=kc, code='''
+%set
+%set -v2
+%set
+%set -v1
+''')
+        stdout, stderr = assemble_output(iopub)
+        self.assertEqual(stderr, '', 'Got {}'.format(stderr))
+        self.assertTrue('set' in stdout, 'Got {}'.format(stdout))
+
+
     @unittest.skipIf(sys.platform == 'win32', 'AppVeyor does not support linux based docker')
     def testMagicRemotePreview(self):
         # test preview of remote file
