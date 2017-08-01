@@ -1644,7 +1644,7 @@ define([
   cursor: pointer;
 }
 .CodeMirror-foldgutter {
-  width: .7em;
+  width: .5em;
 }
 .CodeMirror-foldgutter-open,
 .CodeMirror-foldgutter-folded {
@@ -1656,13 +1656,12 @@ define([
 .CodeMirror-foldgutter-folded:after {
   content: "\\25B8";
 }
-/*.CodeMirror-lines {
-  padding-left: 0em;
+.CodeMirror-lines {
+  padding-left: 0.1em;
 }
-*/
 .CodeMirror-gutters {
- /* border-right: none; */
-  width: 17px;
+  border-right: none;
+  width: 14px;
 }
 `;
             document.body.appendChild(css);
