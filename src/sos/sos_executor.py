@@ -866,6 +866,8 @@ class Base_Executor:
                         # notify the step that is waiting for the result
                         env.logger.debug('{} receive workflow result'.format(i_am()))
                         for proc in procs:
+                            if proc is None:
+                                continue
                             if proc[2]._status == 'workflow_pending' and proc[2]._pending_workflow == res['__workflow_id__']:
                                 proc[1].send(res)
                                 proc[2]._status = 'running'
