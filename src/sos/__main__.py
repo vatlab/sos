@@ -470,7 +470,7 @@ def cmd_resume(args, workflow_args):
         if args.__remote__ == '':
             from .utils import load_config_files
             from .hosts import list_queues
-            cfg = load_config_files(args.config)
+            cfg = load_config_files()
             list_queues(cfg, args.verbosity)
             return
 
