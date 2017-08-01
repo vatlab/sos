@@ -733,8 +733,13 @@ define([
     };
 
     function enable_fold_gutter(cell) {
-        cell.code_mirror.setOption("gutters", ["CodeMirror-foldgutter"]);
-        cell.code_mirror.setOption("foldGutter", true);
+        if (cell.get_text().match(/[\n\r]\s/g)) {
+            cell.code_mirror.setOption("gutters", ["CodeMirror-foldgutter"]);
+            cell.code_mirror.setOption("foldGutter", true);
+        } else {
+            cell.code_mirror.setOption("gutters", []);
+            cell.code_mirror.setOption("foldGutter", false);
+        }
     };
 
     function set_codemirror_option(evt, param) {
@@ -743,6 +748,7 @@ define([
         for (i = cells.length - 1; i >= 0; --i) {
             cells[i].code_mirror.setOption("styleActiveLine", cells[i].selected);
         }
+        enable_fold_gutter(param.cell);
         return true;
     }
 
@@ -1645,7 +1651,7 @@ define([
   cursor: pointer;
 }
 .CodeMirror-foldgutter {
-  width: .5em;
+  width: 1em;
 }
 .CodeMirror-foldgutter-open,
 .CodeMirror-foldgutter-folded {
@@ -1657,12 +1663,14 @@ define([
 .CodeMirror-foldgutter-folded:after {
   content: "\\25B8";
 }
+/*
 .CodeMirror-lines {
   padding-left: 0.1em;
 }
+*/
 .CodeMirror-gutters {
   border-right: none;
-  width: 14px;
+  width: 1em;
 }
 `;
             document.body.appendChild(css);
@@ -1839,7 +1847,6 @@ define([
         events.on("rendered.MarkdownCell", update_toc);
         events.on("create.Cell", function(evt, param) {
             add_lan_selector(param.cell);
-            enable_fold_gutter(param.cell);
         });
         // I assume that Jupyter would load the notebook before it tries to connect
         // to the kernel, so kernel_connected.kernel is the right time to show toc
