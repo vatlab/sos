@@ -23,7 +23,6 @@
 import os
 import sys
 import unittest
-import time
 import shutil
 
 from sos.sos_script import SoS_Script
@@ -403,6 +402,9 @@ download: dest_dir='tmp', decompress=True
 [0]
 download: dest_dir='tmp', decompress=True
     https://ftp.pcre.org/pub/pcre/pcre-8.01.tar.gz
+    https://ftp.pcre.org/pub/pcre/pcre-8.01.zip
+    https://ftp.pcre.org/pub/pcre/pcre-8.01.tar.bz2
+    https://ftp.pcre.org/pub/pcre/pcre-8.01.zip.sig
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={'sig_mode': 'build'}).run()

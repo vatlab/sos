@@ -468,6 +468,9 @@ def downloadURL(URL, dest, decompress=False, index=None):
                         zfile = zipfile.ZipFile(dest)
                         names = zfile.namelist()
                         for name in names:
+                            # only python3.6 has the is_dir function for ZipInfo
+                            if name.endswith('/'):
+                                continue
                             dest_file = os.path.join(dest_dir, name)
                             if not os.path.isfile(dest_file):
                                 env.logger.warning('Missing decompressed file {}'.format(dest_file))
