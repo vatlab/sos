@@ -49,7 +49,6 @@ from IPython.utils.tokenutil import line_at_cursor, token_at_cursor
 from jupyter_client import manager, find_connection_file
 
 from textwrap import dedent
-from io import StringIO
 
 from .completer import SoS_Completer
 from .inspector import SoS_Inspector
@@ -405,6 +404,9 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('-f', '--from', dest='host', nargs='?', const='',
             help='''Remote host to which the files will be sent. SoS will list all
             configured queues and stop''')
+        parser.add_argument('-c', '--config', help='''A configuration file with host
+            definitions, in case the definitions are not defined in global or local
+            sos config.yml files.''')
         parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
             help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
                 information to standard output (default to 2).''')
@@ -420,6 +422,9 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('-t', '--to', dest='host', nargs='?', const='',
             help='''Remote host to which the files will be sent. SoS will list all
             configured queues if no such key is defined''')
+        parser.add_argument('-c', '--config', help='''A configuration file with host
+            definitions, in case the definitions are not defined in global or local
+            sos config.yml files.''')
         parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
             help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
                 information to standard output (default to 2).''')
@@ -1489,6 +1494,9 @@ Available subkernels:\n{}'''.format(
 
     def handle_magic_pull(self, args):
         from sos.hosts import Host
+        if args.config:
+            from sos.utils import load_config_files
+            load_config_files(args.config)
         cfg = env.sos_dict['CONFIG']
         if args.host == '':
             from sos.hosts import list_queues
@@ -1513,6 +1521,9 @@ Available subkernels:\n{}'''.format(
 
     def handle_magic_push(self, args):
         from sos.hosts import Host
+        if args.config:
+            from sos.utils import load_config_files
+            load_config_files(args.config)
         cfg = env.sos_dict['CONFIG']
         if args.host == '':
             from .hosts import list_hosts
