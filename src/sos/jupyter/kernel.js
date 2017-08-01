@@ -24,7 +24,11 @@ define([
     "jquery",
     "base/js/utils",
     "codemirror/lib/codemirror",
-    "codemirror/addon/selection/active-line"
+    "codemirror/addon/selection/active-line",
+    "codemirror/addon/selection/active-line",
+    "codemirror/addon/fold/foldcode",
+    "codemirror/addon/fold/foldgutter",
+    "codemirror/addon/fold/indent-fold"
 ], function($) {
 
     "use strict";
@@ -382,7 +386,7 @@ define([
         // .change(select_kernel);
         if (Jupyter.toolbar.element.has("#kernel_selector").length === 0) {
             Jupyter.toolbar.element.append(dropdown);
-		}
+        }
         // remove any existing items
         $("#kernel_selector").empty();
         $.each(window.KernelList, function(key, value) {
@@ -611,7 +615,7 @@ define([
                             if (window.pending_cells[cell][idx][0] !== data[0] ||
                                 window.pending_cells[cell][idx][1] !== data[1]) {
                                 continue;
-							}
+                            }
                             window.pending_cells[cell].splice(idx, 1);
                             if (window.pending_cells[cell].length === 0) {
                                 delete window.pending_cells[cell];
@@ -731,10 +735,12 @@ define([
 
     function set_codemirror_option(evt, param) {
         var cells = nb.get_cells();
-		var i;
+        var i;
         for (i = cells.length - 1; i >= 0; --i) {
             cells[i].code_mirror.setOption("styleActiveLine", cells[i].selected);
-		}
+        }
+        param.cell.code_mirror.setOption("gutters", ["CodeMirror-foldgutter"]);
+        param.cell.code_mirror.setOption("foldGutter", true);
         return true;
     }
 
@@ -782,7 +788,7 @@ define([
     function highlight_toc_item(evt, data) {
         if ($(".toc").length === 0) {
             return;
-		}
+        }
         var c = data.cell.element; //
         if (c) {
             var ll = $(c).find(":header");
@@ -994,8 +1000,8 @@ define([
         // if panel-wrapper is undefined (first run(?), then hide it)
         // if ($("#panel-wrapper").css("display") === undefined) $("#panel-wrapper").css("display", "none") //block
         if (!$("#panel-wrapper").css("display")) {
-			$("#panel-wrapper").css("display", "block"); //block
-		}
+            $("#panel-wrapper").css("display", "block"); //block
+        }
         $("#site").bind("siteHeight", function() {
             $("#panel-wrapper").css("height", $("#site").height());
         });
@@ -1629,6 +1635,35 @@ define([
 .lev6 {margin-left: 10px}
 .lev7 {margin-left: 10px}
 .lev8 {margin-left: 10px}
+
+.CodeMirror-foldmarker {
+  color: blue;
+  text-shadow: #b9f 1px 1px 2px, #b9f -1px -1px 2px, #b9f 1px -1px 2px, #b9f -1px 1px 2px;
+  font-family: arial;
+  line-height: .3;
+  cursor: pointer;
+}
+.CodeMirror-foldgutter {
+  width: .7em;
+}
+.CodeMirror-foldgutter-open,
+.CodeMirror-foldgutter-folded {
+  cursor: pointer;
+}
+.CodeMirror-foldgutter-open:after {
+  content: "\\25BE";
+}
+.CodeMirror-foldgutter-folded:after {
+  content: "\\25B8";
+}
+/*.CodeMirror-lines {
+  padding-left: 0em;
+}
+*/
+.CodeMirror-gutters {
+ /* border-right: none; */
+  width: 17px;
+}
 `;
             document.body.appendChild(css);
         };
@@ -1837,6 +1872,12 @@ define([
             /* #524. syntax highlighting would be disabled after page reload. Note quite sure if this is
                a correct fix but it seems to work. */
             nb.set_codemirror_mode("sos");
+            var cells = nb.get_cells();
+            var i;
+            for (i = cells.length - 1; i >= 0; --i) {
+                cells[i].code_mirror.setOption("gutters", ["CodeMirror-foldgutter"]);
+                cells[i].code_mirror.setOption("foldGutter", true);
+            }
         }, 1000);
 
 
