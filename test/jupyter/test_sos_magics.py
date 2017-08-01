@@ -35,7 +35,7 @@ class TestSoSMagics(unittest.TestCase):
                 'cd', 'debug', 'dict', 'get', 'matplotlib', 'paste', 'preview',
                 'put', 'render', 'rerun', 'run', 'save', 'sandbox', 'set',
                 'sessioninfo', 'sosrun', 'sossave', 'shutdown', 'taskinfo', 'tasks',
-                'toc', 'use', 'with')))
+                'toc', 'use', 'with', 'pull', 'push')))
             wait_for_idle(kc)
 
     def testMagicConnectInfo(self):

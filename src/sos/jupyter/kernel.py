@@ -581,7 +581,7 @@ class SoS_Kernel(IPythonKernel):
                     mn, attr = language.split(':', 1)
                     ep = EntryPoint(name=kernel, module_name=mn, attrs=tuple(attr.split('.')))
                     try:
-                        plugin = ep.resolve()(self)
+                        plugin = ep.resolve()
                         self._supported_languages[name] = plugin
                         # for convenience, we create two entries for, e.g. R and ir
                         # but only if there is no existing definition
@@ -637,7 +637,7 @@ class SoS_Kernel(IPythonKernel):
                 if color == 'default':
                     color = plugin.background_color
                 # find the language that has the kernel
-                lan_name = {x:y for x,y in plugin.supported_kernels.items() if avail_kernels[0] in y}.keys()[0]
+                lan_name = list({x:y for x,y in plugin.supported_kernels.items() if avail_kernels[0] in y}.keys())[0]
                 new_def = add_or_replace([name, avail_kernels[0], lan_name, plugin.background_color if color is None else color,
                     getattr(plugin, 'options', {})])
             else:
