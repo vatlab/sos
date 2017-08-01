@@ -1114,7 +1114,7 @@ class Base_Step_Executor:
                 # finally, tasks..
                 if not self.step.task:
                     if signatures[idx] is not None:
-                        if 'sos_run' in env.sos_dict['__signature_vars__']:
+                        if 'sos_run' not in env.sos_dict['__signature_vars__']:
                             signatures[idx].write()
                         signatures[idx].release()
                         signatures[idx] = None
