@@ -73,26 +73,37 @@ class TestExecute(unittest.TestCase):
 
     def testCommandLine(self):
         '''Test command line arguments'''
+        with open('test_cl.sos', 'w') as cl:
+            cl.write('''\
+#!/usr/bin/env sos-runner
+#fileformat=SOS1.0
+
+[L]
+a =1
+''')
         result = subprocess.check_output('sos --version', stderr=subprocess.STDOUT, shell=True).decode()
         self.assertTrue(result.startswith('sos {}'.format(__version__)))
         self.assertEqual(subprocess.call('sos', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos run -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         # list queues
-        #self.assertEqual(subprocess.call('sos run scripts/master -q', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos run test_cl -q', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos execute a23 -q', shell=True), 0)
+        #self.assertEqual(subprocess.call('sos resume -r', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos push something -t', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos pull something -f', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos preview something -r', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos kill -a -q', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         #
-        #self.assertEqual(subprocess.call('sos run scripts/master -w -W', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
+        self.assertEqual(subprocess.call('sos run test_cl -w -W', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
         self.assertEqual(subprocess.call('sos-runner -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos dryrun -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        #self.assertEqual(subprocess.call('sos dryrun scripts/master', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
-        #self.assertEqual(subprocess.call('sos dryrun scripts/master.sos', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
-        #self.assertEqual(subprocess.call('sos-runner scripts/master', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
-        #self.assertEqual(subprocess.call('sos dryrun file://{}/scripts/master.sos'.format(os.getcwd()), stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
-        #self.assertEqual(subprocess.call('sos dryrun scripts/master.sos L', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        #self.assertEqual(subprocess.call('sos-runner scripts/master L', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos dryrun test_cl', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos dryrun test_cl.sos', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos dryrun test_cl L', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos-runner test_cl L', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         # script help
-        #self.assertEqual(subprocess.call('sos-runner scripts/master -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos-runner test_cl -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos convert -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos convert sos-ipynb -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         #
@@ -103,8 +114,7 @@ class TestExecute(unittest.TestCase):
         self.assertEqual(subprocess.call('sos config --set a 5', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos config --get a', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos config --unset a', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        # a redirect bug related to blessing, not sure why the test fails
-        #self.assertEqual(subprocess.call('sos run scripts/slave1.sos -v1 > /dev/null', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        #
 
 
     def testInterpolation(self):

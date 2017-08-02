@@ -25,7 +25,6 @@ define([
     "base/js/utils",
     "codemirror/lib/codemirror",
     "codemirror/addon/selection/active-line",
-    "codemirror/addon/selection/active-line",
     "codemirror/addon/fold/foldcode",
     "codemirror/addon/fold/foldgutter",
     "codemirror/addon/fold/indent-fold"
@@ -302,7 +301,7 @@ define([
         loadFile(0);
     }
 
-    
+
     function changeStyleOnKernel(cell, type) {
         // type should be  displayed name of kernel
         var sel = cell.element[0].getElementsByClassName("cell_kernel_selector")[0];
@@ -352,7 +351,7 @@ define([
         return col;
     }
 
-    
+
     function load_select_kernel() {
         // this function will be called twice, the first time when the notebook is loaded
         // to create UT elements using the information from notebook metadata. The second
@@ -733,14 +732,23 @@ define([
         }
     };
 
+    function enable_fold_gutter(cell) {
+        if (cell.get_text().match(/[\n\r]\s/g)) {
+            cell.code_mirror.setOption("gutters", ["CodeMirror-foldgutter"]);
+            cell.code_mirror.setOption("foldGutter", true);
+        } else {
+            cell.code_mirror.setOption("gutters", []);
+            cell.code_mirror.setOption("foldGutter", false);
+        }
+    };
+
     function set_codemirror_option(evt, param) {
         var cells = nb.get_cells();
         var i;
         for (i = cells.length - 1; i >= 0; --i) {
             cells[i].code_mirror.setOption("styleActiveLine", cells[i].selected);
         }
-        param.cell.code_mirror.setOption("gutters", ["CodeMirror-foldgutter"]);
-        param.cell.code_mirror.setOption("foldGutter", true);
+        enable_fold_gutter(param.cell);
         return true;
     }
 
@@ -1610,7 +1618,6 @@ define([
     border: 1px solid #ddd;
     margin-bottom: 5px;
 }
-
 .scatterplot_by_rowname div.xAxis div.tickLabel {
     transform: translateY(15px) translateX(15px) rotate(45deg);
     -ms-transform: translateY(15px) translateX(15px) rotate(45deg);
@@ -1644,7 +1651,7 @@ define([
   cursor: pointer;
 }
 .CodeMirror-foldgutter {
-  width: .7em;
+  width: 1em;
 }
 .CodeMirror-foldgutter-open,
 .CodeMirror-foldgutter-folded {
@@ -1656,13 +1663,14 @@ define([
 .CodeMirror-foldgutter-folded:after {
   content: "\\25B8";
 }
-/*.CodeMirror-lines {
-  padding-left: 0em;
+/*
+.CodeMirror-lines {
+  padding-left: 0.1em;
 }
 */
 .CodeMirror-gutters {
- /* border-right: none; */
-  width: 17px;
+  border-right: none;
+  width: 1em;
 }
 `;
             document.body.appendChild(css);
@@ -1875,8 +1883,7 @@ define([
             var cells = nb.get_cells();
             var i;
             for (i = cells.length - 1; i >= 0; --i) {
-                cells[i].code_mirror.setOption("gutters", ["CodeMirror-foldgutter"]);
-                cells[i].code_mirror.setOption("foldGutter", true);
+                enable_fold_gutter(cells[i]);
             }
         }, 1000);
 

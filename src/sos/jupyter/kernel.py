@@ -49,7 +49,6 @@ from IPython.utils.tokenutil import line_at_cursor, token_at_cursor
 from jupyter_client import manager, find_connection_file
 
 from textwrap import dedent
-from io import StringIO
 
 from .completer import SoS_Completer
 from .inspector import SoS_Inspector
@@ -405,6 +404,9 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('-f', '--from', dest='host', nargs='?', const='',
             help='''Remote host to which the files will be sent. SoS will list all
             configured queues and stop''')
+        parser.add_argument('-c', '--config', help='''A configuration file with host
+            definitions, in case the definitions are not defined in global or local
+            sos config.yml files.''')
         parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
             help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
                 information to standard output (default to 2).''')
@@ -420,6 +422,9 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('-t', '--to', dest='host', nargs='?', const='',
             help='''Remote host to which the files will be sent. SoS will list all
             configured queues if no such key is defined''')
+        parser.add_argument('-c', '--config', help='''A configuration file with host
+            definitions, in case the definitions are not defined in global or local
+            sos config.yml files.''')
         parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
             help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
                 information to standard output (default to 2).''')
@@ -576,7 +581,7 @@ class SoS_Kernel(IPythonKernel):
                     mn, attr = language.split(':', 1)
                     ep = EntryPoint(name=kernel, module_name=mn, attrs=tuple(attr.split('.')))
                     try:
-                        plugin = ep.resolve()(self)
+                        plugin = ep.resolve()
                         self._supported_languages[name] = plugin
                         # for convenience, we create two entries for, e.g. R and ir
                         # but only if there is no existing definition
@@ -632,7 +637,7 @@ class SoS_Kernel(IPythonKernel):
                 if color == 'default':
                     color = plugin.background_color
                 # find the language that has the kernel
-                lan_name = {x:y for x,y in plugin.supported_kernels.items() if avail_kernels[0] in y}.keys()[0]
+                lan_name = list({x:y for x,y in plugin.supported_kernels.items() if avail_kernels[0] in y}.keys())[0]
                 new_def = add_or_replace([name, avail_kernels[0], lan_name, plugin.background_color if color is None else color,
                     getattr(plugin, 'options', {})])
             else:
@@ -1489,6 +1494,9 @@ Available subkernels:\n{}'''.format(
 
     def handle_magic_pull(self, args):
         from sos.hosts import Host
+        if args.config:
+            from sos.utils import load_config_files
+            load_config_files(args.config)
         cfg = env.sos_dict['CONFIG']
         if args.host == '':
             from sos.hosts import list_queues
@@ -1513,6 +1521,9 @@ Available subkernels:\n{}'''.format(
 
     def handle_magic_push(self, args):
         from sos.hosts import Host
+        if args.config:
+            from sos.utils import load_config_files
+            load_config_files(args.config)
         cfg = env.sos_dict['CONFIG']
         if args.host == '':
             from .hosts import list_hosts
@@ -1646,23 +1657,9 @@ Available subkernels:\n{}'''.format(
         # interpolate command
         if not cmd:
             return
-        import pexpect
-
+        from sos.utils import pexpect_run
         with self.redirect_sos_io():
-            try:
-                if isinstance(cmd, str):
-                    child = pexpect.spawn(cmd, timeout=None)
-                else:
-                    child = pexpect.spawn(subprocess.list2cmdline(cmd), timeout=None)
-                while True:
-                    try:
-                        child.expect('\n')
-                        sys.stdout.write(child.before.decode() + '\n')
-                    except pexpect.EOF:
-                        break
-            except Exception as e:
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': str(e)})
+            pexpect_run(cmd)
 
     def run_sos_code(self, code, silent):
         code = dedent(code)

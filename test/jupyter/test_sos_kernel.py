@@ -94,24 +94,31 @@ class TestSoSKernel(unittest.TestCase):
     def testMagicUse(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
-            execute(kc=kc, code="%use R1 -l sos.R.kernel:sos_R -c #CCCCCC")
-            wait_for_idle(kc)
+            execute(kc=kc, code="%use R0 -l sos.R.kernel:sos_R -c #CCCCCC")
+            _, stderr = assemble_output(iopub)
+            self.assertEqual(stderr, '')
+            execute(kc=kc, code="%use R1 -l sos.R.kernel:sos_R -k ir -c #CCCCCC")
+            _, stderr = assemble_output(iopub)
+            self.assertEqual(stderr, '')
             execute(kc=kc, code="%use R2 -k ir")
-            wait_for_idle(kc)
+            _, stderr = assemble_output(iopub)
+            self.assertEqual(stderr, '')
             execute(kc=kc, code="a <- 1024")
             wait_for_idle(kc)
             execute(kc=kc, code="a")
             res = get_display_data(iopub)
             self.assertEqual(res, '[1] 1024')
             execute(kc=kc, code="%use R3 -k ir -l R")
-            wait_for_idle(kc)
+            _, stderr = assemble_output(iopub)
+            self.assertEqual(stderr, '')
             execute(kc=kc, code="a <- 233")
             wait_for_idle(kc)
             execute(kc=kc, code="a")
             res = get_display_data(iopub)
             self.assertEqual(res, '[1] 233')
             execute(kc=kc, code="%use R2 -c red")
-            wait_for_idle(kc)
+            _, stderr = assemble_output(iopub)
+            self.assertEqual(stderr, '')
             execute(kc=kc, code="a")
             res = get_display_data(iopub)
             self.assertEqual(res, '[1] 1024')
@@ -307,6 +314,20 @@ class TestSoSKernel(unittest.TestCase):
             execute(kc=kc, code='%set_options sigil="${ }"')
             wait_for_idle(kc)
 
+    def testPullPush(self):
+        '''Test set_options of sigil'''
+        with open('push_pull.txt', 'w') as pp:
+            pp.write('something')
+        with sos_kernel() as kc:
+            # create a data frame
+            execute(kc=kc, code='%push push_pull.txt --to docker -c ~/docker.yml')
+            wait_for_idle(kc)
+            os.remove('push_pull.txt')
+            self.assertFalse(os.path.isfile('push_pull.txt'))
+            #
+            execute(kc=kc, code='%pull push_pull.txt --from docker -c ~/docker.yml')
+            wait_for_idle(kc)
+            self.assertTrue(os.path.isfile('push_pull.txt'))
 
 if __name__ == '__main__':
     unittest.main()

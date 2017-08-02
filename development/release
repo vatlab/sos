@@ -118,7 +118,7 @@ output: "../docs/doc/examples/${_input!bn}_report.html"
 
 run: workdir='../docs/doc/examples'
 	cp ${_input!a} .
-	sos convert ${_input!b} ${_output!b} --template sos-full
+	sos convert ${_input!b} ${_output!b} --template sos-report
 
 [convert-large-examples]
 input:  '../docs/src/examples/*/*.sos', group_by=1

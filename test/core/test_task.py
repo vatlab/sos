@@ -64,10 +64,10 @@ class TestTask(unittest.TestCase):
             aaa.write('something')
         script = r"""
 [0]
-task: workdir='{0}'
+task: workdir={0!r}
 
-with open(os.path.join('{1}', 'result.txt'), 'w') as res:
-   for file in os.listdir('{1}'):
+with open(os.path.join({1!r}, 'result.txt'), 'w') as res:
+   for file in os.listdir({1!r}):
        res.write(file + '\n')
 """.format(os.path.split(tdir)[0], os.path.split(tdir)[1])
         wf = SoS_Script(script).workflow()
@@ -346,7 +346,7 @@ run:
     sleep 20
 ''')
         wf = script.workflow()
-        st = time.time()
+        #st = time.time()
         env.config['sig_mode'] = 'force'
         env.config['wait_for_task'] = False
         ret = Base_Executor(wf).run()
@@ -358,7 +358,7 @@ run:
         env.config['sig_mode'] = 'default'
         env.config['wait_for_task'] = True
         env.config['resume_mode'] = True
-        st = time.time()
+        #st = time.time()
         try:
             Base_Executor(wf).run()
             # sos should wait till everything exists
