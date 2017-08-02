@@ -314,6 +314,7 @@ class TestSoSKernel(unittest.TestCase):
             execute(kc=kc, code='%set_options sigil="${ }"')
             wait_for_idle(kc)
 
+    @unittest.skipIf(sys.platform == 'win32', 'AppVeyor does not support linux based docker')
     def testPullPush(self):
         '''Test set_options of sigil'''
         with open('push_pull.txt', 'w') as pp:
