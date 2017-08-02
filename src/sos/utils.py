@@ -1184,3 +1184,37 @@ def remove_arg(argv, arg):
         # in case of -r=host...
         argv = argv[:r_idx] + argv[r_idx+1:]
     return argv        
+
+
+def pexpect_run(cmd):
+    if sys.platform == 'win32':
+        import subprocess
+        child = subprocess.Popen(cmd, shell=isinstance(cmd, str), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, bufsize=0)
+
+        out, err = child.communicate()
+        sys.stdout.write(out.decode())
+        sys.stderr.write(err.decode())
+        return child.returncode
+    else:
+        import pexpect
+        import subprocess
+        try:
+            if isinstance(cmd, str):
+                child = pexpect.spawn(cmd, timeout=None)
+            else:
+                child = pexpect.spawn(subprocess.list2cmdline(cmd), timeout=None)
+            while True:
+                try:
+                    child.expect('\n')
+                    if env.verbosity > 0:
+                        sys.stdout.write(child.before.decode() + '\n')
+                except pexpect.EOF:
+                    break
+            child.wait()
+            child.close()
+            return child.exitstatus
+        except Exception as e:
+            sys.stderr.write(str(e))
+            return 1
+

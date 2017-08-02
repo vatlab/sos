@@ -219,25 +219,8 @@ class LocalHost:
     def run_command(self, cmd, wait_for_task, realtime=False, **kwargs):
         # run command but does not wait for result.
         if realtime:
-            import pexpect
-            try:
-                if isinstance(cmd, str):
-                    child = pexpect.spawn(cmd, timeout=None)
-                else:
-                    child = pexpect.spawn(subprocess.list2cmdline(cmd), timeout=None)
-                while True:
-                    try:
-                        child.expect('\n')
-                        if env.verbosity > 0:
-                            sys.stdout.write(child.before.decode() + '\n')
-                    except pexpect.EOF:
-                        break
-                child.wait()
-                child.close()
-                return child.exitstatus
-            except Exception as e:
-                sys.stderr.write(str(e))
-                return 1
+            from .utils import pexpect_run
+            return pexpect_run(cmd)
         elif wait_for_task or sys.platform == 'win32':
             return subprocess.Popen(cmd, shell=True, **kwargs)
         else:
@@ -640,22 +623,8 @@ class RemoteHost:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
         env.logger.debug('Executing command ``{}``'.format(cmd))
         if realtime:
-            import pexpect
-            try:
-                child = pexpect.spawn(cmd, timeout=None)
-                while True:
-                    try:
-                        child.expect('\n')
-                        if env.verbosity > 0:
-                            sys.stdout.write(child.before.decode() + '\n')
-                    except pexpect.EOF:
-                        break
-                child.wait()
-                child.close()
-                return child.exitstatus
-            except Exception as e:
-                sys.stderr.write(str(e))
-                return 1
+            from utils import pexpect
+            return pexpect_run(cmd)
         elif wait_for_task or sys.platform == 'win32':
             # keep proc persistent to avoid a subprocess is still running warning.
             return subprocess.Popen(cmd, shell=True, **kwargs)

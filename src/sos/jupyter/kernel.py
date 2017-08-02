@@ -1657,23 +1657,9 @@ Available subkernels:\n{}'''.format(
         # interpolate command
         if not cmd:
             return
-        import pexpect
-
+        from sos.utils import pexpect_run
         with self.redirect_sos_io():
-            try:
-                if isinstance(cmd, str):
-                    child = pexpect.spawn(cmd, timeout=None)
-                else:
-                    child = pexpect.spawn(subprocess.list2cmdline(cmd), timeout=None)
-                while True:
-                    try:
-                        child.expect('\n')
-                        sys.stdout.write(child.before.decode() + '\n')
-                    except pexpect.EOF:
-                        break
-            except Exception as e:
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': str(e)})
+            pexpect_run(cmd)
 
     def run_sos_code(self, code, silent):
         code = dedent(code)
