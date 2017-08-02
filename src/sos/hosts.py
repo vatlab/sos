@@ -623,7 +623,7 @@ class RemoteHost:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
         env.logger.debug('Executing command ``{}``'.format(cmd))
         if realtime:
-            from utils import pexpect
+            from .utils import pexpect_run
             return pexpect_run(cmd)
         elif wait_for_task or sys.platform == 'win32':
             # keep proc persistent to avoid a subprocess is still running warning.
