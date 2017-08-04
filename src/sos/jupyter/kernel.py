@@ -682,7 +682,8 @@ class SoS_Kernel(IPythonKernel):
                 plugin = entrypoint.load()
                 self._supported_languages[name] = plugin
             except Exception as e:
-                pass #self.log.error('Failed to load language {}: {}'.format(entrypoint.name, e))
+                from sos.utils import colorstr
+                self.log.error(colorstr('Failed to load language {}: {}'.format(entrypoint.name, e), 'RED'))
         return self._supported_languages
 
     supported_languages = property(lambda self:self.get_supported_languages())
