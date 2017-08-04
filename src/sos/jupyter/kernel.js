@@ -75,6 +75,17 @@ define([
     // configuration later on.
     nb.metadata["sos"]["panel"].style = "side";
 
+	var used_kernels = new Set();
+	var cells = nb.get_cells();
+	for (var i = cells.length - 1; i >= 0; --i) {
+		if (cells[i].cell_type === "code" && cells[i].metadata.kernel) {
+			used_kernels.add(cells[i].metadata.kernel);
+		}
+	}
+	nb.metadata["sos"]["kernels"] = nb.metadata["sos"]["kernels"].filter(function(x) {
+		return used_kernels.has(x[0]);
+	});
+
     var data = nb.metadata["sos"]["kernels"];
     // upgrade existing meta data if it uses the old 3 item format
     if (nb.metadata["sos"]["kernels"].length > 0 &&
@@ -646,16 +657,7 @@ define([
             }
             adjustPanel();
         });
-        var used_kernels = new Set();
-        var cells = nb.get_cells();
-        for (var i = cells.length - 1; i >= 0; --i) {
-            if (cells[i].cell_type === "code" && cells[i].metadata.kernel) {
-                used_kernels.add(cells[i].metadata.kernel);
-            }
-        }
-        nb.metadata["sos"]["kernels"] = nb.metadata["sos"]["kernels"].filter(function(x) {
-            return used_kernels.has(x[0]);
-        });
+
         window.sos_comm.send({
             "list-kernel": nb.metadata["sos"]["kernels"],
             "update-task-status": window.unknown_tasks,
