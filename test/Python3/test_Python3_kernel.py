@@ -117,8 +117,7 @@ df_var = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
 import numpy
 d3var = numpy.array([1, 2, 3])
 ''')
-            _, stderr = assemble_output(iopub)
-            self.assertEqual(stderr, '', "GOT ERROR {}".format(stderr))
+            wait_for_idle(kc)
             #
             execute(kc=kc, code='''
 %use P3 -l Python3
