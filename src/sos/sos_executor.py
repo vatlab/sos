@@ -832,7 +832,8 @@ class Base_Executor:
                             for proc in procs:
                                 if proc is None:
                                     continue
-                                if proc[2]._status.endswith('_pending') and proc[2]._pending_workflow == runnable._pending_workflow:
+                                if proc[2]._status.endswith('_pending') and hasattr(proc[2], '_pending_workflow') \
+                                    and proc[2]._pending_workflow == runnable._pending_workflow:
                                     proc[2]._status = 'failed'
                         prog.update(1)
                     elif '__step_name__' in res:
