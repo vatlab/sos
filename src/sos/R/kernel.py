@@ -109,6 +109,10 @@ def _R_repr(obj):
                 # use {!r} for path because the string might contain c:\ which needs to be
                 # double quoted.
             return '..read.feather({!r}, index={})'.format(feather_tmp_, _R_repr(df_index))
+        elif isinstance(obj, pandas.Series):
+            dat=list(obj.values)
+            ind=list(obj.index.values)
+            return 'setNames(' + 'c(' + ','.join(_R_repr(x) for x in dat) + ')' + ',c(' + ','.join(_R_repr(y) for y in ind) + '))'
         else:
             return repr('Unsupported datatype {}'.format(short_repr(obj)))
 
