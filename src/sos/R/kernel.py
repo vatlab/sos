@@ -24,6 +24,8 @@ from collections import Sequence
 import tempfile
 from sos.utils import short_repr, env
 from IPython.core.error import UsageError
+import pandas
+
 
 def homogeneous_type(seq):
     iseq = iter(seq)
@@ -178,9 +180,9 @@ R_init_statements = r'''
     tf = tempfile('feather')
     write_feather(as.data.frame(obj), tf)
     if (..has.row.names(obj)) {
-       paste0("read_dataframe(r'", tf, "').set_index([", ..py.repr(row.names(obj)),"]).as_matrix()")
+        paste0("read_dataframe(r'", tf, "').set_index([", ..py.repr(row.names(obj)),"]).as_matrix()")
     } else {
-       paste0("read_dataframe(r'", tf, "').as_matrix()")
+        paste0("read_dataframe(r'", tf, "').as_matrix()")
     }
 }
 ..py.repr.n <- function(obj) {
@@ -190,62 +192,81 @@ R_init_statements = r'''
 }
 ..py.repr <- function(obj) {
     if (is.matrix(obj)) {
-        ..py.repr.matrix(obj)
+      ..py.repr.matrix(obj)
     } else if (is.data.frame(obj)) {
-        ..py.repr.dataframe(obj)
+      ..py.repr.dataframe(obj)
     } else if (is.null(obj)) {
-        'None'
+      'None'
     } else if (is.integer(obj)) {
-        if (length(obj) == 1)
-            ..py.repr.integer.1(obj)
-        else
-            paste("[", paste(obj, collapse=','), "]")
-    } else if (is.complex(obj)) {
-        if (length(obj) == 1)
-            ..py.repr.complex.1(obj)
-        else
-            paste("[", paste(..py.repr.complex.1(obj), collapse=','), "]")
-    } else if (is.double(obj)){
-        if (length(obj) == 1)
-            ..py.repr.double.1(obj)
-        else
-            paste("[", paste(obj, collapse=','), "]")
-    } else if (is.character(obj)) {
-        if (length(obj) == 1)
-            ..py.repr.character.1(obj)
-        else {
-            paste("[", paste(sapply(obj, ..py.repr.character.1), collapse=','), "]")
-        }
-    } else if (is.logical(obj)) {
-        if (length(obj) == 1)
-            ..py.repr.logical.1(obj)
-        else
-            ..py.repr.n(obj)
-    } else if (is.list(obj)) {
-        # if the list has no name
+        # if the vector has no name
         if (is.null(names(obj)))
+          if (length(obj) == 1)
+            ..py.repr.integer.1(obj)
+          else
+            paste("[", paste(obj, collapse=','), "]")
+        else
+          paste0("pandas.Series(", "[", paste(unname(obj), collapse=','), "],", paste0("[", paste0(sapply(names(obj), ..py.repr.character.1), collapse=','), "]"), ")")
+    } else if (is.complex(obj)) {
+        # if the vector has no name
+        if (is.null(names(obj)))
+          if (length(obj) == 1)
+            ..py.repr.complex.1(obj)
+          else
+            paste("[", paste(..py.repr.complex.1(obj), collapse=','), "]")
+        else
+          paste0("pandas.Series(", "[", paste(sapply(unname(obj), ..py.repr.complex.1), collapse=','), "],", paste0("[", paste0(sapply(names(obj), ..py.repr.character.1), collapse=','), "]"), ")")
+    } else if (is.double(obj)){
+        # if the vector has no name
+        if (is.null(names(obj)))
+          if (length(obj) == 1)
+            ..py.repr.double.1(obj)
+          else
+            paste("[", paste(obj, collapse=','), "]")
+        else
+          paste0("pandas.Series(", "[", paste(unname(obj), collapse=','), "],", paste0("[", paste0(sapply(names(obj), ..py.repr.character.1), collapse=','), "]"), ")")
+    } else if (is.character(obj)) {
+        # if the vector has no name
+        if (is.null(names(obj)))
+          if (length(obj) == 1)
+            ..py.repr.character.1(obj)
+          else
+            paste("[", paste(sapply(obj, ..py.repr.character.1), collapse=','), "]")
+        else
+          paste0("pandas.Series(", "[", paste(sapply(unname(obj), ..py.repr.character.1), collapse=','), "],", paste0("[", paste0(sapply(names(obj), ..py.repr.character.1), collapse=','), "]"), ")")
+    } else if (is.logical(obj)) {
+      # if the vector has no name
+        if (is.null(names(obj)))
+          if (length(obj) == 1)
+            ..py.repr.logical.1(obj)
+          else
             ..py.repr.n(obj)
-        else {
-            paste("{",
-                  paste(sapply(names(obj), function (x)
-                      paste(shQuote(gsub("\\.", "_", as.character(x))), ":", ..py.repr(obj[[x]]))),
-                      collapse=','),
-                  "}")
+        else
+          paste0("pandas.Series(", "[", paste(sapply(unname(obj), ..py.repr.logical.1), collapse=','), "],", paste0("[", paste0(sapply(names(obj), ..py.repr.character.1), collapse=','), "]"), ")")
+    } else if (is.list(obj)) {
+      # if the list has no name
+      if (is.null(names(obj)))
+        ..py.repr.n(obj)
+      else {
+        paste("{",
+              paste(sapply(names(obj), function (x)
+                paste(shQuote(gsub("\\.", "_", as.character(x))), ":", ..py.repr(obj[[x]]))),
+                collapse=','),
+              "}")
         }
     } else {
-        "'Untransferrable variable'"
+      "'Untransferrable variable'"
     }
 }
 ..read.feather <- function(filename, index=NULL) {
     if (! suppressMessages(suppressWarnings(require("feather", quietly = TRUE)))) {
-        try(install.packages('feather', repos='http://cran.stat.ucla.edu/'), silent=TRUE)
-        if (!suppressMessages(suppressWarnings(require("feather"))))
-            stop('Failed to install feather library')
+      try(install.packages('feather', repos='http://cran.stat.ucla.edu/'), silent=TRUE)
+      if (!suppressMessages(suppressWarnings(require("feather"))))
+        stop('Failed to install feather library')
     }
     suppressPackageStartupMessages(library(feather, quietly = TRUE))
     data = as.data.frame(read_feather(filename))
     if (!is.null(index))
-        rownames(data) <- index
+      rownames(data) <- index
     return(data)
 }
 '''
