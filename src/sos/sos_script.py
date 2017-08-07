@@ -105,16 +105,20 @@ class SoS_Step:
     def has_external_task(self):
         return self.task != ''
 
-    def step_name(self, alias=True):
+    def step_name(self, alias = False):
         if not self.name:
             n, i, a = self.names[0]
-            return n + \
-                    ('_{}'.format(i) if isinstance(i, str) and i.isdigit() else '') + \
-                    (' ({})'.format(a) if alias and a else '')
+            if alias and a:
+                return a
+            else:
+                return n + \
+                    ('_{}'.format(i) if isinstance(i, str) and i.isdigit() else '')
         else:
-            return self.name + \
-                    ('_{}'.format(self.index) if isinstance(self.index, int) else '') + \
-                    (' ({})'.format(self.alias) if alias and self.alias else '')
+            if alias and self.alias:
+                return self.alias
+            else:
+                return self.name + \
+                    ('_{}'.format(self.index) if isinstance(self.index, int) else '')
 
     def match(self, step_name):
         # if this step provides name...
@@ -397,6 +401,8 @@ class SoS_Workflow:
                 #if 'provides' in section.options or 'shared' in section.options:
                 self.auxiliary_sections.append(section)
                 self.auxiliary_sections[-1].name = section.names[0][0]
+                self.auxiliary_sections[-1].index = None if index is None else int(index)
+                self.auxiliary_sections[-1].alias = alias
                 self.auxiliary_sections[-1].uuid = uuid4()
                 # an auxiliary step can also serve as a regular step
                 # as long as it matches workflow name.

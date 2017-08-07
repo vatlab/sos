@@ -29,7 +29,7 @@
 #
 import os
 import unittest
-from ipykernel.tests.utils import assemble_output, execute, wait_for_idle
+from ipykernel.tests.utils import execute, wait_for_idle
 from sos.jupyter.test_utils import sos_kernel, get_result, get_display_data, \
     clear_channels
 
@@ -61,9 +61,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
 ''')
             clear_channels(iopub)
             execute(kc=kc, code="%use JavaScript")
-            _, stderr = assemble_output(iopub)
-            self.maxDiff = None
-            self.assertEqual(stderr, '', 'Got error message {}'.format(stderr))
+            wait_for_idle(kc)
             execute(kc=kc, code="%get df")
             wait_for_idle(kc)
             execute(kc=kc, code="Object.keys(df).length")

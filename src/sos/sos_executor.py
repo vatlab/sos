@@ -129,7 +129,9 @@ class SoS_Worker(mp.Process):
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
         self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(keyword.kwlist)
-        self._base_symbols -= {'dynamic'}
+        # if users use sos_run, the "scope" of the step goes beyong names in this step
+        # so we cannot save signatures for it.
+        self._base_symbols -= {'dynamic', 'sos_run'}
 
         if isinstance(self.args, dict):
             for key, value in self.args.items():
@@ -173,7 +175,7 @@ class SoS_Worker(mp.Process):
 
 
     def run_step(self, section, context, shared, args, run_mode, sig_mode, verbosity):
-        env.logger.debug('Worker {} working on a step with args {}'.format(self.name, args))
+        env.logger.debug('Worker {} working on {} with args {}'.format(self.name, section.step_name(), args))
         env.config['run_mode'] = run_mode
         env.config['sig_mode'] = sig_mode
         env.verbosity = verbosity
@@ -283,7 +285,7 @@ class Base_Executor:
             delattr(env, 'accessed_vars')
 
     def save_dag(self, dag):
-        if self.config['output_dag'] is None:
+        if not self.config['output_dag']:
             return
         if not hasattr(self, 'dag_count'):
             self.dag_count = 1
@@ -379,7 +381,7 @@ class Base_Executor:
         if 'skip' in section.options:
             val_skip = section.options['skip']
             if val_skip is None or val_skip is True:
-                env.logger.info('Step ``{}`` is ``ignored`` due to skip option.'.format(section.step_name()))
+                env.logger.info('``{}`` is ``ignored`` due to skip option.'.format(section.step_name(True)))
                 return True
             elif val_skip is not False:
                 raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
@@ -620,8 +622,6 @@ class Base_Executor:
         # trim the DAG if targets are specified
         if targets:
             dag = dag.subgraph_from(targets)
-        # write DAG for debugging purposes
-        #dag.write_dot(os.path.join(env.exec_dir, '.sos', '{}.dot'.format(self.workflow.name)))
         # check error
         cycle = dag.circular_dependencies()
         if cycle:
@@ -786,7 +786,7 @@ class Base_Executor:
                     pool.append(procs[idx])
                     procs[idx] = None
 
-                    env.logger.debug('{} receive a result'.format(i_am()))
+                    env.logger.debug('{} receive a result {}'.format(i_am(), res))
                     if hasattr(runnable, '_from_nested'):
                         # if the runnable is from nested, we will need to send the result back to the workflow
                         env.logger.debug('{} send res to nested'.format(i_am()))
@@ -820,7 +820,7 @@ class Base_Executor:
                         runnable._status = 'signature_pending'
                         runnable._signature = (res.output, res.sig_file)
                         section = self.workflow.section_by_id(runnable._step_uuid)
-                        env.logger.info('Waiting on another process for step {}'.format(section.step_name()))
+                        env.logger.info('Waiting on another process for step {}'.format(section.step_name(True)))
                     # if the job is failed
                     elif isinstance(res, Exception):
                         env.logger.debug('{} received an exception'.format(i_am()))
@@ -832,7 +832,8 @@ class Base_Executor:
                             for proc in procs:
                                 if proc is None:
                                     continue
-                                if proc[2]._status.endswith('_pending') and proc[2]._pending_workflow == runnable._pending_workflow:
+                                if proc[2]._status.endswith('_pending') and hasattr(proc[2], '_pending_workflow') \
+                                    and proc[2]._pending_workflow == runnable._pending_workflow:
                                     proc[2]._status = 'failed'
                         prog.update(1)
                     elif '__step_name__' in res:
@@ -868,6 +869,8 @@ class Base_Executor:
                         # notify the step that is waiting for the result
                         env.logger.debug('{} receive workflow result'.format(i_am()))
                         for proc in procs:
+                            if proc is None:
+                                continue
                             if proc[2]._status == 'workflow_pending' and proc[2]._pending_workflow == res['__workflow_id__']:
                                 proc[1].send(res)
                                 proc[2]._status = 'running'
@@ -939,7 +942,7 @@ class Base_Executor:
                         runnable._from_nested = True
                         runnable._child_pipe = pipe
 
-                        env.logger.debug('{} sends {} from step queue with args {}'.format(i_am(), step_id, args))
+                        env.logger.debug('{} sends {} from step queue with args {} and context {}'.format(i_am(), section.step_name(), args, context))
                         q1.send(('step', section, context, shared, args, run_mode, sig_mode, verbosity))
                         procs.append( [worker, q1, runnable])
                         continue
@@ -997,7 +1000,7 @@ class Base_Executor:
                     else:
                         # send the step to the parent
                         step_id = uuid.uuid4()
-                        env.logger.debug('{} send step {} to master with args {}'.format(i_am(), step_id, self.args))
+                        env.logger.debug('{} send step {} to master with args {} and context {}'.format(i_am(), section.step_name(), self.args, runnable._context))
                         parent_pipe.send('step {}'.format(step_id))
                         q = mp.Pipe()
                         parent_pipe.send((section, runnable._context, shared, self.args, env.config['run_mode'], env.config['sig_mode'], env.verbosity, q[1]))
@@ -1036,7 +1039,9 @@ class Base_Executor:
         except Exception as e:
             procs = [x for x in procs if x is not None]
             for p, _, _ in procs + pool:
-                p.terminate()
+                # p can be fake if from a nested workflow
+                if p:
+                    p.terminate()
             raise e
         finally:
             if not nested:
@@ -1045,7 +1050,7 @@ class Base_Executor:
                     p.send(None)
                 time.sleep(0.1)
                 for w, _, _ in procs + pool:
-                    if w.is_alive():
+                    if w and w.is_alive():
                         w.terminate()
                         w.join()
             prog.close()

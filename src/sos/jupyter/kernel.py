@@ -49,7 +49,6 @@ from IPython.utils.tokenutil import line_at_cursor, token_at_cursor
 from jupyter_client import manager, find_connection_file
 
 from textwrap import dedent
-from io import StringIO
 
 from .completer import SoS_Completer
 from .inspector import SoS_Inspector
@@ -57,51 +56,20 @@ from .inspector import SoS_Inspector
 from .sos_executor import runfile
 from .sos_step import PendingTasks
 
-class FlushableStringIO(StringIO):
+class FlushableStringIO:
     '''This is a string buffer for output, but it will only
     keep the first 200 lines and the last 10 lines.
     '''
     def __init__(self, kernel, name, *args, **kwargs):
-        StringIO.__init__(self, *args, **kwargs)
         self.kernel = kernel
         self.name = name
-        self.nlines = 0
 
     def write(self, content):
-        if self.nlines > 1000:
-            return
-        nlines = content.count('\n')
-        if self.nlines + nlines > 1000:
-            StringIO.write(self, '\n'.join(content.split('\n')[:200]))
-        else:
-            StringIO.write(self, content)
-        self.nlines += nlines
+        self.kernel.send_response(self.kernel.iopub_socket, 'stream',
+            {'name': self.name, 'text': content})
 
     def flush(self):
-        content = self.getvalue()
-        if self.nlines > 1000:
-            lines = content.split('\n')
-            content = '\n'.join(lines[:180]) + \
-                '\n-- {} more lines --\n'.format(self.nlines - 180)
-        elif self.nlines > 200:
-            lines = content.split('\n')
-            content = '\n'.join(lines[:180]) + \
-                '\n-- {} lines --\n'.format(self.nlines - 190) + \
-                '\n'.join(lines[-10:])
-        if content.strip():
-            if self.name == 'stdout' and self.kernel._render_result:
-                format_dict, md_dict = self.kernel.format_obj(self.kernel.render_result(content))
-                self.kernel.send_response(self.kernel.iopub_socket, 'display_data',
-                    {'source': 'SoS', 'metadata': md_dict,
-                     'data': format_dict
-                    })
-            else:
-                self.kernel.send_response(self.kernel.iopub_socket, 'stream',
-                    {'name': self.name, 'text': content})
-        self.truncate(0)
-        self.seek(0)
-        self.nlines = 0
-        return len(content.strip())
+        pass
 
 __all__ = ['SoS_Kernel']
 
@@ -436,6 +404,9 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('-f', '--from', dest='host', nargs='?', const='',
             help='''Remote host to which the files will be sent. SoS will list all
             configured queues and stop''')
+        parser.add_argument('-c', '--config', help='''A configuration file with host
+            definitions, in case the definitions are not defined in global or local
+            sos config.yml files.''')
         parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
             help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
                 information to standard output (default to 2).''')
@@ -451,6 +422,9 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('-t', '--to', dest='host', nargs='?', const='',
             help='''Remote host to which the files will be sent. SoS will list all
             configured queues if no such key is defined''')
+        parser.add_argument('-c', '--config', help='''A configuration file with host
+            definitions, in case the definitions are not defined in global or local
+            sos config.yml files.''')
         parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
             help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
                 information to standard output (default to 2).''')
@@ -607,7 +581,7 @@ class SoS_Kernel(IPythonKernel):
                     mn, attr = language.split(':', 1)
                     ep = EntryPoint(name=kernel, module_name=mn, attrs=tuple(attr.split('.')))
                     try:
-                        plugin = ep.resolve()(self)
+                        plugin = ep.resolve()
                         self._supported_languages[name] = plugin
                         # for convenience, we create two entries for, e.g. R and ir
                         # but only if there is no existing definition
@@ -663,7 +637,7 @@ class SoS_Kernel(IPythonKernel):
                 if color == 'default':
                     color = plugin.background_color
                 # find the language that has the kernel
-                lan_name = {x:y for x,y in plugin.supported_kernels.items() if avail_kernels[0] in y}.keys()[0]
+                lan_name = list({x:y for x,y in plugin.supported_kernels.items() if avail_kernels[0] in y}.keys())[0]
                 new_def = add_or_replace([name, avail_kernels[0], lan_name, plugin.background_color if color is None else color,
                     getattr(plugin, 'options', {})])
             else:
@@ -708,7 +682,8 @@ class SoS_Kernel(IPythonKernel):
                 plugin = entrypoint.load()
                 self._supported_languages[name] = plugin
             except Exception as e:
-                pass #self.log.error('Failed to load language {}: {}'.format(entrypoint.name, e))
+                from sos.utils import colorstr
+                self.log.error(colorstr('Failed to load language {}: {}'.format(entrypoint.name, e), 'RED'))
         return self._supported_languages
 
     supported_languages = property(lambda self:self.get_supported_languages())
@@ -1520,6 +1495,9 @@ Available subkernels:\n{}'''.format(
 
     def handle_magic_pull(self, args):
         from sos.hosts import Host
+        if args.config:
+            from sos.utils import load_config_files
+            load_config_files(args.config)
         cfg = env.sos_dict['CONFIG']
         if args.host == '':
             from sos.hosts import list_queues
@@ -1544,6 +1522,9 @@ Available subkernels:\n{}'''.format(
 
     def handle_magic_push(self, args):
         from sos.hosts import Host
+        if args.config:
+            from sos.utils import load_config_files
+            load_config_files(args.config)
         cfg = env.sos_dict['CONFIG']
         if args.host == '':
             from .hosts import list_hosts
@@ -1677,23 +1658,9 @@ Available subkernels:\n{}'''.format(
         # interpolate command
         if not cmd:
             return
+        from sos.utils import pexpect_run
         with self.redirect_sos_io():
-            try:
-                if isinstance(cmd, str):
-                    p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-                else:
-                    p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-                out, err = p.communicate()
-                sys.stdout.write(out.decode())
-                sys.stderr.write(err.decode())
-                # ret = p.returncode
-                sys.stderr.flush()
-                sys.stdout.flush()
-            except Exception as e:
-                sys.stderr.flush()
-                sys.stdout.flush()
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': str(e)})
+            pexpect_run(cmd)
 
     def run_sos_code(self, code, silent):
         code = dedent(code)

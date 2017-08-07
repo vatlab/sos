@@ -240,11 +240,12 @@ sh:
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker',
+                'sig_mode': 'force',
                 }).run()
         self.assertTrue(os.path.isfile('3.txt'))
         with open('3.txt') as txt:
             content = txt.read()
-            self.assertEqual('1\n2\n', content, 'Expect {}'.format(content))
+            self.assertEqual('1\n2\n', content, 'Got {}'.format(content))
 
     @unittest.skipIf(sys.platform == 'win32' or not has_docker, 'No symbloc link problem under win32 or no docker')
     def testSendSymbolicLink(self):
@@ -722,8 +723,8 @@ sh:
     @unittest.skipIf(sys.platform == 'win32' or not has_docker, 'appveyor does not have docker with linux')
     def testRemoteTaskFromJupyter(self):
         '''Test the execution of tasks with -q '''
-        from ipykernel.tests.utils import wait_for_idle, execute
-        from sos.jupyter.test_utils import sos_kernel, get_display_data 
+        from ipykernel.tests.utils import execute
+        from sos.jupyter.test_utils import sos_kernel, get_display_data
         subprocess.call(['sos', 'purge'])
         with sos_kernel() as kc:
             # the cell will actually be executed several times
@@ -740,10 +741,11 @@ run:
 """
             # these should be automatically rerun by the frontend
             execute(kc=kc, code=code)
-            wait_for_idle(kc)
+            res = get_display_data(kc.iopub_channel, 'text/html')
             # check for task?
             execute(kc=kc, code='%tasks -q ts')
             res = get_display_data(kc.iopub_channel, 'text/html')
+            self.assertTrue('table_ts_' in res, 'Got {}'.format(res))
             # get IDs
             # table_localhost_ac755352394584f797cebddf2c0b8ca7"
             tid = res.split('table_ts_')[-1].split('"')[0]

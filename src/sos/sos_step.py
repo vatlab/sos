@@ -29,7 +29,7 @@ from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
 
 from .utils import env, StopInputGroup, TerminateExecution, short_repr, stable_repr,\
-    get_traceback, transcribe, ActivityNotifier, expand_size, format_HHMMSS
+    get_traceback, transcribe, expand_size, format_HHMMSS
 from .pattern import extract_pattern
 from .sos_eval import SoS_eval, SoS_exec, Undetermined
 from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
@@ -137,6 +137,13 @@ def analyze_section(section, default_input=None):
             elif statement[0] == ':':
                 if statement[1] == 'depends':
                     environ_vars |= accessed_vars(statement[2], section.sigil)
+                    key, value = statement[1:]
+                    try:
+                        args, kwargs = SoS_eval('__null_func__({})'.format(value), section.sigil)
+                        if not any(isinstance(x, dynamic) for x in args):
+                            step_depends = _expand_file_list(True, *args)
+                    except Exception as e:
+                        env.logger.debug("Args {} cannot be determined: {}".format(value, e))
                 else:
                     raise RuntimeError('Step input should be specified before {}'.format(statement[1]))
             else:
@@ -779,7 +786,7 @@ class Base_Step_Executor:
     def log(self, stage=None, msg=None):
         if stage == 'start':
             env.logger.info('{} ``{}``: {}'.format('Checking' if self.run_mode == 'dryrun' else 'Executing',
-                self.step.step_name(), self.step.comment.strip()))
+                self.step.step_name(True), self.step.comment.strip()))
         elif stage == 'input statement':
             env.logger.trace('Handling input statement {}'.format(msg))
         elif stage == '_input':
@@ -787,7 +794,7 @@ class Base_Step_Executor:
                 env.logger.debug('_input: ``{}``'.format(short_repr(env.sos_dict['_input'])))
         elif stage == '_depends':
             if env.sos_dict['_depends'] is not None:
-                env.logger.info('_depends: ``{}``'.format(short_repr(env.sos_dict['_depends'])))
+                env.logger.debug('_depends: ``{}``'.format(short_repr(env.sos_dict['_depends'])))
         elif stage == 'input':
             if env.sos_dict['input'] is not None:
                 env.logger.info('input:    ``{}``'.format(short_repr(env.sos_dict['input'])))
@@ -875,7 +882,7 @@ class Base_Step_Executor:
         #
         # * step_name:  name of the step, can be used by step process to determine
         #               actions dynamically.
-        env.sos_dict.set('step_name', self.step.step_name(False))
+        env.sos_dict.set('step_name', self.step.step_name())
         # used by nested workflow
         env.sos_dict.set('__step_context__', self.step.context)
 
@@ -1025,18 +1032,23 @@ class Base_Step_Executor:
                                         env.sos_dict['__signature_vars__'])
                                     signatures[idx].lock()
                                     if env.config['sig_mode'] == 'default':
-                                        matched = signatures[idx].validate()
-                                        if isinstance(matched, dict):
-                                            # in this case, an Undetermined output can get real output files
-                                            # from a signature
-                                            env.sos_dict.set('_input', matched['input'])
-                                            env.sos_dict.set('_depends', matched['depends'])
-                                            env.sos_dict.set('_output', matched['output'])
-                                            env.sos_dict.update(matched['vars'])
-                                            env.logger.info('Step ``{}`` (index={}) is ``ignored`` due to saved signature'.format(env.sos_dict['step_name'], idx))
-                                            skip_index = True
+                                        # if users use sos_run, the "scope" of the step goes beyong names in this step
+                                        # so we cannot save signatures for it.
+                                        if 'sos_run' in env.sos_dict['__signature_vars__']:
+                                            skip_index = False
                                         else:
-                                            env.logger.debug('Signature mismatch: {}'.format(matched))
+                                            matched = signatures[idx].validate()
+                                            if isinstance(matched, dict):
+                                                # in this case, an Undetermined output can get real output files
+                                                # from a signature
+                                                env.sos_dict.set('_input', matched['input'])
+                                                env.sos_dict.set('_depends', matched['depends'])
+                                                env.sos_dict.set('_output', matched['output'])
+                                                env.sos_dict.update(matched['vars'])
+                                                env.logger.info('``{}`` (index={}) is ``ignored`` due to saved signature'.format(self.step.step_name(True), idx))
+                                                skip_index = True
+                                            else:
+                                                env.logger.debug('Signature mismatch: {}'.format(matched))
                                     elif env.config['sig_mode'] == 'assert':
                                         matched = signatures[idx].validate()
                                         if isinstance(matched, str):
@@ -1046,12 +1058,14 @@ class Base_Step_Executor:
                                             env.sos_dict.set('_depends', matched['depends'])
                                             env.sos_dict.set('_output', matched['output'])
                                             env.sos_dict.update(matched['vars'])
-                                            env.logger.info('Step ``{}`` (index={}) is ``ignored`` with matching signature'.format(env.sos_dict['step_name'], idx))
+                                            env.logger.info('Step ``{}`` (index={}) is ``ignored`` with matching signature'.format(self.step.step_name(True), idx))
                                             skip_index = True
                                     elif env.config['sig_mode'] == 'build':
                                         # build signature require existence of files
-                                        if signatures[idx].write(rebuild=True):
-                                            env.logger.info('Step ``{}`` (index={}) is ``ignored`` with signature constructed'.format(env.sos_dict['step_name'], idx))
+                                        if 'sos_run' in env.sos_dict['__signature_vars__']:
+                                            skip_index = True
+                                        elif signatures[idx].write(rebuild=True):
+                                            env.logger.info('Step ``{}`` (index={}) is ``ignored`` with signature constructed'.format(self.step.step_name(True), idx))
                                             skip_index = True
                                     elif env.config['sig_mode'] == 'force':
                                         skip_index = False
@@ -1100,7 +1114,8 @@ class Base_Step_Executor:
                 # finally, tasks..
                 if not self.step.task:
                     if signatures[idx] is not None:
-                        signatures[idx].write()
+                        if 'sos_run' not in env.sos_dict['__signature_vars__']:
+                            signatures[idx].write()
                         signatures[idx].release()
                         signatures[idx] = None
                     continue
@@ -1293,9 +1308,10 @@ class Step_Executor(Base_Step_Executor):
     def run(self):
         try:
             # update every 60 seconds
-            notifier = ActivityNotifier('Running {}'.format(self.step.step_name()), delay=60)
+            #notifier = ActivityNotifier('Running {}'.format(self.step.step_name()), delay=60)
             res = Base_Step_Executor.run(self)
             if self.pipe is not None:
+                env.logger.debug('Step {} sends result {}'.format(self.step.step_name(), res))
                 self.pipe.send(res)
             else:
                 return res
@@ -1303,11 +1319,12 @@ class Step_Executor(Base_Step_Executor):
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
             if self.pipe is not None:
+                env.logger.debug('Step {} sends exception {}'.format(self.step.step_name(), e))
                 self.pipe.send(e)
             else:
                 raise e
-        finally:
-            notifier.stop()
+        #finally:
+        #    notifier.stop()
 
 
 

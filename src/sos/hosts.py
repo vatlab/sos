@@ -216,9 +216,12 @@ class LocalHost:
             env.logger.warning('Check output of {} failed: {}'.format(cmd, e))
             raise
 
-    def run_command(self, cmd, wait_for_task, **kwargs):
+    def run_command(self, cmd, wait_for_task, realtime=False, **kwargs):
         # run command but does not wait for result.
-        if wait_for_task or sys.platform == 'win32':
+        if realtime:
+            from .utils import pexpect_run
+            return pexpect_run(cmd)
+        elif wait_for_task or sys.platform == 'win32':
             return subprocess.Popen(cmd, shell=True, **kwargs)
         else:
             p = DaemonizedProcess(cmd, **kwargs)
@@ -610,7 +613,7 @@ class RemoteHost:
             env.logger.debug('Check output of {} failed: {}'.format(cmd, e))
             raise
 
-    def run_command(self, cmd, wait_for_task, **kwargs):
+    def run_command(self, cmd, wait_for_task, realtime=False, **kwargs):
         try:
             cmd = interpolate(self.execute_cmd, '${ }', {
                 'host': self.address, 'port': self.port,
@@ -619,8 +622,10 @@ class RemoteHost:
         except Exception as e:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
         env.logger.debug('Executing command ``{}``'.format(cmd))
-
-        if wait_for_task or sys.platform == 'win32':
+        if realtime:
+            from .utils import pexpect_run
+            return pexpect_run(cmd)
+        elif wait_for_task or sys.platform == 'win32':
             # keep proc persistent to avoid a subprocess is still running warning.
             return subprocess.Popen(cmd, shell=True, **kwargs)
         else:

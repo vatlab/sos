@@ -46,6 +46,7 @@ from .utils import env, transcribe, StopInputGroup, TerminateExecution, short_re
 from .sos_eval import Undetermined, interpolate
 from .target import FileTarget, fileMD5, executable, UnknownTarget, BaseTarget
 
+
 __all__ = ['SoS_Action', 'script', 'sos_run',
     'fail_if', 'warn_if', 'stop_if',
     'download',
@@ -270,15 +271,8 @@ class SoS_ExecuteScript:
                 #
                 if env.config['run_mode'] == 'interactive':
                     # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
-                    p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-                    out, err = p.communicate()
-                    if out and env.verbosity > 1:
-                        sys.stdout.write(out.decode())
-                    if err and env.verbosity > 0:
-                        sys.stderr.write(err.decode())
-                    ret = p.returncode
-                    sys.stdout.flush()
-                    sys.stderr.flush()
+                    from .utils import pexpect_run
+                    ret = pexpect_run(cmd)
                 elif '__std_out__' in env.sos_dict and '__std_err__' in env.sos_dict:
                     if env.verbosity > 1:
                         with open(env.sos_dict['__std_out__'], 'ab') as so, open(env.sos_dict['__std_err__'], 'ab') as se:
@@ -317,6 +311,9 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, **kwargs):
     extra sos files can be specified from paramter source. The workflow
     will be execute in the current step namespace with _input as workflow
     input. '''
+    if '__std_out__' in env.sos_dict and '__std_err__' in env.sos_dict:
+        raise RuntimeError('Executing nested workflow (action sos_run) in tasks is not supported.')
+
     script = SoS_Script(env.sos_dict['__step_context__'].content, env.sos_dict['__step_context__'].filename)
     wf = script.workflow(workflow, use_default=not targets)
     # if wf contains the current step or one of the previous one, this constitute
@@ -455,6 +452,9 @@ def downloadURL(URL, dest, decompress=False, index=None):
                         zfile = zipfile.ZipFile(dest)
                         names = zfile.namelist()
                         for name in names:
+                            # only python3.6 has the is_dir function for ZipInfo
+                            if name.endswith('/'):
+                                continue
                             dest_file = os.path.join(dest_dir, name)
                             if not os.path.isfile(dest_file):
                                 env.logger.warning('Missing decompressed file {}'.format(dest_file))
@@ -890,11 +890,8 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
         env.logger.trace('Running command "{}"'.format(cmd))
         if env.config['run_mode'] == 'interactive':
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
-            p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            out, err = p.communicate()
-            sys.stdout.write(out.decode())
-            sys.stderr.write(err.decode())
-            ret = p.returncode
+            from .utils import pexpect_run
+            ret = pexpect_run(cmd)
         else:
             p = subprocess.Popen(cmd, shell=True)
             ret = p.wait()

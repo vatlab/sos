@@ -485,7 +485,6 @@ print('I am nested [nested] with seed [seed]')
 [0]
 reps = range(5)
 input: for_each='reps'
-task: concurrent=True
 import random
 nested = _reps
 seed = random.randint(1, 1000)
@@ -620,8 +619,7 @@ bash:
     touch 'a.txt'
 
 [default]
-task: workdir='tmp'
-sos_run('step')
+sos_run('step', workdir='tmp')
 ''')
         wf = script.workflow()
         # this should be ok.

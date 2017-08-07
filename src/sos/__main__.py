@@ -470,7 +470,7 @@ def cmd_resume(args, workflow_args):
         if args.__remote__ == '':
             from .utils import load_config_files
             from .hosts import list_queues
-            cfg = load_config_files(args.config)
+            cfg = load_config_files()
             list_queues(cfg, args.verbosity)
             return
 
@@ -1483,7 +1483,7 @@ def cmd_remove(args, unknown_args):
                     (args.age < 0 and time.time() - os.path.getmtime(filename) > -args.age):
                     env.logger.debug('{} ignored due to age limit {}'.format(filename, args.age))
                     return False
-            if resp.get('{} untracked file {}'.format('Would remove' if args.dryrun else 'Remove', filename)):
+            if resp.get('{} file {}'.format('Would remove' if args.dryrun else 'Remove', filename)):
                 if not args.dryrun:
                     env.logger.debug('Remove {}'.format(s))
                     try:
