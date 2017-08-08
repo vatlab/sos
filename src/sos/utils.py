@@ -1051,10 +1051,7 @@ def expand_time(v, default_unit='s'):
 
 
 def tail_of_file(filename, n, offset=None, ansi2html=False):
-    """Reads a n lines from f with an offset of offset lines.  The return
-    value is a tuple in the form ``(lines, has_more)`` where `has_more` is
-    an indicator that is `True` if there are more lines in the file.
-    """
+    """Reads a n lines from f with an offset of offset lines. """
     avg_line_length = 74
     to_read = n + (offset or 0)
 
@@ -1072,7 +1069,7 @@ def tail_of_file(filename, n, offset=None, ansi2html=False):
                 if ansi2html:
                     return convertAnsi2html('\n'.join(lines[-to_read:offset and -offset or None]))
                 else:
-                    return '\n'.join(lines[-to_read:offset and -offset or None])
+                    return '\n'.join(lines[-to_read:offset and -offset or None]) + '\n'
             avg_line_length *= 1.3
 
 def sample_of_file(filename, n):

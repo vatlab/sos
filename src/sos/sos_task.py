@@ -197,8 +197,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         pickle.dump(res, res_file)
     if res['ret_code'] != 0 and 'exception' in res:
         with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'), 'a') as err:
-            err.write('sos execute quits with code {} and exception {}: {}\n'.format(
-                res['ret_code'], res['exception'].__class__.__name__, repr(res['exception'])))
+            err.write('Task {} exits with code {}'.format(task_id, res['ret_code']))
     return res['ret_code']
 
 def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_interval=5,
@@ -260,7 +259,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                 except Exception as e:
                     if env.verbosity > 2:
                         sys.stderr.write(get_traceback())
-                    env.logger.error('{} ``failed`` with {} error {}'.format(task_id, e.__class__.__name__, e))
+                    env.logger.error('{} ``failed``: {}'.format(task_id, e))
                     return {'ret_code': 1, 'exception': e}
             else:
                 results = []
@@ -276,7 +275,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                         copy_out_and_err({'task': tid, 'ret_code': 1, 'output': []})
                         if env.verbosity > 2:
                             sys.stderr.write(get_traceback())
-                        env.logger.error('{} ``failed`` with {} error {}'.format(task_id, e.__class__.__name__, e))
+                        env.logger.error('{} ``failed`: {}'.format(task_id, e))
                         results.append({'ret_code': 1, 'exception': e})
         #
         # now we collect result
@@ -496,7 +495,7 @@ del sos_handle_parameter_
     except Exception as e:
         if env.verbosity > 2:
             sys.stderr.write(get_traceback())
-        env.logger.error('{} ``failed`` with {} error {}'.format(task_id, e.__class__.__name__, e))
+        env.logger.error('{} ``failed``: {}'.format(task_id, e))
         return {'ret_code': 1, 'exception': e, 'task': task_id, 'shared': {}}
     except KeyboardInterrupt:
         env.logger.error('{} ``interrupted``'.format(task_id))

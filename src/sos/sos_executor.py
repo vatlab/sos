@@ -890,7 +890,7 @@ class Base_Executor:
                         if any(x in ('aborted', 'failed', 'signature-mismatch') for x in res):
                             for t, s in zip(proc[2]._pending_tasks, res):
                                 if s in ('aborted', 'failed', 'signature-mismatch') and not (hasattr(proc[2], '_killed_tasks') and t in proc[2]._killed_tasks):
-                                    env.logger.warning('{} ``{}``'.format(t, s))
+                                    #env.logger.warning('{} ``{}``'.format(t, s))
                                     if not hasattr(proc[2], '_killed_tasks'):
                                         proc[2]._killed_tasks = {t}
                                     else:

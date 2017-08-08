@@ -678,7 +678,6 @@ class SoS_Kernel(IPythonKernel):
             return self._supported_languages
         group = 'sos_languages'
         self._supported_languages = {}
-        self._failed_languages = {}
         for entrypoint in pkg_resources.iter_entry_points(group=group):
             # Grab the function that is the actual plugin.
             name = entrypoint.name
@@ -744,6 +743,7 @@ class SoS_Kernel(IPythonKernel):
         #
         self._workflow_mode = False
         self._render_result = False
+        self._failed_languages = {}
         env.__task_notifier__ = self.notify_task_status
 
     def handle_taskinfo(self, task_id, task_queue, side_panel=None):
