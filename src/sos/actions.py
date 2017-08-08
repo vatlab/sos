@@ -274,7 +274,7 @@ class SoS_ExecuteScript:
                     from .utils import pexpect_run
                     ret = pexpect_run(cmd)
                 elif '__std_out__' in env.sos_dict and '__std_err__' in env.sos_dict:
-                    if env.verbosity > 1:
+                    if env.verbosity >= 1:
                         with open(env.sos_dict['__std_out__'], 'ab') as so, open(env.sos_dict['__std_err__'], 'ab') as se:
                             p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
                     else:
