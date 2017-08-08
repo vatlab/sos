@@ -948,6 +948,8 @@ def cmd_execute(args, workflow_args):
                 os.utime(res_file, None)
                 #if args.verbosity <= 1:
                 env.logger.info('{} ``already completed``'.format(task))
+                with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.err'), 'a') as err:
+                    err.write('{} already completed'.format(task))
                 #else:
                 #    print(summarizeExecution(task, status=status))
                 exit_code.append(0)
