@@ -296,7 +296,7 @@ run:
 [10]
 input: for_each=[{'a': range(2)}]
 
-task: concurrent=True
+task:
 run:
     echo Try to kill "a = ${a}"
     sleep 20
