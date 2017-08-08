@@ -232,7 +232,7 @@ class SoS_ExecuteScript:
             transcribe(self.script, action=self.interpreter)
             debug_script_file = os.path.join(env.exec_dir, '.sos', '{}_{}_{}{}'.format(env.sos_dict['step_name'],
                 env.sos_dict['_index'], str(uuid.uuid4())[:8], self.suffix))
-            env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
+            #env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
             with open(debug_script_file, 'w') as sfile:
                 sfile.write(self.script)
             env.logger.trace(self.script)
@@ -280,6 +280,9 @@ class SoS_ExecuteScript:
                     else:
                         p = subprocess.Popen(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                     ret = p.wait()
+                    if ret != 0:
+                        task_id = os.path.basename(env.sos_dict['__std_err__']).split('.')[0]
+                        raise RuntimeError('Use "sos status {} -v4" for details.'.format(task_id))
                 else:
                     p = subprocess.Popen(cmd, shell=True,
                                          stderr=None if env.verbosity > 0 else subprocess.DEVNULL,
@@ -293,8 +296,7 @@ class SoS_ExecuteScript:
                     else:
                         debug_args = self.args
                     cmd = interpolate('{} {}'.format(self.interpreter, debug_args), '${ }', {'filename': debug_script_file, 'script': self.script})
-                    raise RuntimeError('Failed to execute script (ret={}).\nPlease use command\n\t``{}``\nunder "{}" to test it.'
-                        .format(ret, ' \\\n\t  '.join(cmd.split()), os.getcwd()))
+                    raise RuntimeError('Failed to execute commmand ``{}`` (ret={}, workdir={})'.format(cmd, ret, os.getcwd()))
             except RuntimeError:
                 raise
             except Exception as e:
