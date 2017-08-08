@@ -524,6 +524,9 @@ class SoS_Kernel(IPythonKernel):
                 if notify_frontend:
                     self.send_frontend_msg('kernel-list', self.get_kernel_list())
 
+        # if the language module cannot be loaded for some reason
+        if name in self._failed_languages:
+            raise self._failed_languages[name]
         # find from language name (subkernel name, which is usually language name)
         for idx,x in enumerate(self.get_kernel_list()):
             if x[0] == name:
@@ -675,6 +678,7 @@ class SoS_Kernel(IPythonKernel):
             return self._supported_languages
         group = 'sos_languages'
         self._supported_languages = {}
+        self._failed_languages = {}
         for entrypoint in pkg_resources.iter_entry_points(group=group):
             # Grab the function that is the actual plugin.
             name = entrypoint.name
@@ -682,8 +686,7 @@ class SoS_Kernel(IPythonKernel):
                 plugin = entrypoint.load()
                 self._supported_languages[name] = plugin
             except Exception as e:
-                from sos.utils import colorstr
-                self.log.error(colorstr('Failed to load language {}: {}'.format(entrypoint.name, e), 'RED'))
+                self._failed_languages[name] = e
         return self._supported_languages
 
     supported_languages = property(lambda self:self.get_supported_languages())
@@ -2097,8 +2100,17 @@ Available subkernels:\n{}'''.format(
                 args.cell_kernel = args.default_kernel
             #
             original_kernel = self.kernel
-            if self.find_kernel(args.cell_kernel)[0] != self.find_kernel(self.kernel)[0]:
-                self.switch_kernel(args.cell_kernel)
+            try:
+                if self.find_kernel(args.cell_kernel)[0] != self.find_kernel(self.kernel)[0]:
+                    self.switch_kernel(args.cell_kernel)
+            except Exception as e:
+                self.warn('Failed to switch to language "{}": {}\n'.format(args.cell_kernel, e))
+                return {'status': 'error',
+                    'ename': e.__class__.__name__,
+                    'evalue': str(e),
+                    'traceback': [],
+                    'execution_count': self._execution_count,
+                }
             try:
                 if args.resume:
                     self._resume_execution = True

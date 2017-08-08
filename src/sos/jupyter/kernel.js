@@ -1841,11 +1841,13 @@ define([
         if (nb.kernel) {
             // this is needed for refreshing a page...
             register_sos_comm();
-        }
-        events.on("kernel_connected.Kernel", function() {
-            register_sos_comm();
             wrap_execute();
-        });
+        } else {
+            events.on("kernel_connected.Kernel", function() {
+                register_sos_comm();
+                wrap_execute();
+            });
+        }
         events.on("rendered.MarkdownCell", update_toc);
         events.on("create.Cell", function(evt, param) {
             add_lan_selector(param.cell);
