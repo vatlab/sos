@@ -32,7 +32,7 @@ import unittest
 from ipykernel.tests.utils import execute, wait_for_idle
 from sos.jupyter.test_utils import sos_kernel, get_result
 
-class TestKernel(unittest.TestCase):
+class TestBashKernel(unittest.TestCase):
     #
     # Beacuse these tests would be called from sos/test, we
     # should switch to this directory so that some location
@@ -60,19 +60,14 @@ dict_var = dict(a=1, b=2, c='3')
 set_var = {1, 2, '3'}
 ''')
             wait_for_idle(kc)
-            execute(kc=kc, code="%use Bash")
-            wait_for_idle(kc)
-            execute(kc=kc, code="%get null_var num_var logic_var char_var char_arr_var list_var dict_var set_var")
-            wait_for_idle(kc)
-            # need to test passed values
-            # but let us cheat by passing data back
-            execute(kc=kc, code="%dict -r")
-            wait_for_idle(kc)
-            execute(kc=kc, code="%put null_var num_var logic_var char_var char_arr_var list_var dict_var set_var")
-            wait_for_idle(kc)
-            execute(kc=kc, code="%use sos")
-            wait_for_idle(kc)
-            execute(kc=kc, code="%dict null_var num_var logic_var char_var char_arr_var list_var dict_var set_var")
+            execute(kc=kc, code='''
+%use Bash
+%get null_var num_var logic_var char_var char_arr_var list_var dict_var set_var
+%dict -r
+%put null_var num_var logic_var char_var char_arr_var list_var dict_var set_var
+%use sos
+%dict null_var num_var logic_var char_var char_arr_var list_var dict_var set_var
+''')
             res = get_result(iopub)
             self.assertEqual(res['null_var'], '')
             self.assertEqual(res['num_var'], '123')
