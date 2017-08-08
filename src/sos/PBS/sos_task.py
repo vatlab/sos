@@ -77,11 +77,10 @@ class PBS_TaskEngine(TaskEngine):
         # for this task, we will need walltime, nodes, cores, mem
         # however, these could be fixed in the job template and we do not need to have them all in the runtime
         runtime = self.config
-        runtime.update({x:sos_dict['_runtime'][x] for x in ('nodes', 'cores', 'mem', 'walltime', 'cur_dir', 'home_dir', 'name') if x in sos_dict['_runtime']})
+        # we also use saved verbosity and sig_mode because the current sig_mode might have been changed
+        # (e.g. in Jupyter) after the job is saved.
+        runtime.update({x:sos_dict['_runtime'][x] for x in ('nodes', 'cores', 'mem', 'walltime', 'cur_dir', 'home_dir', 'name', 'verbosity', 'sig_mode', 'run_mode') if x in sos_dict['_runtime']})
         runtime['task'] = task_id
-        runtime['verbosity'] = env.verbosity
-        runtime['sig_mode'] = env.config['sig_mode']
-        runtime['run_mode'] = env.config['run_mode']
         if 'name' in runtime:
             runtime['job_name'] = cfg_interpolate(runtime['name'], sos_dict)
         else:
@@ -109,7 +108,7 @@ class PBS_TaskEngine(TaskEngine):
         # then copy the job file to remote host if necessary
         self.agent.send_task_file(job_file)
 
-        if env.config['run_mode'] == 'dryrun':
+        if runtime['run_mode'] == 'dryrun':
             try:
                 cmd = 'bash ~/.sos/tasks/{}.sh'.format(task_id)
                 print(self.agent.check_output(cmd))
