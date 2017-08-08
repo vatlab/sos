@@ -291,6 +291,7 @@ run:
 
     def testKillAndPurge(self):
         '''Test no wait'''
+        subprocess.call(['sos', 'purge'])
         script = SoS_Script(r'''
 [10]
 input: for_each=[{'a': range(2)}]
@@ -305,7 +306,7 @@ run:
         env.config['wait_for_task'] = False
         ret = Base_Executor(wf).run()
         # sos should quit
-        self.assertGreater(len(ret['pending_tasks']), 0)
+        self.assertGreater(len(ret['pending_tasks']), 1)
         # wait for the task to start
         time.sleep(3)
         subprocess.call(['sos', 'kill', ret['pending_tasks'][0]])
