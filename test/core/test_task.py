@@ -279,13 +279,14 @@ python:
         script = SoS_Script(r'''
 
 [10]
-input: for_each=[{'a': range(10)}, {'b': range(3)}]
+input: for_each=[{'a': range(2)}, {'b': range(3)}]
 
-task: concurrent=True
+task:
 run:
     echo "a = ${a}, b = ${b}"
 ''')
         env.config['wait_for_task'] = True
+        env.config['max_running_jobs'] = 2
         wf = script.workflow()
         Base_Executor(wf).run()
 
@@ -303,6 +304,7 @@ run:
 ''')
         wf = script.workflow()
         env.config['sig_mode'] = 'force'
+        env.config['max_running_jobs'] = 4
         env.config['wait_for_task'] = False
         ret = Base_Executor(wf).run()
         # sos should quit
