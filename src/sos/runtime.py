@@ -52,7 +52,7 @@ def _load_group(group):
                 # this is critical so we print the warning
                 logger.warning('Failed to load target {}: {}'.format(_entrypoint.name, e))
             else:
-                logger.debug('Failed to load target {}: {}'.format(_entrypoint.name, e))
+                logger.trace('Failed to load target {}: {}'.format(_entrypoint.name, e))
 
 _load_group('sos_targets')
 _load_group('sos_actions')
