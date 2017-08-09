@@ -301,7 +301,7 @@ def runfile(script=None, raw_args='', wdir='.', code=None, kernel=None, **kwargs
                     realtime=True)
             if ret:
                kernel.send_response(kernel.iopub_socket, 'stream',
-                    {'name': 'stderr', 'text': 'remote execution of workflow exited with code {}'.format(re)})
+                    {'name': 'stderr', 'text': 'remote execution of workflow exited with code {}'.format(ret)})
         except Exception as e:
             if kernel:
                 kernel.send_response(kernel.iopub_socket, 'stream',
@@ -383,6 +383,6 @@ def runfile(script=None, raw_args='', wdir='.', code=None, kernel=None, **kwargs
             sys.stderr.write(get_traceback())
         raise
     finally:
-        env.config['sig_mode'] = 'default'
-        env.verbosity = 1
+        env.config['sig_mode'] = 'ignore'
+        env.verbosity = 2
 

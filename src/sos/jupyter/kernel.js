@@ -75,16 +75,16 @@ define([
     // configuration later on.
     nb.metadata["sos"]["panel"].style = "side";
 
-	var used_kernels = new Set();
-	var cells = nb.get_cells();
-	for (var i = cells.length - 1; i >= 0; --i) {
-		if (cells[i].cell_type === "code" && cells[i].metadata.kernel) {
-			used_kernels.add(cells[i].metadata.kernel);
-		}
-	}
-	nb.metadata["sos"]["kernels"] = nb.metadata["sos"]["kernels"].filter(function(x) {
-		return used_kernels.has(x[0]);
-	});
+    var used_kernels = new Set();
+    var cells = nb.get_cells();
+    for (var i = cells.length - 1; i >= 0; --i) {
+        if (cells[i].cell_type === "code" && cells[i].metadata.kernel) {
+            used_kernels.add(cells[i].metadata.kernel);
+        }
+    }
+    nb.metadata["sos"]["kernels"] = nb.metadata["sos"]["kernels"].filter(function(x) {
+        return used_kernels.has(x[0]);
+    });
 
     var data = nb.metadata["sos"]["kernels"];
     // upgrade existing meta data if it uses the old 3 item format
@@ -735,7 +735,10 @@ define([
     };
 
     function enable_fold_gutter(cell) {
-        if (cell.get_text().match(/[\n\r]\s/g)) {
+        var matched = cell.get_text().match(/[\n\r][ \t]/g);
+        // if at least three lines has identation because there is no actual benefit
+        // of wrapping short paragraphs
+        if (matched && matched.length > 2) {
             cell.code_mirror.setOption("gutters", ["CodeMirror-foldgutter"]);
             cell.code_mirror.setOption("foldGutter", true);
         } else {

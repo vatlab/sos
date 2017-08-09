@@ -141,12 +141,11 @@ class SoS_Worker(mp.Process):
     def run(self):
         # wait to handle jobs
         while True:
-            work = self.pipe.recv()
-            if work is None:
-                break
-
-            env.logger.debug('Worker {} receives request {}'.format(self.name, work))
             try:
+                work = self.pipe.recv()
+                if work is None:
+                    break
+                env.logger.debug('Worker {} receives request {}'.format(self.name, work))
                 if work[0] == 'step':
                     # this is a step ...
                     self.run_step(*work[1:])
@@ -1029,6 +1028,17 @@ class Base_Executor:
                         raise PendingTasks(running_tasks)
                 else:
                     time.sleep(0.1)
+        except KeyboardInterrupt:
+            if exec_error.errors:
+                failed_steps, pending_steps = dag.pending()
+                if pending_steps:
+                    sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in pending_steps]
+                    exec_error.append(self.workflow.name,
+                        RuntimeError('{} pending step{}: {}'.format(len(sections),
+                            's' if len(sections) > 1 else '', ', '.join(sections))))
+                    raise exec_error
+            else:
+                raise
         except PendingTasks as e:
             self.record_quit_status(e.tasks)
             wf_result['pending_tasks'] = [x[1] for x in running_tasks]

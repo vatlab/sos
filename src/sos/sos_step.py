@@ -663,6 +663,12 @@ class Base_Step_Executor:
 
     def prepare_task(self):
         env.sos_dict['_runtime']['cur_dir'] = os.getcwd()
+        # we need to record the verbosity and sigmode of task during creation because
+        # they might be changed while the task is in the queue waiting to be
+        # submitted (this happens when tasks are submitted from Jupyter)
+        env.sos_dict['_runtime']['verbosity'] = env.verbosity
+        env.sos_dict['_runtime']['sig_mode'] = env.config.get('sig_mode', 'default')
+        env.sos_dict['_runtime']['run_mode'] = env.config.get('run_mode', 'run')
         env.sos_dict['_runtime']['home_dir'] = os.path.expanduser('~')
         if 'workdir' in env.sos_dict['_runtime'] and not os.path.isdir(os.path.expanduser(env.sos_dict['_runtime']['workdir'])):
             try:
