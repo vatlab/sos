@@ -37,11 +37,11 @@ def homogeneous_type(seq):
 #
 #  support for %get
 #
-#  Converting a Python object to a R expression that will be executed
-#  by the R kernel.
+#  Converting a Python object to a julia expression that will be executed
+#  by the julia kernel.
 #
 #
-def _R_repr(obj):
+def _julia_repr(obj):
     if isinstance(obj, bool):
         return 'TRUE' if obj else 'FALSE'
     elif isinstance(obj, (int, float, str)):
@@ -55,15 +55,15 @@ def _R_repr(obj):
         # otherwise use list()
         # this can be confusion but list can be difficult to handle
         if homogeneous_type(obj):
-            return 'c(' + ','.join(_R_repr(x) for x in obj) + ')'
+            return 'c(' + ','.join(_julia_repr(x) for x in obj) + ')'
         else:
-            return 'list(' + ','.join(_R_repr(x) for x in obj) + ')'
+            return 'list(' + ','.join(_julia_repr(x) for x in obj) + ')'
     elif obj is None:
         return 'NULL'
     elif isinstance(obj, dict):
-        return 'list(' + ','.join('{}={}'.format(x, _R_repr(y)) for x,y in obj.items()) + ')'
+        return 'list(' + ','.join('{}={}'.format(x, _julia_repr(y)) for x,y in obj.items()) + ')'
     elif isinstance(obj, set):
-        return 'list(' + ','.join(_R_repr(x) for x in obj) + ')'
+        return 'list(' + ','.join(_julia_repr(x) for x in obj) + ')'
     else:
         import numpy
         import pandas
@@ -81,7 +81,7 @@ def _R_repr(obj):
             feather.write_dataframe(pandas.DataFrame(obj).copy(), feather_tmp_)
             return 'data.matrix(..read.feather({!r}))'.format(feather_tmp_)
         elif isinstance(obj, numpy.ndarray):
-            return 'c(' + ','.join(_R_repr(x) for x in obj) + ')'
+            return 'c(' + ','.join(_julia_repr(x) for x in obj) + ')'
         elif isinstance(obj, pandas.DataFrame):
             try:
                 import feather
@@ -109,17 +109,17 @@ def _R_repr(obj):
                 feather.write_dataframe(data, feather_tmp_)
                 # use {!r} for path because the string might contain c:\ which needs to be
                 # double quoted.
-            return '..read.feather({!r}, index={})'.format(feather_tmp_, _R_repr(df_index))
+            return '..read.feather({!r}, index={})'.format(feather_tmp_, _julia_repr(df_index))
         elif isinstance(obj, pandas.Series):
             dat=list(obj.values)
             ind=list(obj.index.values)
-            return 'setNames(' + 'c(' + ','.join(_R_repr(x) for x in dat) + ')' + ',c(' + ','.join(_R_repr(y) for y in ind) + '))'
+            return 'setNames(' + 'c(' + ','.join(_julia_repr(x) for x in dat) + ')' + ',c(' + ','.join(_julia_repr(y) for y in ind) + '))'
         else:
             return repr('Unsupported datatype {}'.format(short_repr(obj)))
 
 
 
-# R    length (n)    Python
+# julia    length (n)    Python
 # NULL        None
 # logical    1    boolean
 # integer    1    integer
@@ -134,27 +134,28 @@ def _R_repr(obj):
 # matrix    n > 0    array
 # data.frame    n > 0    DataFrame
 
-R_init_statements = r'''
-..py.repr.logical.1 <- function(obj) {
-    if(obj)
-        'True'
+julia_init_statements = r'''
+function py_repr_logical_1(obj)
+    if obj == "True"
+        return true
     else
-        'False'
-}
-..py.repr.integer.1 <- function(obj) {
-    as.character(obj)
-}
-..py.repr.double.1 <- function(obj) {
-    as.character(obj)
-}
-..py.repr.complex.1 <- function(obj) {
-    rl = Re(obj)
-    im = Im(obj)
-    paste0('complex(', rl, ',', im, ')')
-}
-..py.repr.character.1 <- function(obj) {
-    paste0('r"""', obj, '"""')
-}
+        return false
+    end
+end
+function py_repr_integer_1(obj)
+    return string(obj)
+end
+function py_repr_double_1(obj)
+    return string(obj)
+end
+function py_repr_complex_1(obj)
+  rl = real(obj)
+  im = imag(obj)
+  return "complex(" * string(rl) * "," * string(im) * ")"
+end
+function py_repr_character_1(obj)
+  return "r\"\"\"" * obj * "\"\"\""
+end
 ..has.row.names <- function(df) {
   !all(row.names(df)==seq(1, nrow(df)))
 }
@@ -278,10 +279,10 @@ class sos_Julia:
         'assignment_pattern': r'^([_A-Za-z0-9\.]+)\s*=.*$'
         }
 
-    def __init__(self, sos_kernel, kernel_name='ir'):
+    def __init__(self, sos_kernel, kernel_name='iJulia'):
         self.sos_kernel = sos_kernel
         self.kernel_name = kernel_name
-        self.init_statements = R_init_statements
+        self.init_statements = julia_init_statements
 
     def get_vars(self, names):
         for name in names:
@@ -290,8 +291,8 @@ class sos_Julia:
                 newname = '.' + name[1:]
             else:
                 newname = name
-            r_repr = _R_repr(env.sos_dict[name])
-            self.sos_kernel.run_cell('{} <- {}'.format(newname, r_repr), True, False, on_error='Failed to get variable {} to R'.format(name))
+            julia_repr = _julia_repr(env.sos_dict[name])
+            self.sos_kernel.run_cell('{} <- {}'.format(newname, julia_repr), True, False, on_error='Failed to get variable {} to julia'.format(name))
 
     def put_vars(self, items, to_kernel=None):
         # first let us get all variables with names starting with sos
