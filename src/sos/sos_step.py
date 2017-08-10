@@ -32,7 +32,7 @@ from .utils import env, StopInputGroup, TerminateExecution, short_repr, stable_r
     get_traceback, transcribe, expand_size, format_HHMMSS
 from .pattern import extract_pattern
 from .sos_eval import SoS_eval, SoS_exec, Undetermined
-from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
+from .target import BaseTarget, FileTarget, dynamic, remote, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
 from .sos_task import TaskParams, MasterTaskParams
@@ -140,7 +140,9 @@ def analyze_section(section, default_input=None):
                     key, value = statement[1:]
                     try:
                         args, kwargs = SoS_eval('__null_func__({})'.format(value), section.sigil)
-                        if not any(isinstance(x, dynamic) for x in args):
+                        if not any(isinstance(x, (dynamic, remote)) for x in args):
+                            step_depends = Undetermined()
+                        else:
                             step_depends = _expand_file_list(True, *args)
                     except Exception as e:
                         env.logger.debug("Args {} cannot be determined: {}".format(value, e))
@@ -159,7 +161,7 @@ def analyze_section(section, default_input=None):
                     step_input = []
                 else:
                     step_input = default_input
-            elif not any(isinstance(x, dynamic) for x in args):
+            elif not any(isinstance(x, (dynamic, remote)) for x in args):
                 step_input = _expand_file_list(True, *args)
             if 'paired_with' in kwargs:
                 pw = kwargs['paired_with']
@@ -221,7 +223,7 @@ def analyze_section(section, default_input=None):
             # output, depends, and process can be processed multiple times
             try:
                 args, kwargs = SoS_eval('__null_func__({})'.format(value), section.sigil)
-                if not any(isinstance(x, dynamic) for x in args):
+                if not any(isinstance(x, (dynamic, remote)) for x in args):
                     if key == 'output':
                         step_output = _expand_file_list(True, *args)
                     elif key == 'depends':
