@@ -40,8 +40,6 @@ class Interactive_Step_Executor(Step_Executor):
             return
         if 'queue' in env.sos_dict['_runtime']:
             queue = env.sos_dict['_runtime']['queue']
-        elif env.config['default_queue']:
-            queue = env.config['default_queue']
         else:
             queue = 'localhost'
 
