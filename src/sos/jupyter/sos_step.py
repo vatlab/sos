@@ -40,15 +40,14 @@ class Interactive_Step_Executor(Step_Executor):
             return
         if 'queue' in env.sos_dict['_runtime']:
             queue = env.sos_dict['_runtime']['queue']
-        elif env.config['default_queue']:
-            queue = env.config['default_queue']
         else:
             queue = 'localhost'
 
         host = Host(queue)
         res = [host.submit_task(task) for task in tasks]
         if all(x == 'completed' for x in host.check_status(tasks)):
-            print('{} task{} completed.'.format(len(tasks), 's' if len(tasks) > 1 else ''))
+            print('!sos_hint: {} task{} completed: {}'.format(len(tasks), 's' if len(tasks) > 1 else '',
+                ','.join(["""<a onclick="task_info('{}', '{}')">{}</a>""".format(x, queue, x[:4]) for x in tasks])))
             host._task_engine.remove_tasks(tasks)
             return host.retrieve_results(tasks)
         while True:
