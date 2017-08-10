@@ -65,8 +65,16 @@ class FlushableStringIO:
         self.name = name
 
     def write(self, content):
-        self.kernel.send_response(self.kernel.iopub_socket, 'stream',
-            {'name': self.name, 'text': content})
+        if content.startswith('!sos_hint:'):
+            self.kernel.send_response(self.kernel.iopub_socket, 'display_data',
+                {
+                        'source': 'SoS',
+                        'metadata': {},
+                        'data': { 'text/html': HTML('<div class="sos_hint">{}</div>'.format(content[9:])).data}
+                })
+        else:
+            self.kernel.send_response(self.kernel.iopub_socket, 'stream',
+                {'name': self.name, 'text': content})
 
     def flush(self):
         pass
