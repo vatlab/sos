@@ -129,7 +129,8 @@ class LocalHost:
     '''For local host, no path map, send and receive ...'''
 
     def __init__(self, config):
-        self.alias = config['alias'] if 'alias' in config else 'localhost'
+        # even if the config has an alias, we use localhost to make it clear that the host is localhost
+        self.alias = 'localhost'
         self.address = 'localhost'
         # we checkk local jobs more aggressively
         self.config = {'alias': 'localhost', 'status_check_interval': 2}
