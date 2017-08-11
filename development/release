@@ -173,14 +173,14 @@ depends: executable('blc')
 
 # check homepage
 run:
-    blc http://vatlab.github.io/SOS
+    blc http://vatlab.github.io/SoS
 
 input: '../docs/src/*/*.ipynb', group_by=1
 
 if 'homepage' in _input[0]:
-    run("blc http://vatlab.github.io/SOS/${_input!bn}.html")
+    run("blc http://vatlab.github.io/SoS/${_input!bn}.html")
 else:
-    run("blc http://vatlab.github.io/SOS/doc/${_input!db}/${_input!bn}.html")
+    run("blc http://vatlab.github.io/SoS/doc/${_input!db}/${_input!bn}.html")
 
 
 [default]
