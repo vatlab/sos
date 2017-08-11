@@ -51,7 +51,7 @@ class RQ_TaskEngine(TaskEngine):
         if not super(RQ_TaskEngine, self).execute_task(task_id):
             return False
 
-        task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.task')
+        task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
         sos_dict = loadTask(task_file).sos_dict
 
         # however, these could be fixed in the job template and we do not need to have them all in the runtime
