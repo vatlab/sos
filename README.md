@@ -3,7 +3,7 @@
 [![Build Status](https://ci.appveyor.com/api/projects/status/x092eusa0tta3msw?svg=true
 )](https://ci.appveyor.com/project/BoPeng/sos)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/67b766a827fb491fa473032b4f70ebb7)](https://www.codacy.com/app/BoPeng/SoS?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=vatlab/SOS&amp;utm_campaign=Badge_Grade)
-[![Coverage Status](https://coveralls.io/repos/github/vatlab/SoS/badge.svg?branch=master)](https://coveralls.io/github/vatlab/SoS?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/vatlab/SOS/badge.svg)](https://coveralls.io/github/vatlab/SOS)
 
 **Script of Scripts (SoS)** is a **file format** for the inclusion of
 scripts in multiple languages into a single executable script, an
