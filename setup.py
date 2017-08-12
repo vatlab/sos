@@ -182,6 +182,7 @@ setup(name = "sos",
           'networkx',
           'pydotplus',
           'pexpect',
+          'docker;platform_system!="Windows"',
       ],
     entry_points= '''
 [console_scripts]
@@ -231,7 +232,7 @@ python3 = sos.Python.actions:python3
 R = sos.R.actions:R
 Rmarkdown = sos.R.actions:Rmarkdown
 
-docker_build = sos.docker.actions:docker_build [docker]
+docker_build = sos.docker.actions:docker_build
 
 [sos_taskengines]
 process = sos.sos_task:BackgroundProcess_TaskEngine
@@ -314,8 +315,6 @@ ipynb-md.func = sos.jupyter.converter:notebook_to_md
         'rq':       ['rq'],
         'bam':      ['pysam'],
         'dot':      ['graphviz'],
-        # docker-py is not working on windows 10 (as of Jan 2017)
-        'docker':   ['docker'],
         'sas':      ['saspy'],
         #'spyder':   ['spyder'],
     }
