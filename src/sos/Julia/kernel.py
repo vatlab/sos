@@ -136,11 +136,7 @@ def _julia_repr(obj):
 
 julia_init_statements = r'''
 function py_repr_logical_1(obj)
-    if obj == "True"
-        return true
-    else
-        return false
-    end
+    obj=="True" ? "true" : "false"
 end
 function py_repr_integer_1(obj)
     return string(obj)
@@ -156,9 +152,12 @@ end
 function py_repr_character_1(obj)
   return "r\"\"\"" * obj * "\"\"\""
 end
-..has.row.names <- function(df) {
+
+function has_row_names(df)
   !all(row.names(df)==seq(1, nrow(df)))
-}
+end
+
+# Fix me
 ..py.repr.dataframe <- function(obj) {
     if (!require("feather")) {
         install.packages('feather', repos='http://cran.stat.ucla.edu/')
