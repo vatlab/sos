@@ -158,21 +158,11 @@ function py_repr_dataframe (obj)
   write_feather(obj, tf)
   return "read_dataframe(r'" * tf * "')"
 end
-
-
-..py.repr.matrix <- function(obj) {
-    if (!require("feather")) {
-        install.packages('feather', repos='http://cran.stat.ucla.edu/')
-        }
-    library(feather)
-    tf = tempfile('feather')
-    write_feather(as.data.frame(obj), tf)
-    if (..has.row.names(obj)) {
-        paste0("read_dataframe(r'", tf, "').set_index([", ..py.repr(row.names(obj)),"]).as_matrix()")
-    } else {
-        paste0("read_dataframe(r'", tf, "').as_matrix()")
-    }
-}
+function py_repr_matrix (obj)
+  tf = tempdir()
+  write_feather(convert(DataFrame, obj), tf)
+  return "read_dataframe(r'" * tf * "').as_matrix()"
+end
 ..py.repr.n <- function(obj) {
     paste("[",
         paste(sapply(obj, ..py.repr), collapse=','),
