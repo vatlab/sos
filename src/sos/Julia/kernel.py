@@ -166,14 +166,16 @@ end
 function py_repr_n(obj)
   return "[" * join([mapslices(py_repr, obj, 1)], ",") * "]"
 end
-..py.repr <- function(obj) {
-    if (is.matrix(obj)) {
-      ..py.repr.matrix(obj)
-    } else if (is.data.frame(obj)) {
-      ..py.repr.dataframe(obj)
-    } else if (is.null(obj)) {
+
+function py_repr(obj)
+    if isa(obj, Matrix)
+      py_repr_matrix(obj)
+    else if isa(obj, DataFrame)
+      py_repr_dataframe(obj)
+    else if isa(obj, Void)
       'None'
-    } else if (is.integer(obj)) {
+    # if needed to name vector, need to use NamedArrays
+    else if isa(obj, Vector)
         # if the vector has no name
         if (is.null(names(obj)))
           if (length(obj) == 1)
@@ -233,6 +235,7 @@ end
       "'Untransferrable variable'"
     }
 }
+
 ..read.feather <- function(filename, index=NULL) {
     if (! suppressMessages(suppressWarnings(require("feather", quietly = TRUE)))) {
       try(install.packages('feather', repos='http://cran.stat.ucla.edu/'), silent=TRUE)
