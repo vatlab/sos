@@ -153,21 +153,19 @@ function py_repr_character_1(obj)
   return "r\"\"\"" * obj * "\"\"\""
 end
 # Dataframe in Julia doesn't have rowname
-function py_repr_dataframe (obj)
+function py_repr_dataframe(obj)
   tf = tempdir()
   write_feather(obj, tf)
   return "read_dataframe(r'" * tf * "')"
 end
-function py_repr_matrix (obj)
+function py_repr_matrix(obj)
   tf = tempdir()
   write_feather(convert(DataFrame, obj), tf)
   return "read_dataframe(r'" * tf * "').as_matrix()"
 end
-..py.repr.n <- function(obj) {
-    paste("[",
-        paste(sapply(obj, ..py.repr), collapse=','),
-        "]")
-}
+function py_repr_n(obj)
+  return "[" * join([mapslices(py_repr, obj, 1)], ",") * "]"
+end
 ..py.repr <- function(obj) {
     if (is.matrix(obj)) {
       ..py.repr.matrix(obj)
