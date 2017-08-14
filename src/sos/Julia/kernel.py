@@ -155,15 +155,16 @@ end
 # Dataframe in Julia doesn't have rowname
 function py_repr_dataframe(obj)
   tf = tempdir()
-  write_feather(obj, tf)
+  Feather.write(tf * "ju_df2py", obj)
   return "read_dataframe(r'" * tf * "')"
 end
 function py_repr_matrix(obj)
   tf = tempdir()
-  write_feather(convert(DataFrame, obj), tf)
+  Feather.write(tf * "ju_mat2py", convert(DataFrame, obj))
   return "read_dataframe(r'" * tf * "').as_matrix()"
 end
 function py_repr_n(obj)
+  # The problem of join() is that it would ignore the double quote of a string
   return "[" * join([mapslices(py_repr, obj, 1)], ",") * "]"
 end
 
