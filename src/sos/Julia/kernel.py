@@ -152,25 +152,14 @@ end
 function py_repr_character_1(obj)
   return "r\"\"\"" * obj * "\"\"\""
 end
-
-function has_row_names(df)
-  !all(row.names(df)==seq(1, nrow(df)))
+# Dataframe in Julia doesn't have rowname
+function py_repr_dataframe (obj)
+  tf = tempdir()
+  write_feather(obj, tf)
+  return "read_dataframe(r'" * tf * "')"
 end
 
-# Fix me
-..py.repr.dataframe <- function(obj) {
-    if (!require("feather")) {
-        install.packages('feather', repos='http://cran.stat.ucla.edu/')
-        }
-    library(feather)
-    tf = tempfile('feather')
-    write_feather(obj, tf)
-    if (..has.row.names(obj)) {
-        paste0("read_dataframe(r'", tf, "').set_index([", ..py.repr(row.names(obj)),"])")
-    } else {
-        paste0("read_dataframe(r'", tf, "')")
-    }
-}
+
 ..py.repr.matrix <- function(obj) {
     if (!require("feather")) {
         install.packages('feather', repos='http://cran.stat.ucla.edu/')
