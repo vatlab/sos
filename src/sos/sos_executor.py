@@ -35,7 +35,7 @@ from .utils import env, Error, WorkflowDict, get_traceback, short_repr, pickleab
     load_config_files, save_var, load_var
 from .sos_eval import SoS_exec, get_default_global_sigil
 from .dag import SoS_DAG
-from .target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step
+from .target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step, Undetermined
 from .pattern import extract_pattern
 from .hosts import Host
 
@@ -807,7 +807,7 @@ class Base_Executor:
                             if self.resolve_dangling_targets(dag, [target]) == 0:
                                 raise RuntimeError('Failed to regenerate or resolve {}{}.'
                                     .format(target, dag.steps_depending_on(target, self.workflow)))
-                            if not isinstance(runnable._depends, Undetermined):
+                            if not isinstance(runnable._depends_targets, Undetermined):
                                 runnable._depends_targets.append(target)
                             dag._all_dependent_files[target].append(runnable)
                             dag.build(self.workflow.auxiliary_sections)
