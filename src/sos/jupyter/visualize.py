@@ -79,7 +79,8 @@ class Visualizer:
             description='''Preview Pandas DataFrame (or csv files) in tablular
             format with search and sort capacity''')
         parser.add_argument('-l', '--limit', type=int, default=200,
-            help='''Limit the number of displayed records''')
+            help='''Limit the number of displayed records. A negative value indicates
+            showing all records.''')
         parser.error = self._parse_error
         return parser
 
@@ -103,9 +104,12 @@ class Visualizer:
         tid = self.get_tid('table')
 
         # if the user already specified a value other than 200, we do not display the warning
-        if df.shape[0] > args.limit and args.limit == 200 and self.kernel:
-            self.kernel.warn("Only the first {} of the {} records are previewed. Use option --limit to set a new limit.".format(args.limit, df.shape[0]))
-        code = df.head(args.limit).to_html(index=True).replace('class="', 'id="dataframe_{}" class="sos_dataframe '.format(tid), 1)
+        if args.limit >= 0 and df.shape[0] > args.limit and args.limit == 200 and self.kernel:
+                self.kernel.warn("Only the first {} of the {} records are previewed. Use option --limit to set a new limit.".format(args.limit, df.shape[0]))
+        if args.limit >= 0:
+            code = df.head(args.limit).to_html(index=True).replace('class="', 'id="dataframe_{}" class="sos_dataframe '.format(tid), 1)
+        else:
+            code = df.to_html(index=True).replace('class="', 'id="dataframe_{}" class="sos_dataframe '.format(tid), 1)
 
         hr, rest = code.split('</tr>', 1)
         index_type = 'numeric' if isinstance(df.index, pandas.RangeIndex) else 'alphabetic'
