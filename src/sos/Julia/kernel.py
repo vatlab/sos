@@ -152,51 +152,31 @@ end
 function py_repr_character_1(obj)
   return "r\"\"\"" * obj * "\"\"\""
 end
-
-function has_row_names(df)
-  !all(row.names(df)==seq(1, nrow(df)))
+# Dataframe in Julia doesn't have rowname
+function py_repr_dataframe(obj)
+  tf = tempdir()
+  Feather.write(tf * "ju_df2py", obj)
+  return "read_dataframe(r'" * tf * "')"
+end
+function py_repr_matrix(obj)
+  tf = tempdir()
+  Feather.write(tf * "ju_mat2py", convert(DataFrame, obj))
+  return "read_dataframe(r'" * tf * "').as_matrix()"
+end
+function py_repr_n(obj)
+  # The problem of join() is that it would ignore the double quote of a string
+  return "[" * join([mapslices(py_repr, obj, 1)], ",") * "]"
 end
 
-# Fix me
-..py.repr.dataframe <- function(obj) {
-    if (!require("feather")) {
-        install.packages('feather', repos='http://cran.stat.ucla.edu/')
-        }
-    library(feather)
-    tf = tempfile('feather')
-    write_feather(obj, tf)
-    if (..has.row.names(obj)) {
-        paste0("read_dataframe(r'", tf, "').set_index([", ..py.repr(row.names(obj)),"])")
-    } else {
-        paste0("read_dataframe(r'", tf, "')")
-    }
-}
-..py.repr.matrix <- function(obj) {
-    if (!require("feather")) {
-        install.packages('feather', repos='http://cran.stat.ucla.edu/')
-        }
-    library(feather)
-    tf = tempfile('feather')
-    write_feather(as.data.frame(obj), tf)
-    if (..has.row.names(obj)) {
-        paste0("read_dataframe(r'", tf, "').set_index([", ..py.repr(row.names(obj)),"]).as_matrix()")
-    } else {
-        paste0("read_dataframe(r'", tf, "').as_matrix()")
-    }
-}
-..py.repr.n <- function(obj) {
-    paste("[",
-        paste(sapply(obj, ..py.repr), collapse=','),
-        "]")
-}
-..py.repr <- function(obj) {
-    if (is.matrix(obj)) {
-      ..py.repr.matrix(obj)
-    } else if (is.data.frame(obj)) {
-      ..py.repr.dataframe(obj)
-    } else if (is.null(obj)) {
+function py_repr(obj)
+    if isa(obj, Matrix)
+      py_repr_matrix(obj)
+    else if isa(obj, DataFrame)
+      py_repr_dataframe(obj)
+    else if isa(obj, Void)
       'None'
-    } else if (is.integer(obj)) {
+    # if needed to name vector, need to use NamedArrays
+    else if isa(obj, Vector)
         # if the vector has no name
         if (is.null(names(obj)))
           if (length(obj) == 1)
@@ -256,6 +236,7 @@ end
       "'Untransferrable variable'"
     }
 }
+
 ..read.feather <- function(filename, index=NULL) {
     if (! suppressMessages(suppressWarnings(require("feather", quietly = TRUE)))) {
       try(install.packages('feather', repos='http://cran.stat.ucla.edu/'), silent=TRUE)

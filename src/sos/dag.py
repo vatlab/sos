@@ -243,8 +243,11 @@ class SoS_DAG(nx.DiGraph):
         if target in self._all_output_files:
             for node in self._all_output_files[target]:
                 if node._status == 'completed':
-                    env.logger.info('Re-running {} to generate {}'.format(node._node_id, target))
-                    node._status = None
+                    if isinstance(target, sos_step):
+                        raise RuntimeError('Completed target {} is being re-executed. Please report this bug to SoS developers.'.format(target))
+                    else:
+                        env.logger.info('Re-running {} to generate {}'.format(node._node_id, target))
+                        node._status = None
             return True
         else:
             # so the signature exists but the step is not in all output files

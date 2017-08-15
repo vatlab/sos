@@ -140,7 +140,7 @@ def analyze_section(section, default_input=None):
                     key, value = statement[1:]
                     try:
                         args, kwargs = SoS_eval('__null_func__({})'.format(value), section.sigil)
-                        if not any(isinstance(x, (dynamic, remote)) for x in args):
+                        if any(isinstance(x, (dynamic, remote)) for x in args):
                             step_depends = Undetermined()
                         else:
                             step_depends = _expand_file_list(True, *args)
