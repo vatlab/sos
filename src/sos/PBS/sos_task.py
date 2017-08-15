@@ -159,7 +159,7 @@ class PBS_TaskEngine(TaskEngine):
                         job_id = '000000'
                         job.write('job_id: {}\n'.format(job_id))
                 # output job id to stdout
-                env.logger.info('{} ``submitted`` to {} with job id {}'.format(task_id, self.alias, job_id))
+                self.notify('{} ``submitted`` to {} with job id {}'.format(task_id, self.alias, job_id))
                 return True
             except Exception as e:
                 raise RuntimeError('Failed to submit task {}: {}'.format(task_id, e))

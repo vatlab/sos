@@ -1671,7 +1671,7 @@ Available subkernels:\n{}'''.format(
             return
         from sos.utils import pexpect_run
         with self.redirect_sos_io():
-            pexpect_run(cmd)
+            pexpect_run(cmd, shell=True)
 
     def run_sos_code(self, code, silent):
         code = dedent(code)

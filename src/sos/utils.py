@@ -1183,10 +1183,10 @@ def remove_arg(argv, arg):
     return argv        
 
 
-def pexpect_run(cmd):
+def pexpect_run(cmd, shell=False):
     if sys.platform == 'win32':
         import subprocess
-        child = subprocess.Popen(cmd, shell=isinstance(cmd, str), stdout=subprocess.PIPE,
+        child = subprocess.Popen(cmd, shell=shell or isinstance(cmd, str), stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, bufsize=0)
 
         out, err = child.communicate()
@@ -1198,9 +1198,15 @@ def pexpect_run(cmd):
         import subprocess
         try:
             if isinstance(cmd, str):
-                child = pexpect.spawn(cmd, timeout=None)
+                if shell:
+                    child = pexpect.spawn('/bin/bash', ['-c', cmd], timeout=None)
+                else:
+                    child = pexpect.spawn(cmd, timeout=None)
             else:
-                child = pexpect.spawn(subprocess.list2cmdline(cmd), timeout=None)
+                if shell:
+                    child = pexpect.spawn('/bin/bash', ['-c', subprocess.list2cmdline(cmd)], timeout=None)
+                else:
+                    child = pexpect.spawn(subprocess.list2cmdline(cmd), timeout=None)
             while True:
                 try:
                     child.expect('\n')
