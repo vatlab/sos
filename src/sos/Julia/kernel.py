@@ -171,85 +171,67 @@ end
 function py_repr(obj)
     if isa(obj, Matrix)
       py_repr_matrix(obj)
-    else if isa(obj, DataFrame)
+    elseif isa(obj, DataFrame)
       py_repr_dataframe(obj)
-    else if isa(obj, Void)
+    elseif isa(obj, Void)
       'None'
-    # if needed to name vector, need to use NamedArrays
-    else if isa(obj, Vector)
-        # if the vector has no name
-        if (is.null(names(obj)))
-          if (length(obj) == 1)
-            ..py.repr.integer.1(obj)
-          else
-            paste("[", paste(obj, collapse=','), "]")
+    # if needed to name vector in julia, need to use a package called NamedArrays
+    elseif isa(obj, Vector)
+        if (length(obj) == 1)
+            py_repr_integer_1(obj)
         else
-          paste0("pandas.Series(", "[", paste(unname(obj), collapse=','), "],", paste0("[", paste0(sapply(names(obj), ..py.repr.character.1), collapse=','), "]"), ")")
-    } else if (is.complex(obj)) {
-        # if the vector has no name
-        if (is.null(names(obj)))
-          if (length(obj) == 1)
-            ..py.repr.complex.1(obj)
-          else
-            paste("[", paste(..py.repr.complex.1(obj), collapse=','), "]")
+            return "[" * join(obj, ",") * "]"
+    elseif isa(obj, Complex)
+        if (length(obj) == 1)
+            py_repr_complex_1(obj)
         else
-          paste0("pandas.Series(", "[", paste(sapply(unname(obj), ..py.repr.complex.1), collapse=','), "],", paste0("[", paste0(sapply(names(obj), ..py.repr.character.1), collapse=','), "]"), ")")
-    } else if (is.double(obj)){
-        # if the vector has no name
-        if (is.null(names(obj)))
-          if (length(obj) == 1)
-            ..py.repr.double.1(obj)
-          else
-            paste("[", paste(obj, collapse=','), "]")
+            return "[" * join([mapslices(py_repr_complex_1, obj, 1)], ",") * "]"
+    #elseif (is.double(obj))
+          #if (length(obj) == 1)
+            #..py.repr.double.1(obj)
+          #else
+            #paste("[", paste(obj, collapse=','), "]")
+        #else
+        #  paste0("pandas.Series(", "[", paste(unname(obj), collapse=','), "],", paste0("[", paste0(sapply(names(obj), ..py.repr.character.1), collapse=','), "]"), ")")
+    elseif isa(obj, String)
+        if (length(obj) == 1)
+            py_repr_character_1(obj)
         else
-          paste0("pandas.Series(", "[", paste(unname(obj), collapse=','), "],", paste0("[", paste0(sapply(names(obj), ..py.repr.character.1), collapse=','), "]"), ")")
-    } else if (is.character(obj)) {
-        # if the vector has no name
-        if (is.null(names(obj)))
-          if (length(obj) == 1)
-            ..py.repr.character.1(obj)
-          else
-            paste("[", paste(sapply(obj, ..py.repr.character.1), collapse=','), "]")
+            return "[" * join([mapslices(py_repr_character_1, obj, 1)], ",") * "]"
+    elseif isa(obj, Bool)
+        if (length(obj) == 1)
+            py_repr_logical_1(obj)
         else
-          paste0("pandas.Series(", "[", paste(sapply(unname(obj), ..py.repr.character.1), collapse=','), "],", paste0("[", paste0(sapply(names(obj), ..py.repr.character.1), collapse=','), "]"), ")")
-    } else if (is.logical(obj)) {
-      # if the vector has no name
-        if (is.null(names(obj)))
-          if (length(obj) == 1)
-            ..py.repr.logical.1(obj)
-          else
-            ..py.repr.n(obj)
-        else
-          paste0("pandas.Series(", "[", paste(sapply(unname(obj), ..py.repr.logical.1), collapse=','), "],", paste0("[", paste0(sapply(names(obj), ..py.repr.character.1), collapse=','), "]"), ")")
-    } else if (is.list(obj)) {
+            py_repr_n(obj)
+    #elseif (is.list(obj)) {
       # if the list has no name
-      if (is.null(names(obj)))
-        ..py.repr.n(obj)
-      else {
-        paste("{",
-              paste(sapply(names(obj), function (x)
-                paste(shQuote(gsub("\\.", "_", as.character(x))), ":", ..py.repr(obj[[x]]))),
-                collapse=','),
-              "}")
-        }
-    } else {
-      "'Untransferrable variable'"
-    }
-}
+     # if (is.null(names(obj)))
+    #    ..py.repr.n(obj)
+     # else {
+    #    paste("{",
+    #          paste(sapply(names(obj), function (x)
+    #            paste(shQuote(gsub("\\.", "_", as.character(x))), ":", ..py.repr(obj[[x]]))),
+    #            collapse=','),
+    #          "}")
+    #    }
+    else
+        return "'Untransferrable variable'"
+    end
+end
 
-..read.feather <- function(filename, index=NULL) {
-    if (! suppressMessages(suppressWarnings(require("feather", quietly = TRUE)))) {
-      try(install.packages('feather', repos='http://cran.stat.ucla.edu/'), silent=TRUE)
-      if (!suppressMessages(suppressWarnings(require("feather"))))
-        stop('Failed to install feather library')
-    }
-    suppressPackageStartupMessages(library(feather, quietly = TRUE))
-    data = as.data.frame(read_feather(filename))
-    if (!is.null(index))
-      rownames(data) <- index
-    return(data)
-}
-'''
+#..read.feather <- function(filename, index=NULL) {
+#    if (! suppressMessages(suppressWarnings(require("feather", quietly = TRUE)))) {
+#      try(install.packages('feather', repos='http://cran.stat.ucla.edu/'), silent=TRUE)
+#      if (!suppressMessages(suppressWarnings(require("feather"))))
+#        stop('Failed to install feather library')
+#    }
+#    suppressPackageStartupMessages(library(feather, quietly = TRUE))
+#    data = as.data.frame(read_feather(filename))
+#    if (!is.null(index))
+#      rownames(data) <- index
+#    return(data)
+#}
+#'''
 
 
 class sos_Julia:
