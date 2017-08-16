@@ -136,7 +136,7 @@ def _julia_repr(obj):
 
 julia_init_statements = r'''
 function py_repr_logical_1(obj)
-    obj=="True" ? "true" : "false"
+    obj==true ? "true" : "false"
 end
 function py_repr_integer_1(obj)
     return string(obj)
