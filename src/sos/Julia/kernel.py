@@ -254,7 +254,7 @@ function py_repr(obj)
 
 class sos_Julia:
     background_color = '#ff99ff'
-    supported_kernels = {'Julia': ['iJulia']}
+    supported_kernels = {'Julia': ['julia-0.6']}
     options = {
         'assignment_pattern': r'^([_A-Za-z0-9\.]+)\s*=.*$'
         }
