@@ -155,12 +155,12 @@ end
 # Dataframe in Julia doesn't have rowname
 function py_repr_dataframe(obj)
   tf = tempdir()
-  Feather.write(tf * "ju_df2py", obj)
+  Feather.write(tf * "ju_df2py.feather", obj)
   return "read_dataframe(r'" * tf * "')"
 end
 function py_repr_matrix(obj)
   tf = tempdir()
-  Feather.write(tf * "ju_mat2py", convert(DataFrame, obj))
+  Feather.write(tf * "ju_mat2py.feather", convert(DataFrame, obj))
   return "read_dataframe(r'" * tf * "').as_matrix()"
 end
 function py_repr_n(obj)
