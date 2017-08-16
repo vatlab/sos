@@ -1934,6 +1934,8 @@ Available subkernels:\n{}'''.format(
                     # otherwise do not worry about it.
                     env.logger.warning('Failed to locate subkernel {} with kernerl "{}" and language "{}": {}'.format(
                         name, kernel, lan, e))
+        # sort kernel list by name to avoid unnecessary change of .ipynb files
+        self._kernel_list.sort(key=lambda x: x[0])
         return self._kernel_list
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
