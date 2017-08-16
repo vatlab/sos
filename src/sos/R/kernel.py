@@ -273,7 +273,7 @@ R_init_statements = r'''
 
 
 class sos_R:
-    background_color = '#FDEDEC'
+    background_color = '#DCDCDA'
     supported_kernels = {'R': ['ir']}
     options = {
         'assignment_pattern': r'^([_A-Za-z0-9\.]+)\s*(=|<-).*$'

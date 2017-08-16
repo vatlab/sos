@@ -56,8 +56,7 @@ def _julia_repr(obj):
     elif obj is None:
         return 'NaN'
     elif isinstance(obj, dict):
-        #return 'list(' + ','.join('{}={}'.format(x, _julia_repr(y)) for x,y in obj.items()) + ')'
-        
+        return 'list(' + ','.join('{}={}'.format(x, _julia_repr(y)) for x,y in obj.items()) + ')'
     elif isinstance(obj, set):
         return '[' + ','.join(_julia_repr(x) for x in obj) + ']'
     else:
@@ -231,13 +230,13 @@ end
 
 
 class sos_Julia:
-    background_color = '#FEF3C5'
+    background_color = '#ebd8eb'
     supported_kernels = {'Julia': ['julia-0.6']}
     options = {
         'assignment_pattern': r'^([_A-Za-z0-9\.]+)\s*=.*$'
         }
 
-    def __init__(self, sos_kernel, kernel_name='iJulia'):
+    def __init__(self, sos_kernel, kernel_name='julia-0.6'):
         self.sos_kernel = sos_kernel
         self.kernel_name = kernel_name
         self.init_statements = julia_init_statements

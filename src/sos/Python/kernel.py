@@ -53,7 +53,7 @@ def __loaded_modules__():
 
 class sos_Python:
     supported_kernels = {'Python3': ['python3'], 'Python2': ['python2']}
-    background_color = '#EAFAF1'
+    background_color = '#FFE771'
     options = {
         'variable_pattern': r'^[_A-Za-z0-9\.]+\s*$',
         'assignment_pattern': r'^([_A-Za-z0-9\.]+)\s*=.*$'
