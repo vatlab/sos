@@ -42,7 +42,7 @@ path(path, {!r})
 
 class sos_Matlab:
     supported_kernels = {'Matlab': ['matlab', 'imatlab'], 'Octave': ['octave']}
-    background_color = '#FA8072'
+    background_color = '#A9F1F8'
     options = {}
 
     def __init__(self, sos_kernel, kernel_name='matlab'):

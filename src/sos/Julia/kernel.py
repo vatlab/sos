@@ -43,27 +43,23 @@ def homogeneous_type(seq):
 #
 def _julia_repr(obj):
     if isinstance(obj, bool):
-        return 'TRUE' if obj else 'FALSE'
+        return 'true' if obj else 'false'
     elif isinstance(obj, (int, float, str)):
         return repr(obj)
     elif isinstance(obj, complex):
-        return 'complex(real = ' + str(obj.real) + ', imaginary = ' + str(obj.imag) + ')'
+        return 'complex(' + str(obj.real) + ',' + str(obj.imag) + ')'
     elif isinstance(obj, Sequence):
         if len(obj) == 0:
-            return 'c()'
-        # if the data is of homogeneous type, let us use c()
-        # otherwise use list()
-        # this can be confusion but list can be difficult to handle
-        if homogeneous_type(obj):
-            return 'c(' + ','.join(_julia_repr(x) for x in obj) + ')'
+            return '[]'
         else:
-            return 'list(' + ','.join(_julia_repr(x) for x in obj) + ')'
+            return '[' + ','.join(_julia_repr(x) for x in obj) + ']'
     elif obj is None:
-        return 'NULL'
+        return 'NaN'
     elif isinstance(obj, dict):
-        return 'list(' + ','.join('{}={}'.format(x, _julia_repr(y)) for x,y in obj.items()) + ')'
+        #return 'list(' + ','.join('{}={}'.format(x, _julia_repr(y)) for x,y in obj.items()) + ')'
+        
     elif isinstance(obj, set):
-        return 'list(' + ','.join(_julia_repr(x) for x in obj) + ')'
+        return '[' + ','.join(_julia_repr(x) for x in obj) + ']'
     else:
         import numpy
         import pandas
@@ -235,7 +231,7 @@ end
 
 
 class sos_Julia:
-    background_color = '#FCEDF4'
+    background_color = '#FEF3C5'
     supported_kernels = {'Julia': ['julia-0.6']}
     options = {
         'assignment_pattern': r'^([_A-Za-z0-9\.]+)\s*=.*$'
