@@ -130,6 +130,8 @@ def _julia_repr(obj):
 # data.frame    n > 0    DataFrame
 
 julia_init_statements = r'''
+using Feather
+using NamedArrays
 function py_repr_logical_1(obj)
     obj==true ? "true" : "false"
 end
