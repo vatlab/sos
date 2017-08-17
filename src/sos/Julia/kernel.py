@@ -132,60 +132,60 @@ def _julia_repr(obj):
 julia_init_statements = r'''
 using Feather
 using NamedArrays
-function py_repr_logical_1(obj)
+function __sos__julia_py_repr_logical_1(obj)
     obj==true ? "true" : "false"
 end
-function py_repr_integer_1(obj)
+function __sos__julia_py_repr_integer_1(obj)
     return string(obj)
 end
-function py_repr_double_1(obj)
+function __sos__julia_py_repr_double_1(obj)
     return string(obj)
 end
-function py_repr_complex_1(obj)
+function __sos__julia_py_repr_complex_1(obj)
   rl = real(obj)
   im = imag(obj)
   return "complex(" * string(rl) * "," * string(im) * ")"
 end
-function py_repr_character_1(obj)
+function __sos__julia_py_repr_character_1(obj)
   return "r\"\"\"" * obj * "\"\"\""
 end
 # Dataframe in Julia doesn't have rowname
-function py_repr_dataframe(obj)
+function __sos__julia_py_repr_dataframe(obj)
   tf = tempdir()
   Feather.write(tf * "ju_df2py.feather", obj)
   return "read_dataframe(r'" * tf * "')"
 end
-function py_repr_matrix(obj)
+function __sos__julia_py_repr_matrix(obj)
   tf = tempdir()
   Feather.write(tf * "ju_mat2py.feather", convert(DataFrame, obj))
   return "read_dataframe(r'" * tf * "').as_matrix()"
 end
-function py_repr_n(obj)
+function __sos__julia_py_repr_n(obj)
   # The problem of join() is that it would ignore the double quote of a string
   return "[" * join([mapslices(py_repr, obj, 1)], ",") * "]"
 end
-function has_row_names(df)
+function __sos__julia_has_row_names(df)
   return !(names(df)[1]==collect(1:size(df)[1]))
 end
-function has_col_names(df)
+function __sos__julia_has_col_names(df)
   return !(names(df)[2]==collect(1:size(df)[2]))
 end
-function py_repr(obj)
+function __sos__julia_py_repr(obj)
     if isa(obj, Matrix)
-      py_repr_matrix(obj)
+      __sos__julia_py_repr_matrix(obj)
     elseif isa(obj, DataFrame)
-      py_repr_dataframe(obj)
+      __sos__julia_py_repr_dataframe(obj)
     elseif isa(obj, Void)
       'None'
     # if needed to name vector in julia, need to use a package called NamedArrays
     elseif isa(obj, Vector)
         if (length(obj) == 1)
-            py_repr_integer_1(obj)
+            __sos__julia_py_repr_integer_1(obj)
         else
             return "[" * join(obj, ",") * "]"
     elseif isa(obj, Complex)
         if (length(obj) == 1)
-            py_repr_complex_1(obj)
+            __sos__julia_py_repr_complex_1(obj)
         else
             return "[" * join([mapslices(py_repr_complex_1, obj, 1)], ",") * "]"
     #elseif (is.double(obj))
@@ -197,14 +197,14 @@ function py_repr(obj)
         #  paste0("pandas.Series(", "[", paste(unname(obj), collapse=','), "],", paste0("[", paste0(sapply(names(obj), ..py.repr.character.1), collapse=','), "]"), ")")
     elseif isa(obj, String)
         if (length(obj) == 1)
-            py_repr_character_1(obj)
+            __sos__julia_py_repr_character_1(obj)
         else
             return "[" * join([mapslices(py_repr_character_1, obj, 1)], ",") * "]"
     elseif isa(obj, Bool)
         if (length(obj) == 1)
-            py_repr_logical_1(obj)
+            __sos__julia_py_repr_logical_1(obj)
         else
-            py_repr_n(obj)
+            __sos__julia_py_repr_n(obj)
     #elseif (is.list(obj)) {
       # if the list has no name
      # if (is.null(names(obj)))
