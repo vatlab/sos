@@ -58,7 +58,7 @@ def _julia_repr(obj):
     elif isinstance(obj, dict):
         return 'list(' + ','.join('{}={}'.format(x, _julia_repr(y)) for x,y in obj.items()) + ')'
     elif isinstance(obj, set):
-        return '[' + ','.join(_julia_repr(x) for x in obj) + ']'
+        return 'Set([' + ','.join(_julia_repr(x) for x in obj) + '])'
     else:
         import numpy
         import pandas
