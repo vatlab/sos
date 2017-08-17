@@ -70,7 +70,7 @@ class FlushableStringIO:
                 {
                         'source': 'SoS',
                         'metadata': {},
-                        'data': { 'text/html': HTML('<div class="sos_hint">{}</div>'.format(content[9:])).data}
+                        'data': { 'text/html': HTML('<div class="sos_hint">{}</div>'.format(content[10:].strip())).data}
                 })
         else:
             self.kernel.send_response(self.kernel.iopub_socket, 'stream',

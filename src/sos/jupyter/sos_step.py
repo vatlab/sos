@@ -48,8 +48,14 @@ class Interactive_Step_Executor(Step_Executor):
         host = Host(queue)
         res = [host.submit_task(task) for task in tasks]
         if all(x == 'completed' for x in host.check_status(tasks)):
-            print('!sos_hint: {} task{} completed: {}'.format(len(tasks), 's' if len(tasks) > 1 else '',
-                ','.join(["""<a onclick="task_info('{}', '{}')">{}</a>""".format(x, queue, x[:4]) for x in tasks])))
+            if len(tasks) > 4:
+                print('!sos_hint: {} task{} completed: {}, {}, ..., {}'.format(len(tasks), 's' if len(tasks) > 1 else '',
+                    """<a onclick="task_info('{}', '{}')">{}</a>""".format(tasks[0], queue, tasks[0][:4]),
+                    """<a onclick="task_info('{}', '{}')">{}</a>""".format(tasks[1], queue, tasks[1][:4]),
+                    """<a onclick="task_info('{}', '{}')">{}</a>""".format(tasks[-1], queue, tasks[-1][:4])))
+            else:
+                print('!sos_hint: {} task{} completed: {}'.format(len(tasks), 's' if len(tasks) > 1 else '',
+                    ','.join(["""<a onclick="task_info('{}', '{}')">{}</a>""".format(x, queue, x[:4]) for x in tasks])))
             host._task_engine.remove_tasks(tasks)
             return host.retrieve_results(tasks)
         while True:
