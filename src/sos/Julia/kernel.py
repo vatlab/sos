@@ -56,7 +56,7 @@ def _julia_repr(obj):
     elif obj is None:
         return 'NaN'
     elif isinstance(obj, dict):
-        return 'list(' + ','.join('{}={}'.format(x, _julia_repr(y)) for x,y in obj.items()) + ')'
+        return 'Dict(' + ','.join('{} => "{}"'.format(_julia_repr(y), x) for x,y in obj.items()) + ')'
     elif isinstance(obj, set):
         return 'Set([' + ','.join(_julia_repr(x) for x in obj) + '])'
     else:
