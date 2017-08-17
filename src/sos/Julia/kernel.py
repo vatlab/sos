@@ -162,7 +162,9 @@ function py_repr_n(obj)
   # The problem of join() is that it would ignore the double quote of a string
   return "[" * join([mapslices(py_repr, obj, 1)], ",") * "]"
 end
-
+function has_row_names(df)
+  return !(names(df)[1]==collect(1:size(df)[1]))
+end
 function py_repr(obj)
     if isa(obj, Matrix)
       py_repr_matrix(obj)
