@@ -162,7 +162,7 @@ function __sos__julia_py_repr_matrix(obj)
 end
 function __sos__julia_py_repr_n(obj)
   # The problem of join() is that it would ignore the double quote of a string
-  return "[" * join([mapslices(py_repr, obj, 1)], ",") * "]"
+  return "[" * join([mapslices(__sos__julia_py_repr, obj, 1)], ",") * "]"
 end
 function __sos__julia_has_row_names(df)
   return !(names(df)[1]==collect(1:size(df)[1]))
@@ -187,7 +187,7 @@ function __sos__julia_py_repr(obj)
         if (length(obj) == 1)
             __sos__julia_py_repr_complex_1(obj)
         else
-            return "[" * join([mapslices(py_repr_complex_1, obj, 1)], ",") * "]"
+            return "[" * join([mapslices(__sos__julia_py_repr_complex_1, obj, 1)], ",") * "]"
     #elseif (is.double(obj))
           #if (length(obj) == 1)
             #..py.repr.double.1(obj)
@@ -199,7 +199,7 @@ function __sos__julia_py_repr(obj)
         if (length(obj) == 1)
             __sos__julia_py_repr_character_1(obj)
         else
-            return "[" * join([mapslices(py_repr_character_1, obj, 1)], ",") * "]"
+            return "[" * join([mapslices(__sos__julia_py_repr_character_1, obj, 1)], ",") * "]"
     elseif isa(obj, Bool)
         if (length(obj) == 1)
             __sos__julia_py_repr_logical_1(obj)
