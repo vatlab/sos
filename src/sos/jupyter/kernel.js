@@ -1357,7 +1357,8 @@ define([
         } else if (KernelOptions[cell_kernel]["assignment_pattern"]) {
             var matched = text.match(KernelOptions[cell_kernel]["assignment_pattern"]);
             if (matched) {
-                text = "%preview " + matched[1] + "\n" + text;
+                // keep output in the panel cell...
+                text = "%preview -o " + matched[1] + "\n" + text;
             }
         }
         panel_cell.clear_input();

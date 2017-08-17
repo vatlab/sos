@@ -277,6 +277,8 @@ class SoS_Kernel(IPythonKernel):
             the variable will be previewed in the current kernel of the cell.''')
         parser.add_argument('-w', '--workflow', action='store_true',
             help='''Preview notebook workflow''')
+        parser.add_argument('-o', '--keep-output', action='store_true',
+            help='''Do not clear the output of the side panel.''')
         # this option is currently hidden
         parser.add_argument('-s', '--style', choices=['table', 'scatterplot', 'png'],
             help='''Option for preview file or variable, which by default is "table"
@@ -1577,8 +1579,6 @@ Available subkernels:\n{}'''.format(
             return None
 
     def handle_magic_preview(self, items, kernel=None, style=None):
-        # find filenames and quoted expressions
-        self.send_frontend_msg('preview-input', '%preview {}'.format(' '.join(items)))
         # expand items
         handled = [False for x in items]
         for idx, item in enumerate(items):
@@ -2539,6 +2539,8 @@ Available subkernels:\n{}'''.format(
                     self.send_frontend_msg('highlight-workflow', ta_id)
                 if not args.off and args.items:
                     if args.host is None:
+                        if not args.keep_output and self._use_panel:
+                            self.send_frontend_msg('preview-input', '%preview {}'.format(' '.join(args.items)))
                         self.handle_magic_preview(args.items, args.kernel, style)
                     elif args.workflow:
                         self.warn('Invalid option --kernel with -r (--host)')
