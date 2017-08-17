@@ -1183,7 +1183,7 @@ def remove_arg(argv, arg):
     return argv        
 
 
-def pexpect_run(cmd, shell=False):
+def pexpect_run(cmd, shell=False, win_width=None):
     if sys.platform == 'win32':
         import subprocess
         child = subprocess.Popen(cmd, shell=shell or isinstance(cmd, str), stdout=subprocess.PIPE,
@@ -1196,6 +1196,10 @@ def pexpect_run(cmd, shell=False):
     else:
         import pexpect
         import subprocess
+        if win_width:
+            os.environ['COLUMNS'] = str(win_width)
+        else:
+            os.environ['COLUMNS'] = '80'
         try:
             if isinstance(cmd, str):
                 if shell:

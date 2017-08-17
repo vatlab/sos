@@ -1670,8 +1670,11 @@ Available subkernels:\n{}'''.format(
         if not cmd:
             return
         from sos.utils import pexpect_run
-        with self.redirect_sos_io():
-            pexpect_run(cmd, shell=True)
+        try:
+            with self.redirect_sos_io():
+                pexpect_run(cmd, shell=True, win_width=40 if self.cell_idx < 0 else 80)
+        except Exception as e:
+            self.warn(e)
 
     def run_sos_code(self, code, silent):
         code = dedent(code)
