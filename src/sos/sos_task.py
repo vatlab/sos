@@ -636,14 +636,14 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
         print('\n'.join(status))
     elif verbosity == 1:
         for s, (t, d) in zip(status, all_tasks):
-            if time.time() - d > 30*24*60*60 and s != 'running':
+            if d is not None and time.time() - d > 30*24*60*60 and s != 'running':
                 to_be_removed.append(t)
                 continue
             print('{}\t{}'.format(t, s))
     elif verbosity == 2:
         from .utils import PrettyRelativeTime
         for s, (t, d) in zip(status, all_tasks):
-            if time.time() - d > 30*24*60*60 and s != 'running':
+            if d is not None and time.time() - d > 30*24*60*60 and s != 'running':
                 to_be_removed.append(t)
                 continue
             if start_time:
@@ -662,7 +662,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
         from .monitor import summarizeExecution
 
         for s, (t, d) in zip(status, all_tasks):
-            if time.time() - d > 30*24*60*60 and s != 'running':
+            if d is not None and time.time() - d > 30*24*60*60 and s != 'running':
                 to_be_removed.append(t)
                 continue
             print('{}\t{}\n'.format(t, s))
@@ -712,7 +712,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
             else:
                 print('<tr><th align="right"  width="30%">{}</th><td align="left"><div class="one_liner">{}</div></td></tr>'.format(th, td))
         for s, (t, d) in zip(status, all_tasks):
-            if time.time() - d > 30*24*60*60:
+            if d is not None and time.time() - d > 30*24*60*60:
                 to_be_removed.append(t)
                 continue
             row('ID', t)
