@@ -70,18 +70,18 @@ def _julia_repr(obj):
             try:
                 import feather
             except ImportError:
-                raise UsageError('The feather-format module is required to pass numpy matrix as R matrix'
+                raise UsageError('The feather-format module is required to pass numpy matrix as julia matrix'
                     'See https://github.com/wesm/feather/tree/master/python for details.')
             feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
             feather.write_dataframe(pandas.DataFrame(obj).copy(), feather_tmp_)
             return 'data.matrix(..read.feather({!r}))'.format(feather_tmp_)
         elif isinstance(obj, numpy.ndarray):
-            return 'c(' + ','.join(_julia_repr(x) for x in obj) + ')'
+            return '[' + ','.join(_julia_repr(x) for x in obj) + ']'
         elif isinstance(obj, pandas.DataFrame):
             try:
                 import feather
             except ImportError:
-                raise UsageError('The feather-format module is required to pass pandas DataFrame as R data.frame'
+                raise UsageError('The feather-format module is required to pass pandas DataFrame as julia.DataFrames'
                     'See https://github.com/wesm/feather/tree/master/python for details.')
             feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
             try:
