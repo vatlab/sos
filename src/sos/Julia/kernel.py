@@ -165,6 +165,9 @@ end
 function has_row_names(df)
   return !(names(df)[1]==collect(1:size(df)[1]))
 end
+function has_col_names(df)
+  return !(names(df)[2]==collect(1:size(df)[2]))
+end
 function py_repr(obj)
     if isa(obj, Matrix)
       py_repr_matrix(obj)
