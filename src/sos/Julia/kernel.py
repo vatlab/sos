@@ -66,7 +66,7 @@ def _julia_repr(obj):
                 numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64, numpy.float16, numpy.float32)):
             return repr(obj)
         elif isinstance(obj, numpy.float64):
-            return 'Float64(' + obj ')'
+            return 'Float64(' + obj + ')'
         elif isinstance(obj, numpy.matrixlib.defmatrix.matrix):
             try:
                 import feather
@@ -121,6 +121,8 @@ def _julia_repr(obj):
 # integer    1    integer
 # float64    1    double
 # character    1    unicode
+# string          string
+# vector          list
 # logical    n > 1    array
 # integer    n > 1    array
 # numeric    n > 1    list
