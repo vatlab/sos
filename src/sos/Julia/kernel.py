@@ -63,9 +63,10 @@ def _julia_repr(obj):
         import numpy
         import pandas
         if isinstance(obj, (numpy.intc, numpy.intp, numpy.int8, numpy.int16, numpy.int32, numpy.int64,\
-                numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64, numpy.float16, numpy.float32, \
-                numpy.float64)):
+                numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64, numpy.float16, numpy.float32)):
             return repr(obj)
+        elif isinstance(obj, numpy.float64):
+            return 'Float64(' + obj ')'
         elif isinstance(obj, numpy.matrixlib.defmatrix.matrix):
             try:
                 import feather
@@ -115,10 +116,10 @@ def _julia_repr(obj):
 
 
 # julia    length (n)    Python
-# NULL        None
-# logical    1    boolean
+# NaN        None
+# boolean    1    boolean
 # integer    1    integer
-# numeric    1    double
+# float64    1    double
 # character    1    unicode
 # logical    n > 1    array
 # integer    n > 1    array
