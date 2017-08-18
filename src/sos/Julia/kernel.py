@@ -70,11 +70,11 @@ def _julia_repr(obj):
             try:
                 import feather
             except ImportError:
-                raise UsageError('The feather-format module is required to pass numpy matrix as julia matrix'
+                raise UsageError('The feather-format module is required to pass numpy matrix as julia matrix(array)'
                     'See https://github.com/wesm/feather/tree/master/python for details.')
             feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
             feather.write_dataframe(pandas.DataFrame(obj).copy(), feather_tmp_)
-            return 'data.matrix(..read.feather({!r}))'.format(feather_tmp_)
+            return 'Feather.read(' + feather_tmp_ + ')'
         elif isinstance(obj, numpy.ndarray):
             return '[' + ','.join(_julia_repr(x) for x in obj) + ']'
         elif isinstance(obj, pandas.DataFrame):
@@ -104,7 +104,7 @@ def _julia_repr(obj):
                 feather.write_dataframe(data, feather_tmp_)
                 # use {!r} for path because the string might contain c:\ which needs to be
                 # double quoted.
-            return '..read.feather({!r}, index={})'.format(feather_tmp_, _julia_repr(df_index))
+            return 'Feather.read(' + feather_tmp_ + ')'
         elif isinstance(obj, pandas.Series):
             dat=list(obj.values)
             ind=list(obj.index.values)
@@ -220,19 +220,6 @@ function __sos__julia_py_repr(obj)
         return "'Untransferrable variable'"
     end
 end
-
-#..read.feather <- function(filename, index=NULL) {
-#    if (! suppressMessages(suppressWarnings(require("feather", quietly = TRUE)))) {
-#      try(install.packages('feather', repos='http://cran.stat.ucla.edu/'), silent=TRUE)
-#      if (!suppressMessages(suppressWarnings(require("feather"))))
-#        stop('Failed to install feather library')
-#    }
-#    suppressPackageStartupMessages(library(feather, quietly = TRUE))
-#    data = as.data.frame(read_feather(filename))
-#    if (!is.null(index))
-#      rownames(data) <- index
-#    return(data)
-#}
 #'''
 
 
