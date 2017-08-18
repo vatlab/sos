@@ -142,7 +142,7 @@ function __sos__julia_py_repr_integer_1(obj)
     return string(obj)
 end
 function __sos__julia_py_repr_double_1(obj)
-    return string(obj)
+    return "numpy.float64(" * string(obj) * ")"
 end
 function __sos__julia_py_repr_complex_1(obj)
   rl = real(obj)
@@ -191,11 +191,11 @@ function __sos__julia_py_repr(obj)
             __sos__julia_py_repr_complex_1(obj)
         else
             return "[" * join([mapslices(__sos__julia_py_repr_complex_1, obj, 1)], ",") * "]"
-    #elseif (is.double(obj))
-          #if (length(obj) == 1)
-            #..py.repr.double.1(obj)
-          #else
-            #paste("[", paste(obj, collapse=','), "]")
+    elseif isa(obj, Float64)
+        if (length(obj) == 1)
+            __sos__julia_py_repr_double_1(obj)
+        else
+            return "[" * join([mapslices(__sos__julia_py_repr_double_1, obj, 1)], ",") * "]"
         #else
         #  paste0("pandas.Series(", "[", paste(unname(obj), collapse=','), "],", paste0("[", paste0(sapply(names(obj), ..py.repr.character.1), collapse=','), "]"), ")")
     elseif isa(obj, String)
