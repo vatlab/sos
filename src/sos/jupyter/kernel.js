@@ -42,7 +42,6 @@ define([
     window.Jupyter = require("base/js/namespace");
     window.CodeCell = require("notebook/js/codecell").CodeCell;
 
-    window.default_kernel = "SoS";
     window.my_panel = null;
     window.pending_cells = {};
 
@@ -74,6 +73,9 @@ define([
     // Initial style is always side but the style is saved and we can honor this
     // configuration later on.
     nb.metadata["sos"]["panel"].style = "side";
+    if (!nb.metadata["sos"].default_kernel) {
+        nb.metadata["sos"]["default_kernel"] = "SoS";
+    }
 
     var used_kernels = new Set();
     var cells = nb.get_cells();
@@ -245,7 +247,7 @@ define([
             // also, because a cell might be starting without a previous cell
             // being finished, we should start from reverse and check actual code
             if (cells[i].input_prompt_number === "*" && code === cells[i].get_text()) {
-                // use cell kernel if meta exists, otherwise use window.default_kernel
+                // use cell kernel if meta exists, otherwise use nb.metadata["sos"].default_kernel
                 if (window._auto_resume) {
                     rerun_option = " --resume ";
                     window._auto_resume = false;
@@ -257,7 +259,7 @@ define([
                     // 3. cell index (for setting style after execution)
                     "%frontend " +
                     (nb.metadata["sos"]["panel"].displayed ? " --use-panel" : "") +
-                    " --default-kernel " + window.default_kernel +
+                    " --default-kernel " + nb.metadata["sos"].default_kernel +
                     " --cell-kernel " + cells[i].metadata.kernel +
                     (run_notebook ? " --filename '" + window.document.getElementById("notebook_name").innerHTML + "'" : "") +
                     (run_notebook ? " --workflow " + btoa(workflow) : "") + rerun_option +
@@ -269,7 +271,7 @@ define([
         return this.orig_execute(
             "%frontend " +
             " --use-panel " +
-            " --default-kernel " + window.default_kernel +
+            " --default-kernel " + nb.metadata["sos"].default_kernel +
             " --cell-kernel " + window.my_panel.cell.metadata.kernel +
             (run_notebook ? " --filename '" + window.document.getElementById("notebook_name").innerHTML + "'" : "") +
             (run_notebook ? " --workflow " + btoa(workflow) : "") + rerun_option +
@@ -405,11 +407,11 @@ define([
                     .attr("value", window.DisplayName[value[0]])
                     .text(window.DisplayName[value[0]]));
         });
-        $("#kernel_selector").val("SoS");
+        $("#kernel_selector").val(nb.metadata.sos.default_kernel);
         $("#kernel_selector").change(function() {
             var kernel_type = $("#kernel_selector").val();
 
-            window.default_kernel = kernel_type;
+            nb.metadata["sos"].default_kernel = kernel_type;
 
             var cells = nb.get_cells();
             for (var i in cells) {
@@ -1351,7 +1353,7 @@ define([
             col = changeStyleOnKernel(panel_cell, panel_cell.metadata.kernel);
         }
         // if in sos mode and is single line, enable automatic preview
-        var cell_kernel = cell.metadata.kernel ? cell.metadata.kernel : window.default_kernel;
+        var cell_kernel = cell.metadata.kernel ? cell.metadata.kernel : nb.metadata["sos"].default_kernel;
         if (KernelOptions[cell_kernel]["variable_pattern"] && text.match(KernelOptions[cell_kernel]["variable_pattern"])) {
             text = "%preview " + text;
         } else if (KernelOptions[cell_kernel]["assignment_pattern"]) {
