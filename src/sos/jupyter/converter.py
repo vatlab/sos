@@ -21,6 +21,7 @@
 #
 
 import sys
+import re
 import argparse
 
 from io import StringIO
@@ -500,6 +501,97 @@ def notebook_to_notebook(notebook_file, output_file, sargs=None, unknown_args=No
             nbformat.write(nb, new_nb, 4)
         env.logger.info('Jupyter notebook saved to {}'.format(notebook_file))
     elif not output_file:
+        nbformat.write(nb, sys.stdout, 4)
+    else:
+        with open(output_file, 'w') as new_nb:
+            nbformat.write(nb, new_nb, 4)
+        env.logger.info('Jupyter notebook saved to {}'.format(output_file))
+
+
+def get_Rmarkdown_to_notebook_parser():
+    parser = argparse.ArgumentParser('sos convert FILE.Rmd FILE.ipynb (or --to ipynb)',
+        description='''Export a Rmarkdown file kernel to a SoS notebook. It currently
+        only handles code block and Markdown, and not inline expression.''')
+    return parser
+
+def Rmarkdown_to_notebook(rmarkdown_file, output_file, sargs=None, unknown_args=None):
+    #
+    with open(rmarkdown_file) as script:
+        content = script.read()
+    #
+    # identify the headers
+    header = header = re.compile('^(#+\s.*$)', re.M)
+    paragraphs = re.split(header, content)
+    #
+    cells = []
+    cell_count = 1
+    for idx, p in enumerate(paragraphs):
+        if idx % 2 == 1:
+            # this is header, let us create a markdown cell
+            cells.append(
+                    new_markdown_cell(
+                        source=p.strip()))
+        else:
+            # this is unknown yet, let us find ```{} block
+            code = re.compile('^\s*(```{.*})$', re.M)
+            endcode = re.compile('^\s*```$', re.M)
+
+            for pidx, pc in enumerate(re.split(code, p)):
+                if pidx == 0:
+                    # piece before first code block. it might contain
+                    # inline expression
+                    cells.append(
+                        new_markdown_cell(
+                            source=pc.strip())
+                        )
+                elif pidx % 2 == 0:
+                    # this is AFTER the {r} piece, let us assume all R code 
+                    # for now
+                    # this is code, but it should end somewhere
+                    pieces = re.split(endcode, pc)
+                    # I belive that we should have 
+                    #   pieces[0] <- code
+                    #   pieces[1] <- rest...
+                    # but I could be wrong.
+                    cells.append(
+                        new_code_cell(
+                            source=pieces[0],
+                            execution_count=cell_count,
+                            metadata={'kernel': 'R'}
+                            )
+                        )
+                    cell_count += 1
+                    #
+                    for piece in pieces[1:]:
+                        cells.append(
+                            new_markdown_cell(
+                                source=piece.strip())
+                            )
+    #
+    # create header
+    nb = new_notebook(cells = cells,
+        metadata = {
+            'kernelspec' : {
+                "display_name": "SoS",
+                "language": "sos",
+                "name": "sos"
+            },
+            "language_info": {
+                "file_extension": ".sos",
+                "mimetype": "text/x-sos",
+                "name": "sos",
+                "pygments_lexer": "python",
+                'nbconvert_exporter': 'sos.jupyter.converter.SoS_Exporter',
+            },
+            'sos': {
+                'kernels': [
+                    ['SoS', 'sos', '', ''],
+                    ['R', 'ir', '', '']]
+            }
+        }
+    )
+
+    if not output_file:
         nbformat.write(nb, sys.stdout, 4)
     else:
         with open(output_file, 'w') as new_nb:
