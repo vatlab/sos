@@ -297,6 +297,8 @@ ipynb-pdf.func = sos.jupyter.converter:notebook_to_pdf
 ipynb-md.parser = sos.jupyter.converter:get_notebook_to_md_parser
 ipynb-md.func = sos.jupyter.converter:notebook_to_md
 
+ipynb-ipynb.parser = sos.jupyter.converter:get_notebook_to_notebook_parser
+ipynb-ipynb.func = sos.jupyter.converter:notebook_to_notebook
 ''',
 #
 # remove patch-spyder addon because it is difficult and not really

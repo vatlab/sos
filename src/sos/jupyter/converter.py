@@ -289,10 +289,17 @@ def script_to_notebook(script_file, notebook_file, args=None, unknown_args=None)
                 "name": "sos"
             },
             "language_info": {
+                'codemirror_mode': 'sos',
                 "file_extension": ".sos",
                 "mimetype": "text/x-sos",
                 "name": "sos",
-                "pygments_lexer": "python"
+                "pygments_lexer": "python",
+                'nbconvert_exporter': 'sos.jupyter.converter.SoS_Exporter',
+            },
+            'sos': {
+                'kernels': [
+                    ['SoS', 'sos', '', '']
+                ]
             }
         }
     )
@@ -423,4 +430,70 @@ def notebook_to_md(notebook_file, output_file, sargs=None, unknown_args=None):
     from nbconvert.exporters.markdown import MarkdownExporter
     export_notebook(MarkdownExporter, 'markdown', notebook_file, output_file, unknown_args)
 
+def get_notebook_to_notebook_parser():
+    parser = argparse.ArgumentParser('sos convert FILE.ipynb FILE.ipynb (or --to ipynb)',
+        description='''Export a Jupyter notebook with a non-SoS kernel to a
+        SoS notebook with SoS kernel. A SoS notebook will simply be copied to
+        the destination file.''')
+    parser.add_argument('--python3-to-sos', action='store_true',
+        help='''Convert python3 cells to SoS.''')
+    return parser
 
+def notebook_to_notebook(notebook_file, output_file, sargs=None, unknown_args=None):
+    notebook = nbformat.read(notebook_file, nbformat.NO_CONVERT)
+    # get the kernel of the notebook
+    lan_name = notebook['metadata']['kernelspec']['language']   # this is like 'R', there is another 'display_name'
+    kernel_name = notebook['metadata']['kernelspec']['name']  # this is like 'ir'
+    if kernel_name == 'sos':
+        # already a SoS notebook?
+        if output_file:
+            import shutils
+            shutils.copy(notebook_file, output_file)
+        else:
+            with open(notebook_file) as nb:
+                sys.stdout.write(nb.read())
+        return
+    # convert to?
+    elif kernel_name == 'python3' and sargs.python3_to_sos:
+        to_lan = 'SoS'
+        to_kernel = 'sos'
+    else:
+        to_lan = lan_name
+        to_kernel = kernel_name
+    # write all cells
+    #
+    cells = []
+    for cell in notebook.cells:
+        if cell.cell_type == 'code':
+            cell.metadata['kernel'] = to_lan
+        cells.append(cell)
+    #
+    # create header
+    nb = new_notebook(cells = cells,
+        metadata = {
+            'kernelspec' : {
+                "display_name": "SoS",
+                "language": "sos",
+                "name": "sos"
+            },
+            "language_info": {
+                "file_extension": ".sos",
+                "mimetype": "text/x-sos",
+                "name": "sos",
+                "pygments_lexer": "python",
+                'nbconvert_exporter': 'sos.jupyter.converter.SoS_Exporter',
+            },
+            'sos': {
+                'kernels': [
+                    ['SoS', 'sos', '', ''] ] +
+                    ([[to_lan, to_kernel, '', '']] if to_lan != 'SoS' else [])
+            }
+        }
+    )
+
+    if not output_file:
+        nbformat.write(nb, sys.stdout, 4)
+    else:
+        with open(output_file, 'w') as new_nb:
+            nbformat.write(nb, new_nb, 4)
+        env.logger.info('Jupyter notebook saved to {}'.format(output_file))
