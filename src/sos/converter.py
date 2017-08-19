@@ -779,7 +779,7 @@ def markdown_content(content_type, content, fh):
 
 def get_script_to_markdown_parser():
     parser = argparse.ArgumentParser('sos convert FILE.sos FILE.md (or --to md)',
-        description='''Convert SOS scriot to a markdown format with scripts
+        description='''Convert SOS script to a markdown format with scripts
             quoted in markdown syntax.''')
     return parser
 
