@@ -63,18 +63,19 @@ def _julia_repr(obj):
         import numpy
         import pandas
         if isinstance(obj, (numpy.intc, numpy.intp, numpy.int8, numpy.int16, numpy.int32, numpy.int64,\
-                numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64, numpy.float16, numpy.float32, \
-                numpy.float64)):
+                numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64, numpy.float16, numpy.float32)):
             return repr(obj)
+        elif isinstance(obj, numpy.float64):
+            return 'Float64(' + obj + ')'
         elif isinstance(obj, numpy.matrixlib.defmatrix.matrix):
             try:
                 import feather
             except ImportError:
-                raise UsageError('The feather-format module is required to pass numpy matrix as julia matrix'
+                raise UsageError('The feather-format module is required to pass numpy matrix as julia matrix(array)'
                     'See https://github.com/wesm/feather/tree/master/python for details.')
             feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
             feather.write_dataframe(pandas.DataFrame(obj).copy(), feather_tmp_)
-            return 'data.matrix(..read.feather({!r}))'.format(feather_tmp_)
+            return 'Feather.read(' + feather_tmp_ + ')'
         elif isinstance(obj, numpy.ndarray):
             return '[' + ','.join(_julia_repr(x) for x in obj) + ']'
         elif isinstance(obj, pandas.DataFrame):
@@ -104,7 +105,7 @@ def _julia_repr(obj):
                 feather.write_dataframe(data, feather_tmp_)
                 # use {!r} for path because the string might contain c:\ which needs to be
                 # double quoted.
-            return '..read.feather({!r}, index={})'.format(feather_tmp_, _julia_repr(df_index))
+            return 'Feather.read(' + feather_tmp_ + ')'
         elif isinstance(obj, pandas.Series):
             dat=list(obj.values)
             ind=list(obj.index.values)
@@ -115,11 +116,13 @@ def _julia_repr(obj):
 
 
 # julia    length (n)    Python
-# NULL        None
-# logical    1    boolean
+# NaN        None
+# boolean    1    boolean
 # integer    1    integer
-# numeric    1    double
+# float64    1    double
 # character    1    unicode
+# string          string
+# vector          list
 # logical    n > 1    array
 # integer    n > 1    array
 # numeric    n > 1    list
@@ -139,7 +142,7 @@ function __sos__julia_py_repr_integer_1(obj)
     return string(obj)
 end
 function __sos__julia_py_repr_double_1(obj)
-    return string(obj)
+    return "numpy.float64(" * string(obj) * ")"
 end
 function __sos__julia_py_repr_complex_1(obj)
   rl = real(obj)
@@ -188,11 +191,11 @@ function __sos__julia_py_repr(obj)
             __sos__julia_py_repr_complex_1(obj)
         else
             return "[" * join([mapslices(__sos__julia_py_repr_complex_1, obj, 1)], ",") * "]"
-    #elseif (is.double(obj))
-          #if (length(obj) == 1)
-            #..py.repr.double.1(obj)
-          #else
-            #paste("[", paste(obj, collapse=','), "]")
+    elseif isa(obj, Float64)
+        if (length(obj) == 1)
+            __sos__julia_py_repr_double_1(obj)
+        else
+            return "[" * join([mapslices(__sos__julia_py_repr_double_1, obj, 1)], ",") * "]"
         #else
         #  paste0("pandas.Series(", "[", paste(unname(obj), collapse=','), "],", paste0("[", paste0(sapply(names(obj), ..py.repr.character.1), collapse=','), "]"), ")")
     elseif isa(obj, String)
@@ -220,19 +223,6 @@ function __sos__julia_py_repr(obj)
         return "'Untransferrable variable'"
     end
 end
-
-#..read.feather <- function(filename, index=NULL) {
-#    if (! suppressMessages(suppressWarnings(require("feather", quietly = TRUE)))) {
-#      try(install.packages('feather', repos='http://cran.stat.ucla.edu/'), silent=TRUE)
-#      if (!suppressMessages(suppressWarnings(require("feather"))))
-#        stop('Failed to install feather library')
-#    }
-#    suppressPackageStartupMessages(library(feather, quietly = TRUE))
-#    data = as.data.frame(read_feather(filename))
-#    if (!is.null(index))
-#      rownames(data) <- index
-#    return(data)
-#}
 #'''
 
 
