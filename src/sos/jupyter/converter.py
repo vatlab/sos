@@ -437,6 +437,8 @@ def get_notebook_to_notebook_parser():
         the destination file.''')
     parser.add_argument('--python3-to-sos', action='store_true',
         help='''Convert python3 cells to SoS.''')
+    parser.add_argument('--inplace', action='store_true',
+        help='''Overwrite input notebook with the output.''')
     return parser
 
 def notebook_to_notebook(notebook_file, output_file, sargs=None, unknown_args=None):
@@ -446,6 +448,8 @@ def notebook_to_notebook(notebook_file, output_file, sargs=None, unknown_args=No
     kernel_name = notebook['metadata']['kernelspec']['name']  # this is like 'ir'
     if kernel_name == 'sos':
         # already a SoS notebook?
+        if sargs.inplace:
+            return
         if output_file:
             import shutils
             shutils.copy(notebook_file, output_file)
@@ -491,7 +495,11 @@ def notebook_to_notebook(notebook_file, output_file, sargs=None, unknown_args=No
         }
     )
 
-    if not output_file:
+    if sargs.inplace:
+        with open(notebook_file, 'w') as new_nb:
+            nbformat.write(nb, new_nb, 4)
+        env.logger.info('Jupyter notebook saved to {}'.format(notebook_file))
+    elif not output_file:
         nbformat.write(nb, sys.stdout, 4)
     else:
         with open(output_file, 'w') as new_nb:
