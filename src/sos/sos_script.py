@@ -707,8 +707,11 @@ for __n, __v in {}.items():
                         name_map = {}
                         if mo.group('names') != '*':
                             for wf in mo.group('names').split(','):
-                                ma = SOS_AS.match(wf)
-                                name_map[ma.group('name')] = ma.group('alias')
+                                ma = SOS_AS.match(wf.strip())
+                                if not ma:
+                                    parsing_errors.append(lineno, line, 'unacceptable include name "{}"'.format(wf))
+                                else:
+                                    name_map[ma.group('name')] = ma.group('alias')
                         self._include_content(sos_file, name_map=name_map)
                         continue
 
