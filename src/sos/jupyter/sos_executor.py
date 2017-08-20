@@ -54,7 +54,8 @@ class Interactive_Executor(Base_Executor):
                 sig.write('# workflow: {}\n'.format(self.workflow.name))
                 # script is None because it is entered from notebook
                 sig.write('# script: __interactive__\n')
-                sig.write('# included: {}\n'.format(','.join(self.workflow.content.included)))
+                env.logger.error(self.workflow.content.included)
+                sig.write('# included: {}\n'.format(','.join([x[1] for x in self.workflow.content.included])))
                 sig.write('# configuration: {}\n'.format(self.config.get('config_file', '')))
                 sig.write('# start time: {}\n'.format(time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())))
                 sig.write(self.sig_content)
