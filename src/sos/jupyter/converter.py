@@ -491,7 +491,8 @@ def notebook_to_notebook(notebook_file, output_file, sargs=None, unknown_args=No
             'sos': {
                 'kernels': [
                     ['SoS', 'sos', '', ''] ] +
-                    ([[to_lan, to_kernel, '', '']] if to_lan != 'SoS' else [])
+                    ([[to_lan, to_kernel, '', '']] if to_lan != 'SoS' else []),
+                'default_kernel': to_lan
             }
         }
     )
@@ -586,8 +587,9 @@ def Rmarkdown_to_notebook(rmarkdown_file, output_file, sargs=None, unknown_args=
             'sos': {
                 'kernels': [
                     ['SoS', 'sos', '', ''],
-                    ['R', 'ir', '', '']]
-            }
+                    ['R', 'ir', '', '']],
+                'default_kernel': 'R'
+                }
         }
     )
 
