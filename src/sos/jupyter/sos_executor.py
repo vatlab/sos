@@ -339,7 +339,7 @@ def runfile(script=None, raw_args='', wdir='.', code=None, kernel=None, **kwargs
                     # this is a scratch step...
                     # if there is no section header, add a header so that the block
                     # appears to be a SoS script with one section
-                    if not any([SOS_SECTION_HEADER.match(line) for line in code.splitlines()]):
+                    if not any([SOS_SECTION_HEADER.match(line) or line.startswith('%') for line in code.splitlines()]):
                         code = '[scratch_0]\n' + code
                         script = SoS_Script(content=code, global_sigil=get_default_global_sigil())
                     else:

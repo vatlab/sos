@@ -626,7 +626,7 @@ class SoS_Script:
         # section names are changed from A to sos_file.A
         for section in script.sections:
             for idx in range(len(section.names)):
-                section.names[idx][0] = alias + '.' + section.names[idx][0]
+                section.names[idx] = [alias + '.' + section.names[idx][0]] + list(section.names[idx][1:])
         # The global definition of sos_file should be accessible as
         # sos_file.name
         self.sections.extend(script.sections)
