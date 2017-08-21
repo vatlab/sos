@@ -123,10 +123,6 @@ def _julia_repr(obj):
 # character    1    unicode
 # string          string
 # vector          list
-# logical    n > 1    array
-# integer    n > 1    array
-# numeric    n > 1    list
-# character    n > 1    list
 # list without names    n > 0    list
 # list with names    n > 0    dict
 # matrix    n > 0    array
@@ -156,12 +152,12 @@ end
 function __sos__julia_py_repr_dataframe(obj)
   tf = tempdir()
   Feather.write(tf * "ju_df2py.feather", obj)
-  return "read_dataframe(r'" * tf * "')"
+  return "read_dataframe(r'" * tf * "/ju_df2py.feather" * "')"
 end
 function __sos__julia_py_repr_matrix(obj)
   tf = tempdir()
   Feather.write(tf * "ju_mat2py.feather", convert(DataFrame, obj))
-  return "read_dataframe(r'" * tf * "').as_matrix()"
+  return "read_dataframe(r'" * tf * "/ju_mat2py.feather" * "').as_matrix()"
 end
 function __sos__julia_py_repr_n(obj)
   # The problem of join() is that it would ignore the double quote of a string
@@ -196,8 +192,6 @@ function __sos__julia_py_repr(obj)
             __sos__julia_py_repr_double_1(obj)
         else
             return "[" * join([mapslices(__sos__julia_py_repr_double_1, obj, 1)], ",") * "]"
-        #else
-        #  paste0("pandas.Series(", "[", paste(unname(obj), collapse=','), "],", paste0("[", paste0(sapply(names(obj), ..py.repr.character.1), collapse=','), "]"), ")")
     elseif isa(obj, String)
         if (length(obj) == 1)
             __sos__julia_py_repr_character_1(obj)
@@ -208,17 +202,6 @@ function __sos__julia_py_repr(obj)
             __sos__julia_py_repr_logical_1(obj)
         else
             __sos__julia_py_repr_n(obj)
-    #elseif (is.list(obj)) {
-      # if the list has no name
-     # if (is.null(names(obj)))
-    #    ..py.repr.n(obj)
-     # else {
-    #    paste("{",
-    #          paste(sapply(names(obj), function (x)
-    #            paste(shQuote(gsub("\\.", "_", as.character(x))), ":", ..py.repr(obj[[x]]))),
-    #            collapse=','),
-    #          "}")
-    #    }
     else
         return "'Untransferrable variable'"
     end
