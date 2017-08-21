@@ -170,47 +170,55 @@ end
 function __sos__julia_has_col_names(df)
   return !(names(df)[2]==collect(1:size(df)[2]))
 end
+
+
 function __sos__julia_py_repr(obj)
-    if isa(obj, Matrix)
-      __sos__julia_py_repr_matrix(obj)
-    elseif isa(obj, DataFrame)
-      __sos__julia_py_repr_dataframe(obj)
-    elseif isa(obj, Void)
-      return "None"
+  if isa(obj, Matrix)
+    __sos__julia_py_repr_matrix(obj)
+  elseif isa(obj, DataFrame)
+    __sos__julia_py_repr_dataframe(obj)
+  elseif isa(obj, Void)
+    return "None"
     # if needed to name vector in julia, need to use a package called NamedArrays
-    elseif isa(obj, Vector)
-        if (length(obj) == 1)
-            __sos__julia_py_repr_integer_1(obj)
-        else
-            return "[" * join(obj, ",") * "]"
-        end
-    elseif isa(obj, Complex)
-        if (length(obj) == 1)
-            __sos__julia_py_repr_complex_1(obj)
-        else
-            return "[" * join([mapslices(__sos__julia_py_repr_complex_1, obj, 1)], ",") * "]"
-        end
-    elseif isa(obj, Float64)
-        if (length(obj) == 1)
-            __sos__julia_py_repr_double_1(obj)
-        else
-            return "[" * join([mapslices(__sos__julia_py_repr_double_1, obj, 1)], ",") * "]"
-        end
-    elseif isa(obj, String)
-        if (length(obj) == 1)
-            __sos__julia_py_repr_character_1(obj)
-        else
-            return "[" * join([mapslices(__sos__julia_py_repr_character_1, obj, 1)], ",") * "]"
-        end
-    elseif isa(obj, Bool)
-        if (length(obj) == 1)
-            __sos__julia_py_repr_logical_1(obj)
-        else
-            __sos__julia_py_repr_n(obj)
-        end
+  elseif isa(obj, Vector)
+    if (length(obj) == 1)
+      __sos__julia_py_repr_integer_1(obj)
     else
-        return "'Untransferrable variable'"
+      return "[" * join(obj, ",") * "]"
     end
+  elseif isa(obj, Complex)
+    if (length(obj) == 1)
+      __sos__julia_py_repr_complex_1(obj)
+    else
+      return "[" * join([mapslices(__sos__julia_py_repr_complex_1, obj, 1)], ",") * "]"
+    end
+  elseif isa(obj, Float64)
+    if (length(obj) == 1)
+      __sos__julia_py_repr_double_1(obj)
+    else
+      return "[" * join([mapslices(__sos__julia_py_repr_double_1, obj, 1)], ",") * "]"
+    end
+  elseif isa(obj, String)
+    if (length(obj) == 1)
+      __sos__julia_py_repr_character_1(obj)
+    else
+      return "[" * join([mapslices(__sos__julia_py_repr_character_1, obj, 1)], ",") * "]"
+    end
+  elseif isa(obj, Bool)
+    if (length(obj) == 1)
+      __sos__julia_py_repr_logical_1(obj)
+    else
+      __sos__julia_py_repr_n(obj)
+    end
+  elseif isa(obj, Int)
+    if (length(obj) == 1)
+      __sos__julia_py_repr_integer_1(obj)
+    else
+      __sos__julia_py_repr_n(obj)
+    end
+  else
+    return "'Untransferrable variable'"
+  end
 end
 '''
 
