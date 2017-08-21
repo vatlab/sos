@@ -131,6 +131,7 @@ def _julia_repr(obj):
 julia_init_statements = r'''
 using Feather
 using NamedArrays
+using DataFrames
 function __sos__julia_py_repr_logical_1(obj)
     obj==true ? "true" : "false"
 end
@@ -175,38 +176,43 @@ function __sos__julia_py_repr(obj)
     elseif isa(obj, DataFrame)
       __sos__julia_py_repr_dataframe(obj)
     elseif isa(obj, Void)
-      'None'
+      return "None"
     # if needed to name vector in julia, need to use a package called NamedArrays
     elseif isa(obj, Vector)
         if (length(obj) == 1)
             __sos__julia_py_repr_integer_1(obj)
         else
             return "[" * join(obj, ",") * "]"
+        end
     elseif isa(obj, Complex)
         if (length(obj) == 1)
             __sos__julia_py_repr_complex_1(obj)
         else
             return "[" * join([mapslices(__sos__julia_py_repr_complex_1, obj, 1)], ",") * "]"
+        end
     elseif isa(obj, Float64)
         if (length(obj) == 1)
             __sos__julia_py_repr_double_1(obj)
         else
             return "[" * join([mapslices(__sos__julia_py_repr_double_1, obj, 1)], ",") * "]"
+        end
     elseif isa(obj, String)
         if (length(obj) == 1)
             __sos__julia_py_repr_character_1(obj)
         else
             return "[" * join([mapslices(__sos__julia_py_repr_character_1, obj, 1)], ",") * "]"
+        end
     elseif isa(obj, Bool)
         if (length(obj) == 1)
             __sos__julia_py_repr_logical_1(obj)
         else
             __sos__julia_py_repr_n(obj)
+        end
     else
         return "'Untransferrable variable'"
     end
 end
-#'''
+'''
 
 
 class sos_Julia:
@@ -233,30 +239,20 @@ class sos_Julia:
 
     def put_vars(self, items, to_kernel=None):
         # first let us get all variables with names starting with sos
-        response = self.sos_kernel.get_response('cat(..py.repr(ls()))', ('stream',), name=('stdout',))[0][1]
-        all_vars = eval(response['text'])
-        all_vars = [all_vars] if isinstance(all_vars, str) else all_vars
-
+        response = self.sos_kernel.get_response('whos(r"sos")', ('stream',), name=('stdout',), debug=True)[0][1]
+        all_vars = [x.strip().split()[0] for x in response['text'].split('\n') if x.strip()]
         items += [x for x in all_vars if x.startswith('sos')]
-
-        for item in items:
-            if '.' in item:
-                self.sos_kernel.warn('Variable {} is put to SoS as {}'.format(item, item.replace('.', '_')))
 
         if not items:
             return {}
 
-        py_repr = 'cat(..py.repr(list({})))'.format(','.join('{0}={0}'.format(x) for x in items))
-        response = self.sos_kernel.get_response(py_repr, ('stream',), name=('stdout',))[0][1]
-        expr = response['text']
+        res = {}
+        for item in items:
+            py_repr = '__sos__julia_py_repr({})'.format(item)
+            self.sos_kernel.warn("RXPR for {} is {}".format(item, py_repr))
+            response = self.sos_kernel.get_response(py_repr, ('stream',), name=('stdout',), debug=True)[0][1]
+            expr = response['text']
 
-        if to_kernel in ('Python2', 'Python3'):
-            # directly to python3
-            return '{}\nglobals().update({})'.format('from feather import read_dataframe\n' if 'read_dataframe' in expr else '', expr)
-        # to sos or any other kernel
-        else:
-            # irkernel (since the new version) does not produce execute_result, only
-            # display_data
             try:
                 if 'read_dataframe' in expr:
                     # imported to be used by eval
@@ -264,10 +260,11 @@ class sos_Julia:
                     # suppress flakes warning
                     read_dataframe
                 # evaluate as raw string to correctly handle \\ etc
-                return eval(expr)
+                res[item] = eval(expr)
             except Exception as e:
                 self.sos_kernel.warn('Failed to evaluate {!r}: {}'.format(expr, e))
                 return None
+        return res
 
     def sessioninfo(self):
         response = self.sos_kernel.get_response(r'cat(paste(capture.output(sessionInfo()), collapse="\n"))', ('stream',), name=('stdout',))[0]
