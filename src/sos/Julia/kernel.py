@@ -151,14 +151,14 @@ function __s_o_s__julia_py_repr_character_1(obj)
 end
 # Dataframe in Julia doesn't have rowname
 function __s_o_s__julia_py_repr_dataframe(obj)
-  tf = tempname()
+  tf = joinpath(tempname())
   Feather.write(tf, obj)
-  return "read_dataframe(joinpath(tf))"
+  return "read_dataframe(r'" * tf * "')"
 end
 function __s_o_s__julia_py_repr_matrix(obj)
-  tf = tempname()
+  tf = joinpath(tempname())
   Feather.write(tf, convert(DataFrame, obj))
-  return "read_dataframe(joinpath(tf)).as_matrix()"
+  return "read_dataframe(r'" * tf * "').as_matrix()"
 end
 function __s_o_s__julia_py_repr_n(obj)
   # The problem of join() is that it would ignore the double quote of a string
