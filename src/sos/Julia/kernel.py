@@ -184,7 +184,7 @@ function __s_o_s__julia_py_repr(obj)
     else
       return "[" * join([__s_o_s__julia_py_repr_integer_1(i) for i in obj], ",") * "]"
     end
-  elseif isa(obj, Vector{Complex})
+  elseif isa(obj, Vector{Complex{Int}}) || isa(obj, Vector{Complex{Float64}})
     if (length(obj) == 1)
       __s_o_s__julia_py_repr_complex_1(obj)
     else
