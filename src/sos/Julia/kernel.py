@@ -136,7 +136,7 @@ function __s_o_s__julia_py_repr_logical_1(obj)
     obj==true ? "True" : "False"
 end
 function __s_o_s__julia_py_repr_integer_1(obj)
-    return string(obj)
+    return obj
 end
 function __s_o_s__julia_py_repr_double_1(obj)
     return "numpy.float64(" * string(obj) * ")"
@@ -162,7 +162,7 @@ function __s_o_s__julia_py_repr_matrix(obj)
 end
 function __s_o_s__julia_py_repr_n(obj)
   # The problem of join() is that it would ignore the double quote of a string
-  return "[" * join([mapslices(__s_o_s__julia_py_repr, obj, 1)], ",") * "]"
+  return "[" * join([__s_o_s__julia_py_repr(i) for i in obj], ",") * "]"
 end
 function __s_o_s__julia_has_row_names(df)
   return !(names(df)[1]==collect(1:size(df)[1]))
@@ -180,42 +180,52 @@ function __s_o_s__julia_py_repr(obj)
   elseif isa(obj, Void) || is(obj, NaN)
     return "None"
     # if needed to name vector in julia, need to use a package called NamedArrays
-  elseif isa(obj, Vector)
+  elseif isa(obj, Vector{Int})
     if (length(obj) == 1)
       __s_o_s__julia_py_repr_integer_1(obj)
     else
-      return "[" * join(obj, ",") * "]"
+      return "[" * join([__s_o_s__julia_py_repr_integer_1(i) for i in obj], ",") * "]"
     end
-  elseif isa(obj, Complex)
+  elseif isa(obj, Vector{Complex})
     if (length(obj) == 1)
       __s_o_s__julia_py_repr_complex_1(obj)
     else
-      return "[" * join([mapslices(__s_o_s__julia_py_repr_complex_1, obj, 1)], ",") * "]"
+      return "[" * join([__s_o_s__julia_py_repr_complex_1(i) for i in obj], ",") * "]"
     end
-  elseif isa(obj, Float64)
+  elseif isa(obj, Vector{Float64})
     if (length(obj) == 1)
       __s_o_s__julia_py_repr_double_1(obj)
     else
-      return "[" * join([mapslices(__s_o_s__julia_py_repr_double_1, obj, 1)], ",") * "]"
+      return "[" * join([__s_o_s__julia_py_repr_double_1(i) for i in obj], ",") * "]"
     end
-  elseif isa(obj, String)
+  elseif isa(obj, Vector{String})
     if (length(obj) == 1)
       __s_o_s__julia_py_repr_character_1(obj)
     else
-      return "[" * join([mapslices(__s_o_s__julia_py_repr_character_1, obj, 1)], ",") * "]"
+      return "[" * join([__s_o_s__julia_py_repr_character_1(i) for i in obj], ",") * "]"
     end
-  elseif isa(obj, Bool)
+  elseif isa(obj, Vector{Bool})
     if (length(obj) == 1)
       __s_o_s__julia_py_repr_logical_1(obj)
+    else
+      return "[" * join([__s_o_s__julia_py_repr_logical_1(i) for i in obj], ",") * "]"
+    end
+  elseif isa(obj, Vector{Int})
+    if (length(obj) == 1)
+      __s_o_s__julia_py_repr_integer_1(obj)
     else
       __s_o_s__julia_py_repr_n(obj)
     end
   elseif isa(obj, Int)
-    if (length(obj) == 1)
-      __s_o_s__julia_py_repr_integer_1(obj)
-    else
-      __s_o_s__julia_py_repr_n(obj)
-    end
+    __s_o_s__julia_py_repr_integer_1(obj)
+  elseif isa(obj, Complex)
+    __s_o_s__julia_py_repr_complex_1(obj)
+  elseif isa(obj, Float64)
+    __s_o_s__julia_py_repr_double_1(obj)
+  elseif isa(obj, String)
+    __s_o_s__julia_py_repr_character_1(obj)
+  elseif isa(obj, Bool)
+    __s_o_s__julia_py_repr_logical_1(obj)
   else
     return "'Untransferrable variable'"
   end
