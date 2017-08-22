@@ -132,89 +132,89 @@ julia_init_statements = r'''
 using Feather
 using NamedArrays
 using DataFrames
-function __sos__julia_py_repr_logical_1(obj)
+function __s_o_s__julia_py_repr_logical_1(obj)
     obj==true ? "true" : "false"
 end
-function __sos__julia_py_repr_integer_1(obj)
+function __s_o_s__julia_py_repr_integer_1(obj)
     return string(obj)
 end
-function __sos__julia_py_repr_double_1(obj)
+function __s_o_s__julia_py_repr_double_1(obj)
     return "numpy.float64(" * string(obj) * ")"
 end
-function __sos__julia_py_repr_complex_1(obj)
+function __s_o_s__julia_py_repr_complex_1(obj)
   rl = real(obj)
   im = imag(obj)
   return "complex(" * string(rl) * "," * string(im) * ")"
 end
-function __sos__julia_py_repr_character_1(obj)
+function __s_o_s__julia_py_repr_character_1(obj)
   return "r\"\"\"" * obj * "\"\"\""
 end
 # Dataframe in Julia doesn't have rowname
-function __sos__julia_py_repr_dataframe(obj)
+function __s_o_s__julia_py_repr_dataframe(obj)
   tf = tempname()
   Feather.write(tf, obj)
   return "read_dataframe(joinpath(tf))"
 end
-function __sos__julia_py_repr_matrix(obj)
+function __s_o_s__julia_py_repr_matrix(obj)
   tf = tempname()
   Feather.write(tf, convert(DataFrame, obj))
   return "read_dataframe(joinpath(tf)).as_matrix()"
 end
-function __sos__julia_py_repr_n(obj)
+function __s_o_s__julia_py_repr_n(obj)
   # The problem of join() is that it would ignore the double quote of a string
-  return "[" * join([mapslices(__sos__julia_py_repr, obj, 1)], ",") * "]"
+  return "[" * join([mapslices(__s_o_s__julia_py_repr, obj, 1)], ",") * "]"
 end
-function __sos__julia_has_row_names(df)
+function __s_o_s__julia_has_row_names(df)
   return !(names(df)[1]==collect(1:size(df)[1]))
 end
-function __sos__julia_has_col_names(df)
+function __s_o_s__julia_has_col_names(df)
   return !(names(df)[2]==collect(1:size(df)[2]))
 end
 
 
-function __sos__julia_py_repr(obj)
+function __s_o_s__julia_py_repr(obj)
   if isa(obj, Matrix)
-    __sos__julia_py_repr_matrix(obj)
+    __s_o_s__julia_py_repr_matrix(obj)
   elseif isa(obj, DataFrame)
-    __sos__julia_py_repr_dataframe(obj)
+    __s_o_s__julia_py_repr_dataframe(obj)
   elseif isa(obj, Void)
     return "None"
     # if needed to name vector in julia, need to use a package called NamedArrays
   elseif isa(obj, Vector)
     if (length(obj) == 1)
-      __sos__julia_py_repr_integer_1(obj)
+      __s_o_s__julia_py_repr_integer_1(obj)
     else
       return "[" * join(obj, ",") * "]"
     end
   elseif isa(obj, Complex)
     if (length(obj) == 1)
-      __sos__julia_py_repr_complex_1(obj)
+      __s_o_s__julia_py_repr_complex_1(obj)
     else
-      return "[" * join([mapslices(__sos__julia_py_repr_complex_1, obj, 1)], ",") * "]"
+      return "[" * join([mapslices(__s_o_s__julia_py_repr_complex_1, obj, 1)], ",") * "]"
     end
   elseif isa(obj, Float64)
     if (length(obj) == 1)
-      __sos__julia_py_repr_double_1(obj)
+      __s_o_s__julia_py_repr_double_1(obj)
     else
-      return "[" * join([mapslices(__sos__julia_py_repr_double_1, obj, 1)], ",") * "]"
+      return "[" * join([mapslices(__s_o_s__julia_py_repr_double_1, obj, 1)], ",") * "]"
     end
   elseif isa(obj, String)
     if (length(obj) == 1)
-      __sos__julia_py_repr_character_1(obj)
+      __s_o_s__julia_py_repr_character_1(obj)
     else
-      return "[" * join([mapslices(__sos__julia_py_repr_character_1, obj, 1)], ",") * "]"
+      return "[" * join([mapslices(__s_o_s__julia_py_repr_character_1, obj, 1)], ",") * "]"
     end
   elseif isa(obj, Bool)
     if (length(obj) == 1)
-      __sos__julia_py_repr_logical_1(obj)
+      __s_o_s__julia_py_repr_logical_1(obj)
     else
-      __sos__julia_py_repr_n(obj)
+      __s_o_s__julia_py_repr_n(obj)
     end
   elseif isa(obj, Int)
     if (length(obj) == 1)
-      __sos__julia_py_repr_integer_1(obj)
+      __s_o_s__julia_py_repr_integer_1(obj)
     else
-      __sos__julia_py_repr_n(obj)
+      __s_o_s__julia_py_repr_n(obj)
     end
   else
     return "'Untransferrable variable'"
@@ -256,7 +256,7 @@ class sos_Julia:
 
         res = {}
         for item in items:
-            py_repr = '__sos__julia_py_repr({})'.format(item)
+            py_repr = '__s_o_s__julia_py_repr({})'.format(item)
             self.sos_kernel.warn("RXPR for {} is {}".format(item, py_repr))
             response = self.sos_kernel.get_response(py_repr, ('stream',), name=('stdout',), debug=True)[0][1]
             expr = response['text']
