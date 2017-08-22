@@ -170,8 +170,6 @@ end
 function __s_o_s__julia_has_col_names(df)
   return !(names(df)[2]==collect(1:size(df)[2]))
 end
-
-
 function __s_o_s__julia_py_repr(obj)
   if isa(obj, Matrix)
     __s_o_s__julia_py_repr_matrix(obj)
@@ -253,14 +251,19 @@ class sos_Julia:
             else:
                 newname = name
             julia_repr = _julia_repr(env.sos_dict[name])
-            self.sos_kernel.run_cell('{} <- {}'.format(newname, julia_repr), True, False, on_error='Failed to get variable {} to julia'.format(name))
+            self.sos_kernel.run_cell('{} = {}'.format(newname, julia_repr), True, False,
+                                     on_error='Failed to put variable {} to julia'.format(name))
 
     def put_vars(self, items, to_kernel=None):
         # first let us get all variables with names starting with sos
-        response = self.sos_kernel.get_response('whos(r"sos")', ('stream',), name=('stdout',), debug=True)[0][1]
-        all_vars = [x.strip().split()[0] for x in response['text'].split('\n') if x.strip()]
-        items += [x for x in all_vars if x.startswith('sos')]
-
+        try:
+            response = self.sos_kernel.get_response('whos(r"sos")', ('stream',), name=('stdout',), debug=True)[0][1]
+            all_vars = [x.strip().split()[0] for x in response['text'].split('\n') if x.strip()]
+            items += [x for x in all_vars if x.startswith('sos')]
+        except:
+            # if ther ei sno variable with name sos, the command will not produce any output
+            pass
+        
         if not items:
             return {}
 
@@ -268,8 +271,11 @@ class sos_Julia:
         for item in items:
             py_repr = '__s_o_s__julia_py_repr({})'.format(item)
             self.sos_kernel.warn("RXPR for {} is {}".format(item, py_repr))
-            response = self.sos_kernel.get_response(py_repr, ('stream',), name=('stdout',), debug=True)[0][1]
-            expr = response['text']
+            response = self.sos_kernel.get_response(py_repr, ('execute_result',), debug=True)[0][1]
+            expr = response['data']['text/plain']
+            from sos.utils import log_to_file
+            log_to_file('Response {}'.format(response))
+            log_to_file('Obained expression {}'.format(expr))
 
             try:
                 if 'read_dataframe' in expr:
@@ -278,7 +284,7 @@ class sos_Julia:
                     # suppress flakes warning
                     read_dataframe
                 # evaluate as raw string to correctly handle \\ etc
-                res[item] = eval(expr)
+                res[item] = eval(eval(expr))
             except Exception as e:
                 self.sos_kernel.warn('Failed to evaluate {!r}: {}'.format(expr, e))
                 return None
