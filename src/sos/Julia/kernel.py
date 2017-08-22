@@ -136,7 +136,7 @@ function __s_o_s__julia_py_repr_logical_1(obj)
     obj==true ? "True" : "False"
 end
 function __s_o_s__julia_py_repr_integer_1(obj)
-    return obj
+    return string(obj)
 end
 function __s_o_s__julia_py_repr_double_1(obj)
     return "numpy.float64(" * string(obj) * ")"
