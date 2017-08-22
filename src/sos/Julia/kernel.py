@@ -175,7 +175,7 @@ function __s_o_s__julia_py_repr(obj)
     __s_o_s__julia_py_repr_matrix(obj)
   elseif isa(obj, DataFrame)
     __s_o_s__julia_py_repr_dataframe(obj)
-  elseif isa(obj, Void) || is(obj, NaN)
+  elseif isa(obj, Void) || obj === NaN
     return "None"
     # if needed to name vector in julia, need to use a package called NamedArrays
   elseif isa(obj, Vector{Int})
