@@ -133,7 +133,7 @@ using Feather
 using NamedArrays
 using DataFrames
 function __s_o_s__julia_py_repr_logical_1(obj)
-    obj==true ? "true" : "false"
+    obj==true ? "True" : "False"
 end
 function __s_o_s__julia_py_repr_integer_1(obj)
     return string(obj)
