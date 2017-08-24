@@ -285,4 +285,6 @@ class sos_Julia:
         return res
 
     def sessioninfo(self):
-        return self.sos_kernel.get_response(r'versioninfo(true)', ('stream',), name=('stdout',))[0][1]['text']
+        ret = self.sos_kernel.get_response(r'versioninfo(true)',
+                ('stream',), name=('stdout',), debug=True)
+        return '\n'.join(x[1]['text'] for x in ret)
