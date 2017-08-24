@@ -149,6 +149,15 @@ end
 function __s_o_s__julia_py_repr_character_1(obj)
   return "r\"\"\"" * obj * "\"\"\""
 end
+function __s_o_s__julia_py_repr_dict_1(obj)
+  val = collect(values(obj))
+  key = collect(keys(obj))
+  res = __s_o_s__julia_py_repr_character_1(key[1]) * ":" * string(val[1]) * ","
+  for i in 2:length(val)
+    res = res * __s_o_s__julia_py_repr_character_1(key[i]) * ":" * string(val[i]) * ","
+  end
+  return "{" * res * "}"
+end
 # Dataframe in Julia doesn't have rowname
 function __s_o_s__julia_py_repr_dataframe(obj)
   tf = joinpath(tempname())
@@ -177,6 +186,8 @@ function __s_o_s__julia_py_repr(obj)
     __s_o_s__julia_py_repr_dataframe(obj)
   elseif isa(obj, Void) || obj === NaN
     return "None"
+  elseif isa(obj, Dict)
+    __s_o_s__julia_py_repr_dict_1(obj)
     # if needed to name vector in julia, need to use a package called NamedArrays
   elseif isa(obj, Vector{Int})
     if (length(obj) == 1)
