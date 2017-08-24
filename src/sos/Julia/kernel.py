@@ -202,6 +202,8 @@ function __s_o_s__julia_py_repr(obj)
     else
       return "[" * join([__s_o_s__julia_py_repr_character_1(i) for i in obj], ",") * "]"
     end
+  elseif isa(obj, Vector{Any})
+      return "[" * join([__s_o_s__julia_py_repr(i) for i in obj], ",") * "]"
   elseif isa(obj, Vector{Bool})
     if (length(obj) == 1)
       __s_o_s__julia_py_repr_logical_1(obj)
