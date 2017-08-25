@@ -156,9 +156,9 @@ end
 function __s_o_s__julia_py_repr_dict_1(obj)
   val = collect(values(obj))
   key = collect(keys(obj))
-  res = __s_o_s__julia_py_repr_character_1(key[1]) * ":" * string(val[1]) * ","
+  res = __s_o_s__julia_py_repr_character_1(key[1]) * ":" * string(__s_o_s__julia_py_repr(val[1])) * ","
   for i in 2:length(val)
-    res = res * __s_o_s__julia_py_repr_character_1(key[i]) * ":" * string(val[i]) * ","
+    res = res * __s_o_s__julia_py_repr_character_1(key[i]) * ":" * string(__s_o_s__julia_py_repr(val[i])) * ","
   end
   return "{" * res * "}"
 end
@@ -178,6 +178,9 @@ function __s_o_s__julia_py_repr_namedarray(obj)
   val = [obj[i] for i in key]
   return "pandas.Series(" * "[" * join([__s_o_s__julia_py_repr(i) for i in val], ",") * "]," * "index=[" * join([__s_o_s__julia_py_repr_character_1(j) for j in key], ",") * "])"
 end
+function __s_o_s__julia_py_repr_set(obj)
+  return "{" * join([__s_o_s__julia_py_repr(i) for i in obj], ",") * "}"
+end
 function __s_o_s__julia_py_repr_n(obj)
   # The problem of join() is that it would ignore the double quote of a string
   return "[" * join([__s_o_s__julia_py_repr(i) for i in obj], ",") * "]"
@@ -191,6 +194,8 @@ end
 function __s_o_s__julia_py_repr(obj)
   if isa(obj, Matrix)
     __s_o_s__julia_py_repr_matrix(obj)
+  elseif isa(obj, Set)
+    __s_o_s__julia_py_repr_set(obj)
   elseif isa(obj, DataFrame)
     __s_o_s__julia_py_repr_dataframe(obj)
   elseif isa(obj, Void) || obj === NaN
