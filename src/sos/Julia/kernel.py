@@ -45,8 +45,10 @@ def homogeneous_type(seq):
 def _julia_repr(obj):
     if isinstance(obj, bool):
         return 'true' if obj else 'false'
-    elif isinstance(obj, (int, float, str)):
+    elif isinstance(obj, (int, float)):
         return repr(obj)
+    elif isinstance(obj, str):
+        return '"""' + obj + '"""'
     elif isinstance(obj, complex):
         return 'complex(' + str(obj.real) + ',' + str(obj.imag) + ')'
     elif isinstance(obj, Sequence):
@@ -76,7 +78,7 @@ def _julia_repr(obj):
                     'See https://github.com/wesm/feather/tree/master/python for details.')
             feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
             feather.write_dataframe(pandas.DataFrame(obj).copy(), feather_tmp_)
-            return 'Feather.read("' + feather_tmp_ + '")'
+            return 'Array(Feather.read("' + feather_tmp_ + '"))'
         elif isinstance(obj, numpy.ndarray):
             return '[' + ','.join(_julia_repr(x) for x in obj) + ']'
         elif isinstance(obj, pandas.DataFrame):
