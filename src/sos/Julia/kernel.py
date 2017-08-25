@@ -110,7 +110,8 @@ def _julia_repr(obj):
         elif isinstance(obj, pandas.Series):
             dat=list(obj.values)
             ind=list(obj.index.values)
-            return 'NamedArray(' + '[' + ','.join(_julia_repr(x) for x in dat) + ']' + ',(["' + '","'.join(_julia_repr(y) for y in ind) + '"],))'
+            ans='NamedArray(' + '[' + ','.join(_julia_repr(x) for x in dat) + ']' + ',([' + ','.join(_julia_repr(y) for y in ind) + '],))'
+            return ans.replace("'",'"')
         else:
             return repr('Unsupported datatype {}'.format(short_repr(obj)))
 
