@@ -24,6 +24,7 @@ from collections import Sequence
 import tempfile
 from sos.utils import short_repr, env
 from IPython.core.error import UsageError
+import pandas
 
 
 def homogeneous_type(seq):
@@ -169,6 +170,11 @@ function __s_o_s__julia_py_repr_matrix(obj)
   Feather.write(tf, convert(DataFrame, obj))
   return "read_dataframe(r'" * tf * "').as_matrix()"
 end
+function __s_o_s__julia_py_repr_namedarray(obj)
+  key = names(obj)[1]
+  val = [obj[i] for i in key]
+  return "pandas.Series(" * "[" * join([__s_o_s__julia_py_repr(i) for i in val], ",") * "]," * "index=[" * join([__s_o_s__julia_py_repr_character_1(j) for j in key], ",") * "])"
+end
 function __s_o_s__julia_py_repr_n(obj)
   # The problem of join() is that it would ignore the double quote of a string
   return "[" * join([__s_o_s__julia_py_repr(i) for i in obj], ",") * "]"
@@ -221,6 +227,8 @@ function __s_o_s__julia_py_repr(obj)
     else
       return "[" * join([__s_o_s__julia_py_repr_logical_1(i) for i in obj], ",") * "]"
     end
+  elseif isa(obj, NamedArrays.NamedArray{Int64,1,Array{Int64,1}})
+      return __s_o_s__julia_py_repr_namedarray(obj)
   elseif isa(obj, Int)
     __s_o_s__julia_py_repr_integer_1(obj)
   elseif isa(obj, Complex)
