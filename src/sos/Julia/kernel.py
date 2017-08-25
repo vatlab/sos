@@ -176,7 +176,7 @@ end
 function __s_o_s__julia_py_repr_namedarray(obj)
   key = names(obj)[1]
   val = [obj[i] for i in key]
-  return "pandas.Series(" * "[" * join([__s_o_s__julia_py_repr(i) for i in val], ",") * "]," * "index=[" * join([__s_o_s__julia_py_repr_character_1(j) for j in key], ",") * "])"
+  return "pandas.Series(" * "[" * join([__s_o_s__julia_py_repr(i) for i in val], ",") * "]," * "index=[" * join([__s_o_s__julia_py_repr(j) for j in key], ",") * "])"
 end
 function __s_o_s__julia_py_repr_set(obj)
   return "{" * join([__s_o_s__julia_py_repr(i) for i in obj], ",") * "}"
