@@ -36,88 +36,6 @@ def homogeneous_type(seq):
         return True if all(isinstance(x, first_type) for x in iseq) else False
 
 #
-#  support for %get
-#
-#  Converting a Python object to a julia expression that will be executed
-#  by the julia kernel.
-#
-#
-def _julia_repr(obj):
-    if isinstance(obj, bool):
-        return 'true' if obj else 'false'
-    elif isinstance(obj, (int, float)):
-        return repr(obj)
-    elif isinstance(obj, str):
-        return '"""' + obj + '"""'
-    elif isinstance(obj, complex):
-        return 'complex(' + str(obj.real) + ',' + str(obj.imag) + ')'
-    elif isinstance(obj, Sequence):
-        if len(obj) == 0:
-            return '[]'
-        else:
-            return '[' + ','.join(_julia_repr(x) for x in obj) + ']'
-    elif obj is None:
-        return 'NaN'
-    elif isinstance(obj, dict):
-        return 'Dict(' + ','.join('"{}" => {}'.format(x, _julia_repr(y)) for x,y in obj.items()) + ')'
-    elif isinstance(obj, set):
-        return 'Set([' + ','.join(_julia_repr(x) for x in obj) + '])'
-    else:
-        import numpy
-        import pandas
-        if isinstance(obj, (numpy.intc, numpy.intp, numpy.int8, numpy.int16, numpy.int32, numpy.int64,\
-                numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64, numpy.float16, numpy.float32)):
-            return repr(obj)
-        elif isinstance(obj, numpy.float64):
-            return 'Float64(' + obj + ')'
-        elif isinstance(obj, numpy.matrixlib.defmatrix.matrix):
-            try:
-                import feather
-            except ImportError:
-                raise UsageError('The feather-format module is required to pass numpy matrix as julia matrix(array)'
-                    'See https://github.com/wesm/feather/tree/master/python for details.')
-            feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
-            feather.write_dataframe(pandas.DataFrame(obj).copy(), feather_tmp_)
-            return 'Array(Feather.read("' + feather_tmp_ + '", nullable=false))'
-        elif isinstance(obj, numpy.ndarray):
-            return '[' + ','.join(_julia_repr(x) for x in obj) + ']'
-        elif isinstance(obj, pandas.DataFrame):
-            try:
-                import feather
-            except ImportError:
-                raise UsageError('The feather-format module is required to pass pandas DataFrame as julia.DataFrames'
-                    'See https://github.com/wesm/feather/tree/master/python for details.')
-            feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
-            try:
-                data = obj.copy()
-                # if the dataframe has index, it would not be transferred due to limitations
-                # of feather. We will have to do something to save the index separately and
-                # recreate it. (#397)
-                if isinstance(data.index, pandas.Index):
-                    df_index = list(data.index)
-                elif not isinstance(data.index, pandas.RangeIndex):
-                    # we should give a warning here
-                    df_index=None
-                feather.write_dataframe(data, feather_tmp_)
-            except Exception:
-                # if data cannot be written, we try to manipulate data
-                # frame to have consistent types and try again
-                for c in data.columns:
-                    if not homogeneous_type(data[c]):
-                        data[c] = [str(x) for x in data[c]]
-                feather.write_dataframe(data, feather_tmp_)
-                # use {!r} for path because the string might contain c:\ which needs to be
-                # double quoted.
-            return 'Feather.read("' + feather_tmp_ + '", nullable=false)'
-        elif isinstance(obj, pandas.Series):
-            dat=list(obj.values)
-            ind=list(obj.index.values)
-            ans='NamedArray(' + '[' + ','.join(_julia_repr(x) for x in dat) + ']' + ',([' + ','.join(_julia_repr(y) for y in ind) + '],))'
-            return ans.replace("'",'"')
-        else:
-            return repr('Unsupported datatype {}'.format(short_repr(obj)))
-
-
 
 # julia    length (n)    Python
 # NaN        None
@@ -287,6 +205,85 @@ class sos_Julia:
         self.kernel_name = kernel_name
         self.init_statements = julia_init_statements
 
+#  support for %get
+#
+#  Converting a Python object to a julia expression that will be executed
+#  by the julia kernel.
+#
+#
+    def _julia_repr(self, obj):
+        if isinstance(obj, bool):
+            return 'true' if obj else 'false'
+        elif isinstance(obj, (int, float)):
+            return repr(obj)
+        elif isinstance(obj, str):
+            return '"""' + obj + '"""'
+        elif isinstance(obj, complex):
+            return 'complex(' + str(obj.real) + ',' + str(obj.imag) + ')'
+        elif isinstance(obj, Sequence):
+            if len(obj) == 0:
+                return '[]'
+            else:
+                return '[' + ','.join(self._julia_repr(x) for x in obj) + ']'
+        elif obj is None:
+            return 'NaN'
+        elif isinstance(obj, dict):
+            return 'Dict(' + ','.join('"{}" => {}'.format(x, self._julia_repr(y)) for x,y in obj.items()) + ')'
+        elif isinstance(obj, set):
+            return 'Set([' + ','.join(self._julia_repr(x) for x in obj) + '])'
+        else:
+            import numpy
+            import pandas
+            if isinstance(obj, (numpy.intc, numpy.intp, numpy.int8, numpy.int16, numpy.int32, numpy.int64,\
+                    numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64, numpy.float16, numpy.float32)):
+                return repr(obj)
+            elif isinstance(obj, numpy.float64):
+                return 'Float64(' + obj + ')'
+            elif isinstance(obj, numpy.matrixlib.defmatrix.matrix):
+                try:
+                    import feather
+                except ImportError:
+                    raise UsageError('The feather-format module is required to pass numpy matrix as julia matrix(array)'
+                        'See https://github.com/wesm/feather/tree/master/python for details.')
+                feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
+                feather.write_dataframe(pandas.DataFrame(obj).copy(), feather_tmp_)
+                return 'Array(Feather.read("' + feather_tmp_ + '", nullable=false))'
+            elif isinstance(obj, numpy.ndarray):
+                return '[' + ','.join(self._julia_repr(x) for x in obj) + ']'
+            elif isinstance(obj, pandas.DataFrame):
+                try:
+                    import feather
+                except ImportError:
+                    raise UsageError('The feather-format module is required to pass pandas DataFrame as julia.DataFrames'
+                        'See https://github.com/wesm/feather/tree/master/python for details.')
+                feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
+                try:
+                    data = obj.copy()
+                    # Julia DataFrame does not have index
+                    if not isinstance(data.index, pandas.RangeIndex):
+                        self.sos_kernel.warn('Raw index is ignored because Julia DataFrame does not support raw index.') 
+                    feather.write_dataframe(data, feather_tmp_)
+                except Exception:
+                    # if data cannot be written, we try to manipulate data
+                    # frame to have consistent types and try again
+                    for c in data.columns:
+                        if not homogeneous_type(data[c]):
+                            data[c] = [str(x) for x in data[c]]
+                    feather.write_dataframe(data, feather_tmp_)
+                    # use {!r} for path because the string might contain c:\ which needs to be
+                    # double quoted.
+                return 'Feather.read("' + feather_tmp_ + '", nullable=false)'
+            elif isinstance(obj, pandas.Series):
+                dat=list(obj.values)
+                ind=list(obj.index.values)
+                ans='NamedArray(' + '[' + ','.join(self._julia_repr(x) for x in dat) + ']' + ',([' + ','.join(self._julia_repr(y) for y in ind) + '],))'
+                return ans.replace("'",'"')
+            else:
+                return repr('Unsupported datatype {}'.format(short_repr(obj)))
+
+
+
+
     def get_vars(self, names):
         for name in names:
             if name.startswith('_'):
@@ -294,7 +291,7 @@ class sos_Julia:
                 newname = '.' + name[1:]
             else:
                 newname = name
-            julia_repr = _julia_repr(env.sos_dict[name])
+            julia_repr = self._julia_repr(env.sos_dict[name])
             self.sos_kernel.run_cell('{} = {}'.format(newname, julia_repr), True, False,
                                      on_error='Failed to put variable {} to julia'.format(name))
 
@@ -316,9 +313,6 @@ class sos_Julia:
             py_repr = '__julia_py_repr({})'.format(item)
             response = self.sos_kernel.get_response(py_repr, ('execute_result',))[0][1]
             expr = response['data']['text/plain']
-            from sos.utils import log_to_file
-            log_to_file('Response {}'.format(response))
-            log_to_file('Obained expression {}'.format(expr))
 
             try:
                 if 'read_dataframe' in expr:
