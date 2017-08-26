@@ -133,120 +133,141 @@ def _julia_repr(obj):
 # data.frame    n > 0    DataFrame
 
 julia_init_statements = r'''
-using Feather
-using NamedArrays
-using DataFrames
-function __s_o_s__julia_py_repr_logical_1(obj)
+try
+  using Feather
+catch
+  Pkg.add("Feather")
+  using Feather
+end
+try
+  using NamedArrays
+catch
+  Pkg.add("NamedArrays")
+  using NamedArrays
+end
+try
+  using DataFrames
+catch
+  Pkg.add("DataFrames")
+  using DataFrames
+end
+try
+  using NamedArrays
+catch
+  Pkg.add("NamedArrays")
+  using NamedArrays
+end
+function __julia_py_repr_logical_1(obj)
     obj==true ? "True" : "False"
 end
-function __s_o_s__julia_py_repr_integer_1(obj)
+function __julia_py_repr_integer_1(obj)
     return string(obj)
 end
-function __s_o_s__julia_py_repr_double_1(obj)
+function __julia_py_repr_double_1(obj)
     return "numpy.float64(" * string(obj) * ")"
 end
-function __s_o_s__julia_py_repr_complex_1(obj)
+function __julia_py_repr_complex_1(obj)
   rl = real(obj)
   im = imag(obj)
   return "complex(" * string(rl) * "," * string(im) * ")"
 end
-function __s_o_s__julia_py_repr_character_1(obj)
+function __julia_py_repr_character_1(obj)
   return "r\"\"\"" * obj * "\"\"\""
 end
-function __s_o_s__julia_py_repr_dict_1(obj)
+function __julia_py_repr_dict_1(obj)
   val = collect(values(obj))
   key = collect(keys(obj))
-  res = __s_o_s__julia_py_repr_character_1(key[1]) * ":" * string(__s_o_s__julia_py_repr(val[1])) * ","
+  res = __julia_py_repr_character_1(key[1]) * ":" * string(__julia_py_repr(val[1])) * ","
   for i in 2:length(val)
-    res = res * __s_o_s__julia_py_repr_character_1(key[i]) * ":" * string(__s_o_s__julia_py_repr(val[i])) * ","
+    res = res * __julia_py_repr_character_1(key[i]) * ":" * string(__julia_py_repr(val[i])) * ","
   end
   return "{" * res * "}"
 end
 # Dataframe in Julia doesn't have rowname
-function __s_o_s__julia_py_repr_dataframe(obj)
+function __julia_py_repr_dataframe(obj)
   tf = joinpath(tempname())
   Feather.write(tf, obj)
   return "read_dataframe(r'" * tf * "')"
 end
-function __s_o_s__julia_py_repr_matrix(obj)
+function __julia_py_repr_matrix(obj)
   tf = joinpath(tempname())
   Feather.write(tf, convert(DataFrame, obj))
   return "read_dataframe(r'" * tf * "').as_matrix()"
 end
-function __s_o_s__julia_py_repr_namedarray(obj)
+function __julia_py_repr_namedarray(obj)
   key = names(obj)[1]
   val = [obj[i] for i in key]
-  return "pandas.Series(" * "[" * join([__s_o_s__julia_py_repr(i) for i in val], ",") * "]," * "index=[" * join([__s_o_s__julia_py_repr(j) for j in key], ",") * "])"
+  return "pandas.Series(" * "[" * join([__julia_py_repr(i) for i in val], ",") * "]," * "index=[" * join([__julia_py_repr(j) for j in key], ",") * "])"
 end
-function __s_o_s__julia_py_repr_set(obj)
-  return "{" * join([__s_o_s__julia_py_repr(i) for i in obj], ",") * "}"
+function __julia_py_repr_set(obj)
+  return "{" * join([__julia_py_repr(i) for i in obj], ",") * "}"
 end
-function __s_o_s__julia_py_repr_n(obj)
+function __julia_py_repr_n(obj)
   # The problem of join() is that it would ignore the double quote of a string
-  return "[" * join([__s_o_s__julia_py_repr(i) for i in obj], ",") * "]"
+  return "[" * join([__julia_py_repr(i) for i in obj], ",") * "]"
 end
-function __s_o_s__julia_has_row_names(df)
+function __julia_has_row_names(df)
   return !(names(df)[1]==collect(1:size(df)[1]))
 end
-function __s_o_s__julia_has_col_names(df)
+function __julia_has_col_names(df)
   return !(names(df)[2]==collect(1:size(df)[2]))
 end
-function __s_o_s__julia_py_repr(obj)
+function __julia_py_repr(obj)
   if isa(obj, Matrix)
-    __s_o_s__julia_py_repr_matrix(obj)
+    __julia_py_repr_matrix(obj)
   elseif isa(obj, Set)
-    __s_o_s__julia_py_repr_set(obj)
+    __julia_py_repr_set(obj)
   elseif isa(obj, DataFrame)
-    __s_o_s__julia_py_repr_dataframe(obj)
+    __julia_py_repr_dataframe(obj)
   elseif isa(obj, Void) || obj === NaN
     return "None"
   elseif isa(obj, Dict)
-    __s_o_s__julia_py_repr_dict_1(obj)
+    __julia_py_repr_dict_1(obj)
     # if needed to name vector in julia, need to use a package called NamedArrays
   elseif isa(obj, Vector{Int})
     if (length(obj) == 1)
-      __s_o_s__julia_py_repr_integer_1(obj)
+      __julia_py_repr_integer_1(obj)
     else
-      return "[" * join([__s_o_s__julia_py_repr_integer_1(i) for i in obj], ",") * "]"
+      return "[" * join([__julia_py_repr_integer_1(i) for i in obj], ",") * "]"
     end
   elseif isa(obj, Vector{Complex{Int}}) || isa(obj, Vector{Complex{Float64}})
     if (length(obj) == 1)
-      __s_o_s__julia_py_repr_complex_1(obj)
+      __julia_py_repr_complex_1(obj)
     else
-      return "[" * join([__s_o_s__julia_py_repr_complex_1(i) for i in obj], ",") * "]"
+      return "[" * join([__julia_py_repr_complex_1(i) for i in obj], ",") * "]"
     end
   elseif isa(obj, Vector{Float64})
     if (length(obj) == 1)
-      __s_o_s__julia_py_repr_double_1(obj)
+      __julia_py_repr_double_1(obj)
     else
-      return "[" * join([__s_o_s__julia_py_repr_double_1(i) for i in obj], ",") * "]"
+      return "[" * join([__julia_py_repr_double_1(i) for i in obj], ",") * "]"
     end
   elseif isa(obj, Vector{String})
     if (length(obj) == 1)
-      __s_o_s__julia_py_repr_character_1(obj)
+      __julia_py_repr_character_1(obj)
     else
-      return "[" * join([__s_o_s__julia_py_repr_character_1(i) for i in obj], ",") * "]"
+      return "[" * join([__julia_py_repr_character_1(i) for i in obj], ",") * "]"
     end
   elseif isa(obj, Vector{Any})
-      return "[" * join([__s_o_s__julia_py_repr(i) for i in obj], ",") * "]"
+      return "[" * join([__julia_py_repr(i) for i in obj], ",") * "]"
   elseif isa(obj, Vector{Bool})
     if (length(obj) == 1)
-      __s_o_s__julia_py_repr_logical_1(obj)
+      __julia_py_repr_logical_1(obj)
     else
-      return "[" * join([__s_o_s__julia_py_repr_logical_1(i) for i in obj], ",") * "]"
+      return "[" * join([__julia_py_repr_logical_1(i) for i in obj], ",") * "]"
     end
   elseif isa(obj, NamedArrays.NamedArray{Int64,1,Array{Int64,1}})
-      return __s_o_s__julia_py_repr_namedarray(obj)
+      return __julia_py_repr_namedarray(obj)
   elseif isa(obj, Int)
-    __s_o_s__julia_py_repr_integer_1(obj)
+    __julia_py_repr_integer_1(obj)
   elseif isa(obj, Complex)
-    __s_o_s__julia_py_repr_complex_1(obj)
+    __julia_py_repr_complex_1(obj)
   elseif isa(obj, Float64)
-    __s_o_s__julia_py_repr_double_1(obj)
+    __julia_py_repr_double_1(obj)
   elseif isa(obj, String)
-    __s_o_s__julia_py_repr_character_1(obj)
+    __julia_py_repr_character_1(obj)
   elseif isa(obj, Bool)
-    __s_o_s__julia_py_repr_logical_1(obj)
+    __julia_py_repr_logical_1(obj)
   else
     return "'Untransferrable variable'"
   end
@@ -280,7 +301,7 @@ class sos_Julia:
     def put_vars(self, items, to_kernel=None):
         # first let us get all variables with names starting with sos
         try:
-            response = self.sos_kernel.get_response('whos(r"sos")', ('stream',), name=('stdout',), debug=True)[0][1]
+            response = self.sos_kernel.get_response('whos(r"sos")', ('stream',), name=('stdout',))[0][1]
             all_vars = [x.strip().split()[0] for x in response['text'].split('\n') if x.strip()]
             items += [x for x in all_vars if x.startswith('sos')]
         except:
@@ -292,9 +313,8 @@ class sos_Julia:
 
         res = {}
         for item in items:
-            py_repr = '__s_o_s__julia_py_repr({})'.format(item)
-            self.sos_kernel.warn("RXPR for {} is {}".format(item, py_repr))
-            response = self.sos_kernel.get_response(py_repr, ('execute_result',), debug=True)[0][1]
+            py_repr = '__julia_py_repr({})'.format(item)
+            response = self.sos_kernel.get_response(py_repr, ('execute_result',))[0][1]
             expr = response['data']['text/plain']
             from sos.utils import log_to_file
             log_to_file('Response {}'.format(response))
@@ -315,5 +335,5 @@ class sos_Julia:
 
     def sessioninfo(self):
         ret = self.sos_kernel.get_response(r'versioninfo(true)',
-                ('stream',), name=('stdout',), debug=True)
+                ('stream',), name=('stdout',))
         return '\n'.join(x[1]['text'] for x in ret)
