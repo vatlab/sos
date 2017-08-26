@@ -78,7 +78,7 @@ def _julia_repr(obj):
                     'See https://github.com/wesm/feather/tree/master/python for details.')
             feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
             feather.write_dataframe(pandas.DataFrame(obj).copy(), feather_tmp_)
-            return 'Array(Feather.read("' + feather_tmp_ + '"))'
+            return 'Array(Feather.read("' + feather_tmp_ + '", nullable=false))'
         elif isinstance(obj, numpy.ndarray):
             return '[' + ','.join(_julia_repr(x) for x in obj) + ']'
         elif isinstance(obj, pandas.DataFrame):
@@ -108,7 +108,7 @@ def _julia_repr(obj):
                 feather.write_dataframe(data, feather_tmp_)
                 # use {!r} for path because the string might contain c:\ which needs to be
                 # double quoted.
-            return 'Feather.read("' + feather_tmp_ + '")'
+            return 'Feather.read("' + feather_tmp_ + '", nullable=false)'
         elif isinstance(obj, pandas.Series):
             dat=list(obj.values)
             ind=list(obj.index.values)

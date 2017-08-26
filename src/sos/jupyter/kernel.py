@@ -1397,7 +1397,7 @@ Available subkernels:\n{}'''.format(
                 # then switch back
                 self.switch_kernel(my_kernel)
 
-    def get_response(self, statement, msg_types, name=None, debug=False):
+    def get_response(self, statement, msg_types, name=None):
         # get response of statement of specific msg types.
         responses = []
         self.KC.execute(statement, silent=False, store_history=False)
@@ -1408,7 +1408,7 @@ Available subkernels:\n{}'''.format(
             while self.KC.iopub_channel.msg_ready():
                 sub_msg = self.KC.iopub_channel.get_msg()
                 msg_type = sub_msg['header']['msg_type']
-                if debug:
+                if self._debug_mode:
                     from sos.utils import log_to_file
                     log_to_file('MSG TYPE {}'.format(msg_type))
                     log_to_file('CONTENT  {}'.format(sub_msg['content']))
