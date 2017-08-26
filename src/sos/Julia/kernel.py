@@ -25,6 +25,7 @@ import tempfile
 from sos.utils import short_repr, env
 from IPython.core.error import UsageError
 import pandas
+import numpy
 
 
 def homogeneous_type(seq):
@@ -146,7 +147,7 @@ function __julia_py_repr(obj)
     if (length(obj) == 1)
       __julia_py_repr_integer_1(obj)
     else
-      return "[" * join([__julia_py_repr_integer_1(i) for i in obj], ",") * "]"
+      return "numpy.array([" * join([__julia_py_repr_integer_1(i) for i in obj], ",") * "])"
     end
   elseif isa(obj, Vector{Complex{Int}}) || isa(obj, Vector{Complex{Float64}})
     if (length(obj) == 1)
@@ -158,7 +159,7 @@ function __julia_py_repr(obj)
     if (length(obj) == 1)
       __julia_py_repr_double_1(obj)
     else
-      return "[" * join([__julia_py_repr_double_1(i) for i in obj], ",") * "]"
+      return "numpy.array([" * join([__julia_py_repr_double_1(i) for i in obj], ",") * "], dtype=numpy.float64)"
     end
   elseif isa(obj, Vector{String})
     if (length(obj) == 1)
@@ -232,8 +233,6 @@ class sos_Julia:
         elif isinstance(obj, set):
             return 'Set([' + ','.join(self._julia_repr(x) for x in obj) + '])'
         else:
-            import numpy
-            import pandas
             if isinstance(obj, (numpy.intc, numpy.intp, numpy.int8, numpy.int16, numpy.int32, numpy.int64,\
                     numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64, numpy.float16, numpy.float32)):
                 return repr(obj)
