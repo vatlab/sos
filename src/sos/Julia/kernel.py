@@ -45,10 +45,9 @@ def homogeneous_type(seq):
 # float64    1    double
 # character    1    unicode
 # string          string
-# vector          list
-# list without names    n > 0    list
-# list with names    n > 0    dict
-# matrix    n > 0    array
+# list    n > 0    list
+# lict    n > 0    dict
+# matrix    n > 0    matrix
 # data.frame    n > 0    DataFrame
 
 julia_init_statements = r'''
@@ -102,7 +101,7 @@ function __julia_py_repr_dict_1(obj)
   end
   return "{" * res * "}"
 end
-# Dataframe in Julia doesn't have rowname
+# Dataframe in Julia doesn't have rowname. Will keep tracking any update of Dataframes package in Julia
 function __julia_py_repr_dataframe(obj)
   tf = joinpath(tempname())
   Feather.write(tf, obj)
@@ -113,6 +112,7 @@ function __julia_py_repr_matrix(obj)
   Feather.write(tf, convert(DataFrame, obj))
   return "read_dataframe(r'" * tf * "').as_matrix()"
 end
+# namedarray is specific for list with names (and named vector in R)
 function __julia_py_repr_namedarray(obj)
   key = names(obj)[1]
   val = [obj[i] for i in key]
@@ -138,6 +138,7 @@ function __julia_py_repr(obj)
     __julia_py_repr_set(obj)
   elseif isa(obj, DataFrame)
     __julia_py_repr_dataframe(obj)
+  # type of NaN in Julia is Float64
   elseif isa(obj, Void) || obj === NaN
     return "None"
   elseif isa(obj, Dict)
@@ -218,6 +219,7 @@ class sos_Julia:
         elif isinstance(obj, (int, float)):
             return repr(obj)
         elif isinstance(obj, str):
+            # Not using repr() here becasue of the problem of qoutes in Julia.
             return '"""' + obj + '"""'
         elif isinstance(obj, complex):
             return 'complex(' + str(obj.real) + ',' + str(obj.imag) + ')'
@@ -236,6 +238,7 @@ class sos_Julia:
             if isinstance(obj, (numpy.intc, numpy.intp, numpy.int8, numpy.int16, numpy.int32, numpy.int64,\
                     numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64, numpy.float16, numpy.float32)):
                 return repr(obj)
+            # need to specify Float64() as the return to Julia in order to avoid losing precision
             elif isinstance(obj, numpy.float64):
                 return 'Float64(' + obj + ')'
             elif isinstance(obj, numpy.matrixlib.defmatrix.matrix):
