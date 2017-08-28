@@ -110,7 +110,7 @@ end
 function __julia_py_repr_matrix(obj)
   tf = joinpath(tempname())
   Feather.write(tf, convert(DataFrame, obj))
-  return "read_dataframe(r'" * tf * "').as_matrix()"
+  return "numpy.asmatrix(read_dataframe(r'" * tf * "'))"
 end
 # namedarray is specific for list with names (and named vector in R)
 function __julia_py_repr_namedarray(obj)
