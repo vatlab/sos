@@ -91,6 +91,25 @@ mat_var = np.matrix([[1,2],[3,4]])
             wait_for_idle(kc)
             #
 
+    def testGetPythonNoneFromJulia(self):
+        # Python -> Julia
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            # create a data frame
+            execute(kc=kc, code='''
+null_var = None
+''')
+            clear_channels(iopub)
+            execute(kc=kc, code="%use Julia")
+            wait_for_idle(kc)
+            execute(kc=kc, code="%get null_var")
+            wait_for_idle(kc)
+            execute(kc=kc, code="null_var === NaN")
+            res = get_display_data(iopub)
+            self.assertEqual(res, 'true')
+            execute(kc=kc, code="%use sos")
+            wait_for_idle(kc)
+            #
 
     def testGetPythonDataFromJulia(self):
         with sos_kernel() as kc:
