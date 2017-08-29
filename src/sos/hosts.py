@@ -501,12 +501,13 @@ class RemoteHost:
                 task_id, task_vars['_runtime']['walltime'], self.config['max_walltime']))
 
         if task_vars['_input'] and not isinstance(task_vars['_input'], Undetermined):
+            env.logger.info('{} ``sending`` {}'.format(task_id, short_repr(task_vars['_input'])))
             self.send_to_host(task_vars['_input'])
-            env.logger.info('{} ``send`` {}'.format(task_id, short_repr(task_vars['_input'])))
         if task_vars['_depends'] and not isinstance(task_vars['_depends'], Undetermined):
+            env.logger.info('{} ``sending`` {}'.format(task_id, short_repr(task_vars['_depends'])))
             self.send_to_host(task_vars['_depends'])
-            env.logger.info('{} ``send`` {}'.format(task_id, short_repr(task_vars['_depends'])))
         if 'to_host' in task_vars['_runtime']:
+            env.logger.info('{} ``sending`` {}'.format(task_id, short_repr(task_vars['_runtime']['to_host'])))
             if isinstance(task_vars['_runtime']['to_host'], dict):
                 th = {}
                 for x,y in task_vars['_runtime']['to_host'].items():
@@ -519,7 +520,6 @@ class RemoteHost:
                 self.send_to_host(th)
             else:
                 self.send_to_host(task_vars['_runtime']['to_host'])
-            env.logger.info('{} ``send`` {}'.format(task_id, short_repr(task_vars['_runtime']['to_host'])))
 
         # map variables
         # translate cur_dir, home_dir, and workdir
