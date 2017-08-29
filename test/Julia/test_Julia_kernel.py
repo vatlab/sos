@@ -69,12 +69,34 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             self.assertEqual(res, '(1000, 10)')
             execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
+        
+    def testGetPythonMatrixFromJulia(self):
+        # Python -> Julia
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            # create a data frame
+            execute(kc=kc, code='''
+import numpy as np
+mat_var = np.matrix([[1,2],[3,4]])
+''')
+            clear_channels(iopub)
+            execute(kc=kc, code="%use Julia")
+            wait_for_idle(kc)
+            execute(kc=kc, code="%get mat_var")
+            wait_for_idle(kc)
+            execute(kc=kc, code="size(mat_var)")
+            res = get_display_data(iopub)
+            self.assertEqual(res, '(2, 2)')
+            execute(kc=kc, code="%use sos")
+            wait_for_idle(kc)
             #
+
 
     def testGetPythonDataFromJulia(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             execute(kc=kc, code='''
+null_var = None
 num_var = 123
 import numpy
 import pandas
@@ -86,7 +108,6 @@ char_arr_var = ['1', '2', '3']
 list_var = [1, 2, '3']
 dict_var = dict(a=1, b=2, c='3')
 set_var = {1, 2, '3'}
-mat_var = numpy.matrix([[1,2],[3,4]])
 recursive_var = {'a': {'b': 123}, 'c': True}
 comp_var = 1+2j
 seri_var = pandas.Series([1,2,3,3,3,3])
@@ -115,7 +136,7 @@ seri_var = list(seri_var)
             self.assertEqual(res['set_var'], {1, 2, '3'})
             self.assertEqual(res['list_var'], [1,2,'3'])
             self.assertEqual(res['dict_var'], {'a': 1, 'b': 2, 'c': '3'})
-            #self.assertEqual(res['mat_var'].shape, (2, 2))
+            #self.assertEqual(res['mat_var'].shape, (2,2))
             self.assertEqual(res['recursive_var'],  {'a': {'b': 123}, 'c': True})
             self.assertEqual(res['comp_var'], 1+2j)
             self.assertEqual(res['seri_var'], [1,2,3,3,3,3])
@@ -142,6 +163,8 @@ seri_var = list(seri_var)
             wait_for_idle(kc)
             execute(kc=kc, code='''char_arr_var = [1, 2, "3"]''')
             wait_for_idle(kc)
+            #execute(kc=kc, code='''using NamedArrays''')
+            #wait_for_idle(kc)
             #execute(kc=kc, code='''named_list_var = NamedArray([1,2,3],(["a","b","c"],))''')
             #wait_for_idle(kc)
             execute(kc=kc, code='''mat_var = [1 2; 3 4]''')
@@ -158,11 +181,12 @@ seri_var = list(seri_var)
 %use sos
 seri_var = list(seri_var)
 ''')
-            wait_for_idle(kc)
-#           execute(kc=kc, code='''
+#            wait_for_idle(kc)
+#            execute(kc=kc, code='''
+#%use sos
 #named_list_var = list(named_list_var)
 #''')
-#            wait_for_idle(kc)
+            wait_for_idle(kc)
             execute(kc=kc, code="%dict null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var recursive_var comp_var")
             res = get_result(iopub)
             self.assertEqual(res['null_var'], None)
@@ -172,7 +196,7 @@ seri_var = list(seri_var)
             self.assertEqual(res['logic_arr_var'], [True, True, False])
             self.assertEqual(res['char_var'], '1"23')
             self.assertEqual(res['char_arr_var'], [1, 2, '3'])
-            #self.assertEqual(res['named_list_var'], [1, 2, 3])
+            #self.assertEqual(len(res['named_list_var']), 3)
             self.assertEqual(res['mat_var'].shape, (2,2))
             self.assertEqual(res['recursive_var'], {'a': 1, 'b': {'c': 3}, 'd': 'whatever'})
             self.assertEqual(res['comp_var'], 1+2j)
