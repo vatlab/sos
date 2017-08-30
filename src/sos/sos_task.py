@@ -402,6 +402,11 @@ del sos_handle_parameter_
         env.logger.info('{} ``skipped``'.format(task_id))
         return collect_task_result(task_id, sigil, sos_dict)
 
+    # if we are to really execute the task, touch the task file so that sos status shows correct
+    # execution duration.
+    if not subtask:
+        os.utime(task_file, None)
+
     try:
         # go to 'cur_dir'
         if '_runtime' in sos_dict and 'cur_dir' in sos_dict['_runtime']:
