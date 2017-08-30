@@ -2291,23 +2291,36 @@ Available subkernels:\n{}'''.format(
             finally:
                 self.options = old_options
         elif self.MAGIC_RUN.match(code):
-            options, remaining_code = self.get_magic_and_code(code, False)
-            old_options = self.options
-            self.options = options + ' ' + self.options
-            try:
-                # %run is executed in its own namespace
-                old_dict = env.sos_dict
-                self._reset_dict()
-                self._workflow_mode = True
-                return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
-            except Exception as e:
-                self.warn('Failed to execute workflow: {}'.format(e))
-                raise
-            finally:
-                old_dict.quick_update(env.sos_dict._dict)
-                env.sos_dict = old_dict
-                self._workflow_mode = False
-                self.options = old_options
+            # there can be multiple %run magic, but there should not be any other magics
+            run_code = code
+            run_options = []
+            while True:
+                options, run_code = self.get_magic_and_code(run_code, False)
+                run_options.append(options)
+                if self.MAGIC_RUN.match(run_code):
+                    options, run_code = self.get_magic_and_code(run_code, False)
+                    run_options.append(options)
+                else:
+                    break
+            # now we need to run the code multiple times with each option
+            for options in run_options:
+                old_options = self.options
+                self.options = options + ' ' + self.options
+                try:
+                    # %run is executed in its own namespace
+                    old_dict = env.sos_dict
+                    self._reset_dict()
+                    self._workflow_mode = True
+                    ret = self._do_execute(run_code, silent, store_history, user_expressions, allow_stdin)
+                except Exception as e:
+                    self.warn('Failed to execute workflow: {}'.format(e))
+                    raise
+                finally:
+                    old_dict.quick_update(env.sos_dict._dict)
+                    env.sos_dict = old_dict
+                    self._workflow_mode = False
+                    self.options = old_options
+            return ret
         elif self.MAGIC_SOSRUN.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             old_options = self.options
