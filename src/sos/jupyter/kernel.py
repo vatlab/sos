@@ -1075,7 +1075,7 @@ class SoS_Kernel(IPythonKernel):
             # remove lines joint by \
             lines[0] = lines[0].replace('\\\n', '')
         else:
-            lines[0] = code.split('\n', 1)
+            lines = code.split('\n', 1)
 
         pieces = self._interpolate_text(lines[0], quiet=False).strip().split(None, 1)
         if len(pieces) == 2:
@@ -2295,8 +2295,6 @@ Available subkernels:\n{}'''.format(
             run_code = code
             run_options = []
             while True:
-                options, run_code = self.get_magic_and_code(run_code, False)
-                run_options.append(options)
                 if self.MAGIC_RUN.match(run_code):
                     options, run_code = self.get_magic_and_code(run_code, False)
                     run_options.append(options)
