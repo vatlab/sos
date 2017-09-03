@@ -89,11 +89,11 @@ before_install:
     #- which ijskernel
     #
     # Test Julia
-    - sudo apt-get install julia
-    - julia -e "ENV[\"JUPYTER\"]=\"$(which jupyter)\";Pkg.add(\"IJulia\")"
-    - julia -e 'Pkg.add("Feather")'
-    - julia -e 'Pkg.add("DataFrames")'
-    - julia -e 'Pkg.add("NamedArrays")'
+    #- sudo apt-get install julia
+    #- julia -e "ENV[\"JUPYTER\"]=\"$(which jupyter)\";Pkg.add(\"IJulia\")"
+    #- julia -e 'Pkg.add("Feather")'
+    #- julia -e 'Pkg.add("DataFrames")'
+    #- julia -e 'Pkg.add("NamedArrays")'
 
 sudo: required
 services:
@@ -114,7 +114,6 @@ script:
            pytest -x -v docker &&
            pytest -x -v Bash &&
            pytest -x -v JavaScript &&
-           pytest -x -v Julia &&
            pytest -x -v Python2 &&
            pytest -x -v Python3 &&
            pytest -x -v R &&
@@ -128,7 +127,6 @@ script:
            pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report=xml --cov-append docker &&
            pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append Bash &&
            pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append JavaScript &&
-           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append Julia &&
            pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append Python2 &&
            pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append Python3 &&
            pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append R &&
