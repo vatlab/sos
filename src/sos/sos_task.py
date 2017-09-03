@@ -182,7 +182,20 @@ def collect_task_result(task_id, sigil, sos_dict):
         env.logger.debug('task {} (index={}) return shared variable {}'.format(task_id, env.sos_dict['_index'], shared))
     # the difference between sos_dict and env.sos_dict is that sos_dict (the original version) can have remote() targets
     # which should not be reported.
-    output = {} if env.sos_dict['_output'] is None or sos_dict['_output'] is None else {x:FileTarget(x).signature() for x in sos_dict['_output'] if isinstance(x, str)}
+    if env.sos_dict['_output'] is None:
+        output = {}
+    elif isinstance(env.sos_dict['_output'], Undetermined):
+        from .sos_executor import __null_func__
+        from .target import dynamic
+        from .sos_step import _expand_file_list
+        env.sos_dict.set('__null_func__', __null_func__)
+        # re-process the output statement to determine output files
+        args, _ = SoS_eval('__null_func__({})'.format(env.sos_dict['_output'].expr), sigil)
+        # handle dynamic args
+        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
+        output = {x:FileTarget(x).signature() for x in _expand_file_list(True, *args)}
+    else:
+        output = {x:FileTarget(x).signature() for x in sos_dict['_output'] if isinstance(x, str)}
     input = {} if env.sos_dict['_input'] is None or sos_dict['_input'] is None else {x:FileTarget(x).signature() for x in sos_dict['_input'] if isinstance(x, str)}
     depends = {} if env.sos_dict['_depends'] is None or sos_dict['_depends'] is None else {x:FileTarget(x).signature() for x in sos_dict['_depends'] if isinstance(x, str)}
     return {'ret_code': 0, 'task': task_id, 'input': input, 'output': output, 'depends': depends,
