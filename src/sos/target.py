@@ -565,8 +565,13 @@ class RuntimeInfo:
 
     def release(self):
         if self._lock:
-            self._lock.release()
-            env.logger.trace('Lock released for output files {}'.format(short_repr(self.output_files)))
+            try:
+                self._lock.release()
+                env.logger.trace('Lock released for output files {}'.format(short_repr(self.output_files)))
+            except Exception as e:
+                env.logger.warning('Unable to release lock for output files {}: {}'.format(self.output_files, e))
+            finally:
+                self._lock = None
 
     def set(self, files, file_type):
         # add signature file if input and output files are dynamic
