@@ -1122,11 +1122,13 @@ class Base_Step_Executor:
                         signatures[idx] = None
                     continue
                 # finally, tasks..
+                # now the regular step process is done and we are going to the task part
+                # we should be able to release the signature because external task has its own signatures
+                if signatures[idx] is not None:
+                    signatures[idx].release()
                 if not self.step.task:
-                    if signatures[idx] is not None:
                         if 'sos_run' not in env.sos_dict['__signature_vars__']:
                             signatures[idx].write()
-                        signatures[idx].release()
                         signatures[idx] = None
                     continue
 
@@ -1149,6 +1151,7 @@ class Base_Step_Executor:
                     else:
                         raise RuntimeError('Unacceptable value for option active: {}'.format(active))
 
+                #
                 self.log('task')
                 try:
                     task = self.prepare_task()
@@ -1171,7 +1174,6 @@ class Base_Step_Executor:
                 if signatures[idx] is not None:
                     if res['ret_code'] == 0:
                         signatures[idx].write()
-                    signatures[idx].release()
                     signatures[idx] = None
             # check results
             for x in self.proc_results:
@@ -1231,7 +1233,10 @@ class Base_Step_Executor:
             # release all signatures
             for sig in signatures:
                 if sig is not None:
-                    sig.release()
+                    try:
+                        sig.release()
+                    except:
+                        pass
 
 
 def _expand_file_list(ignore_unknown, *args):
