@@ -32,7 +32,7 @@ import pkg_resources
 from collections.abc import Sequence
 
 from .utils import env, short_repr, expand_size, format_HHMMSS, expand_time
-from .sos_eval import interpolate, Undetermined, cfg_interpolate
+from .sos_eval import Undetermined, cfg_interpolate
 from .sos_task import BackgroundProcess_TaskEngine, TaskParams, loadTask
 
 #
@@ -203,7 +203,10 @@ class LocalHost:
 
     def check_output(self, cmd):
         # get the output of command
+        if isinstance(cmd, list):
+            cmd = subprocess.list2cmdline(cmd)
         try:
+            cmd = cfg_interpolate(cmd)
             return subprocess.check_output(cmd, shell=isinstance(cmd, str)).decode()
         except Exception as e:
             env.logger.warning('Check output of {} failed: {}'.format(cmd, e))
@@ -427,9 +430,8 @@ class RemoteHost:
                 env.logger.debug('Skip sending {} on shared file system'.format(source))
             else:
                 env.logger.debug('Sending ``{}`` to {}:{}'.format(source, self.alias, dest))
-                cmd = interpolate(self._get_send_cmd(rename=os.path.basename(source) != os.path.basename(dest)),
-                        '${ }', {'source': source.rstrip('/'), 'dest': dest, 'host': self.address, 'port': self.port},
-                        env.sos_dict.get('CONFIG', {}))
+                cmd = cfg_interpolate(self._get_send_cmd(rename=os.path.basename(source) != os.path.basename(dest)),
+                        {'source': source.rstrip('/'), 'dest': dest, 'host': self.address, 'port': self.port})
                 env.logger.debug(cmd)
                 ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                 if (ret != 0):
@@ -458,9 +460,8 @@ class RemoteHost:
                 env.logger.debug('Skip retrieving ``{}`` from shared file system'.format(dest))
                 received[dest] = source
             else:
-                cmd = interpolate(self._get_receive_cmd(rename=os.path.basename(source) != os.path.basename(dest)),
-                    '${ }', {'source': source.rstrip('/'), 'dest': dest, 'host': self.address, 'port': self.port},
-                    env.sos_dict.get('CONFIG', {}))
+                cmd = cfg_interpolate(self._get_receive_cmd(rename=os.path.basename(source) != os.path.basename(dest)),
+                    {'source': source.rstrip('/'), 'dest': dest, 'host': self.address, 'port': self.port})
                 env.logger.debug(cmd)
                 try:
                     ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
@@ -571,9 +572,8 @@ class RemoteHost:
         self.send_task_file(task_file)
 
     def send_task_file(self, task_file):
-        send_cmd = interpolate('ssh -q ${address} -p ${port} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks" && scp -q -P ${port} ${job_file!ap} ${address}:.sos/tasks/',
-                '${ }', {'job_file': task_file, 'address': self.address, 'port': self.port},
-                env.sos_dict.get('CONFIG', {}))
+        send_cmd = cfg_interpolate('ssh -q ${address} -p ${port} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks" && scp -q -P ${port} ${job_file!ap} ${address}:.sos/tasks/',
+                {'job_file': task_file, 'address': self.address, 'port': self.port})
         # use scp for this simple case
         try:
             subprocess.check_call(send_cmd, shell=True)
@@ -584,12 +584,11 @@ class RemoteHost:
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
-            cmd = interpolate(self.execute_cmd, '${ }', {
+            cmd = cfg_interpolate(self.execute_cmd, {
                 'host': self.address, 'port': self.port,
-                'cmd': cmd, 'cur_dir': self._map_var(os.getcwd())},
-                env.sos_dict.get('CONFIG', {}))
+                'cmd': cmd, 'cur_dir': self._map_var(os.getcwd())})
         except Exception as e:
-            raise ValueError('Failed to run command {}: {}'.format(cmd, e))
+            raise ValueError('Failed to run command {}: {} ({})'.format(cmd, e, env.sos_dict['CONFIG']))
         env.logger.debug('Executing command ``{}``'.format(cmd))
         try:
             return subprocess.check_output(cmd, shell=True).decode()
@@ -601,10 +600,9 @@ class RemoteHost:
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
-            cmd = interpolate(self.execute_cmd, '${ }', {
+            cmd = cfg_interpolate(self.execute_cmd, {
                 'host': self.address, 'port': self.port,
-                'cmd': cmd, 'cur_dir': self._map_var(os.getcwd())},
-                env.sos_dict.get('CONFIG', {}))
+                'cmd': cmd, 'cur_dir': self._map_var(os.getcwd())})
         except Exception as e:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
         env.logger.debug('Executing command ``{}``'.format(cmd))
@@ -616,10 +614,9 @@ class RemoteHost:
 
     def run_command(self, cmd, wait_for_task, realtime=False, **kwargs):
         try:
-            cmd = interpolate(self.execute_cmd, '${ }', {
+            cmd = cfg_interpolate(self.execute_cmd, {
                 'host': self.address, 'port': self.port,
-                'cmd': cmd, 'cur_dir': self._map_var(os.getcwd()) },
-                env.sos_dict.get('CONFIG', {}))
+                'cmd': cmd, 'cur_dir': self._map_var(os.getcwd()) })
         except Exception as e:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
         env.logger.debug('Executing command ``{}``'.format(cmd))
@@ -638,9 +635,8 @@ class RemoteHost:
         # for filetype in ('res', 'status', 'out', 'err'):
         sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
         # use -p to preserve modification times so that we can keep the job status locally.
-        receive_cmd = interpolate("scp -P ${port} -p -q ${address}:.sos/tasks/${task}.* ${sys_task_dir}",
-                '${ }', {'port': self.port, 'address': self.address, 'task': task_id, 'sys_task_dir': sys_task_dir},
-                env.sos_dict.get('CONFIG', {}))
+        receive_cmd = cfg_interpolate("scp -P ${port} -p -q ${address}:.sos/tasks/${task}.* ${sys_task_dir}",
+                {'port': self.port, 'address': self.address, 'task': task_id, 'sys_task_dir': sys_task_dir})
         # it is possible that local files are readonly (e.g. a pluse file) so we first need to
         # make sure the files are readable and remove them. Also, we do not want any file that is
         # obsolete to appear as new after copying
