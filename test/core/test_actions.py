@@ -338,47 +338,48 @@ mean(nums)
         # test decompress tar.gz file
         script = SoS_Script(r'''
 [0]
-download(['https://ftp.pcre.org/pub/pcre/pcre-8.01.tar.gz'],
+download(['ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.tar.gz'],
     dest_dir='tmp', decompress=True)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(os.path.isdir('tmp/pcre-8.01'))
-        self.assertTrue(os.path.isfile('tmp/pcre-8.01/pcre_get.c'))
+        self.assertTrue(os.path.isdir('tmp/pcre-8.41'))
+        self.assertTrue(os.path.isfile('tmp/pcre-8.41/pcre_get.c'))
         #
         # testing the download of single file
         #
         script = SoS_Script(r'''
 [0]
-download: dest_file='tmp/pcre-8.01.zip.sig'
-    https://ftp.pcre.org/pub/pcre/pcre-8.01.zip.sig
+download: dest_file='tmp/pcre-8.41.zip.sig'
+    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.zip.sig
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(os.path.isfile('tmp/pcre-8.01.zip.sig'))
+        self.assertTrue(os.path.isfile('tmp/pcre-8.41.zip.sig'))
         # test option dest_dir
         script = SoS_Script(r'''
 [0]
 download: dest_dir='tmp'
-    https://ftp.pcre.org/pub/pcre/pcre-8.01.zip.sig
+    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.zip.sig
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(os.path.isfile('tmp/pcre-8.01.zip.sig'))
+        self.assertTrue(os.path.isfile('tmp/pcre-8.41.zip.sig'))
         #
         # this will take a while
         script = SoS_Script(r'''
 [0]
 download: dest_dir='tmp', decompress=True
-    https://ftp.pcre.org/pub/pcre/non-existing.gz
-    https://ftp.pcre.org/pub/pcre/pcre-8.01.zip
-    https://ftp.pcre.org/pub/pcre/pcre-8.01.zip.sig
-    https://ftp.pcre.org/pub/pcre/pcre-8.01.tar.gz
+
+    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/non-existing.gz
+    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.zip
+    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.zip.sig
+    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.tar.gz
 ''')
         #start = time.time()
         wf = script.workflow()
         self.assertRaises(ExecuteError, Base_Executor(wf).run)
-        self.assertTrue(os.path.isfile('tmp/pcre-8.01/pcre_get.c'))
+        self.assertTrue(os.path.isfile('tmp/pcre-8.41/pcre_get.c'))
         #self.assertGreater(time.time() - start, 3)
         # this will be fast
         #start = time.time()
@@ -390,10 +391,10 @@ download: dest_dir='tmp', decompress=True
         script = SoS_Script(r'''
 [0]
 download: dest_dir='tmp', decompress=True
-    https://ftp.pcre.org/pub/pcre/pcre-8.01.tar.gz
-    https://ftp.pcre.org/pub/pcre/pcre-8.01.zip
-    https://ftp.pcre.org/pub/pcre/pcre-8.01.tar.bz2
-    https://ftp.pcre.org/pub/pcre/pcre-8.01.zip.sig
+    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.tar.gz
+    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.zip
+    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.tar.bz2
+    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.zip.sig
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -401,10 +402,10 @@ download: dest_dir='tmp', decompress=True
         script = SoS_Script(r'''
 [0]
 download: dest_dir='tmp', decompress=True
-    https://ftp.pcre.org/pub/pcre/pcre-8.01.tar.gz
-    https://ftp.pcre.org/pub/pcre/pcre-8.01.zip
-    https://ftp.pcre.org/pub/pcre/pcre-8.01.tar.bz2
-    https://ftp.pcre.org/pub/pcre/pcre-8.01.zip.sig
+    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.tar.gz
+    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.zip
+    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.tar.bz2
+    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.zip.sig
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={'sig_mode': 'build'}).run()
