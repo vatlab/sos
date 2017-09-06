@@ -151,7 +151,6 @@ run:
         import time
         # we should be able to get status
         tasks = ' '.join(res['pending_tasks'])
-        time.sleep(2)
         out = subprocess.check_output('sos status {} -c ~/docker.yml -q ts'.format(tasks), shell=True).decode()
         self.assertGreaterEqual(out.count('running'), 1, 'Expect at least one running job: ' + out)
         # wait another 20 seconds?
