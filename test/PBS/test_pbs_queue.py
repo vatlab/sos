@@ -201,7 +201,7 @@ run:
         tasks = ' '.join(res['pending_tasks'])
         time.sleep(2)
         out = subprocess.check_output('sos status {} -c ~/docker.yml -q docker'.format(tasks), shell=True).decode()
-        self.assertGreaterEqual(out.count('running'), 1, 'Expect at least one running jobs: ' + out)
+        self.assertGreaterEqual(out.count('running') + out.count('pending'), 1, 'Expect at least one running jobs: ' + out)
         # wait another 20 seconds?
         time.sleep(20)
         out = subprocess.check_output('sos status {} -c ~/docker.yml -q docker'.format(tasks), shell=True).decode()
