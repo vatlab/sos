@@ -142,7 +142,7 @@ class sos_Matlab:
 
     def put_vars(self, items, to_kernel=None):
         # first let us get all variables with names starting with sos
-        response = self.sos_kernel.get_response("display(cell2mat(who('sos*')))", ('stream',), name=('stdout',), debug=True)[0][1]
+        response = self.sos_kernel.get_response("display(cell2mat(who('sos*')))", ('stream',), name=('stdout',))[0][1]
         all_vars = response['text'].strip()
         # in case there is no var with name starts with sos, the response would be
         #      []\n\n\n
@@ -158,7 +158,7 @@ class sos_Matlab:
         result = {}
         for item in items:
             py_repr = 'display(sos_py_repr({}))'.format(item)
-            response = self.sos_kernel.get_response(py_repr, ('stream',), name=('stdout',), debug=True)[0][1]
+            response = self.sos_kernel.get_response(py_repr, ('stream',), name=('stdout',))[0][1]
             expr = response['text']
 
             try:
