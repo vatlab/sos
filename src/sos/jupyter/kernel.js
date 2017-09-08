@@ -195,8 +195,8 @@ define([
                 continue;
             } else if (lines[l].startsWith("[") && lines[l].endsWith("]")) {
                 workflow += lines.slice(l).join("\n") + "\n\n";
+                break;
             }
-            break;
         }
         return workflow;
     }
