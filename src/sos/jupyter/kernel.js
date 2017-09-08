@@ -215,7 +215,7 @@ define([
             }
             // other magic
             if (lines[l].startsWith("%")) {
-                if (lines[l].match(/^%sosrun($|\s)|^%sossave($|\s)|^%preview\s.*(-w|--workflow).*$/)) {
+                if (lines[l].match(/^%sosrun($|\s)|^%run($|\s)|^%sossave($|\s)|^%preview\s.*(-w|--workflow).*$/)) {
                     run_notebook = true;
                     break;
                 } else {

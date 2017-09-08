@@ -147,6 +147,13 @@ _SECTION_HEADER_TMPL = r'''
     \]\s*$                             # ]
     '''
 
+_GLOBAL_SECTION_HEADER_TMPL = r'''
+    ^\[\s*                             # [
+    global\s*                          # global
+    \]\s*$                             # ]
+    '''
+
+
 _SECTION_NAME_TMPL = '''
     ^\s*                               # start
     (?P<name>                          # optional name
@@ -425,6 +432,7 @@ _SOS_WILDCARD_TMPL = r'''
 
 
 SOS_SECTION_HEADER = LazyRegex(_SECTION_HEADER_TMPL, re.VERBOSE)
+SOS_GLOBAL_SECTION_HEADER = LazyRegex(_GLOBAL_SECTION_HEADER_TMPL, re.VERBOSE)
 SOS_SECTION_NAME = LazyRegex(_SECTION_NAME_TMPL, re.VERBOSE)
 SOS_SUBWORKFLOW = LazyRegex(_SUBWORKFLOW_TMPL, re.VERBOSE)
 SOS_SECTION_OPTION = LazyRegex(_SECTION_OPTION_TMPL, re.VERBOSE)

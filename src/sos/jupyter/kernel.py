@@ -40,7 +40,7 @@ from types import ModuleType
 from sos.utils import env, WorkflowDict, short_repr, pretty_size, PrettyRelativeTime
 from sos._version import __sos_version__, __version__
 from sos.sos_eval import SoS_exec, SoS_eval, interpolate, get_default_global_sigil
-from sos.sos_syntax import SOS_SECTION_HEADER
+from sos.sos_syntax import SOS_SECTION_HEADER, SOS_GLOBAL_SECTION_HEADER
 
 from IPython.lib.clipboard import ClipboardEmpty, osx_clipboard_get, tkinter_clipboard_get
 from IPython.core.error import UsageError
@@ -2300,6 +2300,18 @@ Available subkernels:\n{}'''.format(
                     run_options.append(options)
                 else:
                     break
+            # find the global sections of the workflow
+            global_sections = ''
+            in_global = False
+            for line in self._workflow.splitlines():
+                if SOS_GLOBAL_SECTION_HEADER.match(line):
+                    in_global = True
+                elif SOS_SECTION_HEADER.match(line):
+                    in_global = False
+                if in_global:
+                    global_sections += line + '\n'
+            if not any(SOS_SECTION_HEADER.match(line) for line in run_code.splitlines()):
+                global_sections += '[default]\n'
             # now we need to run the code multiple times with each option
             for options in run_options:
                 old_options = self.options
@@ -2309,7 +2321,9 @@ Available subkernels:\n{}'''.format(
                     old_dict = env.sos_dict
                     self._reset_dict()
                     self._workflow_mode = True
-                    ret = self._do_execute(run_code, silent, store_history, user_expressions, allow_stdin)
+                    if self._debug_mode:
+                        self.warn('Executing\n{}'.format(global_sections + run_code))
+                    ret = self._do_execute(global_sections + run_code, silent, store_history, user_expressions, allow_stdin)
                 except Exception as e:
                     self.warn('Failed to execute workflow: {}'.format(e))
                     raise
