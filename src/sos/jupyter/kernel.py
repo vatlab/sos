@@ -750,6 +750,7 @@ class SoS_Kernel(IPythonKernel):
         self.my_tasks = {}
         self.last_executed_code = ''
         self.RET_VARS = []
+        self._workflow = ''
         #
         self._workflow_mode = False
         self._render_result = False
