@@ -629,16 +629,6 @@ def locate_script(filename, start=''):
         #
         pathes.extend(cfg.get('sos_path', []))
     #
-    sos_config_file = 'config.yml'
-    if os.path.isfile(sos_config_file):
-        try:
-            with open(sos_config_file) as config:
-                cfg = yaml.safe_load(config)
-        except Exception as e:
-            raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format?'.format(sos_config_file))
-        #
-        pathes.extend(cfg.get('sos_path', []))
-    #
     for path in pathes:
         if not path:
             continue
@@ -935,17 +925,6 @@ def load_config_files(filename=None):
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
                 raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
-    else:
-        env.logger.trace("{} does not exist".format(sos_config_file))
-    # local config file
-    sos_config_file = 'config.yml'
-    if os.path.isfile(sos_config_file):
-        with fasteners.InterProcessLock(os.path.join(tempfile.gettempdir(), 'sos_config_')):
-            try:
-                with open(sos_config_file) as config:
-                    dict_merge(cfg, yaml.safe_load(config))
-            except Exception as e:
-                raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
     else:
         env.logger.trace("{} does not exist".format(sos_config_file))
     # user-specified configuration file.

@@ -625,8 +625,7 @@ def get_push_parser(desc_only=False):
         help='''Remote host to which the files will be sent. SoS will list all configured
         queues and exit''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
-        definitions, in case the definitions are not defined in global or local
-        sos config.yml files.''')
+        definitions, in case the definitions are not defined in global sos config.yml files.''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
@@ -673,8 +672,7 @@ def get_pull_parser(desc_only=False):
         help='''Remote host to which the files will be sent. SoS will list all configured
         queues and exit''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
-        definitions, in case the definitions are not defined in global or local
-        sos config.yml files.''')
+        definitions, in case the definitions are not defined in global sos config.yml files.''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
@@ -735,8 +733,7 @@ def get_preview_parser(desc_only=False):
     parser.add_argument('--html', action='store_true',
         help=argparse.SUPPRESS)
     parser.add_argument('-c', '--config', help='''A configuration file with host
-        definitions, in case the definitions are not defined in global or local
-        sos config.yml files.''')
+        definitions, in case the definitions are not defined in global sos config.yml files.''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
@@ -899,8 +896,7 @@ def get_execute_parser(desc_only=False):
         is found. If this option is specified without value, SoS will list all
         configured queues and exit.''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
-        definitions, in case the definitions are not defined in global or local
-        sos config.yml files.''')
+        definitions, in case the definitions are not defined in global sos config.yml files.''')
     parser.add_argument('-w', '--wait', action='store_true', help='''Wait for the
         completion of the task, and retrieve job results if needed after the
         completion of the task. This option is only valid with the specification
@@ -1023,8 +1019,7 @@ def get_status_parser(desc_only=False):
         is found. If this option is specified without value, SoS will list all
         configured queues and exit.''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
-        definitions, in case the definitions are not defined in global or local
-        sos config.yml files.''')
+        definitions, in case the definitions are not defined in global sos config.yml files.''')
     parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
@@ -1101,8 +1096,7 @@ def get_purge_parser(desc_only=False):
         by specified task IDs. If no workflow is specified, all workflows in the
         current project will be assumed.''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
-        definitions, in case the definitions are not defined in global or local
-        sos config.yml files.''')
+        definitions, in case the definitions are not defined in global sos config.yml files.''')
     parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
@@ -1162,8 +1156,7 @@ def get_kill_parser(desc_only=False):
         is found. If this option is specified without value, SoS will list all
         configured queues and exit.''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
-        definitions, in case the definitions are not defined in global or local
-        sos config.yml files.''')
+        definitions, in case the definitions are not defined in global sos config.yml files.''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
@@ -1535,13 +1528,11 @@ def get_config_parser(desc_only=False):
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-s', '--site', action='store_true', dest='__site_config__',
         help='''Set (--set) or unset (--unset) options in system site configuration file
-            (${SOS}/site_config.yml) instead of local (.sos/config.yml) configuration file.''')
+            (${SOS}/site_config.yml).''')
     group.add_argument('-g', '--global', action='store_true', dest='__global_config__',
-        help='''Set (--set) or unset (--unset) options in global (~/.sos/config.yml)
-            instead of local (.sos/config.yml) configuration file.''')
+        help='''Set (--set) or unset (--unset) options in global (~/.sos/config.yml)''')
     group.add_argument('--hosts', action='store_true', dest='__hosts_config__',
-        help='''Set (--set) or unset (--unset) options in hosts (~/.sos/hosts.yml) instead
-            of local (.sos/config.yml) configuration''')
+        help='''Set (--set) or unset (--unset) options in hosts (~/.sos/hosts.yml)''')
     group.add_argument('-c', '--config', dest='__config_file__', metavar='CONFIG_FILE',
         help='''Set (--set) or unset (--unset) options in user specified configuration file,
             or display options (--get) also in this file.''')
@@ -1584,7 +1575,7 @@ def cmd_config(args, workflow_args):
         elif args.__config_file__:
             config_file = os.path.expanduser(args.__config_file__)
         else:
-            config_file = 'config.yml'
+            raise ValueError('Please specify one of site (--site), hosts (--hosts), global (--global), or local (--config) config file to unset')
 
         if os.path.isfile(config_file):
             try:
@@ -1633,7 +1624,7 @@ def cmd_config(args, workflow_args):
         elif args.__config_file__:
             config_file = os.path.expanduser(args.__config_file__)
         else:
-            config_file = 'config.yml'
+            raise ValueError('Please specify one of site (--site), hosts (--hosts), global (--global), or local (--config) config file to set')
 
         if os.path.isfile(config_file):
             try:
