@@ -240,6 +240,11 @@ define([
                 }
             }
         }
+        if (run_notebook) {
+            window.sos_comm.send({
+                "workflow": workflow,
+            });
+        }
         var rerun_option = "";
         for (i = cells.length - 1; i >= 0; --i) {
             // this is the cell that is being executed...
@@ -262,7 +267,6 @@ define([
                     " --default-kernel " + nb.metadata["sos"].default_kernel +
                     " --cell-kernel " + cells[i].metadata.kernel +
                     (run_notebook ? " --filename '" + window.document.getElementById("notebook_name").innerHTML + "'" : "") +
-                    (run_notebook ? " --workflow " + btoa(workflow) : "") + rerun_option +
                     " --cell " + i.toString() + "\n" + code,
                     callbacks, options);
             }
@@ -274,7 +278,6 @@ define([
             " --default-kernel " + nb.metadata["sos"].default_kernel +
             " --cell-kernel " + window.my_panel.cell.metadata.kernel +
             (run_notebook ? " --filename '" + window.document.getElementById("notebook_name").innerHTML + "'" : "") +
-            (run_notebook ? " --workflow " + btoa(workflow) : "") + rerun_option +
             " --cell -1 " + "\n" + code,
             callbacks, {
                 "silent": false,

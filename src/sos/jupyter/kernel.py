@@ -24,7 +24,6 @@ import os
 import sys
 import re
 import time
-import base64
 import shlex
 import fnmatch
 import contextlib
@@ -878,6 +877,8 @@ class SoS_Kernel(IPythonKernel):
                     self.notify_task_status(['change-status', v[1], v[0], 'pending'])
                 elif k == 'task-info':
                     self.handle_taskinfo(v[0], v[1], side_panel=True)
+                elif k == 'workflow':
+                    self._workflow = '#!/usr/bin/env sos-runner\n#fileformat=SOS1.0\n\n' + v
                 elif k == 'update-task-status':
                     if not isinstance(v, list):
                         continue
@@ -2085,9 +2086,6 @@ Available subkernels:\n{}'''.format(
                 if self.cell_idx is None or self.cell_idx < 0:
                     self._execution_count = '-'
                 self._notebook_name = args.filename if args.filename else 'Untitled'
-                if args.workflow is not None:
-                    self._workflow = '#!/usr/bin/env sos-runner\n#fileformat=SOS1.0\n\n' + \
-                        base64.b64decode(args.workflow).decode()
             except Exception as e:
                 self.warn('Invalid option "{}": {}\n'.format(options, e))
                 return {'status': 'error',
