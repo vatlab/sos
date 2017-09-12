@@ -582,7 +582,8 @@ sos_run('mse')
 
     def testSearchPath(self):
         '''Test if any action should exit in five seconds in dryrun mode'''
-        sos_config_file = 'config.yml'
+        sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
+        shutil.copy(sos_config_file, 'test.yml')
         #
         subprocess.call('sos config --set sos_path {0}/crazy_path {0}/crazy_path/more_crazy/'.format(os.getcwd()), shell=True)
         #
@@ -606,6 +607,7 @@ print('hay, I am crazy')
         #
         shutil.rmtree('crazy_path')
         os.remove(sos_config_file)
+        shutil.copy('test.yml', sos_config_file)
 
 
     def testNestedWorkdir(self):
