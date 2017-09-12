@@ -432,10 +432,22 @@ class Base_Executor:
                 mo = [(x, self.match(target, x)) for x in self.workflow.auxiliary_sections]
                 mo = [x for x in mo if x[1] is not False]
                 if not mo:
-                    for x in self.workflow.auxiliary_sections:
-                        env.logger.debug('{}: {}'.format(x.step_name(),
-                            x.options['provides'] if 'provides' in x.options else ''))
-                    raise RuntimeError('No step to generate target {}{}'.format(target, dag.steps_depending_on(target, self.workflow)))
+                    nodes = dag._all_dependent_files[target]
+                    for node in nodes:
+                        # if this is an index step... simply let it depends on previous steps
+                        if node._node_index is not None:
+                            indexed = [x for x in dag.nodes() if x._node_index is not None and x._node_index < node._node_index and isinstance(x._output_targets, Undetermined)]
+                            indexed.sort(key = lambda x: x._node_index)
+                            if not indexed:
+                                raise RuntimeError('No step to generate target {}{}'.format(target, dag.steps_depending_on(target, self.workflow)))
+                            if not isinstance(node._input_targets, Undetermined):
+                                node._input_targets = Undetermined('')
+                            if not isinstance(node._depends_targets, Undetermined):
+                                node._depends_targets = Undetermined('')
+                        else:
+                            raise RuntimeError('No step to generate target {}{}'.format(target, dag.steps_depending_on(target, self.workflow)))
+                    resolved += 1
+                    continue
                 if len(mo) > 1:
                     raise RuntimeError('Multiple steps {} to generate target {}'.format(', '.join(x[0].step_name() for x in mo), target))
                 #

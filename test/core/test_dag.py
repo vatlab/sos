@@ -1095,5 +1095,25 @@ touch 1.txt
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    def testForwardStyleDepend(self):
+        '''Test the execution of forward-style workflow with undtermined dependency'''
+        FileTarget('a.txt.bak').remove('both')
+        self.touch('a.txt')
+        script = SoS_Script('''
+[10]
+input: 'a.txt'
+output: "${_input}.bak"
+sh:
+    cp ${_input} ${_output}
+
+[20]
+depends: "a.txt.bak"
+sh:
+    ls ${_depends}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertTrue(FileTarget('a.txt.bak').exists())
+
 if __name__ == '__main__':
     unittest.main()
