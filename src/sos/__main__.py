@@ -1530,7 +1530,7 @@ def get_config_parser(desc_only=False):
         help='''Set (--set) or unset (--unset) options in system site configuration file
             (${SOS}/site_config.yml).''')
     group.add_argument('-g', '--global', action='store_true', dest='__global_config__',
-        help='''Set (--set) or unset (--unset) options in global (~/.sos/config.yml)''')
+        help=argparse.SUPPRESS)
     group.add_argument('--hosts', action='store_true', dest='__hosts_config__',
         help='''Set (--set) or unset (--unset) options in hosts (~/.sos/hosts.yml)''')
     group.add_argument('-c', '--config', dest='__config_file__', metavar='CONFIG_FILE',
@@ -1568,14 +1568,12 @@ def cmd_config(args, workflow_args):
     if args.__unset_config__:
         if args.__site_config__:
             config_file = os.path.join(os.path.split(__file__)[0], 'site_config.yml')
-        elif args.__global_config__:
-            config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
         elif args.__hosts_config__:
             config_file = os.path.join(os.path.expanduser('~'), '.sos', 'hosts.yml')
         elif args.__config_file__:
             config_file = os.path.expanduser(args.__config_file__)
         else:
-            raise ValueError('Please specify one of site (--site), hosts (--hosts), global (--global), or local (--config) config file to unset')
+            config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
 
         if os.path.isfile(config_file):
             try:
@@ -1617,14 +1615,12 @@ def cmd_config(args, workflow_args):
     elif args.__set_config__:
         if args.__site_config__:
             config_file = os.path.join(os.path.split(__file__)[0], 'site_config.yml')
-        elif args.__global_config__:
-            config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
         elif args.__hosts_config__:
             config_file = os.path.join(os.path.expanduser('~'), '.sos', 'hosts.yml')
         elif args.__config_file__:
             config_file = os.path.expanduser(args.__config_file__)
         else:
-            raise ValueError('Please specify one of site (--site), hosts (--hosts), global (--global), or local (--config) config file to set')
+            config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
 
         if os.path.isfile(config_file):
             try:
