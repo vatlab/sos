@@ -2210,6 +2210,10 @@ def main():
                 sys.exit('Cannot determine from or to format')
             sys.argv.insert(2, '{}-{}'.format(from_format, to_format))
         args, workflow_args = master_parser.parse_known_args()
+        if not hasattr(args, 'func'):
+            # in case of sos -v etc that no subcommand is specified
+            master_parser.print_help()
+            sys.exit(0)
         # calling the associated functions
         args.func(args, workflow_args)
     except KeyboardInterrupt:
