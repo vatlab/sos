@@ -2299,6 +2299,11 @@ Available subkernels:\n{}'''.format(
                     run_options.append(options)
                 else:
                     break
+            # if there are more magics after %run, they will be ignored so a warning
+            # is needed.
+            if run_code.lstrip().startswith('%'):
+                self.warn('Magic {} after magic %run will be ignored.'.format(run_code.split()[0]))
+
             # find the global sections of the workflow
             global_sections = ''
             in_global = False
