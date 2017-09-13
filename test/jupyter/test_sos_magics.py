@@ -315,8 +315,8 @@ graph graphname {
             iopub = kc.iopub_channel
             # preview variable
             execute(kc=kc, code='''
-%run -r docker -c ~/docker.yml
 %preview -n abc.txt -c ~/docker.yml -r docker
+%run -r docker -c ~/docker.yml
 sh:
    echo abc > abc.txt
 ''')
