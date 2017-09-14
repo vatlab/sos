@@ -33,5 +33,6 @@ ENV     HOME  /home/mdabioinfo
 WORKDIR ${HOME}
 
 # these should be installed automatically by sos
+RUN     pip install nbformat --upgrade
 RUN     pip install sos
 
