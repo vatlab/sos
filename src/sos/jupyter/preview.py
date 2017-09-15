@@ -20,6 +20,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 import base64
+import argparse
 from IPython.core.display import HTML
 from sos.utils import env, dehtml
 
@@ -110,11 +111,31 @@ def preview_html(filename, kernel=None, style=None):
     return { 'text/html': content,
         'text/plain': dehtml(content) }
 
+def _get_txt_parser():
+    parser = argparse.ArgumentParser(prog='%preview *.txt')
+    parser.add_argument('-l', '--limit', type=int, default=5, help='''Maximum number
+        of lines to preview.''')
+    parser.error = lambda msg: env.logger.warning(msg)
+    return parser
+
 def preview_txt(filename, kernel=None, style=None):
+    if style is not None and 'options' in style:
+        parser = _get_txt_parser()
+        try:
+            args = parser.parse_args(style['options'])
+        except SystemExit:
+            return
+        limit = args.limit
+    else:
+        limit = 5
+
     content = ''
     with open(filename, 'r') as fin:
-        for _ in range(5):
-            content += fin.readline()
+        if limit < 0:
+            content = fin.read()
+        else:
+            for _ in range(limit):
+                content += fin.readline()
     return content
 
 def preview_csv(filename, kernel=None, style=None):
