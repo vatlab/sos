@@ -86,11 +86,10 @@ class SoS_Exporter(Exporter):
             for line in lines:
                 if valid_cell or (line.startswith('%include') or line.startswith('%from')):
                     fh.write(line + '\n')
-                elif line.startswith('#') or line.startswith('!') or line.startswith('%') or not line.strip():
-                    continue
                 elif SOS_SECTION_HEADER.match(line):
                     valid_cell = True
                     fh.write(line + '\n')
+                # other content, namely non-%include lines before section header is ignored
             if valid_cell:
                 fh.write('\n')
         return idx
