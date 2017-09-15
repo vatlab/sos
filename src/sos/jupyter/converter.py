@@ -75,24 +75,24 @@ class SoS_Exporter(Exporter):
                 fh.write('\n'.join('#! ' + x for x in cell.source.split('\n')) + '\n')
             fh.write('\n')
         else:
-            if cell.cell_type == 'markdown':
-                fh.write('\n'.join('#! ' + x for x in cell.source.split('\n')) + '\n\n')
-            elif cell.cell_type == 'code':
-                # ignore cells with other kernel
-                if 'kernel' in cell.metadata and cell.metadata['kernel'] not in ('sos', 'SoS', None):
-                    return
-                lines = cell.source.split('\n')
-                valid_cell = False
-                for line in lines:
-                    if valid_cell or (line.startswith('%include') or line.startswith('%from')):
-                        fh.write(line + '\n')
-                    elif line.startswith('#') or line.startswith('!') or line.startswith('%') or not line.strip():
-                        continue
-                    elif SOS_SECTION_HEADER.match(line):
-                        valid_cell = True
-                        fh.write(line + '\n')
-                if valid_cell:
-                    fh.write('\n')
+            # in non-all mode, markdown cells are ignored because they can be mistakenly
+            # treated as markdown content of an action or script #806
+            #
+            # Non-sos code cells are also ignored
+            if 'kernel' in cell.metadata and cell.metadata['kernel'] not in ('sos', 'SoS', None):
+                return
+            lines = cell.source.split('\n')
+            valid_cell = False
+            for line in lines:
+                if valid_cell or (line.startswith('%include') or line.startswith('%from')):
+                    fh.write(line + '\n')
+                elif line.startswith('#') or line.startswith('!') or line.startswith('%') or not line.strip():
+                    continue
+                elif SOS_SECTION_HEADER.match(line):
+                    valid_cell = True
+                    fh.write(line + '\n')
+            if valid_cell:
+                fh.write('\n')
         return idx
 
     def from_notebook_node(self, nb, resources, **kwargs):
