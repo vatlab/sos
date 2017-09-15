@@ -357,7 +357,7 @@ class Base_Step_Executor:
             return [list(x) for x in combinations(ifiles, 2)]
         elif isinstance(group_by, int) or group_by.isdigit():
             group_by = int(group_by)
-            if len(ifiles) % group_by != 0:
+            if len(ifiles) % group_by != 0 and len(ifiles) > group_by:
                 env.logger.warning('Number of samples ({}) is not a multiple of group_by ({}). The last group would have less files than the other groups.'
                     .format(len(ifiles), group_by))
             if group_by < 1:

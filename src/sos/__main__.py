@@ -225,7 +225,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         help='''Execute a workflow in dryrun mode. Please check command
         sos dryrun for details of the dryrun mode.''')
     runmode.add_argument('-s', choices=['default', 'ignore', 'force', 'build', 'assert'],
-        default='ignore' if interactive else 'default', metavar='SIGMODE',
+        default='default', metavar='SIGMODE',
         dest='__sig_mode__',
         help='''How runtime signature would be handled, which can be "default"
             (save and use signature, default mode in batch mode), "ignore"
