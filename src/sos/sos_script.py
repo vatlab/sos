@@ -50,7 +50,7 @@ __all__ = ['SoS_Script']
 class ParsingError(Error):
     '''Raised when a configuration file does not follow legal syntax.'''
     def __init__(self, filename):
-        Error.__init__(self, 'File contains parsing errors: %s' % filename)
+        Error.__init__(self, 'File contains parsing errors: {}'.format(filename if filename != '<string>' else ''))
         self.filename = filename
         self.errors = []
         self.args = (filename, )

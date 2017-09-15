@@ -24,6 +24,7 @@ import sys
 import copy
 import glob
 import fnmatch
+import traceback
 
 from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
@@ -831,7 +832,13 @@ class Base_Step_Executor:
         except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks):
             raise
         except Exception as e:
-            raise RuntimeError('Failed to process statement {} ({}): {}'.format(short_repr(stmt), e.__class__.__name__, e))
+            error_class = e.__class__.__name__
+            detail = e.args[0]
+            cl, exc, tb = sys.exc_info()
+            line_number = traceback.extract_tb(tb)[-1][1]
+            raise RuntimeError('{} at line {} of \n{}\n{}'.format(error_class, line_number,
+                '\n'.join(['{} {}'.format('>>>' if i+1 == line_number else '   ', x.rstrip()) for i,x in enumerate(stmt.splitlines())][max(line_number-3, 0):line_number + 3]),
+                detail))
         finally:
             env.sos_dict.set('__step_sig__', None)
 
