@@ -332,7 +332,9 @@ class RemoteHost:
         fullpath = os.path.abspath(os.path.expanduser(path))
         for sdir in self.shared_dirs:
             if fullpath.startswith(sdir):
-                return True
+                # issue 710, if a directory is both under path_map and shared, then it is not considered to be shared.
+                if not any(fullpath.startswith(mdir) for mdir in self.path_map.keys()):
+                    return True
         return False
 
     def _map_path(self, source):
