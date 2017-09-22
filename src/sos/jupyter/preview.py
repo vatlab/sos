@@ -115,8 +115,6 @@ def preview_pdf(filename, kernel=None, style=None):
                                 kernel.warn('Page {} out of range of the pdf file ({} pages)'.format(p, nPages))
                             pages = list(range(nPages))
                             break
-            kernel.warn(pages)
-
             # single page PDF
             if len(pages) == 1 and pages[0] == 0:
                 return {
@@ -142,8 +140,16 @@ def preview_pdf(filename, kernel=None, style=None):
                 HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data}
     else:
         # by default use iframe, because PDF figure can have multiple pages (#693)
-        return { 'text/html':
-            HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data}
+        # try to get width and height
+        try:
+            from wand.image import Image
+            img = Image(filename=filename)
+            return { 'text/html':
+                HTML('<iframe src={} width="800px" height="{}px"></iframe>'.format(filename, img.height/img.width * 800)).data}
+        except Exception as e:
+            kernel.warn(e)
+            return { 'text/html':
+                HTML('<iframe src={} width="100%"></iframe>'.format(filename)).data}
 
 def preview_html(filename, kernel=None, style=None):
     with open(filename) as html:
