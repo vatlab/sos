@@ -77,6 +77,13 @@ def preview_img(filename, kernel=None, style=None):
     else:
         return { 'image/' + image_type: image_data }
 
+def _preview_pdf_parser():
+    parser = argparse.ArgumentParser(prog='%preview *.pdf')
+    parser.add_argument('--pages', nargs='+', type=int,
+        help='Pages of the PDF to preview.')
+    parser.error = lambda msg: env.logger.warning(msg)
+    return parser
+
 def preview_pdf(filename, kernel=None, style=None):
     use_png = False
     if style is not None and 'style' in style:
@@ -91,10 +98,43 @@ def preview_pdf(filename, kernel=None, style=None):
             # if imagemagick is not installed properly.
             from wand.image import Image
             img = Image(filename=filename)
-            # iframe preview does not work as good as png preview
-            # 'text/html': HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data,
-            return {
-                'image/png': base64.b64encode(img._repr_png_()).decode('ascii') }
+            nPages = len(img.sequence)
+            pages = list(range(nPages))
+
+            if style is not None and 'options' in style:
+                parser = _preview_pdf_parser()
+                try:
+                    args = parser.parse_args(style['options'])
+                except SystemExit:
+                    return
+                if args.pages is not None:
+                    pages = [x-1 for x in args.pages]
+                    for p in pages:
+                        if p >= nPages:
+                            if kernel is not None:
+                                kernel.warn('Page {} out of range of the pdf file ({} pages)'.format(p, nPages))
+                            pages = list(range(nPages))
+                            break
+            kernel.warn(pages)
+
+            # single page PDF
+            if len(pages) == 1 and pages[0] == 0:
+                return {
+                    'image/png': base64.b64encode(img._repr_png_()).decode('ascii') }
+            elif len(pages) == 1:
+                # if only one page
+                return {
+                    'image/png': base64.b64encode(Image(img.sequence[pages[0]])._repr_png_()).decode('ascii') }
+            else:
+                image = Image(width=img.width, height=img.height * len(pages))
+                for i,p in enumerate(pages):
+                    image.composite(
+                        img.sequence[p],
+                        top=img.height * i,
+                        left=0
+                    )
+                return {
+                    'image/png': base64.b64encode(image._repr_png_()).decode('ascii') }
         except Exception as e:
             if kernel is not None:
                 kernel.warn(e)

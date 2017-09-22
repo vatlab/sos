@@ -112,7 +112,7 @@ run: workdir='../docs/doc/examples'
 	sos convert ${_input!b} ${_output!b} --template sos-full
 
 [convert-example-report]
-input:  '../docs/src/examples/Preview_and_Report_Generation.ipynb', group_by=1
+input:  '../docs/src/examples/Preview_and_Report_Generation.ipynb', '../docs/src/examples/RNASeqDE.ipynb', group_by=1
 depends: '../src/sos/jupyter/sos-report.tpl'
 output: "../docs/doc/examples/${_input!bn}_report.html"
 
