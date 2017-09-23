@@ -4,6 +4,7 @@
 {%- block header -%}
 {{ super() }}
 
+<meta name="viewport" content="width=device-width, initial-scale=1">
 {%- if nb['metadata'].get('sos',{}).get('kernels',none) is not none -%}
 
 <style type="text/css">
