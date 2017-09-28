@@ -59,7 +59,9 @@ class SoS_SyntaxInspector(object):
                 return {'text/plain': SOS_USAGES[name]}
             elif name in env.sos_dict:
                 # action?
-                return {'text/plain': pydoc.render_doc(env.sos_dict[name], title='%s')}
+                return {'text/plain': pydoc.render_doc(env.sos_dict[name], title='%s', renderer=pydoc.plaintext),
+                        'text/html': pydoc.render_doc(env.sos_dict[name], title='%s', renderer=pydoc.html)
+                        }
             else:
                 return {}
         else:
