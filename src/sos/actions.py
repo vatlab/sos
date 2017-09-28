@@ -50,7 +50,7 @@ from .target import FileTarget, fileMD5, executable, UnknownTarget, BaseTarget
 __all__ = ['SoS_Action', 'script', 'sos_run',
     'fail_if', 'warn_if', 'stop_if',
     'download',
-    'run', 'perl', 'ruby', 'node', 'JavaScript',
+    'run', 'perl', 'ruby', 
     'report', 'pandoc'
     ]
 
@@ -746,20 +746,6 @@ def ruby(script, args='', **kwargs):
     input, active, workdir, docker_image and args. In particular, content of one or more files
     specified by option input would be prepended before the specified script.'''
     return SoS_ExecuteScript(script, 'ruby', '.rb', args).run(**kwargs)
-
-@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
-def node(script, args='', **kwargs):
-    '''Execute specified script using node. This action accepts common action arguments such as
-    input, active, workdir, docker_image and args. In particular, content of one or more files
-    specified by option input would be prepended before the specified script.'''
-    return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)
-
-@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
-def JavaScript(script, args='', **kwargs):
-    '''Execute specified script using node. This action accepts common action arguments such as
-    input, active, workdir, docker_image and args. In particular, content of one or more files
-    specified by option input would be prepended before the specified script.'''
-    return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)
 
 
 def collect_input(script, input):
