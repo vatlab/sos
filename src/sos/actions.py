@@ -409,7 +409,10 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, **kwargs):
 
 @SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'interpreter', 'suffix', 'args'])
 def script(script, interpreter, suffix='', args='', **kwargs):
-    '''Execute specified script using specified interpreter.'''
+    '''Execute specified script using specified interpreter. This action accepts common
+    action arguments such as input, active, workdir, docker_image and args. In particular,
+    content of one or more files specified by option input would be prepended before
+    the specified script.'''
     if env.config['run_mode'] == 'dryrun':
         print('{}:\n{}\n'.format(interpreter, script))
         return None
@@ -725,27 +728,37 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
 
 @SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
 def run(script, args='', **kwargs):
-    '''Execute specified script using bash.'''
+    '''Execute specified script using bash. This action accepts common action arguments such as
+    input, active, workdir, docker_image and args. In particular, content of one or more files
+    specified by option input would be prepended before the specified script.'''
     return SoS_ExecuteScript(script, '', '', args).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
 def perl(script, args='', **kwargs):
-    '''Execute specified script using perl.'''
+    '''Execute specified script using perl. This action accepts common action arguments such as
+    input, active, workdir, docker_image and args. In particular, content of one or more files
+    specified by option input would be prepended before the specified script.'''
     return SoS_ExecuteScript(script, 'perl', '.pl', args).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
 def ruby(script, args='', **kwargs):
-    '''Execute specified script using ruby.'''
+    '''Execute specified script using ruby. This action accepts common action arguments such as
+    input, active, workdir, docker_image and args. In particular, content of one or more files
+    specified by option input would be prepended before the specified script.'''
     return SoS_ExecuteScript(script, 'ruby', '.rb', args).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
 def node(script, args='', **kwargs):
-    '''Execute specified script using node.'''
+    '''Execute specified script using node. This action accepts common action arguments such as
+    input, active, workdir, docker_image and args. In particular, content of one or more files
+    specified by option input would be prepended before the specified script.'''
     return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
 def JavaScript(script, args='', **kwargs):
-    '''Execute specified script using node.'''
+    '''Execute specified script using node. This action accepts common action arguments such as
+    input, active, workdir, docker_image and args. In particular, content of one or more files
+    specified by option input would be prepended before the specified script.'''
     return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)
 
 
