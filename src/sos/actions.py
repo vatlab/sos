@@ -204,6 +204,21 @@ class SoS_ExecuteScript:
             self.suffix = '.sh'
 
     def run(self, **kwargs):
+        #
+        if 'input' in kwargs:
+            if isinstance(kwargs['input'], str):
+                ifiles = [kwargs['input']]
+            elif isinstance(kwargs['input'], Sequence):
+                ifiles = list(kwargs['input'])
+            else:
+                raise ValueError('Unacceptable value for paremter input: {}'.format(kwargs['input']))
+
+            content = ''
+            for ifile in ifiles:
+                with open(ifile) as iscript:
+                    content += iscript.read()
+            self.script = content + self.script
+
         if 'docker_image' in kwargs:
             if env.config['run_mode'] == 'dryrun':
                 print('In docker image {}\n{}:\n{}\n'.format(kwargs['docker_image'], self.interpreter, self.script))
