@@ -586,7 +586,7 @@ run:
     def testActionSignature(self):
         '''Test action signature'''
         with open('test_action.txt', 'w') as ta:
-            ta.write('something')
+            ta.write('#something\n')
         script = SoS_Script(r'''
 [1]
 input: 'test_action.txt'
