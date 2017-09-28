@@ -54,6 +54,8 @@ class SoS_SyntaxInspector(object):
             else:
                 return {'text/plain': 'Magic %{}'.format(name) }
         elif line.startswith(name + ':') and pos <= len(name):
+            if self.kernel.original_keys is None:
+                self.kernel._reset_dict()
             # input: etc
             if name in SOS_USAGES:
                 return {'text/plain': SOS_USAGES[name]}
