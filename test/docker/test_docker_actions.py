@@ -208,16 +208,6 @@ console.log('Hello ' + args.join(' ') + '!');
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        #
-        script = SoS_Script(r'''
-[0]
-JavaScript: docker_image='node'
-
-var args = process.argv.slice(2);
-console.log('Hello ' + args.join(' ') + '!');
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testRInDocker(self):
