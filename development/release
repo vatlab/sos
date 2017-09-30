@@ -63,8 +63,8 @@ run:
    ssh -i ${pem} ubuntu@ec2-34-192-184-206.compute-1.amazonaws.com 'bash -s '< update_ec2_docker.sh
 
 [getFileNames]
-run:
-	python ../docs/js/findnames.py
+run: workdir='../docs'
+	python js/findnames.py .
 
 [convert-documentation]
 input:  '../docs/src/documentation/*.ipynb', group_by=1
