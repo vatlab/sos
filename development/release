@@ -131,6 +131,13 @@ run: workdir='../docs/doc/examples'
 	cd ${_input!db}
 	sos convert ${_input!b} ${_output!b} --raw ${_input!b}
 
+[index-site]
+input: '../docs/*.html', '../docs/doc/documentation/*.html',
+    '../docs/doc/tutorials/*.html', '../docs/doc/examples/*.html'
+output: '../docs/tipuesearch/tipuesearch_content.js'
+run: workdir='../docs'
+    python js/index_site.py .
+    
 [update-website]
 
 # convert ipynb to HTML
@@ -142,6 +149,7 @@ sos_run('convert-example-scripts')
 sos_run('convert-example-notebooks')
 sos_run('convert-example-report')
 sos_run('convert-large-examples')
+sos_run('index-site')
 
 # push changes to website
 parameter: msg = "Update website"
