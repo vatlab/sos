@@ -180,9 +180,7 @@ setup(name = "sos",
           'notebook>=5.0.0',
           # for DAG
           'networkx',
-          # we have to use pydotplus, not pydot because of we call
-          # some funtions only available in pydotplus
-          'pydotplus',
+          'pydot',
           'pexpect',
           'docker;platform_system!="Windows"',
       ],
