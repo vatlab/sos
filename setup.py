@@ -178,9 +178,10 @@ setup(name = "sos",
           'ipython',
           'ipykernel',
           'notebook>=5.0.0',
-          # for DAG
+          # for DAG, some version requires pydot, some requires pydotplus
           'networkx',
           'pydot',
+          'pydotplus',
           'pexpect',
           'docker;platform_system!="Windows"',
       ],
