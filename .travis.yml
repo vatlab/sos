@@ -50,7 +50,7 @@ before_install:
     - pip install docker rq
     # packages required by SoS
     - pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm scipy pysam
-    - pip install fasteners pygments ipython networkx pydot wand graphviz
+    - pip install fasteners pygments ipython networkx pydot pydotplus wand graphviz
     # https://github.com/jupyter/jupyter/issues/150
     - pip install entrypoints jupyter coverage codacy-coverage pytest pytest-cov python-coveralls
     # install r kernel (this took 80s to install too many packges)
