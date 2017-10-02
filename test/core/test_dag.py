@@ -61,8 +61,10 @@ class TestDAG(unittest.TestCase):
             out = StringIO()
             dag.write_dot(out)
             dot = out.getvalue()
-        self.assertEqual(sorted([x.strip() for x in dot.split('\n') if x.strip()]),
-            sorted([x.strip() for x in content.split('\n') if x.strip()]))
+        self.assertEqual(sorted([x.strip() for x in dot.split('\n') if
+            x.strip() and not 'digraph' in x]),
+            sorted([x.strip() for x in content.split('\n') if x.strip() and
+                not 'digraph' in x]))
 
     def testSimpleDAG(self):
         '''Test DAG with simple dependency'''
