@@ -179,14 +179,7 @@ class LocalHost:
                     task_id, task_vars['_runtime']['walltime'], self.config['max_walltime']))
                 return False
 
-            new_param = TaskParams(
-                name = params.name,
-                global_def = params.global_def,
-                task = params.task,
-                sos_dict = params.sos_dict,
-                sigil = params.sigil
-            )
-            new_param.save(task_file)
+            params.save(task_file)
         #
         if 'to_host' in task_vars['_runtime'] and isinstance(task_vars['_runtime']['to_host'], dict):
             for l, r in task_vars['_runtime']['to_host'].items():
@@ -562,15 +555,8 @@ class RemoteHost:
         if task_vars['_runtime']['max_walltime'] is not None:
             task_vars['_runtime']['max_walltime'] = format_HHMMSS(task_vars['_runtime']['max_walltime'])
 
-        new_param = TaskParams(
-            name = params.name,
-            global_def = params.global_def,
-            task = params.task,
-            sos_dict = params.sos_dict,
-            sigil = params.sigil
-        )
         task_file = os.path.join(self.task_dir, task_id + '.task')
-        new_param.save(task_file)
+        params.save(task_file)
         self.send_task_file(task_file)
 
     def send_task_file(self, task_file):
