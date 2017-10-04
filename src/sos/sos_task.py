@@ -72,7 +72,9 @@ class MasterTaskParams(TaskParams):
         self.ID = 'M_0'
         self.global_def = ''
         self.task = ''
-        self.sos_dict = {'_runtime': {}, '_input': [], '_output': [], '_depends': [], 'input': [], 'output':[], 'depends': [], 'step_name': '', '_index': 0}
+        self.sos_dict = {'_runtime': {}, '_input': [], '_output': [], '_depends': [],
+                'input': [], 'output':[], 'depends': [], 'step_name': '',
+                '_index': 0}
         self.sigil = None
         self.num_workers = num_workers
         # a collection of tasks that will be executed by the master task
@@ -97,7 +99,7 @@ class MasterTaskParams(TaskParams):
         # walltime
         if not self.task_stack:
             for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem', 'max_mem', 'map_vars',
-                        'name', 'cur_dir', 'home_dir'):
+                        'name', 'cur_dir', 'home_dir', 'verbosity', 'sig_mode', 'run_mode'):
                 if key in params.sos_dict['_runtime'] and params.sos_dict['_runtime'][key] is not None:
                     self.sos_dict['_runtime'][key] = params.sos_dict['_runtime'][key]
             self.sos_dict['step_name'] = params.sos_dict['step_name']
