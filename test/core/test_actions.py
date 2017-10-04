@@ -300,30 +300,6 @@ console.log('Hello ' + args.join(' ') + '!');
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        #
-        script = SoS_Script(r'''
-[0]
-JavaScript:
-var args = process.argv.slice(2);
-console.log('Hello ' + args.join(' ') + '!');
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-
-    def testR(self):
-        '''Test action JavaScript'''
-        if not shutil.which('R'):
-            return
-        script = SoS_Script(r'''
-[0]
-R:
-nums = rnorm(25, mean=100, sd=15)
-mean(nums)
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
 
     @multi_attempts
     @unittest.skipIf(not with_network, 'Skip test because of no internet connection')

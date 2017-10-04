@@ -34,6 +34,12 @@ from .target import R_library
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'], acceptable_args=['script', 'args'])
 def R(script, args='', **kwargs):
+    '''Execute specified script with command Rscript, with default options
+    "--default-packages=datasets,methods,utils,stats,grDevices,graphics". This action accepts
+    common action arguments such as input, active, workdir, docker_image and args. 
+    In particular, content of one or more files  specified by option input would be
+    prepended before the specified script.
+    '''
     # > getOption('defaultPackages')
     # [1] "datasets"  "utils"     "grDevices" "graphics"  "stats"     "methods"
     return SoS_ExecuteScript(

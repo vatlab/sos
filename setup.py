@@ -178,8 +178,9 @@ setup(name = "sos",
           'ipython',
           'ipykernel',
           'notebook>=5.0.0',
-          # for DAG
+          # for DAG, some version requires pydot, some requires pydotplus
           'networkx',
+          'pydot',
           'pydotplus',
           'pexpect',
           'docker;platform_system!="Windows"',
@@ -220,14 +221,18 @@ sh = sos.Bash.actions:sh
 
 perl = sos.actions:perl
 ruby = sos.actions:ruby
-node = sos.actions:node
-JavaScript = sos.actions:JavaScript
 report = sos.actions:report
 pandoc = sos.actions:pandoc
 
 python = sos.Python.actions:python
 python2 = sos.Python.actions:python2
 python3 = sos.Python.actions:python3
+
+node = sos.JavaScript.actions:node
+
+julia = sos.Julia.actions:julia
+
+matlab = sos.Matlab.actions:matlab
 
 R = sos.R.actions:R
 Rmarkdown = sos.R.actions:Rmarkdown

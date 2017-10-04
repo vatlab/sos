@@ -121,8 +121,8 @@ class SoS_Node(object):
             self._depends_targets, self._output_targets, self._context))
 
 class SoS_DAG(nx.DiGraph):
-    def __init__(self):
-        nx.DiGraph.__init__(self)
+    def __init__(self, *args, **kwargs):
+        nx.DiGraph.__init__(self, *args, **kwargs)
         # all_dependent files includes input and depends files
         self._all_dependent_files = defaultdict(list)
         self._all_output_files = defaultdict(list)
@@ -271,7 +271,7 @@ class SoS_DAG(nx.DiGraph):
         ancestors = set()
         for node in subnodes:
             ancestors |= nx.ancestors(self, node)
-        return nx.subgraph(self, subnodes + list(ancestors))
+        return SoS_DAG(nx.subgraph(self, subnodes + list(ancestors)))
 
     def build(self, steps):
         '''Connect nodes according to status of targets'''
