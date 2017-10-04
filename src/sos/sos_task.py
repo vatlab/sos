@@ -72,7 +72,7 @@ class MasterTaskParams(TaskParams):
         self.ID = 'M_0'
         self.global_def = ''
         self.task = ''
-        self.sos_dict = {'_runtime': {}, '_input': [], '_output': [], '_depends': [], 'input': [], 'output':[], 'depends': [], 'step_name': ''}
+        self.sos_dict = {'_runtime': {}, '_input': [], '_output': [], '_depends': [], 'input': [], 'output':[], 'depends': [], 'step_name': '', '_index': 0}
         self.sigil = None
         self.num_workers = num_workers
         # a collection of tasks that will be executed by the master task
