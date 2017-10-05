@@ -162,10 +162,6 @@ process = sos.sos_task:BackgroundProcess_TaskEngine
 rq = sos.rq.sos_task:RQ_TaskEngine [rq]
 pbs = sos.PBS.sos_task:PBS_TaskEngine
 
-[sos_functions]
-runfile = sos.jupyter.sos_executor:runfile
-
-
 [sos_converters]
 sos-html.parser = sos.converter:get_script_to_html_parser
 sos-html.func = sos.converter:script_to_html
