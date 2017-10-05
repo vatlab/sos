@@ -43,8 +43,8 @@ RUN  pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm
 RUN  pip install fasteners pygments ipython ptpython networkx pydotplus
 
 ARG  SHA=LATEST
-RUN  SHA=$SHA git clone http://github.com/vatlab/sos-core sos-core
-RUN  cd sos-core && python setup.py install
+RUN  SHA=$SHA git clone http://github.com/vatlab/sos sos
+RUN  cd sos && python setup.py install
 
 RUN  echo "export TS_SLOTS=10" >> /root/.bash_profile
 
