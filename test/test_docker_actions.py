@@ -33,7 +33,12 @@ from contextlib import contextmanager
 
 from sos.sos_script import SoS_Script
 from sos.utils import env
-from sos.docker.client import SoS_DockerClient
+try:
+    from sos.docker.client import SoS_DockerClient
+except ImportError:
+    print('Docker is not available')
+    has_docker = False
+
 from sos.sos_executor import Base_Executor, ExecuteError
 from sos.target import FileTarget
 
