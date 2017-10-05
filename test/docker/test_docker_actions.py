@@ -115,7 +115,7 @@ class TestDockerActions(unittest.TestCase):
         '''Test action bash in docker environment'''
         script = SoS_Script(r'''
 [0]
-bash:  docker_image='ubuntu'
+run:  docker_image='ubuntu'
 echo 'Echo'
 ''')
         wf = script.workflow()
@@ -128,7 +128,7 @@ echo 'Echo'
         # test docker
         script = SoS_Script(r'''
 [0]
-sh: docker_image='ubuntu'
+run: docker_image='ubuntu'
 echo 'Echo
 ''')
         wf = script.workflow()
@@ -137,89 +137,6 @@ echo 'Echo
         Base_Executor(wf).run(mode='dryrun')
 
 
-    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
-    def testPythonInDocker(self):
-        '''Test action python in docker environment'''
-        script = SoS_Script(r'''
-[0]
-python:  docker_image='python'
-a = {'1': 2}
-print(a)
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-
-    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
-    def testPythonsInDocker(self):
-        '''Test action pythons in docker environment'''
-        script = SoS_Script(r'''
-[0]
-python3: docker_image='python'
-#!/usr/bin/env python3
-a = {'1', '2'}
-print(a)
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
-    def testPerlInDocker(self):
-        '''Test action perl in docker environment'''
-        script = SoS_Script(r'''
-[0]
-perl: docker_image='ubuntu'
-use strict;
-use warnings;
-
-print "hi NAME\n";
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
-    def testRubyInDocker(self):
-        '''Test action ruby in docker environment'''
-        script = SoS_Script(r'''
-[0]
-ruby: docker_image='ruby'
-line1 = "Cats are smarter than dogs";
-line2 = "Dogs also like meat";
-
-if ( line1 =~ /Cats(.*)/ )
-  puts "Line1 contains Cats"
-end
-if ( line2 =~ /Cats(.*)/ )
-  puts "Line2 contains  Dogs"
-end
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
-    def testNodeInDocker(self):
-        '''Test action node in docker environment'''
-        script = SoS_Script(r'''
-[0]
-node: docker_image='node'
-
-var args = process.argv.slice(2);
-console.log('Hello ' + args.join(' ') + '!');
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
-    def testRInDocker(self):
-        '''Test action R in docker environment'''
-        script = SoS_Script(r'''
-[0]
-R: docker_image='r-base'
-nums = rnorm(25, mean=100, sd=15)
-mean(nums)
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerBuild(self):
