@@ -27,10 +27,11 @@ before_install:
     # add docker
     - pip install docker rq
     # packages required by SoS
-    - pip install pyyaml psutil tqdm 
+    - pip install pyyaml psutil tqdm
     - pip install fasteners pygments networkx pydot pydotplus 
     # https://github.com/jupyter/jupyter/issues/150
     - pip install entrypoints jupyter coverage codacy-coverage pytest pytest-cov python-coveralls
+    - conda install pandas numpy
 
 sudo: required
 services:
