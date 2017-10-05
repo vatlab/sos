@@ -312,7 +312,8 @@ run:
             """ "a'\\"='" """):
             script = SoS_Script(r'''
 a = 1
-python:
+run:
+   #!/usr/bin/env python
    with open('tmp.txt', 'w') as tmp:
       tmp.write({} + '{}')
 k = """b"""'''.format(text, '${a}')
