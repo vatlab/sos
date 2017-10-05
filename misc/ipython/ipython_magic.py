@@ -52,7 +52,7 @@ from IPython.core.magic import Magics, magics_class, line_magic, line_cell_magic
 
 # cannot use relative import because the module will be copied to
 # ~/.ipython/extensions
-from sos.jupyter.sos_executor import runfile
+from sos_notebook.sos_executor import runfile
 
 
 # The class MUST call this class decorator at creation time
