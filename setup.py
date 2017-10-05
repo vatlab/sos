@@ -159,8 +159,6 @@ docker_build = sos.docker.actions:docker_build
 
 [sos_taskengines]
 process = sos.sos_task:BackgroundProcess_TaskEngine
-rq = sos.rq.sos_task:RQ_TaskEngine [rq]
-pbs = sos.PBS.sos_task:PBS_TaskEngine
 
 [sos_converters]
 sos-html.parser = sos.converter:get_script_to_html_parser
