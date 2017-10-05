@@ -312,7 +312,7 @@ run:
         subprocess.call(['sos', 'kill', ret['pending_tasks'][0]])
         for i in range(20):
             output = subprocess.check_output(['sos', 'status', ret['pending_tasks'][0], '-v', '1']).decode()
-            if 'killed' in output or 'aborted' in output:
+            if 'killed' in output or 'aborted' in output or 'completed' in output:
                 break
             self.assertFalse(i > 10, 'Task should be killed within 10 seconds, got {}'.format(output))
             time.sleep(1)
@@ -320,7 +320,7 @@ run:
         subprocess.call(['sos', 'kill', '--all'])
         for i in range(20):
             output = subprocess.check_output(['sos', 'status', ret['pending_tasks'][1], '-v', '1']).decode()
-            if 'killed' in output or 'aborted' in output:
+            if 'killed' in output or 'aborted' in output or 'completed' in output:
                 break
             self.assertFalse(i > 10, 'Task should be killed within 10 seconds, got {}'.format(output))
             time.sleep(1)
