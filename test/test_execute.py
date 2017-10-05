@@ -105,7 +105,7 @@ a =1
         # script help
         self.assertEqual(subprocess.call('sos-runner test_cl -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos convert -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos convert sos-ipynb -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        #self.assertEqual(subprocess.call('sos convert sos-ipynb -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         #
         self.assertEqual(subprocess.call('sos config -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos config -g --get', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
