@@ -364,7 +364,7 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, **kwargs):
             #         # tell the master process to receive a workflow
             shared = {x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
             if env.config['run_mode'] == 'run':
-                from sos.sos_executor import Base_Executor
+                from .sos_executor import Base_Executor
                 executor = Base_Executor(wf, args=args, shared=shared, config=env.config)
                 if shared:
                     q = mp.Pipe()
@@ -384,7 +384,7 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, **kwargs):
                     res = None
                 p.join()
             else:
-                from sos.jupyter.sos_executor import Interactive_Executor
+                from sos_jupyter.sos_executor import Interactive_Executor
                 executor = Interactive_Executor(wf, args=args, shared=shared, config=env.config)
                 res = executor.run(targets=targets)
             return res

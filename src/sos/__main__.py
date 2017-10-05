@@ -832,7 +832,7 @@ def cmd_preview(args, unknown_args):
         env.logger.debug('Running "{}"'.format(' '.join(rargs)))
         msgs = eval(host._host_agent.check_output(rargs))
     else:
-        from sos.jupyter.preview import get_previewers
+        from sos_notebook.preview import get_previewers
         previewers = get_previewers()
         msgs = []
         style = {'style': args.style, 'options': unknown_args } if args.style else None
@@ -1338,11 +1338,11 @@ def cmd_remove(args, unknown_args):
         args.targets = ['.']
     #
     if args.size:
-        from sos.utils import expand_size
+        from .utils import expand_size
         args.size = expand_size(args.size)
     if args.age:
         import time
-        from sos.utils import expand_time
+        from .utils import expand_time
         args.age = expand_time(args.age, default_unit='d')
     if args.signature:
         def func(filename, resp):

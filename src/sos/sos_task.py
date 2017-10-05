@@ -30,9 +30,9 @@ from tokenize import generate_tokens
 from collections.abc import Sequence, Mapping
 import concurrent.futures
 
-from sos.utils import env, short_repr, get_traceback, sample_of_file, tail_of_file, linecount_of_file, \
+from .utils import env, short_repr, get_traceback, sample_of_file, tail_of_file, linecount_of_file, \
     format_HHMMSS, expand_time, expand_size
-from sos.sos_eval import SoS_exec, SoS_eval
+from .sos_eval import SoS_exec, SoS_eval
 
 from .target import textMD5, RuntimeInfo, Undetermined, FileTarget, UnknownTarget, remote, sos_step
 from .sos_eval import interpolate

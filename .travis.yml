@@ -13,20 +13,7 @@ before_install:
     # upgrade docker so that it has same API version as client https://docs.travis-ci.com/user/docker/ 
     - sudo apt-get update
     - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
-    - sudo apt-get install libmagickwand-dev libmagickcore5-extra graphviz redis-server
-    - sudo apt-get install -y texlive-xetex texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended
     - sudo apt-get install octave
-      # install dataframe package for octave to test exchanging dataframe between sos and octave
-    - octave --eval 'pkg install -forge dataframe'
-    # install JavaScript kernel
-    # https://github.com/petethepig/devtools-terminal/issues/70
-    # need to remove nodejs-5.x ppa, purge nodejs
-    # then install nodejs-legacy
-    - sudo apt-get purge --auto-remove nodejs npm node
-      #- sudo rm -rf /usr/local/bin/npm /usr/local/share/man/man1/node* /usr/local/lib/dtrace/node.d ~/.npm ~/.node-gyp /opt/local/bin/node opt/local/include/node /opt/local/lib/node_modules
-      #- sudo rm -rf /usr/local/lib/node* /usr/local/include/node* /usr/local/bin/node*
-    - sudo rm -rf ~/.nvm 
-    - sudo apt-get install nodejs-legacy npm
     # install anaconda Python 3
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then  wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh; fi
     #- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then wget  https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh; fi
@@ -37,66 +24,13 @@ before_install:
     - conda update -q conda
     # Useful for debugging any issues with conda
     - conda info -a
-    # install python 2.x kernel
-    - conda create -n ipykernel_py2 python=2 ipykernel
-    - source activate ipykernel_py2
-    - python -m ipykernel install --user
-    - source deactivate ipykernel_py2
-    # 
-    # downgrade python if needed
-    - conda create -n python_test python=$TRAVIS_PYTHON_VERSION anaconda
-    - source activate python_test
     # add docker
     - pip install docker rq
     # packages required by SoS
-    - pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm scipy pysam
-    - pip install fasteners pygments ipython networkx pydot pydotplus wand graphviz
+    - pip install pyyaml psutil tqdm 
+    - pip install fasteners pygments networkx pydot pydotplus 
     # https://github.com/jupyter/jupyter/issues/150
     - pip install entrypoints jupyter coverage codacy-coverage pytest pytest-cov python-coveralls
-    # install r kernel (this took 80s to install too many packges)
-    #- conda install -c r r-essentials r-feather
-    # this takes about 27s
-    - conda install -c r r-irdisplay r-irkernel r-feather r-dplyr r-markdown r-rmarkdown r-knitr r-yaml r-htmltools r-catools r-base64enc r-stringr r-backports r-rprojroot r-ggplot2 pandoc
-    # version 0.4.0 uses pyarrow and jemalloc, which causes an error message
-    # ImportError: /home/travis/miniconda/envs/python_test/lib/python3.5/site-packages/pyarrow/../../.././libjemalloc.so.2: cannot allocate memory in static TLS block
-    - conda install -c conda-forge feather-format=0.3.1
-    - conda install pandas numpy markdown
-    # version 0.3.1 works
-    # - python -c 'import feather'
-    #
-    # install bash kernel
-    - pip install bash_kernel
-    - python -m bash_kernel.install --user
-    # for pdf generation
-    - sudo npm install -g ijavascript
-    - sudo npm rebuild
-    #- sudo npm install -g itypescript
-    - ijsinstall --spec-path=full
-    #
-    # install octave kernel
-    - pip install octave_kernel
-    - python -m octave_kernel.install
-    # print version info
-    #- lsb_release -a
-    #- conda list
-    #- pip list
-    #- jupyter kernelspec list --json
-    #- npm list -g
-    #- npm -v
-    #- node -v
-    #- which node
-    #- which nodejs
-    #- which ijskernel
-    #
-    # Test Julia
-    - sudo add-apt-repository -y ppa:staticfloat/juliareleases
-    - sudo add-apt-repository -y ppa:staticfloat/julia-deps
-    - sudo apt-get update
-    - sudo apt-get install julia
-    - julia -e "ENV[\"JUPYTER\"]=\"$(which jupyter)\";Pkg.add(\"IJulia\")"
-    - julia -e 'Pkg.add("Feather")'
-    - julia -e 'Pkg.add("DataFrames")'
-    - julia -e 'Pkg.add("NamedArrays")'
 
 sudo: required
 services:
@@ -109,39 +43,14 @@ script:
     # coverage does not seem to work well with python 3.6, but it does not really matter because we have coverage report from python 3.5 already
     # SAS and Matlab are not tested
     - 'if [ $TRAVIS_PYTHON_VERSION == "3.6" ]; then
-           pytest -x -v core &&
-           pytest -x -v jupyter &&
-           pytest -x -v bioinfo &&
-           pytest -x -v PBS &&
-           pytest -x -v rq &&
-           pytest -x -v docker &&
-           pytest -x -v Bash &&
-           pytest -x -v JavaScript &&
-           pytest -x -v Julia &&
-           pytest -x -v Python2 &&
-           pytest -x -v Python3 &&
-           pytest -x -v R &&
-           pytest -x -v Octave;
+           pytest -x -v 
        else
-           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= core &&
-           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append jupyter &&
-           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append bioinfo &&
-           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append PBS &&
-           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append rq &&
-           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report=xml --cov-append docker &&
-           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append Bash &&
-           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append JavaScript &&
-           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append Julia &&
-           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append Python2 &&
-           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append Python3 &&
-           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append R &&
-           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report= --cov-append Octave;
+           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report=xml
        fi'
       
 after_success:
     - 'if [ $TRAVIS_PYTHON_VERSION == "3.5" ]; then
            coverage combine;
-           ls -l coverage.xml;
            python-codacy-coverage -r coverage.xml;
            coveralls;
         fi'

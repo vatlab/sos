@@ -33,11 +33,6 @@ with open('src/sos/_version.py') as version:
             __version__ = eval(line.split('=')[1])
             break
 
-kernel_json = {
-    "argv":         ["python", "-m", "sos.jupyter.kernel", "-f", "{connection_file}"],
-    "display_name": "SoS",
-    "language":     "sos",
-}
 
 class InstallWithConfigurations(install):
     def run(self):
@@ -56,92 +51,42 @@ class InstallWithConfigurations(install):
         if not os.path.isdir(vim_ftdetect_dir):
             os.makedirs(vim_ftdetect_dir)
         shutil.copy('misc/sos-detect.vim', vim_ftdetect_file)
-        # copy vim-ipython to .vim/ftplugin
-        #vim_plugin_dir = os.path.expanduser('~/.vim/ftplugin/sos')
-        #if not os.path.isdir(vim_plugin_dir):
-        #    os.makedirs(vim_plugin_dir)
-        #shutil.copy('misc/vim-ipython/ipy.vim', os.path.join(vim_plugin_dir, 'ipy.vim'))
-        #shutil.copy('misc/vim-ipython/vim_ipython.py', os.path.join(vim_plugin_dir, 'vim_ipython.py'))
-        #
-        # at this point, jupyter and ipython should have been installed.
-        import json
-        try:
-            from jupyter_client.kernelspec import KernelSpecManager as KS
-        except ImportError:
-            from ipykernel.kernelspec import KernelSpecManager as KS
-        from IPython.utils.tempdir import TemporaryDirectory
-        #from IPython.paths import get_ipython_dir
-        #
-        # copy ipython magic to ~/.ipython/extensions
-        #ext_dir = os.path.join(get_ipython_dir(), 'extensions')
-        #ext_file = os.path.join(ext_dir, 'sos_magic.py')
-        #if not os.path.isdir(ext_dir):
-        #    os.makedirs(ext_dir)
-        #prof_dir = os.path.join(get_ipython_dir(), 'profile_sos')
-        #prof_file = os.path.join(prof_dir, 'ipython_config.py')
-        #if not os.path.isdir(prof_dir):
-        #    os.makedirs(prof_dir)
-        #
-        #shutil.copy('src/sos/jupyter/ipython_magic.py', ext_file)
-        #shutil.copy('src/sos/jupyter/sos_ipython_profile.py', prof_file)
-        #
-        #log.info('Use "ipython --profile sos" to start ipython with sos magic.')
-        #
-        # Now write the kernelspec
-        with TemporaryDirectory() as td:
-            os.chmod(td, 0o755)  # Starts off as 700, not user readable
-            shutil.copy('src/sos/jupyter/kernel.js', os.path.join(td, 'kernel.js'))
-            shutil.copy('misc/logo-64x64.png', os.path.join(td, 'logo-64x64.png'))
-            with open(os.path.join(td, 'kernel.json'), 'w') as f:
-                json.dump(kernel_json, f, sort_keys=True)
-            try:
-                KS().install_kernel_spec(td, 'sos', user=self.user, replace=True, prefix=sys.exec_prefix)
-                log.info('Use "jupyter notebook" to create or open SoS notebooks.')
-            except Exception:
-                log.error("\nWARNING: Could not install SoS Kernel as %s user." % self.user)
-        #log.info('Run "python misc/patch_spyder.py" to patch spyder with sos support.')
-        log.info('\nSoS is installed and configured to use with vim and Jupyter.')
+        log.info('\nSoS is installed and configured to use with vim.')
         log.info('Use "set syntax=sos" to enable syntax highlighting.')
-        log.info('And "sos -h" to start using Script of Scripts.')
 
-dest = '''\
-Exploratory data analysis in computationally intensive disciplines such as computational
-biology often requires one to exploit a variety of tools implemented in different programming
-languages and analyzing large datasets on high performance computing systems (e.g. computer
-clusters). On top of all the difficulties in exchanging data between languages and computing
-systems and analyzing data on different platforms, it becomes challenging to keep track of
-such fragmented workflows and reproduce prior analyses.
-
-With strong emphases on readability, practicality, and reproducibility, we have developed
-a workflow system called "Script of Scripts" (SoS) with a web front-end and notebook format
-based on Jupyter. Major features of SoS for exploratory analysis include multi-language
-support, explicit and automatic data exchange between running sessions (kernels) in
-different languages, cell-specific kernel switch using frontend-UI or cell magics,
-a side-panel that allows scratch execution of statements, preview of files and expressions,
-and line-by-line execution of statements in cells. In particular, variable and file preview
-on the side panel makes it possible to trouble-shoot scripts in multiple languages without
-contaminating the main notebook or interrupting the logic flow of the analysis. For large-scale
-data analysis, the SoS workflow engine provides a unified interface to executing and managing
-tasks on a variety of computing platforms such as PBS/Torch/LSF/Slurm clusters and RQ and
-Celery task queues. Specified files are automatically synchronized between file systems,
-thus enabling a single workflow to utilize multiple remote computing environments.
-
-Researchers will benefit from the SoS system the flexibility to use their preferred languages
-and tools for tasks without having to worry about data flow, and can perform light interactive
-analysis while executing heavy remote tasks simultaneous in the same notebook in a neat and
-organized fashion. SoS is available at http://vatlab.github.io/SOS/ and is distributed freely
-under a GPL3 license. A live Jupyter server and several docker containers are available for
-testing and running SoS without a local installation.
+description = '''\
+Computationally intensive disciplines such as computational biology often 
+requires one to exploit a variety of tools implemented in different programming
+languages, and to analyze large datasets on high performance computing systems.
+Although scientific workflow systems are powerful in organizing and executing
+large-scale data analysis processes, there are usually non-trivial learning
+curve and engineering overhead in creating and maintaining such workflows,
+making them unsuitable for data exploration and prototyping. To bridge the
+gap between interactive analysis and workflow systems, we developed Script
+of Scripts (SoS), a system with strong emphases on readability, practicality,
+and reproducibility for daily computational research. For exploratory analysis
+SoS provides a multi-language file format and scripting engine that centralizes
+all computations, and creates dynamic report documents for publishing and
+sharing. As a workflow engine, SoS provides an intuitive syntax to create
+workflows in process-oriented, outcome-oriented and mixed styles, as well as
+a unified interface to executing and managing tasks on a variety of computing
+platforms with automatic synchronization of files between isolated systems.
+In this paper we illustrate with real-world examples the use of SoS as both
+interactive analysis tool and pipeline platform for all stages of methods
+development and data analysis projects. In particular we demonstrate how SoS
+can easily be adopted based on existing scripts and pipelines, yet resulting
+in substantial improvement in terms of organization, readability and
+cross-platform computation management.
 
 Please refer to http://vatlab.github.io/SOS/ for more details on SoS.
 '''
 
-setup(name = "sos",
+setup(name = "sos-core",
     version = __version__,
     description = 'Script of Scripts (SoS): an interactive, cross-platform, and cross-language workflow system for reproducible data analysis',
-    long_description=dest,
+    long_description = description,
     author = 'Bo Peng',
-    url = 'https://github.com/vatlab/SOS',
+    url = 'https://github.com/vatlab/SoS',
     author_email = 'bpeng@mdanderson.org',
     maintainer = 'Bo Peng',
     maintainer_email = 'bpeng@mdanderson.org',
@@ -162,6 +107,7 @@ setup(name = "sos",
         ],
     packages = find_packages('src'),
     package_dir = {'': 'src'},
+    # install vim syntax highlighting and other stuff
     cmdclass={'install': InstallWithConfigurations},
     install_requires=[
           'psutil',
@@ -170,14 +116,7 @@ setup(name = "sos",
           # for file lock
           'fasteners',
           'pyyaml',
-          'markdown',
           'pygments',
-          # for jupyter notebook format conversion
-          'nbformat',
-          'nbconvert>=5.1.1',
-          'ipython',
-          'ipykernel',
-          'notebook>=5.0.0',
           # for DAG, some version requires pydot, some requires pydotplus
           'networkx',
           'pydot',
@@ -201,8 +140,6 @@ executable = sos.target:executable
 sos_variable = sos.target:sos_variable
 sos_step = sos.target:sos_step
 env_variable = sos.target:env_variable
-R_library = sos.R.target:R_library
-Py_Module = sos.Python.target:Py_Module
 
 [sos_actions]
 script = sos.actions:script
@@ -213,29 +150,10 @@ stop_if = sos.actions:stop_if
 download = sos.actions:download
 run = sos.actions:run
 
-bash = sos.Bash.actions:bash
-csh = sos.Bash.actions:csh
-tcsh = sos.Bash.actions:tcsh
-zsh = sos.Bash.actions:zsh
-sh = sos.Bash.actions:sh
-
 perl = sos.actions:perl
 ruby = sos.actions:ruby
 report = sos.actions:report
 pandoc = sos.actions:pandoc
-
-python = sos.Python.actions:python
-python2 = sos.Python.actions:python2
-python3 = sos.Python.actions:python3
-
-node = sos.JavaScript.actions:node
-
-julia = sos.Julia.actions:julia
-
-matlab = sos.Matlab.actions:matlab
-
-R = sos.R.actions:R
-Rmarkdown = sos.R.actions:Rmarkdown
 
 docker_build = sos.docker.actions:docker_build
 
@@ -248,35 +166,6 @@ pbs = sos.PBS.sos_task:PBS_TaskEngine
 runfile = sos.jupyter.sos_executor:runfile
 
 
-[sos_previewers]
-*.pdf,1 = sos.jupyter.preview:preview_pdf
-*.html,1 = sos.jupyter.preview:preview_html
-*.csv,1 = sos.jupyter.preview:preview_csv
-*.xls,1 = sos.jupyter.preview:preview_xls
-*.xlsx,1 = sos.jupyter.preview:preview_xls
-*.gz,1 = sos.jupyter.preview:preview_gz
-*.txt,1 = sos.jupyter.preview:preview_txt
-*.md,1 = sos.jupyter.preview:preview_md [md]
-*.dot,1 = sos.jupyter.preview:preview_dot [dot]
-imghdr:what,1 = sos.jupyter.preview:preview_img [image]
-zipfile:is_zipfile,1 = sos.jupyter.preview:preview_zip
-tarfile:is_tarfile,1 = sos.jupyter.preview:preview_tar
-*,0 = sos.jupyter.preview:preview_txt
-
-*.bam,1 = sos.bioinfo.preview:preview_bam [bam]
-*.sam,1 = sos.bioinfo.preview:preview_bam [bam]
-
-[sos_languages]
-R = sos.R.kernel:sos_R [R]
-Python2 = sos.Python.kernel:sos_Python
-Python3 = sos.Python.kernel:sos_Python
-Bash = sos.Bash.kernel:sos_Bash
-JavaScript = sos.JavaScript.kernel:sos_JavaScript
-SAS = sos.SAS.kernel:sos_SAS [sas]
-Matlab = sos.Matlab.kernel:sos_Matlab
-Octave = sos.Matlab.kernel:sos_Matlab
-Julia = sos.Julia.kernel:sos_Julia
-
 [sos_converters]
 sos-html.parser = sos.converter:get_script_to_html_parser
 sos-html.func = sos.converter:script_to_html
@@ -286,46 +175,9 @@ sos-term.func = sos.converter:script_to_term
 
 sos-md.parser = sos.converter:get_script_to_markdown_parser
 sos-md.func = sos.converter:script_to_markdown
-
-sos-ipynb.parser = sos.jupyter.converter:get_script_to_notebook_parser
-sos-ipynb.func = sos.jupyter.converter:script_to_notebook
-
-ipynb-sos.parser = sos.jupyter.converter:get_notebook_to_script_parser
-ipynb-sos.func = sos.jupyter.converter:notebook_to_script
-
-ipynb-html.parser = sos.jupyter.converter:get_notebook_to_html_parser
-ipynb-html.func = sos.jupyter.converter:notebook_to_html
-
-ipynb-pdf.parser = sos.jupyter.converter:get_notebook_to_pdf_parser
-ipynb-pdf.func = sos.jupyter.converter:notebook_to_pdf
-
-ipynb-md.parser = sos.jupyter.converter:get_notebook_to_md_parser
-ipynb-md.func = sos.jupyter.converter:notebook_to_md
-
-ipynb-ipynb.parser = sos.jupyter.converter:get_notebook_to_notebook_parser
-ipynb-ipynb.func = sos.jupyter.converter:notebook_to_notebook
-
-rmd-ipynb.parser = sos.jupyter.converter:get_Rmarkdown_to_notebook_parser
-rmd-ipynb.func = sos.jupyter.converter:Rmarkdown_to_notebook
 ''',
-#
-# remove patch-spyder addon because it is difficult and not really
-# necessary to use Spyder. We will wait for Spyder 4.0 for its support
-# for alternative kernel: https://github.com/spyder-ide/spyder/issues/3314
-#
-#[sos_addons]
-#patch-spyder.parser = sos.addons.patch_spyder:get_patch_spyder_parser
-#patch-spyder.func   = sos.addons.patch_spyder:patch_spyder
-#
     extras_require = {
         ':sys_platform=="win32"': ['colorama'],
-        'image':    ['wand'],
-        'md':       ['markdown'],
-        'R':        ['feather-format', 'pandas', 'numpy'],
-        'rq':       ['rq'],
-        'bam':      ['pysam'],
         'dot':      ['graphviz'],
-        'sas':      ['saspy'],
-        #'spyder':   ['spyder'],
     }
 )
