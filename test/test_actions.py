@@ -246,7 +246,7 @@ run:
         script = SoS_Script(r'''
 [0]
 run: args='-n ${filename!q}'
-    touch a.txt
+    echo "" > a.txt
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
