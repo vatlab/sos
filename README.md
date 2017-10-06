@@ -11,7 +11,7 @@ scripts in multiple languages into a single executable script, an
 a **workflow engine** for the execution of workflows consisting with scripts
 in different languages. It is designed for data scienticists and bioinformatics who routinely work with scripts in different languages such as R, Python, Perl, and bash.
 
-[![screenshot](https://vatlab.github.io/SoS/doc/media/JupyterNotebook.png "screenshot")](https://vatlab.github.io/SoS/doc/documentation/Notebook_Interface.html)
+[![screenshot](https://vatlab.github.io/sos-docs/doc/media/JupyterNotebook.png "screenshot")](https://vatlab.github.io/sos-docs/doc/documentation/Notebook_Interface.html)
 
 
 Please refer to the [SoS homepage](http://vatlab.github.io/SOS) for more information.
