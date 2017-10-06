@@ -13,7 +13,7 @@ before_install:
     # upgrade docker so that it has same API version as client https://docs.travis-ci.com/user/docker/ 
     - sudo apt-get update
     - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
-    - sudo apt-get install octave
+    - sudo apt-get install
     # install anaconda Python 3
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then  wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh; fi
     #- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then wget  https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh; fi
@@ -25,7 +25,7 @@ before_install:
     # Useful for debugging any issues with conda
     - conda info -a
     # add docker
-    - pip install docker rq
+    - pip install docker
     # packages required by SoS
     - pip install pyyaml psutil tqdm
     - pip install fasteners pygments networkx pydot pydotplus 
