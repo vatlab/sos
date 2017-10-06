@@ -470,7 +470,7 @@ run:
         #
         for t in range(10, 12):
             with open('myfile_{}.txt'.format(t)) as tmp:
-                self.assertEqual(tmp.read(), str(t) + '\n')
+                self.assertEqual(tmp.read().strip(), str(t))
             FileTarget('myfile_{}.txt'.format(t)).remove('both')
 
 
