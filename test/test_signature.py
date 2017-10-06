@@ -508,7 +508,7 @@ run:
         script = SoS_Script('''
 [process: provides='a.txt']
 run:
-    echo 'a.txt' > a.txt
+    echo a.txt > a.txt
 
 [default]
 depends: 'a.txt'
@@ -522,12 +522,12 @@ run:
         for f in ['a.txt', 'a.txt.bak']:
             self.assertTrue(FileTarget(f).exists())
             with open(f) as ifile:
-                self.assertEqual(ifile.read(), 'a.txt\n')
+                self.assertEqual(ifile.read().strip(), 'a.txt')
         # now let us change how a.txt should be generated
         script = SoS_Script('''
 [process: provides='a.txt']
 run:
-    echo 'aa.txt' > a.txt
+    echo aa.txt > a.txt
 
 [default]
 depends: 'a.txt'
@@ -541,7 +541,7 @@ run:
         for f in ['a.txt', 'a.txt.bak']:
             self.assertTrue(FileTarget(f).exists())
             with open(f) as ifile:
-                self.assertEqual(ifile.read(), 'aa.txt\n')
+                self.assertEqual(ifile.read().strip(), 'aa.txt')
 
 
     def testSignatureWithVars(self):
