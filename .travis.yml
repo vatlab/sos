@@ -24,6 +24,11 @@ before_install:
     - conda update -q conda
     # Useful for debugging any issues with conda
     - conda info -a
+
+    # downgrade python if needed
+    - conda create -n python_test python=$TRAVIS_PYTHON_VERSION anaconda
+    - source activate python_test
+
     # add docker
     - pip install docker
     # packages required by SoS
