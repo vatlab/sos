@@ -1006,7 +1006,7 @@ run:
         script = SoS_Script('''
 [process: provides='a.txt']
 run:
-    echo 'a.txt' > a.txt
+    echo a.txt > a.txt
 
 [default]
 depends: 'a.txt'
@@ -1025,7 +1025,7 @@ run:
         script = SoS_Script('''
 [process: provides='a.txt']
 run:
-    echo 'aa.txt' > a.txt
+    echo aa.txt > a.txt
 
 [default]
 depends: 'a.txt'
