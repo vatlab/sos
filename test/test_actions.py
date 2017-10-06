@@ -486,7 +486,7 @@ report: output='report.txt'
         script = SoS_Script(r'''
 [A_1]
 run: output='a.txt'
-    echo 'something' > a.txt
+    echo something > a.txt
 report(input='a.txt', output='out.txt')
 ''')
         wf = script.workflow()
@@ -499,11 +499,11 @@ report(input='a.txt', output='out.txt')
         script = SoS_Script(r'''
 [A_1]
 run: output='a.txt'
-    echo 'something' > a.txt
+    echo something > a.txt
 
 [A_2]
 run: output='b.txt'
-    echo 'something else' > b.txt
+    echo something else > b.txt
 
 [A_3]
 report(input=['a.txt', 'b.txt'], output='out.txt')
