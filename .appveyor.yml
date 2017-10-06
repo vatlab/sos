@@ -38,7 +38,7 @@ install:
     # packages required by SoS
     - pip install jedi pyyaml psutil tqdm 
     - pip install fasteners pygments ipython ptpython networkx pydot pydotplus nose 
-    - pip install entrypoints
+    - pip install entrypoints numpy pandas
 
     # install sos
     - pip install pytest
