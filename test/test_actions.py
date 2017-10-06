@@ -240,18 +240,6 @@ run:
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    def testArgs(self):
-        '''Test args option of scripts'''
-        FileTarget('a.txt').remove('both')
-        script = SoS_Script(r'''
-[0]
-run: args='-n ${filename!q}'
-    echo "" > a.txt
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-        self.assertFalse(os.path.exists('a.txt'))
-
 
     def testPerl(self):
         '''Test action ruby'''
