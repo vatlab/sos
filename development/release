@@ -39,15 +39,6 @@ sh: workdir='..'
 # add documentation to Docker container
 depends: executable('docker')
 
-# copy doc over
-run: workdir='..'
-    rm -rf development/docker-notebook/doc
-    # copy only ipynb and .sos files to docker
-    rsync -av --prune-empty-dirs --include "*/" --exclude ".ipynb_checkpoints" \
-        --include "*.ipynb" --include "*.jpg" --include "*.png" --exclude "*" \
-        docs/src/documentation docs/src/tutorials docs/src/examples docs/doc/media \
-		development/docker-notebook/doc
-
 # update docker and push
 run:
 	docker build --no-cache -t mdabioinfo/sos docker-base
@@ -58,138 +49,8 @@ run:
 # update docker on ec2
 
 [update-ec2]
-parameter: pem=glob.glob('mda*.pem')
 run:
-   ssh -i ${pem} ubuntu@ec2-34-192-184-206.compute-1.amazonaws.com 'bash -s '< update_ec2_docker.sh
-
-[getFileNames]
-run: workdir='../docs'
-	python js/findnames.py .
-
-[convert-documentation]
-input:  '../docs/src/documentation/*.ipynb', group_by=1
-depends: '../docs/src/documentation/toc_doc.tpl'
-output: _input[0].replace('/src/', '/doc/').replace('.ipynb', '.html')
-
-run:
-	cd ../docs/src/documentation
-	sos convert ${_input!a} ${_output!a}  --template toc_doc
-  	perl -0777 -pi -e 'BEGIN{undef $/;}  s/<style type=\"text\/css\">(.+?)<\/style>//smg' ${_output!a}
-
-[convert-tutorials]
-input:  '../docs/src/tutorials/*.ipynb', group_by=1
-depends: '../docs/src/tutorials/toc_tut.tpl'
-output: _input[0].replace('/src/', '/doc/').replace('.ipynb', '.html')
-
-run: 
-	cd ../docs/src/tutorials
-	sos convert ${_input!a} ${_output!a}  --template toc_tut
-  	perl -0777 -pi -e 'BEGIN{undef $/;}  s/<style type=\"text\/css\">(.+?)<\/style>//smg' ${_output!a}
-
-[convert-homepage]
-input:  '../docs/src/homepage/*.ipynb', group_by=1
-output: "../docs/${_input!bn}.html"
-
-run: 
-	cd ../docs/src/tutorials
-	sos convert ${_input!a} ${_output!a} --template basic
-
-[convert-example-scripts]
-input:  '../docs/src/examples/*.sos', 'release', group_by=1
-output: "../docs/doc/examples/${_input!bn}.html"
-
-run: workdir='../docs/doc/examples'
-	cp ${_input!a} .
-	sos convert ${_input!b} ${_output!b} --raw ${_input!b} --lineno --style tango
-
-[convert-example-notebooks]
-input:  '../docs/src/examples/*.ipynb', group_by=1
-depends: '../src/sos/jupyter/sos-full.tpl'
-output: "../docs/doc/examples/${_input!bn}.html"
-
-run: workdir='../docs/doc/examples'
-	cp ${_input!a} .
-	sos convert ${_input!b} ${_output!b} --template sos-full
-
-[convert-example-report]
-input:  '../docs/src/examples/Preview_and_Report_Generation.ipynb', '../docs/src/examples/RNASeqDE.ipynb', group_by=1
-depends: '../src/sos/jupyter/sos-report.tpl'
-output: "../docs/doc/examples/${_input!bn}_report.html"
-
-run: workdir='../docs/doc/examples'
-	cp ${_input!a} .
-	sos convert ${_input!b} ${_output!b} --template sos-report
-
-[convert-large-examples]
-input:  '../docs/src/examples/*/*.sos', group_by=1
-output: "../docs/doc/examples/${_input!db}/${_input!bn}.html"
-
-run: workdir='../docs/doc/examples'
-	[ -d ${_input!db} ] || mkdir ${_input!db}
-	cp ${_input!a} ${_input!db}
-	cp ${_input!da}/README.md ${_input!db}
-	cd ${_input!db}
-	sos convert ${_input!b} ${_output!b} --raw ${_input!b}
-
-[index-site]
-input: '../docs/*.html', '../docs/doc/documentation/*.html',
-    '../docs/doc/tutorials/*.html', '../docs/doc/examples/*.html'
-output: '../docs/tipuesearch/tipuesearch_content.js'
-run: workdir='../docs'
-    python js/index_site.py .
-    
-[update-website]
-
-# convert ipynb to HTML
-sos_run('getFileNames')
-sos_run('convert-documentation')
-sos_run('convert-tutorials')
-sos_run('convert-homepage')
-sos_run('convert-example-scripts')
-sos_run('convert-example-notebooks')
-sos_run('convert-example-report')
-sos_run('convert-large-examples')
-sos_run('index-site')
-
-# push changes to website
-parameter: msg = "Update website"
-
-run: workdir='..'
-	git add --all docs/doc/documentation docs/doc/tutorials docs/doc/examples docs/doc/media docs/js/docs.js docs/*.html
-	git commit docs/*.html docs/doc/* --no-verify -m '${msg}' || true
-	git push --no-verify || true
-
-[check-doc]
-# check if examples in the documentation can be run successfully
-input: '../docs/src/documentation/*.ipynb', group_by=1
-
-run:
-	# convert ipynb to sos
-	sos convert ${_input!a} ${_input!bn}.sos
-	# then from sos to ipynb with execution
-	sos convert ${_input!bn}.sos ${_input!b} --execute
-
-[check-link]
-
-# https://www.npmjs.com/package/broken-link-checker
-# use command
-#
-#     npm install broken-link-checker -g
-#
-# to install
-depends: executable('blc')
-
-# check homepage
-run:
-    blc http://vatlab.github.io/SoS
-
-input: '../docs/src/*/*.ipynb', group_by=1
-
-if 'homepage' in _input[0]:
-    run("blc http://vatlab.github.io/SoS/${_input!bn}.html")
-else:
-    run("blc http://vatlab.github.io/SoS/doc/${_input!db}/${_input!bn}.html")
-
+   ssh 128.135.144.117 'bash -s '< update_ec2_docker.sh
 
 [default]
-sos_run('patch + pip + update-docker + update-website')
+sos_run('patch + pip + update-docker')
