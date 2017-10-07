@@ -130,7 +130,7 @@ class LocalHost:
 
     def __init__(self, config):
         # even if the config has an alias, we use localhost to make it clear that the host is localhost
-        self.alias = 'localhost'
+        self.alias = config.get('alias', 'localhost')
         self.address = 'localhost'
         # we checkk local jobs more aggressively
         self.config = {'alias': 'localhost', 'status_check_interval': 2}
