@@ -295,6 +295,7 @@ run:
         Base_Executor(wf).run()
         FileTarget('largefile.txt').remove('both')
 
+    @unittest.skipIf(sys.platform == 'win32', 'Windows executable cannot be created with chmod.')
     def testRemovalOfIntermediateFiles(self):
         # if we zap the file, it
         if os.path.isfile('midfile.txt'):
