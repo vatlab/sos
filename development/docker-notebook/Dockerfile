@@ -41,9 +41,9 @@ RUN     pip install markdown
 RUN     pip install bash_kernel
 RUN     python -m bash_kernel.install
 
-RUN     pip install sos
+RUN     pip install sos sos-notebook sos-r sos-julia sos-python
 
-COPY    docs /home/$NB_USER/work/doc
+#COPY    docs /home/$NB_USER/work/doc
 RUN     chown -R $NB_USER /home/jovyan/work
 
 USER    $NB_USER
