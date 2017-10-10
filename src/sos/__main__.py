@@ -1085,6 +1085,8 @@ def get_purge_parser(desc_only=False):
     parser.add_argument('-s', '--status', nargs='+', help='''Only remove tasks with
         specified status, which can be pending, submitted, running, completed, failed,
         aborted, and signature-mismatch. One of more status can be specified.''')
+    parser.add_argument('-t', '--tags', nargs='*', help='''Only remove tasks with
+        one of the specified tags.''')
     parser.add_argument('-q', '--queue', nargs='?', const='',
         help='''Remove tasks on specified tasks queue or remote host
         if the tasks . The queue can be defined in global or local sos
@@ -1122,12 +1124,12 @@ def cmd_purge(args, workflow_args):
             workflows = [os.path.basename(x)[:-4] for x in sig_files]
             args.workflows = workflows
         if not args.queue:
-            purge_tasks(args.tasks, args.all, args.workflows, args.age, args.status, args.verbosity)
+            purge_tasks(args.tasks, args.all, args.workflows, args.age, args.status, args.tags, args.verbosity)
         else:
             # remote host?
             cfg = load_config_files(args.config)
             host = Host(args.queue)
-            print(host._task_engine.purge_tasks(args.tasks, args.all, args.workflows, args.age, args.status, args.verbosity))
+            print(host._task_engine.purge_tasks(args.tasks, args.all, args.workflows, args.age, args.status, args.tags, args.verbosity))
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())

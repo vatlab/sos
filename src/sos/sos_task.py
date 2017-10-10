@@ -992,7 +992,7 @@ def kill_task(task):
     return 'killed'
 
 
-def purge_tasks(tasks, purge_all=False, workflows=None, age=None, status=None, verbosity=2):
+def purge_tasks(tasks, purge_all=False, workflows=None, age=None, status=None, tags=None, verbosity=2):
     # verbose is ignored for now
     import glob
     if tasks:
@@ -1018,6 +1018,9 @@ def purge_tasks(tasks, purge_all=False, workflows=None, age=None, status=None, v
         p = Pool(min(20, len(all_tasks)))
         task_status = p.map(check_task, [x[0] for x in all_tasks])
         all_tasks = [x for x,s in zip(all_tasks, task_status) if s in status]
+
+    if tags:
+        all_tasks = [x for x in all_tasks if any(x in tags for x in taskTags(x[0]).split(' '))]
     #
     # remoe all task files
     all_tasks = set([x[0] for x in all_tasks])
