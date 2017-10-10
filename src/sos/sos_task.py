@@ -947,7 +947,7 @@ showResourceFigure_''' + t + '''()
     if to_be_removed:
         purge_tasks(to_be_removed, verbosity = 0)
 
-def kill_tasks(tasks):
+def kill_tasks(tasks, tags=None):
     #
     import glob
     from multiprocessing.pool import ThreadPool as Pool
@@ -963,6 +963,9 @@ def kill_tasks(tasks):
                 env.logger.warning('{} does not match any existing task'.format(t))
             else:
                 all_tasks.extend(matched)
+    if tags:
+        all_tasks = [x for x in all_tasks if any(x in tags for x in taskTags(x).split(' '))]
+
     if not all_tasks:
         env.logger.warning('No task to kill')
         return
@@ -1377,7 +1380,7 @@ class TaskEngine(threading.Thread):
             env.logger.error('Failed to query status of tasks {}: {}'.format(tasks, e))
             return ''
 
-    def kill_tasks(self, tasks, all_tasks=False):
+    def kill_tasks(self, tasks, tags=None, all_tasks=False):
         # we wait for the engine to start
         self.engine_ready.wait()
 
@@ -1402,7 +1405,9 @@ class TaskEngine(threading.Thread):
 
         self.canceled_tasks.extend(tasks)
         #
-        cmd = "sos kill {} {}".format(' '.join(tasks), '-a' if all_tasks else '')
+        cmd = "sos kill {} {} {}".format(' '.join(tasks),
+                '--tags {}'.format(' '.join(tags)) if tags else '',
+                '-a' if all_tasks else '')
         try:
             ret = self.agent.check_output(cmd)
             env.logger.debug('"{}" executed with response "{}"'.format(cmd, ret))

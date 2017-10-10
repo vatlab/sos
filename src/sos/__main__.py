@@ -1157,6 +1157,8 @@ def get_kill_parser(desc_only=False):
         assumed to be a remote machine with process type if no configuration
         is found. If this option is specified without value, SoS will list all
         configured queues and exit.''')
+    parser.add_argument('-t', '--tags', nargs='*', help='''Only kill tasks with
+        one of the specified tags.''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global sos config.yml files.''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
@@ -1180,17 +1182,19 @@ def cmd_kill(args, workflow_args):
         if args.all:
             if args.tasks:
                 env.logger.warning('Task ids "{}" are ignored with option --all'.format(' '.join(args.tasks)))
+            if args.tags:
+                env.logger.warning('Option tags is ignored with option --all')
             kill_tasks([])
         else:
-            if not args.tasks:
-                env.logger.warning('Please specify a task id or option --all to kill all tasks')
+            if not args.tasks and not args.tags:
+                env.logger.warning('Please specify task id, or one of options --all and --tags')
             else:
-                kill_tasks(args.tasks)
+                kill_tasks(args.tasks, args.tags)
     else:
         # remote host?
         cfg = load_config_files(args.config)
         host = Host(args.queue)
-        print(host._task_engine.kill_tasks(args.tasks, all_tasks=args.all))
+        print(host._task_engine.kill_tasks(args.tasks, args.tags, all_tasks=args.all))
 
 #
 # command remove
