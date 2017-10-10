@@ -49,15 +49,17 @@ class TaskParams(object):
     '''A parameter object that encaptulates parameters sending to
     task executors. This would makes the output of workers, especially
     in the web interface much cleaner (issue #259)'''
-    def __init__(self, name, global_def, task, sos_dict, sigil):
+    def __init__(self, name, global_def, task, sos_dict, sigil, tags=[]):
         self.name = name
         self.global_def = global_def
         self.task = task
         self.sos_dict = sos_dict
         self.sigil = sigil
+        self.tags = sorted(list(set(tags)))
 
     def save(self, job_file):
         with open(job_file, 'wb') as jf:
+            jf.write('SOSTASK1.1\n{}\n'.format(' '.join(self.tags) ).encode())
             try:
                 pickle.dump(self, jf)
             except Exception as e:
@@ -77,6 +79,7 @@ class MasterTaskParams(TaskParams):
                 '_index': 0}
         self.sigil = None
         self.num_workers = num_workers
+        self.tags = []
         # a collection of tasks that will be executed by the master task
         self.task_stack = []
 
@@ -103,6 +106,7 @@ class MasterTaskParams(TaskParams):
                 if key in params.sos_dict['_runtime'] and params.sos_dict['_runtime'][key] is not None:
                     self.sos_dict['_runtime'][key] = params.sos_dict['_runtime'][key]
             self.sos_dict['step_name'] = params.sos_dict['step_name']
+            self.tags = params.tags
         else:
             for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem', 'max_mem',
                         'name', 'cur_dir', 'home_dir'):
@@ -132,6 +136,8 @@ class MasterTaskParams(TaskParams):
                     self.sos_dict['_runtime']['cores'] = ncol * val0 + (1 if self.num_workers > 0 else 0)
                 elif key == 'name':
                     self.sos_dict['_runtime']['name'] = '{}_{}'.format(val0, len(self.task_stack) + 1)
+
+            self.tags.extend(params.tags)
         #
         # input, output, preserved vars etc
         for key in ['_input', '_output', '_depends']:
@@ -139,6 +145,7 @@ class MasterTaskParams(TaskParams):
                 self.sos_dict[key].extend(params.sos_dict[key])
         #
         self.task_stack.append((task_id, params))
+        self.tags = sorted(list(set(self.tags)))
         #
         self.ID = 'M{}_{}'.format(len(self.task_stack), self.task_stack[0][0])
 
@@ -146,9 +153,41 @@ class MasterTaskParams(TaskParams):
 def loadTask(filename):
     try:
         with open(filename, 'rb') as task:
-            return pickle.load(task)
+            try:
+                header = task.readline().decode()
+                if header.startswith('SOSTASK'):
+                    # ignore the tags 
+                    task.readline()
+                    return pickle.load(task)
+                else:
+                    raise ValueError('Try old format')
+            except:
+                # old format
+                task.seek(0)
+                param = pickle.load(task)
+                # old format does not have tags
+                param.tags = []
+                return param
     except ImportError as e:
         raise RuntimeError('Failed to load task {}, which is likely caused by incompatible python modules between local and remote hosts: {}'.format(os.path.basename(filename), e))
+
+
+def taskTags(task):
+    try:
+        filename = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '{}.task'.format(task))
+        with open(filename, 'rb') as task:
+            try:
+                header = task.readline().decode()
+                if header.startswith('SOSTASK'):
+                    return task.readline().decode().strip()
+                else:
+                    return ''
+            except:
+                return ''
+    except Exception as e:
+        env.logger.warning('Failed to get tags for task {}: {}'.format(task, e))
+        return []
+
 
 def collect_task_result(task_id, sigil, sos_dict):
     shared = {}
@@ -671,14 +710,14 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
                 continue
             if start_time:
                 if d is None:
-                    print('{}\t{}\t{}'.format(t, time.time(), s))
+                    print('{}\t{}\t{}\t{}'.format(t, taskTags(t), time.time(),  s))
                 else:
-                    print('{}\t{}\t{}'.format(t, d, s))
+                    print('{}\t{}\t{}\t{}'.format(t, taskTags(t), d, s))
             else:
                 if d is None:
-                    print('{}\t{:>15}\t{}'.format(t, '', s))
+                    print('{}\t{}\t{:>15}\t{}'.format(t, taskTags(t), '', s))
                 else:
-                    print('{}\t{:>15} ago\t{}'.format(t, PrettyRelativeTime(time.time() - d), s))
+                    print('{}\t{}\t{:>15} ago\t{}'.format(t, taskTags(t), PrettyRelativeTime(time.time() - d), s))
     elif verbosity > 2:
         from .utils import PrettyRelativeTime
         import pprint
@@ -697,6 +736,8 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
             params = loadTask(task_file)
             print('TASK:\n=====')
             print(params.task)
+            print('TAGS:\n=====')
+            print(' '.join(params.tags))
             print()
             if params.global_def:
                 print('GLOBAL:\n=======')
@@ -749,6 +790,8 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
                 params = pickle.load(task)
             row('Task')
             row(td='<pre style="text-align:left">{}</pre>'.format(params.task))
+            row('Tags')
+            row(td='<pre style="text-align:left">{}</pre>'.format(' '.join(params.tags)))
             if params.global_def:
                 row('Global')
                 row(td='<pre style="text-align:left">{}</pre>'.format(params.global_def))
@@ -1145,7 +1188,7 @@ class TaskEngine(threading.Thread):
                 if not line.strip():
                     continue
                 try:
-                    tid, ttm, tst = line.split('\t')
+                    tid, _, ttm, tst = line.split('\t')
                     self.task_status[tid] = tst
                     self.task_date[tid] = float(ttm)
                 except Exception as e:

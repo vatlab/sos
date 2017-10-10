@@ -26,8 +26,9 @@ import keyword
 SOS_INPUT_OPTIONS = ['group_by', 'filetype', 'paired_with', 'group_with', 'for_each', 'pattern']
 SOS_OUTPUT_OPTIONS = ['group_by']
 SOS_DEPENDS_OPTIONS = []
-SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'active', 'walltime', 'nodes', 'cores', 'mem', 'shared',
-    'env', 'prepend_path', 'queue', 'to_host', 'from_host', 'map_vars', 'name', 'trunk_size', 'trunk_workers']
+SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'active', 'walltime', 'nodes',
+        'cores', 'mem', 'shared', 'env', 'prepend_path', 'queue', 'to_host',
+        'from_host', 'map_vars', 'name', 'trunk_size', 'trunk_workers', 'tags']
 SOS_ACTION_OPTIONS = ['workdir', 'docker_image', 'docker_file', 'active', 'input', 'output', 'allow_error']
 
 SOS_DIRECTIVES = ['input', 'output', 'depends', 'task', 'parameter']
@@ -430,6 +431,10 @@ _SOS_WILDCARD_TMPL = r'''
     \}
     '''
 
+_SOS_TAG_TMPL = r'''
+    [\w]                                # starts with alphanumeric and underscore
+    [\w-]*                              # - is allowed in between
+    '''
 
 SOS_SECTION_HEADER = LazyRegex(_SECTION_HEADER_TMPL, re.VERBOSE)
 SOS_GLOBAL_SECTION_HEADER = LazyRegex(_GLOBAL_SECTION_HEADER_TMPL, re.VERBOSE)
@@ -457,3 +462,4 @@ INDENTED = LazyRegex(_INDENTED_TMPL, re.VERBOSE)
 FORMAT_SPECIFIER = LazyRegex(_FORMAT_SPECIFIER_TMPL, re.VERBOSE | re.DOTALL)
 SIMPLE_SUB = LazyRegex(_SIMPLE_SUB_TMPL, re.VERBOSE | re.DOTALL)
 SOS_WILDCARD = LazyRegex(_SOS_WILDCARD_TMPL, re.VERBOSE)
+SOS_TAG = LazyRegex(_SOS_TAG_TMPL, re.VERBOSE)
