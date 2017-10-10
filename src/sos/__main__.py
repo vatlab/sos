@@ -1023,6 +1023,8 @@ def get_status_parser(desc_only=False):
     parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
+    parser.add_argument('-t', '--tags', nargs='*', help='''Only list tasks with
+        one of the specified tags.''')
     parser.add_argument('--age', help='''Limit to tasks that are created more than
         (default) or within specified age. Value of this parameter can be in units
         s (second), m (minute), h (hour), or d (day, default), or in the foramt of
@@ -1051,11 +1053,11 @@ def cmd_status(args, workflow_args):
             list_queues(cfg, args.verbosity)
             return
         if not args.queue:
-            check_tasks(args.tasks, args.verbosity, args.html, args.start_time, args.age)
+            check_tasks(args.tasks, args.verbosity, args.html, args.start_time, args.age, args.tags)
         else:
             # remote host?
             host = Host(args.queue)
-            print(host._task_engine.query_tasks(args.tasks, args.verbosity, args.html, args.start_time, args.age))
+            print(host._task_engine.query_tasks(args.tasks, args.verbosity, args.html, args.start_time, args.age, args.tags))
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())

@@ -656,7 +656,7 @@ def check_task(task):
     else:
         return 'pending'
 
-def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
+def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags=None):
     # verbose is ignored for now
     import glob
     from multiprocessing.pool import ThreadPool as Pool
@@ -682,6 +682,10 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
             all_tasks = [x for x in all_tasks if time.time() - x[1] <= -age]
 
     all_tasks = sorted(list(set(all_tasks)), key=lambda x: 0 if x[1] is None else x[1])
+
+    if tags:
+        all_tasks = [x for x in all_tasks if any(x in tags for x in taskTags(x[0]).split(' '))]
+
     if not all_tasks:
         env.logger.info('No matching tasks')
         return
@@ -1371,11 +1375,15 @@ class TaskEngine(threading.Thread):
                 #if task in self.running_tasks:
                 #    self.running_tasks.remove(task)
 
-    def query_tasks(self, tasks=None, verbosity=1, html=False, start_time=False, age=None):
+    def query_tasks(self, tasks=None, verbosity=1, html=False, start_time=False, age=None, tags=None):
         try:
-            return self.agent.check_output("sos status {} -v {} {} {} {}".format(
-                '' if tasks is None else ' '.join(tasks), verbosity, '--html' if html else '',
-                '--start-time' if start_time else '', '--age {}'.format(age) if age else ''))
+            return self.agent.check_output("sos status {} -v {} {} {} {} {}".format(
+                '' if tasks is None else ' '.join(tasks), verbosity,
+                '--html' if html else '',
+                '--start-time' if start_time else '',
+                '--age {}'.format(age) if age else ''
+                '--tags {}'.format(' '.join(tags)) if tags else ''
+                ))
         except subprocess.CalledProcessError as e:
             env.logger.error('Failed to query status of tasks {}: {}'.format(tasks, e))
             return ''
