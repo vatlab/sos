@@ -508,6 +508,34 @@ sh:
                 }).run()
         ret = subprocess.check_output('sos status -t {}'.format(tag), shell=True).decode()
         self.assertEqual(len(ret.splitlines()), 5, "Obtained {}".format(ret))
+        # test multiple tags
+        tag1 = "tag{}".format(random.randint(1, 100000))
+        tag2 = "tag{}".format(random.randint(1, 100000))
+        with open('test_tags.sos', 'w') as tt:
+            tt.write('''
+[10]
+input: for_each={{'i': range(2)}}
+task: tags=['{}', '{}']
+sh:
+  echo {} ${{i}}
+'''.format(tag1, tag2, tag1))
+        wf = SoS_Script(filename='test_tags.sos').workflow()
+        res = Base_Executor(wf, config={
+                'wait_for_task': False,
+                'sig_mode': 'force',
+                'script': 'test_trunkworker.sos',
+                'max_running_jobs': 10,
+                'bin_dirs': [],
+                'workflow_args': [],
+                'output_dag': '',
+                'targets': [],
+                'max_procs': 4,
+                'default_queue': None,
+                'workflow': 'default',
+                'workdir': '.',
+                }).run()
+        ret = subprocess.check_output('sos status -t {}'.format(tag2), shell=True).decode()
+        self.assertEqual(len(ret.splitlines()), 2, "Obtained {}".format(ret))        
 
 
 if __name__ == '__main__':
