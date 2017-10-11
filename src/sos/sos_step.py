@@ -688,13 +688,13 @@ class Base_Step_Executor:
                     })
 
         task_tags = [env.sos_dict.get('step_name', ''), os.path.basename(env.sos_dict.get('__workflow_sig__', '')).rsplit('.', 1)[0]]
-        if 'tags' in env.config:
-            if isinstance(env.config['tags'], str):
-                tags = [env.config['tags']]
-            elif isinstance(env.config['tags'], Sequence):
-                tags = list(env.config['tags'])
+        if 'tags' in env.sos_dict['_runtime']:
+            if isinstance(env.sos_dict['_runtime']['tags'], str):
+                tags = [env.sos_dict['_runtime']['tags']]
+            elif isinstance(env.sos_dict['_runtime']['tags'], Sequence):
+                tags = list(env.sos_dict['_runtime']['tags'])
             else:
-                env.logger.warning('Unacceptable value for parameter tags: {}'.format(env.config['tags']))
+                env.logger.warning('Unacceptable value for parameter tags: {}'.format(env.sos_dict['_runtime']['tags']))
             #
             for tag in tags:
                 if not tag.strip():

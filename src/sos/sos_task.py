@@ -1381,7 +1381,7 @@ class TaskEngine(threading.Thread):
                 '' if tasks is None else ' '.join(tasks), verbosity,
                 '--html' if html else '',
                 '--start-time' if start_time else '',
-                '--age {}'.format(age) if age else ''
+                '--age {}'.format(age) if age else '',
                 '--tags {}'.format(' '.join(tags)) if tags else ''
                 ))
         except subprocess.CalledProcessError as e:
