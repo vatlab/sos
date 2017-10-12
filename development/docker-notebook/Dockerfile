@@ -83,6 +83,10 @@ RUN     conda install -y feather-format -c conda-forge
 RUN     pip install nbformat --upgrade
 RUN     pip install sos sos-notebook sos-r sos-julia sos-python sos-matlab sos-javascript sos-bash sos-bioinfo
 
+# Install some R packages for our examples
+#RUN     R -e 'install.packages(c("package1", "package2"), lib="/usr/local/lib/R/site-library")'
+RUN      R -e 'source("https://bioconductor.org/biocLite.R"); biocLite("biomaRt")'
+
 #COPY    docs /home/$NB_USER/work/doc
 RUN     chown -R $NB_USER /home/jovyan/work
 RUN     chown -R $NB_USER /home/jovyan/.local
