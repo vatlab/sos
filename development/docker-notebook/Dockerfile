@@ -66,10 +66,10 @@ RUN     julia -e 'Pkg.add("DataFrames")'
 RUN     julia -e 'Pkg.add("NamedArrays")'
 
 #       Python 2
-#RUN     conda create -n ipykernel_py2 python=2 ipykernel
-#RUN     source activate ipykernel_py2
-#RUN     python -m ipykernel install --user
-#RUN     source deactivate ipykernel_py2
+RUN     conda create -n ipykernel_py2 python=2 ipykernel
+RUN     /bin/bash -c "source activate ipykernel_py2"
+RUN     python -m ipykernel install --user
+RUN     /bin/bash -c "source deactivate ipykernel_py2"
 
 # Bioinfo
 RUN     pip install pysam
