@@ -35,7 +35,7 @@ from .pattern import extract_pattern
 from .sos_eval import SoS_eval, SoS_exec, Undetermined
 from .target import BaseTarget, FileTarget, dynamic, remote, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
-    SOS_RUNTIME_OPTIONS
+    SOS_RUNTIME_OPTIONS, SOS_TAG
 from .sos_task import TaskParams, MasterTaskParams
 
 __all__ = []
@@ -687,13 +687,31 @@ class Base_Step_Executor:
                     'CONFIG', '__signature_vars__', '__step_context__',
                     })
 
+        task_tags = [env.sos_dict.get('step_name', ''), os.path.basename(env.sos_dict.get('__workflow_sig__', '')).rsplit('.', 1)[0]]
+        if 'tags' in env.sos_dict['_runtime']:
+            if isinstance(env.sos_dict['_runtime']['tags'], str):
+                tags = [env.sos_dict['_runtime']['tags']]
+            elif isinstance(env.sos_dict['_runtime']['tags'], Sequence):
+                tags = list(env.sos_dict['_runtime']['tags'])
+            else:
+                env.logger.warning('Unacceptable value for parameter tags: {}'.format(env.sos_dict['_runtime']['tags']))
+            #
+            for tag in tags:
+                if not tag.strip():
+                    continue
+                if not SOS_TAG.match(tag):
+                    env.logger.warning('Unacceptable tag for task: {}'.format(tag))
+                else:
+                    task_tags.append(tag)
+
         # save task to a file
         taskdef = TaskParams(
             name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
             global_def = self.step.global_def,
             task = self.step.task,          # task
             sos_dict = task_vars,
-            sigil = self.step.sigil
+            sigil = self.step.sigil,
+            tags = task_tags
         )
         # if no output (thus no signature)
         # temporarily create task signature to obtain sig_id

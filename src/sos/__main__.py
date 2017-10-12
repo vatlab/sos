@@ -1023,6 +1023,8 @@ def get_status_parser(desc_only=False):
     parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
+    parser.add_argument('-t', '--tags', nargs='*', help='''Only list tasks with
+        one of the specified tags.''')
     parser.add_argument('--age', help='''Limit to tasks that are created more than
         (default) or within specified age. Value of this parameter can be in units
         s (second), m (minute), h (hour), or d (day, default), or in the foramt of
@@ -1051,11 +1053,11 @@ def cmd_status(args, workflow_args):
             list_queues(cfg, args.verbosity)
             return
         if not args.queue:
-            check_tasks(args.tasks, args.verbosity, args.html, args.start_time, args.age)
+            check_tasks(args.tasks, args.verbosity, args.html, args.start_time, args.age, args.tags)
         else:
             # remote host?
             host = Host(args.queue)
-            print(host._task_engine.query_tasks(args.tasks, args.verbosity, args.html, args.start_time, args.age))
+            print(host._task_engine.query_tasks(args.tasks, args.verbosity, args.html, args.start_time, args.age, args.tags))
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
@@ -1085,6 +1087,8 @@ def get_purge_parser(desc_only=False):
     parser.add_argument('-s', '--status', nargs='+', help='''Only remove tasks with
         specified status, which can be pending, submitted, running, completed, failed,
         aborted, and signature-mismatch. One of more status can be specified.''')
+    parser.add_argument('-t', '--tags', nargs='*', help='''Only remove tasks with
+        one of the specified tags.''')
     parser.add_argument('-q', '--queue', nargs='?', const='',
         help='''Remove tasks on specified tasks queue or remote host
         if the tasks . The queue can be defined in global or local sos
@@ -1122,12 +1126,12 @@ def cmd_purge(args, workflow_args):
             workflows = [os.path.basename(x)[:-4] for x in sig_files]
             args.workflows = workflows
         if not args.queue:
-            purge_tasks(args.tasks, args.all, args.workflows, args.age, args.status, args.verbosity)
+            purge_tasks(args.tasks, args.all, args.workflows, args.age, args.status, args.tags, args.verbosity)
         else:
             # remote host?
             cfg = load_config_files(args.config)
             host = Host(args.queue)
-            print(host._task_engine.purge_tasks(args.tasks, args.all, args.workflows, args.age, args.status, args.verbosity))
+            print(host._task_engine.purge_tasks(args.tasks, args.all, args.workflows, args.age, args.status, args.tags, args.verbosity))
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
@@ -1155,6 +1159,8 @@ def get_kill_parser(desc_only=False):
         assumed to be a remote machine with process type if no configuration
         is found. If this option is specified without value, SoS will list all
         configured queues and exit.''')
+    parser.add_argument('-t', '--tags', nargs='*', help='''Only kill tasks with
+        one of the specified tags.''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global sos config.yml files.''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
@@ -1178,17 +1184,19 @@ def cmd_kill(args, workflow_args):
         if args.all:
             if args.tasks:
                 env.logger.warning('Task ids "{}" are ignored with option --all'.format(' '.join(args.tasks)))
+            if args.tags:
+                env.logger.warning('Option tags is ignored with option --all')
             kill_tasks([])
         else:
-            if not args.tasks:
-                env.logger.warning('Please specify a task id or option --all to kill all tasks')
+            if not args.tasks and not args.tags:
+                env.logger.warning('Please specify task id, or one of options --all and --tags')
             else:
-                kill_tasks(args.tasks)
+                kill_tasks(args.tasks, args.tags)
     else:
         # remote host?
         cfg = load_config_files(args.config)
         host = Host(args.queue)
-        print(host._task_engine.kill_tasks(args.tasks, all_tasks=args.all))
+        print(host._task_engine.kill_tasks(args.tasks, args.tags, all_tasks=args.all))
 
 #
 # command remove
