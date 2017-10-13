@@ -51,7 +51,7 @@ RUN     rm -rf ~/.nvm
 RUN     apt-get install -y nodejs-legacy npm
 RUN     npm install -g ijavascript
 RUN     npm rebuild
-RUN     ijsinstall --spec-path=full
+#RUN     ijsinstall --spec-path=full
 
 #        Julia
 RUN     apt-get install -y libgmp3-dev
@@ -59,6 +59,7 @@ RUN     apt-get install -y libgmp3-dev
 #RUN     add-apt-repository -y ppa:staticfloat/juliareleases
 #RUN     add-apt-repository -y ppa:staticfloat/julia-deps
 #RUN     apt-get update
+
 RUN     apt-get install -y julia
 RUN     julia -e "ENV[\"JUPYTER\"]=\"$(which jupyter)\";Pkg.add(\"IJulia\")"
 RUN     julia -e 'Pkg.add("Feather")'
@@ -68,8 +69,8 @@ RUN     julia -e 'Pkg.add("NamedArrays")'
 #       Python 2
 RUN     conda create -n ipykernel_py2 python=2 ipykernel
 RUN     /bin/bash -c "source activate ipykernel_py2"
-RUN     python -m ipykernel install --user
-RUN     /bin/bash -c "source deactivate ipykernel_py2"
+#RUN     python -m ipykernel install --user
+#RUN     /bin/bash -c "source deactivate ipykernel_py2"
 
 # Bioinfo
 RUN     pip install pysam
@@ -89,7 +90,7 @@ RUN      R -e 'source("https://bioconductor.org/biocLite.R"); biocLite("biomaRt"
 
 #COPY    docs /home/$NB_USER/work/doc
 RUN     chown -R $NB_USER /home/jovyan/work
-RUN     chown -R $NB_USER /home/jovyan/.local
+#RUN     chown -R $NB_USER /home/jovyan/.local
 
 USER    $NB_USER
 EXPOSE	8888
