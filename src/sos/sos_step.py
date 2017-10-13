@@ -252,13 +252,15 @@ def analyze_section(section, default_input=None):
 
 class TaskList(object):
     # manage tasks created by the step
-    def __init__(self, trunk_size, trunk_workers):
+    def __init__(self, trunk_size, trunk_workers, host, pipe):
         self.lock = threading.Lock()
         self._task_defs = []
         self.trunk_size = trunk_size
         self.trunk_workers = trunk_workers
         self._all_output = []
         self._ids = []
+        self._host = host
+        self._pipe = pipe
 
     def append(self, task_def):
         self.lock.acquire()
@@ -277,7 +279,7 @@ class TaskList(object):
             return False
         return any(x in self._all_output for x in output)
 
-    def save(self, all_tasks):
+    def submit(self, all_tasks):
         # save tasks
         if not self._task_defs:
             return
@@ -296,11 +298,12 @@ class TaskList(object):
         finally:
             self.lock.release()
 
-        if self.trunk_size == 1 or len(self._task_defs) == 1:
+        ids = []
+        if self.trunk_size == 1 or (all_tasks and len(self._task_defs) == 1):
             for task_id, taskdef, _ in to_be_saved:
                 job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
                 taskdef.save(job_file)
-                self._ids.append(task_id)
+                ids.append(task_id)
         else:
             master = None
             for task_id, taskdef, _ in to_be_saved:
@@ -316,12 +319,33 @@ class TaskList(object):
             if master is not None:
                 job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', master.ID + '.def')
                 master.save(job_file)
-                self._ids.append(master.ID)
+                ids.append(master.ID)
 
-    def get_ids(self):
+        if not ids:
+            return
+        #
+        self._pipe.send('tasks {} {}'.format(self._host, ' '.join(ids)))
+        self._ids.extend(ids)
+
+    # waiting for results of specified IDs
+    def wait_for_tasks(self):
         if self._task_defs:
-            self.save(all_tasks=True)
-        return self._ids
+            self.submit(all_tasks=True)
+
+        if not self._ids:
+            return {}
+
+        # wait till the executor responde
+        results = {}
+        while True:
+            res = self._pipe.recv()
+            if results is None:
+                sys.exit(0)
+            results.update(res)
+            if len(results) == len(self._ids):
+                break
+        return results
+
 
     def clear(self):
         self._task_defs = []
@@ -329,7 +353,7 @@ class TaskList(object):
 
 def manage_task(task_list):
     while True:
-        task_list.save(all_tasks=False)
+        task_list.submit(all_tasks=False)
         time.sleep(0.01)
 
 
@@ -822,7 +846,14 @@ class Base_Step_Executor:
                 trunk_workers = env.sos_dict['_runtime']['trunk_workers']
             else:
                 trunk_workers = 0
-            self._task_defs = TaskList(trunk_size, trunk_workers)
+
+            if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
+                host = env.sos_dict['_runtime']['queue']
+            else:
+                # otherwise, use workflow default
+                host = '__default__'
+
+            self._task_defs = TaskList(trunk_size, trunk_workers, host, self.pipe)
             self.task_worker = threading.Thread(target=manage_task, args=(self._task_defs,))
             self.task_worker.start()
         #618
@@ -836,16 +867,11 @@ class Base_Step_Executor:
         return task_id
 
     def wait_for_results(self):
-
-        if not self._task_defs:
+        if self._task_defs is None:
             return
 
-        ids = self._task_defs.get_ids()
-        # reset task definitions
-        self._task_defs.clear()
-
         # waiting for results of specified IDs
-        results = self.pending_tasks(ids)
+        results = self._task_defs.wait_for_tasks()
         for idx, task in enumerate(self.proc_results):
             # if it is done
             if isinstance(task, dict):
@@ -1395,22 +1421,6 @@ class Step_Executor(Base_Step_Executor):
         # __pipe__ is available to all the actions that will be executed
         # in the step
         env.__pipe__ = pipe
-
-    def pending_tasks(self, tasks):
-        env.logger.debug('Send {}'.format(tasks))
-        if not tasks:
-            return {}
-        if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
-            host = env.sos_dict['_runtime']['queue']
-        else:
-            # otherwise, use workflow default
-            host = '__default__'
-        self.pipe.send('tasks {} {}'.format(host, ' '.join(tasks)))
-        # wait till the executor responde
-        results = self.pipe.recv()
-        if results is None:
-            sys.exit(0)
-        return results
 
     def run(self):
         try:

@@ -745,8 +745,12 @@ class Base_Executor:
                                 else:
                                     host = 'localhost'
                             runnable._host = Host(host)
-                            runnable._pending_tasks = res.split(' ')[2:]
-                            for task in runnable._pending_tasks:
+                            new_tasks = res.split(' ')[2:]
+                            if hasattr(runnable, '_pending_tasks'):
+                                runnable._pending_tasks.extend(new_tasks)
+                            else:
+                                runnable._pending_tasks = new_tasks
+                            for task in new_tasks:
                                 runnable._host.submit_task(task)
                             runnable._status = 'task_pending'
                             env.logger.trace('Step becomes task_pending')
