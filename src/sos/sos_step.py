@@ -25,6 +25,8 @@ import copy
 import glob
 import fnmatch
 import traceback
+import threading
+import time
 
 from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
@@ -189,7 +191,7 @@ def analyze_section(section, default_input=None):
                     # value supplied, no environ var
                     environ_vars |= set()
                 else:
-                    raise ValueError('Unacceptable value for parameter group_with: {}'.format(pw))                
+                    raise ValueError('Unacceptable value for parameter group_with: {}'.format(pw))
             if 'for_each' in kwargs:
                 fe = kwargs['for_each']
                 if fe is None or not fe:
@@ -248,13 +250,96 @@ def analyze_section(section, default_input=None):
         }
 
 
+class TaskList(object):
+    # manage tasks created by the step
+    def __init__(self, trunk_size, trunk_workers):
+        self.lock = threading.Lock()
+        self._task_defs = []
+        self.trunk_size = trunk_size
+        self.trunk_workers = trunk_workers
+        self._all_output = []
+        self._ids = []
+
+    def append(self, task_def):
+        self.lock.acquire()
+        try:
+            self._task_defs.append(task_def)
+            if isinstance(task_def[2], Sequence):
+                self._all_output.extend(task_def[2])
+        finally:
+            self.lock.release()
+
+    def has_task(self, task_id):
+        return task_id in [x[0] for x in self._task_defs]
+
+    def has_output(self, output):
+        if not isinstance(output, Sequence) or not self._task_defs:
+            return False
+        return any(x in self._all_output for x in output)
+
+    def save(self, all_tasks):
+        # save tasks
+        if not self._task_defs:
+            return
+        ol = len(self._task_defs)
+        # single jobs
+        self.lock.acquire()
+        try:
+            if self.trunk_size == 1 or all_tasks:
+                to_be_saved = self._task_defs
+                self._task_defs = []
+            else:
+                # save complete blocks
+                num_tasks = len(self._task_defs) // self.trunk_size * self.trunk_size
+                to_be_saved = self._task_defs[: num_tasks]
+                self._task_defs = self._task_defs[ num_tasks:]
+        finally:
+            self.lock.release()
+
+        if self.trunk_size == 1 or len(self._task_defs) == 1:
+            for task_id, taskdef, _ in to_be_saved:
+                job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
+                taskdef.save(job_file)
+                self._ids.append(task_id)
+        else:
+            master = None
+            for task_id, taskdef, _ in to_be_saved:
+                if master is not None and master.num_tasks() == self.trunk_size:
+                    job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', master.ID + '.def')
+                    ids.append(master.ID)
+                    master.save(job_file)
+                    master = None
+                if master is None:
+                    master = MasterTaskParams(self.trunk_workers)
+                master.push(task_id, taskdef)
+            # the last piece
+            if master is not None:
+                job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', master.ID + '.def')
+                master.save(job_file)
+                self._ids.append(master.ID)
+
+    def get_ids(self):
+        if self._task_defs:
+            self.save(all_tasks=True)
+        return self._ids
+
+    def clear(self):
+        self._task_defs = []
+        self._all_output = []
+
+def manage_task(task_list):
+    while True:
+        task_list.save(all_tasks=False)
+        time.sleep(0.01)
+
+
 class Base_Step_Executor:
     # This base class defines how steps are executed. The derived classes will reimplement
     # some function to behave differently in different modes.
     #
     def __init__(self, step):
         self.step = step
-        self._task_defs = []
+        self._task_defs = None
 
     def expand_input_files(self, value, *args):
         if self.run_mode == 'dryrun' and any(isinstance(x, dynamic) for x in args):
@@ -724,59 +809,40 @@ class Base_Step_Executor:
         if '__workflow_sig__' in env.sos_dict and env.sos_dict['__workflow_sig__']:
             task_vars['__workflow_sig__'] = env.sos_dict['__workflow_sig__']
 
+        if self._task_defs is None:
+            if 'trunk_size' in env.sos_dict['_runtime']:
+                if not isinstance(env.sos_dict['_runtime']['trunk_size'], int):
+                    raise ValueError('An integer value is expected for runtime option trunk, {} provided'.format(env.sos_dict['_runtime']['trunk_size']))
+                trunk_size = env.sos_dict['_runtime']['trunk_size']
+            else:
+                trunk_size = 1
+            if 'trunk_workers' in env.sos_dict['_runtime']:
+                if not isinstance(env.sos_dict['_runtime']['trunk_workers'], int):
+                    raise ValueError('An integer value is expected for runtime option trunk_workers, {} provided'.format(env.sos_dict['_runtime']['trunk_workers']))
+                trunk_workers = env.sos_dict['_runtime']['trunk_workers']
+            else:
+                trunk_workers = 0
+            self._task_defs = TaskList(trunk_size, trunk_workers)
+            self.task_worker = threading.Thread(target=manage_task, args=(self._task_defs,))
+            self.task_worker.start()
         #618
         # it is possible that identical tasks are executed (with different underlying random numbers)
         # we should either give a warning or produce different ids...
-        if task_id in [x[0] for x in self._task_defs]:
+        if self._task_defs.has_task(task_id):
             raise RuntimeError('Identical task generated from _index={}.'.format(env.sos_dict['_index']))
-        elif task_vars['_output'] and self._task_defs:
-            all_previous_outputs = sum([x[2] for x in self._task_defs if isinstance(x[2], Sequence)], [])
-            if any(x in all_previous_outputs for x in task_vars['_output']):
-                overlap = [x for x in task_vars['_output'] if x in all_previous_outputs]
-                raise RuntimeError('Task produces output files {} that are output of other tasks.'.format(', '.join(overlap)))
+        elif self._task_defs.has_output(task_vars['_output']):
+            raise RuntimeError('Task produces output files {} that are output of other tasks.'.format(', '.join(task_vars['_output'])))
         self._task_defs.append((task_id, taskdef, task_vars['_output']))
         return task_id
 
     def wait_for_results(self):
-        if 'trunk_size' in env.sos_dict['_runtime']:
-            if not isinstance(env.sos_dict['_runtime']['trunk_size'], int):
-                raise ValueError('An integer value is expected for runtime option trunk, {} provided'.format(env.sos_dict['_runtime']['trunk_size']))
-            trunk_size = env.sos_dict['_runtime']['trunk_size']
-        else:
-            trunk_size = 1
-        if 'trunk_workers' in env.sos_dict['_runtime']:
-            if not isinstance(env.sos_dict['_runtime']['trunk_workers'], int):
-                raise ValueError('An integer value is expected for runtime option trunk_workers, {} provided'.format(env.sos_dict['_runtime']['trunk_workers']))
-            trunk_workers = env.sos_dict['_runtime']['trunk_workers']
-        else:
-            trunk_workers = 0
-        #
-        # save tasks
-        ids = []
-        # single jobs
-        if trunk_size == 1 or len(self._task_defs) == 1:
-            for task_id, taskdef, _ in self._task_defs:
-                job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
-                taskdef.save(job_file)
-                ids.append(task_id)
-        else:
-            master = None
-            for task_id, taskdef, _ in self._task_defs:
-                if master is not None and master.num_tasks() == trunk_size:
-                    job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', master.ID + '.def')
-                    ids.append(master.ID)
-                    master.save(job_file)
-                    master = None
-                if master is None:
-                    master = MasterTaskParams(trunk_workers)
-                master.push(task_id, taskdef)
-            if master is not None:
-                job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', master.ID + '.def')
-                ids.append(master.ID)
-                master.save(job_file)
 
+        if not self._task_defs:
+            return
+
+        ids = self._task_defs.get_ids()
         # reset task definitions
-        self._task_defs = []
+        self._task_defs.clear()
 
         # waiting for results of specified IDs
         results = self.pending_tasks(ids)
