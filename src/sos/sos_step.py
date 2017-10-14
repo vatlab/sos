@@ -255,18 +255,19 @@ class TaskManager(threading.Thread):
     def __init__(self, trunk_size, trunk_workers, host, pipe):
         super(TaskManager, self).__init__()
         self.lock = threading.Lock()
-        self._task_defs = []
         self.trunk_size = trunk_size
         self.trunk_workers = trunk_workers
-        self._all_output = []
-        self._ids = []
         self._host = host
         self._pipe = pipe
+        self._all_output = []
+        self._ids = []
+        self._task_defs = []
 
     def append(self, task_def):
         self.lock.acquire()
         try:
             self._task_defs.append(task_def)
+            env.logger.warning('add {}')
             if isinstance(task_def[2], Sequence):
                 self._all_output.extend(task_def[2])
         finally:
