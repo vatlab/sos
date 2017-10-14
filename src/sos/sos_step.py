@@ -250,9 +250,10 @@ def analyze_section(section, default_input=None):
         }
 
 
-class TaskList(object):
+class TaskManager(threading.Thread):
     # manage tasks created by the step
     def __init__(self, trunk_size, trunk_workers, host, pipe):
+        super(TaskManager, self).__init__()
         self.lock = threading.Lock()
         self._task_defs = []
         self.trunk_size = trunk_size
@@ -346,15 +347,14 @@ class TaskList(object):
                 break
         return results
 
-
     def clear(self):
         self._task_defs = []
         self._all_output = []
 
-def manage_task(task_list):
-    while True:
-        task_list.submit(all_tasks=False)
-        time.sleep(0.01)
+    def run(self):
+        while True:
+            self.submit(all_tasks=False)
+            time.sleep(0.01)
 
 
 class Base_Step_Executor:
@@ -363,7 +363,7 @@ class Base_Step_Executor:
     #
     def __init__(self, step):
         self.step = step
-        self._task_defs = None
+        self.task_manager = None
 
     def expand_input_files(self, value, *args):
         if self.run_mode == 'dryrun' and any(isinstance(x, dynamic) for x in args):
@@ -833,7 +833,7 @@ class Base_Step_Executor:
         if '__workflow_sig__' in env.sos_dict and env.sos_dict['__workflow_sig__']:
             task_vars['__workflow_sig__'] = env.sos_dict['__workflow_sig__']
 
-        if self._task_defs is None:
+        if self.task_manager is None:
             if 'trunk_size' in env.sos_dict['_runtime']:
                 if not isinstance(env.sos_dict['_runtime']['trunk_size'], int):
                     raise ValueError('An integer value is expected for runtime option trunk, {} provided'.format(env.sos_dict['_runtime']['trunk_size']))
@@ -853,25 +853,24 @@ class Base_Step_Executor:
                 # otherwise, use workflow default
                 host = '__default__'
 
-            self._task_defs = TaskList(trunk_size, trunk_workers, host, self.pipe)
-            self.task_worker = threading.Thread(target=manage_task, args=(self._task_defs,))
-            self.task_worker.start()
+            self.task_manager = TaskManager(trunk_size, trunk_workers, host, self.pipe)
+            self.task_manager.start()
         #618
         # it is possible that identical tasks are executed (with different underlying random numbers)
         # we should either give a warning or produce different ids...
-        if self._task_defs.has_task(task_id):
+        if self.task_manager.has_task(task_id):
             raise RuntimeError('Identical task generated from _index={}.'.format(env.sos_dict['_index']))
-        elif self._task_defs.has_output(task_vars['_output']):
+        elif self.task_manager.has_output(task_vars['_output']):
             raise RuntimeError('Task produces output files {} that are output of other tasks.'.format(', '.join(task_vars['_output'])))
-        self._task_defs.append((task_id, taskdef, task_vars['_output']))
+        self.task_manager.append((task_id, taskdef, task_vars['_output']))
         return task_id
 
     def wait_for_results(self):
-        if self._task_defs is None:
+        if self.task_manager is None:
             return
 
         # waiting for results of specified IDs
-        results = self._task_defs.wait_for_tasks()
+        results = self.task_manager.wait_for_tasks()
         for idx, task in enumerate(self.proc_results):
             # if it is done
             if isinstance(task, dict):
