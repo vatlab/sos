@@ -48,6 +48,7 @@ before_script:
 script:
     # coverage does not seem to work well with python 3.6, but it does not really matter because we have coverage report from python 3.5 already
     # SAS and Matlab are not tested
+    - python test_task.py TestTask.testKillAndPurge 
     - 'if [ $TRAVIS_PYTHON_VERSION == "3.6" ]; then
            pytest -x -v;
        else
