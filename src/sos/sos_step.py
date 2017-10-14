@@ -259,56 +259,59 @@ class TaskManager(threading.Thread):
         self.trunk_workers = trunk_workers
         self._host = host
         self._pipe = pipe
+        self._submitted_tasks = []
+        self._unsubmitted_tasks = []
+        # derived from _unsubmitted_tasks
+        self._all_ids = []
         self._all_output = []
-        self._ids = []
-        self._task_defs = []
 
     def append(self, task_def):
         self.lock.acquire()
         try:
-            self._task_defs.append(task_def)
-            env.logger.warning('add {}')
+            self._unsubmitted_tasks.append(task_def)
             if isinstance(task_def[2], Sequence):
                 self._all_output.extend(task_def[2])
+            self._all_ids.append(task_def[0])
         finally:
             self.lock.release()
 
     def has_task(self, task_id):
-        return task_id in [x[0] for x in self._task_defs]
+        return task_id in self._all_ids
 
     def has_output(self, output):
-        if not isinstance(output, Sequence) or not self._task_defs:
+        if not isinstance(output, Sequence) or not self._unsubmitted_tasks:
             return False
         return any(x in self._all_output for x in output)
 
     def submit(self, all_tasks):
         # save tasks
-        if not self._task_defs:
+        if not self._unsubmitted_tasks:
             return
-        ol = len(self._task_defs)
+        ol = len(self._unsubmitted_tasks)
         # single jobs
         self.lock.acquire()
         try:
             if self.trunk_size == 1 or all_tasks:
-                to_be_saved = self._task_defs
-                self._task_defs = []
+                to_be_submitted = self._unsubmitted_tasks
+                self._unsubmitted_tasks = []
             else:
                 # save complete blocks
-                num_tasks = len(self._task_defs) // self.trunk_size * self.trunk_size
-                to_be_saved = self._task_defs[: num_tasks]
-                self._task_defs = self._task_defs[ num_tasks:]
+                num_tasks = len(self._unsubmitted_tasks) // self.trunk_size * self.trunk_size
+                to_be_submitted = self._unsubmitted_tasks[: num_tasks]
+                self._unsubmitted_tasks = self._unsubmitted_tasks[ num_tasks:]
         finally:
             self.lock.release()
 
+        # save tasks
         ids = []
-        if self.trunk_size == 1 or (all_tasks and len(self._task_defs) == 1):
-            for task_id, taskdef, _ in to_be_saved:
+        if self.trunk_size == 1 or (all_tasks and len(self._unsubmitted_tasks) == 1):
+            for task_id, taskdef, _ in to_be_submitted:
                 job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
                 taskdef.save(job_file)
                 ids.append(task_id)
         else:
             master = None
-            for task_id, taskdef, _ in to_be_saved:
+            for task_id, taskdef, _ in to_be_submitted:
                 if master is not None and master.num_tasks() == self.trunk_size:
                     job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', master.ID + '.def')
                     ids.append(master.ID)
@@ -325,16 +328,20 @@ class TaskManager(threading.Thread):
 
         if not ids:
             return
-        #
+        # submit tasks
         self._pipe.send('tasks {} {}'.format(self._host, ' '.join(ids)))
-        self._ids.extend(ids)
+        self.lock.acquire()
+        try:
+            self._submitted_tasks.extend(ids)
+        finally:
+            self.lock.release()
 
     # waiting for results of specified IDs
     def wait_for_tasks(self):
-        if self._task_defs:
+        if self._unsubmitted_tasks:
             self.submit(all_tasks=True)
 
-        if not self._ids:
+        if not self._submitted_tasks:
             return {}
 
         # wait till the executor responde
@@ -344,13 +351,15 @@ class TaskManager(threading.Thread):
             if results is None:
                 sys.exit(0)
             results.update(res)
-            if len(results) == len(self._ids):
+            # all results have been obtained.
+            if len(results) == len(self._submitted_tasks):
                 break
+        self.lock.acquire()
+        try:
+            self._submitted_tasks = []
+        finally:
+            self.lock.release()
         return results
-
-    def clear(self):
-        self._task_defs = []
-        self._all_output = []
 
     def run(self):
         while True:

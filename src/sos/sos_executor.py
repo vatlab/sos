@@ -927,6 +927,7 @@ class Base_Executor:
                             env.logger.debug('Proc {} puts results for {} from step {}'.format(proc_idx, ' '.join(proc[2]._pending_tasks), proc[2]._node_id))
                             res = proc[2]._host.retrieve_results(proc[2]._pending_tasks)
                             proc[1].send(res)
+                            proc[2]._pending_tasks = []
                             proc[2]._status = 'running'
                         else:
                             raise RuntimeError('Job returned with status {}'.format(res))
