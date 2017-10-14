@@ -1377,6 +1377,7 @@ class Base_Step_Executor:
                         pass
             if self.task_manager:
                 self.task_manager.terminate()
+                self.task_manager.join()
 
 def _expand_file_list(ignore_unknown, *args):
     ifiles = []
