@@ -264,6 +264,8 @@ class TaskManager(threading.Thread):
         # derived from _unsubmitted_tasks
         self._all_ids = []
         self._all_output = []
+        #
+        self._terminate = False
 
     def append(self, task_def):
         self.lock.acquire()
@@ -282,6 +284,13 @@ class TaskManager(threading.Thread):
         if not isinstance(output, Sequence) or not self._unsubmitted_tasks:
             return False
         return any(x in self._all_output for x in output)
+
+    def terminate(self):
+        self.lock.acquire()
+        try:
+            self._terminate = True
+        except:
+            self.lock.release()
 
     def submit(self, all_tasks):
         # save tasks
@@ -363,6 +372,8 @@ class TaskManager(threading.Thread):
 
     def run(self):
         while True:
+            if self._terminate:
+                break
             self.submit(all_tasks=False)
             time.sleep(0.01)
 
@@ -1364,7 +1375,8 @@ class Base_Step_Executor:
                         sig.release()
                     except:
                         pass
-
+            if self.task_manager:
+                self.task_manager.terminate()
 
 def _expand_file_list(ignore_unknown, *args):
     ifiles = []
