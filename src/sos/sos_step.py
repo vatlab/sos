@@ -354,7 +354,6 @@ class TaskManager(threading.Thread):
         results = {}
         while True:
             res = self._pipe.recv()
-            env.logger.warning('Received result {}'.format(res))
             if results is None:
                 self._terminate = True
                 return None
@@ -372,7 +371,6 @@ class TaskManager(threading.Thread):
     def run(self):
         while True:
             if self._terminate:
-                env.logger.warning('Task manager terminated')
                 break
             self.submit(all_tasks=False)
             time.sleep(0.01)

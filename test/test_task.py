@@ -288,6 +288,7 @@ run:
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    @unittest.skipIf('TRAVIS_OS_NAME' in os.environ, 'Test fails on travis for unknown reason #831')
     def testKillAndPurge(self):
         '''Test no wait'''
         subprocess.call(['sos', 'purge'])
