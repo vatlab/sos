@@ -287,10 +287,7 @@ class TaskManager(threading.Thread):
 
     def terminate(self):
         self.lock.acquire()
-        try:
-            self._terminate = True
-        except:
-            self.lock.release()
+        self._terminate = True
 
     def submit(self, all_tasks):
         # save tasks
@@ -357,8 +354,10 @@ class TaskManager(threading.Thread):
         results = {}
         while True:
             res = self._pipe.recv()
+            env.logger.warning('Received result {}'.format(res))
             if results is None:
-                sys.exit(0)
+                self._terminate = True
+                return None
             results.update(res)
             # all results have been obtained.
             if len(results) == len(self._submitted_tasks):
@@ -373,6 +372,7 @@ class TaskManager(threading.Thread):
     def run(self):
         while True:
             if self._terminate:
+                env.logger.warning('Task manager terminated')
                 break
             self.submit(all_tasks=False)
             time.sleep(0.01)
@@ -892,6 +892,8 @@ class Base_Step_Executor:
 
         # waiting for results of specified IDs
         results = self.task_manager.wait_for_tasks()
+        if results is None:
+            sys.exit(0)
         for idx, task in enumerate(self.proc_results):
             # if it is done
             if isinstance(task, dict):
