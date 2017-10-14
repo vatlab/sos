@@ -309,6 +309,7 @@ run:
         self.assertGreater(len(ret['pending_tasks']), 1)
         # wait for the task to start
         time.sleep(3)
+        print('Running sos kill {}'.format(ret['pending_tasks'][0]))
         subprocess.call(['sos', 'kill', ret['pending_tasks'][0]])
         for i in range(20):
             output = subprocess.check_output(['sos', 'status', ret['pending_tasks'][0], '-v', '1']).decode()
