@@ -238,6 +238,8 @@ def collect_task_result(task_id, sigil, sos_dict):
         # handle dynamic args
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
         output = {x:FileTarget(x).signature() for x in _expand_file_list(True, *args)}
+    elif sos_dict['_output'] is None:
+        output = {}
     else:
         output = {x:FileTarget(x).signature() for x in sos_dict['_output'] if isinstance(x, str)}
     input = {} if env.sos_dict['_input'] is None or sos_dict['_input'] is None else {x:FileTarget(x).signature() for x in sos_dict['_input'] if isinstance(x, str)}
