@@ -25,8 +25,6 @@ import copy
 import glob
 import fnmatch
 import traceback
-import threading
-import time
 
 from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
@@ -191,7 +189,7 @@ def analyze_section(section, default_input=None):
                     # value supplied, no environ var
                     environ_vars |= set()
                 else:
-                    raise ValueError('Unacceptable value for parameter group_with: {}'.format(pw))
+                    raise ValueError('Unacceptable value for parameter group_with: {}'.format(pw))                
             if 'for_each' in kwargs:
                 fe = kwargs['for_each']
                 if fe is None or not fe:
@@ -250,139 +248,13 @@ def analyze_section(section, default_input=None):
         }
 
 
-class TaskManager(threading.Thread):
-    # manage tasks created by the step
-    def __init__(self, trunk_size, trunk_workers, host, pipe):
-        super(TaskManager, self).__init__()
-        self.lock = threading.Lock()
-        self.trunk_size = trunk_size
-        self.trunk_workers = trunk_workers
-        self._host = host
-        self._pipe = pipe
-        self._submitted_tasks = []
-        self._unsubmitted_tasks = []
-        # derived from _unsubmitted_tasks
-        self._all_ids = []
-        self._all_output = []
-        #
-        self._terminate = False
-
-    def append(self, task_def):
-        self.lock.acquire()
-        try:
-            self._unsubmitted_tasks.append(task_def)
-            if isinstance(task_def[2], Sequence):
-                self._all_output.extend(task_def[2])
-            self._all_ids.append(task_def[0])
-        finally:
-            self.lock.release()
-
-    def has_task(self, task_id):
-        return task_id in self._all_ids
-
-    def has_output(self, output):
-        if not isinstance(output, Sequence) or not self._unsubmitted_tasks:
-            return False
-        return any(x in self._all_output for x in output)
-
-    def terminate(self):
-        self.lock.acquire()
-        self._terminate = True
-
-    def submit(self, all_tasks):
-        # save tasks
-        if not self._unsubmitted_tasks:
-            return
-        ol = len(self._unsubmitted_tasks)
-        # single jobs
-        self.lock.acquire()
-        try:
-            if self.trunk_size == 1 or all_tasks:
-                to_be_submitted = self._unsubmitted_tasks
-                self._unsubmitted_tasks = []
-            else:
-                # save complete blocks
-                num_tasks = len(self._unsubmitted_tasks) // self.trunk_size * self.trunk_size
-                to_be_submitted = self._unsubmitted_tasks[: num_tasks]
-                self._unsubmitted_tasks = self._unsubmitted_tasks[ num_tasks:]
-        finally:
-            self.lock.release()
-
-        # save tasks
-        ids = []
-        if self.trunk_size == 1 or (all_tasks and len(self._unsubmitted_tasks) == 1):
-            for task_id, taskdef, _ in to_be_submitted:
-                job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
-                taskdef.save(job_file)
-                ids.append(task_id)
-        else:
-            master = None
-            for task_id, taskdef, _ in to_be_submitted:
-                if master is not None and master.num_tasks() == self.trunk_size:
-                    job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', master.ID + '.def')
-                    ids.append(master.ID)
-                    master.save(job_file)
-                    master = None
-                if master is None:
-                    master = MasterTaskParams(self.trunk_workers)
-                master.push(task_id, taskdef)
-            # the last piece
-            if master is not None:
-                job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', master.ID + '.def')
-                master.save(job_file)
-                ids.append(master.ID)
-
-        if not ids:
-            return
-        # submit tasks
-        self._pipe.send('tasks {} {}'.format(self._host, ' '.join(ids)))
-        self.lock.acquire()
-        try:
-            self._submitted_tasks.extend(ids)
-        finally:
-            self.lock.release()
-
-    # waiting for results of specified IDs
-    def wait_for_tasks(self):
-        if self._unsubmitted_tasks:
-            self.submit(all_tasks=True)
-
-        if not self._submitted_tasks:
-            return {}
-
-        # wait till the executor responde
-        results = {}
-        while True:
-            res = self._pipe.recv()
-            if results is None:
-                self._terminate = True
-                return None
-            results.update(res)
-            # all results have been obtained.
-            if len(results) == len(self._submitted_tasks):
-                break
-        self.lock.acquire()
-        try:
-            self._submitted_tasks = []
-        finally:
-            self.lock.release()
-        return results
-
-    def run(self):
-        while True:
-            if self._terminate:
-                break
-            self.submit(all_tasks=False)
-            time.sleep(0.01)
-
-
 class Base_Step_Executor:
     # This base class defines how steps are executed. The derived classes will reimplement
     # some function to behave differently in different modes.
     #
     def __init__(self, step):
         self.step = step
-        self.task_manager = None
+        self._task_defs = []
 
     def expand_input_files(self, value, *args):
         if self.run_mode == 'dryrun' and any(isinstance(x, dynamic) for x in args):
@@ -852,46 +724,62 @@ class Base_Step_Executor:
         if '__workflow_sig__' in env.sos_dict and env.sos_dict['__workflow_sig__']:
             task_vars['__workflow_sig__'] = env.sos_dict['__workflow_sig__']
 
-        if self.task_manager is None:
-            if 'trunk_size' in env.sos_dict['_runtime']:
-                if not isinstance(env.sos_dict['_runtime']['trunk_size'], int):
-                    raise ValueError('An integer value is expected for runtime option trunk, {} provided'.format(env.sos_dict['_runtime']['trunk_size']))
-                trunk_size = env.sos_dict['_runtime']['trunk_size']
-            else:
-                trunk_size = 1
-            if 'trunk_workers' in env.sos_dict['_runtime']:
-                if not isinstance(env.sos_dict['_runtime']['trunk_workers'], int):
-                    raise ValueError('An integer value is expected for runtime option trunk_workers, {} provided'.format(env.sos_dict['_runtime']['trunk_workers']))
-                trunk_workers = env.sos_dict['_runtime']['trunk_workers']
-            else:
-                trunk_workers = 0
-
-            if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
-                host = env.sos_dict['_runtime']['queue']
-            else:
-                # otherwise, use workflow default
-                host = '__default__'
-
-            self.task_manager = TaskManager(trunk_size, trunk_workers, host, self.pipe)
-            self.task_manager.start()
         #618
         # it is possible that identical tasks are executed (with different underlying random numbers)
         # we should either give a warning or produce different ids...
-        if self.task_manager.has_task(task_id):
+        if task_id in [x[0] for x in self._task_defs]:
             raise RuntimeError('Identical task generated from _index={}.'.format(env.sos_dict['_index']))
-        elif self.task_manager.has_output(task_vars['_output']):
-            raise RuntimeError('Task produces output files {} that are output of other tasks.'.format(', '.join(task_vars['_output'])))
-        self.task_manager.append((task_id, taskdef, task_vars['_output']))
+        elif task_vars['_output'] and self._task_defs:
+            all_previous_outputs = sum([x[2] for x in self._task_defs if isinstance(x[2], Sequence)], [])
+            if any(x in all_previous_outputs for x in task_vars['_output']):
+                overlap = [x for x in task_vars['_output'] if x in all_previous_outputs]
+                raise RuntimeError('Task produces output files {} that are output of other tasks.'.format(', '.join(overlap)))
+        self._task_defs.append((task_id, taskdef, task_vars['_output']))
         return task_id
 
     def wait_for_results(self):
-        if self.task_manager is None:
-            return
+        if 'trunk_size' in env.sos_dict['_runtime']:
+            if not isinstance(env.sos_dict['_runtime']['trunk_size'], int):
+                raise ValueError('An integer value is expected for runtime option trunk, {} provided'.format(env.sos_dict['_runtime']['trunk_size']))
+            trunk_size = env.sos_dict['_runtime']['trunk_size']
+        else:
+            trunk_size = 1
+        if 'trunk_workers' in env.sos_dict['_runtime']:
+            if not isinstance(env.sos_dict['_runtime']['trunk_workers'], int):
+                raise ValueError('An integer value is expected for runtime option trunk_workers, {} provided'.format(env.sos_dict['_runtime']['trunk_workers']))
+            trunk_workers = env.sos_dict['_runtime']['trunk_workers']
+        else:
+            trunk_workers = 0
+        #
+        # save tasks
+        ids = []
+        # single jobs
+        if trunk_size == 1 or len(self._task_defs) == 1:
+            for task_id, taskdef, _ in self._task_defs:
+                job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
+                taskdef.save(job_file)
+                ids.append(task_id)
+        else:
+            master = None
+            for task_id, taskdef, _ in self._task_defs:
+                if master is not None and master.num_tasks() == trunk_size:
+                    job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', master.ID + '.def')
+                    ids.append(master.ID)
+                    master.save(job_file)
+                    master = None
+                if master is None:
+                    master = MasterTaskParams(trunk_workers)
+                master.push(task_id, taskdef)
+            if master is not None:
+                job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', master.ID + '.def')
+                ids.append(master.ID)
+                master.save(job_file)
+
+        # reset task definitions
+        self._task_defs = []
 
         # waiting for results of specified IDs
-        results = self.task_manager.wait_for_tasks()
-        if results is None:
-            sys.exit(0)
+        results = self.pending_tasks(ids)
         for idx, task in enumerate(self.proc_results):
             # if it is done
             if isinstance(task, dict):
@@ -1375,9 +1263,7 @@ class Base_Step_Executor:
                         sig.release()
                     except:
                         pass
-            if self.task_manager:
-                self.task_manager.terminate()
-                self.task_manager.join()
+
 
 def _expand_file_list(ignore_unknown, *args):
     ifiles = []
@@ -1443,6 +1329,22 @@ class Step_Executor(Base_Step_Executor):
         # __pipe__ is available to all the actions that will be executed
         # in the step
         env.__pipe__ = pipe
+
+    def pending_tasks(self, tasks):
+        env.logger.debug('Send {}'.format(tasks))
+        if not tasks:
+            return {}
+        if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
+            host = env.sos_dict['_runtime']['queue']
+        else:
+            # otherwise, use workflow default
+            host = '__default__'
+        self.pipe.send('tasks {} {}'.format(host, ' '.join(tasks)))
+        # wait till the executor responde
+        results = self.pipe.recv()
+        if results is None:
+            sys.exit(0)
+        return results
 
     def run(self):
         try:
