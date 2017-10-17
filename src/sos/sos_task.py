@@ -792,8 +792,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
             task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.task')
             if not os.path.isfile(task_file):
                 continue
-            with open(task_file, 'rb') as task:
-                params = pickle.load(task)
+            params = loadTask(task_file)
             row('Task')
             row(td='<pre style="text-align:left">{}</pre>'.format(params.task))
             row('Tags')
