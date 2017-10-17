@@ -489,10 +489,14 @@ def SoS_exec(stmts, sigil, _dict=None):
             #    act = DelayedAction(env.logger.info, 'Running {}'.format(short_repr(code)))
             #else:
             #    act = None
-        if idx + 1 == len(code_group) and _is_expr(stmts):
-            res = eval(stmts, _dict)
-        else:
-            exec(stmts, _dict)
+        try:
+            if idx + 1 == len(code_group) and _is_expr(stmts):
+                res = eval(stmts, _dict)
+            else:
+                exec(stmts, _dict)
+        except Exception as e:
+            env.logger.debug('Failed to execute {}'.format(stmts))
+            raise
         #finally:
         #    del act
         executed += stmts + '\n'
