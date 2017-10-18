@@ -33,6 +33,19 @@ from sos.target import FileTarget
 from sos.hosts import Host
 import subprocess
 
+
+has_docker = True
+try:
+    subprocess.check_output('docker ps | grep test_sos', shell=True).decode()
+except subprocess.CalledProcessError:
+    subprocess.call('sh build_test_docker.sh', shell=True)
+    try:
+        subprocess.check_output('docker ps | grep test_sos', shell=True).decode()
+    except subprocess.CalledProcessError:
+        print('Failed to set up a docker machine with sos')
+        has_docker = False
+
+
 class TestTask(unittest.TestCase):
     def setUp(self):
         env.reset()
@@ -540,6 +553,130 @@ sh:
         ret = subprocess.check_output('sos status -t {}'.format(tag2), shell=True).decode()
         self.assertEqual(len(ret.splitlines()), 2, "Obtained {}".format(ret))        
 
+
+    @unittest.skipIf(not has_docker, "Docker container not usable")
+    def testMaxMem(self):
+        '''Test server restriction max_mem'''
+        script = SoS_Script('''
+[10]
+task: mem='2G'
+print('a')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf, config={
+                'config_file': '~/docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker_limited',
+                'sig_mode': 'force',
+                }).run)
+
+    def testLocalMaxMem(self):
+        '''Test server restriction max_mem'''
+        script = SoS_Script('''
+[10]
+task: mem='2G'
+print('a')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf, config={
+                'config_file': '~/docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'local_limited',
+                'sig_mode': 'force',
+                }).run)
+
+    @unittest.skipIf(not has_docker, "Docker container not usable")
+    def testRuntimeMaxWalltime(self):
+        '''Test server max_walltime option'''
+        script = SoS_Script('''
+[10]
+task:
+import time
+time.sleep(15)
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf, config={
+                'config_file': '~/docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker_limited',
+                'sig_mode': 'force',
+                }).run)
+
+    def testLocalRuntimeMaxWalltime(self):
+        '''Test server max_walltime option'''
+        script = SoS_Script('''
+[10]
+task:
+import time
+time.sleep(15)
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf, config={
+                'config_file': '~/docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'local_limited',
+                'sig_mode': 'force',
+                }).run)
+
+    @unittest.skipIf(not has_docker, "Docker container not usable")
+    def testMaxCores(self):
+        '''Test server restriction max_cores'''
+        script = SoS_Script('''
+[10]
+task: cores=8
+print('a')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf, config={
+                'config_file': '~/docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker_limited',
+                'sig_mode': 'force',
+                }).run)
+
+    def testLocalMaxCores(self):
+        '''Test server restriction max_cores'''
+        script = SoS_Script('''
+[10]
+task: cores=8
+print('a')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf, config={
+                'config_file': '~/docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'local_limited',
+                'sig_mode': 'force',
+                }).run)
+
+    def testListHosts(self):
+        '''test list hosts using sos status -q'''
+        for v in ['0', '1', '3', '4']:
+            output = subprocess.check_output(['sos', 'status', '-c', '~/docker.yml', '-q', '-v', v]).decode()
+            self.assertTrue('ts' in output)
+
+    @unittest.skipIf(not has_docker, "Docker container not usable")
+    def testMaxWalltime(self):
+        '''Test server restriction max_walltime'''
+        script = SoS_Script('''
+[10]
+task: walltime='1:00:00'
+print('a')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf, config={
+                'config_file': '~/docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker_limited',
+                'sig_mode': 'force',
+                }).run)
 
 if __name__ == '__main__':
     unittest.main()
