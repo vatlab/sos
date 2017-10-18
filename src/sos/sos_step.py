@@ -1416,7 +1416,7 @@ class Step_Executor(Base_Step_Executor):
         results = {}
         while True:
             res = self.pipe.recv()
-            if results is None:
+            if res is None:
                 sys.exit(0)
             results.update(res)
             # all results have been obtained.
