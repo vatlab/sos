@@ -281,7 +281,7 @@ class TaskManager:
         if not self._unsubmitted_tasks:
             return None
         ol = len(self._unsubmitted_tasks)
-        # single jobs
+        # single tasks
         if self.trunk_size == 1 or all_tasks:
             to_be_submitted = self._unsubmitted_tasks
             self._unsubmitted_tasks = []
@@ -320,6 +320,9 @@ class TaskManager:
 
         self._submitted_tasks.extend(ids)
         return ids
+
+    def clear_submitted(self):
+        self._submitted_tasks = []
 
 class Base_Step_Executor:
     # This base class defines how steps are executed. The derived classes will reimplement
@@ -828,25 +831,25 @@ class Base_Step_Executor:
         elif self.task_manager.has_output(task_vars['_output']):
             raise RuntimeError('Task produces output files {} that are output of other tasks.'.format(', '.join(task_vars['_output'])))
         # if no trunk_size, the job will be submitted immediately
-        # otherwise jobs will be accumulated and submitted in batch
+        # otherwise tasks will be accumulated and submitted in batch
         self.task_manager.append((task_id, taskdef, task_vars['_output']))
-        jobs = self.task_manager.get_job()
-        if jobs:
-            self.submit_jobs(jobs)
+        tasks = self.task_manager.get_job()
+        if tasks:
+            self.submit_tasks(tasks)
         return task_id
 
     def wait_for_results(self):
         if self.task_manager is None:
             return {}
 
-        # submit the last batch of jobs
-        jobs = self.task_manager.get_job(all_tasks=True)
-        if jobs:
-            self.submit_jobs(jobs)
+        # submit the last batch of tasks
+        tasks = self.task_manager.get_job(all_tasks=True)
+        if tasks:
+            self.submit_tasks(tasks)
 
         # waiting for results of specified IDs
-        results = self.pending_tasks(self.task_manager._submitted_tasks)
-        self.task_manager._submitted_tasks = []
+        results = self.wait_for_tasks(self.task_manager._submitted_tasks)
+        self.task_manager.clear_submitted()
         for idx, task in enumerate(self.proc_results):
             # if it is done
             if isinstance(task, dict):
@@ -1397,7 +1400,7 @@ class Step_Executor(Base_Step_Executor):
         # in the step
         env.__pipe__ = pipe
 
-    def submit_jobs(self, tasks):
+    def submit_tasks(self, tasks):
         env.logger.debug('Send {}'.format(tasks))
         if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
             host = env.sos_dict['_runtime']['queue']
@@ -1406,7 +1409,7 @@ class Step_Executor(Base_Step_Executor):
             host = '__default__'
         self.pipe.send('tasks {} {}'.format(host, ' '.join(tasks)))
 
-    def pending_tasks(self, tasks):
+    def wait_for_tasks(self, tasks):
         if not tasks:
             return {}
         # wait till the executor responde
