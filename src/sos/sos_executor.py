@@ -495,9 +495,12 @@ class Base_Executor:
                 added_node += 1
                 resolved += 1
 
-            # for existing targets... we should check if still need to be regenerated
+            # for existing targets... we should check if it actually exists. If
+            # not it would still need to be regenerated
             for target in existing_targets:
                 if target not in dag.dangling(targets)[1]:
+                    continue
+                if FileTarget(target).exists('target') if isinstance(target, str) else target.exists('target'):
                     continue
                 mo = [(x, self.match(target, x)) for x in self.workflow.auxiliary_sections]
                 mo = [x for x in mo if x[1] is not False]
