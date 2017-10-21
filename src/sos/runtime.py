@@ -48,6 +48,17 @@ def _load_group(group):
             _plugin = _entrypoint.load()
             globals()[_name] = _plugin
         except Exception as e:
+            # look for sos version requirement
+            if 'Requirement.parse' in str(e):
+                import re
+                from ._version import __version__
+                from pkg_resources import parse_version
+                m = re.search("Requirement.parse\('sos>=([^)]*)'\)", str(e))
+                if m:
+                    if parse_version(__version__) < parse_version(m.group(1)):
+                        logger.warning('Failed to load target {}: please upgrade your version of sos from {} to at least version {}'.format
+                                (_entrypoint.name, __version__, m.group(1)))
+                        continue
             if _name == 'run':
                 # this is critical so we print the warning
                 logger.warning('Failed to load target {}: {}'.format(_entrypoint.name, e))
