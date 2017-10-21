@@ -1001,46 +1001,6 @@ run:
         FileTarget('a.txt').remove('both')
         FileTarget('aa.txt').remove('both')
 
-    def testReexecutionOfAuxiliaryStep(self):
-        '''Test re-execution of auxiliary step if the step has been changed.'''
-        script = SoS_Script('''
-[process: provides='a.txt']
-run:
-    echo a.txt > a.txt
-
-[default]
-depends: 'a.txt'
-output: 'a.txt.bak'
-run:
-    cp a.txt ${output}
-''')
-        wf = script.workflow()
-        #
-        Base_Executor(wf).run()
-        for f in ['a.txt', 'a.txt.bak']:
-            self.assertTrue(FileTarget(f).exists())
-            with open(f) as ifile:
-                self.assertEqual(ifile.read().strip(), 'a.txt')
-        # now let us change how a.txt should be generated
-        script = SoS_Script('''
-[process: provides='a.txt']
-run:
-    echo aa.txt > a.txt
-
-[default]
-depends: 'a.txt'
-output: 'a.txt.bak'
-run:
-    cp a.txt ${output}
-''')
-        wf = script.workflow()
-        #
-        Base_Executor(wf).run()
-        for f in ['a.txt', 'a.txt.bak']:
-            self.assertTrue(FileTarget(f).exists())
-            with open(f) as ifile:
-                self.assertEqual(ifile.read().strip(), 'aa.txt')
-
 
     def testStoppedOutput(self):
         '''test output with stopped step'''
