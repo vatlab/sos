@@ -378,27 +378,18 @@ input: 'a.txt'
         # and one is to regenerate a.txt because it is not generated
         # by sos (without signature)        #
         #
-        #dag.write_dot('a.dot')
-        #dag.show_nodes()
-#        self.assertDAG(dag,
-#'''
-#strict digraph "" {
-#"K ['b.txt']";
-#C_3;
-#C_2;
-#"K ['b.txt']" -> C_2;
-#}
-#''')
-        self.assertDAG(dag, '''
-        strict digraph "" {
-"K ['a.txt']";
+        dag.write_dot('a.dot')
+        dag.show_nodes()
+        self.assertDAG(dag,
+'''
+strict digraph "" {
 "K ['b.txt']";
-C_2;
 C_3;
-"K ['a.txt']" -> C_3;
+C_2;
 "K ['b.txt']" -> C_2;
 }
 ''')
+
 
 
     def testCycle(self):
