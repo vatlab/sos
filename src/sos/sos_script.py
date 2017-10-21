@@ -1142,8 +1142,6 @@ for __n, __v in {}.items():
 
         #
         # if there is any parsing error, raise an exception
-        if parsing_errors.errors:
-            raise parsing_errors
         #
         # if there is no section in the script, we create a default section with global
         # definition being the content.
@@ -1151,12 +1149,16 @@ for __n, __v in {}.items():
         if not [x for x in self.sections if not x.is_global]:
             self.sections.append(SoS_Step(self.content, [('default', None, None)], global_sigil=self.global_sigil))
             for section in [x for x in self.sections if x.is_global]:
+                if self.sections[-1].task != '':
+                    parsing_errors.append(cursect.lineno, 'Invalid section',
+                                'Cannot define multiple default sections with a task in between.')
                 self.sections[-1].statements.extend(section.statements)
                 self.sections[-1].task = section.task
                 self.global_def = ''
                 global_parameters.update(section.parameters)
-            # determine script and parameter etc, although there should not be any task
-            self.sections[-1].finalize()
+            # The sections should have been finalized so there is no need to finalize
+            # again. In particular, finalizing a section would reset existing task #833
+            #self.sections[-1].finalize()
         else:
             # as the last step, let us insert the global section to all sections
             for idx,sec in [(idx,x) for idx,x in enumerate(self.sections) if x.is_global]:
@@ -1171,6 +1173,9 @@ for __n, __v in {}.items():
                 global_parameters.update(sec.parameters)
         # remove the global section after inserting it to each step of the process
         self.sections = [x for x in self.sections if not x.is_global]
+        #
+        if parsing_errors.errors:
+            raise parsing_errors
         #
         for section in self.sections:
             # for nested / included sections, we need to keep their own global definition
