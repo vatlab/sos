@@ -664,14 +664,14 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
     from multiprocessing.pool import ThreadPool as Pool
     if not tasks:
         tasks = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
-        all_tasks = [(os.path.basename(x)[:-5], os.path.getctime(x)) for x in tasks]
+        all_tasks = [(os.path.basename(x)[:-5], os.path.getmtime(x)) for x in tasks]
         if not all_tasks:
             return
     else:
         all_tasks = []
         for t in tasks:
             matched = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '{}*.task'.format(t)))
-            matched = [(os.path.basename(x)[:-5], os.path.getctime(x)) for x in matched]
+            matched = [(os.path.basename(x)[:-5], os.path.getmtime(x)) for x in matched]
             if not matched:
                 all_tasks.append((t, None))
             else:
@@ -1007,11 +1007,11 @@ def purge_tasks(tasks, purge_all=False, workflows=None, age=None, status=None, t
         all_tasks = []
         for t in tasks:
             matched = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '{}*.task'.format(t)))
-            matched = [(os.path.basename(x)[:-5], os.path.getctime(x)) for x in matched]
+            matched = [(os.path.basename(x)[:-5], os.path.getmtime(x)) for x in matched]
             all_tasks.extend(matched)
     else:
         tasks = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
-        all_tasks = [(os.path.basename(x)[:-5], os.path.getctime(x)) for x in tasks]
+        all_tasks = [(os.path.basename(x)[:-5], os.path.getmtime(x)) for x in tasks]
     #
     if age is not None:
         age = expand_time(age, default_unit='d')
