@@ -172,9 +172,15 @@ def loadTask(filename):
         raise RuntimeError('Failed to load task {}, which is likely caused by incompatible python modules between local and remote hosts: {}'.format(os.path.basename(filename), e))
 
 
+def taskDuration(task):
+    filename = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '{}.task'.format(task))
+    return os.path.getatime(filename) - os.path.getmtime(filename)
+
+
 def taskTags(task):
+    filename = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '{}.task'.format(task))
+    atime = os.path.getatime(filename)
     try:
-        filename = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '{}.task'.format(task))
         with open(filename, 'rb') as task:
             try:
                 header = task.readline().decode()
@@ -187,6 +193,8 @@ def taskTags(task):
     except Exception as e:
         env.logger.warning('Failed to get tags for task {}: {}'.format(task, e))
         return []
+    finally:
+        os.utime(filename, (atime, os.path.getmtime(filename)))
 
 
 def collect_task_result(task_id, sigil, sos_dict):
@@ -567,6 +575,11 @@ del sos_handle_parameter_
     finally:
         env.sos_dict.set('__step_sig__', None)
         os.chdir(orig_dir)
+        if not subtask:
+            # after the task is completed, we change the access time
+            # but keep the modify time of the task file, which serves
+            # as the "starting" time of the task.
+            os.utime(task_file, (time.time(), os.path.getmtime(task_file)))
 
     if sig:
         sig.write()
@@ -722,8 +735,11 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
             else:
                 if d is None:
                     print('{}\t{}\t{:>15}\t{}'.format(t, taskTags(t), '', s))
+                elif s in ('pending', 'submitted', 'running'):
+                    print('{}\t{}\t{:>15}\t{}'.format(t, taskTags(t), PrettyRelativeTime(time.time() - d), s))
                 else:
-                    print('{}\t{}\t{:>15} ago\t{}'.format(t, taskTags(t), PrettyRelativeTime(time.time() - d), s))
+                    # completed or failed
+                    print('{}\t{}\t{:>15}\t{}'.format(t, taskTags(t), PrettyRelativeTime(taskDuration(t)), s))
     elif verbosity > 2:
         from .utils import PrettyRelativeTime
         import pprint
@@ -736,6 +752,8 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
             print('{}\t{}\n'.format(t, s))
             if d is not None:
                 print('Started {} ago'.format(PrettyRelativeTime(time.time() - d)))
+            if s not in ('pending', 'submitted', 'running'):
+                print('Duration {}'.format(PrettyRelativeTime(taskDuration(t))))
             task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.task')
             if not os.path.isfile(task_file):
                 continue
@@ -789,6 +807,8 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
             row('Status', s)
             if d is not None:
                 row('Start', '{:>15} ago'.format(PrettyRelativeTime(time.time() - d)))
+            if s not in ('pending', 'submitted', 'running'):
+                row('Duration', '{:>15}'.format(PrettyRelativeTime(taskDuration(t))))
             task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.task')
             if not os.path.isfile(task_file):
                 continue
