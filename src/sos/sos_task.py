@@ -60,6 +60,9 @@ class TaskParams(object):
     def save(self, job_file):
         with open(job_file, 'wb') as jf:
             jf.write('SOSTASK1.1\n{}\n'.format(' '.join(self.tags) ).encode())
+            # remove __builtins__ from sos_dict #835
+            if 'CONFIG' in self.sos_dict and '__builtins__' in self.sos_dict['CONFIG']:
+                self.sos_dict['CONFIG'].pop('__builtins__')
             try:
                 pickle.dump(self, jf)
             except Exception as e:
