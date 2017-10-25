@@ -338,6 +338,8 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                         res = _execute_task((tid, tdef), verbosity=verbosity, runmode=runmode,
                             sigmode=sigmode, monitor_interval=monitor_interval,
                             resource_monitor_interval=resource_monitor_interval)
+                        if 'exception' in res:
+                            raise res['exception']
                         copy_out_and_err(res)
                         results.append(res)
                     except Exception as e:
