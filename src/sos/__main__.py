@@ -1096,9 +1096,6 @@ def get_purge_parser(desc_only=False):
         assumed to be a remote machine with process type if no configuration
         is found. If this option is specified without value, SoS will list all
         configured queues and exit.''')
-    parser.add_argument('-w', '--workflows', nargs='*', help='''Remove tasks generated
-        by specified task IDs. If no workflow is specified, all workflows in the
-        current project will be assumed.''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global sos config.yml files.''')
     parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=2,
@@ -1120,18 +1117,13 @@ def cmd_purge(args, workflow_args):
             from .hosts import list_queues
             list_queues(cfg, args.verbosity)
             return
-        if not args.all and not args.tasks and not args.workflows:
-            import glob
-            sig_files = glob.glob('.sos/*.sig')
-            workflows = [os.path.basename(x)[:-4] for x in sig_files]
-            args.workflows = workflows
         if not args.queue:
-            purge_tasks(args.tasks, args.all, args.workflows, args.age, args.status, args.tags, args.verbosity)
+            purge_tasks(args.tasks, args.all, args.age, args.status, args.tags, args.verbosity)
         else:
             # remote host?
             cfg = load_config_files(args.config)
             host = Host(args.queue)
-            print(host._task_engine.purge_tasks(args.tasks, args.all, args.workflows, args.age, args.status, args.tags, args.verbosity))
+            print(host._task_engine.purge_tasks(args.tasks, args.all, args.age, args.status, args.tags, args.verbosity))
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
