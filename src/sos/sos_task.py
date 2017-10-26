@@ -326,6 +326,8 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                             sigmode, monitor_interval, resource_monitor_interval), callback=copy_out_and_err))
                     for idx,r in enumerate(results):
                         results[idx] = r.get()
+                        if 'exception' in results[idx]:
+                            raise results[idx]['exception']
                 except Exception as e:
                     if env.verbosity > 2:
                         sys.stderr.write(get_traceback())
@@ -348,7 +350,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                         if env.verbosity > 2:
                             sys.stderr.write(get_traceback())
                         env.logger.error('{} ``failed`: {}'.format(task_id, e))
-                        results.append({'ret_code': 1, 'exception': e})
+                        return {'ret_code': 1, 'exception': e}
         #
         # now we collect result
         all_res = {'ret_code': 0, 'output': {}, 'subtasks': {}, 'shared': {}}
