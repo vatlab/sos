@@ -113,14 +113,12 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                     raise RuntimeError('Unacceptable value for option active: {}'.format(kwargs['active']))
             # if there are parameters input and output, the action is subject to signature verification
             sig = None
-            if 'input' in kwargs:
-                ifiles = [kwargs['input']] if isinstance(kwargs['input'], str) else kwargs['input']
-                kwargs['input'] = [os.path.expanduser(ifile) for ifile in ifiles]
-            if 'output' in kwargs:
-                ofiles = [kwargs['output']] if isinstance(kwargs['output'], str) else kwargs['output']
-                kwargs['output'] = [os.path.expanduser(ofile) for ofile in ofiles]
+            for k in ('input', 'output', 'tracked'):
+                if k in kwargs:
+                    files = [kwargs[k]] if isinstance(kwargs[k], str) else kwargs[k]
+                    kwargs[k] = [os.path.expanduser(x) for x in files]
 
-            if 'input' in kwargs and 'output' in kwargs:
+            if 'tracked' in kwargs:
                 if args and isinstance(args[0], str):
                     script = args[0]
                 elif 'script' in kwargs:
@@ -129,7 +127,7 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                     script = ''
 
                 from .target import RuntimeInfo
-                sig = RuntimeInfo(func.__name__, script, kwargs['input'], kwargs['output'], [], kwargs)
+                sig = RuntimeInfo(func.__name__, script, [], kwargs['tracked'], [], kwargs)
                 sig.lock()
                 if env.config['sig_mode'] == 'default':
                     matched = sig.validate()
