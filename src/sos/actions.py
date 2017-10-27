@@ -111,6 +111,21 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                         return None
                 else:
                     raise RuntimeError('Unacceptable value for option active: {}'.format(kwargs['active']))
+            # verify input
+            if 'input' in kwargs and kwargs['input'] is not None:
+                if isinstance(kwargs['input'], str):
+                    ifiles = [kwargs['input']]
+                elif isinstance(kwargs['input'], Sequence):
+                    ifiles = list(kwargs['input'])
+                else:
+                    raise ValueError('Unacceptable value for parameter input of actions: {}'.format(kwargs['input']))
+
+                ifiles = [os.path.expanduser(x) for x in ifiles]
+
+                for ifile in ifiles:
+                    if not os.path.exists(ifile):
+                        raise ValueError('Input file {} does not exist.'.format(ifile))
+
             # if there are parameters input and output, the action is subject to signature verification
             sig = None
             # tracked can be True, filename or list of filename

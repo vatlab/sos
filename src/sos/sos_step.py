@@ -924,9 +924,12 @@ class Base_Step_Executor:
             detail = e.args[0]
             cl, exc, tb = sys.exc_info()
             line_number = traceback.extract_tb(tb)[-1][1]
-            raise RuntimeError('{} at line {} of \n{}\n{}'.format(error_class, line_number,
-                '\n'.join(['{} {}'.format('>>>' if i+1 == line_number else '   ', x.rstrip()) for i,x in enumerate(stmt.splitlines())][max(line_number-3, 0):line_number + 3]),
-                detail))
+            code = '\n'.join(['{} {}'.format('>>>' if i+1 == line_number else '   ', x.rstrip()) for i,x in enumerate(stmt.splitlines())][max(line_number-3, 0):line_number + 3])
+            if code.strip():
+                raise RuntimeError('{} at line {} of \n{}\n{}'.format(error_class, line_number,
+                    code, detail))
+            else:
+                raise RuntimeError('{}: {}'.format(error_class, detail))
         finally:
             env.sos_dict.set('__step_sig__', None)
 
