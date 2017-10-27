@@ -114,11 +114,11 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
             # if there are parameters input and output, the action is subject to signature verification
             sig = None
             for k in ('input', 'output', 'tracked'):
-                if k in kwargs:
+                if k in kwargs and kwargs[k] is not None:
                     files = [kwargs[k]] if isinstance(kwargs[k], str) else kwargs[k]
                     kwargs[k] = [os.path.expanduser(x) for x in files]
 
-            if 'tracked' in kwargs:
+            if 'tracked' in kwargs and kwargs['tracked'] is not None:
                 if args and isinstance(args[0], str):
                     script = args[0]
                 elif 'script' in kwargs:
@@ -175,7 +175,7 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                         res = None
                     else:
                         raise
-            if 'output' in kwargs:
+            if 'output' in kwargs and kwargs['output'] is not None:
                 for ofile in kwargs['output']:
                     if isinstance(ofile, str):
                         if not FileTarget(ofile).exists('any'):
