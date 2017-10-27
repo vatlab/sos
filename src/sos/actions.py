@@ -113,11 +113,6 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                     raise RuntimeError('Unacceptable value for option active: {}'.format(kwargs['active']))
             # if there are parameters input and output, the action is subject to signature verification
             sig = None
-            for k in ('input', 'output', 'tracked'):
-                if k in kwargs and kwargs[k] is not None:
-                    files = [kwargs[k]] if isinstance(kwargs[k], str) else kwargs[k]
-                    kwargs[k] = [os.path.expanduser(x) for x in files]
-
             if 'tracked' in kwargs and kwargs['tracked'] is not None:
                 if args and isinstance(args[0], str):
                     script = args[0]
@@ -126,8 +121,11 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                 else:
                     script = ''
 
+                tfiles = [kwargs['tracked']] if isinstance(kwargs['tracked'], str) else kwargs['tracked']
+                tfiles = [os.path.expanduser(x) for x in files]
+
                 from .target import RuntimeInfo
-                sig = RuntimeInfo(func.__name__, script, [], kwargs['tracked'], [], kwargs)
+                sig = RuntimeInfo(func.__name__, script, [], tfiles, [], kwargs)
                 sig.lock()
                 if env.config['sig_mode'] == 'default':
                     matched = sig.validate()
@@ -176,7 +174,9 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                     else:
                         raise
             if 'output' in kwargs and kwargs['output'] is not None:
-                for ofile in kwargs['output']:
+                ofiles = [kwargs['output']] if isinstance(kwargs['output'], str) else kwargs['output']
+                ofiles = [os.path.expanduser(x) for x in files]
+                for ofile in ofiles:
                     if isinstance(ofile, str):
                         if not FileTarget(ofile).exists('any'):
                             raise RuntimeError('Output target {} does not exist after completion of action {}'.format(ofile, func.__name__))
