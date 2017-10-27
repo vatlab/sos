@@ -113,6 +113,13 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                     raise RuntimeError('Unacceptable value for option active: {}'.format(kwargs['active']))
             # if there are parameters input and output, the action is subject to signature verification
             sig = None
+            if 'input' in kwargs:
+                ifiles = [kwargs['input']] if isinstance(kwargs['input'], str) else kwargs['input']
+                kwargs['input'] = [os.path.expanduser(ifile) for ifile in ifiles]
+            if 'output' in kwargs:
+                ofiles = [kwargs['output']] if isinstance(kwargs['output'], str) else kwargs['output']
+                kwargs['output'] = [os.path.expanduser(ofile) for ofile in ofiles]
+
             if 'input' in kwargs and 'output' in kwargs:
                 if args and isinstance(args[0], str):
                     script = args[0]
@@ -120,10 +127,9 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                     script = kwargs['script']
                 else:
                     script = ''
-                # 
+
                 from .target import RuntimeInfo
-                sig = RuntimeInfo(func.__name__, script, [kwargs['input']] if isinstance(kwargs['input'], str) else kwargs['input'],
-                        [kwargs['output']] if isinstance(kwargs['output'], str) else kwargs['output'], [], kwargs)
+                sig = RuntimeInfo(func.__name__, script, kwargs['input'], kwargs['output'], [], kwargs)
                 sig.lock()
                 if env.config['sig_mode'] == 'default':
                     matched = sig.validate()
@@ -172,8 +178,7 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                     else:
                         raise
             if 'output' in kwargs:
-                ofiles = [kwargs['output']] if isinstance(kwargs['output'], str) else kwargs['output']
-                for ofile in ofiles:
+                for ofile in kwargs['output']:
                     if isinstance(ofile, str):
                         if not FileTarget(ofile).exists('any'):
                             raise RuntimeError('Output target {} does not exist after completion of action {}'.format(ofile, func.__name__))
