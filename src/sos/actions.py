@@ -122,7 +122,7 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                     script = ''
 
                 tfiles = [kwargs['tracked']] if isinstance(kwargs['tracked'], str) else kwargs['tracked']
-                tfiles = [os.path.expanduser(x) for x in files]
+                tfiles = [os.path.expanduser(x) for x in tfiles]
 
                 from .target import RuntimeInfo
                 sig = RuntimeInfo(func.__name__, script, [], tfiles, [], kwargs)
@@ -175,7 +175,7 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                         raise
             if 'output' in kwargs and kwargs['output'] is not None:
                 ofiles = [kwargs['output']] if isinstance(kwargs['output'], str) else kwargs['output']
-                ofiles = [os.path.expanduser(x) for x in files]
+                ofiles = [os.path.expanduser(x) for x in ofiles]
                 for ofile in ofiles:
                     if isinstance(ofile, str):
                         if not FileTarget(ofile).exists('any'):
