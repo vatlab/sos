@@ -170,7 +170,10 @@ class SoS_Worker(mp.Process):
         # we send the pipe to subworkflow, which would send
         # everything directly to the master process, so we do not
         # have to collect result here
-        executer.run(targets=targets, parent_pipe=self.pipe, my_workflow_id=workflow_id)
+        try:
+            executer.run(targets=targets, parent_pipe=self.pipe, my_workflow_id=workflow_id)
+        except Exception as e:
+            self.pipe.send(e)
 
 
     def run_step(self, section, context, shared, args, run_mode, sig_mode, verbosity):

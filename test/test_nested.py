@@ -630,6 +630,21 @@ sos_run('step', workdir='tmp')
         shutil.rmtree('tmp')
 
 
+    def testFailureOfNestedWorkflow(self):
+        '''Test failure of nested workflow #838'''
+        if os.path.isdir('a.txt'):
+            shutil.rmtree('a.txt')
+        script = SoS_Script('''
+[something]
+input: 'a.txt'
+
+[default]
+sos_run('something')
+''')
+        wf = script.workflow()
+        # this should be ok.
+        self.assertRaises(Exception, Base_Executor(wf).run)
+
 
 
 if __name__ == '__main__':
