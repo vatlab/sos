@@ -25,6 +25,7 @@ import pickle
 import time
 import copy
 import threading
+import zlib
 from io import StringIO
 from tokenize import generate_tokens
 from collections.abc import Sequence, Mapping
@@ -59,12 +60,12 @@ class TaskParams(object):
 
     def save(self, job_file):
         with open(job_file, 'wb') as jf:
-            jf.write('SOSTASK1.1\n{}\n'.format(' '.join(self.tags) ).encode())
+            jf.write('SOSTASK1.2\n{}\n'.format(' '.join(self.tags) ).encode())
             # remove __builtins__ from sos_dict #835
             if 'CONFIG' in self.sos_dict and '__builtins__' in self.sos_dict['CONFIG']:
                 self.sos_dict['CONFIG'].pop('__builtins__')
             try:
-                pickle.dump(self, jf)
+                jf.write(zlib.compress(pickle.dumps(self)))
             except Exception as e:
                 env.logger.warning(e)
                 raise
@@ -145,23 +146,42 @@ class MasterTaskParams(TaskParams):
         # input, output, preserved vars etc
         for key in ['_input', '_output', '_depends']:
             if key in params.sos_dict and isinstance(params.sos_dict[key], list):
-                self.sos_dict[key].extend(params.sos_dict[key])
+                # do not extend duplicated input etc
+                self.sos_dict[key].extend(list(set(params.sos_dict[key]) - set(self.sos_dict[key])))
         #
-        self.task_stack.append((task_id, params))
+        self.task_stack.append([task_id, params])
         self.tags = sorted(list(set(self.tags)))
         #
         self.ID = 'M{}_{}'.format(len(self.task_stack), self.task_stack[0][0])
 
+    def save(self, job_file):
+        # try to reduce size of master task file
+        self.shared_dict = {}
+        the_same = set(self.task_stack[0][1].sos_dict.keys())
+        for task in self.task_stack[1:]:
+            the_same = {key for key in the_same
+                if key in task[1].sos_dict and task[1].sos_dict[key] == self.task_stack[0][1].sos_dict[key]}
+            if not the_same:
+                break
+        if the_same:
+            self.shared_dict = {key: self.task_stack[0][1].sos_dict[key] for key in the_same}
+            for task in self.task_stack:
+                for key in the_same:
+                    task[1].sos_dict.pop(key)
+        super(MasterTaskParams, self).save(job_file)
 
 def loadTask(filename):
     try:
         with open(filename, 'rb') as task:
             try:
                 header = task.readline().decode()
-                if header.startswith('SOSTASK'):
+                if header.startswith('SOSTASK1.1'):
                     # ignore the tags 
                     task.readline()
                     return pickle.load(task)
+                elif header.startswith('SOSTASK1.2'):
+                    task.readline()
+                    return pickle.loads(zlib.decompress(task.read()))
                 else:
                     raise ValueError('Try old format')
             except:
@@ -322,6 +342,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                 try:
                     results = []
                     for t in params.task_stack:
+                        t[1].sos_dict.update(params.shared_dict)
                         results.append(p.apply_async(_execute_task, (t, verbosity, runmode,
                             sigmode, monitor_interval, resource_monitor_interval), callback=copy_out_and_err))
                     for idx,r in enumerate(results):
@@ -336,6 +357,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
             else:
                 results = []
                 for tid, tdef in params.task_stack:
+                    tdef.sos_dict.update(params.shared_dict)
                     try:
                         res = _execute_task((tid, tdef), verbosity=verbosity, runmode=runmode,
                             sigmode=sigmode, monitor_interval=monitor_interval,

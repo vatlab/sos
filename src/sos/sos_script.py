@@ -505,6 +505,15 @@ class SoS_ScriptContent:
             self.included.append((content, filename))
             self.md5 = self.calc_md5()
 
+    def __repr__(self):
+        return '{}: filename: {}, content: {}'.format(self.md5, self.filename, self.content)
+
+
+    def __eq__(self, other):
+        return self.md5 == other.md5
+
+    def __ne__(self, other):
+        return self.md5 != other.md5
 
 class SoS_Script:
     def __init__(self, content='', filename=None, transcript=None, global_sigil='${ }'):
