@@ -834,6 +834,10 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
                 continue
             row('ID', t)
             row('Status', s)
+            task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.task')
+            if not os.path.isfile(task_file):
+                print('</table>')
+                continue
             if d is not None:
                 row('Start', '{:>15} ago'.format(PrettyRelativeTime(time.time() - d)))
             if s not in ('pending', 'submitted', 'running'):
