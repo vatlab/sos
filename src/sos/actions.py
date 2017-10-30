@@ -111,9 +111,25 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                         return None
                 else:
                     raise RuntimeError('Unacceptable value for option active: {}'.format(kwargs['active']))
+            # verify input
+            if 'input' in kwargs and kwargs['input'] is not None:
+                if isinstance(kwargs['input'], str):
+                    ifiles = [kwargs['input']]
+                elif isinstance(kwargs['input'], Sequence):
+                    ifiles = list(kwargs['input'])
+                else:
+                    raise ValueError('Unacceptable value for parameter input of actions: {}'.format(kwargs['input']))
+
+                ifiles = [os.path.expanduser(x) for x in ifiles]
+
+                for ifile in ifiles:
+                    if not os.path.exists(ifile):
+                        raise ValueError('Input file {} does not exist.'.format(ifile))
+
             # if there are parameters input and output, the action is subject to signature verification
             sig = None
-            if 'tracked' in kwargs and kwargs['tracked'] is not None:
+            # tracked can be True, filename or list of filename
+            if 'tracked' in kwargs and kwargs['tracked'] is not None and kwargs['tracked'] is not False:
                 if args and isinstance(args[0], str):
                     script = args[0]
                 elif 'script' in kwargs:
@@ -121,7 +137,26 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                 else:
                     script = ''
 
-                tfiles = [kwargs['tracked']] if isinstance(kwargs['tracked'], str) else kwargs['tracked']
+                if isinstance(kwargs['tracked'], str):
+                    tfiles = [kwargs['tracked']]
+                elif isinstance(kwargs['tracked'], Sequence):
+                    tfiles = kwargs['tracked']
+                elif kwargs['tracked'] is True:
+                    tfiles = []
+                else:
+                    raise ValueError('Parameter tracked of actions can be None, True/False, or one or more filenames')
+
+                # append input and output
+                for t in ('input', 'output'):
+                    if t in kwargs and kwargs[t] is not None:
+                        if isinstance(kwargs[t], str):
+                            tfiles.append(kwargs[t])
+                        elif isinstance(kwargs[t], Sequence):
+                            tfiles.extend(list(kwargs[t]))
+                        else:
+                            env.logger.warning('Cannot track input or output file {}'.format(kwargs[t]))
+
+                # expand user...
                 tfiles = [os.path.expanduser(x) for x in tfiles]
 
                 from .target import RuntimeInfo
