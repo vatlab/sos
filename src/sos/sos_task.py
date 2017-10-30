@@ -32,7 +32,7 @@ from collections.abc import Sequence, Mapping
 import concurrent.futures
 
 from .utils import env, short_repr, get_traceback, sample_of_file, tail_of_file, linecount_of_file, \
-    format_HHMMSS, expand_time, expand_size
+    format_HHMMSS, expand_time, expand_size, StopInputGroup
 from .sos_eval import SoS_exec, SoS_eval
 
 from .target import textMD5, RuntimeInfo, Undetermined, FileTarget, UnknownTarget, remote, sos_step
@@ -598,6 +598,10 @@ del sos_handle_parameter_
             sys.stderr.write(get_traceback())
         env.logger.error('{} ``failed``: {}'.format(task_id, e))
         return {'ret_code': 1, 'exception': e, 'task': task_id, 'shared': {}}
+    except StopInputGroup as e:
+        # task ignored with stop_if exception
+        results.append({'ret_code': 0, 'task': task_id, 'input': [],
+            'output': [], 'depends': [], 'shared': {}})
     except KeyboardInterrupt:
         env.logger.error('{} ``interrupted``'.format(task_id))
         raise
