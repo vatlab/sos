@@ -593,18 +593,19 @@ del sos_handle_parameter_
         else:
             env.logger.info('{} ``completed``'.format(task_id))
 
+    except StopInputGroup as e:
+        # task ignored with stop_if exception
+        env.logger.warning('{} ``stopped``: {}'.format(task_id, e.message))
+        return {'ret_code': 0, 'task': task_id, 'input': [],
+            'output': [], 'depends': [], 'shared': {}}
+    except KeyboardInterrupt:
+        env.logger.error('{} ``interrupted``'.format(task_id))
+        raise
     except Exception as e:
         if env.verbosity > 2:
             sys.stderr.write(get_traceback())
         env.logger.error('{} ``failed``: {}'.format(task_id, e))
         return {'ret_code': 1, 'exception': e, 'task': task_id, 'shared': {}}
-    except StopInputGroup as e:
-        # task ignored with stop_if exception
-        results.append({'ret_code': 0, 'task': task_id, 'input': [],
-            'output': [], 'depends': [], 'shared': {}})
-    except KeyboardInterrupt:
-        env.logger.error('{} ``interrupted``'.format(task_id))
-        raise
     finally:
         env.sos_dict.set('__step_sig__', None)
         os.chdir(orig_dir)
