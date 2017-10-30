@@ -360,17 +360,19 @@ class SoS_ExecuteScript:
 
 
 @SoS_Action(run_mode=['run', 'interactive'])
-def sos_run(workflow=None, targets=None, shared=None, args=None, **kwargs):
-    '''Execute a workflow from specified source, input, and output
-    By default the workflow is defined in the existing SoS script, but
-    extra sos files can be specified from paramter source. The workflow
-    will be execute in the current step namespace with _input as workflow
-    input. '''
+def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **kwargs):
+    '''Execute a workflow from the current SoS script or a specified source
+    (in .sos or .ipynb format), with _input as the initial input of workflow.'''
     if '__std_out__' in env.sos_dict and '__std_err__' in env.sos_dict:
         raise RuntimeError('Executing nested workflow (action sos_run) in tasks is not supported.')
 
-    script = SoS_Script(env.sos_dict['__step_context__'].content, env.sos_dict['__step_context__'].filename)
-    wf = script.workflow(workflow, use_default=not targets)
+    if source is None:
+        script = SoS_Script(env.sos_dict['__step_context__'].content, env.sos_dict['__step_context__'].filename)
+        wf = script.workflow(workflow, use_default=not targets)
+    else:
+        # reading workflow from another file
+        script = SoS_Script(filename=source)
+        wf = script.workflow(workflow, use_default=not targets)
     # if wf contains the current step or one of the previous one, this constitute
     # recusive nested workflow and should not be allowed
     if env.sos_dict['step_name'] in ['{}_{}'.format(x.name, x.index) for x in wf.sections]:

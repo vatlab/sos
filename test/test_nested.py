@@ -633,7 +633,7 @@ sos_run('step', workdir='tmp')
     def testFailureOfNestedWorkflow(self):
         '''Test failure of nested workflow #838'''
         if os.path.isdir('a.txt'):
-            shutil.rmtree('a.txt')
+            os.remove('a.txt')
         script = SoS_Script('''
 [something]
 input: 'a.txt'
@@ -645,6 +645,26 @@ sos_run('something')
         # this should be ok.
         self.assertRaises(Exception, Base_Executor(wf).run)
 
+
+    def testNestedFromAnotherFile(self):
+        '''Test nested runtime option for work directory'''
+        if os.path.isdir('a.txt'):
+            os.remove('a.txt')
+        with open('another.sos', 'w') as another:
+            another.write('''
+[whatever]
+run:
+    touch 'a.txt'
+
+''')
+        script = SoS_Script('''
+[default]
+sos_run('whatever', source='another.sos')
+''')
+        wf = script.workflow()
+        # this should be ok.
+        Base_Executor(wf).run()
+        self.assertTrue(os.path.isfile('a.txt'), 'a.txt should have been created by nested workflow from another file')
 
 
 if __name__ == '__main__':
