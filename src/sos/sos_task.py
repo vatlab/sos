@@ -1477,12 +1477,13 @@ class TaskEngine(threading.Thread):
         else:
             return self.agent.prepare_task(task_id)
 
-    def purge_tasks(self, tasks, purge_all=False, age=None, status=None, verbosity=2):
+    def purge_tasks(self, tasks, purge_all=False, age=None, status=None, tags=None, verbosity=2):
         try:
-            return self.agent.check_output("sos purge {} {} {} {} -v {}".format(
+            return self.agent.check_output("sos purge {} {} {} {} {} -v {}".format(
                 ' '.join(tasks), '--all' if purge_all else '',
                 '--age {}'.format(age) if age is not None else '',
                 '--status {}'.format(' '.join(status)) if status is not None else '',
+                '--tags {}'.format(' '.join(tags)) if tags is not None else '',
                 verbosity))
         except subprocess.CalledProcessError:
             env.logger.error('Failed to purge tasks {}'.format(tasks))
