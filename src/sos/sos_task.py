@@ -779,11 +779,11 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
                 to_be_removed.append(t)
                 continue
             print('{}\t{}\n'.format(t, s))
-            if d is not None:
-                print('Started {} ago'.format(PrettyRelativeTime(time.time() - d)))
             task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.task')
             if not os.path.isfile(task_file):
                 continue
+            if d is not None:
+                print('Started {} ago'.format(PrettyRelativeTime(time.time() - d)))
             if s not in ('pending', 'submitted', 'running'):
                 print('Duration {}'.format(PrettyRelativeTime(taskDuration(t))))
             params = loadTask(task_file)
