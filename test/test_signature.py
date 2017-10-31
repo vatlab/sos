@@ -258,6 +258,8 @@ run("touch ${output}")
         except Exception:
             pass
 
+
+    @unittest.skipIf(sys.platform == 'win32', 'Windows executable cannot execute bash loop.')
     def testSignatureAfterRemovalOfFiles(self):
         '''test action shrink'''
         if os.path.isfile('largefile.txt'):
