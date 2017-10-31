@@ -541,10 +541,10 @@ class RemoteHost:
                 continue
             elif isinstance(task_vars[var], str):
                 task_vars[var] = self._map_var(task_vars[var])
-                env.logger.info('On {}: ``{}`` = {}'.format(self.alias, var, short_repr(task_vars[var])))
+                env.logger.debug('On {}: ``{}`` = {}'.format(self.alias, var, short_repr(task_vars[var])))
             elif isinstance(task_vars[var], (Sequence, set)):
                 task_vars[var] = type(task_vars[var])(self._map_var(task_vars[var]))
-                env.logger.info('On {}: ``{}`` = {}'.format(self.alias, var, short_repr(task_vars[var])))
+                env.logger.debug('On {}: ``{}`` = {}'.format(self.alias, var, short_repr(task_vars[var])))
             else:
                 env.logger.warning('Failed to map {} of type {}'.format(var, task_vars[var].__class__.__name__))
 
