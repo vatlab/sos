@@ -883,7 +883,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
             files = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
             for f in sorted([x for x in files if os.path.splitext(x)[-1] not in ('.def', '.res', '.task', '.pulse', '.status')]):
                 numLines = linecount_of_file(f)
-                row(os.path.basename(f), '(empty)' if numLines == 0 else '{} lines{}'.format(numLines, '' if numLines < 200 else ' (showing last 200)'))
+                row(os.path.splitext(f)[-1], '(empty)' if numLines == 0 else '{} lines{}'.format(numLines, '' if numLines < 200 else ' (showing last 200)'))
                 try:
                     row(td='<small><pre style="text-align:left">{}</pre></small>'.format(tail_of_file(f, 200, ansi2html=True)))
                 except Exception:
