@@ -200,7 +200,16 @@ run:
     def testDependsEnvVariable(self):
         '''Testing target env_variable.'''
         FileTarget('a.txt').remove('both')
-        script = SoS_Script('''
+        if sys.platform == 'win32':
+            script = SoS_Script('''
+[0]
+depends: env_variable('AA')
+output:  'a.txt'
+run:
+    echo %AA% > a.txt
+''')
+        else:
+            script = SoS_Script('''
 [0]
 depends: env_variable('AA')
 output:  'a.txt'
@@ -211,7 +220,7 @@ run:
         os.environ['AA'] = 'A1'
         Base_Executor(wf).run()
         with open('a.txt') as at:
-            self.assertEqual(at.read(), 'A1\n')
+            self.assertEqual(at.read().strip(), 'A1')
         # test validation
         Base_Executor(wf).run()
         # now if we change var, it should be rerun
@@ -219,7 +228,7 @@ run:
         Base_Executor(wf).run()
         # allow one second variation
         with open('a.txt') as at:
-            self.assertEqual(at.read(), 'A2\n')
+            self.assertEqual(at.read().strip(), 'A2')
         FileTarget('a.txt').remove('both')
 
     @unittest.skipIf(sys.platform == 'win32', 'Windows executable cannot be created with chmod.')

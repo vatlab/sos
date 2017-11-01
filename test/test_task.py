@@ -21,6 +21,7 @@
 #
 
 import os
+import sys
 import time
 import unittest
 import shutil
@@ -34,9 +35,10 @@ from sos.hosts import Host
 import subprocess
 
 
-has_docker = True
+has_docker = sys.platform != 'win32'
 try:
-    subprocess.check_output('docker ps | grep test_sos', shell=True).decode()
+    if sys.platform != 'win32':
+        subprocess.check_output('docker ps | grep test_sos', shell=True).decode()
 except subprocess.CalledProcessError:
     subprocess.call('sh build_test_docker.sh', shell=True)
     try:
@@ -282,7 +284,7 @@ run:
         Base_Executor(wf).run()
         for t in range(10, 13):
             with open('myfile_{}.txt'.format(t)) as tmp:
-                self.assertEqual(tmp.read(), str(t) + '_' + str(t-10) + '\n')
+                self.assertEqual(tmp.read().strip(), str(t) + '_' + str(t-10))
             FileTarget('myfile_{}.txt'.format(t)).remove('both')
 
     def testMaxJobs(self):
