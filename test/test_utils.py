@@ -306,7 +306,10 @@ run:
     echo "Hi, This is from bash"''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        #
+        # windows does not have #! mechanism so the python code
+        # would incorrectly be executed as bat
+        if sys.platform == 'win32':
+            return
         for text in ('"""a"""', '"b"',
             r'"""\na\\nb"""', r"'''a\nb'''",
             """ "a'\\"='" """):
