@@ -167,7 +167,12 @@ def loadTask(filename):
                     return pickle.load(task)
                 elif header.startswith('SOSTASK1.2'):
                     task.readline()
-                    return pickle.loads(lzma.decompress(task.read()))
+                    try:
+                        return pickle.loads(lzma.decompress(task.read()))
+                    except:
+                        # at some point, the task files were compressed with zlib
+                        import zlib
+                        return pickle.loads(zlib.decompress(task.read()))
                 else:
                     raise ValueError('Try old format')
             except:
