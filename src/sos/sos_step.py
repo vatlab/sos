@@ -757,10 +757,12 @@ class Base_Step_Executor:
             except Exception:
                 raise RuntimeError('Failed to create workdir {}'.format(env.sos_dict['_runtime']['workdir']))
 
+        # NOTE: we do not explicitly include 'input', 'output', 'depends' and 'CONFIG'
+        # because they will be included by env.sos_dict['__signature_vars__'] if they are actually
+        # used in the task. (issue #752)
         task_vars = env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                    | {'_input', '_output', '_depends', 'input', 'output', 'depends',
-                    '_index', '__args__', 'step_name', '_runtime',
-                    'CONFIG', '__signature_vars__', '__step_context__',
+                    | {'_input', '_output', '_depends', '_index', '__args__', 'step_name', '_runtime',
+                    '__signature_vars__', '__step_context__'
                     })
 
         task_tags = [env.sos_dict.get('step_name', ''), os.path.basename(env.sos_dict.get('__workflow_sig__', '')).rsplit('.', 1)[0]]

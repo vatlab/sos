@@ -385,6 +385,15 @@ time.sleep(r)
 input: None
 print(p1)
 
+[A_4]
+input: None
+task:
+python:
+   print('${output}')
+
+[A_5]
+task:
+   print('${_output}')
 ''')
         wf = script.workflow('A')
         for section in wf.sections:
@@ -404,6 +413,10 @@ print(p1)
                 self.assertEqual(res['environ_vars'], {'for_each', 'executable'})
                 self.assertEqual(res['signature_vars'], {'import', 'r', 'time', 'random'})
                 self.assertEqual(res['changed_vars'], set())
+            elif section.names[0][1] == '4':
+                self.assertTrue('output' in res['signature_vars'])
+            elif section.names[0][1] == '5':
+                self.assertTrue('output' not in res['signature_vars'])
 
     def testOnDemandOptions(self):
         '''Test options that are evaluated upon request.'''
