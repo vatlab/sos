@@ -186,6 +186,31 @@ def loadTask(filename):
         raise RuntimeError('Failed to load task {}, which is likely caused by incompatible python modules between local and remote hosts: {}'.format(os.path.basename(filename), e))
 
 
+def addTags(filename, new_tags):
+    with open(filename, 'rb') as task:
+        header = task.readline()
+        # read the tags
+        tags = task.readline().decode().strip().split(' ')
+        if isinstance(new_tags, str):
+            if new_tags in tags:
+                return
+            else:
+                tags.append(new_tags)
+        elif isinstance(new_tags, Sequence):
+            new_tags = [tag for tag in new_tags if tag not in tags]
+            if new_tags:
+                tags.extend(new_tags)
+            else:
+                return
+        else:
+            raise ValueError('Cannot add tags {} to task {}'.format(new_tags, filename))
+        body = task.read()
+    with open(filename, 'wb') as task:
+        task.write(header)
+        task.write((' '.join(tags) + '\n').encode())
+        task.write(body)
+
+
 def taskDuration(task):
     filename = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '{}.task'.format(task))
     return os.path.getatime(filename) - os.path.getmtime(filename)
