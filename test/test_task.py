@@ -142,9 +142,13 @@ print('I am {}, done'.format(_index))
         import stat
         if not os.path.isdir('temp'):
             os.mkdir('temp')
-        with open('temp/temp_cmd', 'w') as tc:
-            tc.write('echo "a"')
-        os.chmod('temp/temp_cmd', stat.S_IXUSR | stat.S_IWUSR | stat.S_IRUSR)
+        if sys.platform == 'win32':
+            with open(r'temp\temp_cmd.bat', 'w') as tc:
+                tc.write('echo "a"')
+        else:
+            with open('temp/temp_cmd', 'w') as tc:
+                tc.write('echo "a"')
+            os.chmod('temp/temp_cmd', stat.S_IXUSR | stat.S_IWUSR | stat.S_IRUSR)
         #
         script = SoS_Script(r"""
 [1]
