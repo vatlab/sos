@@ -436,6 +436,11 @@ _SOS_TAG_TMPL = r'''
     [\w-]*                              # - is allowed in between
     '''
 
+_SOS_LOGLINE = r'''
+    ^                                   # 2017-11-01 14:26:16,145:
+    \d\d\d\d\-\d\d\-\d\d\s+\d\d:\d\d:\d\d,\d\d\d:
+'''
+
 SOS_SECTION_HEADER = LazyRegex(_SECTION_HEADER_TMPL, re.VERBOSE)
 SOS_GLOBAL_SECTION_HEADER = LazyRegex(_GLOBAL_SECTION_HEADER_TMPL, re.VERBOSE)
 SOS_SECTION_NAME = LazyRegex(_SECTION_NAME_TMPL, re.VERBOSE)
@@ -463,3 +468,4 @@ FORMAT_SPECIFIER = LazyRegex(_FORMAT_SPECIFIER_TMPL, re.VERBOSE | re.DOTALL)
 SIMPLE_SUB = LazyRegex(_SIMPLE_SUB_TMPL, re.VERBOSE | re.DOTALL)
 SOS_WILDCARD = LazyRegex(_SOS_WILDCARD_TMPL, re.VERBOSE)
 SOS_TAG = LazyRegex(_SOS_TAG_TMPL, re.VERBOSE)
+SOS_LOGLINE = LazyRegex(_SOS_LOGLINE, re.VERBOSE)

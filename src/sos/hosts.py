@@ -34,6 +34,7 @@ from collections.abc import Sequence
 from .utils import env, short_repr, expand_size, format_HHMMSS, expand_time
 from .sos_eval import Undetermined, cfg_interpolate
 from .sos_task import BackgroundProcess_TaskEngine, TaskParams, loadTask
+from .sos_syntax import SOS_LOGLINE
 
 #
 # A 'queue' is defined by queue configurations in SoS configuration files.
@@ -117,13 +118,21 @@ def _show_err_and_out(task_id):
     out_file = os.path.join(sys_task_dir, task_id + '.out')
     err_file = os.path.join(sys_task_dir, task_id + '.err')
     if os.path.isfile(out_file):
-        env.logger.info('{}.out:'.format(task_id))
+        sys.stderr.write('\n~/.sos/tasks/{}.out:\n'.format(task_id))
         with open(out_file) as out:
-            print(out.read())
+            for line in out:
+                if not SOS_LOGLINE.match(line):
+                    sys.stderr.write(line)
+            if not line.endswith('\n'):
+                sys.stderr.write('\n')
     if os.path.isfile(err_file):
-        env.logger.info('{}.err:'.format(task_id))
+        sys.stderr.write('\n~/.sos/tasks/{}.err:\n'.format(task_id))
         with open(err_file) as err:
-            print(err.read())
+            for line in err:
+                if not SOS_LOGLINE.match(line):
+                    sys.stderr.write(line)
+            if not line.endswith('\n'):
+                sys.stderr.write('\n')
 
 class LocalHost:
     '''For local host, no path map, send and receive ...'''
