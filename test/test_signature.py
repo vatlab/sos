@@ -362,25 +362,25 @@ parameter: gvar = 10
 output: 'myfile.txt'
 # additional comment
 run:
-    echo ${gvar} > ${output!r}
+    echo ${gvar} > ${output!q}
 
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
         with open('myfile.txt') as tmp:
-            self.assertEqual(tmp.read(), '10\n')
+            self.assertEqual(tmp.read().strip(), '10')
         #
         # now if we change parameter, the step should be rerun
         wf = script.workflow()
         Base_Executor(wf, args=['--gvar', '20']).run()
         with open('myfile.txt') as tmp:
-            self.assertEqual(tmp.read(), '20\n')
+            self.assertEqual(tmp.read().strip(), '20')
         #
         # do it again, signature should be effective
         wf = script.workflow()
         Base_Executor(wf, args=['--gvar', '20']).run()
         with open('myfile.txt') as tmp:
-            self.assertEqual(tmp.read(), '20\n')
+            self.assertEqual(tmp.read().strip(), '20')
 
         #
         script = SoS_Script(r'''
@@ -391,24 +391,24 @@ parameter: gvar = 10
 output: 'myfile.txt'
 # additional comment
 run:
-    echo ${gvar} > ${output!r}
+    echo ${gvar} > ${output!q}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
         with open('myfile.txt') as tmp:
-            self.assertEqual(tmp.read(), '10\n')
+            self.assertEqual(tmp.read().strip(), '10')
         #
         # now if we change parameter, the step should be rerun
         wf = script.workflow()
         Base_Executor(wf, args=['--gvar', '20']).run()
         with open('myfile.txt') as tmp:
-            self.assertEqual(tmp.read(), '20\n')
+            self.assertEqual(tmp.read().strip(), '20')
         #
         # do it again, signature should be effective
         wf = script.workflow()
         Base_Executor(wf, args=['--gvar', '20']).run()
         with open('myfile.txt') as tmp:
-            self.assertEqual(tmp.read(), '20\n')
+            self.assertEqual(tmp.read().strip(), '20')
         FileTarget('myfile.txt').remove('both')
 
 
