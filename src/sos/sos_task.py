@@ -355,7 +355,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                         copy_out_and_err({'task': tid, 'ret_code': 1, 'output': []})
                         if env.verbosity > 2:
                             sys.stderr.write(get_traceback())
-                        env.logger.error('{} ``failed`: {}'.format(task_id, e))
+                        env.logger.error('{} ``failed`` due to failure of subtask {}'.format(task_id, tid))
                         return {'ret_code': 1, 'exception': e}
         #
         # now we collect result
@@ -395,7 +395,7 @@ CONFIG = {}
 del sos_handle_parameter_
 ''' + global_def, '${ }')
     except Exception as e:
-        env.logger.trace('Failed to execute global definition {}: {}'.format(global_def, e))
+        env.logger.trace('Failed to execute global definition {}: {}'.format(short_repr(global_def), e))
 
     if '_runtime' not in sos_dict:
         sos_dict['_runtime'] = {}

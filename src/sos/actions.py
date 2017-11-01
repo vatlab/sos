@@ -333,9 +333,6 @@ class SoS_ExecuteScript:
                     else:
                         p = subprocess.Popen(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                     ret = p.wait()
-                    if ret != 0:
-                        task_id = os.path.basename(env.sos_dict['__std_err__']).split('.')[0]
-                        raise RuntimeError('Use "sos status {} -v4" for details.'.format(task_id))
                 else:
                     p = subprocess.Popen(cmd, shell=True,
                                          stderr=None if env.verbosity > 0 else subprocess.DEVNULL,
@@ -349,7 +346,8 @@ class SoS_ExecuteScript:
                     else:
                         debug_args = self.args
                     cmd = interpolate('{} {}'.format(self.interpreter, debug_args), '${ }', {'filename': debug_script_file, 'script': self.script})
-                    raise RuntimeError('Failed to execute commmand ``{}`` (ret={}, workdir={})'.format(cmd, ret, os.getcwd()))
+                    raise RuntimeError('Failed to execute commmand ``{}`` (ret={}, workdir={}{})'.format(cmd, ret, os.getcwd(),
+                        ', task={}'.format(os.path.basename(env.sos_dict['__std_err__']).split('.')[0]) if '__std_out__' in env.sos_dict else ''))
             except RuntimeError:
                 raise
             except Exception as e:

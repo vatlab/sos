@@ -495,7 +495,7 @@ def SoS_exec(stmts, sigil, _dict=None):
             else:
                 exec(stmts, _dict)
         except Exception as e:
-            env.logger.debug('Failed to execute {}'.format(stmts))
+            env.logger.debug('Failed to execute {}'.format(short_repr(stmts)))
             raise
         #finally:
         #    del act

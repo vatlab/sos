@@ -145,10 +145,10 @@ def short_repr(obj, noneAsNA=False):
     '''Return a short representation of obj for clarity.'''
     if obj is None:
         return 'unspecified' if noneAsNA else 'None'
-    elif isinstance(obj, str) and len(obj) > 50:
-        return '{}...{}'.format(obj[:30].replace('\n', '\\n'), obj[-10:].replace('\n', '\\n'))
+    elif isinstance(obj, str) and len(obj) > 80:
+        return '{}...{}'.format(obj[:60].replace('\n', '\\n'), obj[-20:].replace('\n', '\\n'))
     elif isinstance(obj, (str, int, float, bool)) or (isinstance(obj, collections.Sequence) \
-        and len(obj) <= 2) or len(str(obj)) < 50:
+        and len(obj) <= 2) or len(str(obj)) < 80:
         return repr(obj)
     elif isinstance(obj, collections.Sequence): # should be a list or tuple
         return '[{}, ...] ({} items)'.format(short_repr(obj[0]), len(obj))
@@ -159,7 +159,7 @@ def short_repr(obj, noneAsNA=False):
         else:
             return '{}'
     else:
-        return '{}...'.format(repr(obj)[:40])
+        return '{}...'.format(repr(obj)[:60])
 
 #
 # SoS Workflow dictionary
