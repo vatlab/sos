@@ -5,9 +5,6 @@ os:
     # travis does not support python on osx yet (https://github.com/travis-ci/travis-ci/issues/4729)
 language: python
 python:
-    #- "3.3" test stops at installing spyder notebook etc
-    #- "3.4" test fails for unknown reason (sh not found):w
-    - "3.5"
     - "3.6"
 before_install:
     # upgrade docker so that it has same API version as client https://docs.travis-ci.com/user/docker/ 
@@ -49,18 +46,12 @@ script:
     # coverage does not seem to work well with python 3.6, but it does not really matter because we have coverage report from python 3.5 already
     # SAS and Matlab are not tested
     - python test_task.py TestTask.testKillAndPurge 
-    - 'if [ $TRAVIS_PYTHON_VERSION == "3.6" ]; then
-           pytest -x -v;
-       else
-           pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report=xml;
-       fi'
+    - pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report=xml;
       
 after_success:
-    - 'if [ $TRAVIS_PYTHON_VERSION == "3.5" ]; then
-           coverage combine;
-           python-codacy-coverage -r coverage.xml;
-           coveralls;
-        fi'
+    - coverage combine
+    - python-codacy-coverage -r coverage.xml;
+    - coveralls;
 
 notifications:
     email:

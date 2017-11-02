@@ -29,7 +29,6 @@ from subprocess import list2cmdline
 from tokenize import generate_tokens, untokenize, NAME, STRING, INDENT
 
 from .utils import env, Error, short_repr, DelayedAction
-from .sos_syntax import FORMAT_SPECIFIER, SIMPLE_SUB
 
 # function interpolate is needed because it is required by the SoS
 # script (not seen but translated to have this function)

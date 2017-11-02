@@ -362,29 +362,6 @@ _INDENTED_TMPL = r'''
     (\s*)\S                             # match a line with a non-space character
     '''
 
-# Format specifier that can be used at the end of the string to convert
-# result (!s|r|q) and control output format (:.2f etc). The pattern
-# is constructed according to Python format mini language.
-_FORMAT_SPECIFIER_TMPL = r'''
-    ^                                   # start of expression
-    (?P<expr>.*?)                       # any expression
-    (?P<conversion>!\s*                 # conversion starting with !
-    [srqabdenulpRx,]+                   # conversion, q, a, b, n, e, u, l, R, x, p, and , are added by SoS
-    )?
-    (?P<format_spec>:\s*                # format_spec starting with :
-    (?P<fill>.?[<>=^])?                 # optional fill|align
-    (?P<sign>[-+ ])?                    # optional sign
-    \#?                                 #
-    0?                                  #
-    (?P<width>\d+)?                     # optional width
-    ,?                                  # optional ,
-    (?P<precision>\.\d+)?               # optional precision
-    (?P<type>[bcdeEfFgGnosxX%])?        # optional type
-    )?                                  # optional format_spec
-    \s*$                                # end of tring
-    '''
-
-
 _SOS_WILDCARD_TMPL = r'''
     \{
         \s*
@@ -431,7 +408,6 @@ SOS_INCLUDE = LazyRegex(_SOS_INCLUDE_TMPL, re.VERBOSE)
 SOS_FROM_INCLUDE = LazyRegex(_SOS_FROM_INCLUDE_TMPL, re.VERBOSE)
 SOS_CELL_LINE = LazyRegex(_SOS_CELL_LINE_TMPL, re.VERBOSE)
 INDENTED = LazyRegex(_INDENTED_TMPL, re.VERBOSE)
-FORMAT_SPECIFIER = LazyRegex(_FORMAT_SPECIFIER_TMPL, re.VERBOSE | re.DOTALL)
 SOS_WILDCARD = LazyRegex(_SOS_WILDCARD_TMPL, re.VERBOSE)
 SOS_TAG = LazyRegex(_SOS_TAG_TMPL, re.VERBOSE)
 SOS_LOGLINE = LazyRegex(_SOS_LOGLINE, re.VERBOSE)

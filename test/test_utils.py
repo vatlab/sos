@@ -86,44 +86,6 @@ class TestUtils(unittest.TestCase):
         logging.shutdown()
         os.remove('test.log')
 
-    def testLocalAndGlobalDict(self):
-        '''Test interpolation with two dictionaries'''
-        dict_A = {'a': 123, 'c': '${b+2}'}
-        dict_B = {'b': 235}
-        self.assertEqual(interpolate('${a+b}', '${ }', dict_A, dict_B), '358', 'Obtained {}'.format(interpolate('${a+b}', '${ }', dict_A, dict_B)))
-        self.assertEqual(interpolate('${${c}+2}', '${ }', dict_A, dict_B), '239', 'Obtained {}'.format(interpolate('${${c}+2}', '${ }', dict_A, dict_B)))
-
-    def testEval(self):
-        '''Test the evaluation of SoS expression'''
-        env.sos_dict = WorkflowDict({
-            'interpolate': interpolate,
-            'a': 100,
-            'b': 'file name',
-            'c': ['file1', 'file2', 'file 3'],
-            'd': {'a': 'file1', 'b':'file2'},
-        })
-        for expression, result in [
-            ('''"This is ${a+100}"''', 'This is 200'),
-            ('''"${a+100}" + "${a//100}"''', "2001"),
-            ('''"${c[1]}"''', 'file2'),
-            ('''"${c[1:]}"''', 'file2 file 3'),
-            ('''"${d}"''', ['a b', 'b a']),
-            ('''"${d}"*2''', ['a ba b', 'b ab a']),
-            ('''"${d['a']}"''', 'file1'),
-            ('''"${b!q}"''', '"file name"' if sys.platform == "win32" else "'file name'"),
-            ('''"${b!r}"''', "'file name'"),
-            ('''"${c!q}"''', 'file1 file2 "file 3"' if sys.platform == 'win32' else "file1 file2 'file 3'"),
-            ]:
-            if isinstance(result, str):
-                self.assertEqual(SoS_eval(expression, '${ }'), result,
-                        "Test {} with expected result {}".format(expression, result))
-            else:
-                self.assertTrue(SoS_eval(expression, '${ }') in result,
-                        "Test {} with expected result {}".format(expression, result))
-        #
-        # interpolation will only happen in string
-        self.assertRaises(SyntaxError, SoS_eval, '''${a}''', '${ }')
-
     def testWorkflowDict(self):
         '''Test workflow dict with attribute access'''
         env.reset()
@@ -164,16 +126,16 @@ class TestUtils(unittest.TestCase):
 
     def testAccessedVars(self):
         '''Test accessed vars of a SoS expression or statement.'''
-        self.assertEqual(accessed_vars('''a = 1''', '${ }'), {'a'})
-        self.assertEqual(accessed_vars('''a = b + 2.0''', '${ }'), {'a', 'b'})
-        self.assertEqual(accessed_vars('''a = "C"''', '${ }'), {'a'})
-        self.assertEqual(accessed_vars('''a = "C" + "${D}"''', '${ }'), {'a', 'D'})
-        self.assertEqual(accessed_vars('''a = 1 + "${D + 20:f}" ''', '${ }'), {'a', 'D'})
-        self.assertEqual(accessed_vars('''k, "a.txt", "b.txt", skip=True ''', '${ }'), {'k', 'skip'})
+        self.assertEqual(accessed_vars('''a = 1'''), {'a'})
+        self.assertEqual(accessed_vars('''a = b + 2.0'''), {'a', 'b'})
+        self.assertEqual(accessed_vars('''a = "C"'''), {'a'})
+        self.assertEqual(accessed_vars('''a = "C" + "${D}"'''), {'a', 'D'})
+        self.assertEqual(accessed_vars('''a = 1 + "${D + 20:f}" '''), {'a', 'D'})
+        self.assertEqual(accessed_vars('''k, "a.txt", "b.txt", skip=True '''), {'k', 'skip'})
         # this is a complicated case because the actual variable depends on the
         # result of an expression... However, in the NO-evaluation case, this is
         # the best we can do.
-        self.assertEqual(accessed_vars('''c + "${D + '${E}'}" ''', '${ }'), {'c', 'D', 'E'})
+        self.assertEqual(accessed_vars('''c + "${D + '${E}'}" '''), {'c', 'D', 'E'})
 
     def testProgressBar(self):
         '''Test progress bar'''

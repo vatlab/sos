@@ -116,21 +116,6 @@ class TestParser(unittest.TestCase):
         # not the default value of 1.0
         #self.assertEqual(script.format_version, '1.1')
 
-    def testMixedTabAndSpace(self):
-        '''Test handling of mixed tab and space'''
-        script = SoS_Script('''
-[1: shared=['a', 'b', 'c']]
-if True:
-    a = 1
-\tb = 2
-\tc= 3
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['a'], 1)
-        self.assertEqual(env.sos_dict['b'], 2)
-        self.assertEqual(env.sos_dict['c'], 3)
-
     def testWorkflows(self):
         '''Test workflows defined in SoS script'''
         script = SoS_Script('''[0]''')
@@ -325,19 +310,6 @@ parameter: b=a+1.
         Base_Executor(wf, args=['--b', '1000']).run()
         #
         self.assertEqual(env.sos_dict['b'], 1000)
-        #
-        # test string interpolation of the parameter section
-        script = SoS_Script('''
-a=100
-
-# comment
-
-parameter: b="${a+1}"
-[0]
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['b'], '101')
         #
         # argument has hve a value
         self.assertRaises(ParsingError, SoS_Script, '''
@@ -643,9 +615,9 @@ input: 'a.pdf', files
         # test input types
         script = SoS_Script('''
 [0:shared={'i':'input', 'o':'output'}]
-files = ("a${i}" for i in range(2))
+files = (f"a{i}" for i in range(2))
 input: {'a.txt', 'b.txt'}, files
-output: ("a${x}" for x in _input)
+output: (f"a{x}" for x in _input)
 
 ''')
         wf = script.workflow()
@@ -663,7 +635,7 @@ output: ("a${x}" for x in _input)
 [0: shared='executed']
 
 executed = []
-input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='all'
+input: [f'a{x}.txt' for x in range(1, 5)], group_by='all'
 
 executed.append(_input)
 
@@ -689,7 +661,7 @@ executed.append(_input)
 [0: shared='executed']
 
 executed = []
-input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='pairs'
+input: [f'a{x}.txt' for x in range(1, 5)], group_by='pairs'
 
 executed.append(_input)
 
