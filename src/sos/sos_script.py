@@ -40,7 +40,7 @@ from .utils import env, Error, locate_script, text_repr
 from .sos_eval import on_demand_options
 from .target import textMD5
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
-    SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
+    SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_SIGIL_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
     SOS_ASSIGNMENT, SOS_SUBWORKFLOW, SOS_INCLUDE, SOS_FROM_INCLUDE, SOS_AS, \
     SOS_STRU, SOS_IF, SOS_ELIF, SOS_ELSE, SOS_OPTIONS, SOS_ENDIF, SOS_CELL, SOS_MAGIC, \
     INDENTED
@@ -60,6 +60,68 @@ class ParsingError(Error):
             return
         self.errors.append((lineno, line))
         self.message += '\n\t[line %2d]: %s\n%s' % (lineno, line, msg)
+
+def separate_options(options):
+    pieces = option.split(',')
+    idx = 0
+    while True:
+        try:
+            # test current group
+            compile(pieces[idx].strip(), filename = '<string>', mode='exec' if '=' in pieces[idx] else 'eval')
+            # if it is ok, go next
+            idx += 1
+            if idx == len(pieces):
+                break
+        except Exception as e:
+            # error happens merge the next piece
+            if idx < len(pieces) - 1:
+                pieces[idx] += ',' + pieces[idx + 1]
+                # error happens merge the next piece
+                pieces.pop(idx + 1)
+            else:
+                # if no next group, expand previously correct one
+                if idx == 0:
+                    raise ValueError('Invalid section option')
+                # break myself again
+                pieces = pieces[: idx] + pieces[idx].split(',') + pieces[idx+1:]
+                # go back
+                idx -= 1
+                pieces[idx] += '\n' + pieces[idx + 1]
+                pieces.pop(idx+1)
+    return pieces
+
+def replace_sigil(text, sigil):
+    if sigil == '{ }':
+        return text
+    if sigil is not None and (sigil.count(' ') != 1 or sigil[0] in (' ', "'") or \
+        sigil[-1] in (' ', "'") or \
+        sigil.split(' ')[0] == sigil.split(' ')[1]):
+        raise ValueError('Incorrect sigil "{}"'.format(sigil))
+    # then we need to replace left sigil as { and right sigil asn }
+    l, r = sigil.split(' ')
+    # now that we have the correct sigil
+    # first, we need to replace all { as {{ and } as }}
+    lp = re.compile(re.escape(l))
+    rp = re.compile(re.escape(r))
+    final_text = ''
+    while True:
+        pieces = lp.split(text, 1)
+        if len(pieces) == 1:
+            # cannot split
+            final_text += text.replace('{', '{{').replace('}', '}}')
+            break
+        else:
+            # find right sigil
+            right_pieces = rp.split(pieces[1], 1)
+            if len(right_pieces) == 1:
+                raise ValueError('Missing right sigil in {}'.format(text))
+            final_text += pieces[0].replace('{', '{{').replace('}', '}}') + \
+                '{' + right_pieces[0].replace('{', '{{').replace('}', '}}') + '}'
+            text = right_pieces[1]
+    # finally, replace LSIGIL etc
+    return final_text
+
+
 
 class SoS_Step:
     '''Parser of a SoS step. This class accepts strings sent by the parser, determine
@@ -289,7 +351,19 @@ class SoS_Step:
         # under window, the lines will be ended with \r\n, which will cause
         # trouble with textwrap.dedent.
         self._script = '\n'.join(self._script.splitlines()) + '\n'
-        self.statements[-1] = ['!', '{}({}{})\n'.format(self._action, text_repr(textwrap.dedent(self._script)), (', ' + opt) if opt else '')]
+        # the script will be considered a f-string, but we will need to handle sigil option here
+        self._script = text_repr(textwrap.dedent(self._script))
+        # let us look for 'sigil=""' in options
+        if 'sigil' in opt:
+            pieces = separate_options(opt)
+            for piece in pices:
+                mo = SOS_SIGIL_OPTION.match(option)
+                if mo:
+                    opt_name, opt_value = mo.group('name', 'value')
+                    sigil = eval(opt_value)
+                    self._script = replace_sigil(self._script, sigil)
+        self.statements[-1] = ['!', '{}(f{}{})\n'.format(self._action,
+            self._script, (', ' + opt) if opt else '')]
         self.values = []
         self._action = None
         self._action_options = None
@@ -819,7 +893,10 @@ for __n, __v in {}.items():
                         if cursect.indented_script():
                             # if the script is indented and encounters a comment
                             # from first column, switch to comment mode
-                            cursect.wrap_script()
+                            try:
+                                cursect.wrap_script()
+                            except Exception as e:
+                                parsing_errors.append(lineno, line, e)
                             cursect.add_comment(line)
                             if self.transcript:
                                 self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
@@ -882,7 +959,10 @@ for __n, __v in {}.items():
                     if not cursect.isValid():
                         parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid {}: {}'.format(cursect.category(), cursect.error_msg))
                     cursect.values = []
-                    cursect.finalize()
+                    try:
+                        cursect.finalize()
+                    except Exception as e:
+                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), e)
                 # start a new section
                 section_name = mo.group('section_name').strip()
                 section_option = mo.group('section_option')
@@ -909,33 +989,10 @@ for __n, __v in {}.items():
                     # this does not work directly because list parameter can have ,
                     # without having to really evaluate all complex expressions, we
                     # have to try to put syntax correctly pieces together.
-                    pieces = section_option.split(',')
-                    idx = 0
-                    while True:
-                        try:
-                            # test current group
-                            compile(pieces[idx].strip(), filename = '<string>', mode='exec' if '=' in pieces[idx] else 'eval')
-                            # if it is ok, go next
-                            idx += 1
-                            if idx == len(pieces):
-                                break
-                        except Exception as e:
-                            # error happens merge the next piece
-                            if idx < len(pieces) - 1:
-                                pieces[idx] += ',' + pieces[idx + 1]
-                                # error happens merge the next piece
-                                pieces.pop(idx + 1)
-                            else:
-                                # if no next group, expand previously correct one
-                                if idx == 0:
-                                    parsing_errors.append(lineno, line, 'Invalid section option')
-                                    break
-                                # break myself again
-                                pieces = pieces[: idx] + pieces[idx].split(',') + pieces[idx+1:]
-                                # go back
-                                idx -= 1
-                                pieces[idx] += '\n' + pieces[idx + 1]
-                                pieces.pop(idx+1)
+                    try:
+                        pieces = separate_options(section_option)
+                    except Exception as e:
+                        parsing_errors.append(lineno, line, e)
                     #
                     for option in pieces:
                         mo = SOS_SECTION_OPTION.match(option)
@@ -989,7 +1046,10 @@ for __n, __v in {}.items():
                         parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid {}: {}'.format(cursect.category(), cursect.error_msg))
                     cursect.values = []
                     # allow multiple process-style actions
-                    cursect.wrap_script()
+                    try:
+                        cursect.wrap_script()
+                    except Exception as e:
+                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), e)
                 else:
                     self.sections.append(SoS_Step(is_global=True))
                     cursect = self.sections[-1]
@@ -1030,6 +1090,10 @@ for __n, __v in {}.items():
                 # is ended.
                 if not line[0].isspace() and cursect.indented_script():
                     cursect.wrap_script()
+                    try:
+                        cursect.wrap_script()
+                    except Exception as e:
+                        parsing_errors.append(lineno, line, e)
                 else:
                     cursect.extend(line)
                     if self.transcript:
@@ -1102,7 +1166,10 @@ for __n, __v in {}.items():
             if not cursect.isValid():
                 parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid {}: {}'.format(cursect.category(), cursect.error_msg))
             else:
-                cursect.finalize()
+                try:
+                    cursect.finalize()
+                except Exception as e:
+                    parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), e)
 
         # non-matching %if ...
         if condition_met is not None:
