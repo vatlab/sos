@@ -34,10 +34,17 @@ def interpolate(text, local_dict=None, global_dict=None):
 def cfg_interpolate(text, local_dict={}):
     return interpolate(text, '${ }', local_dict, env.sos_dict.get('CONFIG', {}))
 
-def accessed_vars(statement):
+def accessed_vars(statement, filename='<string>', mode='exec'):
     '''Parse a Python statement and analyze the symbols used. The result
     will be used to determine what variables a step depends upon.'''
-    return {node.id for node in ast.walk(ast.parse(statement)) if isinstance(node, ast.Name)}
+    try:
+        return {node.id for node in ast.walk(ast.parse(statement, filename, mode)) if isinstance(node, ast.Name)}
+    except:
+        # try to treat them as parameters
+        try:
+            return {node.id for node in ast.walk(ast.parse('__NULLFUNC__(' + statement + ')', filename, mode)) if isinstance(node, ast.Name)}
+        except:
+            raise RuntimeError('Failed to parse statement: {}'.format(statement))
 
 def SoS_eval(expr):
     '''Evaluate an expression with sos dict.'''

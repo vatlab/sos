@@ -62,7 +62,7 @@ class ParsingError(Error):
         self.message += '\n\t[line %2d]: %s\n%s' % (lineno, line, msg)
 
 def separate_options(options):
-    pieces = option.split(',')
+    pieces = options.split(',')
     idx = 0
     while True:
         try:
@@ -356,7 +356,7 @@ class SoS_Step:
         # let us look for 'sigil=""' in options
         if 'sigil' in opt:
             pieces = separate_options(opt)
-            for piece in pices:
+            for piece in pieces:
                 mo = SOS_SIGIL_OPTION.match(option)
                 if mo:
                     opt_name, opt_value = mo.group('name', 'value')
@@ -991,18 +991,17 @@ for __n, __v in {}.items():
                     # have to try to put syntax correctly pieces together.
                     try:
                         pieces = separate_options(section_option)
+                        for option in pieces:
+                            mo = SOS_SECTION_OPTION.match(option)
+                            if mo:
+                                opt_name, opt_value = mo.group('name', 'value')
+                                if opt_name in step_options:
+                                    parsing_errors.append(lineno, line, 'Duplicate options')
+                                step_options[opt_name] = opt_value
+                            else:
+                                parsing_errors.append(lineno, line, 'Invalid section option')
                     except Exception as e:
                         parsing_errors.append(lineno, line, e)
-                    #
-                    for option in pieces:
-                        mo = SOS_SECTION_OPTION.match(option)
-                        if mo:
-                            opt_name, opt_value = mo.group('name', 'value')
-                            if opt_name in step_options:
-                                parsing_errors.append(lineno, line, 'Duplicate options')
-                            step_options[opt_name] = opt_value
-                        else:
-                            parsing_errors.append(lineno, line, 'Invalid section option')
                     env.logger.trace('Header parsed with names {} and options {}'
                         .format(step_names, step_options))
                 for name in step_names:
