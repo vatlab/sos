@@ -475,12 +475,11 @@ for i in range(3):
     def testPassingVarsToNestedWorkflow(self):
         '''Test if variables can be passed to nested workflows'''
         script = SoS_Script(r"""
-%set_options sigil='[ ]'
 import time
 import random
 
 [nested]
-print('I am nested [nested] with seed [seed]')
+print(f'I am nested {nested} with seed {seed}')
 
 [0]
 reps = range(5)
@@ -488,7 +487,7 @@ input: for_each='reps'
 import random
 nested = _reps
 seed = random.randint(1, 1000)
-print('Passing [seed] to [nested]')
+print(f'Passing {seed} to {nested}')
 sos_run('nested')
 
 """)

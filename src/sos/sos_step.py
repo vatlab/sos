@@ -88,7 +88,7 @@ def analyze_section(section, default_input=None):
     #
     if section.global_def:
         try:
-            SoS_exec('del sos_handle_parameter_\n' + section.global_def, section.global_sigil)
+            SoS_exec('del sos_handle_parameter_\n' + section.global_def)
         except RuntimeError as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
@@ -133,14 +133,14 @@ def analyze_section(section, default_input=None):
         for statement in section.statements[:input_statement_idx]:
             if statement[0] == '=':
                 # we do not get LHS because it must be local to the step
-                local_vars |= accessed_vars(statement[1], section.sigil)
-                environ_vars |= accessed_vars(statement[2], section.sigil)
+                local_vars |= accessed_vars(statement[1])
+                environ_vars |= accessed_vars(statement[2])
             elif statement[0] == ':':
                 if statement[1] == 'depends':
-                    environ_vars |= accessed_vars(statement[2], section.sigil)
+                    environ_vars |= accessed_vars(statement[2])
                     key, value = statement[1:]
                     try:
-                        args, kwargs = SoS_eval('__null_func__({})'.format(value), section.sigil)
+                        args, kwargs = SoS_eval('__null_func__({})'.format(value))
                         if any(isinstance(x, (dynamic, remote)) for x in args):
                             step_depends = Undetermined()
                         else:
@@ -150,13 +150,13 @@ def analyze_section(section, default_input=None):
                 else:
                     raise RuntimeError('Step input should be specified before {}'.format(statement[1]))
             else:
-                environ_vars |= accessed_vars(statement[1], section.sigil)
+                environ_vars |= accessed_vars(statement[1])
         #
         # input statement
         stmt = section.statements[input_statement_idx][2]
         try:
-            environ_vars |= accessed_vars(stmt, section.sigil)
-            args, kwargs = SoS_eval('__null_func__({})'.format(stmt), section.sigil)
+            environ_vars |= accessed_vars(stmt)
+            args, kwargs = SoS_eval('__null_func__({})'.format(stmt))
             if not args:
                 if default_input is None:
                     step_input = []
@@ -216,14 +216,14 @@ def analyze_section(section, default_input=None):
     for statement in section.statements[input_statement_idx:]:
         # if input is undertermined, we can only process output:
         if statement[0] == '=':
-            signature_vars |= accessed_vars('='.join(statement[1:3]), section.sigil)
+            signature_vars |= accessed_vars('='.join(statement[1:3]))
         elif statement[0] == ':':
             key, value = statement[1:]
             #if key == 'depends':
-            environ_vars |= accessed_vars(value, section.sigil)
+            environ_vars |= accessed_vars(value)
             # output, depends, and process can be processed multiple times
             try:
-                args, kwargs = SoS_eval('__null_func__({})'.format(value), section.sigil)
+                args, kwargs = SoS_eval('__null_func__({})'.format(value))
                 if not any(isinstance(x, (dynamic, remote)) for x in args):
                     if key == 'output':
                         step_output = _expand_file_list(True, *args)
@@ -232,10 +232,10 @@ def analyze_section(section, default_input=None):
             except Exception as e:
                 env.logger.debug("Args {} cannot be determined: {}".format(value, e))
         else: # statement
-            signature_vars |= accessed_vars(statement[1], section.sigil)
+            signature_vars |= accessed_vars(statement[1])
     # finally, tasks..
     if section.task:
-        signature_vars |= accessed_vars(section.task, section.sigil)
+        signature_vars |= accessed_vars(section.task)
     return {
         'step_name': '{}_{}'.format(section.name, section.index) if isinstance(section.index, int) else section.name,
         'step_input': step_input,
@@ -788,7 +788,6 @@ class Base_Step_Executor:
             global_def = self.step.global_def,
             task = self.step.task,          # task
             sos_dict = task_vars,
-            sigil = self.step.sigil,
             tags = task_tags
         )
         # if no output (thus no signature)
@@ -905,7 +904,7 @@ class Base_Step_Executor:
 
     def assign(self, key, value):
         try:
-            env.sos_dict.set(key, SoS_eval(value, self.step.sigil))
+            env.sos_dict.set(key, SoS_eval(value))
         except (UnknownTarget, RemovedTarget, UnavailableLock):
             raise
         except Exception as e:
@@ -918,7 +917,7 @@ class Base_Step_Executor:
                 env.sos_dict.set('__step_sig__', None)
             else:
                 env.sos_dict.set('__step_sig__', os.path.basename(sig.proc_info).split('.')[0])
-            self.last_res = SoS_exec(stmt, self.step.sigil)
+            self.last_res = SoS_exec(stmt)
         except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks):
             raise
         except Exception as e:
@@ -1046,7 +1045,7 @@ class Base_Step_Executor:
                     if key != 'depends':
                         raise ValueError('Step input should be specified before {}'.format(key))
                     try:
-                        args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
+                        args, kwargs = SoS_eval('__null_func__({})'.format(value))
                         dfiles = self.expand_depends_files(*args)
                         # dfiles can be Undetermined
                         self.process_depends_args(dfiles, **kwargs)
@@ -1065,7 +1064,7 @@ class Base_Step_Executor:
             stmt = self.step.statements[input_statement_idx][2]
             self.log('input statement', stmt)
             try:
-                args, kwargs = SoS_eval('__null_func__({})'.format(stmt), self.step.sigil)
+                args, kwargs = SoS_eval('__null_func__({})'.format(stmt))
                 # Files will be expanded differently with different running modes
                 input_files = self.expand_input_files(stmt, *args)
                 self._groups, self._vars = self.process_input_args(input_files, **kwargs)
@@ -1119,7 +1118,7 @@ class Base_Step_Executor:
                         key, value = statement[1:]
                         # output, depends, and process can be processed multiple times
                         try:
-                            args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
+                            args, kwargs = SoS_eval('__null_func__({})'.format(value))
                             # dynamic output or dependent files
                             if key == 'output':
                                 # if output is defined, its default value needs to be cleared
@@ -1310,7 +1309,7 @@ class Base_Step_Executor:
                         if var == val:
                             continue
                         try:
-                            env.sos_dict.set(var, SoS_eval(val, self.step.sigil))
+                            env.sos_dict.set(var, SoS_eval(val))
                         except Exception as e:
                             raise RuntimeError('Failed to evaluate shared variable {} from expression {}: {}'
                                 .format(var, val, e))
@@ -1323,7 +1322,7 @@ class Base_Step_Executor:
                                 if var == val:
                                     continue
                                 try:
-                                    env.sos_dict.set(var, SoS_eval(val, self.step.sigil))
+                                    env.sos_dict.set(var, SoS_eval(val))
                                 except Exception as e:
                                     raise RuntimeError('Failed to evaluate shared variable {} from expression {}: {}'
                                         .format(var, val, e))

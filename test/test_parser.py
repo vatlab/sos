@@ -116,11 +116,6 @@ class TestParser(unittest.TestCase):
         # not the default value of 1.0
         #self.assertEqual(script.format_version, '1.1')
 
-    def testSetSigil(self):
-        '''Test %set_options sigil'''
-        script = SoS_Script('''%set_options sigil='[ ]' ''')
-        self.assertEqual(script.global_sigil, '[ ]')
-
     def testMixedTabAndSpace(self):
         '''Test handling of mixed tab and space'''
         script = SoS_Script('''
@@ -192,12 +187,6 @@ var = 1
         # bad options
         for badoption in ['ss', 'skip a', 'skip:_', 'skip, skip']:
             self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
-        # option value should be a valid python expression
-        for badoption in ['sigil=a', 'sigil="[]"', 'sigil="| |"']:
-            self.assertRaises((ValueError, ParsingError), SoS_Script, '[0:{}]'.format(badoption))
-        # good options
-        for goodoption in ['sigil="[ ]"', 'shared="a"']:
-            SoS_Script('[0:{}]'.format(goodoption))
         # allowed names
         for name in ['a5', 'a_5', '*_0', 'a*1_100']:
             SoS_Script('[{}]'.format(name))

@@ -29,10 +29,10 @@ SOS_DEPENDS_OPTIONS = []
 SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'active', 'walltime', 'nodes',
         'cores', 'mem', 'shared', 'env', 'prepend_path', 'queue', 'to_host',
         'from_host', 'map_vars', 'name', 'trunk_size', 'trunk_workers', 'tags']
-SOS_ACTION_OPTIONS = ['workdir', 'docker_image', 'docker_file', 'active', 'input', 'output', 'allow_error', 'tracked']
+SOS_ACTION_OPTIONS = ['workdir', 'docker_image', 'docker_file', 'active', 'input', 'output', 'allow_error', 'tracked', 'sigil']
 
 SOS_DIRECTIVES = ['input', 'output', 'depends', 'task', 'parameter']
-SOS_SECTION_OPTIONS = ['skip', 'sigil', 'provides', 'shared', 'workdir']
+SOS_SECTION_OPTIONS = ['skip', 'provides', 'shared', 'workdir']
 
 SOS_KEYWORDS = SOS_INPUT_OPTIONS + SOS_OUTPUT_OPTIONS + SOS_DEPENDS_OPTIONS + SOS_RUNTIME_OPTIONS \
     + SOS_ACTION_OPTIONS + SOS_DIRECTIVES + SOS_SECTION_OPTIONS
@@ -385,39 +385,6 @@ _FORMAT_SPECIFIER_TMPL = r'''
     '''
 
 
-# we handle simple cases in an easier way to avoid linear search each time.
-# simple case means ${ } as sigil, and there is nothing but variable name
-# within it.
-#
-_SIMPLE_SUB_TMPL = r'''
-    (?<!                                # if not preceded by
-    \\                                  # a back slash
-    )
-    \$\{                                # left sigil
-    (?P<variable>                       # capture variable name
-    [_a-zA-Z]\w*                        # alpha numeric with no leading numeric
-    (?:\[                               # optional []
-    [\d:-]+                             # index
-    \]
-    )?
-    (?:!\s*                             # conversion starting with !
-    [srqabdenulpRx,]+                   # conversion, q, a, b, n, e, u, l, p, R, x, and , are added by SoS
-    )?
-    (?::\s*                             # format_spec starting with :
-    (?:.?[<>=^])?                       # optional fill|align
-    (?:[-+ ])?                          # optional sign
-    \#?                                 #
-    0?                                  #
-    (?:\d+)?                            # optional width
-    ,?                                  # optional ,
-    (?:\.\d+)?                          # optional precision
-    (?:[bcdeEfFgGnosxX%])?              # optional type
-    )?                                  # optional format_spec
-    )
-    \s*                                 # end of tring
-    \}                                  # right sigil
-    '''
-
 _SOS_WILDCARD_TMPL = r'''
     \{
         \s*
@@ -465,7 +432,6 @@ SOS_FROM_INCLUDE = LazyRegex(_SOS_FROM_INCLUDE_TMPL, re.VERBOSE)
 SOS_CELL_LINE = LazyRegex(_SOS_CELL_LINE_TMPL, re.VERBOSE)
 INDENTED = LazyRegex(_INDENTED_TMPL, re.VERBOSE)
 FORMAT_SPECIFIER = LazyRegex(_FORMAT_SPECIFIER_TMPL, re.VERBOSE | re.DOTALL)
-SIMPLE_SUB = LazyRegex(_SIMPLE_SUB_TMPL, re.VERBOSE | re.DOTALL)
 SOS_WILDCARD = LazyRegex(_SOS_WILDCARD_TMPL, re.VERBOSE)
 SOS_TAG = LazyRegex(_SOS_TAG_TMPL, re.VERBOSE)
 SOS_LOGLINE = LazyRegex(_SOS_LOGLINE, re.VERBOSE)

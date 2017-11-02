@@ -50,12 +50,11 @@ class TaskParams(object):
     '''A parameter object that encaptulates parameters sending to
     task executors. This would makes the output of workers, especially
     in the web interface much cleaner (issue #259)'''
-    def __init__(self, name, global_def, task, sos_dict, sigil, tags=[]):
+    def __init__(self, name, global_def, task, sos_dict, tags=[]):
         self.name = name
         self.global_def = global_def
         self.task = task
         self.sos_dict = sos_dict
-        self.sigil = sigil
         self.tags = sorted(list(set(tags)))
 
     def save(self, job_file):
@@ -82,7 +81,6 @@ class MasterTaskParams(TaskParams):
         self.sos_dict = {'_runtime': {}, '_input': [], '_output': [], '_depends': [],
                 'input': [], 'output':[], 'depends': [], 'step_name': '',
                 '_index': 0}
-        self.sigil = None
         self.num_workers = num_workers
         self.tags = []
         # a collection of tasks that will be executed by the master task
@@ -97,12 +95,6 @@ class MasterTaskParams(TaskParams):
         # quite natural because they are from the same step
         #
         # update input, output, and depends
-        #
-        # sigil
-        if self.sigil is None:
-            self.sigil = params.sigil
-        elif self.sigil != params.sigil:
-            raise ValueError('Cannot push a task with different sigil {}'.format(params.sigil))
         #
         # walltime
         if not self.task_stack:
@@ -236,7 +228,7 @@ def taskTags(task):
         os.utime(filename, (atime, os.path.getmtime(filename)))
 
 
-def collect_task_result(task_id, sigil, sos_dict):
+def collect_task_result(task_id, sos_dict):
     shared = {}
     if 'shared' in env.sos_dict['_runtime']:
         svars = env.sos_dict['_runtime']['shared']
@@ -247,7 +239,7 @@ def collect_task_result(task_id, sigil, sos_dict):
         elif isinstance(svars, Mapping):
             for var, val in svars.items():
                 if var != val:
-                    env.sos_dict.set(var, SoS_eval(val, sigil))
+                    env.sos_dict.set(var, SoS_eval(val))
                 if var not in env.sos_dict:
                     raise ValueError('Unavailable shared variable {} after the completion of task {}'.format(var, task_id))
                 shared[var] = copy.deepcopy(env.sos_dict[var])
@@ -262,7 +254,7 @@ def collect_task_result(task_id, sigil, sos_dict):
                 elif isinstance(item, Mapping):
                     for var, val in item.items():
                         if var != val:
-                            env.sos_dict.set(var, SoS_eval(val, sigil))
+                            env.sos_dict.set(var, SoS_eval(val))
                         if var not in env.sos_dict:
                             raise ValueError('Unavailable shared variable {} after the completion of task {}'.format(var, task_id))
                         shared[var] = copy.deepcopy(env.sos_dict[var])
@@ -281,7 +273,7 @@ def collect_task_result(task_id, sigil, sos_dict):
         from .sos_step import _expand_file_list
         env.sos_dict.set('__null_func__', __null_func__)
         # re-process the output statement to determine output files
-        args, _ = SoS_eval('__null_func__({})'.format(env.sos_dict['_output'].expr), sigil)
+        args, _ = SoS_eval('__null_func__({})'.format(env.sos_dict['_output'].expr))
         # handle dynamic args
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
         output = {x:FileTarget(x).signature() for x in _expand_file_list(True, *args)}
@@ -397,7 +389,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
             all_res['shared'].update(x['shared'])
         return all_res
 
-    global_def, task, sos_dict, sigil = params.global_def, params.task, params.sos_dict, params.sigil
+    global_def, task, sos_dict = params.global_def, params.task, params.sos_dict
 
     # task output
     env.sos_dict.set('__std_out__', os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out'))
@@ -454,7 +446,7 @@ del sos_handle_parameter_
         if isinstance(x, remote):
             x = x.resolve()
             if isinstance(x, str):
-                x = interpolate(x, sigil, env.sos_dict)
+                x = interpolate(x, env.sos_dict)
         return x
 
     for key in ['input', '_input',  'output', '_output', 'depends', '_depends']:
@@ -510,7 +502,7 @@ del sos_handle_parameter_
 
     if skipped:
         env.logger.info('{} ``skipped``'.format(task_id))
-        return collect_task_result(task_id, sigil, sos_dict)
+        return collect_task_result(task_id)
 
     # if we are to really execute the task, touch the task file so that sos status shows correct
     # execution duration.
@@ -600,7 +592,7 @@ del sos_handle_parameter_
 
 
         # step process
-        SoS_exec(task, sigil)
+        SoS_exec(task)
 
         if subtask:
             env.logger.debug('{} ``completed``'.format(task_id))
@@ -635,7 +627,7 @@ del sos_handle_parameter_
 
     # the final result should be relative to cur_dir, not workdir
     # because output is defined outside of task
-    return collect_task_result(task_id, sigil, sos_dict)
+    return collect_task_result(task_id, sos_dict)
 
 def check_task(task):
     #

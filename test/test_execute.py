@@ -769,11 +769,10 @@ for i in range(4):
         os.mkdir('temp')
         #
         script = SoS_Script('''
-%set_options sigil='< >'
 [1]
 
 for i in range(5):
-    run("touch temp/test_<i>.txt")
+    run(f"touch temp/test_{i}.txt")
 
 
 [10: shared={'test':'output'}]
@@ -802,17 +801,16 @@ touch <_input>.bak
         #
         env.config['sig_mode'] = 'ignore'
         script = SoS_Script('''
-%set_options sigil='%( )'
 [1]
 rep = range(5)
 input:  for_each='rep'
-output: "temp/%(_rep).txt"
+output: f"temp/{_rep}.txt"
 
 # ff should change and be usable inside run
-ff = "%(_rep).txt"
+ff = f"{_rep}.txt"
 run:
-echo %(ff)
-touch temp/%(ff)
+echo {ff}
+touch temp/{ff}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()

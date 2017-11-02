@@ -65,7 +65,7 @@ class SoS_Step:
     '''Parser of a SoS step. This class accepts strings sent by the parser, determine
     their types and add them to appropriate sections (directive, assignment, statement,
     scripts etc) '''
-    def __init__(self, context=None, names=None, options=None, is_global=False, global_sigil='${ }'):
+    def __init__(self, context=None, names=None, options=None, is_global=False):
         '''A sos step '''
         self.context = context
         # A step will not have a name and index until it is copied to separate workflows
@@ -88,14 +88,9 @@ class SoS_Step:
         # indicate the type of input of the last line
         self.values = []
         self.lineno = None
-        self.global_sigil = global_sigil
         #
         self.runtime_options = {}
-        self.options = on_demand_options(options, sigil=global_sigil)
-        if 'sigil' in self.options:
-            self.sigil = self.options['sigil']
-        else:
-            self.sigil = global_sigil
+        self.options = on_demand_options(options)
         #
         # string mode to collect all strings as part of an action
         self._action = None
@@ -516,7 +511,7 @@ class SoS_ScriptContent:
         return self.md5 != other.md5
 
 class SoS_Script:
-    def __init__(self, content='', filename=None, transcript=None, global_sigil='${ }'):
+    def __init__(self, content='', filename=None, transcript=None):
         '''Parse a sectioned SoS script file. Please refer to the SoS manual
         for detailed specification of this format.
 
@@ -533,7 +528,6 @@ class SoS_Script:
             A list of SoS_Step objects that present all sections read.
             Among other things, section.names
         '''
-        self.global_sigil = global_sigil
         if not content:
             try:
                 content, self.sos_script = locate_script(filename, start='.')
@@ -639,8 +633,7 @@ class SoS_Script:
         # The global definition of sos_file should be accessible as
         # sos_file.name
         self.sections.extend(script.sections)
-        self.global_def += "{} = sos_namespace_({}, '{}')\n".format(alias, repr(script.global_def),
-            script.global_sigil)
+        self.global_def += "{} = sos_namespace_({})\n".format(alias, repr(script.global_def))
 
     def _include_content(self, sos_file, name_map):
         content, script_file = self._find_include_file(sos_file)
@@ -658,8 +651,7 @@ class SoS_Script:
                         # match ...
                         self.sections.append(section)
             # global_def is more complicated
-            self.global_def += "__{} = sos_namespace_({}, '{}')\n".format(sos_file, repr(script.global_def),
-                script.global_sigil)
+            self.global_def += "__{} = sos_namespace_({})\n".format(sos_file, repr(script.global_def))
             #
             self.global_def += '''
 for __n, __v in {}.items():
@@ -949,16 +941,6 @@ for __n, __v in {}.items():
                         mo = SOS_SECTION_OPTION.match(option)
                         if mo:
                             opt_name, opt_value = mo.group('name', 'value')
-                            # sigil cannot be dynamic
-                            if opt_name == 'sigil':
-                                try:
-                                    value = eval(opt_value)
-                                    if value is not None and (value.count(' ') != 1 or value[0] in (' ', "'") or \
-                                        value[-1] in (' ', "'") or \
-                                        value.split(' ')[0] == value.split(' ')[1]):
-                                        parsing_errors.append(lineno, line, 'Incorrect sigil "{}"'.format(value))
-                                except Exception as e:
-                                    parsing_errors.append(lineno, line, 'Incorrect sigil "{}"'.format(opt_value))
                             if opt_name in step_options:
                                 parsing_errors.append(lineno, line, 'Duplicate options')
                             step_options[opt_name] = opt_value
@@ -990,9 +972,9 @@ for __n, __v in {}.items():
                 if 'global' in [x[0] for x in step_names]:
                     if step_options:
                         parsing_errors.append(lineno, line, 'Global section does not accept any option')
-                    self.sections.append(SoS_Step(is_global=True, global_sigil=self.global_sigil))
+                    self.sections.append(SoS_Step(is_global=True))
                 else:
-                    self.sections.append(SoS_Step(self.content, step_names, step_options, global_sigil=self.global_sigil))
+                    self.sections.append(SoS_Step(self.content, step_names, step_options))
                 cursect = self.sections[-1]
                 if self.transcript:
                     self.transcript.write('SECTION\t{}\t{}'.format(lineno, line))
@@ -1009,7 +991,7 @@ for __n, __v in {}.items():
                     # allow multiple process-style actions
                     cursect.wrap_script()
                 else:
-                    self.sections.append(SoS_Step(is_global=True, global_sigil=self.global_sigil))
+                    self.sections.append(SoS_Step(is_global=True))
                     cursect = self.sections[-1]
                 #
                 directive_name = mo.group('directive_name')
@@ -1058,7 +1040,7 @@ for __n, __v in {}.items():
             mo = SOS_ASSIGNMENT.match(line)
             if mo:
                 if cursect is None:
-                    self.sections.append(SoS_Step(is_global=True, global_sigil=self.global_sigil))
+                    self.sections.append(SoS_Step(is_global=True))
                     cursect = self.sections[-1]
                 # check previous expression before a new assignment
                 if not cursect.isValid():
@@ -1093,7 +1075,7 @@ for __n, __v in {}.items():
             #
             # all others?
             if not cursect:
-                self.sections.append(SoS_Step(is_global=True, global_sigil=self.global_sigil))
+                self.sections.append(SoS_Step(is_global=True))
                 cursect = self.sections[-1]
                 cursect.add_statement(line, lineno)
                 if self.transcript:
@@ -1133,7 +1115,7 @@ for __n, __v in {}.items():
         # definition being the content.
         global_parameters = {}
         if not [x for x in self.sections if not x.is_global]:
-            self.sections.append(SoS_Step(self.content, [('default', None, None)], global_sigil=self.global_sigil))
+            self.sections.append(SoS_Step(self.content, [('default', None, None)]))
             for section in [x for x in self.sections if x.is_global]:
                 if self.sections[-1].task != '':
                     parsing_errors.append(cursect.lineno, 'Invalid section',

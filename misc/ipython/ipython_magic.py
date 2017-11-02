@@ -126,12 +126,6 @@ class SoS_Magics(Magics):
             self.shell.user_ns[var] = copy.deepcopy(env.sos_dict[var])
 
     @line_magic
-    def sos_options(self, line):
-        'Magic that change default sigil of SoS'
-        # do not return __builtins__ beacuse it is too long...
-        return runfile(code='%set_options ' + line)
-
-    @line_magic
     def sosput(self, line):
         'Magic that get a variable from sos dictionary and set to Python dictionary'
         # do not return __builtins__ beacuse it is too long...

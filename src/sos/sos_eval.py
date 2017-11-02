@@ -67,26 +67,22 @@ def sos_compile(expr, *args, **kwargs):
         # other compiling errors are still raised
         compile(untokenize(result), *args, **kwargs)
 
-def interpolate(text, sigil, local_dict=None, global_dict=None):
-    '''Evaluate expressions in `text` marked by specified `sigil` using provided
-    global and local dictionaries, and replace the expressions with their formatted strings.'''
+def interpolate(text, local_dict=None, global_dict=None):
+    '''Evaluate expressions in `text` '''
     return text
 
 def cfg_interpolate(text, local_dict={}):
     return interpolate(text, '${ }', local_dict, env.sos_dict.get('CONFIG', {}))
 
 accessed_vars_cache = {}
-def accessed_vars(statement, sigil):
+def accessed_vars(statement):
     '''Parse a Python statement and analyze the symbols used. The result
     will be used to determine what variables a step depends upon.'''
     global accessed_vars_cache
     if statement in accessed_vars_cache:
         return accessed_vars_cache[statement]
 
-    if sigil is None:
-        left_sigil = None
-    else:
-        left_sigil = sigil.split(' ')[0]
+    left_sigil = '{'
     result = set()
     prev_tok = None
     for toknum, tokval, _, _, _  in generate_tokens(StringIO(statement).readline):
@@ -99,7 +95,7 @@ def accessed_vars(statement, sigil):
         prev_tok = tokval
     return result
 
-def SoS_eval(expr, sigil):
+def SoS_eval(expr):
     '''Evaluate an expression with sos dict.'''
     return eval(expr, env.sos_dict._dict)
 
@@ -110,7 +106,7 @@ def _is_expr(expr):
     except Exception:
         return False
 
-def SoS_exec(stmts, sigil, _dict=None):
+def SoS_exec(stmts, _dict=None):
     '''Execute a statement after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
     # the trouble here is that we have to execute the statements line by line
@@ -188,8 +184,8 @@ class Undetermined(object):
             raise RuntimeError('Undetermined expression has to be a string: "{}" passed'.format(expr))
         self.expr = expr.strip()
 
-    def value(self, sigil):
-        return SoS_eval(self.expr, sigil)
+    def value(self):
+        return SoS_eval(self.expr)
 
     def __repr__(self):
         return 'Undetermined({!r})'.format(self.expr)
@@ -201,20 +197,19 @@ class Undetermined(object):
 class sos_namespace_(object):
     '''A namespace that is created by evaluating statements
     and use the results as attributes of the object.'''
-    def __init__(self, stmts, sigil):
+    def __init__(self, stmts):
         # we need to define functions defined by sos ...
         exec('from sos.runtime import *', self.__dict__)
         # the results of the statments will be saved as
         # attribute of this object.
-        SoS_exec(stmts, _dict=self.__dict__, sigil=sigil)
+        SoS_exec(stmts, _dict=self.__dict__)
 
 class on_demand_options(object):
     '''Expression that will be evaluated upon request.'''
-    def __init__(self, items, sigil):
+    def __init__(self, items):
         self._expressions = {}
         if items:
             self._expressions.update(items)
-        self._sigil = sigil
 
     def set(self, key, value):
         self._expressions[key] = repr(value)
@@ -230,7 +225,7 @@ class on_demand_options(object):
         if key not in self._expressions:
             raise KeyError(key)
         try:
-            return SoS_eval(self._expressions[key], self._sigil)
+            return SoS_eval(self._expressions[key])
         except Exception as e:
             raise ValueError('Failed to evaluate option {} with value {}: {}'
                 .format(key, self._expressions[key], e))

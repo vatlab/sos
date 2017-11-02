@@ -39,18 +39,18 @@ parameter: name='t_f1'
 [0]
 output:  name
 run:
-    dd if=/dev/urandom of=${name} count=10000
+    dd if=/dev/urandom of={name} count=10000
 
-[1: sigil='[ ]']
+[1]
 output:  't_d1/t_f2'
 run:
-    dd if=/dev/urandom of=[output] count=50000
+    dd if=/dev/urandom of={output} count=50000
     dd if=/dev/urandom of=t_d1/ut_f4 count=500
 
 [2]
 output:  't_d2/t_d3/t_f3'
 run:
-    dd if=/dev/urandom of=${output} count=6000
+    dd if=/dev/urandom of={output} count=6000
 
 ''')
         with open('included.sos', 'w') as script:

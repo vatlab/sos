@@ -47,8 +47,8 @@ class Celery_TaskEngine(TaskEngine):
                 self.broker, self.backend, e))
 
         @self.app.task
-        def celery_execute_task(task, global_def, sos_dict, sigil):
-            return execute_task(task, global_def, sos_dict, sigil)
+        def celery_execute_task(task, global_def, sos_dict):
+            return execute_task(task, global_def, sos_dict)
 
         # Optional configuration, see the application user guide.
         self.app.conf.update(
@@ -62,7 +62,7 @@ class Celery_TaskEngine(TaskEngine):
         task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.task')
         with open(task_file, 'rb') as task:
             params = pickle.load(task)
-            task, sos_dict, sigil = params.data
+            task, sos_dict  = params.data
         # bioinformatics can be running for long time...
         # let me assume a longest running time of 1 month
         walltime = sos_dict['_runtime']['walltime'] if 'walltime' in sos_dict['_runtime'] else 60*60*24*30

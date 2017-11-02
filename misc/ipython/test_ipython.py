@@ -88,26 +88,5 @@ parameter: rep = 5
         self.assertEqual(self.ipshell.user_ns['a'], 12345)
         self.assertEqual(self.ipshell.user_ns['b'], "12345")
 
-    def testSigil(self):
-        '''test change sigil'''
-        self.ipshell.run_cell('''%%sos
-%set_options sigil='[ ]'
-''')
-        self.ipshell.run_cell('%sos a = 100')
-        self.ipshell.run_cell('%sos b = "${a}"')
-        self.ipshell.run_cell('%sosget b')
-        self.assertEqual(self.ipshell.user_ns['b'], '${a}')
-        #
-        self.ipshell.run_cell('''%%sos
-%set_options sigil=None
-''')
-        self.ipshell.run_cell('%sos b = "${a}"')
-        self.ipshell.run_cell('%sosget b')
-        self.assertEqual(self.ipshell.user_ns['b'], '${a}')
-        #
-        self.ipshell.run_cell('''%%sos
-%set_options sigil='${ }'
-''')
-
 if __name__ == '__main__':
     unittest.main()
