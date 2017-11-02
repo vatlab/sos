@@ -31,8 +31,7 @@ import textwrap
 # using their names for testing purposes
 from sos.utils import env, logger, WorkflowDict, stable_repr
 from sos.pattern import extract_pattern, expand_pattern
-from sos.sos_eval import interpolate, SoS_eval, InterpolationError, accessed_vars, \
-    Undetermined, on_demand_options
+from sos.sos_eval import SoS_eval, accessed_vars, Undetermined, on_demand_options
 from sos.sos_script import SoS_Script
 from sos.sos_executor import Base_Executor, analyze_section
 from sos.target import executable, remote
@@ -129,13 +128,13 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(accessed_vars('''a = 1'''), {'a'})
         self.assertEqual(accessed_vars('''a = b + 2.0'''), {'a', 'b'})
         self.assertEqual(accessed_vars('''a = "C"'''), {'a'})
-        self.assertEqual(accessed_vars('''a = "C" + "${D}"'''), {'a', 'D'})
-        self.assertEqual(accessed_vars('''a = 1 + "${D + 20:f}" '''), {'a', 'D'})
-        self.assertEqual(accessed_vars('''k, "a.txt", "b.txt", skip=True '''), {'k', 'skip'})
+        self.assertEqual(accessed_vars('''a = "C" + f"{D}"'''), {'a', 'D'})
+        self.assertEqual(accessed_vars('''a = 1 + f"{D + 20:f}" '''), {'a', 'D'})
+        self.assertEqual(accessed_vars('''k, "a.txt", "b.txt", skip=True, par=f(something) '''), {'k', 'f', 'something', '__NULLFUNC__'})
         # this is a complicated case because the actual variable depends on the
         # result of an expression... However, in the NO-evaluation case, this is
         # the best we can do.
-        self.assertEqual(accessed_vars('''c + "${D + '${E}'}" '''), {'c', 'D', 'E'})
+        self.assertEqual(accessed_vars('''c + f"{D + 1}" '''), {'c', 'D'})
 
     def testProgressBar(self):
         '''Test progress bar'''
@@ -173,7 +172,7 @@ run:
    #!/usr/bin/env python
    with open('tmp.txt', 'w') as tmp:
       tmp.write({} + '{}')
-k = """b"""'''.format(text, '${a}')
+k = """b"""'''.format(text, '{a}')
 )
             wf = script.workflow()
             Base_Executor(wf).run()
@@ -214,11 +213,11 @@ print(p1)
 input: None
 task:
 python:
-   print('${output}')
+   print(f'{output}')
 
 [A_5]
 task:
-   print('${_output}')
+   print(f'{_output}')
 ''')
         wf = script.workflow('A')
         for section in wf.sections:
@@ -236,7 +235,7 @@ task:
                 self.assertTrue(isinstance(res['step_output'], Undetermined))
                 # for_each will not be used for DAG
                 self.assertEqual(res['environ_vars'], {'for_each', 'executable'})
-                self.assertEqual(res['signature_vars'], {'import', 'r', 'time', 'random'})
+                self.assertEqual(res['signature_vars'], {'r', 'time', 'random'})
                 self.assertEqual(res['changed_vars'], set())
             elif section.names[0][1] == '4':
                 self.assertTrue('output' in res['signature_vars'])
@@ -246,8 +245,7 @@ task:
     def testOnDemandOptions(self):
         '''Test options that are evaluated upon request.'''
         options = on_demand_options(
-            {'a': '"est"', 'b': 'c', 'c': 'e + 2'}, '${ }'
-        )
+            {'a': '"est"', 'b': 'c', 'c': 'e + 2'} )
         env.sos_dict = WorkflowDict({
             'e': 10,
             })
