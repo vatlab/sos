@@ -23,10 +23,7 @@ import os
 import sys
 import re
 import collections
-from io import StringIO
-from shlex import quote
-from subprocess import list2cmdline
-from tokenize import generate_tokens, untokenize, NAME, STRING, INDENT
+import ast
 
 from .utils import env, Error, short_repr, DelayedAction
 
@@ -37,26 +34,10 @@ def interpolate(text, local_dict=None, global_dict=None):
 def cfg_interpolate(text, local_dict={}):
     return interpolate(text, '${ }', local_dict, env.sos_dict.get('CONFIG', {}))
 
-accessed_vars_cache = {}
 def accessed_vars(statement):
     '''Parse a Python statement and analyze the symbols used. The result
     will be used to determine what variables a step depends upon.'''
-    global accessed_vars_cache
-    if statement in accessed_vars_cache:
-        return accessed_vars_cache[statement]
-
-    left_sigil = '{'
-    result = set()
-    prev_tok = None
-    for toknum, tokval, _, _, _  in generate_tokens(StringIO(statement).readline):
-        if toknum == NAME and prev_tok != '.':
-            if tokval not in ('None', 'True', 'False'):
-                result.add(tokval)
-        if toknum == STRING and left_sigil is not None and left_sigil in tokval:
-            #FIXME: get accessed_vars without string interpolation
-            result = set() # |= ss.accessed_vars
-        prev_tok = tokval
-    return result
+    return {node.id for node in ast.walk(ast.parse(statement)) if isinstance(node, ast.Name)}
 
 def SoS_eval(expr):
     '''Evaluate an expression with sos dict.'''
