@@ -37,7 +37,7 @@ from tokenize import generate_tokens
 from uuid import uuid4
 
 from .utils import env, Error, locate_script, text_repr
-from .sos_eval import on_demand_options, sos_compile
+from .sos_eval import on_demand_options
 from .target import textMD5
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
@@ -141,7 +141,7 @@ class SoS_Step:
                     if self.values[-1].strip().endswith(','):
                         return False
                     try:
-                        sos_compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
+                        compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
                     except Exception:
                         return False
                     return True
@@ -162,7 +162,7 @@ class SoS_Step:
             return True
         try:
             if self.category() == 'expression':
-                sos_compile(''.join(self.values), filename='<string>', mode='eval')
+                compile(''.join(self.values), filename='<string>', mode='eval')
             elif self.category() == 'directive':
                 # we add func() because the expression can be multi-line and
                 # can have keyword-argument like options
@@ -175,9 +175,9 @@ class SoS_Step:
                 if self.values[-1].strip().endswith(','):
                     self.error_msg = 'Trailing ,'
                     return False
-                sos_compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
+                compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
             elif self.category() == 'statements':
-                sos_compile((''.join(self.values)), filename='<string>', mode='exec')
+                compile((''.join(self.values)), filename='<string>', mode='exec')
             elif self.category() == 'script':
                 #
                 # A valid script has an identation defined at the first line. That is to say
@@ -914,7 +914,7 @@ for __n, __v in {}.items():
                     while True:
                         try:
                             # test current group
-                            sos_compile(pieces[idx].strip(), filename = '<string>', mode='exec' if '=' in pieces[idx] else 'eval')
+                            compile(pieces[idx].strip(), filename = '<string>', mode='exec' if '=' in pieces[idx] else 'eval')
                             # if it is ok, go next
                             idx += 1
                             if idx == len(pieces):

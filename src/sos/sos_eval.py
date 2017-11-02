@@ -30,42 +30,6 @@ from tokenize import generate_tokens, untokenize, NAME, STRING, INDENT
 
 from .utils import env, Error, short_repr, DelayedAction
 
-# function interpolate is needed because it is required by the SoS
-# script (not seen but translated to have this function)
-__all__ = ['interpolate']
-
-
-class InterpolationError(Error):
-    '''Exception raised for interpolation related errors'''
-    def __init__(self, text, msg):
-        if '\n' in text:
-            # if there is newline in original text, output it in separate
-            # lines
-            msg = '{}:\n{}\n'.format(msg, text)
-        else:
-            msg = '{}: {}'.format(msg, text)
-        Error.__init__(self, msg)
-        self.args = (text, msg)
-
-class UnresolvableObject(Error):
-    def __init__(self, obj):
-        super(UnresolvableObject, self).__init__('Unresolvable object ({}) during string interpolation, use converter R if needed.'.format(obj))
-
-def sos_compile(expr, *args, **kwargs):
-    ''' Compiling an statement but ignores tab error (mixed tab and space)'''
-    try:
-        compile(expr, *args, **kwargs)
-    except TabError:
-        # if tab error, try to fix it by replacing \t with 4 spaces
-        result = []
-        for toknum, tokval, _, _, _  in generate_tokens(StringIO(expr).readline):
-            if toknum == INDENT and '\t' in tokval:
-                tokval = tokval.replace('\t', '    ')
-            # the resusting string is put back to the expression (or statement)
-            result.append((toknum, tokval))
-        # other compiling errors are still raised
-        compile(untokenize(result), *args, **kwargs)
-
 def interpolate(text, local_dict=None, global_dict=None):
     '''Evaluate expressions in `text` '''
     return text
@@ -100,7 +64,7 @@ def SoS_eval(expr):
 
 def _is_expr(expr):
     try:
-        sos_compile(expr, '<string>', 'eval')
+        compile(expr, '<string>', 'eval')
         return True
     except Exception:
         return False
@@ -130,7 +94,7 @@ def SoS_exec(stmts, _dict=None):
     while True:
         try:
             # test current group
-            sos_compile(code_group[idx], filename = '<string>', mode='exec')
+            compile(code_group[idx], filename = '<string>', mode='exec')
             # if it is ok, go next
             idx += 1
             if idx == len(code_group):
