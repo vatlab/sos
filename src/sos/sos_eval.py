@@ -349,47 +349,6 @@ def get_default_global_sigil():
     global default_global_sigil
     return default_global_sigil
 
-def ConvertString(s, sigil):
-    '''Convert a unicode string to a raw string and interpolate expressions
-    within it by parsing the python expression and statement BEFORE they are
-    evaluated (or executed).
-
-    FIXME: the expression might have a dynamic option which should prevent
-    string interpolation. Not sure how to handle this option right now.
-    '''
-    # if no sigil is specified, only check space/tab...
-    indent_space = False
-    indent_tab = False
-    result = []
-    if sigil is None:
-        if '\t' not in s:
-            return s
-    else:
-        left_sigil = sigil.split(' ')[0]
-        if left_sigil not in s and not '\t' in s:
-            return s
-    # tokenize the input syntax.
-    for toknum, tokval, _, _, _  in generate_tokens(StringIO(s).readline):
-        if sigil is not None and toknum == STRING:
-            # if this item is a string that uses triple single quote
-            # if tokval.startswith("'''"):
-            #     # we convert it to a raw string
-            #     tokval = u'r' + tokval
-            # we then perform interpolation on the string and put it back to expression
-            if (tokval.startswith('"') or tokval.startswith('r"') or tokval.startswith('u"')) and left_sigil in tokval:
-                tokval = 'interpolate(' + tokval + ", \'" + sigil + "', locals())"
-        if toknum == INDENT:
-            if '\t' in tokval:
-                tokval = tokval.replace('\t', '    ')
-                indent_tab = True
-            elif ' ' in tokval:
-                indent_space = True
-        # the resusting string is put back to the expression (or statement)
-        result.append((toknum, tokval))
-    if indent_space and indent_tab:
-        env.logger.warning('Tabs converted to 4 spaces due to mixed use of tab and space in statement {}'.format(short_repr(s)))
-    return untokenize(result)
-
 accessed_vars_cache = {}
 def accessed_vars(statement, sigil):
     '''Parse a Python statement and analyze the symbols used. The result
@@ -418,9 +377,7 @@ def accessed_vars(statement, sigil):
     return result
 
 def SoS_eval(expr, sigil):
-    '''Evaluate an expression after modifying (convert ' ' string to raw string,
-    interpolate expressions) strings.'''
-    expr = ConvertString(expr, sigil)
+    '''Evaluate an expression with sos dict.'''
     return eval(expr, env.sos_dict._dict)
 
 def _is_expr(expr):
@@ -481,14 +438,9 @@ def SoS_exec(stmts, sigil, _dict=None):
     executed = ''
     code_group = [x for x in code_group if x.strip()]
     for idx,code in enumerate(code_group):
-        stmts = ConvertString(code, sigil)
+        stmts = code
         if not stmts.strip():
             continue
-        #try:
-            #if env.config['run_mode'] == 'interactive':
-            #    act = DelayedAction(env.logger.info, 'Running {}'.format(short_repr(code)))
-            #else:
-            #    act = None
         try:
             if idx + 1 == len(code_group) and _is_expr(stmts):
                 res = eval(stmts, _dict)
