@@ -37,7 +37,7 @@ from tokenize import generate_tokens
 from uuid import uuid4
 
 from .utils import env, Error, locate_script, text_repr
-from .sos_eval import on_demand_options, sos_compile, set_default_global_sigil
+from .sos_eval import on_demand_options, sos_compile
 from .target import textMD5
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
@@ -779,29 +779,6 @@ for __n, __v in {}.items():
                 if mo:
                     condition_met = None
                     condition_ignore = False
-                    continue
-
-                mo = SOS_OPTIONS.match(line)
-                if mo:
-                    import shlex
-                    options = shlex.split(mo.group('options'))
-                    for opt in options:
-                        if opt.startswith('sigil='):
-                            self.global_sigil = opt[6:].strip()
-                            env.logger.debug('Global sigil is set to {}'.format(self.global_sigil))
-                            if self.global_sigil in ('None', ''):
-                                self.global_sigil = None
-                            elif ' ' not in self.global_sigil or self.global_sigil.count(' ') > 1:
-                                parsing_errors.append(lineno, line,
-                                    'A sigil should be a string string with exactly one space. "{}" specified.'.format(self.global_sigil))
-                            set_default_global_sigil(self.global_sigil)
-                            if cursect:
-                                # this is only used for interactive mode where set_option is
-                                # also effective in the current cell
-                                cursect.global_sigil = self.global_sigil
-                                cursect.sigil = self.global_sigil
-                        else:
-                            parsing_errors.append(lineno, line, 'Unrecognized sos option {}'.format(opt))
                     continue
 
                 else:

@@ -75,41 +75,6 @@ def interpolate(text, sigil, local_dict=None, global_dict=None):
 def cfg_interpolate(text, local_dict={}):
     return interpolate(text, '${ }', local_dict, env.sos_dict.get('CONFIG', {}))
 
-#def cfg_get(key, local_dict={}, default=None):
-#    '''Get config from CONFIG dictionary'''
-#    cfg = env.sos_dict.get('CONFIG', {})
-#    if isinstance(key, str):
-#        if key in cfg:
-#            val = cfg[key]
-#        else:
-#            env.logger.warning('Failed to get {} from CONFIG: {} returned'.format(key, default))
-#            return default
-#    else:
-#        val = cfg
-#        for k in key:
-#            if k in val:
-#                val = val[k]
-#            else:
-#                env.logger.warning('Failed to get {} from CONFIG: {} returned'.format(key, default))
-#                return default
-#    if isinstance(val, str):
-#        return cfg_interpolate(val, local_dict)
-#    else:
-#        env.logger.warning('Failed to interpolate {} from CONFIG: {} returned'.format(key, val))
-#        return val
-
-default_global_sigil = '${ }'
-
-def set_default_global_sigil(val):
-    global default_global_sigil
-    if val is not None and val.count(' ') != 1:
-        raise ValueError('A sigil should be specified as None or two strings separated by a space')
-    default_global_sigil = val
-
-def get_default_global_sigil():
-    global default_global_sigil
-    return default_global_sigil
-
 accessed_vars_cache = {}
 def accessed_vars(statement, sigil):
     '''Parse a Python statement and analyze the symbols used. The result

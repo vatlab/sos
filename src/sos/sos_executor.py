@@ -33,7 +33,7 @@ from ._version import __version__
 from .sos_step import Step_Executor, analyze_section, PendingTasks
 from .utils import env, Error, WorkflowDict, get_traceback, short_repr, pickleable, \
     load_config_files, save_var, load_var
-from .sos_eval import SoS_exec, get_default_global_sigil
+from .sos_eval import SoS_exec
 from .dag import SoS_DAG
 from .target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step, Undetermined
 from .pattern import extract_pattern
@@ -190,7 +190,7 @@ class SoS_Worker(mp.Process):
         # The consequence is that global definitions are available in
         # SoS namespace.
         try:
-            SoS_exec(section.global_def, section.global_sigil)
+            SoS_exec(section.global_def)
         except RuntimeError:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
@@ -357,7 +357,7 @@ class Base_Executor:
 
         # excute global definition to get some basic setup
         try:
-            SoS_exec(self.workflow.global_def, get_default_global_sigil())
+            SoS_exec(self.workflow.global_def)
         except Exception:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
@@ -373,7 +373,7 @@ class Base_Executor:
     def skip(self, section):
         if section.global_def:
             try:
-                SoS_exec(section.global_def, section.global_sigil)
+                SoS_exec(section.global_def)
             except RuntimeError as e:
                 if env.verbosity > 2:
                     sys.stderr.write(get_traceback())

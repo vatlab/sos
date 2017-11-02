@@ -44,7 +44,7 @@
 
 import copy
 from sos.utils import env, WorkflowDict
-from sos.sos_eval import SoS_exec, SoS_eval, get_default_global_sigil
+from sos.sos_eval import SoS_exec, SoS_eval
 
 from IPython.core.error import UsageError
 from IPython.lib.clipboard import ClipboardEmpty
@@ -77,7 +77,7 @@ class SoS_Magics(Magics):
         # if in line mode, no command line
         if cell is None:
             if not self.options:
-                return SoS_exec(line, get_default_global_sigil())
+                return SoS_exec(line)
             else:
                 return runfile(code=line, args=self.options)
         else:
@@ -97,12 +97,12 @@ class SoS_Magics(Magics):
         try:
             # is it an expression?
             compile(block, '<string>', 'eval')
-            return SoS_eval(block, get_default_global_sigil)
+            return SoS_eval(block)
         except Exception:
             # is it a list of statement?
             try:
                 compile(block, '<string>', 'exec')
-                return SoS_exec(block, get_default_global_sigil)
+                return SoS_exec(block)
             except Exception:
                 return runfile(code=block, args=self.options + line.strip())
 
