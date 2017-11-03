@@ -298,29 +298,29 @@ class SoS_ExecuteScript:
                 if self.interpreter:
                     # if there is an interpreter and with args
                     if not self.args:
-                        self.args = '${filename!q}'
+                        self.args = '{filename:q}'
                 else:
                     if sys.platform == 'win32':
                         # in the case there is no interpreter, we put the script
                         # at first (this is the case for windows)
                         #
                         # and we donot add default args.
-                        self.interpreter = '${filename!q}'
+                        self.interpreter = '{filename:q}'
                     else:
                         # if there is a shebang line, we ...
                         if self.script.startswith('#!'):
                             # make the script executable
                             os.chmod(script_file, 0o775)
-                            self.interpreter = '${filename!q}'
+                            self.interpreter = '{filename:q}'
                         else:
                             self.interpreter = '/bin/bash'
                             if not self.args:
-                                self.args = '-ev ${filename!q}'
+                                self.args = '-ev {filename:q}'
                 #
                 if env.config['run_mode'] == 'dryrun':
                     print('{}:\n{}\n'.format(self.interpreter, self.script))
                     return None
-                cmd = interpolate('{} {}'.format(self.interpreter, self.args), '${ }', {'filename': script_file, 'script': self.script})
+                cmd = interpolate('{} {}'.format(self.interpreter, self.args), {'filename': script_file, 'script': self.script})
                 #
                 if env.config['run_mode'] == 'interactive':
                     # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
@@ -341,11 +341,11 @@ class SoS_ExecuteScript:
                 if ret != 0:
                     with open(debug_script_file, 'w') as sfile:
                         sfile.write(self.script)
-                    if self.interpreter == '/bin/bash' and self.args == '-ev ${filename!q}':
-                        debug_args = '${filename!q}'
+                    if self.interpreter == '/bin/bash' and self.args == '-ev {filename:q}':
+                        debug_args = '{filename:q}'
                     else:
                         debug_args = self.args
-                    cmd = interpolate('{} {}'.format(self.interpreter, debug_args), '${ }', {'filename': debug_script_file, 'script': self.script})
+                    cmd = interpolate('{} {}'.format(self.interpreter, debug_args), {'filename': debug_script_file, 'script': self.script})
                     raise RuntimeError('Failed to execute commmand ``{}`` (ret={}, workdir={}{})'.format(cmd, ret, os.getcwd(),
                         ', task={}'.format(os.path.basename(env.sos_dict['__std_err__']).split('.')[0]) if '__std_out__' in env.sos_dict else ''))
             except RuntimeError:
@@ -874,7 +874,7 @@ def report(script=None, input=None, output=None, **kwargs):
 
 
 @SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
-def pandoc(script=None, input=None, output=None, args='${input!q} --output ${output!q}', **kwargs):
+def pandoc(script=None, input=None, output=None, args='{input:q} --output {output:q}', **kwargs):
     '''Convert input file to output using pandoc
 
     The input can be specified in three ways:
@@ -896,7 +896,7 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
 
     You can specify more options such as "from" and "to" by customizing
     the args parameter of the action. The default value of args is
-    `${input!q} --output ${output!q}'
+    `{input:q} --output {output:q}'
     '''
 #
 #     # this is output format
@@ -940,7 +940,7 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
     ret = 1
     try:
         p = None
-        cmd = interpolate('pandoc {}'.format(args), '${ }', {'input': input_file, 'output': output_file})
+        cmd = interpolate('pandoc {}'.format(args), {'input': input_file, 'output': output_file})
         env.logger.trace('Running command "{}"'.format(cmd))
         if env.config['run_mode'] == 'interactive':
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
@@ -954,7 +954,7 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
     if ret != 0:
         temp_file = os.path.join('.sos', '{}_{}.md'.format('pandoc', os.getpid()))
         shutil.copyfile(input_file, temp_file)
-        cmd = interpolate('pandoc {}'.format(args), '${ }', {'input': temp_file, 'output': output_file})
+        cmd = interpolate('pandoc {}'.format(args), {'input': temp_file, 'output': output_file})
         raise RuntimeError('Failed to execute script. Please use command \n{}\nunder {} to test it.'
             .format(cmd, os.getcwd()))
     if write_to_stdout:
