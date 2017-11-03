@@ -25,11 +25,16 @@ import re
 import collections
 import ast
 
-from .utils import env, Error, short_repr, DelayedAction
+from .utils import env, Error, short_repr, DelayedAction, text_repr
 
-def interpolate(text, local_dict=None, global_dict=None):
+def interpolate(text, global_dict=None, local_dict=None):
     '''Evaluate expressions in `text` '''
-    return text
+    # step 1, make it a f-string (add quotation marks and f
+    # step 2, evaluate as a string
+    try:
+        return eval('f' + text_repr(text), global_dict, local_dict)
+    except Exception as e:
+        raise ValueError('Failed to interpolate {}: {}'.format(text, e))
 
 def cfg_interpolate(text, local_dict={}):
     return interpolate(text, '${ }', local_dict, env.sos_dict.get('CONFIG', {}))
