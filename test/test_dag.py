@@ -347,10 +347,10 @@ C_3 -> C_4;
     def testAuxiliarySteps(self):
         script = SoS_Script('''
 [K: provides='{name}.txt']
-output: "${name}.txt"
+output: f"{name}.txt"
 
 run:
-    touch '${name}.txt'
+    touch '{name}.txt'
 
 [C_2]
 input: 'b.txt'
@@ -684,7 +684,7 @@ run:
 [P: provides='{filename}.p']
 input: filename
 run:
-    touch ${output}
+    touch {output}
 ''')
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow()
@@ -783,7 +783,7 @@ run:
 input: None
 import time
 time.sleep(0)
-with open("${ss}.txt", 'w') as tmp:
+with open(f"{ss}.txt", 'w') as tmp:
     tmp.write('test')
 
 ''')
@@ -907,17 +907,17 @@ print(b)
         script = SoS_Script(r'''
 # this step provides variable `var`
 [index: provides='{filename}.bam.bai']
-input: "${filename}.bam"
+input: f"{filename}.bam"
 run:
-   echo "Generating ${output}"
-   touch ${output}
+   echo "Generating {output}"
+   touch {output}
 
 [call: provides='{filename}.vcf']
-input:   "${filename}.bam"
-depends: "${input}.bai"
+input:   f"{filename}.bam"
+depends: f"{input}.bai"
 run:
-   echo "Calling variants from ${input} with ${depends} to ${output}"
-   touch ${output}
+   echo "Calling variants from {input} with {depends} to {output}"
+   touch {output}
 ''')
         FileTarget('a.bam.bai').remove('both')
         FileTarget('a.vcf').remove('both')
@@ -1052,13 +1052,13 @@ strict digraph "" {
 [test_1: provides=['{}.txt'.format(i) for i in range(10)]]
 output: ['{}.txt'.format(i) for i in range(10)]
 run:
-  touch ${output}
+  touch {output}
 
 [test_2: provides=['{}.txt'.format(i) for i in range(10, 20)]]
 depends: ['{}.txt'.format(i) for i in range(10)]
 output: ['{}.txt'.format(i) for i in range(10, 20)]
 run:
-  touch ${output}
+  touch {output}
 
 [default]
 depends: ['{}.txt'.format(i) for i in range(10, 20)]
@@ -1095,14 +1095,14 @@ touch 1.txt
         script = SoS_Script('''
 [10]
 input: 'a.txt'
-output: "${_input}.bak"
+output: f"{_input}.bak"
 run:
-    cp ${_input} ${_output}
+    cp {_input} {_output}
 
 [20]
 depends: "a.txt.bak"
 run:
-    ls ${_depends}
+    ls {_depends}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()

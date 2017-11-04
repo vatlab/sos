@@ -164,6 +164,8 @@ def analyze_section(section, default_input=None):
                     step_input = default_input
             elif not any(isinstance(x, (dynamic, remote)) for x in args):
                 step_input = _expand_file_list(True, *args)
+            env.sos_dict.set('input', sos_targets(step_input))
+
             if 'paired_with' in kwargs:
                 pw = kwargs['paired_with']
                 if pw is None or not pw:

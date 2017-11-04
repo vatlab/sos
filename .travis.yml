@@ -51,6 +51,7 @@ script:
     - pytest -x -v test_convert.py
     - pytest -x -v test_pack.py	
     - pytest -x -v test_target.py
+    - pytest -x -v test_dag.py
 
     #- pytest -x -v test_execute.py
     #- pytest -x -v test_queue.py	
@@ -58,7 +59,6 @@ script:
     #- pytest -x -v test_remote.py
     #- pytest -x -v test_task.py
     #- pytest -x -v test_docker_actions.py
-    #- pytest -x -v test_dag.py
     #- pytest -x -v test_remove.py
     #- pytest -x -v test_signature.py
 

@@ -102,7 +102,7 @@ def fileMD5(filename, partial=True):
                         break
                     md5.update(data)
     except IOError as e:
-        sys.exit('Failed to read {}: {}'.format(filename, e))
+        sys.exit(f'Failed to read {filename}: {e}')
     return md5.hexdigest()
 
 
@@ -133,8 +133,8 @@ class BaseTarget:
     #
     def sig_file(self):
         if self._sigfile is None:
-            self._sigfile = os.path.join(env.exec_dir, '.sos', '.runtime', '{}_{}.file_info'.format(self.__class__.__name__,
-                textMD5(self.name())))
+            self._sigfile = os.path.join(env.exec_dir, '.sos', '.runtime',
+                                         f'{self.__class__.__name__}_{textMD5(self.name())}.file_info')
         return self._sigfile
 
     def remove_sig(self):
@@ -145,10 +145,10 @@ class BaseTarget:
         '''Write .sig file with signature'''
         # path to file
         with open(self.sig_file(), 'w') as sig:
-            sig.write('{}\t{}\n'.format(self.name(), self.signature()))
+            sig.write(f'{self.name()}\t{self.signature()}\n')
 
     def __repr__(self):
-        return '{}("{}")'.format(self.__class__.__name__, self.name())
+        return f'{self.__class__.__name__}("{self.name()}")'
 
     def __hash__(self):
         return hash(repr(self))
@@ -213,7 +213,7 @@ class sos_step(BaseTarget):
         return self._step_name
 
     def signature(self, mode='any'):
-        return textMD5('sos_step({})'.format(self._step_name))
+        return textMD5(f'sos_step({self._step_name})')
 
     def write_sig(self):
         pass
@@ -338,7 +338,7 @@ class executable(BaseTarget):
 
     def name(self):
         if self._version:
-            return '{} (version={})'.format(self._cmd, self._version)
+            return f'{self._cmd} (version={self._version})'
         else:
             return self._cmd
 
@@ -385,8 +385,7 @@ class FileTarget(BaseTarget):
         elif isinstance(filename, FileTarget):
             self._filename = filename._filename
         else:
-            raise ValueError('Cannot create a file target with {} of type {}'.format(
-                filename, filename.__class__.__name__))
+            raise ValueError(f'Cannot create a file target with {filename} of type {filename.__class__.__name__}')
 
         self._md5 = None
         self._attachments = []
@@ -482,7 +481,7 @@ class FileTarget(BaseTarget):
                 _, _, s, _ = line.rsplit('\t', 3)
                 return int(s.strip())
         else:
-            raise RuntimeError('{} or its signature does not exist.'.format(self._filename))
+            raise RuntimeError(f'{self._filename} or its signature does not exist.')
 
     def mtime(self):
         if os.path.isfile(self._filename):
@@ -498,7 +497,7 @@ class FileTarget(BaseTarget):
                 _, t, _, _ = line.rsplit('\t', 3)
                 return t.strip()
         else:
-            raise RuntimeError('{} or its signature does not exist.'.format(self._filename))
+            raise RuntimeError(f'{self._filename} or its signature does not exist.')
 
     def __eq__(self, other):
         return os.path.abspath(self.fullname()) == os.path.abspath(other.fullname())
@@ -521,11 +520,10 @@ class FileTarget(BaseTarget):
         '''Write .file_info file with signature'''
         # path to file
         with open(self.sig_file(), 'w') as md5:
-            md5.write('{}\t{}\t{}\t{}\n'.format(self.fullname(), os.path.getmtime(self.fullname()),
-                os.path.getsize(self.fullname()), self.signature()))
+            md5.write(
+                f'{self.fullname()}\t{os.path.getmtime(self.fullname())}\t{os.path.getsize(self.fullname())}\t{self.signature()}\n')
             for f in self._attachments:
-                md5.write('{}\t{}\t{}\t{}\n'.format(f, os.path.getmtime(f),
-                    os.path.getsize(f), fileMD5(f)))
+                md5.write(f'{f}\t{os.path.getmtime(f)}\t{os.path.getsize(f)}\t{fileMD5(f)}\n')
 
     def validate(self):
         '''Check if file matches its signature'''
@@ -537,7 +535,7 @@ class FileTarget(BaseTarget):
                 if not os.path.isfile(f):
                     return False
                 if fileMD5(f) != m.strip():
-                    env.logger.debug('MD5 mismatch {}'.format(f))
+                    env.logger.debug(f'MD5 mismatch {f}')
                     return False
         return True
 
@@ -563,11 +561,9 @@ class sos_targets(BaseTarget, Sequence):
                     elif isinstance(t, sos_targets):
                         self._targets.extends(t.targets())
                     elif t is not None:
-                        raise RuntimeError('Unrecognized targets {} of type {}'.format(
-                            t, t.__class__.__name__))
+                        raise RuntimeError(f'Unrecognized targets {t} of type {t.__class__.__name__}')
             elif arg is not None:
-                raise RuntimeError('Unrecognized targets {} of type {}'.format(
-                    arg, arg.__class__.__name__))
+                raise RuntimeError(f'Unrecognized targets {arg} of type {arg.__class__.__name__}')
 
     def targets(self):
         return self._targets
@@ -598,7 +594,7 @@ class sos_targets(BaseTarget, Sequence):
         if len(self._targets) == 1:
             return FileTarget(self._targets[0]).signature() if isinstance(self._targets[0], str) else self._targets[0].signature()
         else:
-            raise ValueError('No signature for group of targets {}'.format(self))
+            raise ValueError(f'No signature for group of targets {self}')
 
     def exists(self, mode='any'):
         if len(self._targets) == 1:
@@ -610,7 +606,7 @@ class sos_targets(BaseTarget, Sequence):
         if len(self._targets) == 1:
             return FileTarget(self._targets[0]).name() if isinstance(self._targets[0], str) else self._targets[0].name()
         else:
-            raise ValueError('Canot get name() for group of targets {}'.format(self))
+            raise ValueError(f'Canot get name() for group of targets {self}')
 
     def __hash__(self):
         return hash(repr(self))
@@ -622,7 +618,7 @@ class sos_targets(BaseTarget, Sequence):
         if len(self._targets) == 1:
             return self._targets[0].sig_file()
         else:
-            raise ValueError('Canot get sig_file for group of targets {}'.format(self))
+            raise ValueError(f'Canot get sig_file for group of targets {self}')
 
     def __repr__(self):
         return ', '.join(repr(x) for x in self._targets)
@@ -676,13 +672,13 @@ class RuntimeInfo:
 
         sig_vars = [] if signature_vars is None else sorted([x for x in signature_vars if x in sdict and isPrimitive(sdict[x])])
         self.sig_id = textMD5('{} {} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files,
-            '\n'.join('{}:{}'.format(x, stable_repr(sdict[x])) for x in sig_vars)))
+            '\n'.join(f'{x}:{stable_repr(sdict[x])}' for x in sig_vars)))
 
         if external_output:
             # global signature
-            self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', '{}.exe_info'.format(self.sig_id))
+            self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', f'{self.sig_id}.exe_info')
         else:
-            self.proc_info = os.path.join(env.exec_dir, '.sos', '.runtime', '{}.exe_info'.format(self.sig_id))
+            self.proc_info = os.path.join(env.exec_dir, '.sos', '.runtime', f'{self.sig_id}.exe_info')
 
     def __getstate__(self):
         return {'step_md5': self.step_md5,
@@ -701,8 +697,8 @@ class RuntimeInfo:
         self.script = sdict['script']
         #
         # the signature might be on a remote machine and has changed location
-        self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', '{}.exe_info'.format(
-            textMD5('{} {} {} {}'.format(self.script, self.input_files, self.output_files, self.dependent_files))))
+        self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime',
+                                      f'{textMD5(f"{self.script} {self.input_files} {self.output_files} {self.dependent_files}")}.exe_info')
 
 
     def lock(self):
@@ -713,27 +709,27 @@ class RuntimeInfo:
             self._lock = None
             raise UnavailableLock((self.input_files, self.output_files, self.proc_info))
         else:
-            env.logger.trace('Lock acquired for output files {}'.format(short_repr(self.output_files)))
+            env.logger.trace(f'Lock acquired for output files {short_repr(self.output_files)}')
 
     def release(self):
         if self._lock:
             try:
                 self._lock.release()
-                env.logger.trace('Lock released for output files {}'.format(short_repr(self.output_files)))
+                env.logger.trace(f'Lock released for output files {short_repr(self.output_files)}')
             except Exception as e:
-                env.logger.warning('Unable to release lock for output files {}: {}'.format(self.output_files, e))
+                env.logger.warning(f'Unable to release lock for output files {self.output_files}: {e}')
             finally:
                 self._lock = None
 
     def set(self, files, file_type):
         # add signature file if input and output files are dynamic
-        env.logger.trace('Set {} of signature to {}'.format(file_type, files))
+        env.logger.trace(f'Set {file_type} of signature to {files}')
         if file_type == 'output':
             self.output_files = [FileTarget(x) for x in files]
         elif file_type == 'depends':
             self.depends_files = [FileTarget(x) for x in files]
         else:
-            raise RuntimeError('Invalid signature file type {}'.format(file_type))
+            raise RuntimeError(f'Invalid signature file type {file_type}')
 
     def write(self, rebuild=False):
         '''Write signature file with signature of script, input, output and dependent files.
@@ -743,41 +739,41 @@ class RuntimeInfo:
         if isinstance(self.output_files, Undetermined) or isinstance(self.dependent_files, Undetermined):
             env.logger.trace('Write signature failed due to undetermined files')
             return False
-        env.logger.trace('Write signature {}'.format(self.proc_info))
+        env.logger.trace(f'Write signature {self.proc_info}')
         with open(self.proc_info, 'w') as md5:
-            md5.write('{}\n'.format(textMD5(self.script)))
+            md5.write(f'{textMD5(self.script)}\n')
             md5.write('# input\n')
             for f in self.input_files:
                 if f.exists('target'):
                     # this calculates file MD5
                     f.write_sig()
-                    md5.write('{}\t{}\n'.format(f, f.signature()))
+                    md5.write(f'{f}\t{f.signature()}\n')
                 elif not rebuild and f.exists('signature'):
-                    md5.write('{}\t{}\n'.format(f, f.signature()))
+                    md5.write(f'{f}\t{f.signature()}\n')
                 else:
-                    env.logger.warning('Failed to create signature: input target {} does not exist'.format(f))
+                    env.logger.warning(f'Failed to create signature: input target {f} does not exist')
                     return False
             md5.write('# output\n')
             for f in self.output_files:
                 if f.exists('target'):
                     # this calculates file MD5
                     f.write_sig()
-                    md5.write('{}\t{}\n'.format(f, f.signature()))
+                    md5.write(f'{f}\t{f.signature()}\n')
                 elif not rebuild and f.exists('signature'):
-                    md5.write('{}\t{}\n'.format(f, f.signature()))
+                    md5.write(f'{f}\t{f.signature()}\n')
                 else:
-                    env.logger.warning('Failed to create signature: output target {} does not exist'.format(f))
+                    env.logger.warning(f'Failed to create signature: output target {f} does not exist')
                     return False
             md5.write('# dependent\n')
             for f in self.dependent_files:
                 if f.exists('target'):
                     # this calculates file MD5
                     f.write_sig()
-                    md5.write('{}\t{}\n'.format(f, f.signature()))
+                    md5.write(f'{f}\t{f.signature()}\n')
                 elif not rebuild and f.exists('signature'):
-                    md5.write('{}\t{}\n'.format(f, f.signature()))
+                    md5.write(f'{f}\t{f.signature()}\n')
                 else:
-                    env.logger.warning('Failed to create signature: dependent target {} does not exist'.format(f))
+                    env.logger.warning(f'Failed to create signature: dependent target {f} does not exist')
                     return False
             # context that will be needed for validation
             md5.write('# init context\n')
@@ -788,7 +784,7 @@ class RuntimeInfo:
                     try:
                         md5.write(save_var(var, value))
                     except Exception:
-                        env.logger.debug('Variable {} of value {} is ignored from step signature'.format(var, short_repr(value)))
+                        env.logger.debug(f'Variable {var} of value {short_repr(value)} is ignored from step signature')
             # context used to return context
             md5.write('# end context\n')
             for var in sorted(self.signature_vars.keys()):
@@ -798,7 +794,7 @@ class RuntimeInfo:
                     try:
                         md5.write(save_var(var, value))
                     except Exception:
-                        env.logger.debug('Variable {} of value {} is ignored from step signature'.format(var, short_repr(value)))
+                        env.logger.debug(f'Variable {var} of value {short_repr(value)} is ignored from step signature')
             md5.write('# step process\n')
             md5.write(self.script)
             md5.write('# step process\n')
@@ -808,23 +804,27 @@ class RuntimeInfo:
             workflow_sig = env.sos_dict['__workflow_sig__']
             with fasteners.InterProcessLock(workflow_sig + '_'):
                 with open(workflow_sig, 'a') as wf:
-                    wf.write('EXE_SIG\tstep={}\tsession={}\n'.format(self.step_md5, os.path.basename(self.proc_info).split('.')[0]))
+                    wf.write(
+                        f'EXE_SIG\tstep={self.step_md5}\tsession={os.path.basename(self.proc_info).split(".")[0]}\n')
                     for f in self.input_files:
                         if isinstance(f, FileTarget):
-                            wf.write('IN_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.signature()))
+                            wf.write(
+                                f'IN_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.signature()}\n')
                     for f in self.dependent_files:
                         if isinstance(f, FileTarget):
-                            wf.write('IN_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.signature()))
+                            wf.write(
+                                f'IN_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.signature()}\n')
                     for f in self.output_files:
                         if isinstance(f, FileTarget):
-                            wf.write('OUT_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.signature()))
+                            wf.write(
+                                f'OUT_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.signature()}\n')
         return True
 
     def validate(self):
         '''Check if ofiles and ifiles match signatures recorded in md5file'''
         if not self.proc_info or not os.path.isfile(self.proc_info):
-            return 'Missing signature file {}'.format(self.proc_info)
-        env.logger.trace('Validating {}'.format(self.proc_info))
+            return f'Missing signature file {self.proc_info}'
+        env.logger.trace(f'Validating {self.proc_info}')
         #
         # file not exist?
         if isinstance(self.output_files, Undetermined):
@@ -832,7 +832,7 @@ class RuntimeInfo:
         sig_files = self.input_files + self.output_files + self.dependent_files
         for x in sig_files:
             if not x.exists('any'):
-                return 'Missing target {}'.format(x)
+                return f'Missing target {x}'
         #
         files_checked = {x.name():False for x in sig_files if not isinstance(x, Undetermined)}
         res = {'input': [], 'output': [], 'depends': [], 'vars': {}}
@@ -858,22 +858,21 @@ class RuntimeInfo:
                     elif line == '# step process\n':
                         break
                     else:
-                        env.logger.trace('Unrecognized line in sig file {}'.format(line))
+                        env.logger.trace(f'Unrecognized line in sig file {line}')
                     continue
                 # for validation
                 if cur_type == 'init context':
                     key, value = load_var(line)
                     if key not in env.sos_dict:
-                        return 'Variable {} not in running environment'.format(key)
+                        return f'Variable {key} not in running environment'
                     try:
                         try:
                             if env.sos_dict[key] != value:
-                                return 'Context variable {} value mismatch: {} saved, {} current'.format(
-                                    key, short_repr(value), short_repr(env.sos_dict[key]))
+                                return f'Context variable {key} value mismatch: {short_repr(value)} saved, {short_repr(env.sos_dict[key])} current'
                         except Exception as e:
-                            env.logger.warning("Variable {} of type {} cannot be compared: {}".format(key, type(key).__name__, e))
+                            env.logger.warning(f"Variable {key} of type {type(key).__name__} cannot be compared: {e}")
                     except Exception as e:
-                        env.logger.warning('Failed to restore variable {} from signature: {}'.format(key, e))
+                        env.logger.warning(f'Failed to restore variable {key} from signature: {e}')
                     continue
                 # for return context
                 elif cur_type == 'end context':
@@ -881,7 +880,7 @@ class RuntimeInfo:
                         key, value = load_var(line)
                         res['vars'][key] = value
                     except Exception as e:
-                        env.logger.warning('Failed to restore variable {} from signature: {}'.format(key, e))
+                        env.logger.warning(f'Failed to restore variable {key} from signature: {e}')
                     continue
                 try:
                     f, m = line.rsplit('\t', 1)
@@ -898,7 +897,7 @@ class RuntimeInfo:
                                     target_class = entrypoint.load()
                                     break
                         if target_class is None:
-                            raise ValueError('Failed to identify target class {}'.format(target_type))
+                            raise ValueError(f'Failed to identify target class {target_type}')
                         # parameter of class?
                         freal = eval(f, {target_type: target_class})
                     else:
@@ -908,18 +907,18 @@ class RuntimeInfo:
                     elif freal.exists('signature'):
                         fmd5 = freal.signature()
                     else:
-                        return 'File {} not exist'.format(f)
+                        return f'File {f} not exist'
                     res[cur_type].append(freal.name() if isinstance(freal, FileTarget) else freal)
                     if fmd5 != m.strip():
-                        return 'File has changed {}'.format(f)
+                        return f'File has changed {f}'
                     files_checked[freal.name()] = True
                 except Exception as e:
-                    env.logger.debug('Wrong md5 line {} in {}: {}'.format(line, self.proc_info, e))
+                    env.logger.debug(f'Wrong md5 line {line} in {self.proc_info}: {e}')
                     continue
         #
         if not all(files_checked.values()):
-            return 'No MD5 signature for {}'.format(', '.join(x for x,y in files_checked.items() if not y))
-        env.logger.trace('Signature matches and returns {}'.format(res))
+            return f'No MD5 signature for {", ".join(x for x,y in files_checked.items() if not y)}'
+        env.logger.trace(f'Signature matches and returns {res}')
         # validation success, record signature used
         if '__workflow_sig__' in env.sos_dict and os.path.isfile(env.sos_dict['__workflow_sig__']):
             workflow_sig = env.sos_dict['__workflow_sig__']
