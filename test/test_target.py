@@ -281,13 +281,13 @@ depends: executable('lkls')
 input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
 output: expand_pattern('{_name}.out')
 run:
-  touch ${_output}
+  touch {_output}
 
 [work_2]
 input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}', paired_with = ['data']
 output: expand_pattern('{_name}.out2')
 run:
-  touch ${_data} ${_output}
+  touch {_data} {_output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -301,13 +301,13 @@ run:
 input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
 output: expand_pattern('{_name}.out')
 run:
-  touch ${_output}
+  touch {_output}
 
 [work_2]
 input: "1.txt", "2.txt", group_by = 'single', for_each = 'data, data',  pattern = '{name}.{ext}'
 output: expand_pattern('{_name}.out2')
 run:
-  touch ${_data} ${_output}
+  touch {_data} {_output}
 
 ''')
         wf = script.workflow()
