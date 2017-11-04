@@ -124,7 +124,7 @@ a =1
 [0: shared='res']
 res = ''
 b = 200
-res += "${b}"
+res += "{b}"
 """)
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -134,7 +134,7 @@ res += "${b}"
 [0: shared='res']
 res = ''
 for b in range(5):
-    res += "${b}"
+    res += "{b}"
 """)
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -153,7 +153,7 @@ output: ['{}_{}_processed.txt'.format(x,y) for x,y in zip(name, model)]
         script = SoS_Script(r"""
 [0: shared={'res':'output'}]
 input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
-output: ["${x}_${y}_process.txt" for x,y in zip(name, model)]
+output: [f"{x}_{y}_process.txt" for x,y in zip(name, model)]
 
 """)
         wf = script.workflow()
@@ -166,7 +166,7 @@ def add_a(x):
     return ['a'+_x for _x in x]
 
 input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
-output: add_a(["${x}_${y}_process.txt" for x,y in zip(name, model)])
+output: add_a([f"{x}_{y}_process.txt" for x,y in zip(name, model)])
 
 """)
         wf = script.workflow()
@@ -259,7 +259,7 @@ import pandas as pd
 data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
 
 input: for_each='data'
-output: "${_data['A']}_${_data['B']}_${_data['C']}.txt"
+output: f"{_data['A']}_{_data['B']}_{_data['C']}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
@@ -331,7 +331,7 @@ processed.append((par, res))
 [0: shared={'res':'output'}]
 import pandas as pd
 input: for_each={'data': pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])}
-output: "${data['A']}_${data['B']}_${data['C']}.txt"
+output: f"{data['A']}_{data['B']}_{data['C']}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
@@ -343,7 +343,7 @@ output: "${data['A']}_${data['B']}_${data['C']}.txt"
 import pandas as pd
 data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
 input: for_each={'A': data['A']}
-output: "a_${A}.txt"
+output: f"a_{A}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
@@ -355,7 +355,7 @@ import pandas as pd
 data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
 data.set_index('C', inplace=True)
 input: for_each={'A': data.index}
-output: "${A}.txt"
+output: f"{A}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
@@ -370,7 +370,7 @@ data = pd.DataFrame([(0, 1, 'Ha'), (1, 2, 'Hello'), (2, 4, 'World')], columns=['
 data.set_index('A', inplace=True)
 data = data.tail(2)
 input: for_each={'A': data['B']}
-output: "${A}.txt"
+output: f"{A}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
@@ -385,7 +385,7 @@ data = pd.DataFrame([(0, 1, 'Ha'), (1, 2, 'Hello'), (2, 4, 'World')], columns=['
 data.set_index('A', inplace=True)
 data = data.tail(2)
 input: for_each={'A,B': zip(data['B'],data['C'])}
-output: "${A}.txt"
+output: f"{A}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
@@ -405,9 +405,9 @@ files = ['a.txt', 'b.txt']
 vars = [1, 2]
 
 input: files, paired_with='vars', group_by=1
-output: "${_input}${_vars}"
+output: f"{_input}{_vars}"
 run:
-    touch ${output}
+    touch {output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -423,9 +423,9 @@ vars = [1, 2]
 vars2 = ['a', 'b']
 
 input: files, paired_with=('vars', 'vars2'), group_by=1
-output: "${_input}${_vars}"
+output: f"{_input}{_vars}"
 run:
-    touch ${output}
+    touch {output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -438,9 +438,9 @@ run:
 [0]
 files = ['a.txt', 'b.txt']
 input: files, paired_with={'var': [1,2], 'var2': ['a', 'b']}, group_by=1
-output: "${_input}${var}"
+output: f"{_input}{var}"
 run:
-    touch ${output}
+    touch {output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -461,9 +461,9 @@ files = ['a.txt', 'b.txt']
 vars = [1, 2]
 
 input: files, group_with='vars', group_by=1
-output: "${_input}${_vars}"
+output: f"{_input}{_vars}"
 run:
-    touch ${output}
+    touch {output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -479,9 +479,9 @@ vars = [1]
 vars2 = ['a']
 
 input: files, group_with=('vars', 'vars2'), group_by=2
-output: "${_input[0]}${_vars}"
+output: f"{_input[0]}{_vars}"
 run:
-    touch ${output}
+    touch {output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -494,9 +494,9 @@ run:
 [0]
 files = ['a.txt', 'b.txt']
 input: files, group_with={'var': [1], 'var2': ['a']}, group_by=2
-output: "${_input[0]}${var}"
+output: f"{_input[0]}{var}"
 run:
-    touch ${output}
+    touch {output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -554,7 +554,7 @@ counter = 0
 
 input: 'a.pdf', files, filetype='*.txt', group_by='single'
 
-output: "${_input}.res"
+output: f"{_input}.res"
 
 """)
         wf = script.workflow()
@@ -828,7 +828,7 @@ touch temp/{ff}
 [1: shared={'res':'output'}]
 import random
 for i in range(3):
-    with open("temp/test_${random.randint(1, 100000)}.txt", 'w') as res:
+    with open("temp/test_{random.randint(1, 100000)}.txt", 'w') as res:
         res.write(str(i))
 
 ''')
@@ -859,7 +859,7 @@ input:
 [1]
 input: ['temp/1.txt' for x in range(5)]
 run:
-  touch temp/${len(input)}.input
+  touch temp/{len(input)}.input
         ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -870,7 +870,7 @@ run:
 output: ['temp/2.txt' for x in range(5)]
 run:
   touch temp/2.txt
-  touch temp/${len(output)}.output
+  touch temp/{len(output)}.output
         ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -883,7 +883,7 @@ depends: ['temp/2.txt' for x in range(5)]
 output: 'temp/3.txt'
 run:
   touch temp/3.txt
-  touch temp/${len(depends)}.depends
+  touch temp/{len(depends)}.depends
         ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -891,7 +891,7 @@ run:
         shutil.rmtree('temp')
 
     def testOutputInLoop(self):
-        '''Test behavior of ${output} when used in loop'''
+        '''Test behavior of {output} when used in loop'''
         if os.path.isdir('temp'):
             shutil.rmtree('temp')
         os.mkdir('temp')
@@ -905,8 +905,8 @@ output: output_files[_index]
 run: active = 0
 rm -f temp/out.log
 run:
-echo ${output} >> temp/out.log
-touch ${output}
+echo {output} >> temp/out.log
+touch {output}
         ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -926,8 +926,8 @@ output: output_files[_index]
 run: active = 0
 rm -f temp/out.log
 run:
-echo ${output} >> temp/out.log
-touch ${output}
+echo {output} >> temp/out.log
+touch {output}
         ''')
         wf = script.workflow()
         env.config['sig_mode'] = 'ignore'
@@ -976,7 +976,7 @@ run:
 [20]
 output: 'aa.txt'
 run:
-    cat ${input} > ${output}
+    cat {input} > {output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -1008,11 +1008,11 @@ run:
         script = SoS_Script('''
 [test_1]
 input: for_each={'a': range(10)}
-output: "${a}.txt"
+output: f"{a}.txt"
 
 stop_if(a % 2 == 0)
 run:
-    touch ${_output}
+    touch {_output}
 
 [test_2]
 assert(len(input) == 5)
@@ -1024,7 +1024,7 @@ assert(len(input) == 5)
                 self.assertFalse(FileTarget("{}.txt".format(idx)).exists())
             else:
                 self.assertTrue(FileTarget("{}.txt".format(idx)).exists())
-                FileTarget("${idx}.txt").remove('both')
+                FileTarget(f"{idx}.txt").remove('both')
 
     def testAllowError(self):
         '''Test option allow error'''
@@ -1068,14 +1068,14 @@ run:
 [2: shared = {'ifile':'output'}]
 output: '2.txt'
 run:
-	echo ${input} > 2.txt
+	echo {input} > 2.txt
 
 [3]
 depends: ifile
 input: dfile
 output: '3.txt'
 run:
-	cat ${input} > ${output}
+	cat {input} > {output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
