@@ -26,8 +26,9 @@ import shlex
 import shutil
 import fasteners
 import pkg_resources
+from shlex import quote
 
-from collections.abc import Sequence
+from collections.abc import Sequence, Iterable
 
 from .utils import env, Error, short_repr, stable_repr, save_var, load_var, isPrimitive
 from .sos_eval import Undetermined
@@ -170,6 +171,12 @@ class sos_variable(BaseTarget):
     def signature(self, mode='any'):
         return textMD5(self._var)
 
+    def __hash__(self):
+        return hash(repr(self))
+
+    def __eq__(self, other):
+        return isinstance(other, sos_variable) and self._var == other._var
+
 class env_variable(BaseTarget):
     '''A target for an environmental variable.'''
     def __init__(self, var):
@@ -184,6 +191,12 @@ class env_variable(BaseTarget):
 
     def signature(self, mode='any'):
         return textMD5(repr(os.environ[self._var]))
+
+    def __eq__(self, other):
+        return isinstance(other, env_variable) and self._var == other._var
+
+    def __hash__(self):
+        return hash(repr(self))
 
 class sos_step(BaseTarget):
     '''A target for a step of sos.'''
@@ -204,6 +217,12 @@ class sos_step(BaseTarget):
 
     def write_sig(self):
         pass
+
+    def __eq__(self, other):
+        return isinstance(other, sos_step) and self._step_name == other._step_name
+
+    def __hash__(self):
+        return hash(repr(self))
 
 # class bundle(BaseTarget):
 #     '''a bundle of other targets'''
@@ -291,6 +310,9 @@ class executable(BaseTarget):
         else:
             self._version = tuple(version)
 
+    def __eq__(self, other):
+        return isinstance(other, executable) and self._cmd == other._cmd and self._version == other._version
+
     def exists(self, mode='any'):
         if mode in ('any', 'target') and shutil.which(shlex.split(self._cmd)[0]):
             if self._version:
@@ -330,12 +352,42 @@ class executable(BaseTarget):
             self._md5 = fileMD5(exe_file)
         return self._md5
 
+    def __hash__(self):
+        return hash(repr(self))
+
 class FileTarget(BaseTarget):
     '''A regular target for files.
     '''
+    CONVERTERS = {
+        'u': os.path.expanduser,
+        'e': lambda x: x.replace(' ', '\\ '),
+        'a': lambda x: os.path.abspath(os.path.expanduser(x)),
+        'l': lambda x: os.path.realpath(os.path.expanduser(x)),
+        'd': os.path.dirname,
+        'b': os.path.basename,
+        'n': lambda x: os.path.splitext(x)[0],
+        'x': lambda x: os.path.splitext(x)[1],
+        'q': (lambda x: list2cmdline([x])) if sys.platform == 'win32' else quote,
+        'p': lambda x: ('/' if len(x) > 1 and x[1] == ':' else '') + x.replace('\\', '/').replace(':', '/'),
+        'r': repr,
+        's': str,
+        # these are handled elsewhere
+        ',': lambda x: x,
+        '!': lambda x: x,
+        'R': lambda x: x,
+        }
+
+
     def __init__(self, filename):
         super(FileTarget, self).__init__()
-        self._filename = os.path.expanduser(filename)
+        if isinstance(filename, str):
+            self._filename = filename
+        elif isinstance(filename, FileTarget):
+            self._filename = filename._filename
+        else:
+            raise ValueError('Cannot create a file target with {} of type {}'.format(
+                filename, filename.__class__.__name__))
+
         self._md5 = None
         self._attachments = []
 
@@ -414,7 +466,7 @@ class FileTarget(BaseTarget):
             return True
 
     def fullname(self):
-        return os.path.abspath(self.name())
+        return os.path.abspath(os.path.expanduser(self.name()))
 
     def size(self):
         if os.path.isfile(self._filename):
@@ -451,6 +503,20 @@ class FileTarget(BaseTarget):
     def __eq__(self, other):
         return os.path.abspath(self.fullname()) == os.path.abspath(other.fullname())
 
+    def __format__(self, format_spec):
+        # handling special !q conversion flag
+        obj = self._filename
+        for c in format_spec:
+            if c in self.CONVERTERS:
+                obj = self.CONVERTERS[c](obj)
+            else:
+                # other defined format
+                obj = obj.__format__(c)
+        return obj
+
+    def __lt__(self, other):
+        return self._filename < file_target(other)._filename
+
     def write_sig(self):
         '''Write .file_info file with signature'''
         # path to file
@@ -474,6 +540,90 @@ class FileTarget(BaseTarget):
                     env.logger.debug('MD5 mismatch {}'.format(f))
                     return False
         return True
+
+class sos_targets(BaseTarget, Sequence):
+    '''A collection of targets'''
+    def __init__(self, *args):
+        super(BaseTarget, self).__init__()
+        self._targets = []
+        self._undetermined = not args
+        for arg in args:
+            if isinstance(arg, str):
+                self._targets.append(arg)
+            elif isinstance(arg, BaseTarget):
+                self._targets.append(arg)
+            elif isinstance(arg, sos_targets):
+                self._targets.extends(arg.targets())
+            elif isinstance(arg, Iterable):
+                # in case arg is a Generator, check its type will exhaust it
+                for t in list(arg):
+                    if isinstance(t, str):
+                        self._targets.append(t)
+                    elif isinstance(t, BaseTarget):
+                        self._targets.append(t)
+                    elif isinstance(t, sos_targets):
+                        self._targets.extends(t.targets())
+                    elif t is not None:
+                        raise RuntimeError('Unrecognized targets {} of type {}'.format(
+                            t, t.__class__.__name__))
+            elif arg is not None:
+                raise RuntimeError('Unrecognized targets {} of type {}'.format(
+                    arg, arg.__class__.__name__))
+
+    def is_undetermined(self):
+        return self._undetermined and self._targets
+
+    def targets(self):
+        return self._targets
+
+    def extend(self, another):
+        self._targets.extend(sos_targets(another).targets())
+
+    def __len__(self):
+        return len(self._targets)
+
+    def __getitem__(self, i):
+        return self._targets[i]
+
+    def __format__(self, format_spec):
+        if ',' in format_spec:
+            fmt_spec = format_spec.replace(',', '')
+            return ','.join(FileTarget(x).__format__(fmt_spec) if isinstance(x, str) else x.__format__(fmt_spec) for x in self._targets)
+        else:
+            return ' '.join(FileTarget(x).__format__(format_spec) if isinstance(x, str) else x.__format__(format_spec) for x in self._targets)
+
+    def signature(self, mode='any'):
+        if len(self._targets) == 1:
+            return FileTarget(self._targets[0]).signature() if isinstance(self._targets[0], str) else self._targets[0].signature()
+        else:
+            raise ValueError('No signature for group of targets {}'.format(self))
+
+    def exists(self, mode='any'):
+        if len(self._targets) == 1:
+            return FileTarget(self._targets[0]).exists(mode) if isinstance(self._targets[0], str) else self._targets[0].exists(mode)
+        else:
+            raise ValueError(f'Canot test existense for group of {len(self)} targets {self!r}')
+
+    def name(self):
+        if len(self._targets) == 1:
+            return FileTarget(self._targets[0]).name() if isinstance(self._targets[0], str) else self._targets[0].name()
+        else:
+            raise ValueError('Canot get name() for group of targets {}'.format(self))
+
+    def __hash__(self):
+        return hash(repr(self))
+
+    def __eq__(self, other):
+        return isinstance(other, targets) and self._targets == other._targets
+
+    def sig_file(self):
+        if len(self._targets) == 1:
+            return self._targets[0].sig_file()
+        else:
+            raise ValueError('Canot get sig_file for group of targets {}'.format(self))
+
+    def __repr__(self):
+        return ', '.join(repr(x) for x in self._targets)
 
 class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the

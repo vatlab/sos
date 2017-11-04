@@ -44,7 +44,7 @@ import multiprocessing as mp
 from tqdm import tqdm as ProgressBar
 from .utils import env, transcribe, StopInputGroup, TerminateExecution, short_repr, get_traceback
 from .sos_eval import Undetermined, interpolate
-from .target import FileTarget, fileMD5, executable, UnknownTarget, BaseTarget
+from .target import FileTarget, fileMD5, executable, UnknownTarget, BaseTarget, sos_targets
 
 
 __all__ = ['SoS_Action', 'script', 'sos_run',
@@ -320,7 +320,8 @@ class SoS_ExecuteScript:
                 if env.config['run_mode'] == 'dryrun':
                     print('{}:\n{}\n'.format(self.interpreter, self.script))
                     return None
-                cmd = interpolate('{} {}'.format(self.interpreter, self.args), {'filename': script_file, 'script': self.script})
+                cmd = interpolate('{} {}'.format(self.interpreter, self.args), 
+                        {'filename': sos_targets(script_file), 'script': self.script})
                 #
                 if env.config['run_mode'] == 'interactive':
                     # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
@@ -345,7 +346,8 @@ class SoS_ExecuteScript:
                         debug_args = '{filename:q}'
                     else:
                         debug_args = self.args
-                    cmd = interpolate('{} {}'.format(self.interpreter, debug_args), {'filename': debug_script_file, 'script': self.script})
+                    cmd = interpolate('{} {}'.format(self.interpreter, debug_args), 
+                            {'filename': sos_targets(debug_script_file), 'script': self.script})
                     raise RuntimeError('Failed to execute commmand ``{}`` (ret={}, workdir={}{})'.format(cmd, ret, os.getcwd(),
                         ', task={}'.format(os.path.basename(env.sos_dict['__std_err__']).split('.')[0]) if '__std_out__' in env.sos_dict else ''))
             except RuntimeError:
@@ -940,7 +942,8 @@ def pandoc(script=None, input=None, output=None, args='{input:q} --output {outpu
     ret = 1
     try:
         p = None
-        cmd = interpolate('pandoc {}'.format(args), {'input': input_file, 'output': output_file})
+        cmd = interpolate('pandoc {}'.format(args), 
+                {'input': sos_targets(input_file), 'output': sos_targets(output_file)})
         env.logger.trace('Running command "{}"'.format(cmd))
         if env.config['run_mode'] == 'interactive':
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
@@ -954,7 +957,7 @@ def pandoc(script=None, input=None, output=None, args='{input:q} --output {outpu
     if ret != 0:
         temp_file = os.path.join('.sos', '{}_{}.md'.format('pandoc', os.getpid()))
         shutil.copyfile(input_file, temp_file)
-        cmd = interpolate('pandoc {}'.format(args), {'input': temp_file, 'output': output_file})
+        cmd = interpolate('pandoc {}'.format(args), {'input': sos_targets(temp_file), 'output': sos_targets(output_file)})
         raise RuntimeError('Failed to execute script. Please use command \n{}\nunder {} to test it.'
             .format(cmd, os.getcwd()))
     if write_to_stdout:

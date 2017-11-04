@@ -28,7 +28,8 @@ import shutil
 from sos.sos_script import SoS_Script
 from sos.utils import env
 from sos.sos_executor import Base_Executor
-from sos.target import FileTarget
+from sos.target import FileTarget, sos_targets
+from sos.sos_eval import interpolate
 import subprocess
 
 class TestTarget(unittest.TestCase):
@@ -52,6 +53,27 @@ class TestTarget(unittest.TestCase):
                 tmp.write('test')
         #
         self.temp_files.extend(files)
+
+    def testTargetFormat(self):
+        '''Test string interpolation of targets'''
+        for target, fmt, res in [
+                ('a.txt', '', 'a.txt'),
+                (sos_targets('a.txt'), '', 'a.txt'),
+                (sos_targets(['a.txt']), '', 'a.txt'),
+                (sos_targets('/a/b/a.txt'), 'b', 'a.txt'),
+                (sos_targets('a b.txt'), 'q', "'a b.txt'"),
+                (sos_targets('a b.txt'), 'x', ".txt"),
+                ]:
+            self.assertEqual(
+                interpolate('{{target:{}}}'.format(fmt), globals(), locals()), res,
+                    "Interpolation of {}:{} should be {}".format(target, fmt, res))
+
+    def testIterTargets(self):
+        '''Test iterator interface of targets'''
+        t = sos_targets('1', '2', ['3', '4'])
+        self.assertEqual(len(t), 4)
+        for idx,i in enumerate(t):
+            self.assertEqual(str(i), str(idx + 1))
 
     def resetDir(self, dirname):
         if os.path.isdir(os.path.expanduser(dirname)):
