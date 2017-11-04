@@ -54,8 +54,8 @@ script:
     - pytest -x -v test_dag.py
     - pytest -x -v test_signature.py
     - pytest -x -v test_execute.py
+    - pytest -x -v test_nested.py
     #- pytest -x -v test_queue.py	
-    #- pytest -x -v test_nested.py
     #- pytest -x -v test_remote.py
     #- pytest -x -v test_task.py
     #- pytest -x -v test_docker_actions.py

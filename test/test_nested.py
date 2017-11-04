@@ -94,7 +94,7 @@ executed.append(step_name)
 output: 'a.done'
 inputs.append(input)
 run:
-    touch ${output}
+    touch {output}
 [b_1: shared=['executed', 'inputs']]
 executed.append(step_name)
 input: 'b.begin'
@@ -135,13 +135,13 @@ executed.append(step_name)
 output: _input[0] + '.a1'
 inputs.append(input)
 run:
-    touch ${output}
+    touch {output}
 [a_2:shared=['executed', 'inputs']]
 executed.append(step_name)
 output: _input[0] + '.a2'
 inputs.append(input)
 run:
-    touch ${output}
+    touch {output}
 [c:shared=['executed', 'inputs']]
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
@@ -323,13 +323,13 @@ parameter: parB = 10
 executed.append('t.' + step_name)
 output: _input[0] + '.a1'
 run:
-    touch ${output}
+    touch {output}
 
 [A_2: shared='executed']
 executed.append('t.' + step_name)
 output: _input[0] + '.a2'
 run:
-    touch ${output}
+    touch {output}
 ''')
         script = SoS_Script('''
 %from inc include *
@@ -379,7 +379,7 @@ sos_run('k.A', shared='executed')
 [A]
 parameter: num=5
 run:
-    touch ${num}.txt
+    touch {num}.txt
 
 [batch]
 for k in range(2):
@@ -398,7 +398,7 @@ for k in range(2):
 [A]
 parameter: num=5
 run:
-    touch ${num}.txt
+    touch {num}.txt
 
 [batch]
 for num in range(2):
@@ -420,7 +420,7 @@ k += 10
 [batch]
 for k in range(2):
     sos_run('A', shared='k')
-    run("touch ${k}.txt")
+    run(f"touch {k}.txt")
 ''')
         wf = script.workflow('batch')
         Base_Executor(wf).run()
@@ -446,16 +446,16 @@ for k in range(2):
         script = SoS_Script('''
 [A_1]
 parameter: num = 2
-input: "B${num}.txt.p"
+input: f"B{num}.txt.p"
 
 [B: provides='B{num}.txt']
 run:
-    touch 'B${num}.txt'
+    touch 'B{num[0]}.txt'
 
 [P: provides='{filename}.p']
 input: filename
 run:
-    touch ${output}
+    touch {output}
 
 [ALL]
 
@@ -488,7 +488,7 @@ import random
 nested = _reps
 seed = random.randint(1, 1000)
 print(f'Passing {seed} to {nested}')
-sos_run('nested')
+sos_run('nested', nested=nested, seed=seed)
 
 """)
         wf = script.workflow()

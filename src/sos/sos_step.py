@@ -1040,14 +1040,16 @@ class Base_Step_Executor:
                     env.sos_dict.set('input', sos_targets(env.sos_dict['__step_output__']))
                 else:
                     raise RuntimeError('__step_output__ can only be None, Undetermined, or a list of files.')
+            else:
+                env.sos_dict.set('input', sos_targets())
 
         # input can be Undetermined from undetermined output from last step
         env.sos_dict.set('_input', copy.deepcopy(env.sos_dict['input']))
         if '__default_output__' in env.sos_dict:
-            if not isinstance(env.sos_dict['__default_output__'], sos_targets):
-                env.logger.warning("__default_output__ should be sos_targets")
-            env.sos_dict.set('output', copy.deepcopy(env.sos_dict['__default_output__']))
-            env.sos_dict.set('_output', copy.deepcopy(env.sos_dict['__default_output__']))
+            #if not isinstance(env.sos_dict['__default_output__'], sos_targets):
+            #    env.logger.warning("__default_output__ should be sos_targets")
+            env.sos_dict.set('output', sos_targets(env.sos_dict['__default_output__']))
+            env.sos_dict.set('_output', sos_targets(env.sos_dict['__default_output__']))
         else:
             env.sos_dict.set('output', sos_targets())
             env.sos_dict.set('_output', sos_targets())
