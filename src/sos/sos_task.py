@@ -35,7 +35,7 @@ from .utils import env, short_repr, get_traceback, sample_of_file, tail_of_file,
     format_HHMMSS, expand_time, expand_size, StopInputGroup
 from .sos_eval import SoS_exec, SoS_eval
 
-from .target import textMD5, RuntimeInfo, Undetermined, FileTarget, UnknownTarget, remote, sos_step
+from .target import textMD5, RuntimeInfo, Undetermined, FileTarget, UnknownTarget, remote, sos_step, sos_targets
 from .sos_eval import interpolate
 from .monitor import ProcessMonitor
 
@@ -78,8 +78,8 @@ class MasterTaskParams(TaskParams):
         self.name = self.ID
         self.global_def = ''
         self.task = ''
-        self.sos_dict = {'_runtime': {}, '_input': [], '_output': [], '_depends': [],
-                'input': [], 'output':[], 'depends': [], 'step_name': '',
+        self.sos_dict = {'_runtime': {}, '_input': sos_targets(), '_output': sos_targets(), '_depends': sos_targets(),
+                'input': sos_targets(), 'output':sos_targets(), 'depends': sos_targets(), 'step_name': '',
                 '_index': 0}
         self.num_workers = num_workers
         self.tags = []
@@ -154,7 +154,7 @@ def loadTask(filename):
             try:
                 header = task.readline().decode()
                 if header.startswith('SOSTASK1.1'):
-                    # ignore the tags 
+                    # ignore the tags
                     task.readline()
                     return pickle.load(task)
                 elif header.startswith('SOSTASK1.2'):
@@ -415,9 +415,9 @@ import os, sys, glob
 from sos.runtime import *
 CONFIG = {}
 del sos_handle_parameter_
-''' + global_def, '${ }')
+''' + global_def)
     except Exception as e:
-        env.logger.trace('Failed to execute global definition {}: {}'.format(short_repr(global_def), e))
+        env.logger.error('Failed to execute global definition {}: {}'.format(short_repr(global_def), e))
 
     if '_runtime' not in sos_dict:
         sos_dict['_runtime'] = {}
@@ -435,9 +435,9 @@ del sos_handle_parameter_
     env.config['run_mode'] = runmode
     #
     if subtask:
-        env.logger.debug('{} ``started``'.format(task_id))
+        env.logger.debug(f'{task_id} ``started``')
     else:
-        env.logger.info('{} ``started``'.format(task_id))
+        env.logger.info(f'{task_id} ``started``')
 
     env.sos_dict.quick_update(sos_dict)
 
@@ -462,7 +462,8 @@ del sos_handle_parameter_
         # try to add #task so that the signature can be different from the step
         # if everything else is the same
         sig = RuntimeInfo(textMD5('#task\n' + ' '.join(tokens)), task,
-            env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict['_depends'], env.sos_dict['__signature_vars__'])
+            env.sos_dict['_input'].targets(), env.sos_dict['_output'].targets(),
+            env.sos_dict['_depends'].targets(), env.sos_dict['__signature_vars__'])
         sig.lock()
 
         idx = env.sos_dict['_index']
@@ -471,34 +472,38 @@ del sos_handle_parameter_
             if isinstance(matched, dict):
                 # in this case, an Undetermined output can get real output files
                 # from a signature
-                env.sos_dict.set('_input', matched['input'])
-                env.sos_dict.set('_depends', matched['depends'])
-                env.sos_dict.set('_output', matched['output'])
+                env.sos_dict.set('_input', sos_targets(matched['input']))
+                env.sos_dict.set('_depends', sos_targets(matched['depends']))
+                env.sos_dict.set('_output', sos_targets(matched['output']))
                 env.sos_dict.update(matched['vars'])
-                env.logger.info('Task ``{}`` (index={}) is ``ignored`` due to saved signature'.format(env.sos_dict['step_name'], idx))
+                env.logger.info(
+                    f'Task ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` due to saved signature')
                 skipped = True
         elif env.config['sig_mode'] == 'assert':
             matched = sig.validate()
             if isinstance(matched, str):
                 raise RuntimeError('Signature mismatch: {}'.format(matched))
             else:
-                env.sos_dict.set('_input', matched['input'])
-                env.sos_dict.set('_depends', matched['depends'])
-                env.sos_dict.set('_output', matched['output'])
+                env.sos_dict.set('_input', sos_targets(matched['input']))
+                env.sos_dict.set('_depends', sos_targets(matched['depends']))
+                env.sos_dict.set('_output', sos_targets(matched['output']))
                 env.sos_dict.update(matched['vars'])
-                env.logger.info('Step ``{}`` (index={}) is ``ignored`` with matching signature'.format(env.sos_dict['step_name'], idx))
+                env.logger.info(
+                    f'Step ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with matching signature')
                 skipped = True
         elif env.config['sig_mode'] == 'build':
             # build signature require existence of files
             if sig.write(rebuild=True):
-                env.logger.info('Task ``{}`` (index={}) is ``ignored`` with signature constructed'.format(env.sos_dict['step_name'], idx))
+                env.logger.info(
+                    f'Task ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with signature constructed')
                 skipped = True
             else:
-                env.logger.info('Task ``{}`` (index={}) is ``executed`` with failed signature constructed'.format(env.sos_dict['step_name'], idx))
+                env.logger.info(
+                    f'Task ``{env.sos_dict["step_name"]}`` (index={idx}) is ``executed`` with failed signature constructed')
         elif env.config['sig_mode'] == 'force':
             skipped = False
         else:
-            raise RuntimeError('Unrecognized signature mode {}'.format(env.config['sig_mode']))
+            raise RuntimeError(f'Unrecognized signature mode {env.config["sig_mode"]}')
 
     if skipped:
         env.logger.info('{} ``skipped``'.format(task_id))

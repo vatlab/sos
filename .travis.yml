@@ -50,9 +50,9 @@ script:
     - pytest -x -v test_parser.py
     - pytest -x -v test_convert.py
     - pytest -x -v test_pack.py	
+    - pytest -x -v test_target.py
 
     #- pytest -x -v test_execute.py
-    #- pytest -x -v test_target.py
     #- pytest -x -v test_queue.py	
     #- pytest -x -v test_nested.py
     #- pytest -x -v test_remote.py
