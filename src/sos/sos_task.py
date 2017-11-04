@@ -507,7 +507,7 @@ del sos_handle_parameter_
 
     if skipped:
         env.logger.info('{} ``skipped``'.format(task_id))
-        return collect_task_result(task_id)
+        return collect_task_result(task_id, sos_dict)
 
     # if we are to really execute the task, touch the task file so that sos status shows correct
     # execution duration.

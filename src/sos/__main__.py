@@ -428,17 +428,17 @@ def workflow_status(workflow):
     #
     env.logger.info('{:15s} \t{}'.format('Workflow ID:', os.path.basename(workflow)[:-7]))
     env.logger.info('{:15s} \t{}'.format('Command:', re.sub(r'\s+', ' ', interpolate(
-        'sos run ${script} ${workflow if workflow else ""} '
-        '${("-c " + config_file) if config_file else ""} '
-        '${("-s " + sig_mode) if sig_mode not in ("", "default") else ""} '
-        '${("-q " + default_queue) if default_queue else ""} '
-        '${("-d " + output_dag) if output_dag not in ("", None) else ""} '
-        '${("-b " + " ".join(bin_dirs)) if bin_dirs and bin_dirs != ["~/.sos/bin"] else ""} '
-        '${("-j " + str(max_procs)) if max_procs != 4 else ""} '
-        '${("-J " + str(max_running_jobs)) if max_running_jobs else ""} '
-        '${("-t " + " ".join(targets)) if targets else ""} '
-        '${" ".join(workflow_args)} '
-        , '${ }', res))))
+        'sos run {script} {workflow if workflow else ""} '
+        '{("-c " + config_file) if config_file else ""} '
+        '{("-s " + sig_mode) if sig_mode not in ("", "default") else ""} '
+        '{("-q " + default_queue) if default_queue else ""} '
+        '{("-d " + output_dag) if output_dag not in ("", None) else ""} '
+        '{("-b " + " ".join(bin_dirs)) if bin_dirs and bin_dirs != ["~/.sos/bin"] else ""} '
+        '{("-j " + str(max_procs)) if max_procs != 4 else ""} '
+        '{("-J " + str(max_running_jobs)) if max_running_jobs else ""} '
+        '{("-t " + " ".join(targets)) if targets else ""} '
+        '{" ".join(workflow_args)} '
+        , res))))
     env.logger.info('{:15s} \t{} ago'.format('Started:',
                 PrettyRelativeTime(time.time() - os.path.getmtime(workflow))))
     env.logger.info('{:15s} \t{}'.format('Working dir:', res['workdir']))

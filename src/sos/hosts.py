@@ -309,26 +309,26 @@ class RemoteHost:
 
     def _get_send_cmd(self, rename=False):
         if rename:
-            return '''ssh -q ${host} -p ${port} "mkdir -p ${dest!dpq}" && ''' + \
-                   '''rsync -av -e 'ssh -p ${port}' ${source!aep} "${host}:${dest!dep}" && ''' + \
-                   '''ssh -q ${host} -p ${port} "mv ${dest!dep}/${source!b} ${dest!ep}" '''
+            return '''ssh -q {host} -p {port} "mkdir -p {dest:dpq}" && ''' + \
+                    '''rsync -av -e 'ssh -p {port}' {source:aep} "{host}:{dest:dep}" && ''' + \
+                    '''ssh -q {host} -p {port} "mv {dest:dep}/{source:b} {dest:ep}" '''
         else:
-            return '''ssh -q ${host} -p ${port} "mkdir -p ${dest!dpq}" && rsync -av -e 'ssh -p ${port}' ${source!aep} "${host}:${dest!dep}"'''
+            return '''ssh -q {host} -p {port} "mkdir -p {dest:dpq}" && rsync -av -e 'ssh -p {port}' {source:aep} "{host}:{dest:dep}"'''
 
     def _get_receive_cmd(self, rename=False):
         if rename:
-            return '''rsync -av -e 'ssh -p ${port}' ${host}:${source!e} "${dest!adep}" && ''' + \
-                    '''mv "${dest!adep}/${source!b}" "${dest!aep}"'''
+            return '''rsync -av -e 'ssh -p {port}' {host}:{source:e} "{dest:adep}" && ''' + \
+                    '''mv "{dest:adep}/{source:b}" "{dest:aep}"'''
         else:
-            return '''rsync -av -e 'ssh -p ${port}' ${host}:${source!e} "${dest!adep}"'''
+            return '''rsync -av -e 'ssh -p {port}' {host}:{source:e} "{dest:adep}"'''
 
     def _get_execute_cmd(self):
         return self.config.get('execute_cmd',
-            '''ssh -q ${host} -p ${port} "bash --login -c '[ -d ${cur_dir} ] || mkdir -p ${cur_dir}; cd ${cur_dir} && ${cmd}'" ''')
+            '''ssh -q {host} -p {port} "bash --login -c '[ -d {cur_dir} ] || mkdir -p {cur_dir}; cd {cur_dir} && {cmd}'" ''')
 
     def _get_query_cmd(self):
         return self.config.get('query_cmd',
-            '''ssh -q ${host} -p ${port} "bash --login -c 'sos status ${task} -v 0'" ''')
+            '''ssh -q {host} -p {port} "bash --login -c 'sos status {task} -v 0'" ''')
 
     def is_shared(self, path):
         fullpath = os.path.abspath(os.path.expanduser(path))
@@ -569,7 +569,7 @@ class RemoteHost:
         self.send_task_file(task_file)
 
     def send_task_file(self, task_file):
-        send_cmd = cfg_interpolate('ssh -q ${address} -p ${port} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks" && scp -q -P ${port} ${job_file!ap} ${address}:.sos/tasks/',
+        send_cmd = cfg_interpolate('ssh -q {address} -p {port} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks" && scp -q -P {port} {job_file!ap} {address}:.sos/tasks/',
                 {'job_file': task_file, 'address': self.address, 'port': self.port})
         # use scp for this simple case
         try:
@@ -632,7 +632,7 @@ class RemoteHost:
         # for filetype in ('res', 'status', 'out', 'err'):
         sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
         # use -p to preserve modification times so that we can keep the job status locally.
-        receive_cmd = cfg_interpolate("scp -P ${port} -p -q ${address}:.sos/tasks/${task}.* ${sys_task_dir}",
+        receive_cmd = cfg_interpolate("scp -P {port} -p -q {address}:.sos/tasks/{task}.* {sys_task_dir}",
                 {'port': self.port, 'address': self.address, 'task': task_id, 'sys_task_dir': sys_task_dir})
         # it is possible that local files are readonly (e.g. a pluse file) so we first need to
         # make sure the files are readable and remove them. Also, we do not want any file that is

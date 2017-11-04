@@ -193,10 +193,10 @@ run:
 rep = range(5)
 input: for_each = 'rep'
 # ff should change and be usable inside run
-ff = "${_rep}.txt"
+ff = f"{_rep}.txt"
 run:  active=1,2
-echo ${ff}
-touch temp/${ff}
+echo {ff}
+touch temp/{ff}
 ''')
         #
         for active, result in [
@@ -218,10 +218,10 @@ touch temp/${ff}
 rep = range(5)
 input: for_each = 'rep'
 # ff should change and be usable inside run
-ff = "${_rep}.txt"
+ff = f"{_rep}.txt"
 run:  active=%s
-echo ${ff}
-touch temp/${ff}
+echo {ff}
+touch temp/{ff}
 ''' % active).replace('/', os.sep))
             wf = script.workflow()
             env.config['sig_mode'] = 'force'
@@ -241,11 +241,11 @@ touch temp/${ff}
 rep = range(5)
 input: for_each = 'rep'
 # ff should change and be usable inside run
-ff = "${_rep}.txt"
+ff = f"{_rep}.txt"
 task:  active=%s
 run:
-echo ${ff}
-touch temp/${ff}
+echo {ff}
+touch temp/{ff}
 ''' % active).replace('/', os.sep))
             wf = script.workflow()
             env.config['sig_mode'] = 'force'
@@ -273,13 +273,13 @@ parameter: gvar = 10
 # generate a file
 tt = range(gvar, gvar + 3)
 input: for_each='tt'
-output: "myfile_${_tt}.txt"
+output: f"myfile_{_tt}.txt"
 # additional comment
 
 # _tt should be used in task
 task: concurrent=True
 run:
-    echo ${_tt}_${_index} > ${_output!q}
+    echo {_tt}_{_index} > {_output:q}
 
 ''')
         wf = script.workflow()
@@ -300,7 +300,7 @@ input: for_each=[{'a': range(2)}, {'b': range(3)}]
 
 task:
 run:
-    echo "a = ${a}, b = ${b}"
+    echo "a = {a}, b = {b}"
 ''')
         env.config['wait_for_task'] = True
         env.config['max_running_jobs'] = 2
@@ -316,7 +316,7 @@ input: for_each=[{'a': range(2)}]
 
 task:
 run:
-    echo Try to kill "a = ${a}"
+    echo Try to kill "a = {a}"
     sleep 20
 ''')
         wf = script.workflow()
@@ -363,7 +363,7 @@ input: for_each=[{'a': range(3)}]
 
 task: concurrent=True
 run:
-    echo "a = ${a}"
+    echo "a = {a}"
     sleep 20
 ''')
         wf = script.workflow()
@@ -410,7 +410,7 @@ run:
 
 [20]
 run:
-    touch a${a}.txt
+    touch a{a}.txt
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={'sig_mode': 'force'}).run()
@@ -427,7 +427,7 @@ run:
 
 [20]
 run:
-    touch a${a}_${b}.txt
+    touch a{a}_{b}.txt
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={'sig_mode': 'force'}).run()
@@ -441,7 +441,7 @@ run:
 input: for_each={'I': range(10)}
 task: trunk_size=5, cores=1, mem='1M', walltime='10m'
 run:
-    echo ${I} > ${I}.txt
+    echo {I} > {I}.txt
     sleep 2
 ''')
         wf = SoS_Script(filename='test_trunksize.sos').workflow()
@@ -462,8 +462,8 @@ run:
         self.assertEqual(len(res['pending_tasks']), 2)
         subprocess.call('sos resume -w', shell=True)
         for i in range(10):
-            self.assertTrue(os.path.isfile('{}.txt'.format(i)))
-            FileTarget('{}.txt'.format(i)).remove('both')
+            self.assertTrue(os.path.isfile(f'{i}.txt'))
+            FileTarget(f'{i}.txt').remove('both')
         FileTarget('test_trunksize.sos').remove()
 
     def testTrunkWorkersOption(self):
@@ -474,7 +474,7 @@ run:
 input: for_each={'I': range(12)}
 task: trunk_size=6, trunk_workers=3, mem='1M', walltime='10m'
 run:
-    echo ${I} > ${I}.txt
+    echo {I} > {I}.txt
     sleep 2
 ''')
         wf = SoS_Script(filename='test_trunkworker.sos').workflow()
@@ -509,7 +509,7 @@ run:
 input: for_each={{'i': range(10)}}
 task: tags='{}', trunk_size=2
 sh:
-  echo {} ${{i}}
+  echo {} {{i}}
 '''.format(tag, tag))
         wf = SoS_Script(filename='test_tags.sos').workflow()
         res = Base_Executor(wf, config={
@@ -537,7 +537,7 @@ sh:
 input: for_each={{'i': range(2)}}
 task: tags=['{}', '{}']
 sh:
-  echo {} ${{i}}
+  echo {} {{i}}
 '''.format(tag1, tag2, tag1))
         wf = SoS_Script(filename='test_tags.sos').workflow()
         res = Base_Executor(wf, config={
