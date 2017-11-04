@@ -1320,7 +1320,7 @@ class Base_Step_Executor:
                     # during the execution of step, for compatibility.
                     env.sos_dict.set('output', sos_targets(self.output_groups[0]))
                     for og in self.output_groups[1:]:
-                        if og != env.sos_dict['output']:
+                        if og != env.sos_dict['output'].targets():
                             env.sos_dict['output'].extend(og)
 
             self.log('output')
