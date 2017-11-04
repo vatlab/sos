@@ -557,7 +557,8 @@ class Base_Executor:
                 # NOTE: If a step is called multiple times with different targets, it is much better
                 # to use different names because pydotplus can be very slow in handling graphs with nodes
                 # with identical names.
-                dag.add_step(section.uuid, f'{section.step_name()} {short_repr(env.sos_dict["__default_output__"])}', None, res['step_input'],
+                dag.add_step(section.uuid, f'{section.step_name()} {short_repr(env.sos_dict["__default_output__"])}',
+                             None, res['step_input'],
                              res['step_depends'], res['step_output'], context=context)
                 #
                 added_node += 1
@@ -601,7 +602,7 @@ class Base_Executor:
 
             context={'__signature_vars__': signature_vars,
                     '__environ_vars__': environ_vars,
-                    '__changed_vars__': changed_vars }
+                    '__changed_vars__': changed_vars}
 
             # for nested workflow, the input is specified by sos_run, not None.
             if idx == 0:

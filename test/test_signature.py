@@ -92,7 +92,7 @@ dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', paired_with='dest'
 output: _dest
 
-run(f" cp {_input} {_dest} ")
+run(f" cp {_input} {_dest[0]} ")
 """)
         # script format
 

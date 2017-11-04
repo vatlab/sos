@@ -157,14 +157,15 @@ def analyze_section(section, default_input=None):
         try:
             environ_vars |= accessed_vars(stmt)
             args, kwargs = SoS_eval('__null_func__({})'.format(stmt))
+
             if not args:
                 if default_input is None:
-                    step_input = []
+                    step_input = Undetermined()
                 else:
                     step_input = default_input
             elif not any(isinstance(x, (dynamic, remote)) for x in args):
                 step_input = _expand_file_list(True, *args)
-            env.sos_dict.set('input', sos_targets(step_input))
+            env.sos_dict.set('input', Undetermined() if isinstance(step_input, Undetermined) else sos_targets(step_input))
 
             if 'paired_with' in kwargs:
                 pw = kwargs['paired_with']
