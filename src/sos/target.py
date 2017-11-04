@@ -575,6 +575,12 @@ class sos_targets(BaseTarget, Sequence):
     def extend(self, another):
         self._targets.extend(sos_targets(another).targets())
 
+    def __getstate__(self):
+        return self._targets
+
+    def __setstate__(self, targets):
+        self._targets = targets
+
     def __len__(self):
         return len(self._targets)
 
