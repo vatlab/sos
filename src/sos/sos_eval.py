@@ -37,7 +37,14 @@ def interpolate(text, global_dict=None, local_dict=None):
         raise ValueError('Failed to interpolate {}: {}'.format(text, e))
 
 def cfg_interpolate(text, local_dict={}):
-    return interpolate(text, local_dict, env.sos_dict.get('CONFIG', {}))
+    # handle nested interpolate ...
+    while True:
+        res = interpolate(text, local_dict, env.sos_dict.get('CONFIG', {}))
+        if res == text:
+            break
+        else:
+            text = res
+    return res
 
 def accessed_vars(statement, filename='<string>', mode='exec'):
     '''Parse a Python statement and analyze the symbols used. The result

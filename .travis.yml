@@ -58,8 +58,8 @@ script:
     - pytest -x -v test_remove.py
     - pytest -x -v test_docker_actions.py
     - pytest -x -v test_task.py
+    - pytest -x -v test_remote.py
     #- pytest -x -v test_queue.py	
-    #- pytest -x -v test_remote.py
 
 
 notifications:

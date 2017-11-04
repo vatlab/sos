@@ -35,6 +35,7 @@ from .utils import env, short_repr, expand_size, format_HHMMSS, expand_time
 from .sos_eval import Undetermined, cfg_interpolate
 from .sos_task import BackgroundProcess_TaskEngine, TaskParams, loadTask
 from .sos_syntax import SOS_LOGLINE
+from .target import sos_targets
 
 #
 # A 'queue' is defined by queue configurations in SoS configuration files.
