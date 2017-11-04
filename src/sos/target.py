@@ -546,7 +546,6 @@ class sos_targets(BaseTarget, Sequence):
     def __init__(self, *args):
         super(BaseTarget, self).__init__()
         self._targets = []
-        self._undetermined = not args
         for arg in args:
             if isinstance(arg, str):
                 self._targets.append(arg)
@@ -569,9 +568,6 @@ class sos_targets(BaseTarget, Sequence):
             elif arg is not None:
                 raise RuntimeError('Unrecognized targets {} of type {}'.format(
                     arg, arg.__class__.__name__))
-
-    def is_undetermined(self):
-        return self._undetermined and self._targets
 
     def targets(self):
         return self._targets

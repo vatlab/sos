@@ -33,7 +33,7 @@ from .utils import env, StopInputGroup, TerminateExecution, short_repr, stable_r
     get_traceback, transcribe, expand_size, format_HHMMSS
 from .pattern import extract_pattern
 from .sos_eval import SoS_eval, SoS_exec, Undetermined
-from .target import BaseTarget, FileTarget, dynamic, remote, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
+from .target import BaseTarget, FileTarget, dynamic, remote, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock, sos_targets
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS, SOS_TAG
 from .sos_task import TaskParams, MasterTaskParams
@@ -238,9 +238,9 @@ def analyze_section(section, default_input=None):
         signature_vars |= accessed_vars(section.task)
     return {
         'step_name': '{}_{}'.format(section.name, section.index) if isinstance(section.index, int) else section.name,
-        'step_input': step_input,
-        'step_output': step_output,
-        'step_depends': step_depends,
+        'step_input': step_input if isinstance(step_input, Undetermined) else sos_targets(step_input),
+        'step_output': step_output if isinstance(step_output, Undetermined) else sos_targets(step_output),
+        'step_depends': step_depends if isinstance(step_depends, Undetermined) else sos_targets(step_depends),
         # variables starting with __ are internals...
         'environ_vars': {x for x in environ_vars - local_vars if not x.startswith('__')},
         'signature_vars': {x for x in signature_vars if not x.startswith('__')},

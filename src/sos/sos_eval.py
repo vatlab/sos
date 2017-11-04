@@ -150,6 +150,9 @@ class Undetermined(object):
         raise RuntimeError('Undetermined expression should be evaluated before used. '
             'This is certainly a bug so please report this to SoS developer.')
 
+    def targets(self):
+        return self
+
 class sos_namespace_(object):
     '''A namespace that is created by evaluating statements
     and use the results as attributes of the object.'''

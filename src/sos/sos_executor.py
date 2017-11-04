@@ -493,8 +493,8 @@ class Base_Executor:
                 # to use different names because pydotplus can be very slow in handling graphs with nodes
                 # with identical names.
                 dag.add_step(section.uuid, '{} {}'.format(section.step_name(),
-                    short_repr(env.sos_dict['__default_output__'])), None, res['step_input'],
-                    res['step_depends'], res['step_output'], context=context)
+                    short_repr(env.sos_dict['__default_output__'])), None, res['step_input'].targets(),
+                    res['step_depends'].targets(), res['step_output'].targets(), context=context)
                 added_node += 1
                 resolved += 1
 

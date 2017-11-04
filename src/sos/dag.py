@@ -230,14 +230,14 @@ class SoS_DAG(nx.DiGraph):
         missing = []
         existing = []
         for x in list(self._all_dependent_files.keys()) + ([] if targets is None else targets):
+            if isinstance(x, FileTarget):
+                raise RuntimeError(f'DAG should not contain FileTarget instance {x}')
             if FileTarget(x).exists() if isinstance(x, str) else x.exists():
                 if x not in self._all_output_files:
                     existing.append(x)
             elif x not in self._all_output_files:
                 missing.append(x)
         return missing, existing
-        #return [x for x in list(self._all_dependent_files.keys()) + ([] if targets is None else targets) \
-        #    if x not in self._all_output_files and not (FileTarget(x).exists() if isinstance(x, str) else x.exists())]
 
     def regenerate_target(self, target):
         if target in self._all_output_files:
