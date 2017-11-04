@@ -30,7 +30,7 @@ from sos._version import __version__
 from sos.utils import env
 from sos.sos_eval import Undetermined
 from sos.sos_executor import Base_Executor, ExecuteError
-from sos.target import FileTarget
+from sos.target import FileTarget, sos_targets
 import subprocess
 
 def multi_attempts(fn):
@@ -263,7 +263,7 @@ output: f"{_data['A']}_{_data['B']}_{_data['C']}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['res'], ['1_2_Hello.txt', '2_4_World.txt'])
+        self.assertEqual(env.sos_dict['res'], sos_targets('1_2_Hello.txt', '2_4_World.txt'))
 
         # test dictionary format of for_each
         self.touch(['a.txt', 'b.txt', 'a.pdf'])
@@ -559,7 +559,7 @@ output: f"{_input}.res"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['res'], ['a.txt.res', 'b.txt.res'])
+        self.assertEqual(env.sos_dict['res'], sos_targets('a.txt.res', 'b.txt.res'))
         #
         script = SoS_Script(r"""
 [0: shared='counter']

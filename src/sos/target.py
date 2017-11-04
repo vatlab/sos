@@ -619,7 +619,7 @@ class sos_targets(BaseTarget, Sequence):
         return hash(repr(self))
 
     def __eq__(self, other):
-        return isinstance(other, sos_targets) and self._targets == other._targets
+        return self._targets == other._targets if isinstance(other, sos_targets) else other
 
     def sig_file(self):
         if len(self._targets) == 1:

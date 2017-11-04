@@ -53,8 +53,7 @@ script:
     - pytest -x -v test_target.py
     - pytest -x -v test_dag.py
     - pytest -x -v test_signature.py
-
-    #- pytest -x -v test_execute.py
+    - pytest -x -v test_execute.py
     #- pytest -x -v test_queue.py	
     #- pytest -x -v test_nested.py
     #- pytest -x -v test_remote.py
