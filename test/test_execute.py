@@ -124,7 +124,7 @@ a =1
 [0: shared='res']
 res = ''
 b = 200
-res += "{b}"
+res += f"{b}"
 """)
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -134,7 +134,7 @@ res += "{b}"
 [0: shared='res']
 res = ''
 for b in range(5):
-    res += "{b}"
+    res += f"{b}"
 """)
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -143,7 +143,7 @@ for b in range(5):
         script = SoS_Script(r"""
 [0: shared={'res':'output'}]
 input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
-output: ['{}_{}_processed.txt'.format(x,y) for x,y in zip(name, model)]
+output: [f'{x}_{y}_processed.txt' for x,y in zip(name, model)]
 
 """)
         wf = script.workflow()
@@ -263,7 +263,7 @@ output: f"{_data['A']}_{_data['B']}_{_data['C']}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['res'], sos_targets('1_2_Hello.txt', '2_4_World.txt'))
+        self.assertEqual(env.sos_dict['res'], ['1_2_Hello.txt', '2_4_World.txt'])
 
         # test dictionary format of for_each
         self.touch(['a.txt', 'b.txt', 'a.pdf'])
@@ -405,7 +405,7 @@ files = ['a.txt', 'b.txt']
 vars = [1, 2]
 
 input: files, paired_with='vars', group_by=1
-output: f"{_input}{_vars}"
+output: f"{_input}{_vars[0]}"
 run:
     touch {output}
 ''')
@@ -423,7 +423,7 @@ vars = [1, 2]
 vars2 = ['a', 'b']
 
 input: files, paired_with=('vars', 'vars2'), group_by=1
-output: f"{_input}{_vars}"
+output: f"{_input}{_vars[0]}"
 run:
     touch {output}
 ''')
@@ -438,7 +438,7 @@ run:
 [0]
 files = ['a.txt', 'b.txt']
 input: files, paired_with={'var': [1,2], 'var2': ['a', 'b']}, group_by=1
-output: f"{_input}{var}"
+output: f"{_input}{var[0]}"
 run:
     touch {output}
 ''')
@@ -559,7 +559,7 @@ output: f"{_input}.res"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['res'], sos_targets('a.txt.res', 'b.txt.res'))
+        self.assertEqual(env.sos_dict['res'], ['a.txt.res', 'b.txt.res'])
         #
         script = SoS_Script(r"""
 [0: shared='counter']
@@ -780,7 +780,7 @@ input: dynamic('temp/*.txt'), group_by='single'
 output: dynamic('temp/*.txt.bak')
 
 run:
-touch <_input>.bak
+touch {_input}.bak
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -828,7 +828,7 @@ touch temp/{ff}
 [1: shared={'res':'output'}]
 import random
 for i in range(3):
-    with open("temp/test_{random.randint(1, 100000)}.txt", 'w') as res:
+    with open(f"temp/test_{random.randint(1, 100000)}.txt", 'w') as res:
         res.write(str(i))
 
 ''')

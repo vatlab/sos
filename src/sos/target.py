@@ -576,7 +576,13 @@ class sos_targets(BaseTarget, Sequence):
         return self._targets
 
     def extend(self, another):
-        self._targets.extend(sos_targets(another).targets())
+        if isinstance(another, Undetermined):
+            self._targets.append(another)
+        else:
+            self._targets.extend(sos_targets(another).targets())
+
+    def has_undetermined(self):
+        return any(isinstance(x, Undetermined) for x in self._targets)
 
     def __getstate__(self):
         return self._targets

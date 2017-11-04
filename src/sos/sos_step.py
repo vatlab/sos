@@ -730,7 +730,7 @@ class Base_Step_Executor:
             raise ValueError(r"FIXME output should not be targets type")
 
         # set variables
-        env.sos_dict.set('_output', sos_targets(ofiles))
+        env.sos_dict.set('_output', ofiles if isinstance(ofiles, Undetermined) else sos_targets(ofiles))
         #
         if isinstance(env.sos_dict['output'], (type(None), Undetermined)):
             env.sos_dict.set('output', copy.deepcopy(ofiles))
@@ -751,10 +751,21 @@ class Base_Step_Executor:
 
     def reevaluate_output(self):
         # re-process the output statement to determine output files
-        args, _ = SoS_eval('__null_func__({})'.format(env.sos_dict['output'].expr), self.step.sigil)
-        # handle dynamic args
-        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-        env.sos_dict.set('output', sos_targets(self.expand_output_files('', *args)))
+        if isinstance(env.sos_dict['output'], Undetermined):
+            args, _ = SoS_eval('__null_func__({})'.format(env.sos_dict['output'].expr))
+            # handle dynamic args
+            args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
+            env.sos_dict.set('output', sos_targets(self.expand_output_files('', *args)))
+        else:
+            # this needs to be re-visited
+            for target in env.sos_dict['output'].targets():
+                if not isinstance(target, Undetermined):
+                    continue
+                args, _ = SoS_eval('__null_func__({})'.format(target.expr))
+                # handle dynamic args
+                args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
+                env.sos_dict.set('output', sos_targets(self.expand_output_files('', *args)))
+
 
     def prepare_task(self):
         env.sos_dict['_runtime']['cur_dir'] = os.getcwd()
@@ -1307,7 +1318,7 @@ class Base_Step_Executor:
             # not _output. For the same reason, signatures can be wrong if it has
             # Undetermined output.
             if env.config['run_mode'] in ('run', 'interactive'):
-                if isinstance(env.sos_dict['output'], Undetermined):
+                if isinstance(env.sos_dict['output'], Undetermined) or env.sos_dict['output'].has_undetermined():
                     self.reevaluate_output()
                     # if output is no longer Undetermined, set it to output
                     # of each signature
