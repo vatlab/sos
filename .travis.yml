@@ -49,8 +49,8 @@ script:
     - pytest -x -v test_utils.py
     - pytest -x -v test_parser.py
     - pytest -x -v test_convert.py
+    - pytest -x -v test_pack.py	
 
-    #- pytest -x -v test_pack.py	
     #- pytest -x -v test_execute.py
     #- pytest -x -v test_target.py
     #- pytest -x -v test_queue.py	
