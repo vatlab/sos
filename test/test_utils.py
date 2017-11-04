@@ -34,7 +34,7 @@ from sos.pattern import extract_pattern, expand_pattern
 from sos.sos_eval import SoS_eval, accessed_vars, Undetermined, on_demand_options
 from sos.sos_script import SoS_Script
 from sos.sos_executor import Base_Executor, analyze_section
-from sos.target import executable, remote
+from sos.target import executable, remote, sos_targets
 
 import socket
 def internet_on(host='8.8.8.8', port=80, timeout=3):
@@ -224,14 +224,14 @@ task:
             res = analyze_section(section)
             if section.names[0][1] == '1':
                 self.assertTrue(isinstance(res['step_input'], Undetermined))
-                self.assertEqual(res['step_depends'], [])
-                self.assertEqual(res['step_output'], [])
+                self.assertEqual(res['step_depends'], sos_targets())
+                self.assertEqual(res['step_output'], sos_targets())
                 self.assertEqual(res['environ_vars'], {'p1', 'infiles'})
                 self.assertEqual(res['signature_vars'], {'c'})
                 self.assertEqual(res['changed_vars'], {'b'})
             elif section.names[0][1] == '2':
-                self.assertEqual(res['step_input'], [])
-                self.assertEqual(res['step_depends'], ['some.txt', executable('ls')])
+                self.assertEqual(res['step_input'], sos_targets())
+                self.assertEqual(res['step_depends'], sos_targets('some.txt', executable('ls')))
                 self.assertTrue(isinstance(res['step_output'], Undetermined))
                 # for_each will not be used for DAG
                 self.assertEqual(res['environ_vars'], {'for_each', 'executable'})
