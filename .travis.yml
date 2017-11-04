@@ -43,24 +43,11 @@ before_script:
     - cd test
     - sh build_test_docker.sh
 script:
-    # coverage does not seem to work well with python 3.6, but it does not really matter because we have coverage report from python 3.5 already
-    # SAS and Matlab are not tested
-    - pytest -x -v test_actions.py
-    - pytest -x -v test_utils.py
-    - pytest -x -v test_parser.py
-    - pytest -x -v test_convert.py
-    - pytest -x -v test_pack.py	
-    - pytest -x -v test_target.py
-    - pytest -x -v test_dag.py
-    - pytest -x -v test_signature.py
-    - pytest -x -v test_execute.py
-    - pytest -x -v test_nested.py
-    - pytest -x -v test_remove.py
-    - pytest -x -v test_docker_actions.py
-    - pytest -x -v test_task.py
-    - pytest -x -v test_remote.py
-    #- pytest -x -v test_queue.py	
+    - pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report=xml;
 
+after_success:
+    - coverage combine;
+    - coveralls
 
 notifications:
     email:
