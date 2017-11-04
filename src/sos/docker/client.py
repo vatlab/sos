@@ -34,7 +34,7 @@ import docker
 from io import BytesIO
 from sos.utils import env
 from sos.sos_eval import interpolate
-
+from sos.target import sos_targets
 #
 # docker support
 #
@@ -166,7 +166,7 @@ class SoS_DockerClient:
             #
             # if there is an interpreter and with args
             if not args:
-                args = '${filename!q}'
+                args = '{filename:q}'
             if not interpreter:
                 interpreter = '/bin/bash'
                 # if there is a shebang line, we ...
@@ -220,8 +220,8 @@ class SoS_DockerClient:
             cmd_opt = ''
             if script and interpreter:
                 volumes_opt += ' -v {}:{}'.format(shlex.quote(os.path.join(tempdir, tempscript)), '/var/lib/sos/{}'.format(tempscript))
-                cmd_opt = interpolate('{} {}'.format(interpreter, args), '${ }',
-                            {'filename': '/var/lib/sos/{}'.format(tempscript)})
+                cmd_opt = interpolate('{} {}'.format(interpreter, args),
+                            {'filename': sos_targets(f'/var/lib/sos/{tempscript}')})
             #
             working_dir_opt = '-w={}'.format(shlex.quote(os.path.abspath(os.getcwd())))
             if 'working_dir' in kwargs:

@@ -172,7 +172,7 @@ input_volume = os.path.dirname(fastq_files[0])
 output_volume = os.getcwd()
 
 run: docker_image='compbio/ngseasy-fastqc:1.0-r001',
-    volumes=["${input_volume}:/input_data", "${output_volume}:/output_data"]
+    volumes=["{input_volume}:/input_data", "{output_volume}:/output_data"]
 
     ls -l /input_data
     /usr/local/bin/fastqc /input_data/*.fastq --outdir /output_data
