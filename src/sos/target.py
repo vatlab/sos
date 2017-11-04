@@ -545,25 +545,32 @@ class sos_targets(BaseTarget, Sequence):
         super(BaseTarget, self).__init__()
         self._targets = []
         for arg in args:
-            if isinstance(arg, str):
-                self._targets.append(arg)
+            if isinstance(arg, Undetermined):
+                raise RuntimeError("Undetermined cannot be inserted as a target")
+            elif isinstance(arg, str):
+                    self._targets.append(arg)
+            elif isinstance(arg, sos_targets):
+                self._targets.extend(arg.targets())
             elif isinstance(arg, BaseTarget):
                 self._targets.append(arg)
-            elif isinstance(arg, sos_targets):
-                self._targets.extends(arg.targets())
             elif isinstance(arg, Iterable):
                 # in case arg is a Generator, check its type will exhaust it
                 for t in list(arg):
                     if isinstance(t, str):
                         self._targets.append(t)
+                    elif isinstance(t, sos_targets):
+                        self._targets.extend(t.targets())
                     elif isinstance(t, BaseTarget):
                         self._targets.append(t)
-                    elif isinstance(t, sos_targets):
-                        self._targets.extends(t.targets())
                     elif t is not None:
                         raise RuntimeError(f'Unrecognized targets {t} of type {t.__class__.__name__}')
             elif arg is not None:
                 raise RuntimeError(f'Unrecognized targets {arg} of type {arg.__class__.__name__}')
+        for t in self._targets:
+            if isinstance(t, sos_targets):
+                raise RuntimeError(f"Nested sos_targets {t} were introduced by {args}")
+            if not isinstance(t, (str, BaseTarget)):
+                raise RuntimeError(f"Unrecognized target {t}")
 
     def targets(self):
         return self._targets

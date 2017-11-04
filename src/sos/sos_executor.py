@@ -35,7 +35,7 @@ from .utils import env, Error, WorkflowDict, get_traceback, short_repr, pickleab
     load_config_files, save_var, load_var
 from .sos_eval import SoS_exec
 from .dag import SoS_DAG
-from .target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step, Undetermined
+from .target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step, Undetermined, sos_targets
 from .pattern import extract_pattern
 from .hosts import Host
 
@@ -612,9 +612,9 @@ class Base_Executor:
             dag.add_step(section.uuid,
                 section.step_name(),
                 idx,
-                res['step_input'],
-                res['step_depends'],
-                res['step_output'],
+                res['step_input'].targets(),
+                res['step_depends'].targets(),
+                res['step_output'].targets(),
                 context = context)
             default_input = res['step_output']
         #
@@ -890,9 +890,9 @@ class Base_Executor:
                                     | {'_input', '__step_output__', '__default_output__', '__args__'}))
                             node._context.update(svar)
                             node._context['__completed__'].append(res['__step_name__'])
-                        dag.update_step(runnable, env.sos_dict['__step_input__'],
-                            env.sos_dict['__step_output__'],
-                            env.sos_dict['__step_depends__'])
+                        dag.update_step(runnable, env.sos_dict['__step_input__'].targets(),
+                            env.sos_dict['__step_output__'].targets(),
+                            env.sos_dict['__step_depends__'].targets())
                         runnable._status = 'completed'
                         prog.update(1)
                     elif '__workflow_id__' in res:

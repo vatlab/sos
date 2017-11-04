@@ -357,7 +357,7 @@ class SoS_Step:
         if 'sigil' in opt:
             pieces = separate_options(opt)
             for piece in pieces:
-                mo = SOS_SIGIL_OPTION.match(option)
+                mo = SOS_SIGIL_OPTION.match(piece)
                 if mo:
                     opt_name, opt_value = mo.group('name', 'value')
                     sigil = eval(opt_value)

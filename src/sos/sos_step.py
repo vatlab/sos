@@ -1024,7 +1024,7 @@ class Base_Step_Executor:
                 if isinstance(env.sos_dict['__step_output__'], (Undetermined, sos_targets)):
                     env.sos_dict.set('input', copy.deepcopy(env.sos_dict['__step_output__']))
                 elif isinstance(env.sos_dict['__step_output__'], list):
-                    env.logger.warning(f"__step_output__ should not be list")
+                    #env.logger.warning(f"__step_output__ should not be list")
                     env.sos_dict.set('input', sos_targets(env.sos_dict['__step_output__']))
                 else:
                     raise RuntimeError('__step_output__ can only be None, Undetermined, or a list of files.')

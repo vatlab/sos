@@ -28,7 +28,7 @@ import shutil
 from sos.sos_script import SoS_Script
 from sos.utils import env
 from sos.sos_executor import Base_Executor
-from sos.target import FileTarget
+from sos.target import FileTarget, sos_targets
 from sos.hosts import Host
 import subprocess
 
@@ -75,7 +75,7 @@ dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', paired_with='dest'
 output: _dest
 
-run(" cp ${_input} ${_dest} ")
+run(f" cp {_input} {_dest[0]} ")
 """)
 
     def testSignature1(self):
@@ -92,7 +92,7 @@ dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', paired_with='dest'
 output: _dest
 
-run(" cp ${_input} ${_dest} ")
+run(f" cp {_input} {_dest} ")
 """)
         # script format
 
@@ -116,8 +116,8 @@ output: _dest
 
 task:
 run:
-echo cp ${_input} ${_dest}
-cp ${_input} ${_dest}
+echo cp {_input} {_dest[0]}
+cp {_input} {_dest[0]}
 """)
 
     def testSignatureWithSharedVariable(self):
@@ -166,7 +166,7 @@ output: _dest
 
 run:
 sleep 0.5
-cp ${_input} ${_dest}
+cp {_input} {_dest[0]}
 """)
         # reset env mode
         env.config['sig_mode'] = 'default'
@@ -206,7 +206,7 @@ cp ${_input} ${_dest}
             self.assertTrue(tc.read(), 'a.txt')
         with open('temp/d.txt') as td:
             self.assertTrue(td.read(), 'b.txt')
-        self.assertEqual(env.sos_dict['oa'], ['temp/c.txt', 'temp/d.txt'])
+        self.assertEqual(env.sos_dict['oa'], sos_targets('temp/c.txt', 'temp/d.txt'))
         #
         # now in assert mode, the signature should be there
         env.config['sig_mode'] = 'assert'
@@ -235,7 +235,7 @@ cp ${_input} ${_dest}
 
 [0]
 output: 'a.txt'
-run("touch ${output}")
+run(f"touch {output}")
 ''')
         wf = script.workflow()
         try:
@@ -270,7 +270,7 @@ run("touch ${output}")
 # generate a file
 output: 'largefile.txt'
 
-run:
+run: sigil='${ }'
     for x in {1..1000}
     do
         echo $x >> ${output}
@@ -311,7 +311,7 @@ run:
 # generate a file
 output: 'midfile.txt'
 
-run:
+run: sigil='${ }'
     for x in {1..1000}
     do
         echo $x >> ${output}
@@ -320,8 +320,8 @@ run:
 [20]
 output: 'finalfile.txt'
 run:
-    cp ${input} ${output}
-    echo "MORE" >> ${output}
+    cp {input} {output}
+    echo "MORE" >> {output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -362,7 +362,7 @@ parameter: gvar = 10
 output: 'myfile.txt'
 # additional comment
 run:
-    echo ${gvar} > ${output!q}
+    echo {gvar} > {output:q}
 
 ''')
         wf = script.workflow()
@@ -391,7 +391,7 @@ parameter: gvar = 10
 output: 'myfile.txt'
 # additional comment
 run:
-    echo ${gvar} > ${output!q}
+    echo {gvar} > {output:q}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -424,10 +424,10 @@ parameter: gvar = 10
 [10]
 tt = [gvar]
 input: for_each='tt'
-output: "myfile_${_tt}.txt"
+output: f"myfile_{_tt}.txt"
 run:
-    echo "DO ${_tt}"
-    echo ${_tt} > ${_output!q}
+    echo "DO {_tt}"
+    echo {_tt} > {_output:q}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -440,10 +440,10 @@ parameter: gvar = 10
 [10]
 tt = [gvar, gvar + 1]
 input: for_each='tt'
-output: "myfile_${_tt}.txt"
+output: f"myfile_{_tt}.txt"
 run:
-    echo "DO ${_tt}"
-    echo ${_tt} > ${_output!q}
+    echo "DO {_tt}"
+    echo {_tt} > {_output:q}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -463,10 +463,10 @@ parameter: gvar = 10
 [10]
 tt = [gvar + 1]
 input: for_each='tt'
-output: "myfile_${_tt}.txt"
+output: f"myfile_{_tt}.txt"
 run:
-    echo "DO ${_tt}"
-    echo ${_tt} > ${_output!q}
+    echo "DO {_tt}"
+    echo {_tt} > {_output:q}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -489,14 +489,14 @@ parameter: K = [2,3]
 input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
 output: expand_pattern('{_name}.out')
 run:
-  touch ${_output}
+  touch {_output}
 
 [work_2]
 
 input: group_by = 'single', pattern = '{name}.{ext}', paired_with = ['K']
 output: expand_pattern('{_name}.{_K}.out')
 run:
-  touch ${_output}
+  touch {_output}
     ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -518,7 +518,7 @@ input: input_file, group_by = 1
 output: output_file[_index]
 run:
   sleep 2
-  touch ${_output}
+  touch {_output}
   ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -534,7 +534,7 @@ input: input_file, group_by = 1
 output: output_file[_index]
 run:
   sleep 2
-  touch ${_output}
+  touch {_output}
   ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -548,7 +548,7 @@ run:
 [1]
 input: 'test_action.txt'
 run: input='test_action.txt', output='lc.txt'
-    wc -l ${input[0]} > lc.txt
+    wc -l {input[0]} > lc.txt
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
