@@ -232,8 +232,8 @@ _DIRECTIVE_TMPL = r'''
 _ASSIGNMENT_TMPL = r'''
     ^                                  # from start of line
     (?P<var_name>[\w_][\d\w_]*)        # variable name
-    \s*=\s*                            # assignment
-    (?P<var_value>[\w_].*)                  # variable content
+    \s*=(?!=)\s*                            # assignment
+    (?P<var_value>.*)             # variable content
     '''
 
 _CONFIG_NAME = r'''
