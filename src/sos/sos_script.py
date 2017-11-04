@@ -354,6 +354,7 @@ class SoS_Step:
         # the script will be considered a f-string, but we will need to handle sigil option here
         self._script = text_repr(textwrap.dedent(self._script))
         # let us look for 'sigil=""' in options
+        prefix = 'f'
         if 'sigil' in opt:
             pieces = separate_options(opt)
             for piece in pieces:
@@ -361,9 +362,12 @@ class SoS_Step:
                 if mo:
                     opt_name, opt_value = mo.group('name', 'value')
                     sigil = eval(opt_value)
-                    self._script = replace_sigil(self._script, sigil)
-        self.statements[-1] = ['!', '{}(f{}{})\n'.format(self._action,
-            self._script, (', ' + opt) if opt else '')]
+                    if sigil is None:
+                        prefix = ''
+                    else:
+                        self._script = replace_sigil(self._script, sigil)
+        self.statements[-1] = ['!', '{}({}{}{})\n'.format(self._action,
+            prefix, self._script, (', ' + opt) if opt else '')]
         self.values = []
         self._action = None
         self._action_options = None
