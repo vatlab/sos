@@ -450,7 +450,7 @@ pandoc(input=['default_10.md', 'default_20.md'], output='output.html')
 [A]
 parameter: num=5
 report: output='report.txt'
-    touch ${num}.txt
+    touch {num}.txt
 
 ''')
         # output to a file
@@ -466,11 +466,11 @@ report: output='report.txt'
         script = SoS_Script(r'''
 [A]
 report: output='report.txt'
-    ${step_name}
+    {step_name}
 
 [A_10]
 report: output='report.txt'
-    ${step_name}
+    {step_name}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
