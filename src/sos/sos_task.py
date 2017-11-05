@@ -446,13 +446,13 @@ del sos_handle_parameter_
         if isinstance(x, remote):
             x = x.resolve()
             if isinstance(x, str):
-                x = interpolate(x, env.sos_dict)
+                x = interpolate(x, env.sos_dict._dict)
         return x
 
     for key in ['input', '_input',  'output', '_output', 'depends', '_depends']:
-        if key in sos_dict and isinstance(sos_dict[key], list):
+        if key in sos_dict and isinstance(sos_dict[key], (list, sos_targets)):
             # resolve remote() target
-            env.sos_dict.set(key, [resolve_remote(x) for x in sos_dict[key] if not isinstance(x, sos_step)])
+            env.sos_dict.set(key, sos_targets(resolve_remote(x) for x in sos_dict[key] if not isinstance(x, sos_step)))
 
     skipped = False
     if env.config['sig_mode'] == 'ignore':
