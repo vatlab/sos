@@ -611,6 +611,8 @@ class RemoteHost:
             raise
 
     def run_command(self, cmd, wait_for_task, realtime=False, **kwargs):
+        if isinstance(cmd, list):
+            cmd = subprocess.list2cmdline(cmd)
         try:
             cmd = cfg_interpolate(self.execute_cmd, {
                 'host': self.address, 'port': self.port,
