@@ -61,12 +61,17 @@ class TestTarget(unittest.TestCase):
                 (sos_targets('a.txt'), '', 'a.txt'),
                 (sos_targets(['a.txt']), '', 'a.txt'),
                 (sos_targets('/a/b/a.txt'), 'b', 'a.txt'),
-                (sos_targets('a b.txt'), 'q', "'a b.txt'"),
+                (sos_targets('a b.txt'), 'q', ("'a b.txt'", '"a b.txt"')),
                 (sos_targets('a b.txt'), 'x', ".txt"),
                 ]:
-            self.assertEqual(
-                interpolate('{{target:{}}}'.format(fmt), globals(), locals()), res,
-                    "Interpolation of {}:{} should be {}".format(target, fmt, res))
+            if isinstance(res, str):
+                self.assertEqual(
+                    interpolate('{{target:{}}}'.format(fmt), globals(), locals()), res,
+                        "Interpolation of {}:{} should be {}".format(target, fmt, res))
+            else:
+                self.assertTrue(
+                    interpolate('{{target:{}}}'.format(fmt), globals(), locals()) in res,
+                        "Interpolation of {}:{} should be one of {}".format(target, fmt, res))
 
     def testIterTargets(self):
         '''Test iterator interface of targets'''
