@@ -413,7 +413,7 @@ class Base_Executor:
             # if this is a regular string
             res = extract_pattern(p, [target])
             if res and not any(None in x for x in res.values()):
-                return res
+                return {x:y[0] for x,y in res.items()}
             # string match
             elif FileTarget(p) == FileTarget(target):
                 return True
@@ -467,7 +467,7 @@ class Base_Executor:
                 section = mo[0][0]
                 if isinstance(mo[0][1], dict):
                     for k,v in mo[0][1].items():
-                        env.sos_dict.set(k, v[0])
+                        env.sos_dict.set(k, v)
                 #
                 # for auxiliary, we need to set input and output, here
                 # now, if the step does not provide any alternative (e.g. no variable generated
@@ -526,7 +526,7 @@ class Base_Executor:
                 section = mo[0][0]
                 if isinstance(mo[0][1], dict):
                     for k,v in mo[0][1].items():
-                        env.sos_dict.set(k, v[0])
+                        env.sos_dict.set(k, v)
                 #
                 # for auxiliary, we need to set input and output, here
                 # now, if the step does not provide any alternative (e.g. no variable generated
