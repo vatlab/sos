@@ -27,6 +27,7 @@ import shutil
 import fasteners
 import pkg_resources
 from shlex import quote
+import subprocess
 
 from collections.abc import Sequence, Iterable
 
@@ -316,7 +317,6 @@ class executable(BaseTarget):
     def exists(self, mode='any'):
         if mode in ('any', 'target') and shutil.which(shlex.split(self._cmd)[0]):
             if self._version:
-                import subprocess
                 try:
                     output = subprocess.check_output(self._cmd,
                         stderr=subprocess.STDOUT, shell=True, timeout=5).decode()
@@ -367,7 +367,7 @@ class FileTarget(BaseTarget):
         'b': os.path.basename,
         'n': lambda x: os.path.splitext(x)[0],
         'x': lambda x: os.path.splitext(x)[1],
-        'q': (lambda x: list2cmdline([x])) if sys.platform == 'win32' else quote,
+        'q': (lambda x: subprocess.list2cmdline([x])) if sys.platform == 'win32' else quote,
         'p': lambda x: ('/' if len(x) > 1 and x[1] == ':' else '') + x.replace('\\', '/').replace(':', '/'),
         'r': repr,
         's': str,
