@@ -50,7 +50,7 @@ __all__ = ['SoS_Script']
 class ParsingError(Error):
     '''Raised when a configuration file does not follow legal syntax.'''
     def __init__(self, filename):
-        Error.__init__(self, 'File contains parsing errors: {}'.format(filename if filename != '<string>' else ''))
+        Error.__init__(self, f'File contains parsing errors: {filename if filename != "<string>" else ""}')
         self.filename = filename
         self.errors = []
         self.args = (filename, )
@@ -59,7 +59,7 @@ class ParsingError(Error):
         if (lineno, line) in self.errors:
             return
         self.errors.append((lineno, line))
-        self.message += '\n\t[line %2d]: %s\n%s' % (lineno, line, msg)
+        self.message += f'\n\t[line {lineno:2d}]: {line}\n{msg}'
 
 def separate_options(options):
     pieces = options.split(',')
@@ -96,7 +96,7 @@ def replace_sigil(text, sigil):
     if sigil is not None and (sigil.count(' ') != 1 or sigil[0] in (' ', "'") or \
         sigil[-1] in (' ', "'") or \
         sigil.split(' ')[0] == sigil.split(' ')[1]):
-        raise ValueError('Incorrect sigil "{}"'.format(sigil))
+        raise ValueError(f'Incorrect sigil "{sigil}"')
     # then we need to replace left sigil as { and right sigil asn }
     l, r = sigil.split(' ')
     # now that we have the correct sigil
@@ -114,7 +114,7 @@ def replace_sigil(text, sigil):
             # find right sigil
             right_pieces = rp.split(pieces[1], 1)
             if len(right_pieces) == 1:
-                raise ValueError('Missing right sigil in {}'.format(text))
+                raise ValueError(f'Missing right sigil in {text}')
             final_text += pieces[0].replace('{', '{{').replace('}', '}}') + \
                 '{' + right_pieces[0].replace('{', '{{').replace('}', '}}') + '}'
             text = right_pieces[1]
@@ -169,18 +169,18 @@ class SoS_Step:
                 return a
             else:
                 return n + \
-                    ('_{}'.format(i) if isinstance(i, str) and i.isdigit() else '')
+                    (f'_{i}' if isinstance(i, str) and i.isdigit() else '')
         else:
             if alias and self.alias:
                 return self.alias
             else:
                 return self.name + \
-                    ('_{}'.format(self.index) if isinstance(self.index, int) else '')
+                    (f'_{self.index}' if isinstance(self.index, int) else '')
 
     def match(self, step_name):
         # if this step provides name...
         for name, index, _ in self.names:
-            if step_name == name or step_name == '{}_{}'.format(name, index):
+            if step_name == name or step_name == f'{name}_{index}':
                 return True
         return False
 
@@ -258,7 +258,7 @@ class SoS_Step:
                 # will be tested before inserted so this function will always return True
                 return True
             else:
-                raise RuntimeError('Unrecognized expression type {}'.format(self.category()))
+                raise RuntimeError(f'Unrecognized expression type {self.category()}')
             return True
         except Exception as e:
             self.error_msg = repr(e)
@@ -369,8 +369,7 @@ class SoS_Step:
                     else:
                         prefix = 'f'
                         self._script = replace_sigil(self._script, sigil)
-        self.statements[-1] = ['!', '{}({}{}{})\n'.format(self._action,
-            prefix, self._script, (', ' + opt) if opt else '')]
+        self.statements[-1] = ['!', f'{self._action}({prefix}{self._script}{(", " + opt) if opt else ""})\n']
         self.values = []
         self._action = None
         self._action_options = None
@@ -409,17 +408,17 @@ class SoS_Step:
         for idx, statement in enumerate(self.statements):
             if statement[0] == ':' and statement[1] == 'parameter':
                 if '=' not in statement[2]:
-                    raise ValueError('{}:  Invalid parameter definition: {}'.format(self.step_name(), statement[2]))
+                    raise ValueError(f'{self.step_name()}:  Invalid parameter definition: {statement[2]}')
                 name, value = statement[2].split('=', 1)
                 name = name.strip()
                 if name.startswith('_'):
-                    raise ValueError('Invalid parameter name {}: names with leading underscore is not allowed.'.format(name))
+                    raise ValueError(f'Invalid parameter name {name}: names with leading underscore is not allowed.')
                 if name in SOS_DIRECTIVES:
-                    raise ValueError('Invalid parameter name {0}: {0} is a SoS keyword'.format(name))
+                    raise ValueError(f'Invalid parameter name {name}: {name} is a SoS keyword')
                 if not value.strip():
-                    raise ValueError('{}: Invalid parameter definition: {}'.format(self.step_name(), statement[2]))
-                self.statements[idx] = ['!', 'if "sos_handle_parameter_" in globals():\n    {} = sos_handle_parameter_({!r}, {})\n'
-                    .format(name, name.strip(), value), statement[2].strip()]
+                    raise ValueError(f'{self.step_name()}: Invalid parameter definition: {statement[2]}')
+                self.statements[idx] = ['!',
+                                        f'if "sos_handle_parameter_" in globals():\n    {name} = sos_handle_parameter_({name.strip()!r}, {value})\n', statement[2].strip()]
                 self.parameters[name] = value
         #
         task_directive = [idx for idx, statement in enumerate(self.statements) if statement[0] == ':' and statement[1] == 'task']
@@ -431,14 +430,14 @@ class SoS_Step:
         self.task = ''
         for statement in self.statements[start_task:]:
             if statement[0] == '=':
-                self.task += '{} = {}'.format(statement[1], statement[2])
+                self.task += f'{statement[1]} = {statement[2]}'
             elif statement[0] == ':':
                 if statement[1] in ('input', 'output', 'depends'):
-                    raise ValueError('{}: Step task should be defined as the last item in a SoS step'.format(self.step_name()))
+                    raise ValueError(f'{self.step_name()}: Step task should be defined as the last item in a SoS step')
                 elif statement[1] == 'task':
-                    raise ValueError('{}: Only one task is allowed for a step'.format(self.step_name()))
+                    raise ValueError(f'{self.step_name()}: Only one task is allowed for a step')
                 elif statement[1] == 'parameter':
-                    raise ValueError('{}: Parameters should be defined before step task'.format(self.step_name()))
+                    raise ValueError(f'{self.step_name()}: Parameters should be defined before step task')
                 # ignore ...
                 self.task += '\n'
             else:
@@ -450,7 +449,7 @@ class SoS_Step:
     def show(self):
         '''Output for command sos show'''
         textWidth = max(60, shutil.get_terminal_size((80, 20)).columns)
-        text = '  {:<20} '.format(self.step_name() + ':') + self.comment
+        text = f'  {self.step_name() + ":":<20} ' + self.comment
         print('\n'.join(
             textwrap.wrap(text,
                 width=textWidth,
@@ -458,7 +457,7 @@ class SoS_Step:
                 subsequent_indent=' '*22)))
         for statement in self.statements:
             if statement[0] == '!' and statement[1].startswith('if "sos_handle_parameter_" '):
-                print('    Parameter: {}'.format(statement[2]))
+                print(f'    Parameter: {statement[2]}')
 
 
 class SoS_Workflow:
@@ -506,7 +505,7 @@ class SoS_Workflow:
                     l, u = item.split('-')
                     if (l and not l.isdigit()) or (u and not u.isdigit()) or \
                         (l and u and int(l) > int(u)):
-                        raise ValueError('Invalid pipeline step item {}'.format(item))
+                        raise ValueError(f'Invalid pipeline step item {item}')
                     # pipeline:-100, pipeline:100+ or pipeline:10-100
                     if not l:
                         l = min(all_steps.keys())
@@ -517,15 +516,14 @@ class SoS_Workflow:
                         if key >= int(l) and key <= int(u):
                             all_steps[key] = True
                 else:
-                    raise ValueError('Invalid pipeline step item {}'.format(item))
+                    raise ValueError(f'Invalid pipeline step item {item}')
             # keep only selected steps (and the global section)
             self.sections = [x for x in self.sections if x.index < 0 or all_steps[x.index]]
         #
         env.logger.debug('Workflow {} created with {} sections: {}'
             .format(workflow_name, len(self.sections),
-            ', '.join('{}_{}'.format(section.name,
-                    'global' if section.index == -2 else section.index)
-            for section in self.sections)))
+            ', '.join(f'{section.name}_{"global" if section.index == -2 else section.index}'
+                      for section in self.sections)))
 
     def section_by_id(self, uuid):
         for section in self.sections:
@@ -534,7 +532,7 @@ class SoS_Workflow:
         for section in self.auxiliary_sections:
             if uuid == section.uuid:
                 return section
-        raise RuntimeError('Failed to find section with uuid {}'.format(uuid))
+        raise RuntimeError(f'Failed to find section with uuid {uuid}')
 
     def extend(self, workflow):
         '''Append another workflow to existing one to created a combined workflow'''
@@ -582,7 +580,7 @@ class SoS_ScriptContent:
             self.md5 = self.calc_md5()
 
     def __repr__(self):
-        return '{}: filename: {}, content: {}'.format(self.md5, self.filename, self.content)
+        return f'{self.md5}: filename: {self.filename}, content: {self.content}'
 
 
     def __eq__(self, other):
@@ -623,7 +621,7 @@ class SoS_Script:
                                 content, self.sos_script = locate_script(filename + '.ipynb', start='.')
                             except Exception as e:
                                 env.logger.debug(e)
-                                env.logger.error('Failed to locate {0}, {0}.sos, or {0}.ipynb'.format(filename))
+                                env.logger.error(f'Failed to locate {filename}, {filename}.sos, or {filename}.ipynb')
                                 sys.exit(1)
                         else:
                             raise
@@ -697,7 +695,8 @@ class SoS_Script:
                     notebook_to_script(script_file, script)
                     content = script.getvalue()
         except Exception:
-            raise RuntimeError('Source file for nested workflow {} with extension .sos or .ipynb does not exist'.format(sos_file))
+            raise RuntimeError(
+                f'Source file for nested workflow {sos_file} with extension .sos or .ipynb does not exist')
 
         return content, script_file
 
@@ -714,7 +713,7 @@ class SoS_Script:
         # The global definition of sos_file should be accessible as
         # sos_file.name
         self.sections.extend(script.sections)
-        self.global_def += "{} = sos_namespace_({})\n".format(alias, repr(script.global_def))
+        self.global_def += f"{alias} = sos_namespace_({repr(script.global_def)})\n"
 
     def _include_content(self, sos_file, name_map):
         content, script_file = self._find_include_file(sos_file)
@@ -732,13 +731,13 @@ class SoS_Script:
                         # match ...
                         self.sections.append(section)
             # global_def is more complicated
-            self.global_def += "__{} = sos_namespace_({})\n".format(sos_file, repr(script.global_def))
+            self.global_def += f"__{sos_file} = sos_namespace_({repr(script.global_def)})\n"
             #
-            self.global_def += '''
-for __n, __v in {}.items():
-    if hasattr(__{}, __n):
-        globals()[__v if __v else __n] = getattr(__{}, __n)
-'''.format(repr(name_map), sos_file, sos_file)
+            self.global_def += f'''
+for __n, __v in {repr(name_map)}.items():
+    if hasattr(__{sos_file}, __n):
+        globals()[__v if __v else __n] = getattr(__{sos_file}, __n)
+'''
             # env.logger.trace(self.global_def)
 
     def _read(self, fp):
@@ -762,14 +761,14 @@ for __n, __v in {}.items():
             if SOS_MAGIC.match(line):
                 # ignore cell directive in batch mode
                 if self.transcript:
-                    self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
+                    self.transcript.write(f'COMMENT\t{lineno}\t{line}')
 
                 continue
 
             if SOS_STRU.match(line):
                 # ignore cell directive in batch mode
                 if self.transcript:
-                    self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
+                    self.transcript.write(f'COMMENT\t{lineno}\t{line}')
 
                 if SOS_INCLUDE.match(line) or SOS_FROM_INCLUDE.match(line):
                     if cursect is not None:
@@ -791,7 +790,7 @@ for __n, __v in {}.items():
                             for wf in mo.group('names').split(','):
                                 ma = SOS_AS.match(wf.strip())
                                 if not ma:
-                                    parsing_errors.append(lineno, line, 'unacceptable include name "{}"'.format(wf))
+                                    parsing_errors.append(lineno, line, f'unacceptable include name "{wf}"')
                                 else:
                                     name_map[ma.group('name')] = ma.group('alias')
                         self._include_content(sos_file, name_map=name_map)
@@ -807,7 +806,7 @@ for __n, __v in {}.items():
                     try:
                         cond_value = eval(cond)
                     except Exception as e:
-                        parsing_errors.append(lineno, line, 'Invalid expression {}: {}'.format(cond, e))
+                        parsing_errors.append(lineno, line, f'Invalid expression {cond}: {e}')
                         continue
                     #
                     if cond_value:
@@ -821,7 +820,7 @@ for __n, __v in {}.items():
                 mo = SOS_ELIF.match(line)
                 if mo:
                     if condition_met is None:
-                        parsing_errors.append(lineno, line, '%elif not following %if: {}'.format(line))
+                        parsing_errors.append(lineno, line, f'%elif not following %if: {line}')
                         continue
 
                     if condition_met:
@@ -832,7 +831,7 @@ for __n, __v in {}.items():
                     try:
                         cond_value = eval(cond)
                     except Exception as e:
-                        parsing_errors.append(lineno, line, 'Invalid expression {}: {}'.format(cond, e))
+                        parsing_errors.append(lineno, line, f'Invalid expression {cond}: {e}')
 
                     if cond_value:
                         condition_met = True
@@ -842,7 +841,7 @@ for __n, __v in {}.items():
                 mo = SOS_ELSE.match(line)
                 if mo:
                     if condition_met is None:
-                        parsing_errors.append(lineno, line, '%else not following %if: {}'.format(line))
+                        parsing_errors.append(lineno, line, f'%else not following %if: {line}')
                         continue
 
                     condition_ignore = condition_met
@@ -855,13 +854,13 @@ for __n, __v in {}.items():
                     continue
 
                 else:
-                    parsing_errors.append(lineno, line, 'Unrecognized SoS magic statement: {}'.format(line))
+                    parsing_errors.append(lineno, line, f'Unrecognized SoS magic statement: {line}')
                     continue
 
             if condition_ignore:
                 # ignore cell directive in batch mode
                 if self.transcript:
-                    self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
+                    self.transcript.write(f'COMMENT\t{lineno}\t{line}')
                 continue
 
             # comments in SoS scripts are mostly informative
@@ -875,26 +874,26 @@ for __n, __v in {}.items():
                             format_name = mo.group('format_name')
                             if not format_name.upper().startswith('SOS'):
                                 parsing_errors.append(lineno, line,
-                                    'Unrecognized file format name {}. Expecting SOS.'.format(format_name))
+                                                      f'Unrecognized file format name {format_name}. Expecting SOS.')
                             mo = SOS_FORMAT_VERSION.match(format_name)
                             if mo:
                                 self.format_version = mo.group('format_version')
                             else:
                                 parsing_errors.append(lineno, line,
-                                    'Unrecognized file format version in {}.'.format(format_name))
+                                                      f'Unrecognized file format version in {format_name}.')
                     elif comment_block > 1:
                         # anything before the first section can be pipeline
                         # description.
                         if cursect is None:
                             self.description.append(line)
                     if self.transcript:
-                        self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
+                        self.transcript.write(f'COMMENT\t{lineno}\t{line}')
                 else:
                     # this is description of the section
                     if cursect.empty():
                         cursect.add_comment(line)
                         if self.transcript:
-                            self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
+                            self.transcript.write(f'COMMENT\t{lineno}\t{line}')
                     # this is comment in scripts (and perhaps not even comment)
                     elif cursect.category() == 'script':
                         if cursect.indented_script():
@@ -906,26 +905,26 @@ for __n, __v in {}.items():
                                 parsing_errors.append(lineno, line, e)
                             cursect.add_comment(line)
                             if self.transcript:
-                                self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
+                                self.transcript.write(f'COMMENT\t{lineno}\t{line}')
                         else:
                             cursect.extend(line)
                             if self.transcript:
-                                self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
+                                self.transcript.write(f'FOLLOW\t{lineno}\t{line}')
                     # this can be comment or back comment
                     elif cursect.category() in ('statements', 'expression'):
                         if cursect.isValid():
                              # this can be comment or back comment
                             cursect.add_comment(line)
                             if self.transcript:
-                                self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
+                                self.transcript.write(f'COMMENT\t{lineno}\t{line}')
                         else:
                             cursect.extend(line)
                             if self.transcript:
-                                self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
+                                self.transcript.write(f'FOLLOW\t{lineno}\t{line}')
                     else:
                         # ignored.
                         if self.transcript:
-                            self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
+                            self.transcript.write(f'FOLLOW\t{lineno}\t{line}')
                 continue
             elif not line.strip():
                 # a blank line start a new comment block if we are still
@@ -938,7 +937,7 @@ for __n, __v in {}.items():
                     elif cursect.comment:
                         cursect.end_comment()
                 if self.transcript:
-                    self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
+                    self.transcript.write(f'FOLLOW\t{lineno}\t{line}')
                 continue
 
             #
@@ -946,14 +945,14 @@ for __n, __v in {}.items():
             if line[0].isspace() and cursect is not None and not cursect.empty():
                 cursect.extend(line)
                 if self.transcript:
-                    self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
+                    self.transcript.write(f'FOLLOW\t{lineno}\t{line}')
                 continue
             #
             # is it a continuation of uncompleted assignment or directive?
             if cursect and not cursect.isValid():
                 cursect.extend(line)
                 if self.transcript:
-                    self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
+                    self.transcript.write(f'FOLLOW\t{lineno}\t{line}')
                 continue
             #
             # a new line (start from first column)
@@ -964,7 +963,8 @@ for __n, __v in {}.items():
                 # check previous expression before a new assignment
                 if cursect:
                     if not cursect.isValid():
-                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid {}: {}'.format(cursect.category(), cursect.error_msg))
+                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]),
+                                              f'Invalid {cursect.category()}: {cursect.error_msg}')
                     cursect.values = []
                     try:
                         cursect.finalize()
@@ -1030,7 +1030,7 @@ for __n, __v in {}.items():
                         else:
                             prev_names = [prev_name[0]]
                         if len(set(prev_names) & set(names)) and 'global' not in names:
-                            parsing_errors.append(lineno, line, 'Duplicate section name {}'.format(names))
+                            parsing_errors.append(lineno, line, f'Duplicate section name {names}')
                 all_step_names.extend(step_names)
                 if 'global' in [x[0] for x in step_names]:
                     if step_options:
@@ -1040,7 +1040,7 @@ for __n, __v in {}.items():
                     self.sections.append(SoS_Step(self.content, step_names, step_options))
                 cursect = self.sections[-1]
                 if self.transcript:
-                    self.transcript.write('SECTION\t{}\t{}'.format(lineno, line))
+                    self.transcript.write(f'SECTION\t{lineno}\t{line}')
                 continue
             #
             # directive?
@@ -1049,7 +1049,8 @@ for __n, __v in {}.items():
                 # check previous expression before a new directive
                 if cursect:
                     if not cursect.isValid():
-                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid {}: {}'.format(cursect.category(), cursect.error_msg))
+                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]),
+                                              f'Invalid {cursect.category()}: {cursect.error_msg}')
                     cursect.values = []
                     # allow multiple process-style actions
                     try:
@@ -1066,29 +1067,31 @@ for __n, __v in {}.items():
                 # is it an action??
                 if directive_name in SOS_DIRECTIVES and directive_name != 'parameter':
                     if cursect is None:
-                        parsing_errors.append(lineno, line, 'Directive {} is not allowed outside of a SoS step'.format(directive_name))
+                        parsing_errors.append(lineno, line,
+                                              f'Directive {directive_name} is not allowed outside of a SoS step')
                         continue
                     cursect.add_directive(directive_name, directive_value, lineno)
                     if self.transcript:
-                        self.transcript.write('DIRECTIVE\t{}\t{}'.format(lineno, line))
+                        self.transcript.write(f'DIRECTIVE\t{lineno}\t{line}')
                 #
                 elif directive_name == 'process':
                     env.logger.warning('Keyword "process" is depredated and will be removed in a later release. Please use "task" instead.')
                     if cursect is None:
-                        parsing_errors.append(lineno, line, 'Directive {} is not allowed outside of a SoS step'.format(directive_name))
+                        parsing_errors.append(lineno, line,
+                                              f'Directive {directive_name} is not allowed outside of a SoS step')
                         continue
                     cursect.add_directive('task', directive_value, lineno)
                     if self.transcript:
-                        self.transcript.write('DIRECTIVE\t{}\t{}'.format(lineno, line))
+                        self.transcript.write(f'DIRECTIVE\t{lineno}\t{line}')
                 else:
                     if directive_name == 'parameter':
                         cursect.add_directive(directive_name, directive_value, lineno)
                         if self.transcript:
-                            self.transcript.write('DIRECTIVE\t{}\t{}'.format(lineno, line))
+                            self.transcript.write(f'DIRECTIVE\t{lineno}\t{line}')
                     else:
                         cursect.add_script(directive_name, directive_value, lineno)
                         if self.transcript:
-                            self.transcript.write('SCRIPT_{}\t{}\t{}'.format(directive_name, lineno, line))
+                            self.transcript.write(f'SCRIPT_{directive_name}\t{lineno}\t{line}')
                 continue
             # if section is in script mode?
             if cursect and cursect.isValid() and cursect.category() == 'script':
@@ -1103,7 +1106,7 @@ for __n, __v in {}.items():
                 else:
                     cursect.extend(line)
                     if self.transcript:
-                        self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
+                        self.transcript.write(f'FOLLOW\t{lineno}\t{line}')
                     continue
             #
             # assignment?
@@ -1114,9 +1117,10 @@ for __n, __v in {}.items():
                     cursect = self.sections[-1]
                 # check previous expression before a new assignment
                 if not cursect.isValid():
-                    parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid {}: {}'.format(cursect.category(), cursect.error_msg))
+                    parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]),
+                                          f'Invalid {cursect.category()}: {cursect.error_msg}')
                     if self.transcript:
-                        self.transcript.write('ERROR\t{}\t{}'.format(lineno, line))
+                        self.transcript.write(f'ERROR\t{lineno}\t{line}')
                     continue
                 cursect.values = []
                 #
@@ -1124,7 +1128,7 @@ for __n, __v in {}.items():
                 if var_name in SOS_DIRECTIVES:
                     parsing_errors.append(lineno, line, 'directive name cannot be used as variables')
                     if self.transcript:
-                        self.transcript.write('ERROR\t{}\t{}'.format(lineno, line))
+                        self.transcript.write(f'ERROR\t{lineno}\t{line}')
                     continue
                 # newline should be kept for multi-line assignment
                 var_value = mo.group('var_value') + '\n'
@@ -1138,9 +1142,9 @@ for __n, __v in {}.items():
                     cursect.add_assignment(var_name, var_value, lineno)
                 else:
                     # otherwise it is an continuation of the existing action
-                    cursect.extend('{} = {}\n'.format(var_name, var_value))
+                    cursect.extend(f'{var_name} = {var_value}\n')
                 if self.transcript:
-                    self.transcript.write('ASSIGNMENT\t{}\t{}'.format(lineno, line))
+                    self.transcript.write(f'ASSIGNMENT\t{lineno}\t{line}')
                 continue
             #
             # all others?
@@ -1149,28 +1153,28 @@ for __n, __v in {}.items():
                 cursect = self.sections[-1]
                 cursect.add_statement(line, lineno)
                 if self.transcript:
-                    self.transcript.write('STATEMENT\t{}\t{}'.format(lineno, line))
+                    self.transcript.write(f'STATEMENT\t{lineno}\t{line}')
                 continue
             #
             if cursect.empty() or cursect.category() != 'statements':
                 # new statement
                 cursect.add_statement(line, lineno)
                 if self.transcript:
-                    self.transcript.write('STATEMENT\t{}\t{}'.format(lineno, line))
+                    self.transcript.write(f'STATEMENT\t{lineno}\t{line}')
             else:
                 # existing one
                 cursect.extend(line)
                 if self.transcript:
                     # it is possible that we are switching from SCRIPT mode to regular
                     # statement, in which case the new mode should be STATEMENT, not FOLLOW
-                    self.transcript.write('{}\t{}\t{}'.format(
-                        'STATEMENT' if cursect.category() == 'statements' else 'FOLLOW',
-                        lineno, line))
+                    self.transcript.write(
+                        f'{"STATEMENT" if cursect.category() == "statements" else "FOLLOW"}\t{lineno}\t{line}')
         #
         # check the last expression before a new directive
         if cursect:
             if not cursect.isValid():
-                parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid {}: {}'.format(cursect.category(), cursect.error_msg))
+                parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]),
+                                      f'Invalid {cursect.category()}: {cursect.error_msg}')
             else:
                 try:
                     cursect.finalize()
@@ -1205,9 +1209,9 @@ for __n, __v in {}.items():
             for idx,sec in [(idx,x) for idx,x in enumerate(self.sections) if x.is_global]:
                 for statement in sec.statements:
                     if statement[0] == '=':
-                        self.global_def += '{} = {}\n'.format(statement[1], statement[2])
+                        self.global_def += f'{statement[1]} = {statement[2]}\n'
                     elif statement[0] == ':':
-                        parsing_errors.append(cursect.lineno, '{}:{}'.format(statement[1], statement[2]),
+                        parsing_errors.append(cursect.lineno, f'{statement[1]}:{statement[2]}',
                                 'Global section cannot contain sos input, ouput, and task statements')
                     else:
                         self.global_def += statement[1]
@@ -1243,7 +1247,7 @@ for __n, __v in {}.items():
                 wfs = []
                 for wf in workflow_name.split('+'):
                     if not SOS_SUBWORKFLOW.match(wf):
-                        raise ValueError('Incorrect workflow name {}'.format(workflow_name))
+                        raise ValueError(f'Incorrect workflow name {workflow_name}')
                     # if this is a combined workflow, extra_section might be specied.
                     wfs.append(self.workflow(wf))
                 combined_wf = wfs[0]
@@ -1255,7 +1259,7 @@ for __n, __v in {}.items():
             # workflow_10:15 etc
             mo = SOS_SUBWORKFLOW.match(workflow_name)
             if not mo:
-                raise ValueError('Incorrect workflow name {}'.format(workflow_name))
+                raise ValueError(f'Incorrect workflow name {workflow_name}')
             wf_name, allowed_steps = mo.group('name', 'steps')
         # check source
         if not wf_name:
@@ -1270,8 +1274,7 @@ for __n, __v in {}.items():
                     'the script defines more than one pipelines without a default one. '
                     'Available pipelines are: {}.'.format(', '.join(self.workflows)))
         elif wf_name not in self.workflows:
-            raise ValueError('Workflow {} is undefined. Available workflows are: {}'.format(wf_name,
-                ', '.join(self.workflows)))
+            raise ValueError(f'Workflow {wf_name} is undefined. Available workflows are: {", ".join(self.workflows)}')
         # do not send extra parameters of ...
         #sections = []
         #for section in self.sections:
