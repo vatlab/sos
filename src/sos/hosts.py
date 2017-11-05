@@ -121,18 +121,22 @@ def _show_err_and_out(task_id):
     if os.path.isfile(out_file):
         sys.stderr.write('\n~/.sos/tasks/{}.out:\n'.format(task_id))
         with open(out_file) as out:
+            ends_with_newline = False
             for line in out:
                 if not SOS_LOGLINE.match(line):
                     sys.stderr.write(line)
-            if not line.endswith('\n'):
+                    ends_with_newline = line.endswith('\n')
+            if not ends_with_newline:
                 sys.stderr.write('\n')
     if os.path.isfile(err_file):
         sys.stderr.write('\n~/.sos/tasks/{}.err:\n'.format(task_id))
         with open(err_file) as err:
+            ends_with_newline = False
             for line in err:
                 if not SOS_LOGLINE.match(line):
                     sys.stderr.write(line)
-            if not line.endswith('\n'):
+                    ends_with_newline = line.endswith('\n')
+            if not ends_with_newline:
                 sys.stderr.write('\n')
 
 class LocalHost:
@@ -545,7 +549,7 @@ class RemoteHost:
 
         for var in mapped_vars:
             if var not in task_vars:
-                env.logger.warning('{} is not in task namespace and cannot be mapped.'.format(var))
+                # input, output, depends might not exist
                 continue
             if not task_vars[var]:
                 continue
