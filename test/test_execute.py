@@ -406,7 +406,7 @@ vars = [1, 2]
 
 input: files, paired_with='vars', group_by=1
 output: f"{_input}{_vars[0]}"
-run:
+run: expand=True
     touch {output}
 ''')
         wf = script.workflow()
@@ -424,7 +424,7 @@ vars2 = ['a', 'b']
 
 input: files, paired_with=('vars', 'vars2'), group_by=1
 output: f"{_input}{_vars[0]}"
-run:
+run: expand=True
     touch {output}
 ''')
         wf = script.workflow()
@@ -439,7 +439,7 @@ run:
 files = ['a.txt', 'b.txt']
 input: files, paired_with={'var': [1,2], 'var2': ['a', 'b']}, group_by=1
 output: f"{_input}{var[0]}"
-run:
+run: expand=True
     touch {output}
 ''')
         wf = script.workflow()
@@ -462,7 +462,7 @@ vars = [1, 2]
 
 input: files, group_with='vars', group_by=1
 output: f"{_input}{_vars}"
-run:
+run: expand=True
     touch {output}
 ''')
         wf = script.workflow()
@@ -480,7 +480,7 @@ vars2 = ['a']
 
 input: files, group_with=('vars', 'vars2'), group_by=2
 output: f"{_input[0]}{_vars}"
-run:
+run: expand=True
     touch {output}
 ''')
         wf = script.workflow()
@@ -495,7 +495,7 @@ run:
 files = ['a.txt', 'b.txt']
 input: files, group_with={'var': [1], 'var2': ['a']}, group_by=2
 output: f"{_input[0]}{var}"
-run:
+run: expand=True
     touch {output}
 ''')
         wf = script.workflow()
@@ -779,7 +779,7 @@ for i in range(5):
 input: dynamic('temp/*.txt'), group_by='single'
 output: dynamic('temp/*.txt.bak')
 
-run:
+run: expand=True
 touch {_input}.bak
 ''')
         wf = script.workflow()
@@ -808,7 +808,7 @@ output: f"temp/{_rep}.txt"
 
 # ff should change and be usable inside run
 ff = f"{_rep}.txt"
-run:
+run: expand=True
 echo {ff}
 touch temp/{ff}
 ''')
@@ -858,7 +858,7 @@ input:
         script = SoS_Script('''
 [1]
 input: ['temp/1.txt' for x in range(5)]
-run:
+run: expand=True
   touch temp/{len(input)}.input
         ''')
         wf = script.workflow()
@@ -868,7 +868,7 @@ run:
         script = SoS_Script('''
 [1]
 output: ['temp/2.txt' for x in range(5)]
-run:
+run: expand=True
   touch temp/2.txt
   touch temp/{len(output)}.output
         ''')
@@ -881,7 +881,7 @@ run:
 input: 'temp/1.txt'
 depends: ['temp/2.txt' for x in range(5)]
 output: 'temp/3.txt'
-run:
+run: expand=True
   touch temp/3.txt
   touch temp/{len(depends)}.depends
         ''')
@@ -904,7 +904,7 @@ input: for_each = ['s']
 output: output_files[_index]
 run: active = 0
 rm -f temp/out.log
-run:
+run: expand=True
 echo {output} >> temp/out.log
 touch {output}
         ''')
@@ -925,7 +925,7 @@ input: for_each = ['s']
 output: output_files[_index]
 run: active = 0
 rm -f temp/out.log
-run:
+run: expand=True
 echo {output} >> temp/out.log
 touch {output}
         ''')
@@ -975,7 +975,7 @@ run:
 
 [20]
 output: 'aa.txt'
-run:
+run: expand=True
     cat {input} > {output}
 ''')
         wf = script.workflow()
@@ -1011,7 +1011,7 @@ input: for_each={'a': range(10)}
 output: f"{a}.txt"
 
 stop_if(a % 2 == 0)
-run:
+run: expand=True
     touch {_output}
 
 [test_2]
@@ -1067,14 +1067,14 @@ run:
 
 [2: shared = {'ifile':'output'}]
 output: '2.txt'
-run:
+run: expand=True
 	echo {input} > 2.txt
 
 [3]
 depends: ifile
 input: dfile
 output: '3.txt'
-run:
+run: expand=True
 	cat {input} > {output}
 ''')
         wf = script.workflow()

@@ -449,7 +449,7 @@ pandoc(input=['default_10.md', 'default_20.md'], output='output.html')
         script = SoS_Script(r'''
 [A]
 parameter: num=5
-report: output='report.txt'
+report: output='report.txt', expand=True
     touch {num}.txt
 
 ''')
@@ -465,11 +465,11 @@ report: output='report.txt'
         FileTarget('report.txt').remove('both')
         script = SoS_Script(r'''
 [A]
-report: output='report.txt'
+report: output='report.txt', expand=True
     {step_name}
 
 [A_10]
-report: output='report.txt'
+report: output='report.txt', expand=True
     {step_name}
 ''')
         wf = script.workflow()

@@ -683,7 +683,7 @@ run:
 
 [P: provides='{filename}.p']
 input: filename
-run:
+run: expand=True
     touch {output}
 ''')
         # the workflow should call step K for step C_2, but not C_3
@@ -908,14 +908,14 @@ print(b)
 # this step provides variable `var`
 [index: provides='{filename}.bam.bai']
 input: f"{filename}.bam"
-run:
+run: expand=True
    echo "Generating {output}"
    touch {output}
 
 [call: provides='{filename}.vcf']
 input:   f"{filename}.bam"
 depends: f"{input}.bai"
-run:
+run: expand=True
    echo "Calling variants from {input} with {depends} to {output}"
    touch {output}
 ''')
@@ -1096,12 +1096,12 @@ touch 1.txt
 [10]
 input: 'a.txt'
 output: f"{_input}.bak"
-run:
+run: expand=True
     cp {_input} {_output}
 
 [20]
 depends: "a.txt.bak"
-run:
+run: expand=True
     ls {_depends}
 ''')
         wf = script.workflow()

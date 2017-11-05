@@ -168,7 +168,7 @@ run:
             """ "a'\\"='" """):
             script = SoS_Script(r'''
 a = 1
-run:
+run: expand=True
    #!/usr/bin/env python
    with open('tmp.txt', 'w') as tmp:
       tmp.write({} + '{}')
@@ -212,7 +212,7 @@ print(p1)
 [A_4]
 input: None
 task:
-python:
+python: expand=True
    print(f'{output}')
 
 [A_5]

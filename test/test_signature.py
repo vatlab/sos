@@ -115,7 +115,7 @@ input: group_by='single', paired_with='dest'
 output: _dest
 
 task:
-run:
+run: expand=True
 echo cp {_input} {_dest[0]}
 cp {_input} {_dest[0]}
 """)
@@ -164,7 +164,7 @@ dest = ['temp/c.txt', 'temp/d.txt']
 input: 'temp/a.txt', 'temp/b.txt', group_by='single', paired_with='dest'
 output: _dest
 
-run:
+run: expand=True
 sleep 0.5
 cp {_input} {_dest[0]}
 """)
@@ -270,7 +270,7 @@ run(f"touch {output}")
 # generate a file
 output: 'largefile.txt'
 
-run: sigil='${ }'
+run: expand='${ }'
     for x in {1..1000}
     do
         echo $x >> ${output}
@@ -311,7 +311,7 @@ run: sigil='${ }'
 # generate a file
 output: 'midfile.txt'
 
-run: sigil='${ }'
+run: expand='${ }'
     for x in {1..1000}
     do
         echo $x >> ${output}
@@ -319,7 +319,7 @@ run: sigil='${ }'
 
 [20]
 output: 'finalfile.txt'
-run:
+run: expand=True
     cp {input} {output}
     echo "MORE" >> {output}
 ''')
@@ -361,7 +361,7 @@ parameter: gvar = 10
 # generate a file
 output: 'myfile.txt'
 # additional comment
-run:
+run: expand=True
     echo {gvar} > {output:q}
 
 ''')
@@ -390,7 +390,7 @@ parameter: gvar = 10
 # generate a file
 output: 'myfile.txt'
 # additional comment
-run:
+run: expand=True
     echo {gvar} > {output:q}
 ''')
         wf = script.workflow()
@@ -425,7 +425,7 @@ parameter: gvar = 10
 tt = [gvar]
 input: for_each='tt'
 output: f"myfile_{_tt}.txt"
-run:
+run: expand=True
     echo "DO {_tt}"
     echo {_tt} > {_output:q}
 ''')
@@ -441,7 +441,7 @@ parameter: gvar = 10
 tt = [gvar, gvar + 1]
 input: for_each='tt'
 output: f"myfile_{_tt}.txt"
-run:
+run: expand=True
     echo "DO {_tt}"
     echo {_tt} > {_output:q}
 ''')
@@ -464,7 +464,7 @@ parameter: gvar = 10
 tt = [gvar + 1]
 input: for_each='tt'
 output: f"myfile_{_tt}.txt"
-run:
+run: expand=True
     echo "DO {_tt}"
     echo {_tt} > {_output:q}
 ''')
@@ -488,14 +488,14 @@ parameter: K = [2,3]
 [work_1]
 input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
 output: expand_pattern('{_name}.out')
-run:
+run: expand=True
   touch {_output}
 
 [work_2]
 
 input: group_by = 'single', pattern = '{name}.{ext}', paired_with = ['K']
 output: expand_pattern('{_name}.{_K}.out')
-run:
+run: expand=True
   touch {_output}
     ''')
         wf = script.workflow()
@@ -516,7 +516,7 @@ parameter: output_file =  DB['output']
 [2]
 input: input_file, group_by = 1
 output: output_file[_index]
-run:
+run: expand=True
   sleep 2
   touch {_output}
   ''')
@@ -532,7 +532,7 @@ parameter: output_file =  DB['output']
 [2]
 input: input_file, group_by = 1
 output: output_file[_index]
-run:
+run: expand=True
   sleep 2
   touch {_output}
   ''')
@@ -547,7 +547,7 @@ run:
         script = SoS_Script(r'''
 [1]
 input: 'test_action.txt'
-run: input='test_action.txt', output='lc.txt'
+run: input='test_action.txt', output='lc.txt', expand=True
     wc -l {input[0]} > lc.txt
 ''')
         wf = script.workflow()

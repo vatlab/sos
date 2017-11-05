@@ -93,7 +93,7 @@ inputs.append(input)
 executed.append(step_name)
 output: 'a.done'
 inputs.append(input)
-run:
+run: expand=True
     touch {output}
 [b_1: shared=['executed', 'inputs']]
 executed.append(step_name)
@@ -134,13 +134,13 @@ if 'inputs' not in locals():
 executed.append(step_name)
 output: _input[0] + '.a1'
 inputs.append(input)
-run:
+run: expand=True
     touch {output}
 [a_2:shared=['executed', 'inputs']]
 executed.append(step_name)
 output: _input[0] + '.a2'
 inputs.append(input)
-run:
+run: expand=True
     touch {output}
 [c:shared=['executed', 'inputs']]
 executed.append(step_name)
@@ -322,13 +322,13 @@ parameter: parB = 10
 [A_1: shared='executed']
 executed.append('t.' + step_name)
 output: _input[0] + '.a1'
-run:
+run: expand=True
     touch {output}
 
 [A_2: shared='executed']
 executed.append('t.' + step_name)
 output: _input[0] + '.a2'
-run:
+run: expand=True
     touch {output}
 ''')
         script = SoS_Script('''
@@ -378,7 +378,7 @@ sos_run('k.A', shared='executed')
         script = SoS_Script(r'''
 [A]
 parameter: num=5
-run:
+run: expand=True
     touch {num}.txt
 
 [batch]
@@ -397,7 +397,7 @@ for k in range(2):
         script = SoS_Script(r'''
 [A]
 parameter: num=5
-run:
+run: expand=True
     touch {num}.txt
 
 [batch]
@@ -449,12 +449,12 @@ parameter: num = 2
 input: f"B{num}.txt.p"
 
 [B: provides='B{num}.txt']
-run:
+run: expand=True
     touch 'B{num[0]}.txt'
 
 [P: provides='{filename}.p']
 input: filename
-run:
+run: expand=True
     touch {output}
 
 [ALL]

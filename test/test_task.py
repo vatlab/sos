@@ -194,7 +194,7 @@ rep = range(5)
 input: for_each = 'rep'
 # ff should change and be usable inside run
 ff = f"{_rep}.txt"
-run:  active=1,2
+run:  expand=True, active=1,2
 echo {ff}
 touch temp/{ff}
 ''')
@@ -219,7 +219,7 @@ rep = range(5)
 input: for_each = 'rep'
 # ff should change and be usable inside run
 ff = f"{_rep}.txt"
-run:  active=%s
+run:  expand=True, active=%s
 echo {ff}
 touch temp/{ff}
 ''' % active).replace('/', os.sep))
@@ -243,7 +243,7 @@ input: for_each = 'rep'
 # ff should change and be usable inside run
 ff = f"{_rep}.txt"
 task:  active=%s
-run:
+run: expand=True
 echo {ff}
 touch temp/{ff}
 ''' % active).replace('/', os.sep))
@@ -278,7 +278,7 @@ output: f"myfile_{_tt}.txt"
 
 # _tt should be used in task
 task: concurrent=True
-run:
+run: expand=True
     echo {_tt}_{_index} > {_output:q}
 
 ''')
@@ -299,7 +299,7 @@ run:
 input: for_each=[{'a': range(2)}, {'b': range(3)}]
 
 task:
-run:
+run: expand=True
     echo "a = {a}, b = {b}"
 ''')
         env.config['wait_for_task'] = True
@@ -315,7 +315,7 @@ run:
 input: for_each=[{'a': range(2)}]
 
 task:
-run:
+run: expand=True
     echo Try to kill "a = {a}"
     sleep 20
 ''')
@@ -362,7 +362,7 @@ run:
 input: for_each=[{'a': range(3)}]
 
 task: concurrent=True
-run:
+run: expand=True
     echo "a = {a}"
     sleep 20
 ''')
@@ -409,7 +409,7 @@ run:
   echo 100 > a.txt
 
 [20]
-run:
+run: expand=True
     touch a{a}.txt
 ''')
         wf = script.workflow()
@@ -426,7 +426,7 @@ run:
   echo 100 > a.txt
 
 [20]
-run:
+run: expand=True
     touch a{a}_{b}.txt
 ''')
         wf = script.workflow()
@@ -440,7 +440,7 @@ run:
 [10]
 input: for_each={'I': range(10)}
 task: trunk_size=5, cores=1, mem='1M', walltime='10m'
-run:
+run: expand=True
     echo {I} > {I}.txt
     sleep 2
 ''')
@@ -473,7 +473,7 @@ run:
 [10]
 input: for_each={'I': range(12)}
 task: trunk_size=6, trunk_workers=3, mem='1M', walltime='10m'
-run:
+run: expand=True
     echo {I} > {I}.txt
     sleep 2
 ''')
@@ -508,7 +508,7 @@ run:
 [10]
 input: for_each={{'i': range(10)}}
 task: tags='{}', trunk_size=2
-sh:
+sh: expand=True
   echo {} {{i}}
 '''.format(tag, tag))
         wf = SoS_Script(filename='test_tags.sos').workflow()
@@ -536,7 +536,7 @@ sh:
 [10]
 input: for_each={{'i': range(2)}}
 task: tags=['{}', '{}']
-sh:
+sh: expand=True
   echo {} {{i}}
 '''.format(tag1, tag2, tag1))
         wf = SoS_Script(filename='test_tags.sos').workflow()
