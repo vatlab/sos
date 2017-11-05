@@ -297,6 +297,17 @@ class remote(BaseTarget):
     def flatten(self):
         return [remote(x) for x in self._target]
 
+    def __format__(self, format_spec):
+        # handling special !q conversion flag
+        obj = self
+        for c in format_spec:
+            if c == 'R':
+                obj = self._target
+            else:
+                # other defined format
+                obj = obj.__format__(c)
+        return repr(obj)
+
 class executable(BaseTarget):
     '''A target for an executable command.'''
 
