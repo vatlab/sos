@@ -40,7 +40,7 @@ from .utils import env, Error, locate_script, text_repr
 from .sos_eval import on_demand_options
 from .target import textMD5
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
-    SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_SIGIL_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
+    SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_EXPAND_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
     SOS_ASSIGNMENT, SOS_SUBWORKFLOW, SOS_INCLUDE, SOS_FROM_INCLUDE, SOS_AS, \
     SOS_STRU, SOS_IF, SOS_ELIF, SOS_ELSE, SOS_OPTIONS, SOS_ENDIF, SOS_CELL, SOS_MAGIC, \
     INDENTED
@@ -353,18 +353,21 @@ class SoS_Step:
         self._script = '\n'.join(self._script.splitlines()) + '\n'
         # the script will be considered a f-string, but we will need to handle sigil option here
         self._script = text_repr(textwrap.dedent(self._script))
-        # let us look for 'sigil=""' in options
-        prefix = 'f'
-        if 'sigil' in opt:
+        # let us look for 'expand=""' in options
+        prefix = ''
+        if 'expand' in opt:
             pieces = separate_options(opt)
             for piece in pieces:
-                mo = SOS_SIGIL_OPTION.match(piece)
+                mo = SOS_EXPAND_OPTION.match(piece)
                 if mo:
                     opt_name, opt_value = mo.group('name', 'value')
                     sigil = eval(opt_value)
-                    if sigil is None:
-                        prefix = ''
+                    if sigil is None or sigil is False:
+                        pass
+                    elif sigil is True:
+                        prefix = 'f'
                     else:
+                        prefix = 'f'
                         self._script = replace_sigil(self._script, sigil)
         self.statements[-1] = ['!', '{}({}{}{})\n'.format(self._action,
             prefix, self._script, (', ' + opt) if opt else '')]
