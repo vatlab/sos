@@ -570,8 +570,8 @@ class RemoteHost:
         self.send_task_file(task_file)
 
     def send_task_file(self, task_file):
-        send_cmd = cfg_interpolate('ssh -q {address} -p {port} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks" && scp -q -P {port} {job_file!ap} {address}:.sos/tasks/',
-                {'job_file': task_file, 'address': self.address, 'port': self.port})
+        send_cmd = cfg_interpolate('ssh -q {address} -p {port} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks" && scp -q -P {port} {job_file:ap} {address}:.sos/tasks/',
+                {'job_file': sos_targets(task_file), 'address': self.address, 'port': self.port})
         # use scp for this simple case
         try:
             subprocess.check_call(send_cmd, shell=True)
