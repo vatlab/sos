@@ -21,6 +21,7 @@
 #
 import re
 import os
+import ast
 import copy
 import fnmatch
 import textwrap
@@ -40,7 +41,7 @@ from .utils import env, Error, locate_script, text_repr
 from .sos_eval import on_demand_options
 from .target import textMD5
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
-    SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_EXPAND_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
+    SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
     SOS_ASSIGNMENT, SOS_SUBWORKFLOW, SOS_INCLUDE, SOS_FROM_INCLUDE, SOS_AS, \
     SOS_STRU, SOS_IF, SOS_ELIF, SOS_ELSE, SOS_OPTIONS, SOS_ENDIF, SOS_CELL, SOS_MAGIC, \
     INDENTED
@@ -60,6 +61,20 @@ class ParsingError(Error):
             return
         self.errors.append((lineno, line))
         self.message += f'\n\t[line {lineno:2d}]: {line}\n{msg}'
+
+def get_option_from_arg_list(options, optname, default_value):
+    if not options:
+        return default_value
+    try:
+        for field in list(ast.iter_fields(ast.parse(f"f({options})", mode='eval')))[0][1].keywords:
+            if field.arg == optname:
+                try:
+                    return eval(compile(ast.Expression(body=field.value), filename="<ast>", mode="eval"))
+                except:
+                    raise ValueError(f"A constant value is expected for option {optname}: {options} provided.")
+        return default_value
+    except SyntaxError as e:
+        raise ValueError(f"Expect a list of keyword arguments: {options} provided")
 
 def separate_options(options):
     pieces = options.split(',')
@@ -356,19 +371,14 @@ class SoS_Step:
         # let us look for 'expand=""' in options
         prefix = ''
         if 'expand' in opt:
-            pieces = separate_options(opt)
-            for piece in pieces:
-                mo = SOS_EXPAND_OPTION.match(piece)
-                if mo:
-                    opt_name, opt_value = mo.group('name', 'value')
-                    sigil = eval(opt_value)
-                    if sigil is None or sigil is False:
-                        pass
-                    elif sigil is True:
-                        prefix = 'f'
-                    else:
-                        prefix = 'f'
-                        self._script = replace_sigil(self._script, sigil)
+            sigil = get_option_from_arg_list(opt, 'expand', None)
+            if sigil is None or sigil is False:
+                pass
+            elif sigil is True:
+                prefix = 'f'
+            else:
+                prefix = 'f'
+                self._script = replace_sigil(self._script, sigil)
         self.statements[-1] = ['!', f'{self._action}({prefix}{self._script}{(", " + opt) if opt else ""})\n']
         self.values = []
         self._action = None

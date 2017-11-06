@@ -192,15 +192,6 @@ _SECTION_OPTION_TMPL = '''
     \s*$
     '''.format('|'.join(SOS_SECTION_OPTIONS))
 
-_EXPAND_OPTION_TMPL = '''
-    ^\s*                               # start
-    (?P<name>expand)                   # one of the option names
-    (\s*=\s*                           # =
-    (?P<value>.+)                      # value
-    )?                                 # value is optional
-    \s*$
-    '''.format('|'.join(SOS_SECTION_OPTIONS))
-
 _FORMAT_LINE_TMPL = r'''
     ^                                  # from first column
     \#fileformat\s*=\s*                # starts with #fileformat=SOS
@@ -400,7 +391,6 @@ SOS_GLOBAL_SECTION_HEADER = LazyRegex(_GLOBAL_SECTION_HEADER_TMPL, re.VERBOSE)
 SOS_SECTION_NAME = LazyRegex(_SECTION_NAME_TMPL, re.VERBOSE)
 SOS_SUBWORKFLOW = LazyRegex(_SUBWORKFLOW_TMPL, re.VERBOSE)
 SOS_SECTION_OPTION = LazyRegex(_SECTION_OPTION_TMPL, re.VERBOSE)
-SOS_EXPAND_OPTION = LazyRegex(_EXPAND_OPTION_TMPL, re.VERBOSE)
 SOS_FORMAT_LINE = LazyRegex(_FORMAT_LINE_TMPL, re.VERBOSE)
 SOS_FORMAT_VERSION = LazyRegex(_FORMAT_VERSION_TMPL, re.VERBOSE)
 SOS_DIRECTIVE = LazyRegex(_DIRECTIVE_TMPL, re.VERBOSE)
