@@ -21,6 +21,7 @@
 #
 import os
 import sys
+import re
 import copy
 import glob
 import fnmatch
@@ -806,7 +807,12 @@ class Base_Step_Executor:
                 if not tag.strip():
                     continue
                 if not SOS_TAG.match(tag):
-                    env.logger.warning(f'Unacceptable tag for task: {tag}')
+                    new_tag = re.sub(r'[^\w_.-]', '', tag)
+                    if new_tag:
+                        env.logger.warning(f'Invalid tag "{tag}" is added as "{new_tag}"')
+                        task_tags.append(new_tag)
+                    else:
+                        env.logger.warning(f'Invalid tag "{tag}" is ignored')
                 else:
                     task_tags.append(tag)
 

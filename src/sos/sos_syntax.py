@@ -377,8 +377,7 @@ _SOS_WILDCARD_TMPL = r'''
     '''
 
 _SOS_TAG_TMPL = r'''
-    [\w]                                # starts with alphanumeric and underscore
-    [\w-]*                              # - is allowed in between
+    ^[\w_.-]+$                          # - is allowed in between
     '''
 
 _SOS_LOGLINE = r'''
