@@ -57,14 +57,14 @@ def _load_group(group):
                 m = re.search("Requirement.parse\('sos>=([^)]*)'\)", str(e))
                 if m:
                     if parse_version(__version__) < parse_version(m.group(1)):
-                        logger.warning('Failed to load target {}: please upgrade your version of sos from {} to at least version {}'.format
-                                (_entrypoint.name, __version__, m.group(1)))
+                        logger.warning(
+                            f'Failed to load target {_entrypoint.name}: please upgrade your version of sos from {__version__} to at least version {m.group(1)}')
                         continue
             if _name == 'run':
                 # this is critical so we print the warning
-                logger.warning('Failed to load target {}: {}'.format(_entrypoint.name, e))
+                logger.warning(f'Failed to load target {_entrypoint.name}: {e}')
             else:
-                logger.trace('Failed to load target {}: {}'.format(_entrypoint.name, e))
+                logger.trace(f'Failed to load target {_entrypoint.name}: {e}')
 
 _load_group('sos_targets')
 _load_group('sos_actions')

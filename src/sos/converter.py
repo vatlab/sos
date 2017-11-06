@@ -681,8 +681,8 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
         html.write('\n'.join(x for x in formatter.get_style_defs().split('\n') if 'background' not in x))
         html.write(template_pre_table)
         if args and args.raw:
-            raw_link = '<a href="{}" class="commit-tease-sha">{}</a>'.format(args.raw, script_file)
-            script_link = '<a href="{}">{}</a>'.format(args.raw, os.path.basename(script_file))
+            raw_link = f'<a href="{args.raw}" class="commit-tease-sha">{script_file}</a>'
+            script_link = f'<a href="{args.raw}">{os.path.basename(script_file)}</a>'
         else:
             raw_link = script_file
             script_link = os.path.basename(script_file)
@@ -737,11 +737,11 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
     else:
         with open(html_file, 'w') as out:
             out.write(html_content)
-        env.logger.info('SoS script saved to {}'.format(html_file))
+        env.logger.info(f'SoS script saved to {html_file}')
         #
     if args and args.view:
-        url = 'file://{}'.format(html_file)
-        env.logger.info('Viewing {} in a browser'.format(url))
+        url = f'file://{html_file}'
+        env.logger.info(f'Viewing {url} in a browser')
         webbrowser.open(url, new=2)
 
 #
@@ -756,18 +756,18 @@ def markdown_content(content_type, content, fh):
         fh.write('{}\n'.format(''.join([x.lstrip('#').strip() + '  \n'
                                         for x in content if not x.startswith('#!')])))
     elif content_type == 'REPORT':
-        fh.write('{}\n'.format(''.join(content)))
+        fh.write(f'{"".join(content)}\n')
     elif content_type == 'SECTION':
-        fh.write('## {}\n'.format(''.join(content)))
+        fh.write(f'## {"".join(content)}\n')
     elif content_type == 'DIRECTIVE':
         fh.write('{}\n'.format(''.join(['**{}**  \n'.format(re.sub(r'(\$|_)', r'`\1`', x).strip())
                                         for x in content])))
     elif content_type == 'ASSIGNMENT':
-        fh.write('```python\n{}\n```\n'.format(''.join(content)))
+        fh.write(f'```python\n{"".join(content)}\n```\n')
     elif content_type == 'STATEMENT':
-        fh.write('```python\n{}\n```\n'.format(''.join(content)))
+        fh.write(f'```python\n{"".join(content)}\n```\n')
     elif content_type == 'ERROR':
-        fh.write('{}\n'.format(''.join(content)))
+        fh.write(f'{"".join(content)}\n')
     else:
         if content_type == 'run':
             content_type = 'bash'
@@ -775,7 +775,7 @@ def markdown_content(content_type, content, fh):
             content_type = 'JavaScript'
         elif content_type == 'report':
             content_type = ''
-        fh.write('```{}\n{}```\n'.format(content_type, ''.join(content)))
+        fh.write(f'```{content_type}\n{"".join(content)}```\n')
 
 def get_script_to_markdown_parser():
     parser = argparse.ArgumentParser('sos convert FILE.sos FILE.md (or --to md)',
@@ -788,7 +788,7 @@ def script_to_markdown(script_file, markdown_file, style_args=None, unknown_args
     Convert SOS scriot to a markdown file with syntax highlighting.
     '''
     if unknown_args:
-        raise ValueError('Unrecognized parameter {}'.format(unknown_args))
+        raise ValueError(f'Unrecognized parameter {unknown_args}')
 
     if not markdown_file:
         markdown = sys.stdout
@@ -827,7 +827,7 @@ def script_to_markdown(script_file, markdown_file, style_args=None, unknown_args
         markdown_content(content_type, content, markdown)
     if markdown != sys.stdout:
         markdown.close()
-        env.logger.info('SoS script saved to {}'.format(markdown_file))
+        env.logger.info(f'SoS script saved to {markdown_file}')
 
 #
 # Output to terminal

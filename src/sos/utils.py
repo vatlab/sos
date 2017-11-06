@@ -97,7 +97,7 @@ def colorstr(astr, color=None):
     if sys.platform == 'win32':
         return astr
     else:
-        return '\033[{}m{}\033[0m'.format(color_code, astr)
+        return f'\033[{color_code}m{astr}\033[0m'
 
 def emphasize(msg, color=None):
     level_color = 0 if color is None else COLOR_CODE[color]
@@ -107,7 +107,7 @@ def emphasize(msg, color=None):
     elif level_color == 0:
         return re.sub(r'``([^`]*)``', '\033[32m\\1\033[0m', str(msg))
     else:
-        return re.sub(r'``([^`]*)``', '\033[0m\033[32m\\1\033[0m\033[{}m'.format(level_color), str(msg))
+        return re.sub(r'``([^`]*)``', f'\033[0m\033[32m\\1\033[0m\033[{level_color}m', str(msg))
 
 class ColoredFormatter(logging.Formatter):
     ''' A logging formatter that uses color to differntiate logging messages
@@ -151,15 +151,15 @@ def short_repr(obj, noneAsNA=False):
         and len(obj) <= 2) or len(str(obj)) < 80:
         return repr(obj)
     elif isinstance(obj, collections.Sequence): # should be a list or tuple
-        return '[{}, ...] ({} items)'.format(short_repr(obj[0]), len(obj))
+        return f'[{short_repr(obj[0])}, ...] ({len(obj)} items)'
     elif isinstance(obj, dict):
         if obj:
             first_key = list(obj.keys())[0]
-            return '{{{!r}:{!r}, ...}} ({} items)'.format(first_key, short_repr(obj[first_key]), len(obj))
+            return f'{{{first_key!r}:{short_repr(obj[first_key])!r}, ...}} ({len(obj)} items)'
         else:
             return '{}'
     else:
-        return '{}...'.format(repr(obj)[:60])
+        return f'{repr(obj)[:60]}...'
 
 #
 # SoS Workflow dictionary
@@ -217,11 +217,11 @@ class WorkflowDict(object):
         if env.config['run_mode'] == 'prepare':
             self._warn(key, value)
         if key in ('input', 'output', 'depends', '_input', '_output', '_depends', '_runtime'):
-            raise ValueError('Variable {} can only be set by SoS'.format(key))
+            raise ValueError(f'Variable {key} can only be set by SoS')
         self.set(key, value)
 
     def _log(self, key, value):
-        env.logger.debug('Set ``{}`` = ``{}``'.format(key, short_repr(value)))
+        env.logger.debug(f'Set ``{key}`` = ``{short_repr(value)}``')
 
     def _check_readonly(self, key, value):
         # we only keep track of primitive types
@@ -232,11 +232,11 @@ class WorkflowDict(object):
             return
         if key in self._dict and self._dict[key] != self._readonly_vars[key]:
             if self._change_all_cap_vars == 'warning':
-                env.logger.warning('Value of readonly variable {} is changed from {} to {}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the warning."'.format(
-                    key, self._readonly_vars[key], self._dict[key]))
+                env.logger.warning(
+                    f'Value of readonly variable {key} is changed from {self._readonly_vars[key]} to {self._dict[key]}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the warning."')
             else:
-                raise RuntimeError('Value of readonly variable {} is changed from {} to {}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the warning."'.format(
-                    key, self._readonly_vars[key], self._dict[key]))
+                raise RuntimeError(
+                    f'Value of readonly variable {key} is changed from {self._readonly_vars[key]} to {self._dict[key]}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the warning."')
             if hasattr(self._dict[key], '__dict__'):
                 self._readonly_vars.pop(key)
             else:
@@ -248,11 +248,11 @@ class WorkflowDict(object):
         for key in self._readonly_vars:
             if key in self._dict and (hasattr(self._dict[key], '__dict__') or self._dict[key] != self._readonly_vars[key]):
                 if self._change_all_cap_vars == 'warning':
-                    env.logger.warning('Value of readonly variable {} is changed from {} to {}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the warning."'.format(
-                        key, self._readonly_vars[key], self._dict[key]))
+                    env.logger.warning(
+                        f'Value of readonly variable {key} is changed from {self._readonly_vars[key]} to {self._dict[key]}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the warning."')
                 else:
-                    raise RuntimeError('Value of readonly variable {} is changed from {} to {}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the error."'.format(
-                        key, self._readonly_vars[key], self._dict[key]))
+                    raise RuntimeError(
+                        f'Value of readonly variable {key} is changed from {self._readonly_vars[key]} to {self._dict[key]}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the error."')
                 if hasattr(self._dict[key], '__dict__'):
                     self._readonly_vars.pop(key)
                 else:
@@ -262,7 +262,7 @@ class WorkflowDict(object):
 
     def _warn(self, key, value):
         if key.startswith('_') and not key.startswith('__') and key not in ('_input', '_output', '_step', '_index', '_depends', '_runtime'):
-            env.logger.warning('{}: Variables with leading underscore is reserved for SoS temporary variables.'.format(key))
+            env.logger.warning(f'{key}: Variables with leading underscore is reserved for SoS temporary variables.')
 
     def clone_selected_vars(self, selected=None):
         return {x:copy.deepcopy(y) for x,y in self._dict.items() if (not selected or x in selected) and pickleable(y, x)}
@@ -375,7 +375,7 @@ class RuntimeEnvironments(object):
 
     def _set_exec_dir(self, edir):
         if not os.path.isdir(edir):
-            raise RuntimeError('Exec dir {} does not exist.'.format(edir))
+            raise RuntimeError(f'Exec dir {edir} does not exist.')
         self._assure_runtime_dir(edir)
         self._exec_dir = edir
 
@@ -468,7 +468,7 @@ def dehtml(text):
         parser.close()
         return parser.text()
     except Exception as e:
-        env.logger.warning('Failed to dehtml text: {}'.format(e))
+        env.logger.warning(f'Failed to dehtml text: {e}')
         return text
 
 # exception classes
@@ -551,7 +551,7 @@ def pickleable(obj, name):
         pickle.dumps(obj)
         return True
     except Exception as e:
-        env.logger.debug('Object {} with value {} is not passed because it is not pickleable: {}'.format(name, short_repr(obj), e))
+        env.logger.debug(f'Object {name} with value {short_repr(obj)} is not passed because it is not pickleable: {e}')
         return False
 
 class ProgressFileObj(FileIO):
@@ -591,7 +591,7 @@ def get_output(cmd, show_command=False, prompt='$ '):
             env.logger.error(e.output.decode())
         raise RuntimeError(e)
     if show_command:
-        return '{}{}\n{}'.format(prompt, cmd, output)
+        return f'{prompt}{cmd}\n{output}'
     else:
         return output
 
@@ -615,7 +615,7 @@ def locate_script(filename, start=''):
             return (content, filename)
         except Exception as e:
             env.logger.error(e)
-            raise ValueError('Failed to open {}'.format(filename))
+            raise ValueError(f'Failed to open {filename}')
     #
     # a search path
     pathes = [start]
@@ -625,7 +625,7 @@ def locate_script(filename, start=''):
             with open(sos_config_file) as config:
                 cfg = yaml.safe_load(config)
         except Exception as e:
-            raise RuntimeError('Failed to parse global sos config file {}, is it in JSON format?'.format(sos_config_file))
+            raise RuntimeError(f'Failed to parse global sos config file {sos_config_file}, is it in JSON format?')
         #
         pathes.extend(cfg.get('sos_path', []))
     #
@@ -648,7 +648,7 @@ def locate_script(filename, start=''):
             except Exception as e:
                 pass
     #
-    raise ValueError('Failed to locate {}'.format(filename))
+    raise ValueError(f'Failed to locate {filename}')
 
 def text_repr(text):
     """return a valid string representation of text, but requires that
@@ -708,7 +708,7 @@ def PrettyRelativeTime(time_diff_secs):
         (secs % (3600*24) // 3600, 'hr'),
         (secs % 3600 // 60, 'min'),
         (secs % 60, 'sec')]
-    txt = ' '.join(['{} {}'.format(x,y) for x,y in rec if x > 0])
+    txt = ' '.join([f'{x} {y}' for x, y in rec if x > 0])
     return txt if txt else '0 sec'
 
 # display file size in K, M, G etc automatically. Code copied from
@@ -723,7 +723,7 @@ def expand_size(size):
         return size
     m = re.match(r'\s*([+-]?)([\.\d]*)\s*(\S+)\s*', size)
     if not m:
-        raise ValueError('Invalid size specified: {}'.format(size))
+        raise ValueError(f'Invalid size specified: {size}')
     sign, num, unit = m.groups()
     sign = -1 if sign == '-' else 1
     if not unit:
@@ -734,14 +734,14 @@ def expand_size(size):
     s.update({x: 1000**(idx+1) for idx,x in enumerate('KMGTPEZY')})
     unit = unit[:-1].upper() if unit[-1].upper().endswith('B') else unit.upper()
     if unit not in s:
-        raise ValueError('Invalid size specified: {}'.format(size))
+        raise ValueError(f'Invalid size specified: {size}')
     return sign * int(float(num) * s[unit])
 
 def find_symbolic_links(item):
     item = os.path.expanduser(item)
     if os.path.islink(item):
         if not os.path.exists(item):
-            env.logger.warning('Non-existent symbolic link {}'.format(item))
+            env.logger.warning(f'Non-existent symbolic link {item}')
         return {item: os.path.realpath(item)}
     elif os.path.isfile(item):
         return {}
@@ -772,8 +772,7 @@ class ActivityNotifier(threading.Thread):
                 prog = ProgressBar(desc=self.msg, position=0, bar_format='{desc}', total=100000000)
             second_elapsed = time.time() - self.start_time
             prog.set_description(self.msg + ' ({}{})'.format(
-                    '' if second_elapsed < 86400 else '{} day{} '
-                    .format(int(second_elapsed/86400), 's' if second_elapsed > 172800 else ''),
+                    '' if second_elapsed < 86400 else f'{int(second_elapsed/86400)} day{"s" if second_elapsed > 172800 else ""} ',
                     time.strftime('%H:%M:%S', time.gmtime(second_elapsed)) ))
             prog.update(1)
 
@@ -814,12 +813,12 @@ def sos_handle_parameter_(key, defvalue):
     the environment. This makes the parameters variable.
     '''
     if key in env.sos_dict['sos_symbols_']:
-        env.logger.warning('Parameter {} overrides a SoS function.'.format(key))
+        env.logger.warning(f'Parameter {key} overrides a SoS function.')
 
     env.parameter_vars.add(key)
     if not env.sos_dict['__args__']:
         if isinstance(defvalue, type):
-            raise ArgumentError('Argument {} of type {} is required'.format(key, defvalue.__name__))
+            raise ArgumentError(f'Argument {key} of type {defvalue.__name__} is required')
         return defvalue
     # if the parameter is passed from action sos_run
     if isinstance(env.sos_dict['__args__'], dict):
@@ -836,32 +835,32 @@ def sos_handle_parameter_(key, defvalue):
     if isinstance(defvalue, type) or defvalue is None:
         if defvalue == bool:
             feature_parser = parser.add_mutually_exclusive_group(required=True)
-            feature_parser.add_argument('--{}'.format(key), dest=key, action='store_true')
-            feature_parser.add_argument('--no-{}'.format(key), dest=key, action='store_false')
+            feature_parser.add_argument(f'--{key}', dest=key, action='store_true')
+            feature_parser.add_argument(f'--no-{key}', dest=key, action='store_false')
             if '_' in key:
-                feature_parser.add_argument('--{}'.format(key.replace('_', '-')), dest=key, action='store_true')
-                feature_parser.add_argument('--no-{}'.format(key.replace('_', '-')), dest=key, action='store_false')
+                feature_parser.add_argument(f'--{key.replace("_", "-")}', dest=key, action='store_true')
+                feature_parser.add_argument(f'--no-{key.replace("_", "-")}', dest=key, action='store_false')
         else:
             if defvalue is None:
                 defvalue = str
             # if only a type is specified, it is a required document of required type
             if '_' in key:
                 feature_parser = parser.add_mutually_exclusive_group(required=True)
-                feature_parser.add_argument('--{}'.format(key), dest=key, type=str if hasattr(defvalue, '__iter__') else defvalue,
-                    help='', nargs='+' if defvalue != str and hasattr(defvalue, '__iter__') else '?')
-                feature_parser.add_argument('--{}'.format(key.replace('_', '-')), dest=key, type=str if hasattr(defvalue, '__iter__') else defvalue,
-                    help='', nargs='+' if defvalue != str and hasattr(defvalue, '__iter__') else '?')
+                feature_parser.add_argument(f'--{key}', dest=key, type=str if hasattr(defvalue, '__iter__') else defvalue,
+                                            help='', nargs='+' if defvalue != str and hasattr(defvalue, '__iter__') else '?')
+                feature_parser.add_argument(f'--{key.replace("_", "-")}', dest=key, type=str if hasattr(defvalue, '__iter__') else defvalue,
+                                            help='', nargs='+' if defvalue != str and hasattr(defvalue, '__iter__') else '?')
             else:
-                parser.add_argument('--{}'.format(key), dest=key, type=str if hasattr(defvalue, '__iter__') else defvalue,
-                    help='', required=True, nargs='+' if defvalue != str and hasattr(defvalue, '__iter__') else '?')
+                parser.add_argument(f'--{key}', dest=key, type=str if hasattr(defvalue, '__iter__') else defvalue,
+                                    help='', required=True, nargs='+' if defvalue != str and hasattr(defvalue, '__iter__') else '?')
     else:
         if isinstance(defvalue, bool):
             feature_parser = parser.add_mutually_exclusive_group(required=False)
-            feature_parser.add_argument('--{}'.format(key), dest=key, action='store_true')
-            feature_parser.add_argument('--no-{}'.format(key), dest=key, action='store_false')
+            feature_parser.add_argument(f'--{key}', dest=key, action='store_true')
+            feature_parser.add_argument(f'--no-{key}', dest=key, action='store_false')
             if '_' in key:
-                feature_parser.add_argument('--{}'.format(key.replace('_', '-')), dest=key, action='store_true')
-                feature_parser.add_argument('--no-{}'.format(key.replace('_', '-')), dest=key, action='store_false')
+                feature_parser.add_argument(f'--{key.replace("_", "-")}', dest=key, action='store_true')
+                feature_parser.add_argument(f'--no-{key.replace("_", "-")}', dest=key, action='store_false')
             feature_parser.set_defaults(key=defvalue)
         else:
             if isinstance(defvalue, str):
@@ -875,16 +874,16 @@ def sos_handle_parameter_(key, defvalue):
                 deftype = type(defvalue)
             if '_' in key:
                 feature_parser = parser.add_mutually_exclusive_group(required=False)
-                feature_parser.add_argument('--{}'.format(key), dest=key, type=deftype,
-                    nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
-                    default=defvalue)
-                feature_parser.add_argument('--{}'.format(key.replace('_', '-')), dest=key, type=deftype,
-                    nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
-                    default=defvalue)
+                feature_parser.add_argument(f'--{key}', dest=key, type=deftype,
+                                            nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
+                                            default=defvalue)
+                feature_parser.add_argument(f'--{key.replace("_", "-")}', dest=key, type=deftype,
+                                            nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
+                                            default=defvalue)
             else:
-                parser.add_argument('--{}'.format(key), dest=key, type=deftype,
-                    nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
-                    default=defvalue)
+                parser.add_argument(f'--{key}', dest=key, type=deftype,
+                                    nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
+                                    default=defvalue)
     #
     parser.error = _parse_error
     parsed, _ = parser.parse_known_args(env.sos_dict['__args__']['__args__'] if isinstance(env.sos_dict['__args__'], dict) else env.sos_dict['__args__'])
@@ -901,9 +900,10 @@ def load_config_files(filename=None):
                 with open(sos_config_file) as config:
                     cfg = yaml.safe_load(config)
             except Exception as e:
-                raise RuntimeError('Failed to parse global sos hosts file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+                raise RuntimeError(
+                    f'Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})')
     else:
-        env.logger.trace("{} does not exist".format(sos_config_file))
+        env.logger.trace(f"{sos_config_file} does not exist")
 
     # global site file
     sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'hosts.yml')
@@ -913,9 +913,10 @@ def load_config_files(filename=None):
                 with open(sos_config_file) as config:
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
-                raise RuntimeError('Failed to parse global sos hosts file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+                raise RuntimeError(
+                    f'Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})')
     else:
-        env.logger.trace("{} does not exist".format(sos_config_file))
+        env.logger.trace(f"{sos_config_file} does not exist")
     # global config file
     sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
     if os.path.isfile(sos_config_file):
@@ -924,19 +925,20 @@ def load_config_files(filename=None):
                 with open(sos_config_file) as config:
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
-                raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+                raise RuntimeError(
+                    f'Failed to parse global sos config file {sos_config_file}, is it in YAML/JSON format? ({e})')
     else:
-        env.logger.trace("{} does not exist".format(sos_config_file))
+        env.logger.trace(f"{sos_config_file} does not exist")
     # user-specified configuration file.
     if filename is not None:
         if not os.path.isfile(os.path.expanduser(filename)):
-            raise RuntimeError('Config file {} not found'.format(filename))
+            raise RuntimeError(f'Config file {filename} not found')
         with fasteners.InterProcessLock(os.path.join(tempfile.gettempdir(), 'sos_config_')):
             try:
                 with open(os.path.expanduser(filename)) as config:
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
-                raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(filename, e))
+                raise RuntimeError(f'Failed to parse config file {filename}, is it in YAML/JSON format? ({e})')
     if 'user_name' not in cfg:
         cfg['user_name'] = getpass.getuser().lower()
     env.sos_dict.set('CONFIG', cfg)
@@ -944,7 +946,7 @@ def load_config_files(filename=None):
     def process_based_on(cfg, item):
         if 'based_on' in item:
             if not isinstance(item['based_on'], (str, list)) or not item['based_on']:
-                raise ValueError('A string is expected for key based_on. {} obtained'.format(item['based_on']))
+                raise ValueError(f'A string is expected for key based_on. {item["based_on"]} obtained')
             
             referred_keys = [item['based_on']] if isinstance(item['based_on'], str) else item['based_on']
             item.pop('based_on')
@@ -953,9 +955,9 @@ def load_config_files(filename=None):
                 val = cfg
                 for key in rkey.split('.'):
                     if not isinstance(val, dict):
-                        raise ValueError('Based on key {} not found'.format(item))
+                        raise ValueError(f'Based on key {item} not found')
                     if key not in val:
-                        raise ValueError('Based on key {} not found in config'.format(key))
+                        raise ValueError(f'Based on key {key} not found in config')
                     else:
                         val = val[key]
                 #
@@ -988,10 +990,12 @@ def format_HHMMSS(v):
         try:
             return format_HHMMSS(expand_time(v))
         except Exception as e:
-            raise ValueError('walltime should be specified as a integer with unit s (default), h, m, d or string in the format of HH:MM:SS. "{}" specified ({})'.format(v, e))
+            raise ValueError(
+                f'walltime should be specified as a integer with unit s (default), h, m, d or string in the format of HH:MM:SS. "{v}" specified ({e})')
     else:
-        raise ValueError('walltime should be specified as a integer with unit s (default), h, m, d or string in the format of HH:MM:SS. "{}" of type {} specified'.format(v, v.__class__.__name__))
-    return '{:02d}:{:02d}:{:02d}'.format(h,m,s)
+        raise ValueError(
+            f'walltime should be specified as a integer with unit s (default), h, m, d or string in the format of HH:MM:SS. "{v}" of type {v.__class__.__name__} specified')
+    return f'{h:02d}:{m:02d}:{s:02d}'
 
 
 def expand_time(v, default_unit='s'):
@@ -1010,7 +1014,8 @@ def expand_time(v, default_unit='s'):
                 h, m, s = map(int, v.split(':'))
                 return sign * (h * 60 * 60 + m * 60 + s)
             except Exception as e:
-                raise ValueError('Input of option walltime should be an integer with unit s (default), h, m, d or a string in the format of HH:MM:SS. {} specified: {}'.format(v, e))
+                raise ValueError(
+                    f'Input of option walltime should be an integer with unit s (default), h, m, d or a string in the format of HH:MM:SS. {v} specified: {e}')
         #
         try:
             unit = {'s': 1, 'm': 60, 'h': 3600, 'd': 3600*24}[v[-1]]
@@ -1021,11 +1026,13 @@ def expand_time(v, default_unit='s'):
         try:
             return sign * unit * int(v)
         except Exception:
-            raise ValueError('Unacceptable time for parameter age, expecting [+/-] num [s|m|h|d] or HH:MM:SS (e.g. +5h): {} provided'.format(v))
+            raise ValueError(
+                f'Unacceptable time for parameter age, expecting [+/-] num [s|m|h|d] or HH:MM:SS (e.g. +5h): {v} provided')
     elif isinstance(v, int):
         return v
     else:
-         raise ValueError('Input of option walltime should be an integer with unit s (default), h, m, d or a string in the format of HH:MM:SS. {} specified.'.format(v))
+         raise ValueError(
+             f'Input of option walltime should be an integer with unit s (default), h, m, d or a string in the format of HH:MM:SS. {v} specified.')
 
 
 
@@ -1083,10 +1090,10 @@ def isPrimitive(obj):
 
 def save_var(name, var):
     if isPrimitive(var):
-        return '{}={}\n'.format(name, stable_repr(var))
+        return f'{name}={stable_repr(var)}\n'
     else:
          # for more complex type, we use pickle + base64
-         return '{}:={}\n'.format(name, base64.b64encode(pickle.dumps(var)))
+         return f'{name}:={base64.b64encode(pickle.dumps(var))}\n'
 
 def load_var(line):
     from .target import remote
@@ -1145,7 +1152,7 @@ def convertAnsi2html(txt):
 # log to file for debugging purpose only
 def log_to_file(msg):
     with open(os.path.join(os.path.expanduser('~'), 'jupyter_debug.txt'), 'a') as log:
-        log.write('{}\n'.format(msg))
+        log.write(f'{msg}\n')
 
 def remove_arg(argv, arg):
     r_idx = [idx for idx, x in enumerate(argv) if x.startswith(arg)]

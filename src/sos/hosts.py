@@ -81,7 +81,7 @@ class DaemonizedProcess(mp.Process):
                 # exit from second parent
                 sys.exit(0)
         except OSError as err:
-            env.logger.error('_Fork #1 failed: {0}\n'.format(err))
+            env.logger.error(f'_Fork #1 failed: {err}\n')
             sys.exit(1)
 
         os.setsid()
@@ -93,7 +93,7 @@ class DaemonizedProcess(mp.Process):
                 # exit from second parent
                 sys.exit(0)
         except OSError as err:
-            env.logger.error('_Fork #2 failed: {0}\n'.format(err))
+            env.logger.error(f'_Fork #2 failed: {err}\n')
             sys.exit(1)
         # the following is also need to properly daemonize the process
         # redirect standard file descriptors
@@ -119,7 +119,7 @@ def _show_err_and_out(task_id):
     out_file = os.path.join(sys_task_dir, task_id + '.out')
     err_file = os.path.join(sys_task_dir, task_id + '.err')
     if os.path.isfile(out_file):
-        sys.stderr.write('\n~/.sos/tasks/{}.out:\n'.format(task_id))
+        sys.stderr.write(f'\n~/.sos/tasks/{task_id}.out:\n')
         with open(out_file) as out:
             ends_with_newline = False
             for line in out:
@@ -129,7 +129,7 @@ def _show_err_and_out(task_id):
             if not ends_with_newline:
                 sys.stderr.write('\n')
     if os.path.isfile(err_file):
-        sys.stderr.write('\n~/.sos/tasks/{}.err:\n'.format(task_id))
+        sys.stderr.write(f'\n~/.sos/tasks/{task_id}.err:\n')
         with open(err_file) as err:
             ends_with_newline = False
             for line in err:
@@ -179,18 +179,18 @@ class LocalHost:
 
             if self.config.get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
                     and self.config['max_mem'] < task_vars['_runtime']['mem']:
-                env.logger.error('Task {} requested more mem ({}) than allowed max_mem ({})'.format(
-                    task_id, task_vars['_runtime']['mem'], self.config['max_mem']))
+                env.logger.error(
+                    f'Task {task_id} requested more mem ({task_vars["_runtime"]["mem"]}) than allowed max_mem ({self.config["max_mem"]})')
                 return False
             if self.config.get('max_cores', None) is not None and task_vars['_runtime'].get('cores', None) is not None \
                     and self.config['max_cores'] < task_vars['_runtime']['cores']:
-                env.logger.error('Task {} requested more cores ({}) than allowed max_cores ({})'.format(
-                    task_id, task_vars['_runtime']['cores'], self.config['max_cores']))
+                env.logger.error(
+                    f'Task {task_id} requested more cores ({task_vars["_runtime"]["cores"]}) than allowed max_cores ({self.config["max_cores"]})')
                 return False
             if self.config.get('max_walltime', None) is not None and task_vars['_runtime'].get('walltime', None) is not None \
                     and expand_time(self.config['max_walltime']) < expand_time(task_vars['_runtime']['walltime']):
-                env.logger.error('Task {} requested more walltime ({}) than allowed max_walltime ({})'.format(
-                    task_id, task_vars['_runtime']['walltime'], self.config['max_walltime']))
+                env.logger.error(
+                    f'Task {task_id} requested more walltime ({task_vars["_runtime"]["walltime"]}) than allowed max_walltime ({self.config["max_walltime"]})')
                 return False
 
             params.save(task_file)
@@ -208,7 +208,7 @@ class LocalHost:
         if task_file != dest_task_file:
             shutil.copyfile(task_file, dest_task_file)
 
-    def check_output(self, cmd):
+    def check_output(self, cmd: object) -> object:
         # get the output of command
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
@@ -216,7 +216,7 @@ class LocalHost:
             cmd = cfg_interpolate(cmd)
             return subprocess.check_output(cmd, shell=isinstance(cmd, str)).decode()
         except Exception as e:
-            env.logger.warning('Check output of {} failed: {}'.format(cmd, e))
+            env.logger.warning(f'Check output of {cmd} failed: {e}')
             raise
 
     def check_call(self, cmd):
@@ -224,7 +224,7 @@ class LocalHost:
         try:
             return subprocess.check_call(cmd, shell=isinstance(cmd, str))
         except Exception as e:
-            env.logger.warning('Check output of {} failed: {}'.format(cmd, e))
+            env.logger.warning(f'Check output of {cmd} failed: {e}')
             raise
 
     def run_command(self, cmd, wait_for_task, realtime=False, **kwargs):
@@ -250,7 +250,7 @@ class LocalHost:
                 _show_err_and_out(task_id)
         except Exception:
             _show_err_and_out(task_id)
-            env.logger.warning('Result for {} is not received'.format(task_id))
+            env.logger.warning(f'Result for {task_id} is not received')
             return {'ret_code': 1, 'output': {}}
 
         task_file = os.path.join(sys_task_dir, task_id + '.def')
@@ -301,15 +301,15 @@ class RemoteHost:
         if isinstance(path_map, Sequence):
             for v in path_map:
                 if ' -> ' not in v:
-                    raise ValueError('Path map should be separated as from -> to, {} specified'.format(v))
+                    raise ValueError(f'Path map should be separated as from -> to, {v} specified')
                 elif v.count(' -> ') > 1:
-                    raise ValueError('Path map should be separated as from -> to, {} specified'.format(v))
+                    raise ValueError(f'Path map should be separated as from -> to, {v} specified')
                 res[v.split(' -> ')[0]] = v.split(' -> ')[1]
         elif isinstance(path_map, dict):
             for k,v in path_map.items():
                 res[k] = v
         else:
-            raise ValueError('Unacceptable path_mapue for configuration path_map: {}'.format(path_map))
+            raise ValueError(f'Unacceptable path_mapue for configuration path_map: {path_map}')
         return res
 
     def _get_send_cmd(self, rename=False):
@@ -362,13 +362,14 @@ class RemoteHost:
                 k = max(matched, key=len)
                 dest = self.path_map[k] + dest[len(k):]
             else:
-                env.logger.warning('Path {} is not under any specified paths of localhost and is mapped to {} on remote host.'.format(source, dest))
+                env.logger.warning(
+                    f'Path {source} is not under any specified paths of localhost and is mapped to {dest} on remote host.')
             result[source] = dest.replace('\\', '/')
         elif isinstance(source, (Sequence, set)):
             for src in source:
                 result.update(self._map_path(src))
         else:
-            env.logger.debug('Ignore unmappable source {}'.format(source))
+            env.logger.debug(f'Ignore unmappable source {source}')
             return {source: source}
         return result
 
@@ -392,13 +393,14 @@ class RemoteHost:
                 k = max(matched, key=len)
                 dest = self.path_map[k] + dest[len(k):]
             else:
-                env.logger.warning('Path {} is not under any specified paths of localhost and is mapped to {} on remote host.'.format(source, dest))
+                env.logger.warning(
+                    f'Path {source} is not under any specified paths of localhost and is mapped to {dest} on remote host.')
             return dest.replace('\\', '/')
         elif isinstance(source, (Sequence, set)):
             ret = [self._map_var(x) for x in source]
             return [x for x in ret if x is not None]
         else:
-            env.logger.debug('Ignore unmappable source {}'.format(source))
+            env.logger.debug(f'Ignore unmappable source {source}')
             return source
 
     def send_to_host(self, items):
@@ -410,12 +412,12 @@ class RemoteHost:
         elif isinstance(items, dict):
             for x,y in items.items():
                 if not isinstance(x, str):
-                    env.logger.warning('Unrecognized item to be sent to host: {}'.format(x))
+                    env.logger.warning(f'Unrecognized item to be sent to host: {x}')
                 if not isinstance(y, str):
-                    env.logger.warning('Unrecognized item to be sent to host: {}'.format(y))
+                    env.logger.warning(f'Unrecognized item to be sent to host: {y}')
             items = {x:y for x,y in items.items() if isinstance(x, str) and isinstance(y, str)}
         else:
-            env.logger.warning('Unrecognized items to be sent to host: {}'.format(items))
+            env.logger.warning(f'Unrecognized items to be sent to host: {items}')
             return {}
 
         if isinstance(items, Sequence):
@@ -424,7 +426,7 @@ class RemoteHost:
             for item in items:
                 links = find_symbolic_links(item)
                 for link, realpath in links.items():
-                    env.logger.info('Adding {} for symbolic link {}'.format(realpath, link))
+                    env.logger.info(f'Adding {realpath} for symbolic link {link}')
                 new_items.extend(links.values())
             items.extend(new_items)
 
@@ -436,15 +438,16 @@ class RemoteHost:
         for source in sorted(sending.keys()):
             dest = sending[source]
             if self.is_shared(source):
-                env.logger.debug('Skip sending {} on shared file system'.format(source))
+                env.logger.debug(f'Skip sending {source} on shared file system')
             else:
-                env.logger.debug('Sending ``{}`` to {}:{}'.format(source, self.alias, dest))
+                env.logger.debug(f'Sending ``{source}`` to {self.alias}:{dest}')
                 cmd = cfg_interpolate(self._get_send_cmd(rename=os.path.basename(source) != os.path.basename(dest)),
                         {'source': sos_targets(source.rstrip('/')), 'dest': sos_targets(dest), 'host': self.address, 'port': self.port})
                 env.logger.debug(cmd)
                 ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                 if (ret != 0):
-                    raise RuntimeError('Failed to copy {} to {} using command "{}". The remote host might be unavailable.'.format(source, self.alias, cmd))
+                    raise RuntimeError(
+                        f'Failed to copy {source} to {self.alias} using command "{cmd}". The remote host might be unavailable.')
             sent[source] = dest
         return sent
 
@@ -464,9 +467,9 @@ class RemoteHost:
                 try:
                     os.path.makedirs(dest_dir)
                 except Exception as e:
-                    env.logger.error('Failed to create destination directory {}'.format(dest_dir))
+                    env.logger.error(f'Failed to create destination directory {dest_dir}')
             if self.is_shared(dest) and os.path.basename(source) == os.path.basename(dest):
-                env.logger.debug('Skip retrieving ``{}`` from shared file system'.format(dest))
+                env.logger.debug(f'Skip retrieving ``{dest}`` from shared file system')
                 received[dest] = source
             else:
                 cmd = cfg_interpolate(self._get_receive_cmd(rename=os.path.basename(source) != os.path.basename(dest)),
@@ -475,10 +478,10 @@ class RemoteHost:
                 try:
                     ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                     if (ret != 0):
-                        raise RuntimeError('command return {}'.format(ret))
+                        raise RuntimeError(f'command return {ret}')
                     received[dest] = source
                 except Exception as e:
-                    raise  RuntimeError('Failed to copy {} from {} using command "{}": {}'.format(source, self.alias, cmd, e))
+                    raise  RuntimeError(f'Failed to copy {source} from {self.alias} using command "{cmd}": {e}')
         return received
 
     #
@@ -499,25 +502,25 @@ class RemoteHost:
 
         if self.config.get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
                 and self.config['max_mem'] < task_vars['_runtime']['mem']:
-            raise ValueError('Task {} requested more mem ({}) than allowed max_mem ({})'.format(
-                task_id, task_vars['_runtime']['mem'], self.config['max_mem']))
+            raise ValueError(
+                f'Task {task_id} requested more mem ({task_vars["_runtime"]["mem"]}) than allowed max_mem ({self.config["max_mem"]})')
         if self.config.get('max_cores', None) is not None and task_vars['_runtime'].get('cores', None) is not None \
                 and self.config['max_cores'] < task_vars['_runtime']['cores']:
-            raise ValueError('Task {} requested more cores ({}) than allowed max_cores ({})'.format(
-                task_id, task_vars['_runtime']['cores'], self.config['max_cores']))
+            raise ValueError(
+                f"Task {task_id} requested more cores ({task_vars['_runtime']['cores']}) than allowed max_cores ({self.config['max_cores']})")
         if self.config.get('max_walltime', None) is not None and task_vars['_runtime'].get('walltime', None) is not None \
                 and expand_time(self.config['max_walltime']) < expand_time(task_vars['_runtime']['walltime']):
-            raise ValueError('Task {} requested more walltime ({}) than allowed max_walltime ({})'.format(
-                task_id, task_vars['_runtime']['walltime'], self.config['max_walltime']))
+            raise ValueError(
+                f'Task {task_id} requested more walltime ({task_vars["_runtime"]["walltime"]}) than allowed max_walltime ({self.config["max_walltime"]})')
 
         if task_vars['_input'] and not isinstance(task_vars['_input'], Undetermined):
-            env.logger.info('{} ``sending`` {}'.format(task_id, short_repr(task_vars['_input'])))
+            env.logger.info(f'{task_id} ``sending`` {short_repr(task_vars["_input"])}')
             self.send_to_host(task_vars['_input'])
         if task_vars['_depends'] and not isinstance(task_vars['_depends'], Undetermined):
-            env.logger.info('{} ``sending`` {}'.format(task_id, short_repr(task_vars['_depends'])))
+            env.logger.info(f'{task_id} ``sending`` {short_repr(task_vars["_depends"])}')
             self.send_to_host(task_vars['_depends'])
         if 'to_host' in task_vars['_runtime']:
-            env.logger.info('{} ``sending`` {}'.format(task_id, short_repr(task_vars['_runtime']['to_host'])))
+            env.logger.info(f'{task_id} ``sending`` {short_repr(task_vars["_runtime"]["to_host"])}')
             if isinstance(task_vars['_runtime']['to_host'], dict):
                 th = {}
                 for x,y in task_vars['_runtime']['to_host'].items():
@@ -545,7 +548,8 @@ class RemoteHost:
             elif isinstance(task_vars['_runtime']['mapped_vars_vars'], (set, Sequence)):
                 mapped_vars |= set(task_vars['_runtime']['mapped_vars_vars'])
             else:
-                raise ValueError('Unacceptable value for runtime option mapped_vars_vars: {}'.format(task_vars['_runtime']['mapped_vars_vars']))
+                raise ValueError(
+                    f'Unacceptable value for runtime option mapped_vars_vars: {task_vars["_runtime"]["mapped_vars_vars"]}')
 
         for var in mapped_vars:
             if var not in task_vars:
@@ -555,12 +559,12 @@ class RemoteHost:
                 continue
             elif isinstance(task_vars[var], str):
                 task_vars[var] = self._map_var(task_vars[var])
-                env.logger.debug('On {}: ``{}`` = {}'.format(self.alias, var, short_repr(task_vars[var])))
+                env.logger.debug(f'On {self.alias}: ``{var}`` = {short_repr(task_vars[var])}')
             elif isinstance(task_vars[var], (Sequence, set)):
                 task_vars[var] = type(task_vars[var])(self._map_var(task_vars[var]))
-                env.logger.debug('On {}: ``{}`` = {}'.format(self.alias, var, short_repr(task_vars[var])))
+                env.logger.debug(f'On {self.alias}: ``{var}`` = {short_repr(task_vars[var])}')
             else:
-                env.logger.warning('Failed to map {} of type {}'.format(var, task_vars[var].__class__.__name__))
+                env.logger.warning(f'Failed to map {var} of type {task_vars[var].__class__.__name__}')
 
         # server restrictions #488
         task_vars['_runtime']['max_mem'] = self.config.get('max_mem', None)
@@ -580,9 +584,9 @@ class RemoteHost:
         try:
             subprocess.check_call(send_cmd, shell=True)
         except subprocess.CalledProcessError as e:
-            raise RuntimeError('Failed to copy job {} to {} using command {}: {}'.format(task_file, self.alias, send_cmd, e))
+            raise RuntimeError(f'Failed to copy job {task_file} to {self.alias} using command {send_cmd}: {e}')
 
-    def check_output(self, cmd):
+    def check_output(self, cmd: object) -> object:
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
@@ -590,12 +594,12 @@ class RemoteHost:
                 'host': self.address, 'port': self.port,
                 'cmd': cmd, 'cur_dir': self._map_var(os.getcwd())})
         except Exception as e:
-            raise ValueError('Failed to run command {}: {} ({})'.format(cmd, e, env.sos_dict['CONFIG']))
-        env.logger.debug('Executing command ``{}``'.format(cmd))
+            raise ValueError(f'Failed to run command {cmd}: {e} ({env.sos_dict["CONFIG"]})')
+        env.logger.debug(f'Executing command ``{cmd}``')
         try:
             return subprocess.check_output(cmd, shell=True).decode()
         except Exception as e:
-            env.logger.debug('Check output of {} failed: {}'.format(cmd, e))
+            env.logger.debug(f'Check output of {cmd} failed: {e}')
             raise
 
     def check_call(self, cmd):
@@ -606,12 +610,12 @@ class RemoteHost:
                 'host': self.address, 'port': self.port,
                 'cmd': cmd, 'cur_dir': self._map_var(os.getcwd())})
         except Exception as e:
-            raise ValueError('Failed to run command {}: {}'.format(cmd, e))
-        env.logger.debug('Executing command ``{}``'.format(cmd))
+            raise ValueError(f'Failed to run command {cmd}: {e}')
+        env.logger.debug(f'Executing command ``{cmd}``')
         try:
             return subprocess.check_call(cmd, shell=True)
         except Exception as e:
-            env.logger.debug('Check output of {} failed: {}'.format(cmd, e))
+            env.logger.debug(f'Check output of {cmd} failed: {e}')
             raise
 
     def run_command(self, cmd, wait_for_task, realtime=False, **kwargs):
@@ -622,8 +626,8 @@ class RemoteHost:
                 'host': self.address, 'port': self.port,
                 'cmd': cmd, 'cur_dir': self._map_var(os.getcwd()) })
         except Exception as e:
-            raise ValueError('Failed to run command {}: {}'.format(cmd, e))
-        env.logger.debug('Executing command ``{}``'.format(cmd))
+            raise ValueError(f'Failed to run command {cmd}: {e}')
+        env.logger.debug(f'Executing command ``{cmd}``')
         if realtime:
             from .utils import pexpect_run
             return pexpect_run(cmd)
@@ -660,7 +664,7 @@ class RemoteHost:
         res_file = os.path.join(sys_task_dir, task_id + '.res')
         if not os.path.isfile(res_file):
             _show_err_and_out(task_id)
-            env.logger.debug('Result for {} is not received'.format(task_id))
+            env.logger.debug(f'Result for {task_id} is not received')
             return {'ret_code': 1, 'output': {}}
 
         with open(res_file, 'rb') as result:
@@ -668,7 +672,7 @@ class RemoteHost:
 
         if ('ret_code' in res and res['ret_code'] != 0) or ('succ' in res and res['succ'] != 0):
             _show_err_and_out(task_id)
-            env.logger.info('Ignore remote results for failed job {}'.format(task_id))
+            env.logger.info(f'Ignore remote results for failed job {task_id}')
         else:
             if env.verbosity >= 3:
                 _show_err_and_out(task_id)
@@ -681,7 +685,7 @@ class RemoteHost:
             if job_dict['_output'] and not isinstance(job_dict['_output'], Undetermined):
                 received = self.receive_from_host([x for x in job_dict['_output'] if isinstance(x, str)])
                 if received:
-                    env.logger.info('{} ``received`` {}'.format(task_id, short_repr(received.keys())))
+                    env.logger.info(f'{task_id} ``received`` {short_repr(received.keys())}')
             if 'from_host' in job_dict['_runtime']:
                 if isinstance(job_dict['_runtime']['from_host'], dict):
                     fh = {}
@@ -696,7 +700,7 @@ class RemoteHost:
                 else:
                     received = self.receive_from_host(job_dict['_runtime']['from_host'])
                 if received:
-                    env.logger.info('{} ``received`` {}'.format(task_id, short_repr(received.keys())))
+                    env.logger.info(f'{task_id} ``received`` {short_repr(received.keys())}')
         return res
 
 
@@ -741,12 +745,13 @@ class Host:
                 self.alias = env.sos_dict['CONFIG']['localhost']
                 LOCAL = self.alias
         elif not isinstance(alias, str):
-            raise ValueError('An alias or host address is expected. {} provided.'.format(self.alias))
+            raise ValueError(f'An alias or host address is expected. {self.alias} provided.')
         else:
             # specified "remote" host.
             # but then we would require a definition for localhost
             if 'localhost' not in env.sos_dict['CONFIG']:
-                raise ValueError('localhost undefined in sos configuration file when a remote host {} is specified.'.format(alias))
+                raise ValueError(
+                    f'localhost undefined in sos configuration file when a remote host {alias} is specified.')
             self.alias = alias
             LOCAL = env.sos_dict['CONFIG']['localhost']
 
@@ -760,9 +765,9 @@ class Host:
             }
         elif 'hosts' in env.sos_dict['CONFIG']:
             if LOCAL not in env.sos_dict['CONFIG']['hosts']:
-                raise ValueError('No hosts definition for local host {}'.format(LOCAL))
+                raise ValueError(f'No hosts definition for local host {LOCAL}')
             if REMOTE not in env.sos_dict['CONFIG']['hosts']:
-                raise ValueError('No hosts definition for remote host {}'.format(REMOTE))
+                raise ValueError(f'No hosts definition for remote host {REMOTE}')
 
             # now we have definition for local and remote hosts
             cfg = env.sos_dict['CONFIG']['hosts']
@@ -777,7 +782,7 @@ class Host:
                 self.config['address'] = 'localhost'
             else:
                 if 'address' not in env.sos_dict['CONFIG']['hosts'][REMOTE]:
-                    raise ValueError('No address defined for remote host {}'.format(REMOTE))
+                    raise ValueError(f'No address defined for remote host {REMOTE}')
                 self.config['path_map'] = []
                 def normalize_value(x):
                     x = cfg_interpolate(x)
@@ -786,16 +791,18 @@ class Host:
                     common = set(cfg[LOCAL]['shared'].keys()) & set(cfg[REMOTE]['shared'].keys())
                     if common:
                         self.config['shared'] = [normalize_value(cfg[LOCAL]['shared'][x]) for x in common]
-                        self.config['path_map'] = ['{} -> {}'.format(normalize_value(cfg[LOCAL]['shared'][x]), normalize_value(cfg[REMOTE]['shared'][x])) \
+                        self.config['path_map'] = [
+                            f'{normalize_value(cfg[LOCAL]["shared"][x])} -> {normalize_value(cfg[REMOTE]["shared"][x])}' \
                             for x in common]
                 # if paths are defined for both local and remote host, define path_map
                 if ('paths' in cfg[LOCAL] and cfg[LOCAL]['paths']) and ('paths' in cfg[REMOTE] and cfg[REMOTE]['paths']):
                     if any(k not in cfg[REMOTE]['paths'] for k in cfg[LOCAL]['paths'].keys()):
-                        raise ValueError('One or more local paths {} cannot be mapped to remote host {} with paths {}'.format(
-                            ','.join(cfg[LOCAL]['paths'].keys()), REMOTE, ','.join(cfg[REMOTE]['paths'].keys())))
+                        raise ValueError(
+                            f'One or more local paths {",".join(cfg[LOCAL]["paths"].keys())} cannot be mapped to remote host {REMOTE} with paths {",".join(cfg[REMOTE]["paths"].keys())}')
                     #
-                    self.config['path_map'].extend(['{} -> {}'.format(normalize_value(cfg[LOCAL]['paths'][x]), normalize_value(cfg[REMOTE]['paths'][x])) \
-                        for x in cfg[LOCAL]['paths'].keys()])
+                    self.config['path_map'].extend([
+                                                       f'{normalize_value(cfg[LOCAL]["paths"][x])} -> {normalize_value(cfg[REMOTE]["paths"][x])}' \
+                                                       for x in cfg[LOCAL]['paths'].keys()])
         elif LOCAL == REMOTE:
             # now we have checked local and remote are not defined, but they are the same, so
             # it is safe to assume that they are both local hosts
@@ -804,7 +811,7 @@ class Host:
                     'alias': LOCAL,
             }
         else:
-            raise ValueError('Undefined local and remote hosts {} and {}.'.format(LOCAL, REMOTE))
+            raise ValueError(f'Undefined local and remote hosts {LOCAL} and {REMOTE}.')
         #
         self.config['alias'] = self.alias
         self.description = self.config.get('description', '')
@@ -840,11 +847,11 @@ class Host:
                             break
                         available_engines.append(entrypoint.name)
                     except Exception as e:
-                        raise RuntimeError('Failed to load task engine {}: {}'.format(self._task_engine_type, e))
+                        raise RuntimeError(f'Failed to load task engine {self._task_engine_type}: {e}')
 
                 if task_engine is None:
-                    raise RuntimeError('Failed to locate task engine type {}. Available engine types are {}'.format(
-                        self._task_engine_type, ', '.join(available_engines)))
+                    raise RuntimeError(
+                        f'Failed to locate task engine type {self._task_engine_type}. Available engine types are {", ".join(available_engines)}')
 
             self.host_instances[self.alias]._task_engine = task_engine
             # the task engine is a thread and will run continously
@@ -890,7 +897,7 @@ def list_queues(cfg, verbosity = 1):
         try:
             h = Host(host, start_engine=False)
         except Exception as e:
-            env.logger.warning('Invalid remote host {} from localhost: {}'.format(host, e))
+            env.logger.warning(f'Invalid remote host {host} from localhost: {e}')
             continue
         if verbosity == 0:
             print(h.alias)
@@ -898,14 +905,14 @@ def list_queues(cfg, verbosity = 1):
             host_description.append([
                 h.alias, h._host_agent.address, h._task_engine_type, h.description])
         else:
-            print('Queue:       {}'.format(h.alias))
-            print('Address:     {}'.format(h._host_agent.address))
-            print('Queue Type:  {}'.format(h._task_engine_type))
-            print('Description: {}'.format(h.description))
+            print(f'Queue:       {h.alias}')
+            print(f'Address:     {h._host_agent.address}')
+            print(f'Queue Type:  {h._task_engine_type}')
+            print(f'Description: {h.description}')
             print('Configuration:')
             keys = sorted(h.config.keys())
             for key in keys:
-                print('  {} {}'.format((key + ':').ljust(24), h.config[key]))
+                print(f'  {(key + ":").ljust(24)} {h.config[key]}')
             print()
     if verbosity in (1, 2):
         width = [(len(x) for x in row) for row in host_description]

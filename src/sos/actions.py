@@ -76,7 +76,7 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
             if '*' not in acceptable_args and 'docker_image' not in kwargs:
                 for key in kwargs.keys():
                     if key not in acceptable_args and key not in SOS_ACTION_OPTIONS:
-                        raise ValueError('Unrecognized option "{}" for action {}'.format(key, func))
+                        raise ValueError(f'Unrecognized option "{key}" for action {func}')
             # docker files will be downloaded in run or prepare mode
             if 'docker_file' in kwargs and env.config['run_mode'] in ['run', 'interactive']:
                 from .docker.client import SoS_DockerClient
@@ -94,7 +94,8 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
             if env.config['run_mode'] == 'interactive':
                 for k,v in kwargs.items():
                     if k in SOS_RUNTIME_OPTIONS and k not in SOS_ACTION_OPTIONS:
-                        env.logger.warning('Passing runtime option "{0}" to action is deprecated. Please use "task: {0}={1}" before action instead.'.format(k, v))
+                        env.logger.warning(
+                            f'Passing runtime option "{k}" to action is deprecated. Please use "task: {k}={v}" before action instead.')
             if 'active' in kwargs:
                 if isinstance(kwargs['active'], int):
                     if kwargs['active'] >= 0 and env.sos_dict['_index'] != kwargs['active']:
@@ -110,7 +111,7 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                     if env.sos_dict['_index'] not in allowed_index:
                         return None
                 else:
-                    raise RuntimeError('Unacceptable value for option active: {}'.format(kwargs['active']))
+                    raise RuntimeError(f'Unacceptable value for option active: {kwargs["active"]}')
             # verify input
             if 'input' in kwargs and kwargs['input'] is not None:
                 if isinstance(kwargs['input'], str):
@@ -118,13 +119,13 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                 elif isinstance(kwargs['input'], Sequence):
                     ifiles = list(kwargs['input'])
                 else:
-                    raise ValueError('Unacceptable value for parameter input of actions: {}'.format(kwargs['input']))
+                    raise ValueError(f'Unacceptable value for parameter input of actions: {kwargs["input"]}')
 
                 ifiles = [os.path.expanduser(x) for x in ifiles]
 
                 for ifile in ifiles:
                     if not os.path.exists(ifile):
-                        raise ValueError('Input file {} does not exist.'.format(ifile))
+                        raise ValueError(f'Input file {ifile} does not exist.')
 
             # if there are parameters input and output, the action is subject to signature verification
             sig = None
@@ -154,7 +155,7 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                         elif isinstance(kwargs[t], Sequence):
                             tfiles.extend(list(kwargs[t]))
                         else:
-                            env.logger.warning('Cannot track input or output file {}'.format(kwargs[t]))
+                            env.logger.warning(f'Cannot track input or output file {kwargs[t]}')
 
                 # expand user...
                 tfiles = [os.path.expanduser(x) for x in tfiles]
@@ -165,25 +166,25 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                 if env.config['sig_mode'] == 'default':
                     matched = sig.validate()
                     if isinstance(matched, dict):
-                        env.logger.info('Action ``{}`` is ``ignored`` due to saved signature'.format(func.__name__))
+                        env.logger.info(f'Action ``{func.__name__}`` is ``ignored`` due to saved signature')
                         return None
                     else:
-                        env.logger.debug('Signature mismatch: {}'.format(matched))
+                        env.logger.debug(f'Signature mismatch: {matched}')
                 elif env.config['sig_mode'] == 'assert':
                     matched = sig.validate()
                     if isinstance(matched, str):
-                        raise RuntimeError('Signature mismatch: {}'.format(matched))
+                        raise RuntimeError(f'Signature mismatch: {matched}')
                     else:
-                        env.logger.info('Action ``{}`` is ``ignored`` with matching signature'.format(func.__name__))
+                        env.logger.info(f"Action ``{func.__name__}`` is ``ignored`` with matching signature")
                         return None
                 elif env.config['sig_mode'] == 'build':
                     # build signature require existence of files
                     if sig.write(rebuild=True):
-                        env.logger.info('Action ``{}`` is ``ignored`` with signature constructed'.format(func.__name__))
+                        env.logger.info(f'Action ``{func.__name__}`` is ``ignored`` with signature constructed')
                         return None
             if 'workdir' in kwargs:
                 if not kwargs['workdir'] or not isinstance(kwargs['workdir'], str):
-                    raise RuntimeError('workdir option should be a path, {} provided'.format(kwargs['workdir']))
+                    raise RuntimeError(f'workdir option should be a path, {kwargs["workdir"]} provided')
                 if not os.path.isdir(os.path.expanduser(kwargs['workdir'])):
                     os.makedirs(os.path.expanduser(kwargs['workdir']))
                 try:
@@ -214,12 +215,14 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                 for ofile in ofiles:
                     if isinstance(ofile, str):
                         if not FileTarget(ofile).exists('any'):
-                            raise RuntimeError('Output target {} does not exist after completion of action {}'.format(ofile, func.__name__))
+                            raise RuntimeError(
+                                f'Output target {ofile} does not exist after completion of action {func.__name__}')
                     elif isinstance(ofile, BaseTarget):
                         if not ofile.exists('any'):
-                            raise RuntimeError('Output target {} does not exist after completion of action {}'.format(ofile, func.__name__))
+                            raise RuntimeError(
+                                f'Output target {ofile} does not exist after completion of action {func.__name__}')
                     else:
-                        raise ValueError('Unrecognized output target {} with type {}'.format(ofile, ofile.__class__.__name__))
+                        raise ValueError(f'Unrecognized output target {ofile} with type {ofile.__class__.__name__}')
             if sig:
                 sig.write()
                 sig.release()
@@ -249,7 +252,7 @@ class SoS_ExecuteScript:
             elif isinstance(kwargs['input'], Sequence):
                 ifiles = list(kwargs['input'])
             else:
-                raise ValueError('Unacceptable value for paremter input: {}'.format(kwargs['input']))
+                raise ValueError(f'Unacceptable value for paremter input: {kwargs["input"]}')
 
             content = ''
             for ifile in ifiles:
@@ -259,7 +262,7 @@ class SoS_ExecuteScript:
 
         if 'docker_image' in kwargs:
             if env.config['run_mode'] == 'dryrun':
-                print('In docker image {}\n{}:\n{}\n'.format(kwargs['docker_image'], self.interpreter, self.script))
+                print(f'In docker image {kwargs["docker_image"]}\n{self.interpreter}:\n{self.script}\n')
                 return None
             from .docker.client import SoS_DockerClient
             docker = SoS_DockerClient()
@@ -268,7 +271,7 @@ class SoS_ExecuteScript:
         else:
             if isinstance(self.interpreter, str):
                 if self.interpreter and not shutil.which(shlex.split(self.interpreter)[0]):
-                    raise RuntimeError('Failed to locate interpreter {}'.format(self.interpreter))
+                    raise RuntimeError(f'Failed to locate interpreter {self.interpreter}')
             elif isinstance(self.interpreter, Sequence):
                 found = False
                 for ip in self.interpreter:
@@ -277,14 +280,13 @@ class SoS_ExecuteScript:
                         found = True
                         break
                 if not found:
-                    raise RuntimeError('Failed to locate any of the interpreters {}'
-                        .format(', '.join(self.interpreter)))
+                    raise RuntimeError(f'Failed to locate any of the interpreters {", ".join(self.interpreter)}')
             else:
-                raise RuntimeError('Unacceptable interpreter {}'.format(self.interpreter))
+                raise RuntimeError(f'Unacceptable interpreter {self.interpreter}')
 
             transcribe(self.script, action=self.interpreter)
-            debug_script_file = os.path.join(env.exec_dir, '.sos', '{}_{}_{}{}'.format(env.sos_dict['step_name'],
-                env.sos_dict['_index'], str(uuid.uuid4())[:8], self.suffix))
+            debug_script_file = os.path.join(env.exec_dir, '.sos',
+                                             f'{env.sos_dict["step_name"]}_{env.sos_dict["_index"]}_{str(uuid.uuid4())[:8]}{self.suffix}')
             #env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
             with open(debug_script_file, 'w') as sfile:
                 sfile.write(self.script)
@@ -318,10 +320,10 @@ class SoS_ExecuteScript:
                                 self.args = '-ev {filename:q}'
                 #
                 if env.config['run_mode'] == 'dryrun':
-                    print('{}:\n{}\n'.format(self.interpreter, self.script))
+                    print(f'{self.interpreter}:\n{self.script}\n')
                     return None
-                cmd = interpolate('{} {}'.format(self.interpreter, self.args), 
-                        {'filename': sos_targets(script_file), 'script': self.script})
+                cmd = interpolate(f'{self.interpreter} {self.args}',
+                                  {'filename': sos_targets(script_file), 'script': self.script})
                 #
                 if env.config['run_mode'] == 'interactive':
                     # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
@@ -346,14 +348,15 @@ class SoS_ExecuteScript:
                         debug_args = '{filename:q}'
                     else:
                         debug_args = self.args
-                    cmd = interpolate('{} {}'.format(self.interpreter, debug_args), 
-                            {'filename': sos_targets(debug_script_file), 'script': self.script})
-                    raise RuntimeError('Failed to execute commmand ``{}`` (ret={}, workdir={}{})'.format(cmd, ret, os.getcwd(),
-                        ', task={}'.format(os.path.basename(env.sos_dict['__std_err__']).split('.')[0]) if '__std_out__' in env.sos_dict else ''))
+                    cmd = interpolate(f'{self.interpreter} {debug_args}',
+                                      {'filename': sos_targets(debug_script_file), 'script': self.script})
+                    raise RuntimeError('Failed to execute commmand ``{}`` (ret={}, workdir={}{})'.format(
+                        cmd, ret, os.getcwd(),
+                        f', task={os.path.basename(env.sos_dict["__std_err__"]).split(".")[0]}' if '__std_out__' in env.sos_dict else ''))
             except RuntimeError:
                 raise
             except Exception as e:
-                env.logger.error('Failed to execute script: {}'.format(e))
+                env.logger.error(f'Failed to execute script: {e}')
                 raise
             finally:
                 os.remove(script_file)
@@ -375,8 +378,8 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
         wf = script.workflow(workflow, use_default=not targets)
     # if wf contains the current step or one of the previous one, this constitute
     # recusive nested workflow and should not be allowed
-    if env.sos_dict['step_name'] in ['{}_{}'.format(x.name, x.index) for x in wf.sections]:
-        raise RuntimeError('Nested workflow {} contains the current step {}'.format(workflow, env.sos_dict['step_name']))
+    if env.sos_dict['step_name'] in [f'{x.name}_{x.index}' for x in wf.sections]:
+        raise RuntimeError(f'Nested workflow {workflow} contains the current step {env.sos_dict["step_name"]}')
     # args can be specified both as a dictionary or keyword arguments
     if args is None:
         args = kwargs
@@ -393,7 +396,7 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
     shared.append('__step_output__')
     try:
         my_name = env.sos_dict['step_name']
-        args_output = ', '.join('{}={}'.format(x, short_repr(y)) for x,y in args.items() if not x.startswith('__'))
+        args_output = ', '.join(f'{x}={short_repr(y)}' for x, y in args.items() if not x.startswith('__'))
         env.logger.debug('Executing workflow ``{}`` with input ``{}`` and {}'
             .format(workflow, short_repr(env.sos_dict.get('_input', None), True),
             'no args' if not args_output else args_output))
@@ -431,7 +434,7 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
 
         else:
             # tell the master process to receive a workflow
-            env.__pipe__.send('workflow {}'.format(uuid.uuid4()))
+            env.__pipe__.send(f'workflow {uuid.uuid4()}')
             # really send the workflow
             shared = {x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
             env.__pipe__.send((wf, targets, args, shared, env.config))
@@ -454,7 +457,7 @@ def script(script, interpreter, suffix='', args='', **kwargs):
     content of one or more files specified by option input would be prepended before
     the specified script.'''
     if env.config['run_mode'] == 'dryrun':
-        print('{}:\n{}\n'.format(interpreter, script))
+        print(f'{interpreter}:\n{script}\n')
         return None
     return SoS_ExecuteScript(script, interpreter, suffix, args).run(**kwargs)
 
@@ -490,16 +493,16 @@ def downloadURL(URL, dest, decompress=False, index=None):
     if not os.path.isdir(dest_dir):
         os.makedirs(dest_dir)
     if not os.path.isdir(dest_dir):
-        raise RuntimeError('Failed to create destination directory to download {}'.format(URL))
+        raise RuntimeError(f'Failed to create destination directory to download {URL}')
     #
     message = filename
     if len(message) > 30:
         message = message[:10] + '...' + message[-16:]
     #
-    dest_tmp = dest + '.tmp_{}'.format(os.getpid())
+    dest_tmp = dest + f'.tmp_{os.getpid()}'
     term_width = shutil.get_terminal_size((80, 20)).columns
     try:
-        env.logger.debug('Download {} to {}'.format(URL, dest))
+        env.logger.debug(f'Download {URL} to {dest}')
         sig = FileTarget(dest)
         if os.path.isfile(dest):
             prog = ProgressBar(desc=message + ': \033[32m validating\033[0m', disable=env.verbosity <= 1,
@@ -517,7 +520,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                                 continue
                             dest_file = os.path.join(dest_dir, name)
                             if not os.path.isfile(dest_file):
-                                env.logger.warning('Missing decompressed file {}'.format(dest_file))
+                                env.logger.warning(f'Missing decompressed file {dest_file}')
                             else:
                                 sig.add(dest_file)
                     elif tarfile.is_tarfile(dest):
@@ -528,7 +531,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                                 if tarinfo.isfile():
                                     dest_file = os.path.join(dest_dir, tarinfo.name)
                                     if not os.path.isfile(dest_file):
-                                        env.logger.warning('Missing decompressed file {}'.format(dest_file))
+                                        env.logger.warning(f'Missing decompressed file {dest_file}')
                                     else:
                                         sig.add(dest_file)
                                         file_count += 1
@@ -539,7 +542,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     elif dest.endswith('.gz'):
                         decomp = dest[:-3]
                         if not os.path.isfile(decomp):
-                            env.logger.warning('Missing decompressed file {}'.format(decomp))
+                            env.logger.warning(f'Missing decompressed file {decomp}')
                         sig.add(decomp)
                 prog.set_description(message + ': \033[32m writing signature\033[0m')
                 prog.update()
@@ -607,7 +610,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     f.write(buffer)
                     prog.update(len(buffer))
             except urllib.error.HTTPError as e:
-                prog.set_description(message + ':\033[91m {} Error\033[0m'.format(e.code))
+                prog.set_description(message + f':\033[91m {e.code} Error\033[0m')
                 prog.update()
                 prog.close()
                 try:
@@ -616,7 +619,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     pass
                 return False
             except Exception as e:
-                prog.set_description(message + ':\033[91m {}\033[0m'.format(e))
+                prog.set_description(message + f':\033[91m {e}\033[0m')
                 prog.update()
                 prog.close()
                 try:
@@ -669,10 +672,8 @@ def downloadURL(URL, dest, decompress=False, index=None):
                         buffer = fin.read(100000)
                 sig.add(decomp)
                 decompressed += 1
-        decompress_msg = '' if not decompressed else ' ({} file{} decompressed)'.format(
-            decompressed, '' if decompressed <= 1 else 's')
-        prog.set_description(message + ':\033[32m downloaded{} {}\033[0m'.format(decompress_msg,
-            ' '*(term_width - len(message) - 13 - len(decompress_msg))))
+        decompress_msg = '' if not decompressed else f' ({decompressed} file{"" if decompressed <= 1 else "s"} decompressed)'
+        prog.set_description(message + f':\033[32m downloaded{decompress_msg} {" "*(term_width - len(message) - 13 - len(decompress_msg))}\033[0m')
         prog.update()
         prog.close()
         # if a md5 file exists
@@ -689,15 +690,15 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     prog.set_description(message + ':\033[91m MD5 signature mismatch\033[0m')
                     prog.update()
                     prog.close()
-                    env.logger.warning('md5 signature mismatch for downloaded file {} (recorded {}, observed {})'
-                        .format(filename[:-4], rec_md5, obs_md5))
+                    env.logger.warning(
+                        f'md5 signature mismatch for downloaded file {filename[:-4]} (recorded {rec_md5}, observed {obs_md5})')
             prog.set_description(message + ':\033[91m MD5 signature verified\033[0m')
             prog.update()
             prog.close()
     except Exception as e:
         if env.verbosity > 2:
              sys.stderr.write(get_traceback())
-        env.logger.error('Failed to download: {}'.format(e))
+        env.logger.error(f'Failed to download: {e}')
         return False
     finally:
         # if there is something wrong still remove temporary file
@@ -716,7 +717,7 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
     files are decompressed.
     '''
     if env.config['run_mode'] == 'dryrun':
-        print('download\n{}\n'.format(URLs))
+        print(f'download\n{URLs}\n')
         return None
     if isinstance(URLs, str):
         urls = [x.strip() for x in URLs.split() if x.strip()]
@@ -809,14 +810,14 @@ def collect_input(script, input):
                 with open(input) as ifile:
                     tmp.write(ifile.read() + '\n\n')
             except  Exception as e:
-                    raise ValueError('Failed to read input file {}: {}'.format(input, e))
+                    raise ValueError(f'Failed to read input file {input}: {e}')
         elif isinstance(input, Sequence):
             for ifile in input:
                 try:
                     with open(ifile) as itmp:
                         tmp.write(itmp.read().rstrip() + '\n\n')
                 except  Exception as e:
-                        raise ValueError('Failed to read input file {}: {}'.format(ifile, e))
+                        raise ValueError(f'Failed to read input file {ifile}: {e}')
     return input_file
 
 
@@ -829,10 +830,10 @@ def report(script=None, input=None, output=None, **kwargs):
     will be written to standard output or appended to a file specified with command
     line option `-r`. '''
     if env.config['run_mode'] == 'dryrun':
-        print('report:\n{}'.format('' if script is None else script))
+        print(f'report:\n{"" if script is None else script}')
         if input is not None:
             for ifile in input:
-                print('  from file: {}'.format(ifile))
+                print(f'  from file: {ifile}')
         return
     file_handle = None
     if isinstance(output, str):
@@ -849,7 +850,7 @@ def report(script=None, input=None, output=None, **kwargs):
     elif output is None or output == '':
         writer = sys.stdout.write
     else:
-        raise ValueError('Invalid output {}.'.format(output))
+        raise ValueError(f'Invalid output {output}.')
 
     # file lock to prevent race condition
     with fasteners.InterProcessLock(os.path.join(tempfile.gettempdir(), 'report_lock')):
@@ -857,17 +858,17 @@ def report(script=None, input=None, output=None, **kwargs):
             writer(script.rstrip() + '\n\n')
         if input is not None:
             if isinstance(input, str):
-                env.logger.debug('Loading report from {}'.format(input))
+                env.logger.debug(f'Loading report from {input}')
                 with open(input) as ifile:
                     writer(ifile.read().rstrip() + '\n\n')
             elif isinstance(input, Sequence):
                 for ifile in input:
                     try:
-                        env.logger.debug('Loading report from {}'.format(ifile))
+                        env.logger.debug(f'Loading report from {ifile}')
                         with open(ifile) as itmp:
                             writer(itmp.read().rstrip() + '\n\n')
                     except Exception as e:
-                        raise ValueError('Failed to read input file {}: {}'.format(ifile, e))
+                        raise ValueError(f'Failed to read input file {ifile}: {e}')
             else:
                 raise ValueError('Unknown input file for action report')
     #
@@ -942,9 +943,9 @@ def pandoc(script=None, input=None, output=None, args='{input:q} --output {outpu
     ret = 1
     try:
         p = None
-        cmd = interpolate('pandoc {}'.format(args), 
-                {'input': sos_targets(input_file), 'output': sos_targets(output_file)})
-        env.logger.trace('Running command "{}"'.format(cmd))
+        cmd = interpolate(f'pandoc {args}',
+                          {'input': sos_targets(input_file), 'output': sos_targets(output_file)})
+        env.logger.trace(f'Running command "{cmd}"')
         if env.config['run_mode'] == 'interactive':
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
             from .utils import pexpect_run
@@ -957,14 +958,13 @@ def pandoc(script=None, input=None, output=None, args='{input:q} --output {outpu
     if ret != 0:
         temp_file = os.path.join('.sos', '{}_{}.md'.format('pandoc', os.getpid()))
         shutil.copyfile(input_file, temp_file)
-        cmd = interpolate('pandoc {}'.format(args), {'input': sos_targets(temp_file), 'output': sos_targets(output_file)})
-        raise RuntimeError('Failed to execute script. Please use command \n{}\nunder {} to test it.'
-            .format(cmd, os.getcwd()))
+        cmd = interpolate(f'pandoc {args}', {'input': sos_targets(temp_file), 'output': sos_targets(output_file)})
+        raise RuntimeError(f'Failed to execute script. Please use command \n{cmd}\nunder {os.getcwd()} to test it.')
     if write_to_stdout:
         with open(output_file) as out:
             sys.stdout.write(out.read())
     else:
-        env.logger.info('Report saved to {}'.format(output))
+        env.logger.info(f'Report saved to {output}')
     try:
         os.remove(input_file)
     except Exception:

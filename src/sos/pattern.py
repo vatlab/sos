@@ -52,7 +52,7 @@ def regex(filepattern):
                     "If multiple wildcards of the same name "
                     "appear in a string, eventual constraints have to be defined "
                     "at the first occurence and will be inherited by the others.")
-            f.append("(?P={})".format(wildcard))
+            f.append(f"(?P={wildcard})")
         else:
             wildcards.add(wildcard)
             f.append("(?P<{}>{})".format(wildcard, match.group("constraint") if
@@ -108,11 +108,11 @@ def apply_wildcards(pattern,
             return str(value)  # convert anything into a str
         except KeyError as ex:
             if keep_dynamic:
-                return "{{{}}}".format(name)
+                return f"{{{name}}}"
             elif fill_missing:
                 return dynamic_fill
             else:
-                raise RuntimeError('Wildcard apply error: {} ({})'.format(ex, wildcards))
+                raise RuntimeError(f'Wildcard apply error: {ex} ({wildcards})')
 
     return SOS_WILDCARD.sub(format_match, pattern)
 
@@ -140,14 +140,14 @@ def expand_pattern(pattern):
     wildcard = [{}]
     for key in res.keys():
         if key not in env.sos_dict:
-            raise ValueError('Undefined variable {} in pattern {}'.format(key, pattern))
+            raise ValueError(f'Undefined variable {key} in pattern {pattern}')
         if not isinstance(env.sos_dict[key], str) and isinstance(env.sos_dict[key], collections.Sequence):
             if sz is None:
                 sz = len(env.sos_dict[key])
                 wildcard = [copy.deepcopy(wildcard[0]) for x in range(sz)]
             elif sz != len(env.sos_dict[key]):
-                raise ValueError('Variables in output pattern should have the same length (other={}, len({})={})'
-                    .format(sz, key, len(env.sos_dict[key])))
+                raise ValueError(
+                    f'Variables in output pattern should have the same length (other={sz}, len({key})={len(env.sos_dict[key])})')
             for idx, value in enumerate(env.sos_dict[key]):
                 wildcard[idx][key] = value
         else:

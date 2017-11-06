@@ -117,8 +117,8 @@ class SoS_Node(object):
         return self._node_id
 
     def show(self):
-        print('{} ({}, {}): input {}, depends {}, output {}, context {}'.format(self._node_id, self._node_index, self._status, self._input_targets,
-            self._depends_targets, self._output_targets, self._context))
+        print(
+            f'{self._node_id} ({self._node_index}, {self._status}): input {self._input_targets}, depends {self._depends_targets}, output {self._output_targets}, context {self._context}')
 
 class SoS_DAG(nx.DiGraph):
     def __init__(self, *args, **kwargs):
@@ -214,7 +214,7 @@ class SoS_DAG(nx.DiGraph):
         for node in self.nodes():
             if node._node_uuid == node_uuid:
                 return node
-        raise RuntimeError('Failed to locate node with UUID {}'.format(node_uuid))
+        raise RuntimeError(f'Failed to locate node with UUID {node_uuid}')
 
     def show_nodes(self):
         for node in self.nodes():
@@ -258,9 +258,10 @@ class SoS_DAG(nx.DiGraph):
             for node in self._all_output_files[target]:
                 if node._status == 'completed':
                     if isinstance(target, sos_step):
-                        raise RuntimeError('Completed target {} is being re-executed. Please report this bug to SoS developers.'.format(target))
+                        raise RuntimeError(
+                            f'Completed target {target} is being re-executed. Please report this bug to SoS developers.')
                     else:
-                        env.logger.info('Re-running {} to generate {}'.format(node._node_id, target))
+                        env.logger.info(f'Re-running {node._node_id} to generate {target}')
                         node._status = None
             return True
         else:
@@ -338,7 +339,7 @@ class SoS_DAG(nx.DiGraph):
         try:
             return nx.drawing.nx_pydot.to_pydot(self).to_string()
         except Exception as e:
-            env.logger.warning('Failed to call to_pydot: {}'.format(e))
+            env.logger.warning(f'Failed to call to_pydot: {e}')
 
     def write_dot(self, filename):
         # write dot, used by tests
@@ -347,4 +348,4 @@ class SoS_DAG(nx.DiGraph):
         try:
             nx.drawing.nx_pydot.write_dot(self, filename)
         except Exception as e:
-            env.logger.warning('Failed to call write_dot: {}'.format(e))
+            env.logger.warning(f'Failed to call write_dot: {e}')

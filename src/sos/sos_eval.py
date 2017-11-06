@@ -34,7 +34,7 @@ def interpolate(text, global_dict=None, local_dict=None):
     try:
         return eval('f' + text_repr(text), global_dict, local_dict)
     except Exception as e:
-        raise ValueError('Failed to interpolate {}: {}'.format(text, e))
+        raise ValueError(f'Failed to interpolate {text}: {e}')
 
 def cfg_interpolate(text, local_dict={}):
     # handle nested interpolate ...
@@ -56,7 +56,7 @@ def accessed_vars(statement, filename='<string>', mode='exec'):
         try:
             return {node.id for node in ast.walk(ast.parse('__NULLFUNC__(' + statement + ')', filename, mode)) if isinstance(node, ast.Name)}
         except:
-            raise RuntimeError('Failed to parse statement: {}'.format(statement))
+            raise RuntimeError(f'Failed to parse statement: {statement}')
 
 def SoS_eval(expr):
     '''Evaluate an expression with sos dict.'''
@@ -101,14 +101,14 @@ def SoS_exec(script, _dict=None):
 class Undetermined(object):
     def __init__(self, expr=''):
         if not isinstance(expr, str):
-            raise RuntimeError('Undetermined expression has to be a string: "{}" passed'.format(expr))
+            raise RuntimeError(f'Undetermined expression has to be a string: "{expr}" passed')
         self.expr = expr.strip()
 
     def value(self):
         return SoS_eval(self.expr)
 
     def __repr__(self):
-        return 'Undetermined({!r})'.format(self.expr)
+        return f'Undetermined({self.expr!r})'
 
     def __hash__(self):
         raise RuntimeError('Undetermined expression should be evaluated before used. '
@@ -150,8 +150,7 @@ class on_demand_options(object):
         try:
             return SoS_eval(self._expressions[key])
         except Exception as e:
-            raise ValueError('Failed to evaluate option {} with value {}: {}'
-                .format(key, self._expressions[key], e))
+            raise ValueError(f'Failed to evaluate option {key} with value {self._expressions[key]}: {e}')
 
     def __repr__(self):
         return repr(self._expressions)

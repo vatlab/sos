@@ -47,8 +47,8 @@ class ProcessMonitor(threading.Thread):
                 os.chmod(self.pulse_file, stat.S_IREAD | stat.S_IWRITE)
             os.remove(self.pulse_file)
         with open(self.pulse_file, 'w') as pd:
-            pd.write('#task: {}\n'.format(task_id))
-            pd.write('#started at {}\n#\n'.format(datetime.now().strftime("%A, %d. %B %Y %I:%M%p")))
+            pd.write(f'#task: {task_id}\n')
+            pd.write(f'#started at {datetime.now().strftime("%A, %d. %B %Y %I:%M%p")}\n#\n')
             pd.write('#time\tproc_cpu\tproc_mem\tchildren\tchildren_cpu\tchildren_mem\n')
 
     def _check(self):
@@ -89,18 +89,18 @@ class ProcessMonitor(threading.Thread):
                 else:
                     cpu, mem, nch, ch_cpu, ch_mem = self._check()
                     with open(self.pulse_file, 'a') as pd:
-                        pd.write('{}\t{:.2f}\t{}\t{}\t{}\t{}\n'.format(time.time(), cpu, mem, nch, ch_cpu, ch_mem))
+                        pd.write(f'{time.time()}\t{cpu:.2f}\t{mem}\t{nch}\t{ch_cpu}\t{ch_mem}\n')
                     if self.max_procs is not None and cpu > self.max_procs:
-                        self._exceed_resource('Task {} exits because of excessive use of procs (used {}, limit {})'.format(
-                            self.task_id, cpu, self.max_procs))
+                        self._exceed_resource(
+                            f'Task {self.task_id} exits because of excessive use of procs (used {cpu}, limit {self.max_procs})')
                     if self.max_mem is not None and mem > self.max_mem:
-                        self._exceed_resource('Task {} exits because of excessive use of max_mem (used {}, limit {})'.format(
-                            self.task_id, mem, self.max_mem))
+                        self._exceed_resource(
+                            f'Task {self.task_id} exits because of excessive use of max_mem (used {mem}, limit {self.max_mem})')
                 # walltime can be checked more frequently and does not have to wait for resource option
                 elapsed = time.time() - start_time
                 if self.max_walltime is not None and elapsed > self.max_walltime:
-                    self._exceed_resource('Task {} exits because of excessive run time (used {}, limit {})'.format(
-                        self.task_id, format_HHMMSS(int(elapsed)), format_HHMMSS(self.max_walltime)))
+                    self._exceed_resource(
+                        f'Task {self.task_id} exits because of excessive run time (used {format_HHMMSS(int(elapsed))}, limit {format_HHMMSS(self.max_walltime)})')
                 time.sleep(self.monitor_interval)
                 counter += 1
             except Exception as e:
@@ -108,7 +108,7 @@ class ProcessMonitor(threading.Thread):
                 # the warning message is usually:
                 # WARNING: psutil.NoSuchProcess no process found with pid XXXXX
                 #env.logger.warning(e)
-                env.logger.debug('Monitor of {} failed with message {}'.format(self.task_id, e))
+                env.logger.debug(f'Monitor of {self.task_id} failed with message {e}')
                 break
 
 def summarizeExecution(task_id, status='Unknown'):
@@ -132,7 +132,7 @@ def summarizeExecution(task_id, status='Unknown'):
             try:
                 t, c, m, nch, cc, cm = line.split()
             except Exception as e:
-                env.logger.warning('Unrecognized resource line "{}": {}'.format(line.strip(), e))
+                env.logger.warning(f'Unrecognized resource line "{line.strip()}": {e}')
             if start_time is None:
                 start_time = float(t)
                 end_time = float(t)
@@ -157,14 +157,14 @@ def summarizeExecution(task_id, status='Unknown'):
         ('nproc', str(peak_nch)),
         ('start', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))),
         ('end', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(end_time))),
-        ('duration', ('' if second_elapsed < 86400 else '{} day{} '.format(int(second_elapsed/86400), 's' if second_elapsed > 172800 else '')) + \
-                time.strftime('%H:%M:%S', time.gmtime(second_elapsed))),
-        ('cpu_peak', '{:.1f}'.format(peak_cpu)),
-        ('cpu_avg', '{:.1f}'.format(0 if count == 0 else accu_cpu/count)),
-        ('mem_peak', '{:.1f}Mb'.format(peak_mem/1024/1024)),
-        ('mem_avg', '{:.1f}Mb'.format(0 if count == 0 else accu_mem/1024/1024/count))
+        ('duration', ('' if second_elapsed < 86400 else f'{int(second_elapsed/86400)} day{"s" if second_elapsed > 172800 else ""} ') + \
+         time.strftime('%H:%M:%S', time.gmtime(second_elapsed))),
+        ('cpu_peak', f'{peak_cpu:.1f}'),
+        ('cpu_avg', f'{0 if count == 0 else accu_cpu/count:.1f}'),
+        ('mem_peak', f'{peak_mem/1024/1024:.1f}Mb'),
+        ('mem_avg', f'{0 if count == 0 else accu_mem/1024/1024/count:.1f}Mb')
         ]
-    return '\n'.join('{:20s} {}'.format(x,y) for x,y in result)
+    return '\n'.join(f'{x:20s} {y}' for x, y in result)
 
 
 
