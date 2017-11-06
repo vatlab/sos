@@ -302,7 +302,7 @@ class remote(BaseTarget):
         obj = self
         for c in format_spec:
             if c == 'R':
-                obj = self._target
+                obj = sos_targets(self._target)
             else:
                 # other defined format
                 obj = obj.__format__(c)
