@@ -69,71 +69,28 @@ def _is_expr(expr):
     except Exception:
         return False
 
-def SoS_exec(stmts, _dict=None):
-    '''Execute a statement after modifying (convert ' ' string to raw string,
-    interpolate expressions) strings.'''
-    # the trouble here is that we have to execute the statements line by line
-    # because the variables defined. The trouble is in cases such as class
-    # definition
-    #
-    # class A:
-    #     def __init__(self):
-    #         pass
-    # # this is already correct syntax but the remaining piece is not.
-    #     def another_one(self):
-    #         pass
-    #
-    # We therefore has to be a bit more clever on this.
-    #
-    # we first group all lines by their own group
-    # we then try to find syntaxly valid groups
-    code_group = [x for x in stmts.split('\n')]
-    idx = 0
+def SoS_exec(script, _dict=None):
+    '''Execute a statement.'''
     if _dict is None:
         _dict = env.sos_dict._dict
-    while True:
-        try:
-            # test current group
-            compile(code_group[idx], filename = '<string>', mode='exec')
-            # if it is ok, go next
-            idx += 1
-            if idx == len(code_group):
-                break
-        except Exception:
-            # error happens merge the next line
-            if idx < len(code_group) - 1:
-                code_group[idx] += '\n' + code_group[idx + 1]
-                code_group.pop(idx + 1)
-            else:
-                # if no next group, expand previously correct one
-                if idx == 0:
-                    raise RuntimeError('Failed to find syntax correct group: {}'.format(stmts))
-                # break myself again
-                code_group = code_group[: idx] + code_group[idx].split('\n') + code_group[idx+1:]
-                # go back
-                idx -= 1
-                code_group[idx] += '\n' + code_group[idx + 1]
-                code_group.pop(idx+1)
-    #
-    # execute statements one by one
-    res = None
-    executed = ''
-    code_group = [x for x in code_group if x.strip()]
-    for idx,code in enumerate(code_group):
-        stmts = code
-        if not stmts.strip():
-            continue
-        try:
-            if idx + 1 == len(code_group) and _is_expr(stmts):
-                res = eval(stmts, _dict)
-            else:
-                exec(stmts, _dict)
-        except Exception as e:
-            env.logger.debug('Failed to execute {}'.format(short_repr(stmts)))
-            raise
-        #finally:
-        #    del act
-        executed += stmts + '\n'
+    try:
+        stmts = list(ast.iter_child_nodes(ast.parse(script)))
+        if not stmts:
+            return
+        if isinstance(stmts[-1], ast.Expr):
+            # the last one is an expression and we will try to return the results
+            # so we first execute the previous statements
+            if len(stmts) > 1:
+                exec(compile(ast.Module(body=stmts[:-1]), filename="<ast>", mode="exec"), _dict)
+            # then we eval the last one
+            res = eval(compile(ast.Expression(body=stmts[-1].value), filename="<ast>", mode="eval"), _dict)
+        else:
+            # otherwise we just execute the entire code
+            exec(script, _dict)
+            res = None
+    except SyntaxError as e:
+        raise SyntaxError(f"Invalid code {script}: {e}")
+
     env.sos_dict.check_readonly_vars()
     return res
 
