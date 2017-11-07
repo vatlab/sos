@@ -236,9 +236,7 @@ class SoS_Step:
         if not self.values:
             return True
         try:
-            if self.category() == 'expression':
-                compile(''.join(self.values), filename='<string>', mode='eval')
-            elif self.category() == 'directive':
+            if self.category() == 'directive':
                 # we add func() because the expression can be multi-line and
                 # can have keyword-argument like options
                 #
@@ -898,7 +896,7 @@ for __n, __v in {repr(name_map)}.items():
                             if self.transcript:
                                 self.transcript.write(f'FOLLOW\t{lineno}\t{line}')
                     # this can be comment or back comment
-                    elif cursect.category() in ('statements', 'expression'):
+                    elif cursect.category() == 'statements':
                         if cursect.isValid():
                              # this can be comment or back comment
                             cursect.add_comment(line)
