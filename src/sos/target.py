@@ -178,6 +178,14 @@ class sos_variable(BaseTarget):
     def __eq__(self, other):
         return isinstance(other, sos_variable) and self._var == other._var
 
+    def __format__(self, format_spec):
+        # handling special !q conversion flag
+        if format_spec and format_spec[0] == 'R':
+            return self._var.__format__(format_spec[1:])
+        else:
+            return str(self).__format__(format_spec)
+
+
 class env_variable(BaseTarget):
     '''A target for an environmental variable.'''
     def __init__(self, var):
@@ -198,6 +206,14 @@ class env_variable(BaseTarget):
 
     def __hash__(self):
         return hash(repr(self))
+
+    def __format__(self, format_spec):
+        # handling special !q conversion flag
+        if format_spec and format_spec[0] == 'R':
+            return self._var.__format__(format_spec[1:])
+        else:
+            return str(self).__format__(format_spec)
+
 
 class sos_step(BaseTarget):
     '''A target for a step of sos.'''
@@ -224,6 +240,14 @@ class sos_step(BaseTarget):
 
     def __hash__(self):
         return hash(repr(self))
+
+    def __format__(self, format_spec):
+        # handling special !q conversion flag
+        if format_spec and format_spec[0] == 'R':
+            return self._step_name.__format__(format_spec[1:])
+        else:
+            return str(self).__format__(format_spec)
+
 
 # class bundle(BaseTarget):
 #     '''a bundle of other targets'''
@@ -264,6 +288,14 @@ class dynamic(BaseTarget):
     def resolve(self):
         return self._target
 
+    def __format__(self, format_spec):
+        # handling special !q conversion flag
+        if format_spec and format_spec[0] == 'R':
+            return sos_targets(self._target).__format__(format_spec[1:])
+        else:
+            return str(self).__format__(format_spec)
+
+
 class remote(BaseTarget):
     '''A remote target is not tracked and not translated during task execution'''
     def __init__(self, *targets):
@@ -299,14 +331,10 @@ class remote(BaseTarget):
 
     def __format__(self, format_spec):
         # handling special !q conversion flag
-        obj = self
-        for c in format_spec:
-            if c == 'R':
-                obj = sos_targets(self._target)
-            else:
-                # other defined format
-                obj = obj.__format__(c)
-        return repr(obj)
+        if format_spec and format_spec[0] == 'R':
+            return sos_targets(self._target).__format__(format_spec[1:])
+        else:
+            return str(self).__format__(format_spec)
 
 class executable(BaseTarget):
     '''A target for an executable command.'''
@@ -365,6 +393,13 @@ class executable(BaseTarget):
 
     def __hash__(self):
         return hash(repr(self))
+
+    def __format__(self, format_spec):
+        # handling special !q conversion flag
+        if format_spec and format_spec[0] == 'R':
+            return self._cmd.__format__(format_spec[1:])
+        else:
+            return str(self).__format__(format_spec)
 
 class FileTarget(BaseTarget):
     '''A regular target for files.
@@ -516,12 +551,12 @@ class FileTarget(BaseTarget):
     def __format__(self, format_spec):
         # handling special !q conversion flag
         obj = self._filename
-        for c in format_spec:
+        for i,c in enumerate(format_spec):
             if c in self.CONVERTERS:
                 obj = self.CONVERTERS[c](obj)
             else:
                 # other defined format
-                obj = obj.__format__(c)
+                return obj.__format__(format_spec[i:])
         return obj
 
     def __lt__(self, other):
@@ -605,7 +640,7 @@ class sos_targets(BaseTarget, Sequence):
         return len(self._targets)
 
     def __getitem__(self, i):
-        return self._targets[i]
+        return sos_targets(self._targets[i])
 
     def __format__(self, format_spec):
         if ',' in format_spec:
@@ -645,7 +680,7 @@ class sos_targets(BaseTarget, Sequence):
             raise ValueError(f'Canot get sig_file for group of targets {self}')
 
     def __repr__(self):
-        return ', '.join(repr(x) for x in self._targets)
+        return '[' + ', '.join(repr(x) for x in self._targets) + ']'
 
 class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
