@@ -65,7 +65,6 @@ def analyze_section(section, default_input=None):
     environ_vars = set()
     signature_vars = set()
     changed_vars = set()
-    local_vars = set()
     #
     # 1. execute global definition to get a basic environment
     #
@@ -133,11 +132,7 @@ def analyze_section(section, default_input=None):
     if input_statement_idx is not None:
         # execute before input stuff
         for statement in section.statements[:input_statement_idx]:
-            if statement[0] == '=':
-                # we do not get LHS because it must be local to the step
-                local_vars |= accessed_vars(statement[1])
-                environ_vars |= accessed_vars(statement[2])
-            elif statement[0] == ':':
+            if statement[0] == ':':
                 if statement[1] == 'depends':
                     environ_vars |= accessed_vars(statement[2])
                     key, value = statement[1:]
@@ -246,7 +241,7 @@ def analyze_section(section, default_input=None):
         'step_output': step_output if isinstance(step_output, Undetermined) else sos_targets(step_output),
         'step_depends': step_depends if isinstance(step_depends, Undetermined) else sos_targets(step_depends),
         # variables starting with __ are internals...
-        'environ_vars': {x for x in environ_vars - local_vars if not x.startswith('__')},
+        'environ_vars': {x for x in environ_vars if not x.startswith('__')},
         'signature_vars': {x for x in signature_vars if not x.startswith('__')},
         'changed_vars': changed_vars
         }
@@ -940,15 +935,6 @@ class Base_Step_Executor:
             if env.sos_dict['output'] is not None:
                 env.logger.info(f'output:   ``{short_repr(env.sos_dict["output"])}``')
 
-    def assign(self, key, value):
-        try:
-            env.sos_dict.set(key, SoS_eval(value))
-        except (UnknownTarget, RemovedTarget, UnavailableLock):
-            raise
-        except Exception as e:
-            raise RuntimeError(f'Failed to assign {value} to variable {key}: {e}')
-        transcribe(f'{key} = {env.sos_dict[key]}')
-
     def execute(self, stmt, sig=None):
         try:
             if sig is None:
@@ -1086,9 +1072,7 @@ class Base_Step_Executor:
         if input_statement_idx is not None:
             # execute before input stuff
             for statement in self.step.statements[:input_statement_idx]:
-                if statement[0] == '=':
-                    self.assign(statement[1], statement[2])
-                elif statement[0] == ':':
+                if statement[0] == ':':
                     key, value = statement[1:]
                     if key != 'depends':
                         raise ValueError(f'Step input should be specified before {key}')
@@ -1160,9 +1144,7 @@ class Base_Step_Executor:
                     # if input is undertermined, we can only process output:
                     if isinstance(g, Undetermined) and statement[0] != ':':
                         return self.collect_result()
-                    if statement[0] == '=':
-                        self.assign(statement[1], statement[2])
-                    elif statement[0] == ':':
+                    if statement[0] == ':':
                         key, value = statement[1:]
                         # output, depends, and process can be processed multiple times
                         try:

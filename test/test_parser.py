@@ -451,18 +451,20 @@ parameter: c_b = list
 
 
 
-    def testSectionVariables(self):
-        '''Test variables in sections'''
-        # directive name cannot be used as variable
-        self.assertRaises(ParsingError, SoS_Script,
-            '''[0]
-input='a.txt' ''')
-        self.assertRaises(ParsingError, SoS_Script,
-            '''[0]
-output='a.txt' ''')
-        self.assertRaises(ParsingError, SoS_Script,
-            '''[0]
-depends='a.txt' ''')
+#    this test is no longer valid because sos has stopped parsing assignments
+#
+#    def testSectionVariables(self):
+#        '''Test variables in sections'''
+#        # directive name cannot be used as variable
+#        self.assertRaises(ParsingError, SoS_Script,
+#            '''[0]
+#input='a.txt' ''')
+#        self.assertRaises(ParsingError, SoS_Script,
+#            '''[0]
+#output='a.txt' ''')
+#        self.assertRaises(ParsingError, SoS_Script,
+#            '''[0]
+#depends='a.txt' ''')
 
     def testSectionDirectives(self):
         '''Test directives of sections'''

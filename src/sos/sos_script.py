@@ -1118,45 +1118,7 @@ for __n, __v in {repr(name_map)}.items():
                     if self.transcript:
                         self.transcript.write(f'FOLLOW\t{lineno}\t{line}')
                     continue
-            #
-            # assignment?
-            mo = SOS_ASSIGNMENT.match(line)
-            if mo:
-                if cursect is None:
-                    self.sections.append(SoS_Step(is_global=True))
-                    cursect = self.sections[-1]
-                # check previous expression before a new assignment
-                if not cursect.isValid():
-                    parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]),
-                                          f'Invalid {cursect.category()}: {cursect.error_msg}')
-                    if self.transcript:
-                        self.transcript.write(f'ERROR\t{lineno}\t{line}')
-                    continue
-                cursect.values = []
-                #
-                var_name = mo.group('var_name')
-                if var_name in SOS_DIRECTIVES:
-                    parsing_errors.append(lineno, line, 'directive name cannot be used as variables')
-                    if self.transcript:
-                        self.transcript.write(f'ERROR\t{lineno}\t{line}')
-                    continue
-                # newline should be kept for multi-line assignment
-                var_value = mo.group('var_value') + '\n'
-                # if first line of the section, or following another assignment
-                # this is assignment
-                if cursect.empty() or cursect.category() == 'expression':
-                    cursect.add_assignment(var_name, var_value, lineno)
-                #
-                # if following a directive, this can be start of an action or between directives
-                elif cursect.category() == 'directive':
-                    cursect.add_assignment(var_name, var_value, lineno)
-                else:
-                    # otherwise it is an continuation of the existing action
-                    cursect.extend(f'{var_name} = {var_value}\n')
-                if self.transcript:
-                    self.transcript.write(f'ASSIGNMENT\t{lineno}\t{line}')
-                continue
-            #
+
             # all others?
             if not cursect:
                 self.sections.append(SoS_Step(is_global=True))

@@ -226,7 +226,7 @@ task:
                 self.assertTrue(isinstance(res['step_input'], Undetermined))
                 self.assertEqual(res['step_depends'], sos_targets())
                 self.assertEqual(res['step_output'], sos_targets())
-                self.assertEqual(res['environ_vars'], {'p1', 'infiles'})
+                self.assertEqual(res['environ_vars'], {'b', 'p1', 'infiles'})
                 self.assertEqual(res['signature_vars'], {'c'})
                 self.assertEqual(res['changed_vars'], {'b'})
             elif section.names[0][1] == '2':
@@ -234,7 +234,7 @@ task:
                 self.assertEqual(res['step_depends'], sos_targets('some.txt', executable('ls')))
                 self.assertTrue(isinstance(res['step_output'], Undetermined))
                 # for_each will not be used for DAG
-                self.assertEqual(res['environ_vars'], {'for_each', 'executable'})
+                self.assertEqual(res['environ_vars'], {'b', 'for_each', 'executable'})
                 self.assertEqual(res['signature_vars'], {'r', 'time', 'random'})
                 self.assertEqual(res['changed_vars'], set())
             elif section.names[0][1] == '4':
