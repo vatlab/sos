@@ -64,10 +64,10 @@ def get_actions():
 
 #
 # A decoration function that allows SoS to replace all SoS actions
-# with a null action.
+# with a null action. Option run_mode is deprecated and might be
+# removed later on.
 #
-def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
-    run_mode = [run_mode] if isinstance(run_mode, str) else run_mode
+def SoS_Action(run_mode='deprecated', acceptable_args=('*',)):
     def runtime_decorator(func):
         @wraps(func)
         def action_wrapper(*args, **kwargs):
@@ -87,10 +87,6 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                 from .docker.client import SoS_DockerClient
                 docker = SoS_DockerClient()
                 docker.pull(kwargs['docker_image'])
-            if env.config['run_mode'] not in run_mode:
-                # return dynamic expression when not in run mode, that is to say
-                # the script logic cannot rely on the result of the action
-                return Undetermined(func.__name__)
             if env.config['run_mode'] == 'interactive':
                 for k,v in kwargs.items():
                     if k in SOS_RUNTIME_OPTIONS and k not in SOS_ACTION_OPTIONS:
@@ -227,7 +223,6 @@ def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
                 sig.write()
                 sig.release()
             return res
-        action_wrapper.run_mode = run_mode
         return action_wrapper
     return runtime_decorator
 
@@ -362,7 +357,7 @@ class SoS_ExecuteScript:
                 os.remove(script_file)
 
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action()
 def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **kwargs):
     '''Execute a workflow from the current SoS script or a specified source
     (in .sos or .ipynb format), with _input as the initial input of workflow.'''
@@ -450,7 +445,7 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
         # restore step_name in case the subworkflow re-defines it
         env.sos_dict.set('step_name', my_name)
 
-@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'interpreter', 'suffix', 'args'])
+@SoS_Action(acceptable_args=['script', 'interpreter', 'suffix', 'args'])
 def script(script, interpreter, suffix='', args='', **kwargs):
     '''Execute specified script using specified interpreter. This action accepts common
     action arguments such as input, active, workdir, docker_image and args. In particular,
@@ -461,21 +456,21 @@ def script(script, interpreter, suffix='', args='', **kwargs):
         return None
     return SoS_ExecuteScript(script, interpreter, suffix, args).run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['expr', 'msg'])
+@SoS_Action(acceptable_args=['expr', 'msg'])
 def fail_if(expr, msg=''):
     '''Raise an exception with `msg` if condition `expr` is False'''
     if expr:
         raise TerminateExecution(msg if msg else 'error triggered by action fail_if')
     return 0
 
-@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['expr', 'msg'])
+@SoS_Action(acceptable_args=['expr', 'msg'])
 def warn_if(expr, msg=''):
     '''Yield an warning message `msg` if `expr` is False '''
     if expr:
         env.logger.warning(msg)
     return 0
 
-@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['expr', 'msg'])
+@SoS_Action(acceptable_args=['expr', 'msg'])
 def stop_if(expr, msg=''):
     '''Abort the execution of the current step or loop and yield
     an warning message `msg` if `expr` is False '''
@@ -708,7 +703,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
     return os.path.isfile(dest)
 
 
-@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['URLs', 'dest_dir', 'dest_file', 'decompress'])
+@SoS_Action(acceptable_args=['URLs', 'dest_dir', 'dest_file', 'decompress'])
 def download(URLs, dest_dir='.', dest_file=None, decompress=False):
     '''Download files from specified URL, which should be space, tab or
     newline separated URLs. The files will be downloaded to specified
@@ -767,21 +762,21 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
         raise RuntimeError('Not all files have been downloaded')
     return 0
 
-@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
+@SoS_Action(acceptable_args=['script', 'args'])
 def run(script, args='', **kwargs):
     '''Execute specified script using bash. This action accepts common action arguments such as
     input, active, workdir, docker_image and args. In particular, content of one or more files
     specified by option input would be prepended before the specified script.'''
     return SoS_ExecuteScript(script, '', '', args).run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
+@SoS_Action(acceptable_args=['script', 'args'])
 def perl(script, args='', **kwargs):
     '''Execute specified script using perl. This action accepts common action arguments such as
     input, active, workdir, docker_image and args. In particular, content of one or more files
     specified by option input would be prepended before the specified script.'''
     return SoS_ExecuteScript(script, 'perl', '.pl', args).run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
+@SoS_Action(acceptable_args=['script', 'args'])
 def ruby(script, args='', **kwargs):
     '''Execute specified script using ruby. This action accepts common action arguments such as
     input, active, workdir, docker_image and args. In particular, content of one or more files
@@ -821,7 +816,7 @@ def collect_input(script, input):
     return input_file
 
 
-@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script'])
+@SoS_Action(acceptable_args=['script'])
 def report(script=None, input=None, output=None, **kwargs):
     '''Write script to an output file specified by `output`, which can be
     a filename to which the content of the script will be written,
@@ -876,7 +871,7 @@ def report(script=None, input=None, output=None, **kwargs):
         file_handle.close()
 
 
-@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
+@SoS_Action(acceptable_args=['script', 'args'])
 def pandoc(script=None, input=None, output=None, args='{input:q} --output {output:q}', **kwargs):
     '''Convert input file to output using pandoc
 
