@@ -69,10 +69,15 @@ def _is_expr(expr):
     except Exception:
         return False
 
-def SoS_exec(script, _dict=None):
+def SoS_exec(script, _dict=None, return_result=False):
     '''Execute a statement.'''
     if _dict is None:
         _dict = env.sos_dict._dict
+
+    if not return_result:
+        exec(script, _dict)
+        return None
+
     try:
         stmts = list(ast.iter_child_nodes(ast.parse(script)))
         if not stmts:
@@ -91,7 +96,8 @@ def SoS_exec(script, _dict=None):
     except SyntaxError as e:
         raise SyntaxError(f"Invalid code {script}: {e}")
 
-    env.sos_dict.check_readonly_vars()
+    #if check_readonly:
+    #    env.sos_dict.check_readonly_vars()
     return res
 
 #

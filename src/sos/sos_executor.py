@@ -345,12 +345,12 @@ class Base_Executor:
         # load configuration files
         cfg = load_config_files(self.config['config_file'])
         # if check_readonly is set to True, allow checking readonly vars
-        if cfg.get('sos', {}).get('change_all_cap_vars', None) is not None:
-            if cfg['sos']['change_all_cap_vars'] not in ('warning', 'error'):
-                env.logger.error(
-                    f'Configuration sos.change_all_cap_vars can only be warning or error: {cfg["sos"]["change_all_cap_vars"]} provided')
-            else:
-                env.sos_dict._change_all_cap_vars = cfg['sos']['change_all_cap_vars']
+        #if cfg.get('sos', {}).get('change_all_cap_vars', None) is not None:
+        #    if cfg['sos']['change_all_cap_vars'] not in ('warning', 'error'):
+        #        env.logger.error(
+        #            f'Configuration sos.change_all_cap_vars can only be warning or error: {cfg["sos"]["change_all_cap_vars"]} provided')
+        #    else:
+        #        env.sos_dict._change_all_cap_vars = cfg['sos']['change_all_cap_vars']
 
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)

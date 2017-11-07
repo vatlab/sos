@@ -176,15 +176,15 @@ class WorkflowDict(object):
     """
     def __init__(self, *args, **kwargs):
         self._dict = dict(*args, **kwargs)
-        self._readonly_vars = {}
-        self._change_all_cap_vars = None
+        #self._readonly_vars = {}
+        #self._change_all_cap_vars = None
 
     def set(self, key, value):
         '''A short cut to set value to key without triggering any logging
         or warning message.'''
         self._dict[key] = value
-        if self._change_all_cap_vars is not None and key.isupper():
-            self._check_readonly(key, value)
+        #if self._change_all_cap_vars is not None and key.isupper():
+        #    self._check_readonly(key, value)
 
     def quick_update(self, obj):
         '''Update without sanity check etc. For fast internal update'''
@@ -194,8 +194,8 @@ class WorkflowDict(object):
         '''Redefine update to trigger logging message'''
         self._dict.update(obj)
         for k, v in obj.items():
-            if k.isupper():
-                self._check_readonly(k, v)
+            #if k.isupper():
+            #    self._check_readonly(k, v)
             if env.verbosity > 2:
                 self._log(k, v)
 
@@ -223,43 +223,43 @@ class WorkflowDict(object):
     def _log(self, key, value):
         env.logger.debug(f'Set ``{key}`` = ``{short_repr(value)}``')
 
-    def _check_readonly(self, key, value):
-        # we only keep track of primitive types
-        if self._change_all_cap_vars is None or hasattr(value, '__dict__'):
-            return
-        if key not in self._readonly_vars:
-            self._readonly_vars[key] = value
-            return
-        if key in self._dict and self._dict[key] != self._readonly_vars[key]:
-            if self._change_all_cap_vars == 'warning':
-                env.logger.warning(
-                    f'Value of readonly variable {key} is changed from {self._readonly_vars[key]} to {self._dict[key]}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the warning."')
-            else:
-                raise RuntimeError(
-                    f'Value of readonly variable {key} is changed from {self._readonly_vars[key]} to {self._dict[key]}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the warning."')
-            if hasattr(self._dict[key], '__dict__'):
-                self._readonly_vars.pop(key)
-            else:
-                self._readonly_vars[key] = self._dict[key]
-
-    def check_readonly_vars(self):
-        if self._change_all_cap_vars is None:
-            return
-        for key in self._readonly_vars:
-            if key in self._dict and (hasattr(self._dict[key], '__dict__') or self._dict[key] != self._readonly_vars[key]):
-                if self._change_all_cap_vars == 'warning':
-                    env.logger.warning(
-                        f'Value of readonly variable {key} is changed from {self._readonly_vars[key]} to {self._dict[key]}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the warning."')
-                else:
-                    raise RuntimeError(
-                        f'Value of readonly variable {key} is changed from {self._readonly_vars[key]} to {self._dict[key]}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the error."')
-                if hasattr(self._dict[key], '__dict__'):
-                    self._readonly_vars.pop(key)
-                else:
-                    self._readonly_vars[key] = self._dict[key]
-        #
-        self._readonly_vars.update({x:y for x,y in self._dict.items() if x not in self._readonly_vars and x.isupper() and not hasattr(y, '__dict__')})
-
+#    def _check_readonly(self, key, value):
+#        # we only keep track of primitive types
+#        if self._change_all_cap_vars is None or hasattr(value, '__dict__'):
+#            return
+#        if key not in self._readonly_vars:
+#            self._readonly_vars[key] = value
+#            return
+#        if key in self._dict and self._dict[key] != self._readonly_vars[key]:
+#            if self._change_all_cap_vars == 'warning':
+#                env.logger.warning(
+#                    f'Value of readonly variable {key} is changed from {self._readonly_vars[key]} to {self._dict[key]}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the warning."')
+#            else:
+#                raise RuntimeError(
+#                    f'Value of readonly variable {key} is changed from {self._readonly_vars[key]} to {self._dict[key]}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the warning."')
+#            if hasattr(self._dict[key], '__dict__'):
+#                self._readonly_vars.pop(key)
+#            else:
+#                self._readonly_vars[key] = self._dict[key]
+#
+#    def check_readonly_vars(self):
+#        if self._change_all_cap_vars is None:
+#            return
+#        for key in self._readonly_vars:
+#            if key in self._dict and (hasattr(self._dict[key], '__dict__') or self._dict[key] != self._readonly_vars[key]):
+#                if self._change_all_cap_vars == 'warning':
+#                    env.logger.warning(
+#                        f'Value of readonly variable {key} is changed from {self._readonly_vars[key]} to {self._dict[key]}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the warning."')
+#                else:
+#                    raise RuntimeError(
+#                        f'Value of readonly variable {key} is changed from {self._readonly_vars[key]} to {self._dict[key]}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the error."')
+#                if hasattr(self._dict[key], '__dict__'):
+#                    self._readonly_vars.pop(key)
+#                else:
+#                    self._readonly_vars[key] = self._dict[key]
+#        #
+#        self._readonly_vars.update({x:y for x,y in self._dict.items() if x not in self._readonly_vars and x.isupper() and not hasattr(y, '__dict__')})
+#
     def _warn(self, key, value):
         if key.startswith('_') and not key.startswith('__') and key not in ('_input', '_output', '_step', '_index', '_depends', '_runtime'):
             env.logger.warning(f'{key}: Variables with leading underscore is reserved for SoS temporary variables.')
