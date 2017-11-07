@@ -593,10 +593,6 @@ def write_html_content(content_type, content, formatter, html):
         formatter.cssclass = 'source blob-code sos-directive'
         html.write('{}\n'.format(highlight(''.join(content),
             SoS_Lexer(), formatter)))
-    elif content_type == 'ASSIGNMENT':
-        formatter.cssclass = 'source blob-code sos-statement'
-        html.write('{}\n'.format(highlight(''.join(content),
-            SoS_Lexer(), formatter)))
     elif content_type == 'STATEMENT':
         formatter.cssclass = 'source blob-code sos-statement'
         html.write('{}\n'.format(highlight(''.join(content),
@@ -762,8 +758,6 @@ def markdown_content(content_type, content, fh):
     elif content_type == 'DIRECTIVE':
         fh.write('{}\n'.format(''.join(['**{}**  \n'.format(re.sub(r'(\$|_)', r'`\1`', x).strip())
                                         for x in content])))
-    elif content_type == 'ASSIGNMENT':
-        fh.write(f'```python\n{"".join(content)}\n```\n')
     elif content_type == 'STATEMENT':
         fh.write(f'```python\n{"".join(content)}\n```\n')
     elif content_type == 'ERROR':
@@ -847,8 +841,6 @@ def write_content(content_type, content, formatter, fh=sys.stdout):
     elif content_type == 'SECTION':
         fh.write(highlight(''.join(content), SoS_Lexer(), formatter))
     elif content_type == 'DIRECTIVE':
-        fh.write(highlight(''.join(content), SoS_Lexer(), formatter))
-    elif content_type == 'ASSIGNMENT':
         fh.write(highlight(''.join(content), SoS_Lexer(), formatter))
     elif content_type == 'STATEMENT':
         fh.write(highlight(''.join(content), SoS_Lexer(), formatter))

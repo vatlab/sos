@@ -140,7 +140,7 @@ def replace_sigil(text, sigil):
 
 class SoS_Step:
     '''Parser of a SoS step. This class accepts strings sent by the parser, determine
-    their types and add them to appropriate sections (directive, assignment, statement,
+    their types and add them to appropriate sections (directive, statement,
     scripts etc) '''
     def __init__(self, context=None, names=None, options=None, is_global=False):
         '''A sos step '''
@@ -208,9 +208,7 @@ class SoS_Step:
     def category(self):
         '''Determine the category of existing statement'''
         if self.statements:
-            if self.statements[-1][0] == '=':
-                return 'expression'
-            elif self.statements[-1][0] == ':':
+            if self.statements[-1][0] == ':':
                 # a hack. ... to avoid calling isValid recursively
                 def validDirective():
                     if not self.values:
@@ -287,8 +285,6 @@ class SoS_Step:
         '''Extend the current directive, expression or script'''
         if self.category() == 'directive':
             self.add_directive(None, line)
-        elif self.category() == 'expression':
-            self.add_assignment(None, line)
         elif self.category() == 'script':
             self._script += line
         else:
@@ -301,19 +297,6 @@ class SoS_Step:
 
     def end_comment(self):
         self.comment_ended = True
-
-    def add_assignment(self, key, value, lineno=None):
-        '''Assignments are items with '=' type '''
-        if key is None:
-            # continuation of multi-line assignment
-            self.statements[-1][-1] += value
-            self.values.append(value)
-        else:
-            # new assignment
-            self.statements.append(['=', key, value])
-            self.values = [value]
-        if lineno:
-            self.lineno = lineno
 
     def add_directive(self, key, value, lineno=None):
         '''Assignments are items with ':' type '''
@@ -397,11 +380,7 @@ class SoS_Step:
                 if statement[1] == 'input':
                     tokens = []
                 continue
-            if statement[0] == '=':
-                tokens.extend([statement[1], statement[0]])
-                tokens.extend(_get_tokens(statement[2]))
-            else:
-                tokens.extend(_get_tokens(statement[1]))
+            tokens.extend(_get_tokens(statement[1]))
 
         if self.task:
             tokens.extend(_get_tokens(self.task))
@@ -439,9 +418,7 @@ class SoS_Step:
         # convert statement to task
         self.task = ''
         for statement in self.statements[start_task:]:
-            if statement[0] == '=':
-                self.task += f'{statement[1]} = {statement[2]}'
-            elif statement[0] == ':':
+            if statement[0] == ':':
                 if statement[1] in ('input', 'output', 'depends'):
                     raise ValueError(f'{self.step_name()}: Step task should be defined as the last item in a SoS step')
                 elif statement[1] == 'task':
@@ -958,7 +935,7 @@ for __n, __v in {repr(name_map)}.items():
                     self.transcript.write(f'FOLLOW\t{lineno}\t{line}')
                 continue
             #
-            # is it a continuation of uncompleted assignment or directive?
+            # is it a continuation of uncompleted directive?
             if cursect and not cursect.isValid():
                 cursect.extend(line)
                 if self.transcript:
@@ -970,7 +947,7 @@ for __n, __v in {repr(name_map)}.items():
             # section header?
             mo = SOS_SECTION_HEADER.match(line)
             if mo:
-                # check previous expression before a new assignment
+                # check previous expression before a new section
                 if cursect:
                     if not cursect.isValid():
                         parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]),
@@ -1180,9 +1157,7 @@ for __n, __v in {repr(name_map)}.items():
             # as the last step, let us insert the global section to all sections
             for idx,sec in [(idx,x) for idx,x in enumerate(self.sections) if x.is_global]:
                 for statement in sec.statements:
-                    if statement[0] == '=':
-                        self.global_def += f'{statement[1]} = {statement[2]}\n'
-                    elif statement[0] == ':':
+                    if statement[0] == ':':
                         parsing_errors.append(cursect.lineno, f'{statement[1]}:{statement[2]}',
                                 'Global section cannot contain sos input, ouput, and task statements')
                     else:

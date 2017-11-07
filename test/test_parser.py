@@ -449,8 +449,6 @@ parameter: c_b = list
         wf = script.workflow()
         self.assertEqual(sorted(list(wf.parameters().keys())), ['a_b', 'c_b'])
 
-
-
 #    this test is no longer valid because sos has stopped parsing assignments
 #
 #    def testSectionVariables(self):
