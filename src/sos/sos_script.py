@@ -62,6 +62,26 @@ class ParsingError(Error):
         self.errors.append((lineno, line))
         self.message += f'\n\t[line {lineno:2d}]: {line}\n{msg}'
 
+def is_type_hint(stmt):
+    try:
+        ns = {}
+        # let us grab the part before =
+        exec(stmt.split('=', 1)[0], ns)
+        # if it can compile, it can be typetrait, or something like
+        #
+        # python: input='a'
+        #
+        # where input is recognied
+        #
+        if '__annotations__' in ns and not any(x==input for x in ns['__annotations__'].values()):
+            return True
+        return False
+    except:
+        # if cannot compile, not type hint
+        #
+        # python: args='whatever'
+        return False
+
 def get_option_from_arg_list(options, optname, default_value):
     if not options:
         return default_value
@@ -1030,7 +1050,7 @@ for __n, __v in {repr(name_map)}.items():
             #
             # directive?
             mo = SOS_DIRECTIVE.match(line)
-            if mo:
+            if mo and not is_type_hint(line):
                 # check previous expression before a new directive
                 if cursect:
                     if not cursect.isValid():
@@ -1058,22 +1078,14 @@ for __n, __v in {repr(name_map)}.items():
                     cursect.add_directive(directive_name, directive_value, lineno)
                     if self.transcript:
                         self.transcript.write(f'DIRECTIVE\t{lineno}\t{line}')
-                #
-                elif directive_name == 'process':
-                    env.logger.warning('Keyword "process" is depredated and will be removed in a later release. Please use "task" instead.')
-                    if cursect is None:
-                        parsing_errors.append(lineno, line,
-                                              f'Directive {directive_name} is not allowed outside of a SoS step')
-                        continue
-                    cursect.add_directive('task', directive_value, lineno)
-                    if self.transcript:
-                        self.transcript.write(f'DIRECTIVE\t{lineno}\t{line}')
                 else:
                     if directive_name == 'parameter':
                         cursect.add_directive(directive_name, directive_value, lineno)
                         if self.transcript:
                             self.transcript.write(f'DIRECTIVE\t{lineno}\t{line}')
                     else:
+                        # let us check if this is an acture action, or a type hint
+
                         cursect.add_script(directive_name, directive_value, lineno)
                         if self.transcript:
                             self.transcript.write(f'SCRIPT_{directive_name}\t{lineno}\t{line}')

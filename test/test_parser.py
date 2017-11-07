@@ -145,6 +145,17 @@ class TestParser(unittest.TestCase):
         script.workflow('proc-1')
         script.workflow('proc-1 + test-case:2')
 
+    def testTypeHint(self):
+        '''We should be able to differentiate type hint and sos action
+        '''
+        script = SoS_Script('''a : list = 5''')
+        script = SoS_Script('''a : list''')
+        # action
+        script = SoS_Script('''a : input='filename' ''')
+        # action
+        script = SoS_Script('''a : expand='${ }' ''')
+
+
     def testSkipStep(self):
         '''Test the skip option to skip certain steps'''
         script = SoS_Script('''
