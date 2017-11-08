@@ -74,7 +74,6 @@ def get_type_hint(stmt):
         # where input is recognied
         #
         if '__annotations__' in ns and all(x != input and callable(x) for x in ns['__annotations__'].values()):
-            env.logger.warning(f"{stmt} is {ns['__annotations__']}")
             return ns.popitem()[1]
         return None
     except:
