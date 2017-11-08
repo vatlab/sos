@@ -1055,11 +1055,13 @@ def cmd_status(args, workflow_args):
             list_queues(cfg, args.verbosity)
             return
         if not args.queue:
-            check_tasks(args.tasks, args.verbosity, args.html, args.start_time, args.age, args.tags, args.status)
+            check_tasks(tasks=args.tasks, verbosity=args.verbosity, html=args.html, start_time=args.start_time,
+                    age=args.age, tags=args.tags, status=args.status)
         else:
             # remote host?
             host = Host(args.queue)
-            print(host._task_engine.query_tasks(args.tasks, args.verbosity, args.html, args.start_time, args.age, args.tags, args.status))
+            print(host._task_engine.query_tasks(tasks=args.tasks, verbosity=args.verbosity, html=args.html,
+                start_time=args.start_time, age=args.age, tags=args.tags, status=args.status))
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
