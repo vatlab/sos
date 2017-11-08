@@ -474,6 +474,50 @@ parameter: c_b = list
 #        self.assertRaises(ParsingError, SoS_Script,
 #            '''[0]
 #depends='a.txt' ''')
+        
+    def testTypeTraitParameter(self):
+        # type trait
+        script = SoS_Script('''
+parameter: b
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--b', '5']).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['b'], '5')
+        #
+        script = SoS_Script('''
+parameter: b :str
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--b', '5']).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['b'], '5')        
+        #
+        script = SoS_Script('''
+parameter: b : list
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--b', '5']).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['b'], ['5'])  
+
+        #
+        script = SoS_Script('''
+parameter: b : list = 5
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--b', '5']).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['b'], 5)
+        #
+        script = SoS_Script('''
+parameter: b : int
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--b', '5']).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['b'], 5)
+
 
     def testSectionDirectives(self):
         '''Test directives of sections'''

@@ -62,7 +62,7 @@ class ParsingError(Error):
         self.errors.append((lineno, line))
         self.message += f'\n\t[line {lineno:2d}]: {line}\n{msg}'
 
-def is_type_hint(stmt):
+def get_type_hint(stmt):
     try:
         ns = {}
         # let us grab the part before =
@@ -74,13 +74,13 @@ def is_type_hint(stmt):
         # where input is recognied
         #
         if '__annotations__' in ns and not any(x==input for x in ns['__annotations__'].values()):
-            return True
-        return False
+            return ns.popitem()[1]
+        return None
     except:
         # if cannot compile, not type hint
         #
         # python: args='whatever'
-        return False
+        return None
 
 def get_option_from_arg_list(options, optname, default_value):
     if not options:
@@ -268,7 +268,9 @@ class SoS_Step:
                 if self.values[-1].strip().endswith(','):
                     self.error_msg = 'Trailing ,'
                     return False
-                compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
+                # to allow type trait, we will have to test the expression as if in a function
+                # definition, with something like "def func(a : str, b : list=[])"
+                compile('def func(' + ''.join(self.values) + '):\n  pass', filename='<string>', mode='exec')
             elif self.category() == 'statements':
                 compile((''.join(self.values)), filename='<string>', mode='exec')
             elif self.category() == 'script':
@@ -415,8 +417,17 @@ class SoS_Step:
         for idx, statement in enumerate(self.statements):
             if statement[0] == ':' and statement[1] == 'parameter':
                 if '=' not in statement[2]:
-                    raise ValueError(f'{self.step_name()}:  Invalid parameter definition: {statement[2]}')
-                name, value = statement[2].split('=', 1)
+                    if ':' in statement[2]:
+                        if not get_type_hint(statement[2]):
+                            raise ValueError(f'Invalid type trait in parameter specification {statement[2]}')
+                        name, value = statement[2].split(':')
+                    else:
+                        name = statement[2]
+                        value = 'str'
+                else:
+                    name, value = statement[2].split('=', 1)
+                    # ignore type trait if a default value is specified
+                    name = name.split(':')[0]
                 name = name.strip()
                 if name.startswith('_'):
                     raise ValueError(f'Invalid parameter name {name}: names with leading underscore is not allowed.')
@@ -1050,7 +1061,7 @@ for __n, __v in {repr(name_map)}.items():
             #
             # directive?
             mo = SOS_DIRECTIVE.match(line)
-            if mo and not is_type_hint(line):
+            if mo and not get_type_hint(line):
                 # check previous expression before a new directive
                 if cursect:
                     if not cursect.isValid():
