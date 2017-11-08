@@ -631,6 +631,7 @@ class Base_Step_Executor:
                         else:
                             raise ValueError(f'Failed to iterate through for_each variable {short_repr(values)}')
                 _vars.extend(copy.deepcopy(_tmp_vars))
+        env.logger.error(f"FOF {_vars}")
 
     # directive input
     def process_input_args(self, ifiles, **kwargs):

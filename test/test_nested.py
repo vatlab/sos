@@ -562,6 +562,7 @@ sos_run('test')
 
     def testFunDef(self):
         '''Test defintion of function that can be used by other steps'''
+        self.touch(['aa.txt', 'ab.txt'])
         # in nested workflow?
         script = SoS_Script(r"""
 def myfunc(a):

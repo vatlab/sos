@@ -401,7 +401,7 @@ class executable(BaseTarget):
         else:
             return str(self).__format__(format_spec)
 
-class file_target(BaseTarget):
+class file_target(BaseTarget, str):
     '''A regular target for files.
     '''
     CONVERTERS = {
@@ -600,7 +600,7 @@ class sos_targets(BaseTarget, Sequence):
             elif isinstance(arg, str):
                     self._targets.append(file_target(arg))
             elif isinstance(arg, sos_targets):
-                self._targets.extend(arg.targets())
+                self._targets.extend(arg._targets)
             elif isinstance(arg, BaseTarget):
                 self._targets.append(arg)
             elif isinstance(arg, Iterable):
@@ -609,7 +609,7 @@ class sos_targets(BaseTarget, Sequence):
                     if isinstance(t, str):
                         self._targets.append(file_target(t))
                     elif isinstance(t, sos_targets):
-                        self._targets.extend(t.targets())
+                        self._targets.extend(t._targets)
                     elif isinstance(t, BaseTarget):
                         self._targets.append(t)
                     elif t is not None:
@@ -619,7 +619,7 @@ class sos_targets(BaseTarget, Sequence):
         for t in self._targets:
             if isinstance(t, sos_targets):
                 raise RuntimeError(f"Nested sos_targets {t} were introduced by {args}")
-            if not isinstance(t, (str, BaseTarget)):
+            if not isinstance(t, BaseTarget):
                 raise RuntimeError(f"Unrecognized target {t}")
 
     def targets(self):
@@ -629,7 +629,7 @@ class sos_targets(BaseTarget, Sequence):
         if isinstance(another, Undetermined):
             self._targets.append(another)
         else:
-            self._targets.extend(sos_targets(another).targets())
+            self._targets.extend(sos_targets(another)._targets)
 
     def has_undetermined(self):
         return any(isinstance(x, Undetermined) for x in self._targets)
@@ -651,6 +651,8 @@ class sos_targets(BaseTarget, Sequence):
             fmt_spec = format_spec.replace(',', '')
             return ','.join(x.__format__(fmt_spec) for x in self._targets)
         else:
+            env.logger.error(f"{self._targets}")
+            env.logger.error(f"{self._targets[0].__class__}")
             return ' '.join(x.__format__(format_spec) for x in self._targets)
 
     def signature(self, mode='any'):
