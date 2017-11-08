@@ -546,7 +546,8 @@ class FileTarget(BaseTarget):
             raise RuntimeError(f'{self._filename} or its signature does not exist.')
 
     def __eq__(self, other):
-        return os.path.abspath(self.fullname()) == os.path.abspath(other.fullname())
+        return os.path.abspath(self.fullname()) == os.path.abspath((other
+            if isinstance(other, FileTarget) else FileTarget(other)).fullname())
 
     def __format__(self, format_spec):
         # handling special !q conversion flag
@@ -622,7 +623,7 @@ class sos_targets(BaseTarget, Sequence):
                 raise RuntimeError(f"Unrecognized target {t}")
 
     def targets(self):
-        return self._targets
+        return [x.name() if isinstance(x, FileTarget) else x for x in self._targets]
 
     def extend(self, another):
         if isinstance(another, Undetermined):

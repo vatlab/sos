@@ -206,19 +206,11 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',)):
                     else:
                         raise
             if 'output' in kwargs and kwargs['output'] is not None:
-                ofiles = [kwargs['output']] if isinstance(kwargs['output'], str) else kwargs['output']
-                ofiles = [os.path.expanduser(x) for x in ofiles]
+                ofiles = sos_targets(kwargs['output'])
                 for ofile in ofiles:
-                    if isinstance(ofile, str):
-                        if not FileTarget(ofile).exists('any'):
-                            raise RuntimeError(
+                    if not ofile.exists('any'):
+                        raise RuntimeError(
                                 f'Output target {ofile} does not exist after completion of action {func.__name__}')
-                    elif isinstance(ofile, BaseTarget):
-                        if not ofile.exists('any'):
-                            raise RuntimeError(
-                                f'Output target {ofile} does not exist after completion of action {func.__name__}')
-                    else:
-                        raise ValueError(f'Unrecognized output target {ofile} with type {ofile.__class__.__name__}')
             if sig:
                 sig.write()
                 sig.release()
@@ -924,7 +916,7 @@ def pandoc(script=None, input=None, output=None, args='{input:q} --output {outpu
     if not executable('pandoc').exists():
         raise UnknownTarget(executable('pandoc'))
 
-    input = sos_target(collect_input(script, input))
+    input = sos_targets(collect_input(script, input))
 
     output = sos_targets(output)
     if len(output) == 0:
@@ -953,7 +945,7 @@ def pandoc(script=None, input=None, output=None, args='{input:q} --output {outpu
         cmd = interpolate(f'pandoc {args}', {'input': sos_targets(temp_file), 'output': sos_targets(output)})
         raise RuntimeError(f'Failed to execute script. Please use command \n{cmd}\nunder {os.getcwd()} to test it.')
     if write_to_stdout:
-        with open(output_file) as out:
+        with open(output[0].fullname()) as out:
             sys.stdout.write(out.read())
     else:
         env.logger.info(f'Report saved to {output}')

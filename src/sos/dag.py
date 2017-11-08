@@ -242,8 +242,8 @@ class SoS_DAG(nx.DiGraph):
         missing = []
         existing = []
         for x in list(self._all_dependent_files.keys()) + ([] if targets is None else targets):
-            if isinstance(x, str):
-                raise RuntimeError(f'DAG should not contain str instance {x}')
+            if isinstance(x, FileTarget):
+                raise RuntimeError(f'DAG should not contain FileTarget instance {x}')
             if isinstance(x, sos_targets):
                 raise RuntimeError(f'DAG should not contain sos_targets instance {x}')
             if FileTarget(x).exists() if isinstance(x, str) else x.exists():
