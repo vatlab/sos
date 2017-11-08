@@ -853,7 +853,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
             else:
                 print(
                     f'<tr><th align="right"  width="30%">{th}</th><td align="left"><div class="one_liner">{td}</div></td></tr>')
-        for s, (t, d) in zip(status, all_tasks):
+        for s, (t, d) in zip(obtained_status, all_tasks):
             if d is not None and time.time() - d > 30*24*60*60:
                 to_be_removed.append(t)
                 continue
