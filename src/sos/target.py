@@ -267,7 +267,7 @@ class sos_step(BaseTarget):
 #                 raise RuntimeError('Unrecognized file: {}'.format(arg))
 #
 #     def exists(self, mode='any'):
-#         return all(FileTarget(x).exists(mode) for x in self._targets)
+#         return all(file_target(x).exists(mode) for x in self._targets)
 #
 #     def name(self):
 #         return repr(self._targets)
@@ -311,7 +311,7 @@ class remote(BaseTarget):
 
     def name(self):
         if isinstance(self._target, str):
-            return FileTarget(self._target).name()
+            return file_target(self._target).name()
         elif isinstance(self._target, BaseTarget):
             return self._target.name()
         else:
@@ -401,7 +401,7 @@ class executable(BaseTarget):
         else:
             return str(self).__format__(format_spec)
 
-class FileTarget(BaseTarget):
+class file_target(BaseTarget):
     '''A regular target for files.
     '''
     CONVERTERS = {
@@ -425,10 +425,10 @@ class FileTarget(BaseTarget):
 
 
     def __init__(self, filename):
-        super(FileTarget, self).__init__()
+        super(file_target, self).__init__()
         if isinstance(filename, str):
             self._filename = filename
-        elif isinstance(filename, FileTarget):
+        elif isinstance(filename, file_target):
             self._filename = filename._filename
         else:
             raise ValueError(f'Cannot create a file target with {filename} of type {filename.__class__.__name__}')
@@ -491,7 +491,7 @@ class FileTarget(BaseTarget):
         self._md5 = fileMD5(self.fullname())
         return self._md5
     #
-    # FileTarget - specific functions. Not required by other targets
+    # file_target - specific functions. Not required by other targets
     #
     def add(self, filename):
         '''add related files to the same signature'''
@@ -547,7 +547,7 @@ class FileTarget(BaseTarget):
 
     def __eq__(self, other):
         return os.path.abspath(self.fullname()) == os.path.abspath((other
-            if isinstance(other, FileTarget) else FileTarget(other)).fullname())
+            if isinstance(other, file_target) else file_target(other)).fullname())
 
     def __format__(self, format_spec):
         # handling special !q conversion flag
@@ -598,7 +598,7 @@ class sos_targets(BaseTarget, Sequence):
             if isinstance(arg, Undetermined):
                 raise RuntimeError("Undetermined cannot be inserted as a target")
             elif isinstance(arg, str):
-                    self._targets.append(FileTarget(arg))
+                    self._targets.append(file_target(arg))
             elif isinstance(arg, sos_targets):
                 self._targets.extend(arg.targets())
             elif isinstance(arg, BaseTarget):
@@ -607,7 +607,7 @@ class sos_targets(BaseTarget, Sequence):
                 # in case arg is a Generator, check its type will exhaust it
                 for t in list(arg):
                     if isinstance(t, str):
-                        self._targets.append(FileTarget(t))
+                        self._targets.append(file_target(t))
                     elif isinstance(t, sos_targets):
                         self._targets.extend(t.targets())
                     elif isinstance(t, BaseTarget):
@@ -623,7 +623,7 @@ class sos_targets(BaseTarget, Sequence):
                 raise RuntimeError(f"Unrecognized target {t}")
 
     def targets(self):
-        return [x.name() if isinstance(x, FileTarget) else x for x in self._targets]
+        return [x.name() if isinstance(x, file_target) else x for x in self._targets]
 
     def extend(self, another):
         if isinstance(another, Undetermined):
@@ -709,12 +709,12 @@ class RuntimeInfo:
             else:
                 raise RuntimeError('Input files must be a list of filenames for runtime signature.')
         else:
-            self.input_files = [FileTarget(x) if isinstance(x, str) else x for x in input_files]
+            self.input_files = [file_target(x) if isinstance(x, str) else x for x in input_files]
 
         if dependent_files is None:
             self.dependent_files = []
         elif isinstance(dependent_files, list):
-            self.dependent_files = [FileTarget(x) if isinstance(x, str) else x for x in dependent_files]
+            self.dependent_files = [file_target(x) if isinstance(x, str) else x for x in dependent_files]
         elif isinstance(dependent_files, Undetermined):
             self.dependent_files = dependent_files
         else:
@@ -724,8 +724,8 @@ class RuntimeInfo:
         if output_files is None:
             self.output_files = []
         elif isinstance(output_files, list):
-            self.output_files = [FileTarget(x) if isinstance(x, str) else x for x in output_files]
-            external_output = self.output_files and isinstance(self.output_files[0], FileTarget) and self.output_files[0].is_external()
+            self.output_files = [file_target(x) if isinstance(x, str) else x for x in output_files]
+            external_output = self.output_files and isinstance(self.output_files[0], file_target) and self.output_files[0].is_external()
         elif isinstance(output_files, Undetermined):
             self.output_files = output_files
         else:
@@ -788,9 +788,9 @@ class RuntimeInfo:
         # add signature file if input and output files are dynamic
         env.logger.trace(f'Set {file_type} of signature to {files}')
         if file_type == 'output':
-            self.output_files = [FileTarget(x) for x in files]
+            self.output_files = [file_target(x) for x in files]
         elif file_type == 'depends':
-            self.depends_files = [FileTarget(x) for x in files]
+            self.depends_files = [file_target(x) for x in files]
         else:
             raise RuntimeError(f'Invalid signature file type {file_type}')
 
@@ -870,15 +870,15 @@ class RuntimeInfo:
                     wf.write(
                         f'EXE_SIG\tstep={self.step_md5}\tsession={os.path.basename(self.proc_info).split(".")[0]}\n')
                     for f in self.input_files:
-                        if isinstance(f, FileTarget):
+                        if isinstance(f, file_target):
                             wf.write(
                                 f'IN_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.signature()}\n')
                     for f in self.dependent_files:
-                        if isinstance(f, FileTarget):
+                        if isinstance(f, file_target):
                             wf.write(
                                 f'IN_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.signature()}\n')
                     for f in self.output_files:
-                        if isinstance(f, FileTarget):
+                        if isinstance(f, file_target):
                             wf.write(
                                 f'OUT_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.signature()}\n')
         return True
@@ -964,14 +964,14 @@ class RuntimeInfo:
                         # parameter of class?
                         freal = eval(f, {target_type: target_class})
                     else:
-                        freal = FileTarget(f)
+                        freal = file_target(f)
                     if freal.exists('target'):
                         fmd5 = freal.signature('target')
                     elif freal.exists('signature'):
                         fmd5 = freal.signature()
                     else:
                         return f'File {f} not exist'
-                    res[cur_type].append(freal.name() if isinstance(freal, FileTarget) else freal)
+                    res[cur_type].append(freal.name() if isinstance(freal, file_target) else freal)
                     if fmd5 != m.strip():
                         return f'File has changed {f}'
                     files_checked[freal.name()] = True

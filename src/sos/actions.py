@@ -44,7 +44,7 @@ import multiprocessing as mp
 from tqdm import tqdm as ProgressBar
 from .utils import env, transcribe, StopInputGroup, TerminateExecution, short_repr, get_traceback
 from .sos_eval import Undetermined, interpolate
-from .target import FileTarget, fileMD5, executable, UnknownTarget, BaseTarget, sos_targets
+from .target import file_target, fileMD5, executable, UnknownTarget, BaseTarget, sos_targets
 
 
 __all__ = ['SoS_Action', 'script', 'sos_run',
@@ -490,7 +490,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
     term_width = shutil.get_terminal_size((80, 20)).columns
     try:
         env.logger.debug(f'Download {URL} to {dest}')
-        sig = FileTarget(dest)
+        sig = file_target(dest)
         if os.path.isfile(dest):
             prog = ProgressBar(desc=message + ': \033[32m validating\033[0m', disable=env.verbosity <= 1,
                 position=index, leave=True, bar_format='{desc}', total=10000000)

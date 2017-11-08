@@ -28,7 +28,7 @@ import subprocess
 from sos.utils import env
 from sos.sos_script import SoS_Script
 from sos.sos_executor import Base_Executor, ExecuteError
-from sos.target import FileTarget
+from sos.target import file_target
 
 class TestNested(unittest.TestCase):
     def setUp(self):
@@ -38,7 +38,7 @@ class TestNested(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
 
     def touch(self, files):
         '''create temporary files'''
@@ -153,7 +153,7 @@ sos_run('a', shared=['executed', 'inputs'])
         self.assertEqual(env.sos_dict['executed'], ['c_0', 'a_1', 'a_2', 'a_1', 'a_2'])
         #self.assertEqual(env.sos_dict['inputs'], [['a.txt'], ['a.txt'], ['a.txt.a1'], ['b.txt'], ['b.txt'], ['b.txt.a1']])
         for file in ('a.txt.a1', 'a.txt.a1.a2', 'b.txt.a1', 'b.txt.a1.a2'):
-            FileTarget(file).remove('both')
+            file_target(file).remove('both')
         #
         # allow specifying a single step
         # step will be looped
@@ -273,7 +273,7 @@ input: 'a.txt', 'b.txt', group_by='single'
         self.assertEqual(env.sos_dict['executed'], ['e2_2'])
         #
         # clean up
-        FileTarget('a.done').remove('both')
+        file_target('a.done').remove('both')
 
     def testDynamicNestedWorkflow(self):
         '''Test nested workflow controlled by command line option'''
@@ -350,7 +350,7 @@ sos_run('A', shared='executed')
         #
         subprocess.call('sos remove -s', shell=True)
         for file in ('a.txt.a1', 'a.txt.a1.a2', 'b.txt.a1', 'b.txt.a1.a2'):
-            FileTarget(file).remove('both')
+            file_target(file).remove('both')
         script = SoS_Script('''
 %include inc as k
 
@@ -374,7 +374,7 @@ sos_run('k.A', shared='executed')
     def testSoSRun(self):
         '''Test action sos_run with keyword parameters'''
         for f in ['0.txt', '1.txt']:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
         script = SoS_Script(r'''
 [A]
 parameter: num=5
@@ -388,12 +388,12 @@ for k in range(2):
         wf = script.workflow('batch')
         Base_Executor(wf).run()
         for f in ['0.txt', '1.txt']:
-            self.assertTrue(FileTarget(f).exists())
-            FileTarget(f).remove('both')
+            self.assertTrue(file_target(f).exists())
+            file_target(f).remove('both')
         #
         # if we do not pass num, parameter would not change
         for f in ['0.txt', '1.txt']:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
         script = SoS_Script(r'''
 [A]
 parameter: num=5
@@ -407,9 +407,9 @@ for num in range(2):
         wf = script.workflow('batch')
         Base_Executor(wf).run()
         for f in ['0.txt', '1.txt']:
-            self.assertFalse(FileTarget(f).exists())
-        self.assertTrue(FileTarget('5.txt').exists())
-        FileTarget('5.txt').remove('both')
+            self.assertFalse(file_target(f).exists())
+        self.assertTrue(file_target('5.txt').exists())
+        file_target('5.txt').remove('both')
         #
         # test parameter shared to send and return vars
         #
@@ -425,8 +425,8 @@ for k in range(2):
         wf = script.workflow('batch')
         Base_Executor(wf).run()
         for f in ['10.txt', '11.txt']:
-            self.assertTrue(FileTarget(f).exists())
-            FileTarget(f).remove('both')
+            self.assertTrue(file_target(f).exists())
+            file_target(f).remove('both')
 
     def testDAGofDynamicNestedWorkflow(self):
         #
@@ -435,7 +435,7 @@ for k in range(2):
         # until runtime.
         #
         for f in ['B0.txt', 'B0.txt.p', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
         #
         #  A1 <- P <- B
         #  A1 <- P <- B
@@ -468,8 +468,8 @@ for i in range(3):
         wf = script.workflow('ALL')
         Base_Executor(wf).run()
         for f in ['B0.txt', 'B0.txt.p', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
-            self.assertTrue(FileTarget(f).exists())
-            FileTarget(f).remove('both')
+            self.assertTrue(file_target(f).exists())
+            file_target(f).remove('both')
 
 
     def testPassingVarsToNestedWorkflow(self):

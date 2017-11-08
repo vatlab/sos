@@ -29,7 +29,7 @@ import fasteners
 
 from .utils import env, ActivityNotifier, short_repr
 from .sos_eval import Undetermined
-from .target import FileTarget, sos_variable, textMD5, sos_step, sos_targets
+from .target import file_target, sos_variable, textMD5, sos_step, sos_targets
 
 
 #
@@ -242,11 +242,11 @@ class SoS_DAG(nx.DiGraph):
         missing = []
         existing = []
         for x in list(self._all_dependent_files.keys()) + ([] if targets is None else targets):
-            if isinstance(x, FileTarget):
-                raise RuntimeError(f'DAG should not contain FileTarget instance {x}')
+            if isinstance(x, file_target):
+                raise RuntimeError(f'DAG should not contain file_target instance {x}')
             if isinstance(x, sos_targets):
                 raise RuntimeError(f'DAG should not contain sos_targets instance {x}')
-            if FileTarget(x).exists() if isinstance(x, str) else x.exists():
+            if file_target(x).exists() if isinstance(x, str) else x.exists():
                 if x not in self._all_output_files:
                     existing.append(x)
             elif x not in self._all_output_files:
@@ -270,7 +270,7 @@ class SoS_DAG(nx.DiGraph):
             # but the actual file has been removed.
             # We will have to find this auxiliary step and rerun
             if isinstance(target, str):
-                FileTarget(target).remove_sig()
+                file_target(target).remove_sig()
             else:
                 target.remove_sig()
             return False

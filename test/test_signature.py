@@ -28,7 +28,7 @@ import shutil
 from sos.sos_script import SoS_Script
 from sos.utils import env
 from sos.sos_executor import Base_Executor
-from sos.target import FileTarget, sos_targets
+from sos.target import file_target, sos_targets
 from sos.hosts import Host
 import subprocess
 
@@ -43,7 +43,7 @@ class TestSignature(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
 
     def touch(self, files):
         '''create temporary files'''
@@ -122,7 +122,7 @@ cp {_input} {_dest[0]}
 
     def testSignatureWithSharedVariable(self):
         '''Test restoration of signature from variables.'''
-        FileTarget('a.txt').remove('both')
+        file_target('a.txt').remove('both')
         # shared
         script = SoS_Script(r"""
 [0: shared='a']
@@ -142,7 +142,7 @@ print(a)
         Base_Executor(wf).run()
         # rerun
         Base_Executor(wf).run()
-        FileTarget('a.txt').remove('both')
+        file_target('a.txt').remove('both')
 
     def testSignatureWithoutOutput(self):
         # signature without output file
@@ -177,7 +177,7 @@ cp {_input} {_dest[0]}
         env.config['wait_for_task'] = True
         script = SoS_Script(text)
         for f in ['temp/a.txt', 'temp/b.txt']:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
         #
         # only the first step
         wf = script.workflow('default:0')
@@ -240,7 +240,7 @@ run(f"touch {output}")
         wf = script.workflow()
         try:
             # remove existing output if exists
-            FileTarget('a.txt').remove('both')
+            file_target('a.txt').remove('both')
         except Exception:
             pass
         Base_Executor(wf).run()
@@ -289,14 +289,14 @@ run: expand='${ }'
         # we discard the signature, the step would still be
         # skipped because file signature will be calculated
         # during verification
-        FileTarget('largefile.txt').remove('signature')
+        file_target('largefile.txt').remove('signature')
         Base_Executor(wf).run()
         #
         # now if we touch the file, it needs to be regenerated
         with open('largefile.txt', 'a') as lf:
             lf.write('something')
         Base_Executor(wf).run()
-        FileTarget('largefile.txt').remove('both')
+        file_target('largefile.txt').remove('both')
 
     @unittest.skipIf(sys.platform == 'win32', 'Windows executable cannot be created with chmod.')
     def testRemovalOfIntermediateFiles(self):
@@ -333,7 +333,7 @@ run: expand=True
         self.assertTrue(os.path.isfile('midfile.txt'))
         #
         # we discard the signature, and change midfile rerun
-        FileTarget('midfile.txt').remove('signature')
+        file_target('midfile.txt').remove('signature')
         with open('midfile.txt', 'a') as mf:
             mf.write('extra')
         Base_Executor(wf).run()
@@ -346,13 +346,13 @@ run: expand=True
         # if we zap the mid file, it does not need to be rerun
         subprocess.call('sos remove midfile.txt --zap -y', shell=True)
         Base_Executor(wf).run()
-        FileTarget('midfile.txt').remove('both')
-        FileTarget('midfile.txt.zapped').remove('both')
-        FileTarget('final.txt').remove('both')
+        file_target('midfile.txt').remove('both')
+        file_target('midfile.txt.zapped').remove('both')
+        file_target('final.txt').remove('both')
 
     def testSignatureWithParameter(self):
         '''Test signature'''
-        FileTarget('myfile.txt').remove('both')
+        file_target('myfile.txt').remove('both')
         #
         script = SoS_Script(r'''
 parameter: gvar = 10
@@ -409,14 +409,14 @@ run: expand=True
         Base_Executor(wf, args=['--gvar', '20']).run()
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read().strip(), '20')
-        FileTarget('myfile.txt').remove('both')
+        file_target('myfile.txt').remove('both')
 
 
 
     def testLoopWiseSignature(self):
         '''Test partial signature'''
         for i in range(10, 12):
-            FileTarget('myfile_{}.txt'.format(i)).remove('both')
+            file_target('myfile_{}.txt'.format(i)).remove('both')
         #
         script = SoS_Script(r'''
 parameter: gvar = 10
@@ -475,7 +475,7 @@ run: expand=True
         for t in range(10, 12):
             with open('myfile_{}.txt'.format(t)) as tmp:
                 self.assertEqual(tmp.read().strip(), str(t))
-            FileTarget('myfile_{}.txt'.format(t)).remove('both')
+            file_target('myfile_{}.txt'.format(t)).remove('both')
 
 
 
@@ -503,7 +503,7 @@ run: expand=True
         # for the second run, output should be correctly constructed
         Base_Executor(wf).run()
         for file in ['1.out', '2.out', '1.2.out', '2.3.out']:
-            FileTarget(file).remove('both')
+            file_target(file).remove('both')
 
     def testSignatureWithVars(self):
         '''Test revaluation with variable change'''

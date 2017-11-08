@@ -29,7 +29,7 @@ from sos.sos_script import SoS_Script
 from sos.utils import env
 from sos.sos_eval import  Undetermined
 from sos.sos_executor import Base_Executor, ExecuteError
-from sos.target import FileTarget
+from sos.target import file_target
 
 import socket
 def internet_on(host='8.8.8.8', port=80, timeout=3):
@@ -62,7 +62,7 @@ class TestActions(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
 
     def touch(self, files):
         '''create temporary files'''
@@ -359,7 +359,7 @@ pandoc(input='report.md', output=_output[0])
         Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('myreport.html'))
         #
-        FileTarget('myreport.html').remove('both')
+        file_target('myreport.html').remove('both')
         # pandoc with specified input.
         script = SoS_Script(r'''
 [10]
@@ -377,7 +377,7 @@ pandoc(input='a.md', output=_output[0])
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('myreport.html'))
-        FileTarget('myreport.html').remove()
+        file_target('myreport.html').remove()
         #
         # another case is no output
         script = SoS_Script(r'''
@@ -413,8 +413,8 @@ pandoc(input=['default_10.md', 'default_20.md'], output='output.html')
         wf = script.workflow()
         Base_Executor(wf).run()
         for f in ['default_10.md', 'default_20.md', 'output.html']:
-            self.assertTrue(FileTarget(f).exists())
-            FileTarget(f).remove()
+            self.assertTrue(file_target(f).exists())
+            file_target(f).remove()
 
 
 
@@ -428,7 +428,7 @@ report: output='report.txt', expand=True
 
 ''')
         # output to a file
-        FileTarget('report.txt').remove('both')
+        file_target('report.txt').remove('both')
         wf = script.workflow()
         # run twice
         Base_Executor(wf, args=['--num', '7']).run()
@@ -436,7 +436,7 @@ report: output='report.txt', expand=True
         with open('report.txt') as report:
             self.assertEqual(report.read(), 'touch 5.txt\n\n')
         # test overwrite
-        FileTarget('report.txt').remove('both')
+        file_target('report.txt').remove('both')
         script = SoS_Script(r'''
 [A]
 report: output='report.txt', expand=True
@@ -456,7 +456,7 @@ report: output='report.txt', expand=True
 
         #
         # test input from another file
-        FileTarget('report.txt').remove()
+        file_target('report.txt').remove()
         script = SoS_Script(r'''
 [A_1]
 run: output='a.txt'
@@ -468,7 +468,7 @@ report(input='a.txt', output='out.txt')
         for name in ('a.txt', 'out.txt'):
             with open(name) as report:
                 self.assertEqual(report.read().strip(), 'something')
-            FileTarget(name).remove()
+            file_target(name).remove()
         #
         script = SoS_Script(r'''
 [A_1]
@@ -485,8 +485,8 @@ report(input=['a.txt', 'b.txt'], output='out.txt')
         wf = script.workflow()
         Base_Executor(wf).run()
         for name in ('a.txt', 'b.txt', 'out.txt'):
-            self.assertTrue(FileTarget(name).exists())
-            FileTarget(name).remove()
+            self.assertTrue(file_target(name).exists())
+            file_target(name).remove()
 
     def testOptionWorkdir(self):
         '''Test option workdir of tasks'''
@@ -501,7 +501,7 @@ run: workdir='temp_wdr'
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(FileTarget(os.path.join('temp_wdr', 'a2.txt')).exists())
+        self.assertTrue(file_target(os.path.join('temp_wdr', 'a2.txt')).exists())
         with open(os.path.join('temp_wdr', 'a.txt')) as tmp:
             self.assertEqual('hello', tmp.read())
 
@@ -515,7 +515,7 @@ script: interpreter='python'
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(FileTarget('something.txt').exists())
+        self.assertTrue(file_target('something.txt').exists())
         with open('something.txt') as tmp:
             self.assertEqual('something', tmp.read())
 
@@ -552,7 +552,7 @@ report:     input=['a1.md', 'a2.md'], output='out.md'
         with open('out.md') as a:
             self.assertEqual(a.read(), 'a1\n\na2\n\n')
         for name in ('a1.md', 'a2.md', 'out.md'):
-            FileTarget(name).remove('target')
+            file_target(name).remove('target')
         wf = script.workflow()
         Base_Executor(wf).run()
 

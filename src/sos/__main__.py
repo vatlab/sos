@@ -1266,7 +1266,7 @@ class AnswerMachine:
                 return False
 
 def get_tracked_files(sig_file):
-    from .target import FileTarget
+    from .target import file_target
     with open(sig_file) as sig:
         tracked_files = []
         script_files = []
@@ -1275,7 +1275,7 @@ def get_tracked_files(sig_file):
             if line.startswith('IN_FILE') or line.startswith('OUT_FILE'):
                 # format is something like IN_FILE\tfilename=xxxx\tsession=...
                 tracked_files.append(line.rsplit('\t', 4)[1][9:])
-                t = FileTarget(tracked_files[-1])
+                t = file_target(tracked_files[-1])
                 if t.exists('signature'):
                     runtime_files.append(t.sig_file())
             elif line.startswith('EXE_SIG'):
@@ -1291,7 +1291,7 @@ def cmd_remove(args, unknown_args):
     import glob
     from .utils import env
     import shutil
-    from .target import FileTarget
+    from .target import file_target
     env.verbosity = args.verbosity
 
     # what about global signature?
@@ -1348,7 +1348,7 @@ def cmd_remove(args, unknown_args):
         def func(filename, resp):
             if os.path.abspath(filename) not in tracked_files:
                 return False
-            target = FileTarget(filename)
+            target = file_target(filename)
             if target.is_external() and not args.external():
                 env.logger.debug('Ignore external file {}'.format(filename))
                 return False
@@ -1376,7 +1376,7 @@ def cmd_remove(args, unknown_args):
         def func(filename, resp):
             if os.path.abspath(filename) not in tracked_files:
                 return False
-            target = FileTarget(filename)
+            target = file_target(filename)
             if target.is_external() and not args.external():
                 env.logger.debug('Ignore external file {}'.format(filename))
                 return False
@@ -1405,7 +1405,7 @@ def cmd_remove(args, unknown_args):
         def func(filename, resp):
             if os.path.abspath(filename) in tracked_files:
                 return False
-            target = FileTarget(filename)
+            target = file_target(filename)
             if target.is_external() and not args.external():
                 env.logger.debug('Ignore external file {}'.format(filename))
                 return False
@@ -1434,7 +1434,7 @@ def cmd_remove(args, unknown_args):
         def func(filename, resp):
             if os.path.abspath(filename) not in tracked_files:
                 return False
-            target = FileTarget(filename)
+            target = file_target(filename)
             if target.is_external() and not args.external():
                 env.logger.debug('Ignore external file {}'.format(filename))
                 return False
@@ -1464,7 +1464,7 @@ def cmd_remove(args, unknown_args):
     else:
         # default behavior
         def func(filename, resp):
-            target = FileTarget(filename)
+            target = file_target(filename)
             if target.is_external() and not args.external():
                 env.logger.debug('Ignore external file {}'.format(filename))
                 return False
@@ -1494,7 +1494,7 @@ def cmd_remove(args, unknown_args):
     resp = AnswerMachine(always_yes = args.dryrun, confirmed = args.__confirm__)
     for target in args.targets:
         target = os.path.expanduser(target)
-        if FileTarget(target).is_external():
+        if file_target(target).is_external():
             if os.path.isdir(target):
                 sys.exit('Canot remove external directory {}'.format(target))
             elif not args.external:
@@ -1754,7 +1754,7 @@ def locate_files(session, include, exclude, all_files):
     import fnmatch
     import glob
     from .utils import env
-    from .target import FileTarget
+    from .target import file_target
     sig_files = glob.glob('.sos/*.sig')
     if not sig_files:
         raise ValueError('No executed workflow is identified.')
@@ -1785,7 +1785,7 @@ def locate_files(session, include, exclude, all_files):
     if not all_files:
         external_files = []
         for x in tracked_files:
-            if FileTarget(x).is_external():
+            if file_target(x).is_external():
                 env.logger.info('{} is excluded. Use option --all to include tracked files outside of current directory.'.format(x))
                 external_files.append(x)
         tracked_files -= set(external_files)
@@ -1810,7 +1810,7 @@ def cmd_pack(args, unknown_args):
     import tempfile
     from tqdm import tqdm as ProgressBar
     from .utils import pretty_size, env, ProgressFileObj
-    from .target import FileTarget
+    from .target import file_target
     #
     env.verbosity = args.verbosity
     try:
@@ -1820,7 +1820,7 @@ def cmd_pack(args, unknown_args):
         sys.exit(1)
     #
     # get information about files
-    file_sizes = {x: FileTarget(x).size() for x in tracked_files}
+    file_sizes = {x: file_target(x).size() for x in tracked_files}
     # getting file size to create progress bar
     total_size = sum(file_sizes.values())
 
@@ -1845,14 +1845,14 @@ def cmd_pack(args, unknown_args):
         for f in script_files:
             if f == 'None':
                 continue
-            ft = FileTarget(f)
+            ft = file_target(f)
             if not ft.exists():
                 env.logger.warning('Missing script file {}'.format(ft.name()))
             else:
                 manifest.write('SCRIPTS\t{}\t{}\t{}\t{}\n'.format(os.path.basename(f), ft.mtime(), ft.size(), ft.signature()))
         for f in tracked_files:
             env.logger.info('Checking {}'.format(f))
-            ft = FileTarget(f)
+            ft = file_target(f)
             if not ft.exists():
                 env.logger.warning('Missing tracked file {}'.format(ft.name()))
             elif ft.is_external():
@@ -1860,7 +1860,7 @@ def cmd_pack(args, unknown_args):
             else:
                 manifest.write('TRACKED\t{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.signature()))
         for f in runtime_files:
-            ft = FileTarget(f)
+            ft = file_target(f)
             if not ft.exists():
                 env.logger.warning('Missing runtime file {}'.format(ft.name()))
             else:
@@ -1891,7 +1891,7 @@ def cmd_pack(args, unknown_args):
                 else:
                     continue
             env.logger.info('Adding {}'.format(f))
-            if FileTarget(f).is_external():
+            if file_target(f).is_external():
                 # external files
                 if args.verbosity == 1:
                     tarinfo = archive.gettarinfo(f, arcname='external/' + f)

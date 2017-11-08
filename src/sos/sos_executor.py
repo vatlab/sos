@@ -35,7 +35,7 @@ from .utils import env, Error, WorkflowDict, get_traceback, short_repr, pickleab
     load_config_files, save_var, load_var
 from .sos_eval import SoS_exec
 from .dag import SoS_DAG
-from .target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step, Undetermined, sos_targets
+from .target import BaseTarget, file_target, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step, Undetermined, sos_targets
 from .pattern import extract_pattern
 from .hosts import Host
 
@@ -415,7 +415,7 @@ class Base_Executor:
             if res and not any(None in x for x in res.values()):
                 return {x:y[0] for x,y in res.items()}
             # string match
-            elif FileTarget(p) == FileTarget(target):
+            elif file_target(p) == file_target(target):
                 return True
         return False
 
@@ -508,7 +508,7 @@ class Base_Executor:
             for target in existing_targets:
                 if target not in dag.dangling(targets)[1]:
                     continue
-                if FileTarget(target).exists('target') if isinstance(target, str) else target.exists('target'):
+                if file_target(target).exists('target') if isinstance(target, str) else target.exists('target'):
                     continue
                 mo = [(x, self.match(target, x)) for x in self.workflow.auxiliary_sections]
                 mo = [x for x in mo if x[1] is not False]
@@ -701,9 +701,9 @@ class Base_Executor:
         # to remove the signature and really generate them
         if targets:
             for t in targets:
-                if not FileTarget(t).exists('target') and FileTarget(t).exists('signature'):
+                if not file_target(t).exists('target') and file_target(t).exists('signature'):
                     env.logger.info(f'Re-generating {t}')
-                    FileTarget(t).remove('signature')
+                    file_target(t).remove('signature')
                 else:
                     env.logger.info(f'Target {t} already exists')
         # process step of the pipelinp

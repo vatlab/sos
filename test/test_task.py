@@ -30,7 +30,7 @@ import glob
 from sos.sos_script import SoS_Script, ParsingError
 from sos.utils import env
 from sos.sos_executor import Base_Executor
-from sos.target import FileTarget
+from sos.target import file_target
 from sos.hosts import Host
 import subprocess
 
@@ -58,7 +58,7 @@ class TestTask(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
 
     def touch(self, files):
         '''create temporary files'''
@@ -263,7 +263,7 @@ touch temp/{ff}
     def testPassingVarToTask(self):
         '''Test passing used variable to tasks'''
         for i in range(10, 13):
-            FileTarget('myfile_{}.txt'.format(i)).remove('both')
+            file_target('myfile_{}.txt'.format(i)).remove('both')
         #
         env.config['sig_mode'] = 'force'
         script = SoS_Script(r'''
@@ -289,7 +289,7 @@ run: expand=True
         for t in range(10, 13):
             with open('myfile_{}.txt'.format(t)) as tmp:
                 self.assertEqual(tmp.read().strip(), str(t) + '_' + str(t-10))
-            FileTarget('myfile_{}.txt'.format(t)).remove('both')
+            file_target('myfile_{}.txt'.format(t)).remove('both')
 
     def testMaxJobs(self):
         '''Test default max number of jobs'''
@@ -400,8 +400,8 @@ run: expand=True
 
     def testSharedOption(self):
         '''Test shared option of task'''
-        FileTarget("a.txt").remove("both")
-        FileTarget("a100.txt").remove("both")
+        file_target("a.txt").remove("both")
+        file_target("a100.txt").remove("both")
         script = SoS_Script('''
 [10: shared = {'a': 'a[0]'}]
 task: shared={'a': 'int(open("a.txt").read())'}
@@ -416,8 +416,8 @@ run: expand=True
         Base_Executor(wf, config={'sig_mode': 'force'}).run()
         self.assertTrue(os.path.isfile("a100.txt"))
         # sequence of var or mapping
-        FileTarget("a.txt").remove("both")
-        FileTarget("a100.txt").remove("both")
+        file_target("a.txt").remove("both")
+        file_target("a100.txt").remove("both")
         script = SoS_Script('''
 [10: shared = {'a': 'a[0]', 'b':'b[0]'}]
 task: shared=[{'a': 'int(open("a.txt").read())'}, 'b']
@@ -463,8 +463,8 @@ run: expand=True
         subprocess.call('sos resume -w', shell=True)
         for i in range(10):
             self.assertTrue(os.path.isfile(f'{i}.txt'))
-            FileTarget(f'{i}.txt').remove('both')
-        FileTarget('test_trunksize.sos').remove()
+            file_target(f'{i}.txt').remove('both')
+        file_target('test_trunksize.sos').remove()
 
     def testTrunkWorkersOption(self):
         '''Test option trunk_workers'''
@@ -496,8 +496,8 @@ run: expand=True
         subprocess.call('sos resume -w', shell=True)
         for i in range(10):
             self.assertTrue(os.path.isfile('{}.txt'.format(i)))
-            FileTarget('{}.txt'.format(i)).remove('both')
-        FileTarget('test_trunkworker.sos').remove()
+            file_target('{}.txt'.format(i)).remove('both')
+        file_target('test_trunkworker.sos').remove()
 
     def testTaskTags(self):
         '''Test option tags of tasks'''

@@ -28,7 +28,7 @@ from io import StringIO
 from sos.sos_script import SoS_Script
 from sos.utils import env
 from sos.sos_executor import Base_Executor
-from sos.target import FileTarget
+from sos.target import file_target
 
 import subprocess
 
@@ -40,7 +40,7 @@ class TestDAG(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
 
     def touch(self, files):
         '''create temporary files'''
@@ -420,7 +420,7 @@ output: 'A.txt'
         '''Test long make file style dependencies.'''
         #
         for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
         #
         #  A1 <- B1 <- B2 <- B3
         #   |
@@ -506,7 +506,7 @@ A_1 -> A_2;
 ''')
         Base_Executor(wf).run()
         for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
-            t = FileTarget(f)
+            t = file_target(f)
             self.assertTrue(t.exists(), f + ' should exist')
             t.remove('both')
 
@@ -514,7 +514,7 @@ A_1 -> A_2;
         '''Test executing only part of a workflow.'''
         #
         for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
         #
         #  A1 <- B1 <- B2 <- B3
         #   |
@@ -596,9 +596,9 @@ strict digraph "" {
 ''')
         Base_Executor(wf).run(targets=['B1.txt'])
         for f in ['A1.txt', 'A2.txt']:
-            self.assertFalse(FileTarget(f).exists())
+            self.assertFalse(file_target(f).exists())
         for f in ['C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
-            t = FileTarget(f)
+            t = file_target(f)
             self.assertTrue(t.exists())
             t.remove('both')
         #
@@ -624,9 +624,9 @@ strict digraph "" {
 ''')
         Base_Executor(wf).run(targets=['B2.txt', 'C2.txt'])
         for f in ['A1.txt', 'B1.txt', 'A2.txt']:
-            self.assertFalse(FileTarget(f).exists())
+            self.assertFalse(file_target(f).exists())
         for f in ['C2.txt', 'B2.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
-            t = FileTarget(f)
+            t = file_target(f)
             self.assertTrue(t.exists())
             t.remove('both')
         #
@@ -645,9 +645,9 @@ strict digraph "" {
 ''')
         Base_Executor(wf).run(targets=['B3.txt', 'C2.txt'])
         for f in ['A1.txt', 'B1.txt', 'A2.txt', 'B2.txt', 'C1.txt', 'C3.txt']:
-            self.assertFalse(FileTarget(f).exists())
+            self.assertFalse(file_target(f).exists())
         for f in ['C2.txt', 'B3.txt', 'C4.txt']:
-            t = FileTarget(f)
+            t = file_target(f)
             self.assertTrue(t.exists())
             t.remove('both')
 
@@ -655,7 +655,7 @@ strict digraph "" {
         '''Test repeated use of steps that use pattern and produce different files.'''
         #
         for f in ['A1.txt', 'A2.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
         #
         #  A1 <- P <- B1
         #  A1 <- P <- B2
@@ -707,7 +707,7 @@ A_1 -> A_2;
 ''')
         Base_Executor(wf).run()
         for f in ['A1.txt', 'A2.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
-            t = FileTarget(f)
+            t = file_target(f)
             self.assertTrue(t.exists(), '{} should exist'.format(f))
             t.remove('both')
 
@@ -718,7 +718,7 @@ A_1 -> A_2;
         A2 <- B2
         '''
         for f in ['A1.txt', 'B2.txt', 'A2.txt']:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
         script = SoS_Script('''
 [A_1]
 output: 'A1.txt'
@@ -757,7 +757,7 @@ A_2;
         Base_Executor(wf).run()
         # the process is slower after switching to spawn mode
         for f in ['A1.txt', 'B2.txt', 'A2.txt']:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
 
 
     def testSharedDependency(self):
@@ -765,7 +765,7 @@ A_2;
         # shared variable should introduce additional dependency
         #
         for f in ['A1.txt']:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
         #
         # A1 introduces a shared variable ss, A3 depends on ss but not A2
         #
@@ -801,14 +801,14 @@ A_1 -> A_3;
         env.max_jobs = 3
         Base_Executor(wf).run()
         for f in ['A1.txt']:
-            self.assertTrue(FileTarget(f).exists())
-            FileTarget(f).remove('both')
+            self.assertTrue(file_target(f).exists())
+            file_target(f).remove('both')
 
 
     def testLiteralConnection(self):
         '''Testing the connection of steps with by variables.'''
         for f in ['A1.txt']:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
         #
         # A1 introduces a shared variable ss, A3 depends on ss but not A2
         #
@@ -858,8 +858,8 @@ A_4 -> A_5;
         env.max_jobs = 3
         Base_Executor(wf).run()
         for f in ['A1.txt']:
-            self.assertTrue(FileTarget(f).exists())
-            FileTarget(f).remove('both')
+            self.assertTrue(file_target(f).exists())
+            file_target(f).remove('both')
 
 
     def testVariableTarget(self):
@@ -884,7 +884,7 @@ p = c + b
 
     def testReverseSharedVariable(self):
         '''Test shared variables defined in auxiliary steps'''
-        FileTarget('a.txt').remove('both')
+        file_target('a.txt').remove('both')
         script = SoS_Script(r'''
 [A: shared='b', provides='a.txt']
 b = 1
@@ -919,18 +919,18 @@ run: expand=True
    echo "Calling variants from {input} with {depends} to {output}"
    touch {output}
 ''')
-        FileTarget('a.bam.bai').remove('both')
-        FileTarget('a.vcf').remove('both')
+        file_target('a.bam.bai').remove('both')
+        file_target('a.vcf').remove('both')
         self.touch('a.bam')
         Base_Executor(script.workflow()).run(targets=['a.vcf'])
         for file in ('a.vcf', 'a.bam', 'a.bam.bai'):
-            FileTarget(file).remove('both')
+            file_target(file).remove('both')
 
     def testOutputOfDAG(self):
         '''Test output of dag'''
         #
         for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
         #
         #  A1 <- B1 <- B2 <- B3
         #   |
@@ -1044,7 +1044,7 @@ strict digraph "" {
 }
 ''')
         for f in ['C2.txt', 'B3.txt', 'C4.txt', 'test.dot', 'test_2.dot']:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
 
     def testStepWithMultipleOutput(self):
         '''Test addition of steps with multiple outputs. It should be added only once'''
@@ -1090,7 +1090,7 @@ touch 1.txt
 
     def testForwardStyleDepend(self):
         '''Test the execution of forward-style workflow with undtermined dependency'''
-        FileTarget('a.txt.bak').remove('both')
+        file_target('a.txt.bak').remove('both')
         self.touch('a.txt')
         script = SoS_Script('''
 [10]
@@ -1106,7 +1106,7 @@ run: expand=True
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(FileTarget('a.txt.bak').exists())
+        self.assertTrue(file_target('a.txt.bak').exists())
 
 if __name__ == '__main__':
     unittest.main()

@@ -27,7 +27,7 @@ import subprocess
 from sos.utils import env, ArgumentError
 from sos.sos_script import SoS_Script, ParsingError
 from sos.sos_executor import Base_Executor
-from sos.target import FileTarget, sos_targets
+from sos.target import file_target, sos_targets
 
 section1_sos = '''
 #!/usr/bin/env sos-runner
@@ -90,7 +90,7 @@ class TestParser(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
 
     def touch(self, files):
         '''create temporary files'''
@@ -1094,7 +1094,7 @@ a = 2
 
     def testOverwriteKeyword(self):
         '''Test overwrite sos keyword with user defined one.'''
-        FileTarget('a.txt').remove('both')
+        file_target('a.txt').remove('both')
         #
         script = SoS_Script('''
 def run(script):

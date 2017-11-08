@@ -28,7 +28,7 @@ import shutil
 from sos.sos_script import SoS_Script
 from sos.utils import env
 from sos.sos_executor import Base_Executor
-from sos.target import FileTarget, sos_targets
+from sos.target import file_target, sos_targets
 from sos.sos_eval import interpolate
 import subprocess
 
@@ -41,7 +41,7 @@ class TestTarget(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
 
     def touch(self, files):
         '''create temporary files'''
@@ -196,10 +196,10 @@ run:
     touch a.txt
 ''')
         wf = script.workflow()
-        FileTarget('a.txt').remove('both')
+        file_target('a.txt').remove('both')
         Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('a.txt'))
-        FileTarget('a.txt').remove('both')
+        file_target('a.txt').remove('both')
 
     @unittest.skipIf(sys.platform == 'win32', 'Windows executable cannot be created with chmod.')
     def testOutputExecutable(self):
@@ -215,18 +215,18 @@ run:
     chmod +x lls
 ''')
         wf = script.workflow()
-        FileTarget('lls').remove('both')
+        file_target('lls').remove('both')
         env.config['sig_mode'] = 'force'
         Base_Executor(wf).run()
         # test validation
         env.config['sig_mode'] = 'default'
         Base_Executor(wf).run()
-        FileTarget('lls').remove('both')
+        file_target('lls').remove('both')
 
 
     def testDependsEnvVariable(self):
         '''Testing target env_variable.'''
-        FileTarget('a.txt').remove('both')
+        file_target('a.txt').remove('both')
         if sys.platform == 'win32':
             script = SoS_Script('''
 [0]
@@ -256,7 +256,7 @@ run:
         # allow one second variation
         with open('a.txt') as at:
             self.assertEqual(at.read().strip(), 'A2')
-        FileTarget('a.txt').remove('both')
+        file_target('a.txt').remove('both')
 
     @unittest.skipIf(sys.platform == 'win32', 'Windows executable cannot be created with chmod.')
     def testProvidesExecutable(self):
@@ -264,7 +264,7 @@ run:
         # change $PATH so that lls can be found at the current
         # directory.
         os.environ['PATH'] += os.pathsep + '.'
-        FileTarget('lls').remove('both')
+        file_target('lls').remove('both')
         script = SoS_Script('''
 [lls: provides=executable('lkls')]
 run:
@@ -277,7 +277,7 @@ depends: executable('lkls')
 ''')
         wf = script.workflow('c')
         Base_Executor(wf).run()
-        FileTarget('lkls').remove('both')
+        file_target('lkls').remove('both')
 
     def testSharedVarInPairedWith(self):
         self.touch(['1.txt', '2.txt'])
@@ -297,7 +297,7 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
         for file in ('1.out', '2.out', '1.out2', '2.out2'):
-            FileTarget(file).remove('both')
+            file_target(file).remove('both')
 
     def testSharedVarInForEach(self):
         self.touch(['1.txt', '2.txt'])
@@ -343,7 +343,7 @@ run:
     def testSoSStep(self):
         '''Test target sos_step'''
         for file in ['t1.txt', 't2.txt', '5.txt', '10.txt', '20.txt']:
-            FileTarget(file).remove('both')
+            file_target(file).remove('both')
         script = SoS_Script('''
 [t1]
 run:
@@ -374,8 +374,8 @@ run:
         # this should be ok.
         Base_Executor(wf).run()
         for file in ['t1.txt', 't2.txt', '5.txt', '10.txt', '20.txt']:
-            self.assertTrue(FileTarget(file).exists(), file + ' should exist')
-            FileTarget(file).remove('both')
+            self.assertTrue(file_target(file).exists(), file + ' should exist')
+            file_target(file).remove('both')
 
 
 if __name__ == '__main__':

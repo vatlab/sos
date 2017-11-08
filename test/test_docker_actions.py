@@ -40,7 +40,7 @@ except ImportError:
     has_docker = False
 
 from sos.sos_executor import Base_Executor, ExecuteError
-from sos.target import FileTarget
+from sos.target import file_target
 
 class TimeoutException(Exception):
     def __init__(self, msg=''):
@@ -101,7 +101,7 @@ class TestDockerActions(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
         os.chdir(self.olddir)
 
     def touch(self, files):

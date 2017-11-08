@@ -30,7 +30,7 @@ from sos._version import __version__
 from sos.utils import env
 from sos.sos_eval import Undetermined
 from sos.sos_executor import Base_Executor, ExecuteError
-from sos.target import FileTarget, sos_targets
+from sos.target import file_target, sos_targets
 import subprocess
 
 def multi_attempts(fn):
@@ -53,7 +53,7 @@ class TestExecute(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            FileTarget(f).remove('both')
+            file_target(f).remove('both')
 
     def touch(self, files):
         '''create temporary files'''
@@ -396,7 +396,7 @@ output: f"{A}.txt"
         '''Test option paired_with '''
         self.touch(['a.txt', 'b.txt'])
         for ofile in ['a.txt1', 'b.txt2']:
-            FileTarget(ofile).remove('both')
+            file_target(ofile).remove('both')
         #
         # string input
         script = SoS_Script(r'''
@@ -412,8 +412,8 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
         for ofile in ['a.txt1', 'b.txt2']:
-            self.assertTrue(FileTarget(ofile).exists('target'))
-            FileTarget(ofile).remove('both')
+            self.assertTrue(file_target(ofile).exists('target'))
+            file_target(ofile).remove('both')
         #
         # list input
         script = SoS_Script(r'''
@@ -430,8 +430,8 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
         for ofile in ['a.txt1', 'b.txt2']:
-            self.assertTrue(FileTarget(ofile).exists('target'))
-            FileTarget(ofile).remove('both')
+            self.assertTrue(file_target(ofile).exists('target'))
+            file_target(ofile).remove('both')
         #
         # dict input
         script = SoS_Script(r'''
@@ -445,14 +445,14 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
         for ofile in ['a.txt1', 'b.txt2']:
-            self.assertTrue(FileTarget(ofile).exists('target'))
-            FileTarget(ofile).remove('both')
+            self.assertTrue(file_target(ofile).exists('target'))
+            file_target(ofile).remove('both')
 
     def testGroupWith(self):
         '''Test option group_with '''
         self.touch(['a.txt', 'b.txt'])
         for ofile in ['a.txt1', 'b.txt2']:
-            FileTarget(ofile).remove('both')
+            file_target(ofile).remove('both')
         #
         # string input
         script = SoS_Script(r'''
@@ -468,8 +468,8 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
         for ofile in ['a.txt1', 'b.txt2']:
-            self.assertTrue(FileTarget(ofile).exists('target'))
-            FileTarget(ofile).remove('both')
+            self.assertTrue(file_target(ofile).exists('target'))
+            file_target(ofile).remove('both')
         #
         # list input
         script = SoS_Script(r'''
@@ -486,8 +486,8 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
         for ofile in ['a.txt1']:
-            self.assertTrue(FileTarget(ofile).exists('target'))
-            FileTarget(ofile).remove('both')
+            self.assertTrue(file_target(ofile).exists('target'))
+            file_target(ofile).remove('both')
         #
         # dict input
         script = SoS_Script(r'''
@@ -501,8 +501,8 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
         for ofile in ['a.txt1']:
-            self.assertTrue(FileTarget(ofile).exists('target'))
-            FileTarget(ofile).remove('both')
+            self.assertTrue(file_target(ofile).exists('target'))
+            file_target(ofile).remove('both')
 
 
     def testInputPattern(self):
@@ -939,13 +939,13 @@ with open('b.txt', 'w') as txt:
         ret2.wait()
         # two processes execute A_1 and A_2 separately, usually
         # takes less than 5 seconds
-        FileTarget('lock.sos').remove('both')
+        file_target('lock.sos').remove('both')
 
 
     def testRemovedIntermediateFiles(self):
         '''Test behavior of workflow with removed internediate files'''
-        FileTarget('a.txt').remove('both')
-        FileTarget('aa.txt').remove('both')
+        file_target('a.txt').remove('both')
+        file_target('aa.txt').remove('both')
         script = SoS_Script('''
 [10]
 output: 'a.txt'
@@ -959,7 +959,7 @@ run: expand=True
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(FileTarget('aa.txt').exists())
+        self.assertTrue(file_target('aa.txt').exists())
         # rerun should be faster
         Base_Executor(wf).run()
         # if we remove the middle result, it should not matter
@@ -971,18 +971,18 @@ run: expand=True
         Base_Executor(wf).run()
         #
         # now we request the generation of target
-        FileTarget('a.txt').remove('target')
-        FileTarget('aa.txt').remove('both')
+        file_target('a.txt').remove('target')
+        file_target('aa.txt').remove('both')
         Base_Executor(wf).run()
         #
-        FileTarget('a.txt').remove('both')
-        FileTarget('aa.txt').remove('both')
+        file_target('a.txt').remove('both')
+        file_target('aa.txt').remove('both')
 
 
     def testStoppedOutput(self):
         '''test output with stopped step'''
         for file in ["{}.txt".format(a) for a in range(10)]:
-            FileTarget(file).remove('both')
+            file_target(file).remove('both')
 
         script = SoS_Script('''
 [test_1]
@@ -1000,14 +1000,14 @@ assert(len(input) == 5)
         Base_Executor(wf).run()
         for idx in range(10):
             if idx % 2 == 0:
-                self.assertFalse(FileTarget("{}.txt".format(idx)).exists())
+                self.assertFalse(file_target("{}.txt".format(idx)).exists())
             else:
-                self.assertTrue(FileTarget("{}.txt".format(idx)).exists())
-                FileTarget(f"{idx}.txt").remove('both')
+                self.assertTrue(file_target("{}.txt".format(idx)).exists())
+                file_target(f"{idx}.txt").remove('both')
 
     def testAllowError(self):
         '''Test option allow error'''
-        FileTarget('a.txt').remove('all')
+        file_target('a.txt').remove('all')
         script = SoS_Script('''
 [test]
 run:  allow_error=True
@@ -1018,8 +1018,8 @@ run:
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(FileTarget('a.txt').exists())
-        FileTarget('a.txt').remove('all')
+        self.assertTrue(file_target('a.txt').exists())
+        file_target('a.txt').remove('all')
 
     def testConcurrentWorker(self):
         '''Test the starting of multiple workers #493 '''
@@ -1037,7 +1037,7 @@ input: for_each={'i': range(2)}
     def testDependsCausedDependency(self):
         #test for #674
         for tfile in ('1.txt', '2.txt', '3.txt'):
-            FileTarget(tfile).remove('both')
+            file_target(tfile).remove('both')
         script = SoS_Script('''
 [1: shared = {'dfile':'output'}]
 output: '1.txt'
@@ -1059,8 +1059,8 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
         for tfile in ('1.txt', '2.txt', '3.txt'):
-            self.assertTrue(FileTarget(tfile).exists())
-            FileTarget(tfile).remove('both')
+            self.assertTrue(file_target(tfile).exists())
+            file_target(tfile).remove('both')
 
 
 if __name__ == '__main__':
