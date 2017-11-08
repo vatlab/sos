@@ -1187,12 +1187,12 @@ def cmd_kill(args, workflow_args):
             if not args.tasks and not args.tags:
                 env.logger.warning('Please specify task id, or one of options --all and --tags')
             else:
-                kill_tasks(args.tasks, args.tags)
+                kill_tasks(tasks=args.tasks, tags=args.tags)
     else:
         # remote host?
         cfg = load_config_files(args.config)
         host = Host(args.queue)
-        print(host._task_engine.kill_tasks(args.tasks, args.tags, all_tasks=args.all))
+        print(host._task_engine.kill_tasks(tasks=args.tasks, tags=args.tags))
 
 #
 # command remove
