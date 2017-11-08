@@ -75,32 +75,6 @@ class TestActions(unittest.TestCase):
         #
         self.temp_files.extend(files)
 
-    def testSoSAction(self):
-        '''Test sos_action decorator'''
-        script = SoS_Script(r"""
-from sos.actions import SoS_Action
-
-@SoS_Action(run_mode='run')
-def func_run():
-    return 1
-
-@SoS_Action(run_mode=['run', 'dryrun'])
-def func_both():
-    return 1
-
-[0: shared=('b', 'c')]
-b=func_run()
-c=func_both()
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run(mode='dryrun')
-        self.assertTrue(isinstance(env.sos_dict['b'], Undetermined))
-        self.assertEqual(env.sos_dict['c'], 1)
-        #
-        Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['b'], 1)
-        self.assertEqual(env.sos_dict['c'], 1)
-
     def testAcceptableArgs(self):
         '''test acceptable args of options'''
         script = SoS_Script(r"""
