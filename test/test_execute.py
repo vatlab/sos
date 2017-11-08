@@ -606,27 +606,6 @@ counter += 1
         self.assertEqual(env.sos_dict['step'], ['a.txt.bak', 'b.txt.bak'])
 
 
-    def testRunmode(self):
-        '''Test the runmode decoration'''
-        script = SoS_Script(r"""
-from sos.actions import SoS_Action
-
-@SoS_Action(run_mode='run')
-def fail():
-    return 1
-
-[0: shared='a']
-a = fail()
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run(mode='dryrun')
-        # should return 0 in dryrun mode
-        self.assertTrue(isinstance(env.sos_dict['a'], Undetermined))
-        #
-        Base_Executor(wf).run()
-        # shoulw return 1 in run mode
-        self.assertEqual(env.sos_dict['a'], 1)
-
     def testReadOnlyStepVars(self):
         '''Test if the step variables can be changed.'''
         #
