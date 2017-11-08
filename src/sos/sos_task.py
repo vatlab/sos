@@ -721,7 +721,7 @@ def check_task(task):
     else:
         return 'pending'
 
-def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags=None):
+def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags=None, status=None):
     # verbose is ignored for now
     import glob
     from multiprocessing.pool import ThreadPool as Pool
@@ -756,7 +756,10 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
         return
     # at most 20 threads
     p = Pool(min(20, len(all_tasks)))
-    status = p.map(check_task, [x[0] for x in all_tasks])
+    obtained_status = p.map(check_task, [x[0] for x in all_tasks])
+    if status:
+        all_tasks = [x for x, s in zip(all_tasks, obtained_status) if s in status]
+        obtained_status = [x for x in obtained_status if x in status]
     #
     # automatically remove non-running tasks that are more than 30 days old
     to_be_removed = []
@@ -764,16 +767,16 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
     if html:
         verbosity = -1
     if verbosity == 0:
-        print('\n'.join(status))
+        print('\n'.join(obtained_status))
     elif verbosity == 1:
-        for s, (t, d) in zip(status, all_tasks):
+        for s, (t, d) in zip(obtained_status, all_tasks):
             if d is not None and time.time() - d > 30*24*60*60 and s != 'running':
                 to_be_removed.append(t)
                 continue
             print(f'{t}\t{s}')
     elif verbosity == 2:
         from .utils import PrettyRelativeTime
-        for s, (t, d) in zip(status, all_tasks):
+        for s, (t, d) in zip(obtained_status, all_tasks):
             if d is not None and time.time() - d > 30*24*60*60 and s != 'running':
                 to_be_removed.append(t)
                 continue
@@ -795,7 +798,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
         import pprint
         from .monitor import summarizeExecution
 
-        for s, (t, d) in zip(status, all_tasks):
+        for s, (t, d) in zip(obtained_status, all_tasks):
             if d is not None and time.time() - d > 30*24*60*60 and s != 'running':
                 to_be_removed.append(t)
                 continue
@@ -1440,14 +1443,15 @@ class TaskEngine(threading.Thread):
                 #if task in self.running_tasks:
                 #    self.running_tasks.remove(task)
 
-    def query_tasks(self, tasks=None, verbosity=1, html=False, start_time=False, age=None, tags=None):
+    def query_tasks(self, tasks=None, verbosity=1, html=False, start_time=False, age=None, tags=None, status=None):
         try:
-            return self.agent.check_output("sos status {} -v {} {} {} {} {}".format(
+            return self.agent.check_output("sos status {} -v {} {} {} {} {} {}".format(
                 '' if tasks is None else ' '.join(tasks), verbosity,
                 '--html' if html else '',
                 '--start-time' if start_time else '',
                 f'--age {age}' if age else '',
-                f'--tags {" ".join(tags)}' if tags else ''
+                f'--tags {" ".join(tags)}' if tags else '',
+                f'--status {" ".join(status)}' if status else '',
                 ))
         except subprocess.CalledProcessError as e:
             env.logger.error(f'Failed to query status of tasks {tasks}: {e}')
