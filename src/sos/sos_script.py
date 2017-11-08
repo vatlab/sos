@@ -73,7 +73,8 @@ def get_type_hint(stmt):
         #
         # where input is recognied
         #
-        if '__annotations__' in ns and not any(x==input for x in ns['__annotations__'].values()):
+        if '__annotations__' in ns and all(x != input and callable(x) for x in ns['__annotations__'].values()):
+            env.logger.warning(f"{stmt} is {ns['__annotations__']}")
             return ns.popitem()[1]
         return None
     except:
@@ -270,7 +271,10 @@ class SoS_Step:
                     return False
                 # to allow type trait, we will have to test the expression as if in a function
                 # definition, with something like "def func(a : str, b : list=[])"
-                compile('def func(' + ''.join(self.values) + '):\n  pass', filename='<string>', mode='exec')
+                try:
+                    compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
+                except:
+                    compile('def func(' + ''.join(self.values) + '):\n  pass', filename='<string>', mode='exec')
             elif self.category() == 'statements':
                 compile((''.join(self.values)), filename='<string>', mode='exec')
             elif self.category() == 'script':
