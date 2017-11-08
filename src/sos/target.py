@@ -651,8 +651,6 @@ class sos_targets(BaseTarget, Sequence):
             fmt_spec = format_spec.replace(',', '')
             return ','.join(x.__format__(fmt_spec) for x in self._targets)
         else:
-            env.logger.error(f"{self._targets}")
-            env.logger.error(f"{self._targets[0].__class__}")
             return ' '.join(x.__format__(format_spec) for x in self._targets)
 
     def signature(self, mode='any'):
