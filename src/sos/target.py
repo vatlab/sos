@@ -585,6 +585,9 @@ class FileTarget(BaseTarget):
                     return False
         return True
 
+    def __hash__(self):
+        return hash(repr(self))
+
 class sos_targets(BaseTarget, Sequence):
     '''A collection of targets'''
     def __init__(self, *args):
@@ -640,7 +643,7 @@ class sos_targets(BaseTarget, Sequence):
         return len(self._targets)
 
     def __getitem__(self, i):
-        return sos_targets(self._targets[i])
+        return self._targets[i]
 
     def __format__(self, format_spec):
         if ',' in format_spec:
