@@ -924,22 +924,19 @@ def pandoc(script=None, input=None, output=None, args='{input:q} --output {outpu
     if not executable('pandoc').exists():
         raise UnknownTarget(executable('pandoc'))
 
-    input_file = collect_input(script, input)
+    input = sos_target(collect_input(script, input))
 
-    write_to_stdout = False
-    if output is None:
+    output = sos_targets(output)
+    if len(output) == 0:
         write_to_stdout = True
-        output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.html', delete=False).name
-    elif isinstance(output, str):
-        output_file = os.path.expanduser(output)
+        output = sos_targets(tempfile.NamedTemporaryFile(mode='w+t', suffix='.html', delete=False).name)
     else:
-        raise RuntimeError('A filename is expected, {} provided'.format(output))
+        write_to_stdout = False
     #
     ret = 1
     try:
         p = None
-        cmd = interpolate(f'pandoc {args}',
-                          {'input': sos_targets(input_file), 'output': sos_targets(output_file)})
+        cmd = interpolate(f'pandoc {args}', {'input': input, 'output': output})
         env.logger.trace(f'Running command "{cmd}"')
         if env.config['run_mode'] == 'interactive':
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
@@ -951,9 +948,9 @@ def pandoc(script=None, input=None, output=None, args='{input:q} --output {outpu
     except Exception as e:
         env.logger.error(e)
     if ret != 0:
-        temp_file = os.path.join('.sos', '{}_{}.md'.format('pandoc', os.getpid()))
+        temp_file = os.path.join('.sos', f'pandoc_{os.getpid()}.md')
         shutil.copyfile(input_file, temp_file)
-        cmd = interpolate(f'pandoc {args}', {'input': sos_targets(temp_file), 'output': sos_targets(output_file)})
+        cmd = interpolate(f'pandoc {args}', {'input': sos_targets(temp_file), 'output': sos_targets(output)})
         raise RuntimeError(f'Failed to execute script. Please use command \n{cmd}\nunder {os.getcwd()} to test it.')
     if write_to_stdout:
         with open(output_file) as out:

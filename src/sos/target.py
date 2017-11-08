@@ -597,7 +597,7 @@ class sos_targets(BaseTarget, Sequence):
             if isinstance(arg, Undetermined):
                 raise RuntimeError("Undetermined cannot be inserted as a target")
             elif isinstance(arg, str):
-                    self._targets.append(arg)
+                    self._targets.append(FileTarget(arg))
             elif isinstance(arg, sos_targets):
                 self._targets.extend(arg.targets())
             elif isinstance(arg, BaseTarget):
@@ -606,7 +606,7 @@ class sos_targets(BaseTarget, Sequence):
                 # in case arg is a Generator, check its type will exhaust it
                 for t in list(arg):
                     if isinstance(t, str):
-                        self._targets.append(t)
+                        self._targets.append(FileTarget(t))
                     elif isinstance(t, sos_targets):
                         self._targets.extend(t.targets())
                     elif isinstance(t, BaseTarget):
@@ -648,25 +648,25 @@ class sos_targets(BaseTarget, Sequence):
     def __format__(self, format_spec):
         if ',' in format_spec:
             fmt_spec = format_spec.replace(',', '')
-            return ','.join(FileTarget(x).__format__(fmt_spec) if isinstance(x, str) else x.__format__(fmt_spec) for x in self._targets)
+            return ','.join(x.__format__(fmt_spec) for x in self._targets)
         else:
-            return ' '.join(FileTarget(x).__format__(format_spec) if isinstance(x, str) else x.__format__(format_spec) for x in self._targets)
+            return ' '.join(x.__format__(format_spec) for x in self._targets)
 
     def signature(self, mode='any'):
         if len(self._targets) == 1:
-            return FileTarget(self._targets[0]).signature() if isinstance(self._targets[0], str) else self._targets[0].signature()
+            return self._targets[0].signature()
         else:
             raise ValueError(f'No signature for group of targets {self}')
 
     def exists(self, mode='any'):
         if len(self._targets) == 1:
-            return FileTarget(self._targets[0]).exists(mode) if isinstance(self._targets[0], str) else self._targets[0].exists(mode)
+            return self._targets[0].exists(mode)
         else:
             raise ValueError(f'Canot test existense for group of {len(self)} targets {self!r}')
 
     def name(self):
         if len(self._targets) == 1:
-            return FileTarget(self._targets[0]).name() if isinstance(self._targets[0], str) else self._targets[0].name()
+            return  self._targets[0].name()
         else:
             raise ValueError(f'Canot get name() for group of targets {self}')
 
