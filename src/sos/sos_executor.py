@@ -427,7 +427,7 @@ class Base_Executor:
             added_node = 0
             dangling_targets, existing_targets = dag.dangling(targets)
             if dangling_targets:
-                env.logger.info(f'Resolving {dangling_targets} objects from {dag.number_of_nodes()} nodes')
+                env.logger.debug(f'Resolving {dangling_targets} objects from {dag.number_of_nodes()} nodes')
             # find matching steps
             # check auxiliary steps and see if any steps provides it
             for target in dangling_targets:
