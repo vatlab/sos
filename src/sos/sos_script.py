@@ -83,17 +83,20 @@ def get_type_hint(stmt):
         # python: args='whatever'
         return None
 
-def get_option_from_arg_list(options, optname, default_value):
+def extract_option_from_arg_list(options, optname, default_value):
     if not options:
-        return default_value
+        return default_value, options
     try:
-        for field in list(ast.iter_fields(ast.parse(f"f({options})", mode='eval')))[0][1].keywords:
+        args = list(ast.iter_fields(ast.parse(f"f({options})", mode='eval')))[0][1].keywords
+        for idx,field in enumerate(args):
             if field.arg == optname:
                 try:
-                    return eval(compile(ast.Expression(body=field.value), filename="<ast>", mode="eval"))
+                    value = eval(compile(ast.Expression(body=field.value), filename="<ast>", mode="eval"))
+                    new_options = ','.join([x for x in options.split(',') if not x.strip().startswith(optname)])
+                    return value, new_options.strip()
                 except:
                     raise ValueError(f"A constant value is expected for option {optname}: {options} provided.")
-        return default_value
+        return default_value, options
     except SyntaxError as e:
         raise ValueError(f"Expect a list of keyword arguments: {options} provided")
 
@@ -378,7 +381,7 @@ class SoS_Step:
         # let us look for 'expand=""' in options
         prefix = ''
         if 'expand' in opt:
-            sigil = get_option_from_arg_list(opt, 'expand', None)
+            sigil, opt = extract_option_from_arg_list(opt, 'expand', None)
             if sigil is None or sigil is False:
                 pass
             elif sigil is True:
