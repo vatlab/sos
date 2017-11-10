@@ -26,6 +26,7 @@ import copy
 import fnmatch
 import textwrap
 import shutil
+import types
 
 # used by structural directive
 import sys
@@ -73,7 +74,7 @@ def get_type_hint(stmt):
         #
         # where input is recognied
         #
-        if '__annotations__' in ns and all(x != input and callable(x) for x in ns['__annotations__'].values()):
+        if '__annotations__' in ns and all(not isinstance(x, types.BuiltinFunctionType) and callable(x) for x in ns['__annotations__'].values()):
             return ns.popitem()[1]
         return None
     except:
