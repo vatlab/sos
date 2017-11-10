@@ -82,7 +82,7 @@ RUN     pip install markdown wand graphviz
 
 RUN     conda install -y feather-format -c conda-forge
 RUN     pip install nbformat --upgrade
-RUN     pip install sos sos-notebook sos-r sos-julia sos-python sos-matlab sos-javascript sos-bash sos-bioinfo
+RUN     pip install sos sos-notebook sos-r sos-julia sos-python sos-matlab sos-javascript sos-bash sos-bioinfo --upgrade
 
 # Install some R packages for our examples
 #RUN     R -e 'install.packages(c("package1", "package2"), lib="/usr/local/lib/R/site-library")'
