@@ -584,6 +584,73 @@ parameter: a_b = sos_targets('file')
         Base_Executor(wf, args=['--a-b', 'aaa']).run(mode='dryrun')
         self.assertEqual(env.sos_dict['a_b'].__class__.__name__, 'sos_targets')
         #
+        #
+        #
+        #
+        script = SoS_Script('''
+parameter: b : path
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--b', 'aaa']).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['b'].__class__.__name__, 'path')
+        #
+        script = SoS_Script('''
+parameter: b = path('file')
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--b', 'aaa']).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['b'].__class__.__name__, 'path')
+        #
+        script = SoS_Script('''
+parameter: b : paths
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--b', 'aaa', 'bbb']).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['b'].__class__.__name__, 'paths')
+        #
+        script = SoS_Script('''
+parameter: b = paths('file')
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--b', 'aaa']).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['b'].__class__.__name__, 'paths')
+        #
+        script = SoS_Script('''
+parameter: a_b : path
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--a-b', 'aaa']).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['a_b'].__class__.__name__, 'path')
+        #
+        script = SoS_Script('''
+parameter: a_b = path('file')
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--a-b', 'aaa']).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['a_b'].__class__.__name__, 'path')
+        #
+        script = SoS_Script('''
+parameter: a_b : paths
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--a-b', 'aaa', 'bbb']).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['a_b'].__class__.__name__, 'paths')
+        #
+        script = SoS_Script('''
+parameter: a_b = paths('file')
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--a-b', 'aaa']).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['a_b'].__class__.__name__, 'paths')
+        #
 
     def testSectionDirectives(self):
         '''Test directives of sections'''

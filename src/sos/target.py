@@ -621,7 +621,7 @@ class paths(Sequence):
                         if not all(isinstance(x, file_target) for x in t._targets):
                             raise ValueError(f'Cannot convert a sos_ttets object {t} with non-file ttet to paths')
                         self._paths.extend([path(str(x)) for x in t._targets])
-                    elif isinstance(t, file_target):
+                    elif isinstance(t, path):
                         self._paths.append(path(str(t)))
                     elif t is not None:
                             raise RuntimeError(f'Unrecognized targets {t} of type {t.__class__.__name__}')
