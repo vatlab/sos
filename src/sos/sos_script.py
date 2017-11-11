@@ -40,7 +40,7 @@ from uuid import uuid4
 
 from .utils import env, Error, locate_script, text_repr
 from .sos_eval import on_demand_options
-from .target import textMD5
+from .target import textMD5, file_target, sos_targets
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
     SOS_ASSIGNMENT, SOS_SUBWORKFLOW, SOS_INCLUDE, SOS_FROM_INCLUDE, SOS_AS, \
@@ -65,7 +65,7 @@ class ParsingError(Error):
 
 def get_type_hint(stmt):
     try:
-        ns = {}
+        ns = {'file_target': file_target, 'sos_targets': sos_targets}
         # let us grab the part before =
         exec(stmt.split('=', 1)[0], ns)
         # if it can compile, it can be typetrait, or something like
@@ -188,7 +188,7 @@ class SoS_Step:
         self.is_global = is_global
         # indicate the type of input of the last line
         self.values = []
-        self.lineno = None
+        self.lineno = 0
         #
         self.runtime_options = {}
         self.options = on_demand_options(options)

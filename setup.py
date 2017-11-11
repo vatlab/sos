@@ -134,12 +134,14 @@ sos-runner = sos.__main__:sosrunner
 sos = sos.converter:SoS_Lexer
 
 [sos_targets]
+file_target = sos.target:file_target
 dynamic = sos.target:dynamic
 remote = sos.target:remote
 executable = sos.target:executable
 sos_variable = sos.target:sos_variable
 sos_step = sos.target:sos_step
 env_variable = sos.target:env_variable
+sos_targets = sos.target:sos_targets
 
 [sos_actions]
 script = sos.actions:script

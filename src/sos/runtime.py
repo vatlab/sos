@@ -24,7 +24,6 @@ import pkg_resources
 from .utils import logger, get_output, sos_handle_parameter_
 from .sos_eval import interpolate, sos_namespace_
 from .pattern import expand_pattern
-from .target import sos_targets
 
 # silent pyflakes
 logger, get_output, sos_handle_parameter_

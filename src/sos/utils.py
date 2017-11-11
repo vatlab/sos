@@ -831,6 +831,8 @@ def sos_handle_parameter_(key, defvalue):
     #
     # Argparse would produce cut_off for both definition of --cut-off and --cut_off, however
     # you can only use the matching input...
+    from .target import sos_targets, file_target
+    is_sos_targets = False
 
     if isinstance(defvalue, type) or defvalue is None:
         if defvalue == bool:
@@ -843,16 +845,18 @@ def sos_handle_parameter_(key, defvalue):
         else:
             if defvalue is None:
                 defvalue = str
+            if defvalue == sos_targets:
+                is_sos_targets = True
             # if only a type is specified, it is a required document of required type
             if '_' in key:
                 feature_parser = parser.add_mutually_exclusive_group(required=True)
-                feature_parser.add_argument(f'--{key}', dest=key, type=str if hasattr(defvalue, '__iter__') else defvalue,
-                                            help='', nargs='+' if defvalue != str and hasattr(defvalue, '__iter__') else '?')
-                feature_parser.add_argument(f'--{key.replace("_", "-")}', dest=key, type=str if hasattr(defvalue, '__iter__') else defvalue,
-                                            help='', nargs='+' if defvalue != str and hasattr(defvalue, '__iter__') else '?')
+                feature_parser.add_argument(f'--{key}', dest=key, type=str if hasattr(defvalue, '__iter__') and defvalue != file_target else defvalue,
+                                            help='', nargs='+' if defvalue not in (str, file_target) and hasattr(defvalue, '__iter__') else '?')
+                feature_parser.add_argument(f'--{key.replace("_", "-")}', dest=key, type=str if hasattr(defvalue, '__iter__') and defvalue != file_target else defvalue,
+                                            help='', nargs='+' if defvalue not in(str, file_target) and hasattr(defvalue, '__iter__') else '?')
             else:
-                parser.add_argument(f'--{key}', dest=key, type=str if hasattr(defvalue, '__iter__') else defvalue,
-                                    help='', required=True, nargs='+' if defvalue != str and hasattr(defvalue, '__iter__') else '?')
+                parser.add_argument(f'--{key}', dest=key, type=str if hasattr(defvalue, '__iter__') and defvalue != file_target else defvalue,
+                                    help='', required=True, nargs='+' if defvalue not in (str, file_target) and hasattr(defvalue, '__iter__') else '?')
     else:
         if isinstance(defvalue, bool):
             feature_parser = parser.add_mutually_exclusive_group(required=False)
@@ -863,7 +867,12 @@ def sos_handle_parameter_(key, defvalue):
                 feature_parser.add_argument(f'--no-{key.replace("_", "-")}', dest=key, action='store_false')
             feature_parser.set_defaults(key=defvalue)
         else:
-            if isinstance(defvalue, str):
+            if isinstance(defvalue, file_target):
+                deftype = file_target
+            elif isinstance(defvalue, sos_targets):
+                deftype = file_target
+                is_sos_targets = True
+            elif isinstance(defvalue, str):
                 deftype = str
             elif isinstance(defvalue, Sequence):
                 if len(defvalue) > 0:
@@ -872,6 +881,7 @@ def sos_handle_parameter_(key, defvalue):
                     deftype = str
             else:
                 deftype = type(defvalue)
+
             if '_' in key:
                 feature_parser = parser.add_mutually_exclusive_group(required=False)
                 feature_parser.add_argument(f'--{key}', dest=key, type=deftype,
@@ -887,7 +897,7 @@ def sos_handle_parameter_(key, defvalue):
     #
     parser.error = _parse_error
     parsed, _ = parser.parse_known_args(env.sos_dict['__args__']['__args__'] if isinstance(env.sos_dict['__args__'], dict) else env.sos_dict['__args__'])
-    return vars(parsed)[key]
+    return sos_targets(vars(parsed)[key]) if is_sos_targets else vars(parsed)[key]
 
 
 def load_config_files(filename=None):
