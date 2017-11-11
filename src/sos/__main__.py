@@ -1280,7 +1280,7 @@ def get_tracked_files(sig_file):
                 # format is something like IN_FILE\tfilename=xxxx\tsession=...
                 tracked_files.append(line.rsplit('\t', 4)[1][9:])
                 t = file_target(tracked_files[-1])
-                if t.exists('signature'):
+                if t.target_exists('signature'):
                     runtime_files.append(t.sig_file())
             elif line.startswith('EXE_SIG'):
                 runtime_files.append('.sos/.runtime/{}.exe_info'.format(line.split('session=', 1)[1].strip()))
@@ -1356,7 +1356,7 @@ def cmd_remove(args, unknown_args):
             if target.is_external() and not args.external():
                 env.logger.debug('Ignore external file {}'.format(filename))
                 return False
-            if not target.exists('signature'):
+            if not target.target_exists('signature'):
                 return False
             if args.size:
                 if (args.size > 0 and os.path.getsize(filename) < args.size) or \
@@ -1850,25 +1850,25 @@ def cmd_pack(args, unknown_args):
             if f == 'None':
                 continue
             ft = file_target(f)
-            if not ft.exists():
-                env.logger.warning('Missing script file {}'.format(ft.name()))
+            if not ft.target_exists():
+                env.logger.warning('Missing script file {}'.format(ft.target_name()))
             else:
-                manifest.write('SCRIPTS\t{}\t{}\t{}\t{}\n'.format(os.path.basename(f), ft.mtime(), ft.size(), ft.signature()))
+                manifest.write('SCRIPTS\t{}\t{}\t{}\t{}\n'.format(os.path.basename(f), ft.mtime(), ft.size(), ft.target_signature()))
         for f in tracked_files:
             env.logger.info('Checking {}'.format(f))
             ft = file_target(f)
-            if not ft.exists():
-                env.logger.warning('Missing tracked file {}'.format(ft.name()))
+            if not ft.target_exists():
+                env.logger.warning('Missing tracked file {}'.format(ft.target_name()))
             elif ft.is_external():
-                manifest.write('EXTERNAL\t{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.signature()))
+                manifest.write('EXTERNAL\t{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.target_signature()))
             else:
-                manifest.write('TRACKED\t{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.signature()))
+                manifest.write('TRACKED\t{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.target_signature()))
         for f in runtime_files:
             ft = file_target(f)
-            if not ft.exists():
-                env.logger.warning('Missing runtime file {}'.format(ft.name()))
+            if not ft.target_exists():
+                env.logger.warning('Missing runtime file {}'.format(ft.target_name()))
             else:
-                manifest.write('RUNTIME\t{}\t{}\t{}\t{}\n'.format(os.path.basename(f), ft.mtime(), ft.size(), ft.signature()))
+                manifest.write('RUNTIME\t{}\t{}\t{}\t{}\n'.format(os.path.basename(f), ft.mtime(), ft.size(), ft.target_signature()))
     prog.close()
     #
     if args.dryrun:

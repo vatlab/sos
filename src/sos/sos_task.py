@@ -280,13 +280,13 @@ def collect_task_result(task_id, sos_dict):
         args, _ = SoS_eval(f'__null_func__({env.sos_dict["_output"].expr})')
         # handle dynamic args
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-        output = {x:file_target(x).signature() for x in _expand_file_list(True, *args)}
+        output = {x:file_target(x).target_signature() for x in _expand_file_list(True, *args)}
     elif sos_dict['_output'] is None:
         output = {}
     else:
-        output = {x:file_target(x).signature() for x in sos_dict['_output'] if isinstance(x, str)}
-    input = {} if env.sos_dict['_input'] is None or sos_dict['_input'] is None else {x:file_target(x).signature() for x in sos_dict['_input'] if isinstance(x, str)}
-    depends = {} if env.sos_dict['_depends'] is None or sos_dict['_depends'] is None else {x:file_target(x).signature() for x in sos_dict['_depends'] if isinstance(x, str)}
+        output = {x:file_target(x).target_signature() for x in sos_dict['_output'] if isinstance(x, str)}
+    input = {} if env.sos_dict['_input'] is None or sos_dict['_input'] is None else {x:file_target(x).target_signature() for x in sos_dict['_input'] if isinstance(x, str)}
+    depends = {} if env.sos_dict['_depends'] is None or sos_dict['_depends'] is None else {x:file_target(x).target_signature() for x in sos_dict['_depends'] if isinstance(x, str)}
     return {'ret_code': 0, 'task': task_id, 'input': input, 'output': output, 'depends': depends,
             'shared': {env.sos_dict['_index']: shared} }
 
@@ -543,13 +543,13 @@ del sos_handle_parameter_
                 # if the file does not exist (although the signature exists)
                 # request generation of files
                 if isinstance(target, str):
-                    if not file_target(target).exists('target'):
+                    if not file_target(target).target_exists('target'):
                         # remove the signature and regenerate the file
                         file_target(target).remove_sig()
                         raise UnknownTarget(target)
                 # the sos_step target should not be checked in tasks because tasks are
                 # independently executable units.
-                elif not isinstance(target, sos_step) and not target.exists('target'):
+                elif not isinstance(target, sos_step) and not target.target_exists('target'):
                     target.remove_sig()
                     raise UnknownTarget(target)
 
@@ -674,7 +674,7 @@ def check_task(task):
                     if var not in res or not isinstance(res[var], dict):
                         continue
                     for x,y in res[var].items():
-                        if not file_target(x).exists() or file_target(x).signature() != y:
+                        if not file_target(x).target_exists() or file_target(x).target_signature() != y:
                             env.logger.debug(f'{x} not found or signature mismatch')
                             return 'signature-mismatch'
                 return 'completed'

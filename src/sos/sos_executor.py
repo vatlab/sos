@@ -394,7 +394,7 @@ class Base_Executor:
     def match(self, target, step):
         # for sos_step, we need to match step name
         if isinstance(target, sos_step):
-            return step.match(target.name())
+            return step.match(target.target_name())
         if not 'provides' in step.options:
             return False
         patterns = step.options['provides']
@@ -508,7 +508,7 @@ class Base_Executor:
             for target in existing_targets:
                 if target not in dag.dangling(targets)[1]:
                     continue
-                if file_target(target).exists('target') if isinstance(target, str) else target.exists('target'):
+                if file_target(target).target_exists('target') if isinstance(target, str) else target.target_exists('target'):
                     continue
                 mo = [(x, self.match(target, x)) for x in self.workflow.auxiliary_sections]
                 mo = [x for x in mo if x[1] is not False]
@@ -701,7 +701,7 @@ class Base_Executor:
         # to remove the signature and really generate them
         if targets:
             for t in targets:
-                if not file_target(t).exists('target') and file_target(t).exists('signature'):
+                if not file_target(t).target_exists('target') and file_target(t).target_exists('signature'):
                     env.logger.info(f'Re-generating {t}')
                     file_target(t).remove('signature')
                 else:

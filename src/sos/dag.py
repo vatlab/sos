@@ -246,7 +246,7 @@ class SoS_DAG(nx.DiGraph):
                 raise RuntimeError(f'DAG should not contain file_target instance {x}')
             if isinstance(x, sos_targets):
                 raise RuntimeError(f'DAG should not contain sos_targets instance {x}')
-            if file_target(x).exists() if isinstance(x, str) else x.exists():
+            if file_target(x).target_exists() if isinstance(x, str) else x.target_exists():
                 if x not in self._all_output_files:
                     existing.append(x)
             elif x not in self._all_output_files:

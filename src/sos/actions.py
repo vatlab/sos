@@ -208,7 +208,7 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',)):
             if 'output' in kwargs and kwargs['output'] is not None:
                 ofiles = sos_targets(kwargs['output'])
                 for ofile in ofiles:
-                    if not ofile.exists('any'):
+                    if not ofile.target_exists('any'):
                         raise RuntimeError(
                                 f'Output target {ofile} does not exist after completion of action {func.__name__}')
             if sig:
@@ -913,7 +913,7 @@ def pandoc(script=None, input=None, output=None, args='{input:q} --output {outpu
 #
 # IGNORED
 #
-    if not executable('pandoc').exists():
+    if not executable('pandoc').target_exists():
         raise UnknownTarget(executable('pandoc'))
 
     input = sos_targets(collect_input(script, input))
