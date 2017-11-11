@@ -595,6 +595,82 @@ class file_target(path, BaseTarget):
     def __hash__(self):
         return hash(repr(self))
 
+class paths(Sequence):
+    '''A collection of targets'''
+    def __init__(self, *args):
+        self._paths = []
+        for arg in args:
+            if isinstance(arg, paths):
+                self._paths.extend(arg._paths)
+            elif isinstance(arg, str):
+                self._paths.append(path(arg))
+            elif isinstance(arg, sos_targets):
+                if not all(isinstance(x, file_target) for x in arg._targets):
+                    raise ValueError(f'Cannot convert a sos_targets object {arg} with non-file target to paths')
+                self._paths.extend([path(str(x)) for x in arg._targets])
+            elif isinstance(arg, file_target):
+                self._paths.append(path(str(arg)))
+            elif isinstance(arg, Iterable):
+                # in case arg is a Generator, check its type will exhaust it
+                for t in list(arg):
+                    if isinstance(t, paths):
+                        self._paths.extend(t._paths)
+                    elif isinstance(t, str):
+                        self._paths.append(path(t))
+                    elif isinstance(t, sos_targets):
+                        if not all(isinstance(x, file_target) for x in t._targets):
+                            raise ValueError(f'Cannot convert a sos_ttets object {t} with non-file ttet to paths')
+                        self._paths.extend([path(str(x)) for x in t._targets])
+                    elif isinstance(t, file_target):
+                        self._paths.append(path(str(t)))
+                    elif t is not None:
+                            raise RuntimeError(f'Unrecognized targets {t} of type {t.__class__.__name__}')
+        for t in self._paths:
+            if isinstance(t, paths):
+                raise RuntimeError(f"Nested paths {t} were introduced by {args}")
+            if not isinstance(t, path):
+                raise RuntimeError(f"Unrecognized path {t}")
+
+    def __getstate__(self):
+        return self._paths
+
+    def __setstate__(self, names):
+        self._names = names
+
+    def __len__(self):
+        return len(self._paths)
+
+    def __getitem__(self, i):
+        return self._paths[i]
+
+    def __format__(self, format_spec):
+        if ',' in format_spec:
+            fmt_spec = format_spec.replace(',', '')
+            return ','.join(x.__format__(fmt_spec) for x in self._paths)
+        else:
+            return ' '.join(x.__format__(format_spec) for x in self._paths)
+
+    def __deepcopy__(self, memo):
+        return sos_paths(deepcopy(self._paths))
+
+    def __getattr__(self, key):
+        if len(self._paths) == 1:
+            return getattr(self._paths[0], key)
+        elif len(self._paths) == 0:
+            raise ValueError(f"Cannot get attribute {key} from empty target list")
+        else:
+            raise ValueError(f'Canot get attribute {key} from group of {len(self)} targets {self!r}')
+
+    def __hash__(self):
+        return hash(repr(self))
+
+    def __eq__(self, other):
+        return self._paths == other._paths if isinstance(other, sos_paths) else other
+
+    def __repr__(self):
+        return '[' + ', '.join(repr(x) for x in self._paths) + ']'
+
+
 class sos_targets(BaseTarget, Sequence):
     '''A collection of targets'''
     def __init__(self, *args):
@@ -603,8 +679,10 @@ class sos_targets(BaseTarget, Sequence):
         for arg in args:
             if isinstance(arg, Undetermined):
                 raise RuntimeError("Undetermined cannot be inserted as a target")
+            elif isinstance(arg, paths):
+                self._targets.extend([file_target(x) for x in arg._paths])
             elif isinstance(arg, str):
-                    self._targets.append(file_target(arg))
+                self._targets.append(file_target(arg))
             elif isinstance(arg, sos_targets):
                 self._targets.extend(arg._targets)
             elif isinstance(arg, BaseTarget):
