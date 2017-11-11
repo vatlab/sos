@@ -595,7 +595,7 @@ class file_target(path, BaseTarget):
     def __hash__(self):
         return hash(repr(self))
 
-class paths(Sequence):
+class paths(Sequence, os.PathLike):
     '''A collection of targets'''
     def __init__(self, *args):
         self._paths = []
@@ -643,6 +643,14 @@ class paths(Sequence):
     def __getitem__(self, i):
         return self._paths[i]
 
+    def __fspath__(self):
+        if len(self._paths) == 1:
+            return self._paths[0].__fspath__()
+        elif len(self._paths) == 0:
+            raise ValueError(f"Cannot treat an empty paths as single path")
+        else:
+            raise ValueError(f'Cannot treat an paths object {self} with more than one paths as a single path')
+
     def __format__(self, format_spec):
         if ',' in format_spec:
             fmt_spec = format_spec.replace(',', '')
@@ -659,7 +667,7 @@ class paths(Sequence):
         elif len(self._paths) == 0:
             raise ValueError(f"Cannot get attribute {key} from empty target list")
         else:
-            raise ValueError(f'Canot get attribute {key} from group of {len(self)} targets {self!r}')
+            raise ValueError(f'Cannot get attribute {key} from group of {len(self)} targets {self!r}')
 
     def __hash__(self):
         return hash(repr(self))
@@ -671,7 +679,7 @@ class paths(Sequence):
         return '[' + ', '.join(repr(x) for x in self._paths) + ']'
 
 
-class sos_targets(BaseTarget, Sequence):
+class sos_targets(BaseTarget, Sequence, os.PathLike):
     '''A collection of targets'''
     def __init__(self, *args):
         super(BaseTarget, self).__init__()
@@ -747,7 +755,7 @@ class sos_targets(BaseTarget, Sequence):
         if len(self._targets) == 1:
             return self._targets[0].target_exists(mode)
         else:
-            raise ValueError(f'Canot test existense for group of {len(self)} targets {self!r}')
+            raise ValueError(f'Cannot test existense for group of {len(self)} targets {self!r}')
     
     def __deepcopy__(self, memo):
         return sos_targets(deepcopy(self._targets))
@@ -758,13 +766,13 @@ class sos_targets(BaseTarget, Sequence):
         elif len(self._targets) == 0:
             raise ValueError(f"Cannot get attribute {key} from empty target list")
         else:
-            raise ValueError(f'Canot get attribute {key} from group of {len(self)} targets {self!r}')
+            raise ValueError(f'Cannot get attribute {key} from group of {len(self)} targets {self!r}')
 
     def target_name(self):
         if len(self._targets) == 1:
             return self._targets[0].target_name()
         else:
-            raise ValueError(f'Canot get name() for group of targets {self}')
+            raise ValueError(f'Cannot get name() for group of targets {self}')
 
     def __hash__(self):
         return hash(repr(self))
@@ -776,7 +784,16 @@ class sos_targets(BaseTarget, Sequence):
         if len(self._targets) == 1:
             return self._targets[0].sig_file()
         else:
-            raise ValueError(f'Canot get sig_file for group of targets {self}')
+            raise ValueError(f'Cannot get sig_file for group of targets {self}')
+
+    def __fspath__(self):
+        if len(self._targets) == 1:
+            return self._targets[0].__fstarget__()
+        elif len(self._targets) == 0:
+            raise ValueError(f"Cannot treat an empty sos_targets as single target")
+        else:
+            raise ValueError(f'Cannot treat an sos_targets object {self} with more than one targets as a single target')
+
 
     def __repr__(self):
         return '[' + ', '.join(repr(x) for x in self._targets) + ']'
