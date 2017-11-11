@@ -403,7 +403,7 @@ class executable(BaseTarget):
         else:
             return str(self).__format__(format_spec)
 
-class file_target(type(Path()), BaseTarget):
+class path(type(Path())):
     '''A regular target for files.
     '''
     CONVERTERS = {
@@ -426,18 +426,54 @@ class file_target(type(Path()), BaseTarget):
         }
 
 
+    def is_external(self):
+        try:
+            return os.path.relpath(self.fullname(), env.exec_dir).startswith('..')
+        except Exception:
+            # under windows the file might be on different volume
+            return True
+
+    def fullname(self):
+        return str(self.expanduser().resolve())
+
+
+    def __eq__(self, other):
+        return os.path.abspath(self.fullname()) == os.path.abspath((other
+            if isinstance(other, file_target) else path(other)).fullname())
+
+    def __add__(self, part):
+        return str(self) + part
+
+    def __format__(self, format_spec):
+        # handling special !q conversion flag
+        obj = str(self)
+        for i,c in enumerate(format_spec):
+            if c in self.CONVERTERS:
+                obj = self.CONVERTERS[c](obj)
+            else:
+                # other defined format
+                return obj.__format__(format_spec[i:])
+        return obj
+
+    def __lt__(self, other):
+        return str(self)  < str(other)
+
+    def __hash__(self):
+        return hash(repr(self))
+
+
+class file_target(path, BaseTarget):
+    '''A regular target for files.
+    '''
     def __init__(self, *args):
         # this is path segments 
-        if not args or len(args) > 1 or isinstance(args[0], (str, Path)):
-            super(file_target, self).__init__(*args)
-            self._md5 = None
-            self._attachments = []
-        elif isinstance(args[0], file_target):
-            self._path = args[0]._path
+        super(file_target, self).__init__(*args)
+        if len(args) == 1 and isinstance(args[0], file_target):
             self._md5 = args[0]._md5
             self._attachments = args[0]._attachments
         else:
-            raise ValueError(f'Cannot create a file target with {args}')
+            self._md5 = None
+            self._attachments = []
 
     def target_exists(self, mode='any'):
         if mode in ('any', 'target') and self.exists():
@@ -501,16 +537,6 @@ class file_target(type(Path()), BaseTarget):
         if mode in ('both', 'signature') and os.path.isfile(self.sig_file()):
             os.remove(self.sig_file())
 
-    def is_external(self):
-        try:
-            return os.path.relpath(self.fullname(), env.exec_dir).startswith('..')
-        except Exception:
-            # under windows the file might be on different volume
-            return True
-
-    def fullname(self):
-        return str(self.expanduser().resolve())
-
     def size(self):
         if self.exists():
             return os.path.getsize(self.fullname())
@@ -542,27 +568,6 @@ class file_target(type(Path()), BaseTarget):
                 return t.strip()
         else:
             raise RuntimeError(f'{self} or its signature does not exist.')
-
-    def __eq__(self, other):
-        return os.path.abspath(self.fullname()) == os.path.abspath((other
-            if isinstance(other, file_target) else file_target(other)).fullname())
-
-    def __add__(self, part):
-        return str(self) + part
-
-    def __format__(self, format_spec):
-        # handling special !q conversion flag
-        obj = str(self)
-        for i,c in enumerate(format_spec):
-            if c in self.CONVERTERS:
-                obj = self.CONVERTERS[c](obj)
-            else:
-                # other defined format
-                return obj.__format__(format_spec[i:])
-        return obj
-
-    def __lt__(self, other):
-        return str(self)  < str(other)
 
     def write_sig(self):
         '''Write .file_info file with signature'''
