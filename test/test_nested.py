@@ -388,7 +388,7 @@ for k in range(2):
         wf = script.workflow('batch')
         Base_Executor(wf).run()
         for f in ['0.txt', '1.txt']:
-            self.assertTrue(file_target(f).exists())
+            self.assertTrue(file_target(f).target_exists())
             file_target(f).remove('both')
         #
         # if we do not pass num, parameter would not change
@@ -407,8 +407,8 @@ for num in range(2):
         wf = script.workflow('batch')
         Base_Executor(wf).run()
         for f in ['0.txt', '1.txt']:
-            self.assertFalse(file_target(f).exists())
-        self.assertTrue(file_target('5.txt').exists())
+            self.assertFalse(file_target(f).target_exists())
+        self.assertTrue(file_target('5.txt').target_exists())
         file_target('5.txt').remove('both')
         #
         # test parameter shared to send and return vars
@@ -425,7 +425,7 @@ for k in range(2):
         wf = script.workflow('batch')
         Base_Executor(wf).run()
         for f in ['10.txt', '11.txt']:
-            self.assertTrue(file_target(f).exists())
+            self.assertTrue(file_target(f).target_exists())
             file_target(f).remove('both')
 
     def testDAGofDynamicNestedWorkflow(self):
@@ -468,7 +468,7 @@ for i in range(3):
         wf = script.workflow('ALL')
         Base_Executor(wf).run()
         for f in ['B0.txt', 'B0.txt.p', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
-            self.assertTrue(file_target(f).exists())
+            self.assertTrue(file_target(f).target_exists())
             file_target(f).remove('both')
 
 
@@ -632,7 +632,7 @@ sos_run('step', workdir='tmp')
 
     def testFailureOfNestedWorkflow(self):
         '''Test failure of nested workflow #838'''
-        if os.path.isdir('a.txt'):
+        if os.path.isfile('a.txt'):
             os.remove('a.txt')
         script = SoS_Script('''
 [something]

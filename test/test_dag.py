@@ -507,7 +507,7 @@ A_1 -> A_2;
         Base_Executor(wf).run()
         for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
             t = file_target(f)
-            self.assertTrue(t.exists(), f + ' should exist')
+            self.assertTrue(t.target_exists(), f + ' should exist')
             t.remove('both')
 
     def testTarget(self):
@@ -596,10 +596,10 @@ strict digraph "" {
 ''')
         Base_Executor(wf).run(targets=['B1.txt'])
         for f in ['A1.txt', 'A2.txt']:
-            self.assertFalse(file_target(f).exists())
+            self.assertFalse(file_target(f).target_exists())
         for f in ['C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
             t = file_target(f)
-            self.assertTrue(t.exists())
+            self.assertTrue(t.target_exists())
             t.remove('both')
         #
         # test 2, we would like to generate two files
@@ -624,10 +624,10 @@ strict digraph "" {
 ''')
         Base_Executor(wf).run(targets=['B2.txt', 'C2.txt'])
         for f in ['A1.txt', 'B1.txt', 'A2.txt']:
-            self.assertFalse(file_target(f).exists())
+            self.assertFalse(file_target(f).target_exists())
         for f in ['C2.txt', 'B2.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
             t = file_target(f)
-            self.assertTrue(t.exists())
+            self.assertTrue(t.target_exists())
             t.remove('both')
         #
         # test 3, generate two separate trees
@@ -645,10 +645,10 @@ strict digraph "" {
 ''')
         Base_Executor(wf).run(targets=['B3.txt', 'C2.txt'])
         for f in ['A1.txt', 'B1.txt', 'A2.txt', 'B2.txt', 'C1.txt', 'C3.txt']:
-            self.assertFalse(file_target(f).exists())
+            self.assertFalse(file_target(f).target_exists())
         for f in ['C2.txt', 'B3.txt', 'C4.txt']:
             t = file_target(f)
-            self.assertTrue(t.exists())
+            self.assertTrue(t.target_exists())
             t.remove('both')
 
     def testPatternReuse(self):
@@ -708,7 +708,7 @@ A_1 -> A_2;
         Base_Executor(wf).run()
         for f in ['A1.txt', 'A2.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
             t = file_target(f)
-            self.assertTrue(t.exists(), '{} should exist'.format(f))
+            self.assertTrue(t.target_exists(), '{} should exist'.format(f))
             t.remove('both')
 
 
@@ -801,7 +801,7 @@ A_1 -> A_3;
         env.max_jobs = 3
         Base_Executor(wf).run()
         for f in ['A1.txt']:
-            self.assertTrue(file_target(f).exists())
+            self.assertTrue(file_target(f).target_exists())
             file_target(f).remove('both')
 
 
@@ -858,7 +858,7 @@ A_4 -> A_5;
         env.max_jobs = 3
         Base_Executor(wf).run()
         for f in ['A1.txt']:
-            self.assertTrue(file_target(f).exists())
+            self.assertTrue(file_target(f).target_exists())
             file_target(f).remove('both')
 
 
@@ -1106,7 +1106,7 @@ run: expand=True
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(file_target('a.txt.bak').exists())
+        self.assertTrue(file_target('a.txt.bak').target_exists())
 
 if __name__ == '__main__':
     unittest.main()

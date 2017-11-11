@@ -412,7 +412,7 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
         for ofile in ['a.txt1', 'b.txt2']:
-            self.assertTrue(file_target(ofile).exists('target'))
+            self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).remove('both')
         #
         # list input
@@ -430,7 +430,7 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
         for ofile in ['a.txt1', 'b.txt2']:
-            self.assertTrue(file_target(ofile).exists('target'))
+            self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).remove('both')
         #
         # dict input
@@ -445,7 +445,7 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
         for ofile in ['a.txt1', 'b.txt2']:
-            self.assertTrue(file_target(ofile).exists('target'))
+            self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).remove('both')
 
     def testGroupWith(self):
@@ -468,7 +468,7 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
         for ofile in ['a.txt1', 'b.txt2']:
-            self.assertTrue(file_target(ofile).exists('target'))
+            self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).remove('both')
         #
         # list input
@@ -486,7 +486,7 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
         for ofile in ['a.txt1']:
-            self.assertTrue(file_target(ofile).exists('target'))
+            self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).remove('both')
         #
         # dict input
@@ -501,7 +501,7 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
         for ofile in ['a.txt1']:
-            self.assertTrue(file_target(ofile).exists('target'))
+            self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).remove('both')
 
 
@@ -959,7 +959,7 @@ run: expand=True
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(file_target('aa.txt').exists())
+        self.assertTrue(file_target('aa.txt').target_exists())
         # rerun should be faster
         Base_Executor(wf).run()
         # if we remove the middle result, it should not matter
@@ -1000,9 +1000,9 @@ assert(len(input) == 5)
         Base_Executor(wf).run()
         for idx in range(10):
             if idx % 2 == 0:
-                self.assertFalse(file_target("{}.txt".format(idx)).exists())
+                self.assertFalse(file_target("{}.txt".format(idx)).target_exists())
             else:
-                self.assertTrue(file_target("{}.txt".format(idx)).exists())
+                self.assertTrue(file_target("{}.txt".format(idx)).target_exists())
                 file_target(f"{idx}.txt").remove('both')
 
     def testAllowError(self):
@@ -1018,7 +1018,7 @@ run:
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(file_target('a.txt').exists())
+        self.assertTrue(file_target('a.txt').target_exists())
         file_target('a.txt').remove('all')
 
     def testConcurrentWorker(self):
@@ -1059,7 +1059,7 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
         for tfile in ('1.txt', '2.txt', '3.txt'):
-            self.assertTrue(file_target(tfile).exists())
+            self.assertTrue(file_target(tfile).target_exists())
             file_target(tfile).remove('both')
 
 

@@ -374,7 +374,7 @@ run:
         # this should be ok.
         Base_Executor(wf).run()
         for file in ['t1.txt', 't2.txt', '5.txt', '10.txt', '20.txt']:
-            self.assertTrue(file_target(file).exists(), file + ' should exist')
+            self.assertTrue(file_target(file).target_exists(), file + ' should exist')
             file_target(file).remove('both')
 
 

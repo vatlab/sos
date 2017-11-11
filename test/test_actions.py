@@ -413,7 +413,7 @@ pandoc(input=['default_10.md', 'default_20.md'], output='output.html')
         wf = script.workflow()
         Base_Executor(wf).run()
         for f in ['default_10.md', 'default_20.md', 'output.html']:
-            self.assertTrue(file_target(f).exists())
+            self.assertTrue(file_target(f).target_exists())
             file_target(f).remove()
 
 
@@ -485,7 +485,7 @@ report(input=['a.txt', 'b.txt'], output='out.txt')
         wf = script.workflow()
         Base_Executor(wf).run()
         for name in ('a.txt', 'b.txt', 'out.txt'):
-            self.assertTrue(file_target(name).exists())
+            self.assertTrue(file_target(name).target_exists())
             file_target(name).remove()
 
     def testOptionWorkdir(self):
@@ -501,7 +501,7 @@ run: workdir='temp_wdr'
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(file_target(os.path.join('temp_wdr', 'a2.txt')).exists())
+        self.assertTrue(file_target(os.path.join('temp_wdr', 'a2.txt')).target_exists())
         with open(os.path.join('temp_wdr', 'a.txt')) as tmp:
             self.assertEqual('hello', tmp.read())
 
@@ -515,7 +515,7 @@ script: interpreter='python'
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(file_target('something.txt').exists())
+        self.assertTrue(file_target('something.txt').target_exists())
         with open('something.txt') as tmp:
             self.assertEqual('something', tmp.read())
 
