@@ -25,9 +25,11 @@ import hashlib
 import shlex
 import shutil
 import fasteners
+from copy import deepcopy
 import pkg_resources
 from shlex import quote
 import subprocess
+from pathlib import Path
 
 from collections.abc import Sequence, Iterable
 
@@ -109,7 +111,7 @@ def fileMD5(filename, partial=True):
 
 class BaseTarget:
     '''A base class for all targets (e.g. a file)'''
-    def __init__(self):
+    def __init__(self, *args):
         self._sigfile = None
 
     def target_exists(self, mode='any'):
@@ -401,7 +403,7 @@ class executable(BaseTarget):
         else:
             return str(self).__format__(format_spec)
 
-class file_target(BaseTarget, str):
+class file_target(type(Path()), BaseTarget):
     '''A regular target for files.
     '''
     CONVERTERS = {
@@ -424,40 +426,36 @@ class file_target(BaseTarget, str):
         }
 
 
-    def __init__(self, filename):
-        super(file_target, self).__init__()
-        if isinstance(filename, str):
-            self._filename = filename
-        elif isinstance(filename, file_target):
-            self._filename = filename._filename
+    def __init__(self, *args):
+        # this is path segments 
+        if not args or len(args) > 1 or isinstance(args[0], (str, Path)):
+            super(file_target, self).__init__(*args)
+            self._md5 = None
+            self._attachments = []
+        elif isinstance(args[0], file_target):
+            self._path = args[0]._path
+            self._md5 = args[0]._md5
+            self._attachments = args[0]._attachments
         else:
-            raise ValueError(f'Cannot create a file target with {filename} of type {filename.__class__.__name__}')
-
-        self._md5 = None
-        self._attachments = []
+            raise ValueError(f'Cannot create a file target with {args}')
 
     def target_exists(self, mode='any'):
-        if mode in ('any', 'target') and os.path.isfile(self.fullname()):
+        if mode in ('any', 'target') and self.exists():
             return True
-        elif mode == 'any' and os.path.isfile(self.fullname() + '.zapped'):
+        elif mode == 'any' and Path(str(self) + '.zapped').exists():
             return True
-        elif mode == 'signature' and os.path.isfile(self.sig_file()):
+        elif mode == 'signature' and Path(self.sig_file()).exists():
             return True
         return False
 
     def target_name(self):
-        return self._filename
-
-    # redefine sig_file because of special request to store sig files
-    # in different folders
-    def __repr__(self):
-        return self.target_name()
+        return str(self)
 
     def sig_file(self):
         if self._sigfile is not None:
             return self._sigfile
         # If the output path is outside of the current working directory
-        fullname = os.path.abspath(self.target_name())
+        fullname = str(self.resolve())
         name_md5 = textMD5(fullname)
 
         if self.is_external():
@@ -511,10 +509,10 @@ class file_target(BaseTarget, str):
             return True
 
     def fullname(self):
-        return os.path.abspath(os.path.expanduser(self.target_name()))
+        return str(self.expanduser().resolve())
 
     def size(self):
-        if os.path.isfile(self._filename):
+        if self.exists():
             return os.path.getsize(self.fullname())
         elif os.path.isfile(self.sig_file()):
             with open(self.sig_file()) as md5:
@@ -527,10 +525,10 @@ class file_target(BaseTarget, str):
                 _, _, s, _ = line.rsplit('\t', 3)
                 return int(s.strip())
         else:
-            raise RuntimeError(f'{self._filename} or its signature does not exist.')
+            raise RuntimeError(f'{self} or its signature does not exist.')
 
     def mtime(self):
-        if os.path.isfile(self._filename):
+        if self.exists():
             return os.path.getmtime(self.fullname())
         elif os.path.isfile(self.sig_file()):
             with open(self.sig_file()) as md5:
@@ -543,15 +541,18 @@ class file_target(BaseTarget, str):
                 _, t, _, _ = line.rsplit('\t', 3)
                 return t.strip()
         else:
-            raise RuntimeError(f'{self._filename} or its signature does not exist.')
+            raise RuntimeError(f'{self} or its signature does not exist.')
 
     def __eq__(self, other):
         return os.path.abspath(self.fullname()) == os.path.abspath((other
             if isinstance(other, file_target) else file_target(other)).fullname())
 
+    def __add__(self, part):
+        return str(self) + part
+
     def __format__(self, format_spec):
         # handling special !q conversion flag
-        obj = self._filename
+        obj = str(self)
         for i,c in enumerate(format_spec):
             if c in self.CONVERTERS:
                 obj = self.CONVERTERS[c](obj)
@@ -561,7 +562,7 @@ class file_target(BaseTarget, str):
         return obj
 
     def __lt__(self, other):
-        return self._filename < file_target(other)._filename
+        return str(self)  < str(other)
 
     def write_sig(self):
         '''Write .file_info file with signature'''
@@ -664,10 +665,21 @@ class sos_targets(BaseTarget, Sequence):
             return self._targets[0].target_exists(mode)
         else:
             raise ValueError(f'Canot test existense for group of {len(self)} targets {self!r}')
+    
+    def __deepcopy__(self, memo):
+        return sos_targets(deepcopy(self._targets))
+
+    def __getattr__(self, key):
+        if len(self._targets) == 1:
+            return getattr(self._targets[0], key)
+        elif len(self._targets) == 0:
+            raise ValueError(f"Cannot get attribute {key} from empty target list")
+        else:
+            raise ValueError(f'Canot get attribute {key} from group of {len(self)} targets {self!r}')
 
     def target_name(self):
         if len(self._targets) == 1:
-            return  self._targets[0].target_name()
+            return self._targets[0].target_name()
         else:
             raise ValueError(f'Canot get name() for group of targets {self}')
 
