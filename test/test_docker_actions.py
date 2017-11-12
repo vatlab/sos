@@ -39,7 +39,7 @@ except ImportError:
     print('Docker is not available')
     has_docker = False
 
-from sos.executor import Base_Executor, ExecuteError
+from sos.workflow_executor import Base_Executor, ExecuteError
 from sos.target import file_target
 
 class TimeoutException(Exception):

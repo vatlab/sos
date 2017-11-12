@@ -394,7 +394,7 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
             #         # tell the master process to receive a workflow
             shared = {x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
             if env.config['run_mode'] == 'run':
-                from .executor import Base_Executor
+                from .workflow_executor import Base_Executor
                 executor = Base_Executor(wf, args=args, shared=shared, config=env.config)
                 if shared:
                     q = mp.Pipe()

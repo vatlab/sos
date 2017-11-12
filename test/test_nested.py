@@ -27,7 +27,7 @@ import subprocess
 
 from sos.utils import env
 from sos.sos_script import SoS_Script
-from sos.executor import Base_Executor, ExecuteError
+from sos.workflow_executor import Base_Executor, ExecuteError
 from sos.target import file_target
 
 class TestNested(unittest.TestCase):

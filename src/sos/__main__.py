@@ -308,7 +308,7 @@ def cmd_run(args, workflow_args):
         args.__dag__ = None
     env.verbosity = args.verbosity
 
-    from .executor import Base_Executor
+    from .workflow_executor import Base_Executor
 
     if args.__bin_dirs__:
         import fasteners

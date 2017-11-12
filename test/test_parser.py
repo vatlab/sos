@@ -26,7 +26,7 @@ import subprocess
 
 from sos.utils import env, ArgumentError
 from sos.sos_script import SoS_Script, ParsingError
-from sos.executor import Base_Executor
+from sos.workflow_executor import Base_Executor
 from sos.target import file_target, sos_targets
 
 section1_sos = '''

@@ -27,7 +27,7 @@ import shutil
 
 from sos.sos_script import SoS_Script
 from sos.utils import env
-from sos.executor import Base_Executor
+from sos.workflow_executor import Base_Executor
 from sos.target import file_target, sos_targets
 from sos.hosts import Host
 import subprocess
