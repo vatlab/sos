@@ -25,7 +25,7 @@ import unittest
 import subprocess
 
 from sos.utils import env, ArgumentError
-from sos.sos_script import SoS_Script, ParsingError
+from sos.parser import SoS_Script, ParsingError
 from sos.workflow_executor import Base_Executor
 from sos.target import file_target, sos_targets
 

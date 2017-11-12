@@ -37,7 +37,7 @@ from .eval import SoS_eval, SoS_exec, Undetermined
 from .target import BaseTarget, file_target, dynamic, remote, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock, sos_targets
 from .syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS, SOS_TAG
-from .sos_task import TaskParams, MasterTaskParams
+from .tasks import TaskParams, MasterTaskParams
 
 __all__ = []
 

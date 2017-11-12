@@ -23,7 +23,7 @@
 import os
 import pickle
 from sos.utils import env
-from sos.sos_task import TaskEngine, execute_task
+from sos.tasks import TaskEngine, execute_task
 from celery import Celery
 from .app import app
 

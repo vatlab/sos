@@ -27,7 +27,7 @@ import unittest
 import shutil
 import glob
 
-from sos.sos_script import SoS_Script, ParsingError
+from sos.parser import SoS_Script, ParsingError
 from sos.utils import env
 from sos.workflow_executor import Base_Executor
 from sos.target import file_target

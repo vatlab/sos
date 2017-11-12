@@ -25,7 +25,7 @@ import sys
 import unittest
 import shutil
 
-from sos.sos_script import SoS_Script
+from sos.parser import SoS_Script
 from sos.utils import env
 from sos.workflow_executor import Base_Executor
 from sos.target import file_target, sos_targets

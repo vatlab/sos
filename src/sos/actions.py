@@ -55,7 +55,7 @@ __all__ = ['SoS_Action', 'script', 'sos_run',
     ]
 
 from .syntax import SOS_RUNTIME_OPTIONS, SOS_ACTION_OPTIONS
-from .sos_script import SoS_Script
+from .parser import SoS_Script
 
 def get_actions():
     # get the name of all actions, which are identified by an attribute

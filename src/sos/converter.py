@@ -37,7 +37,7 @@ from pygments.util import shebang_matches
 
 from .utils import env, pretty_size
 from .actions import get_actions
-from .sos_script import SoS_Script
+from .parser import SoS_Script
 from .syntax import SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS, SOS_DEPENDS_OPTIONS, \
     SOS_RUNTIME_OPTIONS, SOS_SECTION_OPTIONS
 

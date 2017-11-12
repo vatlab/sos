@@ -26,7 +26,7 @@ import shutil
 import subprocess
 
 from sos.utils import env
-from sos.sos_script import SoS_Script
+from sos.parser import SoS_Script
 from sos.workflow_executor import Base_Executor, ExecuteError
 from sos.target import file_target
 

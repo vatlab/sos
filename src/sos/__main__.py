@@ -261,7 +261,7 @@ def cmd_run(args, workflow_args):
     #    mp.set_start_method('forkserver')
 
     from .utils import env, get_traceback, load_config_files
-    from .sos_script import SoS_Script
+    from .parser import SoS_Script
 
     if args.__queue__ == '':
         cfg = load_config_files(args.__config__)
@@ -400,7 +400,7 @@ def workflow_status(workflow):
     import time
     from .utils import env, load_var, load_config_files, PrettyRelativeTime
     from .hosts import Host
-    from .sos_task import check_tasks
+    from .tasks import check_tasks
     from .eval import interpolate
     from io import StringIO
     from contextlib import redirect_stdout
@@ -906,7 +906,7 @@ def get_execute_parser(desc_only=False):
 
 
 def cmd_execute(args, workflow_args):
-    from .sos_task import execute_task, check_task, monitor_interval, resource_monitor_interval
+    from .tasks import execute_task, check_task, monitor_interval, resource_monitor_interval
     from .monitor import summarizeExecution
     from .utils import env, load_config_files
     import glob
@@ -1043,7 +1043,7 @@ def get_status_parser(desc_only=False):
 
 
 def cmd_status(args, workflow_args):
-    from .sos_task import check_tasks
+    from .tasks import check_tasks
     from .utils import env, load_config_files, get_traceback
     from .hosts import Host
     #from .monitor import summarizeExecution
@@ -1110,7 +1110,7 @@ def get_purge_parser(desc_only=False):
 
 
 def cmd_purge(args, workflow_args):
-    from .sos_task import purge_tasks
+    from .tasks import purge_tasks
     from .utils import env, load_config_files, get_traceback
     from .hosts import Host
     #from .monitor import summarizeExecution
@@ -1167,7 +1167,7 @@ def get_kill_parser(desc_only=False):
 
 
 def cmd_kill(args, workflow_args):
-    from .sos_task import kill_tasks
+    from .tasks import kill_tasks
     from .utils import env, load_config_files
     from .hosts import Host
     env.verbosity = args.verbosity
@@ -2090,7 +2090,7 @@ def sosrunner():
     parser.prog = 'sos-runner'
     if len(sys.argv) > 2 and '-h' in sys.argv:
         try:
-            from .sos_script import SoS_Script
+            from .parser import SoS_Script
             script = SoS_Script(filename=sys.argv[1])
             script.print_help()
             sys.exit(0)
@@ -2198,7 +2198,7 @@ def main():
         if '-h' in sys.argv:
             if len(sys.argv) > 3 and sys.argv[1] == 'run' and not sys.argv[2].startswith('-'):
                 try:
-                    from .sos_script import SoS_Script
+                    from .parser import SoS_Script
                     script = SoS_Script(filename=sys.argv[2])
                     script.print_help()
                     sys.exit(0)

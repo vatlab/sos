@@ -25,7 +25,7 @@ import glob
 import unittest
 import shutil
 
-from sos.sos_script import SoS_Script
+from sos.parser import SoS_Script
 from sos._version import __version__
 from sos.utils import env
 from sos.eval import Undetermined

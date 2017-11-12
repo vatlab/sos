@@ -31,7 +31,7 @@ except Exception:
     import _dummy_thread as _thread
 from contextlib import contextmanager
 
-from sos.sos_script import SoS_Script
+from sos.parser import SoS_Script
 from sos.utils import env
 try:
     from sos.docker.client import SoS_DockerClient
