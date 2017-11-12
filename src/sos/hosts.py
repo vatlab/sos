@@ -691,7 +691,7 @@ class RemoteHost:
             if job_dict['_output'] and not isinstance(job_dict['_output'], Undetermined):
                 received = self.receive_from_host([x for x in job_dict['_output'] if isinstance(x, (str, path))])
                 if received:
-                    env.logger.info(f'{task_id} ``received`` {short_repr(received.keys())}')
+                    env.logger.info(f'{task_id} ``received`` {short_repr(list(received.keys()))}')
             if 'from_host' in job_dict['_runtime']:
                 if isinstance(job_dict['_runtime']['from_host'], dict):
                     fh = {}
@@ -706,7 +706,7 @@ class RemoteHost:
                 else:
                     received = self.receive_from_host(job_dict['_runtime']['from_host'])
                 if received:
-                    env.logger.info(f'{task_id} ``received`` {short_repr(received.keys())}')
+                    env.logger.info(f'{task_id} ``received`` {short_repr(list(received.keys()))}')
         return res
 
 
