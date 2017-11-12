@@ -30,7 +30,7 @@ import multiprocessing as mp
 from tqdm import tqdm as ProgressBar
 from io import StringIO
 from ._version import __version__
-from .sos_step import Step_Executor, analyze_section, PendingTasks
+from .step_executor import Step_Executor, analyze_section, PendingTasks
 from .utils import env, Error, WorkflowDict, get_traceback, short_repr, pickleable, \
     load_config_files, save_var, load_var
 from .eval import SoS_exec
