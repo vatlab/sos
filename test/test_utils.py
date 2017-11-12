@@ -33,7 +33,7 @@ from sos.utils import env, logger, WorkflowDict, stable_repr
 from sos.pattern import extract_pattern, expand_pattern
 from sos.eval import SoS_eval, accessed_vars, Undetermined, on_demand_options
 from sos.sos_script import SoS_Script
-from sos.sos_executor import Base_Executor, analyze_section
+from sos.executor import Base_Executor, analyze_section
 from sos.target import executable, remote, sos_targets
 
 import socket

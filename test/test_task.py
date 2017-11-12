@@ -29,7 +29,7 @@ import glob
 
 from sos.sos_script import SoS_Script, ParsingError
 from sos.utils import env
-from sos.sos_executor import Base_Executor
+from sos.executor import Base_Executor
 from sos.target import file_target
 from sos.hosts import Host
 import subprocess

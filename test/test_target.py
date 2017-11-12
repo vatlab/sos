@@ -27,7 +27,7 @@ import shutil
 
 from sos.sos_script import SoS_Script
 from sos.utils import env
-from sos.sos_executor import Base_Executor
+from sos.executor import Base_Executor
 from sos.target import file_target, sos_targets
 from sos.eval import interpolate
 import subprocess

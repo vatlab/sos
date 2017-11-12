@@ -272,7 +272,7 @@ def collect_task_result(task_id, sos_dict):
     if env.sos_dict['_output'] is None:
         output = {}
     elif isinstance(env.sos_dict['_output'], Undetermined):
-        from .sos_executor import __null_func__
+        from .executor import __null_func__
         from .target import dynamic
         from .sos_step import _expand_file_list
         env.sos_dict.set('__null_func__', __null_func__)

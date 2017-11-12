@@ -29,7 +29,7 @@ from sos.sos_script import SoS_Script
 from sos._version import __version__
 from sos.utils import env
 from sos.eval import Undetermined
-from sos.sos_executor import Base_Executor, ExecuteError
+from sos.executor import Base_Executor, ExecuteError
 from sos.target import file_target, sos_targets
 import subprocess
 

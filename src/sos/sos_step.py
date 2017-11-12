@@ -49,7 +49,7 @@ class PendingTasks(Exception):
 def analyze_section(section, default_input=None):
     '''Analyze a section for how it uses input and output, what variables
     it uses, and input, output, etc.'''
-    from .sos_executor import __null_func__
+    from .executor import __null_func__
     from ._version import __version__
     from .eval import accessed_vars
 
