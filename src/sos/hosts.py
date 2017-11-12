@@ -35,7 +35,7 @@ from .utils import env, short_repr, expand_size, format_HHMMSS, expand_time
 from .eval import Undetermined, cfg_interpolate
 from .tasks import BackgroundProcess_TaskEngine, TaskParams, loadTask
 from .syntax import SOS_LOGLINE
-from .targets import sos_targets
+from .targets import sos_targets, path
 
 #
 # A 'queue' is defined by queue configurations in SoS configuration files.
@@ -407,15 +407,20 @@ class RemoteHost:
         # we only copy files and directories, not other types of targets
         if isinstance(items, str):
             items = [items]
+        elif isinstance(items, path):
+            items = [str(items)]
         elif isinstance(items, Sequence):
-            items = [x for x in items if isinstance(x, str)]
+            ignored = [x for x in items if not isinstance(x, (str, path))]
+            if ignored:
+                env.logger.info(f'``Ignore`` {ignored}')
+            items = [x for x in items if isinstance(x, (str, path))]
         elif isinstance(items, dict):
             for x,y in items.items():
                 if not isinstance(x, str):
                     env.logger.warning(f'Unrecognized item to be sent to host: {x}')
-                if not isinstance(y, str):
+                if not isinstance(y, (str, path)):
                     env.logger.warning(f'Unrecognized item to be sent to host: {y}')
-            items = {x:y for x,y in items.items() if isinstance(x, str) and isinstance(y, str)}
+            items = {x:str(y) for x,y in items.items() if isinstance(x, str) and isinstance(y, (str, path))}
         else:
             env.logger.warning(f'Unrecognized items to be sent to host: {items}')
             return {}
@@ -455,9 +460,10 @@ class RemoteHost:
         if isinstance(items, dict):
             # specify as local:remote
             # needs remote:local
-            receiving = {y:x for x,y in items.items()}
+            receiving = {str(y):x for x,y in items.items()}
         else:
-            receiving = {y:x for x,y in self._map_path(items).items()}
+            # y could be path
+            receiving = {str(y):x for x,y in self._map_path(items).items()}
         #
         received = {}
         for source in sorted(receiving.keys()):
@@ -683,7 +689,7 @@ class RemoteHost:
             job_dict = params.sos_dict
             #
             if job_dict['_output'] and not isinstance(job_dict['_output'], Undetermined):
-                received = self.receive_from_host([x for x in job_dict['_output'] if isinstance(x, str)])
+                received = self.receive_from_host([x for x in job_dict['_output'] if isinstance(x, (str, path))])
                 if received:
                     env.logger.info(f'{task_id} ``received`` {short_repr(received.keys())}')
             if 'from_host' in job_dict['_runtime']:
