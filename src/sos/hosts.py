@@ -347,7 +347,7 @@ class RemoteHost:
     def _map_path(self, source):
         result = {}
         cwd = os.getcwd()
-        if isinstance(source, str):
+        if isinstance(source, (str, path)):
             dest = os.path.abspath(os.path.expanduser(source))
             # we use samefile to avoid problems with case-insensitive file system #522
             # we also use the "cwd" name to avoid wrong case for cwd. For example,
@@ -460,10 +460,10 @@ class RemoteHost:
         if isinstance(items, dict):
             # specify as local:remote
             # needs remote:local
-            receiving = {str(y):x for x,y in items.items()}
+            receiving = {y:str(x) for x,y in items.items()}
         else:
             # y could be path
-            receiving = {str(y):x for x,y in self._map_path(items).items()}
+            receiving = {y:str(x) for x,y in self._map_path(items).items()}
         #
         received = {}
         for source in sorted(receiving.keys()):
