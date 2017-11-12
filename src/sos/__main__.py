@@ -1565,7 +1565,7 @@ def cmd_config(args, workflow_args):
     import fnmatch
     import yaml
     from .utils import env, dict_merge, load_config_files
-    from .sos_syntax import CONFIG_NAME
+    from .syntax import CONFIG_NAME
     if workflow_args:
         raise RuntimeError('Unrecognized arguments {}'.format(' '.join(workflow_args)))
     #

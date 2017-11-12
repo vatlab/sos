@@ -35,7 +35,7 @@ from .utils import env, StopInputGroup, TerminateExecution, short_repr, stable_r
 from .pattern import extract_pattern
 from .eval import SoS_eval, SoS_exec, Undetermined
 from .target import BaseTarget, file_target, dynamic, remote, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock, sos_targets
-from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
+from .syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS, SOS_TAG
 from .sos_task import TaskParams, MasterTaskParams
 

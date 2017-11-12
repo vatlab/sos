@@ -26,7 +26,7 @@ import copy
 import collections
 from itertools import chain
 from .utils import env
-from .sos_syntax import SOS_WILDCARD
+from .syntax import SOS_WILDCARD
 
 __all__ = ['expand_pattern']
 

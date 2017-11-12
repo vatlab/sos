@@ -34,7 +34,7 @@ from collections.abc import Sequence
 from .utils import env, short_repr, expand_size, format_HHMMSS, expand_time
 from .eval import Undetermined, cfg_interpolate
 from .sos_task import BackgroundProcess_TaskEngine, TaskParams, loadTask
-from .sos_syntax import SOS_LOGLINE
+from .syntax import SOS_LOGLINE
 from .target import sos_targets
 
 #

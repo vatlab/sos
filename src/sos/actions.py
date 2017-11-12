@@ -54,7 +54,7 @@ __all__ = ['SoS_Action', 'script', 'sos_run',
     'report', 'pandoc'
     ]
 
-from .sos_syntax import SOS_RUNTIME_OPTIONS, SOS_ACTION_OPTIONS
+from .syntax import SOS_RUNTIME_OPTIONS, SOS_ACTION_OPTIONS
 from .sos_script import SoS_Script
 
 def get_actions():
