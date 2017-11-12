@@ -25,7 +25,7 @@ import unittest
 import shutil
 
 import subprocess
-from sos.target import file_target
+from sos.targets import file_target
 
 class TestRemove(unittest.TestCase):
     def setUp(self):

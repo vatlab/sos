@@ -831,7 +831,7 @@ def sos_handle_parameter_(key, defvalue):
     #
     # Argparse would produce cut_off for both definition of --cut-off and --cut_off, however
     # you can only use the matching input...
-    from .target import path, paths, sos_targets, file_target
+    from .targets import path, paths, sos_targets, file_target
     ret_type = None
 
     if isinstance(defvalue, type) or defvalue is None:
@@ -1113,7 +1113,7 @@ def save_var(name, var):
          return f'{name}:={base64.b64encode(pickle.dumps(var))}\n'
 
 def load_var(line):
-    from .target import remote
+    from .targets import remote
     assert remote
     key, value = line.split('=', 1)
     if key.endswith(':'):

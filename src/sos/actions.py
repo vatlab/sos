@@ -44,7 +44,7 @@ import multiprocessing as mp
 from tqdm import tqdm as ProgressBar
 from .utils import env, transcribe, StopInputGroup, TerminateExecution, short_repr, get_traceback
 from .eval import Undetermined, interpolate
-from .target import file_target, fileMD5, executable, UnknownTarget, BaseTarget, sos_targets
+from .targets import file_target, fileMD5, executable, UnknownTarget, BaseTarget, sos_targets
 
 
 __all__ = ['SoS_Action', 'script', 'sos_run',
@@ -156,7 +156,7 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',)):
                 # expand user...
                 tfiles = [os.path.expanduser(x) for x in tfiles]
 
-                from .target import RuntimeInfo
+                from .targets import RuntimeInfo
                 sig = RuntimeInfo(func.__name__, script, [], tfiles, [], kwargs)
                 sig.lock()
                 if env.config['sig_mode'] == 'default':

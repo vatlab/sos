@@ -34,7 +34,7 @@ from sos.pattern import extract_pattern, expand_pattern
 from sos.eval import SoS_eval, accessed_vars, Undetermined, on_demand_options
 from sos.parser import SoS_Script
 from sos.workflow_executor import Base_Executor, analyze_section
-from sos.target import executable, remote, sos_targets
+from sos.targets import executable, remote, sos_targets
 
 import socket
 def internet_on(host='8.8.8.8', port=80, timeout=3):

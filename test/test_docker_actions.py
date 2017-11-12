@@ -40,7 +40,7 @@ except ImportError:
     has_docker = False
 
 from sos.workflow_executor import Base_Executor, ExecuteError
-from sos.target import file_target
+from sos.targets import file_target
 
 class TimeoutException(Exception):
     def __init__(self, msg=''):

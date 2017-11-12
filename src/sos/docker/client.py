@@ -34,7 +34,7 @@ import docker
 from io import BytesIO
 from sos.utils import env
 from sos.eval import interpolate
-from sos.target import sos_targets
+from sos.targets import sos_targets
 #
 # docker support
 #

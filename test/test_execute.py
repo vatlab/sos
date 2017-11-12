@@ -30,7 +30,7 @@ from sos._version import __version__
 from sos.utils import env
 from sos.eval import Undetermined
 from sos.workflow_executor import Base_Executor, ExecuteError
-from sos.target import file_target, sos_targets
+from sos.targets import file_target, sos_targets
 import subprocess
 
 def multi_attempts(fn):

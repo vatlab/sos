@@ -35,7 +35,7 @@ from .utils import env, Error, WorkflowDict, get_traceback, short_repr, pickleab
     load_config_files, save_var, load_var
 from .eval import SoS_exec
 from .dag import SoS_DAG
-from .target import BaseTarget, file_target, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step, Undetermined, sos_targets
+from .targets import BaseTarget, file_target, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step, Undetermined, sos_targets
 from .pattern import extract_pattern
 from .hosts import Host
 

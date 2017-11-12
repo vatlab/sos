@@ -35,7 +35,7 @@ from .utils import env, short_repr, get_traceback, sample_of_file, tail_of_file,
     format_HHMMSS, expand_time, expand_size, StopInputGroup
 from .eval import SoS_exec, SoS_eval
 
-from .target import textMD5, RuntimeInfo, Undetermined, file_target, UnknownTarget, remote, sos_step, sos_targets
+from .targets import textMD5, RuntimeInfo, Undetermined, file_target, UnknownTarget, remote, sos_step, sos_targets
 from .eval import interpolate
 from .monitor import ProcessMonitor
 
@@ -273,7 +273,7 @@ def collect_task_result(task_id, sos_dict):
         output = {}
     elif isinstance(env.sos_dict['_output'], Undetermined):
         from .workflow_executor import __null_func__
-        from .target import dynamic
+        from .targets import dynamic
         from .step_executor import _expand_file_list
         env.sos_dict.set('__null_func__', __null_func__)
         # re-process the output statement to determine output files
@@ -666,7 +666,7 @@ def check_task(task):
 
     if has_res():
         try:
-            from .target import file_target
+            from .targets import file_target
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
             if ('ret_code' in res and res['ret_code'] == 0) or ('succ' in res and res['succ'] == 0):

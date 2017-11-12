@@ -24,7 +24,7 @@ import os
 import unittest
 
 from sos.utils import env
-from sos.target import file_target
+from sos.targets import file_target
 from sos.hosts import Host
 import subprocess
 

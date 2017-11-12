@@ -29,7 +29,7 @@ import fasteners
 
 from .utils import env, ActivityNotifier, short_repr
 from .eval import Undetermined
-from .target import file_target, sos_variable, textMD5, sos_step, sos_targets
+from .targets import file_target, sos_variable, textMD5, sos_step, sos_targets
 
 
 #

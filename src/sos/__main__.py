@@ -1270,7 +1270,7 @@ class AnswerMachine:
                 return False
 
 def get_tracked_files(sig_file):
-    from .target import file_target
+    from .targets import file_target
     with open(sig_file) as sig:
         tracked_files = []
         script_files = []
@@ -1295,7 +1295,7 @@ def cmd_remove(args, unknown_args):
     import glob
     from .utils import env
     import shutil
-    from .target import file_target
+    from .targets import file_target
     env.verbosity = args.verbosity
 
     # what about global signature?
@@ -1758,7 +1758,7 @@ def locate_files(session, include, exclude, all_files):
     import fnmatch
     import glob
     from .utils import env
-    from .target import file_target
+    from .targets import file_target
     sig_files = glob.glob('.sos/*.sig')
     if not sig_files:
         raise ValueError('No executed workflow is identified.')
@@ -1814,7 +1814,7 @@ def cmd_pack(args, unknown_args):
     import tempfile
     from tqdm import tqdm as ProgressBar
     from .utils import pretty_size, env, ProgressFileObj
-    from .target import file_target
+    from .targets import file_target
     #
     env.verbosity = args.verbosity
     try:
@@ -1966,7 +1966,7 @@ def cmd_unpack(args, unknown_args):
     import tarfile
     from tqdm import tqdm as ProgressBar
     from .utils import env, pretty_size, ProgressFileObj
-    from .target import fileMD5
+    from .targets import fileMD5
     import fnmatch
     import time
 

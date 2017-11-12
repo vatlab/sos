@@ -29,7 +29,7 @@ from sos.parser import SoS_Script
 from sos.utils import env
 from sos.eval import  Undetermined
 from sos.workflow_executor import Base_Executor, ExecuteError
-from sos.target import file_target
+from sos.targets import file_target
 
 import socket
 def internet_on(host='8.8.8.8', port=80, timeout=3):

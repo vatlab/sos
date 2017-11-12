@@ -27,7 +27,7 @@ import subprocess
 from sos.utils import env, ArgumentError
 from sos.parser import SoS_Script, ParsingError
 from sos.workflow_executor import Base_Executor
-from sos.target import file_target, sos_targets
+from sos.targets import file_target, sos_targets
 
 section1_sos = '''
 #!/usr/bin/env sos-runner
