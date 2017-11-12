@@ -33,7 +33,7 @@ from ._version import __version__
 from .sos_step import Step_Executor, analyze_section, PendingTasks
 from .utils import env, Error, WorkflowDict, get_traceback, short_repr, pickleable, \
     load_config_files, save_var, load_var
-from .sos_eval import SoS_exec
+from .eval import SoS_exec
 from .dag import SoS_DAG
 from .target import BaseTarget, file_target, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step, Undetermined, sos_targets
 from .pattern import extract_pattern

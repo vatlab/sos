@@ -34,7 +34,7 @@ from pathlib import Path
 from collections.abc import Sequence, Iterable
 
 from .utils import env, Error, short_repr, stable_repr, save_var, load_var, isPrimitive
-from .sos_eval import Undetermined
+from .eval import Undetermined
 
 __all__ = ['dynamic', 'executable', 'env_variable', 'sos_variable']
 

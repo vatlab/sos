@@ -33,10 +33,10 @@ import concurrent.futures
 
 from .utils import env, short_repr, get_traceback, sample_of_file, tail_of_file, linecount_of_file, \
     format_HHMMSS, expand_time, expand_size, StopInputGroup
-from .sos_eval import SoS_exec, SoS_eval
+from .eval import SoS_exec, SoS_eval
 
 from .target import textMD5, RuntimeInfo, Undetermined, file_target, UnknownTarget, remote, sos_step, sos_targets
-from .sos_eval import interpolate
+from .eval import interpolate
 from .monitor import ProcessMonitor
 
 from collections import OrderedDict

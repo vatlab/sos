@@ -31,7 +31,7 @@ import sys
 import re
 import argparse
 from sos.utils import env
-from sos.sos_eval import SoS_exec
+from sos.eval import SoS_exec
 
 from .kernel import SoS_Kernel
 from spyder.utils.ipython.spyder_kernel import SpyderKernel

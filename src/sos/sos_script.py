@@ -39,7 +39,7 @@ from tokenize import generate_tokens
 from uuid import uuid4
 
 from .utils import env, Error, locate_script, text_repr
-from .sos_eval import on_demand_options
+from .eval import on_demand_options
 from .target import textMD5, file_target, sos_targets, path, paths
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \

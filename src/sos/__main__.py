@@ -401,7 +401,7 @@ def workflow_status(workflow):
     from .utils import env, load_var, load_config_files, PrettyRelativeTime
     from .hosts import Host
     from .sos_task import check_tasks
-    from .sos_eval import interpolate
+    from .eval import interpolate
     from io import StringIO
     from contextlib import redirect_stdout
     from collections import defaultdict

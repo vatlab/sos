@@ -27,7 +27,7 @@ import shutil
 
 from sos.sos_script import SoS_Script
 from sos.utils import env
-from sos.sos_eval import  Undetermined
+from sos.eval import  Undetermined
 from sos.sos_executor import Base_Executor, ExecuteError
 from sos.target import file_target
 

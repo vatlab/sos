@@ -44,7 +44,7 @@
 
 import copy
 from sos.utils import env, WorkflowDict
-from sos.sos_eval import SoS_exec, SoS_eval
+from sos.eval import SoS_exec, SoS_eval
 
 from IPython.core.error import UsageError
 from IPython.lib.clipboard import ClipboardEmpty

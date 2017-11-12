@@ -43,7 +43,7 @@ from collections.abc import Sequence
 import multiprocessing as mp
 from tqdm import tqdm as ProgressBar
 from .utils import env, transcribe, StopInputGroup, TerminateExecution, short_repr, get_traceback
-from .sos_eval import Undetermined, interpolate
+from .eval import Undetermined, interpolate
 from .target import file_target, fileMD5, executable, UnknownTarget, BaseTarget, sos_targets
 
 

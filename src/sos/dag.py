@@ -28,7 +28,7 @@ import time
 import fasteners
 
 from .utils import env, ActivityNotifier, short_repr
-from .sos_eval import Undetermined
+from .eval import Undetermined
 from .target import file_target, sos_variable, textMD5, sos_step, sos_targets
 
 

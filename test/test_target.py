@@ -29,7 +29,7 @@ from sos.sos_script import SoS_Script
 from sos.utils import env
 from sos.sos_executor import Base_Executor
 from sos.target import file_target, sos_targets
-from sos.sos_eval import interpolate
+from sos.eval import interpolate
 import subprocess
 
 class TestTarget(unittest.TestCase):

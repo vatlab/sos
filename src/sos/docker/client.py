@@ -33,7 +33,7 @@ import docker
 
 from io import BytesIO
 from sos.utils import env
-from sos.sos_eval import interpolate
+from sos.eval import interpolate
 from sos.target import sos_targets
 #
 # docker support
