@@ -442,7 +442,7 @@ class path(type(Path())):
             if isinstance(other, file_target) else path(other)).fullname())
 
     def __add__(self, part):
-        return str(self) + part
+        return path(str(self) + part)
 
     def __format__(self, format_spec):
         # handling special !q conversion flag
