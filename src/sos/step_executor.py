@@ -480,10 +480,7 @@ class Base_Step_Executor:
             file_map = {x:y for x,y in zip(ifiles, vv)}
             for idx, grp in enumerate(_groups):
                 mapped_vars = [file_map[x] for x in grp]
-                if all(isinstance(x, (str, BaseTarget)) for x in mapped_vars):
-                    _vars[idx][vn] = sos_targets(mapped_vars)
-                else:
-                    _vars[idx][vn] = mapped_vars
+                _vars[idx][vn] = mapped_vars
 
     @staticmethod
     def handle_group_with(group_with, ifiles, _groups, _vars):
