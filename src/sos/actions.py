@@ -179,8 +179,8 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',)):
                         env.logger.info(f'Action ``{func.__name__}`` is ``ignored`` with signature constructed')
                         return None
             if 'workdir' in kwargs:
-                if not kwargs['workdir'] or not isinstance(kwargs['workdir'], str):
-                    raise RuntimeError(f'workdir option should be a path, {kwargs["workdir"]} provided')
+                if not kwargs['workdir'] or not isinstance(kwargs['workdir'], (str, os.PathLike)):
+                    raise RuntimeError(f'workdir option should be a path of type str or path, {kwargs["workdir"]} provided')
                 if not os.path.isdir(os.path.expanduser(kwargs['workdir'])):
                     os.makedirs(os.path.expanduser(kwargs['workdir']))
                 try:
