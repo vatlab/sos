@@ -414,7 +414,7 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
                     res = None
                 p.join()
             else:
-                from sos_notebook.sos_executor import Interactive_Executor
+                from sos_notebook.workflow_executor import Interactive_Executor
                 executor = Interactive_Executor(wf, args=args, shared=shared, config=env.config)
                 res = executor.run(targets=targets)
             return res
