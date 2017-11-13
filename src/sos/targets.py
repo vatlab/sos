@@ -442,7 +442,10 @@ class path(type(Path())):
             if isinstance(other, file_target) else path(other)).fullname())
 
     def __add__(self, part):
-        return path(str(self) + part)
+        if isinstance(part, (str, path)):
+            return path(str(self) + str(part))
+        else:
+            raise ValueError(f"Cannot concatenate path to {part} of type {type(part).__name__}: expect a string or path")
 
     def __format__(self, format_spec):
         # handling special !q conversion flag

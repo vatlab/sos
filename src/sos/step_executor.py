@@ -34,7 +34,7 @@ from .utils import env, StopInputGroup, TerminateExecution, short_repr, stable_r
     get_traceback, transcribe, expand_size, format_HHMMSS
 from .pattern import extract_pattern
 from .eval import SoS_eval, SoS_exec, Undetermined
-from .targets import BaseTarget, file_target, dynamic, remote, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock, sos_targets
+from .targets import BaseTarget, file_target, dynamic, remote, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock, sos_targets, path
 from .syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS, SOS_TAG
 from .tasks import TaskParams, MasterTaskParams
@@ -1379,18 +1379,18 @@ def _expand_file_list(ignore_unknown, *args):
             continue
         elif isinstance(arg, BaseTarget):
             ifiles.append(arg)
-        elif isinstance(arg, str):
+        elif isinstance(arg, (str, path)):
             ifiles.append(os.path.expanduser(arg))
         elif isinstance(arg, sos_targets):
             ifiles.extend(arg.targets())
         elif isinstance(arg, Iterable):
             # in case arg is a Generator, check its type will exhaust it
             arg = list(arg)
-            if not all(isinstance(x, (str, BaseTarget)) for x in arg):
+            if not all(isinstance(x, (str, path, BaseTarget)) for x in arg):
                 raise RuntimeError(f'Invalid target: {arg}')
             ifiles.extend(arg)
         else:
-            raise RuntimeError(f'Unrecognized file: {arg}')
+            raise RuntimeError(f'Unrecognized file: {arg} of type {type(arg).__name__}')
 
     # expand files with wildcard characters and check if files exist
     tmp = []

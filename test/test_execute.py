@@ -224,8 +224,8 @@ all_loop = ''
 
 input: 'a.pdf', files, group_by='single', paired_with='names', for_each='c'
 
-all_names += _names[0] + " "
-all_loop += _c + " "
+all_names += str(_names[0]) + " "
+all_loop += str(_c) + " "
 
 counter = counter + 1
 """)
@@ -277,7 +277,7 @@ all_loop = ''
 
 input: 'a.pdf', files, group_by='single', paired_with='names', for_each={'c':  ['1', '2']}
 
-all_names += _names[0] + " "
+all_names += str(_names[0]) + " "
 all_loop += c + " "
 
 counter = counter + 1
