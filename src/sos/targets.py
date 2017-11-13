@@ -436,6 +436,8 @@ class path(type(Path())):
     def fullname(self):
         return str(self.expanduser().resolve())
 
+    def __fspath__(self):
+        return super(path, self).__fspath__()
 
     def __eq__(self, other):
         return os.path.abspath(self.fullname()) == os.path.abspath((other
@@ -489,6 +491,9 @@ class file_target(path, BaseTarget):
 
     def target_name(self):
         return str(self)
+
+    def __fspath__(self):
+        return super(file_target, self).__fspath__()
 
     def sig_file(self):
         if self._sigfile is not None:
@@ -598,6 +603,7 @@ class file_target(path, BaseTarget):
     def __hash__(self):
         return hash(repr(self))
 
+
 class paths(Sequence, os.PathLike):
     '''A collection of targets'''
     def __init__(self, *args):
@@ -681,6 +687,8 @@ class paths(Sequence, os.PathLike):
     def __repr__(self):
         return '[' + ', '.join(repr(x) for x in self._paths) + ']'
 
+    def __str__(self):
+        return self.__format__('')
 
 class sos_targets(BaseTarget, Sequence, os.PathLike):
     '''A collection of targets'''
@@ -791,15 +799,17 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
     def __fspath__(self):
         if len(self._targets) == 1:
-            return self._targets[0].__fstarget__()
+            return self._targets[0].__fspath__()
         elif len(self._targets) == 0:
             raise ValueError(f"Cannot treat an empty sos_targets as single target")
         else:
             raise ValueError(f'Cannot treat an sos_targets object {self} with more than one targets as a single target')
 
-
     def __repr__(self):
         return '[' + ', '.join(repr(x) for x in self._targets) + ']'
+
+    def __str__(self):
+        return self.__format__('')
 
 class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
