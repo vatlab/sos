@@ -285,14 +285,14 @@ depends: executable('lkls')
 [work_1: shared = {'data': 'output'}]
 input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
 output: expand_pattern('{_name}.out')
-run:
+run: expand=True
   touch {_output}
 
 [work_2]
 input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}', paired_with = ['data']
 output: expand_pattern('{_name}.out2')
 run: expand=True
-  touch {_data} {_output}
+  touch {_data[0]} {_output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
