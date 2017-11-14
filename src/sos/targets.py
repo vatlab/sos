@@ -674,9 +674,9 @@ class paths(Sequence, os.PathLike):
         if len(self._paths) == 1:
             return getattr(self._paths[0], key)
         elif len(self._paths) == 0:
-            raise ValueError(f"Cannot get attribute {key} from empty target list")
+            raise AttributeError(f"Cannot get attribute {key} from empty target list")
         else:
-            raise ValueError(f'Cannot get attribute {key} from group of {len(self)} targets {self!r}')
+            raise AttributeError(f'Cannot get attribute {key} from group of {len(self)} targets {self!r}')
 
     def __hash__(self):
         return hash(repr(self))
@@ -775,9 +775,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         if len(self._targets) == 1:
             return getattr(self._targets[0], key)
         elif len(self._targets) == 0:
-            raise ValueError(f"Cannot get attribute {key} from empty target list")
+            raise AttributeError(f"Cannot get attribute {key} from empty target list")
         else:
-            raise ValueError(f'Cannot get attribute {key} from group of {len(self)} targets {self!r}')
+            raise AttributeError(f'Cannot get attribute {key} from group of {len(self)} targets {self!r}')
 
     def target_name(self):
         if len(self._targets) == 1:
