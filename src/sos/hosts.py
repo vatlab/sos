@@ -447,7 +447,7 @@ class RemoteHost:
             else:
                 env.logger.debug(f'Sending ``{source}`` to {self.alias}:{dest}')
                 cmd = cfg_interpolate(self._get_send_cmd(rename=os.path.basename(source) != os.path.basename(dest)),
-                        {'source': sos_targets(source.rstrip('/')), 'dest': sos_targets(dest), 'host': self.address, 'port': self.port})
+                        {'source': sos_targets(str(source).rstrip('/')), 'dest': sos_targets(dest), 'host': self.address, 'port': self.port})
                 env.logger.debug(cmd)
                 ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                 if (ret != 0):
@@ -479,7 +479,7 @@ class RemoteHost:
                 received[dest] = source
             else:
                 cmd = cfg_interpolate(self._get_receive_cmd(rename=os.path.basename(source) != os.path.basename(dest)),
-                    {'source': sos_targets(source.rstrip('/')), 'dest': sos_targets(dest), 'host': self.address, 'port': self.port})
+                    {'source': sos_targets(str(source).rstrip('/')), 'dest': sos_targets(dest), 'host': self.address, 'port': self.port})
                 env.logger.debug(cmd)
                 try:
                     ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
