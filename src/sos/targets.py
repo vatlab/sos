@@ -797,6 +797,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         else:
             raise ValueError(f'Cannot get sig_file for group of targets {self}')
 
+    def __add__(self, part):
+        if len(self._targets) == 1:
+            return self._targets[0].__add__(part)
+        elif len(self._targets) == 0:
+            raise ValueError(f"Cannot get attribute {key} from empty target list")
+        else:
+            raise ValueError(f'Cannot get attribute {key} from group of {len(self)} targets {self!r}')
+
     def __fspath__(self):
         if len(self._targets) == 1:
             return self._targets[0].__fspath__()
