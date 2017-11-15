@@ -437,7 +437,7 @@ class path(type(Path())):
         return str(self.expanduser().resolve())
 
     def __fspath__(self):
-        return super(path, self).__fspath__()
+        return self.fullname()
 
     def __eq__(self, other):
         return os.path.abspath(self.fullname()) == os.path.abspath((other
@@ -481,9 +481,9 @@ class file_target(path, BaseTarget):
             self._attachments = []
 
     def target_exists(self, mode='any'):
-        if mode in ('any', 'target') and self.exists():
+        if mode in ('any', 'target') and self.expanduser().exists():
             return True
-        elif mode == 'any' and Path(str(self) + '.zapped').exists():
+        elif mode == 'any' and Path(str(self.expanduser()) + '.zapped').exists():
             return True
         elif mode == 'signature' and Path(self.sig_file()).exists():
             return True
@@ -499,7 +499,7 @@ class file_target(path, BaseTarget):
         if self._sigfile is not None:
             return self._sigfile
         # If the output path is outside of the current working directory
-        fullname = str(self.resolve())
+        fullname = str(self.expanduser().resolve())
         name_md5 = textMD5(fullname)
 
         if self.is_external():
@@ -930,7 +930,7 @@ class RuntimeInfo:
     def write(self, rebuild=False):
         '''Write signature file with signature of script, input, output and dependent files.
         Because local input and output files can only be determined after the execution
-        of workflow. They are not part of the construction...
+        of workflow. They are not part of the construction.
         '''
         if isinstance(self.output_files, Undetermined) or isinstance(self.dependent_files, Undetermined):
             env.logger.trace('Write signature failed due to undetermined files')
