@@ -755,8 +755,8 @@ for i in range(5):
 
 
 [10: shared={'test':'output'}]
-input: dynamic('temp/*.txt'), group_by='single'
-output: dynamic('temp/*.txt.bak')
+input: dynamic(os.path.join('temp', '*.txt')), group_by='single'
+output: dynamic(os.path.join('temp', '*.txt.bak'))
 
 run: expand=True
 touch {_input}.bak
@@ -814,7 +814,7 @@ for i in range(3):
         wf = script.workflow()
         Base_Executor(wf).run()
         # we should have 9 files
-        files = glob.glob('temp/*.txt')
+        files = glob.glob(os.path.join('temp', '*.txt'))
         self.assertEqual(len(files), 3)
         shutil.rmtree('temp')
 
