@@ -434,7 +434,7 @@ class path(type(Path())):
             return True
 
     def fullname(self):
-        return str(self.expanduser().resolve())
+        return os.path.abspath(os.path.expanduser(str(self)))
 
     def __fspath__(self):
         return self.fullname()
