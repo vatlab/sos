@@ -282,7 +282,7 @@ depends: executable('lkls')
     def testSharedVarInPairedWith(self):
         self.touch(['1.txt', '2.txt'])
         script = SoS_Script('''
-[work_1: shared = {'data': 'output'}]
+[work_1: shared = {'data': 'step_output'}]
 input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
 output: expand_pattern('{_name}.out')
 run: expand=True
@@ -302,7 +302,7 @@ run: expand=True
     def testSharedVarInForEach(self):
         self.touch(['1.txt', '2.txt'])
         script = SoS_Script('''
-[work_1: shared = {'data': 'output'}]
+[work_1: shared = {'data': 'step_output'}]
 input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
 output: expand_pattern('{_name}.out')
 run: expand=True
