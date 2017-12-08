@@ -70,7 +70,7 @@ task:
 run('''echo "a.txt" > temp/a.txt ''')
 run('''echo "b.txt" > temp/b.txt ''')
 
-[1: shared={'oa':'output'}]
+[1: shared={'oa':'step_output'}]
 dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', paired_with='dest'
 output: _dest
@@ -87,7 +87,7 @@ task:
 run('''echo "a.txt" > temp/a.txt ''')
 run('''echo "b.txt" > temp/b.txt ''')
 
-[1: shared={'oa':'output'}]
+[1: shared={'oa':'step_output'}]
 dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', paired_with='dest'
 output: _dest
@@ -109,7 +109,7 @@ run:
 
 echo "b.txt" > temp/b.txt
 
-[1: shared={'oa':'output'}]
+[1: shared={'oa':'step_output'}]
 dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', paired_with='dest'
 output: _dest
@@ -159,7 +159,7 @@ run:
 
 echo "b.txt" > temp/b.txt
 
-[1: shared={'oa':'output'}]
+[1: shared={'oa':'step_output'}]
 dest = ['temp/c.txt', 'temp/d.txt']
 input: 'temp/a.txt', 'temp/b.txt', group_by='single', paired_with='dest'
 output: _dest
@@ -235,7 +235,7 @@ cp {_input} {_dest[0]}
 
 [0]
 output: 'a.txt'
-run(f"touch {output}")
+run(f"touch {_output}")
 ''')
         wf = script.workflow()
         try:
@@ -273,7 +273,7 @@ output: 'largefile.txt'
 run: expand='${ }'
     for x in {1..1000}
     do
-        echo $x >> ${output}
+        echo $x >> ${_output}
     done
 
 ''')
@@ -314,14 +314,14 @@ output: 'midfile.txt'
 run: expand='${ }'
     for x in {1..1000}
     do
-        echo $x >> ${output}
+        echo $x >> ${_output}
     done
 
 [20]
 output: 'finalfile.txt'
 run: expand=True
-    cp {input} {output}
-    echo "MORE" >> {output}
+    cp {_input} {_output}
+    echo "MORE" >> {_output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -362,7 +362,7 @@ parameter: gvar = 10
 output: 'myfile.txt'
 # additional comment
 run: expand=True
-    echo {gvar} > {output:q}
+    echo {gvar} > {_output:q}
 
 ''')
         wf = script.workflow()
@@ -391,7 +391,7 @@ parameter: gvar = 10
 output: 'myfile.txt'
 # additional comment
 run: expand=True
-    echo {gvar} > {output:q}
+    echo {gvar} > {_output:q}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -548,7 +548,7 @@ run: expand=True
 [1]
 input: 'test_action.txt'
 run: input='test_action.txt', output='lc.txt', expand=True
-    wc -l {input[0]} > lc.txt
+    wc -l {_input[0]} > lc.txt
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()

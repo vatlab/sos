@@ -802,7 +802,7 @@ input: 'a.pdf', files
         #
         # test input types
         script = SoS_Script('''
-[0:shared={'i':'input', 'o':'output'}]
+[0:shared={'i':'_input', 'o':'_output'}]
 files = (f"a{i}" for i in range(2))
 input: {'a.txt', 'b.txt'}, files
 output: (f"a{x}" for x in _input)
@@ -1016,7 +1016,7 @@ executed.append(step_name)
 output: 'out_a_4'
 [b_1: shared=['executed', 'input_b1']]
 executed.append(step_name)
-input_b1 = input
+input_b1 = _input
 [b_2: shared='executed']
 executed.append(step_name)
 [b_3: shared='executed']
@@ -1107,7 +1107,7 @@ print(CONFIG.get('StoreOwnerSpouse', 'someone else'))
 seq = range(3)
 input: for_each='seq'
 output: "test${_seq}.txt"
-print(output)
+print(_output)
 ''')
         wf = script.workflow()
         # this does not work before until we make variable output available sooner

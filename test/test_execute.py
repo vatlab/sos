@@ -141,7 +141,7 @@ for b in range(5):
         self.assertEqual(env.sos_dict['res'], '01234')
         #
         script = SoS_Script(r"""
-[0: shared={'res':'output'}]
+[0: shared={'res':'step_output'}]
 input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
 output: [f'{x}_{y}_processed.txt' for x,y in zip(name, model)]
 
@@ -151,7 +151,7 @@ output: [f'{x}_{y}_processed.txt' for x,y in zip(name, model)]
         self.assertEqual(env.sos_dict['res'],  ['a_1_processed.txt', 'b_2_processed.txt', 'c_2_processed.txt'])
         #
         script = SoS_Script(r"""
-[0: shared={'res':'output'}]
+[0: shared={'res':'step_output'}]
 input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
 output: [f"{x}_{y}_process.txt" for x,y in zip(name, model)]
 
@@ -161,7 +161,7 @@ output: [f"{x}_{y}_process.txt" for x,y in zip(name, model)]
         self.assertEqual(env.sos_dict['res'],  ['a_1_process.txt', 'b_2_process.txt', 'c_2_process.txt'])
         #
         script = SoS_Script(r"""
-[0: shared={'res':'output'}]
+[0: shared={'res':'step_output'}]
 def add_a(x):
     return ['a'+_x for _x in x]
 
@@ -190,7 +190,7 @@ def myfunc(a):
     sum(range(5))
     return ['a' + x for x in a]
 
-[0: shared={'test':'input'}]
+[0: shared={'test':'step_input'}]
 input: myfunc(['a.txt', 'b.txt'])
 """)
         wf = script.workflow()
@@ -201,7 +201,7 @@ input: myfunc(['a.txt', 'b.txt'])
         '''Test input specification'''
         self.touch(['test_input.txt', 'test_input1.txt'])
         script = SoS_Script(r"""
-[0: shared={'res':'output'}]
+[0: shared={'res':'step_output'}]
 input: '*.txt'
 output: [x + '.res' for x in _input]
 """)
@@ -254,7 +254,7 @@ processed.append((_par, _res))
         #
         # test for each for pandas dataframe
         script = SoS_Script(r"""
-[0: shared={'res':'output'}]
+[0: shared={'res':'step_output'}]
 import pandas as pd
 data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
 
@@ -328,7 +328,7 @@ processed.append((par, res))
         #
         # test for each for pandas dataframe
         script = SoS_Script(r"""
-[0: shared={'res':'output'}]
+[0: shared={'res':'step_output'}]
 import pandas as pd
 input: for_each={'data': pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])}
 output: f"{data['A']}_{data['B']}_{data['C']}.txt"
@@ -339,7 +339,7 @@ output: f"{data['A']}_{data['B']}_{data['C']}.txt"
         #
         # support for pands Series and Index types
         script = SoS_Script(r"""
-[0: shared={'res':'output'}]
+[0: shared={'res':'step_output'}]
 import pandas as pd
 data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
 input: for_each={'A': data['A']}
@@ -350,7 +350,7 @@ output: f"a_{A}.txt"
         self.assertEqual(env.sos_dict['res'], ['a_1.txt', 'a_2.txt'])
         #
         script = SoS_Script(r"""
-[0: shared={'res':'output'}]
+[0: shared={'res':'step_output'}]
 import pandas as pd
 data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
 data.set_index('C', inplace=True)
@@ -363,7 +363,7 @@ output: f"{A}.txt"
 
         # test for each of Series
         script = SoS_Script(r"""
-[0: shared={'res':'output'}]
+[0: shared={'res':'step_output'}]
 import pandas as pd
 data = pd.DataFrame([(0, 1, 'Ha'), (1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
 
@@ -378,7 +378,7 @@ output: f"{A}.txt"
 
         # test iterable
         script = SoS_Script(r"""
-[0: shared={'res':'output'}]
+[0: shared={'res':'step_output'}]
 import pandas as pd
 data = pd.DataFrame([(0, 1, 'Ha'), (1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
 
@@ -407,7 +407,7 @@ vars = [1, 2]
 input: files, paired_with='vars', group_by=1
 output: f"{_input}{_vars[0]}"
 run: expand=True
-    touch {output}
+    touch {_output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -425,7 +425,7 @@ vars2 = ['a', 'b']
 input: files, paired_with=('vars', 'vars2'), group_by=1
 output: f"{_input}{_vars[0]}"
 run: expand=True
-    touch {output}
+    touch {_output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -440,7 +440,7 @@ files = ['a.txt', 'b.txt']
 input: files, paired_with={'var': [1,2], 'var2': ['a', 'b']}, group_by=1
 output: f"{_input}{var[0]}"
 run: expand=True
-    touch {output}
+    touch {_output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -463,7 +463,7 @@ vars = [1, 2]
 input: files, group_with='vars', group_by=1
 output: f"{_input}{_vars}"
 run: expand=True
-    touch {output}
+    touch {_output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -481,7 +481,7 @@ vars2 = ['a']
 input: files, group_with=('vars', 'vars2'), group_by=2
 output: f"{_input[0]}{_vars}"
 run: expand=True
-    touch {output}
+    touch {_output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -496,7 +496,7 @@ files = ['a.txt', 'b.txt']
 input: files, group_with={'var': [1], 'var2': ['a']}, group_by=2
 output: f"{_input[0]}{var}"
 run: expand=True
-    touch {output}
+    touch {_output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -548,7 +548,7 @@ output: expand_pattern('{base}-{name}-{par}.txt'), expand_pattern('{par}.txt')
         '''Test input option filetype'''
         self.touch(['a.txt', 'b.txt', 'a.pdf', 'b.html'])
         script = SoS_Script(r"""
-[0: shared={'res':'output'}]
+[0: shared={'res':'step_output'}]
 files = ['a.txt', 'b.txt']
 counter = 0
 
@@ -591,7 +591,7 @@ counter += 1
         '''Test deriving output files from input files'''
         self.touch(['a.txt', 'b.txt'])
         script = SoS_Script(r"""
-[0: shared={'counter':'counter', 'step':'output'}]
+[0: shared={'counter':'counter', 'step':'step_output'}]
 files = ['a.txt', 'b.txt']
 counter = 0
 
@@ -610,7 +610,7 @@ counter += 1
         '''Test if the step variables can be changed.'''
         #
         script = SoS_Script(r"""
-[1: shared={'test':'output'}]
+[1: shared={'test':'step_output'}]
 output: 'a.txt'
 
 [2]
@@ -650,11 +650,11 @@ print(a)
         self.assertRaises(ExecuteError, Base_Executor(wf).run)
         # however, alias should be sent back
         script = SoS_Script(r"""
-[1: shared={'shared': 'output'}]
+[1: shared={'shared': 'step_output'}]
 input: 'a.txt'
 output: 'b.txt'
 
-[2: shared={'tt':'output'}]
+[2: shared={'tt':'step_output'}]
 print(shared)
 
 output: [x + '.res' for x in shared]
@@ -724,7 +724,7 @@ e = d + 1
             os.mkdir('temp')
         #
         script = SoS_Script('''
-[10: shared={'test':'output'}]
+[10: shared={'test':'step_output'}]
 ofiles = []
 output: dynamic(ofiles)
 
@@ -754,7 +754,7 @@ for i in range(5):
     run(f"touch temp/test_{i}.txt")
 
 
-[10: shared={'test':'output'}]
+[10: shared={'test':'step_output'}]
 input: dynamic(os.path.join('temp', '*.txt')), group_by='single'
 output: dynamic(os.path.join('temp', '*.txt.bak'))
 
@@ -804,7 +804,7 @@ touch temp/{ff}
         os.mkdir('temp')
         env.config['sig_mode'] = 'ignore'
         script = SoS_Script('''
-[1: shared={'res':'output'}]
+[1: shared={'res': '_output'}]
 import random
 for i in range(3):
     with open(f"temp/test_{random.randint(1, 100000)}.txt", 'w') as res:
@@ -838,7 +838,7 @@ input:
 [1]
 input: ['temp/1.txt' for x in range(5)]
 run: expand=True
-  touch temp/{len(input)}.input
+  touch temp/{len(_input)}.input
         ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -849,7 +849,7 @@ run: expand=True
 output: ['temp/2.txt' for x in range(5)]
 run: expand=True
   touch temp/2.txt
-  touch temp/{len(output)}.output
+  touch temp/{len(_output)}.output
         ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -862,7 +862,7 @@ depends: ['temp/2.txt' for x in range(5)]
 output: 'temp/3.txt'
 run: expand=True
   touch temp/3.txt
-  touch temp/{len(depends)}.depends
+  touch temp/{len(_depends)}.depends
         ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -870,7 +870,7 @@ run: expand=True
         shutil.rmtree('temp')
 
     def testOutputInLoop(self):
-        '''Test behavior of {output} when used in loop'''
+        '''Test behavior of {_output} when used in loop'''
         if os.path.isdir('temp'):
             shutil.rmtree('temp')
         os.mkdir('temp')
@@ -884,8 +884,8 @@ output: output_files[_index]
 run: active = 0
 rm -f temp/out.log
 run: expand=True
-echo {output} >> temp/out.log
-touch {output}
+echo {step_output} >> temp/out.log
+touch {step_output}
         ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -905,8 +905,8 @@ output: output_files[_index]
 run: active = 0
 rm -f temp/out.log
 run: expand=True
-echo {output} >> temp/out.log
-touch {output}
+echo {step_output} >> temp/out.log
+touch {step_output}
         ''')
         wf = script.workflow()
         env.config['sig_mode'] = 'ignore'
@@ -955,7 +955,7 @@ run:
 [20]
 output: 'aa.txt'
 run: expand=True
-    cat {input} > {output}
+    cat {_input} > {_output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -994,7 +994,7 @@ run: expand=True
     touch {_output}
 
 [test_2]
-assert(len(input) == 5)
+assert(len(_input) == 5)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -1039,22 +1039,22 @@ input: for_each={'i': range(2)}
         for tfile in ('1.txt', '2.txt', '3.txt'):
             file_target(tfile).remove('both')
         script = SoS_Script('''
-[1: shared = {'dfile':'output'}]
+[1: shared = {'dfile':'_output'}]
 output: '1.txt'
 run:
 	echo 1 > 1.txt
 
-[2: shared = {'ifile':'output'}]
+[2: shared = {'ifile':'_output'}]
 output: '2.txt'
 run: expand=True
-	echo {input} > 2.txt
+	echo {_input} > 2.txt
 
 [3]
 depends: ifile
 input: dfile
 output: '3.txt'
 run: expand=True
-	cat {input} > {output}
+	cat {_input} > {_output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()

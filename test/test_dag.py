@@ -684,7 +684,7 @@ run:
 [P: provides='{filename}.p']
 input: filename
 run: expand=True
-    touch {output}
+    touch {_output}
 ''')
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow()
@@ -909,15 +909,15 @@ print(b)
 [index: provides='{filename}.bam.bai']
 input: f"{filename}.bam"
 run: expand=True
-   echo "Generating {output}"
-   touch {output}
+   echo "Generating {_output}"
+   touch {_output}
 
 [call: provides='{filename}.vcf']
 input:   f"{filename}.bam"
-depends: f"{input}.bai"
+depends: f"{_input}.bai"
 run: expand=True
-   echo "Calling variants from {input} with {depends} to {output}"
-   touch {output}
+   echo "Calling variants from {_input} with {_depends} to {_output}"
+   touch {_output}
 ''')
         file_target('a.bam.bai').remove('both')
         file_target('a.vcf').remove('both')

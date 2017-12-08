@@ -44,13 +44,13 @@ run: expand=True
 [1]
 output:  't_d1/t_f2'
 run: expand=True
-    dd if=/dev/urandom of={output} count=50000
+    dd if=/dev/urandom of={_output} count=50000
     dd if=/dev/urandom of=t_d1/ut_f4 count=500
 
 [2]
 output:  't_d2/t_d3/t_f3'
 run: expand=True
-    dd if=/dev/urandom of={output} count=6000
+    dd if=/dev/urandom of={_output} count=6000
 
 ''')
         with open('included.sos', 'w') as script:

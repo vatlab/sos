@@ -79,7 +79,8 @@ class MasterTaskParams(TaskParams):
         self.global_def = ''
         self.task = ''
         self.sos_dict = {'_runtime': {}, '_input': sos_targets(), '_output': sos_targets(), '_depends': sos_targets(),
-                'input': sos_targets(), 'output':sos_targets(), 'depends': sos_targets(), 'step_name': '',
+                'step_input': sos_targets(), 'step_output':sos_targets(),
+                'step_depends': sos_targets(), 'step_name': '',
                 '_index': 0}
         self.num_workers = num_workers
         self.tags = []
@@ -284,9 +285,10 @@ def collect_task_result(task_id, sos_dict):
     elif sos_dict['_output'] is None:
         output = {}
     else:
-        output = {x:file_target(x).target_signature() for x in sos_dict['_output'] if isinstance(x, str)}
-    input = {} if env.sos_dict['_input'] is None or sos_dict['_input'] is None else {x:file_target(x).target_signature() for x in sos_dict['_input'] if isinstance(x, str)}
-    depends = {} if env.sos_dict['_depends'] is None or sos_dict['_depends'] is None else {x:file_target(x).target_signature() for x in sos_dict['_depends'] if isinstance(x, str)}
+        output = {x:file_target(x).target_signature() for x in sos_dict['_output'] if isinstance(x, (str, file_target))}
+
+    input = {} if env.sos_dict['_input'] is None or sos_dict['_input'] is None else {x:file_target(x).target_signature() for x in sos_dict['_input'] if isinstance(x, (str, file_target))}
+    depends = {} if env.sos_dict['_depends'] is None or sos_dict['_depends'] is None else {x:file_target(x).target_signature() for x in sos_dict['_depends'] if isinstance(x, (str, file_target))}
     return {'ret_code': 0, 'task': task_id, 'input': input, 'output': output, 'depends': depends,
             'shared': {env.sos_dict['_index']: shared} }
 
@@ -453,7 +455,7 @@ del sos_handle_parameter_
                 x = interpolate(x, env.sos_dict._dict)
         return x
 
-    for key in ['input', '_input',  'output', '_output', 'depends', '_depends']:
+    for key in ['step_input', '_input',  'step_output', '_output', 'step_depends', '_depends']:
         if key in sos_dict and isinstance(sos_dict[key], (list, sos_targets)):
             # resolve remote() target
             env.sos_dict.set(key, sos_targets(resolve_remote(x) for x in sos_dict[key] if not isinstance(x, sos_step)))

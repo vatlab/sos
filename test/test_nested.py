@@ -82,38 +82,38 @@ if 'inputs' not in locals():
 
 [a_1: shared=['executed', 'inputs']]
 executed.append(step_name)
-inputs.append(input)
+inputs.append(_input)
 [a_2: shared=['executed', 'inputs']]
 executed.append(step_name)
-inputs.append(input)
+inputs.append(_input)
 [a_3: shared=['executed', 'inputs']]
 executed.append(step_name)
-inputs.append(input)
+inputs.append(_input)
 [a_4: shared=['executed', 'inputs']]
 executed.append(step_name)
 output: 'a.done'
-inputs.append(input)
+inputs.append(_input)
 run: expand=True
-    touch {output}
+    touch {_output}
 [b_1: shared=['executed', 'inputs']]
 executed.append(step_name)
 input: 'b.begin'
-inputs.append(input)
+inputs.append(_input)
 [b_2: shared=['executed', 'inputs']]
 executed.append(step_name)
-inputs.append(input)
+inputs.append(_input)
 [b_3: shared=['executed', 'inputs']]
 executed.append(step_name)
-inputs.append(input)
+inputs.append(_input)
 [b_4: shared=['executed', 'inputs']]
 executed.append(step_name)
 output: 'b.txt'
-inputs.append(input)
+inputs.append(_input)
 [c: shared=['executed', 'inputs']]
 executed.append(step_name)
 input: 'a.txt'
 output: 'b.txt'
-inputs.append(input)
+inputs.append(_input)
 sos_run('a+b', shared=['executed', 'inputs'])
 ''')
         env.config['sig_mode'] = 'ignore'
@@ -133,15 +133,15 @@ if 'inputs' not in locals():
 [a_1:shared=['executed', 'inputs']]
 executed.append(step_name)
 output: _input[0] + '.a1'
-inputs.append(input)
+inputs.append(_input)
 run: expand=True
-    touch {output}
+    touch {_output}
 [a_2:shared=['executed', 'inputs']]
 executed.append(step_name)
 output: _input[0] + '.a2'
-inputs.append(input)
+inputs.append(_input)
 run: expand=True
-    touch {output}
+    touch {_output}
 [c:shared=['executed', 'inputs']]
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
@@ -323,13 +323,13 @@ parameter: parB = 10
 executed.append('t.' + step_name)
 output: _input[0] + '.a1'
 run: expand=True
-    touch {output}
+    touch {_output}
 
 [A_2: shared='executed']
 executed.append('t.' + step_name)
 output: _input[0] + '.a2'
 run: expand=True
-    touch {output}
+    touch {_output}
 ''')
         script = SoS_Script('''
 %from inc include *
@@ -455,7 +455,7 @@ run: expand=True
 [P: provides='{filename}.p']
 input: filename
 run: expand=True
-    touch {output}
+    touch {_output}
 
 [ALL]
 
@@ -501,7 +501,7 @@ sos_run('nested', nested=nested, seed=seed)
 def myfunc():
   return 'a'
 
-[1: shared={'test':'output'}]
+[1: shared={'test':'_output'}]
 output: myfunc()
 
 myfunc()
@@ -520,7 +520,7 @@ def myfunc():
     # test if builtin functions (sum and range) can be used here.
     return 'a' + str(sum(range(10)))
 
-[1: shared={'test':'output'}]
+[1: shared={'test':'_output'}]
 output: [myfunc() for i in range(10)][0]
 
 myfunc()
@@ -568,7 +568,7 @@ sos_run('test')
 def myfunc(a):
     return ['a' + x for x in a]
 
-[mse: shared={'test':'output'}]
+[mse: shared={'test':'_output'}]
 input: myfunc(['a.txt', 'b.txt'])
 
 [1]
