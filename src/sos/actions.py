@@ -112,6 +112,8 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',)):
             if 'input' in kwargs and kwargs['input'] is not None:
                 if isinstance(kwargs['input'], str):
                     ifiles = [kwargs['input']]
+                elif isinstance(kwargs['input'], file_target):
+                    ifiles = [str(kwargs['input'])]
                 elif isinstance(kwargs['input'], Sequence):
                     ifiles = list(kwargs['input'])
                 else:
@@ -779,7 +781,7 @@ def ruby(script, args='', **kwargs):
 def collect_input(script, input):
     # determine file extension
     if input is not None:
-        if isinstance(input, str):
+        if isinstance(input, (str, file_target)):
             ext = os.path.splitext(input)[-1]
         elif isinstance(input, Sequence) and len(input) > 0:
             ext = os.path.splitext(input[0])[-1]
@@ -844,7 +846,7 @@ def report(script=None, input=None, output=None, **kwargs):
         if isinstance(script, str) and script.strip():
             writer(script.rstrip() + '\n\n')
         if input is not None:
-            if isinstance(input, str):
+            if isinstance(input, (str, file_target)):
                 env.logger.debug(f'Loading report from {input}')
                 with open(input) as ifile:
                     writer(ifile.read().rstrip() + '\n\n')
