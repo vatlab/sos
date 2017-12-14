@@ -642,7 +642,7 @@ class Base_Executor:
                     section.options['provides'] + [sos_variable(var) for var in changed_vars])
         #
         if self.resolve_dangling_targets(dag, targets) == 0:
-            raise RuntimeError(f'Failed to regenerate or resolve {targets}.')
+            raise RuntimeError(f'No auxiliary step to generate target {targets}.')
         # now, there should be no dangling targets, let us connect nodes
         dag.build(self.workflow.auxiliary_sections)
         #dag.show_nodes()
@@ -704,12 +704,12 @@ class Base_Executor:
             for t in targets:
                 if file_target(t).target_exists('target'):
                     env.logger.info(f'Target {t} already exists')
-                    targets.pop(t)
                 elif file_target(t).target_exists('signature'):
                     env.logger.info(f'Re-generating {t}')
                     file_target(t).remove('signature')
-                #else:
-                    #env.logger.info(f'Generating {t}')
+            targets = [x for x in targets if not file_target(x).target_exists('target')]
+            if not targets:
+                raise RuntimeError('All targets already exists.')
 
         # process step of the pipelinp
         dag = self.initialize_dag(targets=targets)
