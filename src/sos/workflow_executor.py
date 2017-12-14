@@ -453,7 +453,8 @@ class Base_Executor:
                         else:
                             raise RuntimeError(
                                 f'No step to generate target {target}{dag.steps_depending_on(target, self.workflow)}')
-                    resolved += 1
+                    if nodes:
+                        resolved += 1
                     continue
                 if len(mo) > 1:
                     raise RuntimeError(
@@ -566,6 +567,7 @@ class Base_Executor:
                 # resolved += 1
             if added_node == 0:
                 break
+        #dag.show_nodes()
         return resolved
 
     def initialize_dag(self, targets=None):
@@ -639,7 +641,8 @@ class Base_Executor:
                 section.options.set('provides',
                     section.options['provides'] + [sos_variable(var) for var in changed_vars])
         #
-        self.resolve_dangling_targets(dag, targets)
+        if self.resolve_dangling_targets(dag, targets) == 0:
+            raise RuntimeError(f'Failed to regenerate or resolve {targets}.')
         # now, there should be no dangling targets, let us connect nodes
         dag.build(self.workflow.auxiliary_sections)
         #dag.show_nodes()
@@ -694,18 +697,22 @@ class Base_Executor:
         # passing run_mode to SoS dict so that users can execute blocks of
         # python statements in different run modes.
         env.sos_dict.set('run_mode', env.config['run_mode'])
-        # process step of the pipelinp
-        dag = self.initialize_dag(targets=targets)
 
         # if targets are specified and there are only signatures for them, we need
         # to remove the signature and really generate them
         if targets:
             for t in targets:
-                if not file_target(t).target_exists('target') and file_target(t).target_exists('signature'):
+                if file_target(t).target_exists('target'):
+                    env.logger.info(f'Target {t} already exists')
+                    targets.pop(t)
+                elif file_target(t).target_exists('signature'):
                     env.logger.info(f'Re-generating {t}')
                     file_target(t).remove('signature')
-                else:
-                    env.logger.info(f'Target {t} already exists')
+                #else:
+                    #env.logger.info(f'Generating {t}')
+
+        # process step of the pipelinp
+        dag = self.initialize_dag(targets=targets)
         # process step of the pipelinp
         #
         # running processes. It consisists of

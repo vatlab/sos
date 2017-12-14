@@ -1210,7 +1210,7 @@ for __n, __v in {repr(name_map)}.items():
     def workflow(self, workflow_name=None, use_default=True):
         '''Return a workflow with name_step+name_step specified in wf_name
         This function might be called recursively because of nested
-        workflow. '''
+        workflow.'''
         if workflow_name is None and not use_default:
             return SoS_Workflow(self.content, '', '',
                 [section for section in self.sections if 'provides' in section.options or 'shared' in section.options], self.global_def)
