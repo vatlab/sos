@@ -642,7 +642,8 @@ class Base_Executor:
                     section.options['provides'] + [sos_variable(var) for var in changed_vars])
         #
         if self.resolve_dangling_targets(dag, targets) == 0:
-            raise RuntimeError(f'No auxiliary step to generate target {targets}.')
+            if targets:
+                raise RuntimeError(f'No auxiliary step to generate target {targets}.')
         # now, there should be no dangling targets, let us connect nodes
         dag.build(self.workflow.auxiliary_sections)
         #dag.show_nodes()
