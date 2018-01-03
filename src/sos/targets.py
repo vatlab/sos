@@ -609,36 +609,28 @@ class paths(Sequence, os.PathLike):
     def __init__(self, *args):
         self._paths = []
         for arg in args:
-            if isinstance(arg, paths):
-                self._paths.extend(arg._paths)
-            elif isinstance(arg, str):
-                self._paths.append(path(arg))
-            elif isinstance(arg, sos_targets):
-                if not all(isinstance(x, file_target) for x in arg._targets):
-                    raise ValueError(f'Cannot convert a sos_targets object {arg} with non-file target to paths')
-                self._paths.extend([path(str(x)) for x in arg._targets])
-            elif isinstance(arg, file_target):
-                self._paths.append(path(str(arg)))
-            elif isinstance(arg, Iterable):
-                # in case arg is a Generator, check its type will exhaust it
-                for t in list(arg):
-                    if isinstance(t, paths):
-                        self._paths.extend(t._paths)
-                    elif isinstance(t, str):
-                        self._paths.append(path(t))
-                    elif isinstance(t, sos_targets):
-                        if not all(isinstance(x, file_target) for x in t._targets):
-                            raise ValueError(f'Cannot convert a sos_ttets object {t} with non-file ttet to paths')
-                        self._paths.extend([path(str(x)) for x in t._targets])
-                    elif isinstance(t, path):
-                        self._paths.append(path(str(t)))
-                    elif t is not None:
-                            raise RuntimeError(f'Unrecognized targets {t} of type {t.__class__.__name__}')
+            self.__append__(arg)
+
         for t in self._paths:
             if isinstance(t, paths):
                 raise RuntimeError(f"Nested paths {t} were introduced by {args}")
             if not isinstance(t, path):
                 raise RuntimeError(f"Unrecognized path {t}")
+
+    def __append__(self, arg):
+        if isinstance(arg, paths):
+            self._paths.extend(arg._paths)
+        elif isinstance(arg, str):
+            self._paths.append(path(arg))
+        elif isinstance(arg, sos_targets):
+            if not all(isinstance(x, file_target) for x in arg._targets):
+                raise ValueError(f'Cannot convert a sos_targets object {arg} with non-file target to paths')
+            self._paths.extend([path(str(x)) for x in arg._targets])
+        elif isinstance(arg, file_target):
+            self._paths.append(path(str(arg)))
+        elif isinstance(arg, Iterable):
+            for t in list(arg):
+                self.__append__(t)
 
     def __getstate__(self):
         return self._paths
@@ -696,34 +688,30 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         super(BaseTarget, self).__init__()
         self._targets = []
         for arg in args:
-            if isinstance(arg, Undetermined):
-                raise RuntimeError("Undetermined cannot be inserted as a target")
-            elif isinstance(arg, paths):
-                self._targets.extend([file_target(x) for x in arg._paths])
-            elif isinstance(arg, str):
-                self._targets.append(file_target(arg))
-            elif isinstance(arg, sos_targets):
-                self._targets.extend(arg._targets)
-            elif isinstance(arg, BaseTarget):
-                self._targets.append(arg)
-            elif isinstance(arg, Iterable):
-                # in case arg is a Generator, check its type will exhaust it
-                for t in list(arg):
-                    if isinstance(t, str):
-                        self._targets.append(file_target(t))
-                    elif isinstance(t, sos_targets):
-                        self._targets.extend(t._targets)
-                    elif isinstance(t, BaseTarget):
-                        self._targets.append(t)
-                    elif t is not None:
-                        raise RuntimeError(f'Unrecognized targets {t} of type {t.__class__.__name__}')
-            elif arg is not None:
-                raise RuntimeError(f'Unrecognized targets {arg} of type {arg.__class__.__name__}')
+            self.__append__(arg)
         for t in self._targets:
             if isinstance(t, sos_targets):
                 raise RuntimeError(f"Nested sos_targets {t} were introduced by {args}")
             if not isinstance(t, BaseTarget):
                 raise RuntimeError(f"Unrecognized target {t}")
+
+    def __append__(self, arg):
+        if isinstance(arg, Undetermined):
+            raise RuntimeError("Undetermined cannot be inserted as a target")
+        elif isinstance(arg, paths):
+            self._targets.extend([file_target(x) for x in arg._paths])
+        elif isinstance(arg, str):
+            self._targets.append(file_target(arg))
+        elif isinstance(arg, sos_targets):
+            self._targets.extend(arg._targets)
+        elif isinstance(arg, BaseTarget):
+            self._targets.append(arg)
+        elif isinstance(arg, Iterable):
+            # in case arg is a Generator, check its type will exhaust it
+            for t in list(arg):
+                self.__append__(t)
+        elif arg is not None:
+            raise RuntimeError(f'Unrecognized targets {arg} of type {arg.__class__.__name__}')
 
     def targets(self):
         return [x.target_name() if isinstance(x, file_target) else x for x in self._targets]
