@@ -631,6 +631,8 @@ class paths(Sequence, os.PathLike):
         elif isinstance(arg, Iterable):
             for t in list(arg):
                 self.__append__(t)
+        elif arg is not None:
+            self._paths.append(path(str(arg)))
 
     def __getstate__(self):
         return self._paths
