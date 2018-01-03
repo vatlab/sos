@@ -617,6 +617,9 @@ class paths(Sequence, os.PathLike):
             if not isinstance(t, path):
                 raise RuntimeError(f"Unrecognized path {t}")
 
+    def paths(self):
+        return [str(x) for x in self._paths]
+
     def __append__(self, arg):
         if isinstance(arg, paths):
             self._paths.extend(arg._paths)
