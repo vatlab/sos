@@ -1106,8 +1106,11 @@ def isPrimitive(obj):
 
 
 def save_var(name, var):
-    if isPrimitive(var):
-        return f'{name}={stable_repr(var)}\n'
+    if isinstance(var, types.ModuleType) or callable(var) or not isPrimitive(name):
+        return ''
+    var_repr = stable_repr(var)
+    if '\n' not in var_repr:
+        return f'{name}={var_repr}\n'
     else:
          # for more complex type, we use pickle + base64
          return f'{name}:={base64.b64encode(pickle.dumps(var))}\n'
@@ -1143,12 +1146,11 @@ def version_info(module):
             return 'na'
 
 def loaded_modules(namespace=None):
-    from types import ModuleType
     if not namespace:
         return []
     res = {}
     for value in namespace.values():
-        if isinstance(value, ModuleType):
+        if isinstance(value, types.ModuleType):
             res[value.__name__] = version_info(value.__name__)
     return [(x,y) for x,y in res.items() if y != 'na']
 

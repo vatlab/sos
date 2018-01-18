@@ -971,7 +971,9 @@ class RuntimeInfo:
                 value = self.signature_vars[var]
                 if not isinstance(value, Undetermined):
                     try:
-                        md5.write(save_var(var, value))
+                        var_expr = save_var(var, value)
+                        if var_expr:
+                            md5.write(var_expr)
                     except Exception:
                         env.logger.debug(f'Variable {var} of value {short_repr(value)} is ignored from step signature')
             # context used to return context
@@ -1059,7 +1061,7 @@ class RuntimeInfo:
                             if env.sos_dict[key] != value:
                                 return f'Context variable {key} value mismatch: {short_repr(value)} saved, {short_repr(env.sos_dict[key])} current'
                         except Exception as e:
-                            env.logger.warning(f"Variable {key} of type {type(key).__name__} cannot be compared: {e}")
+                            env.logger.debug(f"Variable {key} of type {type(value).__name__} cannot be compared: {e}")
                     except Exception as e:
                         env.logger.warning(f'Failed to restore variable {key} from signature: {e}')
                     continue
@@ -1069,7 +1071,7 @@ class RuntimeInfo:
                         key, value = load_var(line)
                         res['vars'][key] = value
                     except Exception as e:
-                        env.logger.warning(f'Failed to restore variable {key} from signature: {e}')
+                        env.logger.warning(f'Failed to restore variable from signature: {e}')
                     continue
                 try:
                     f, m = line.rsplit('\t', 1)
