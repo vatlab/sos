@@ -909,10 +909,11 @@ def sos_handle_parameter_(key, defvalue):
 
 def load_config_files(filename=None):
     cfg = {}
+    config_lock = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', 'sos_config.lck')
     # site configuration file
     sos_config_file = os.path.join(os.path.split(__file__)[0], 'site_config.yml')
     if os.path.isfile(sos_config_file):
-        with fasteners.InterProcessLock(os.path.join(tempfile.gettempdir(), 'sos_config_')):
+        with fasteners.InterProcessLock(config_lock):
             try:
                 with open(sos_config_file) as config:
                     cfg = yaml.safe_load(config)
@@ -925,7 +926,7 @@ def load_config_files(filename=None):
     # global site file
     sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'hosts.yml')
     if os.path.isfile(sos_config_file):
-        with fasteners.InterProcessLock(os.path.join(tempfile.gettempdir(), 'sos_config_')):
+        with fasteners.InterProcessLock(config_lock):
             try:
                 with open(sos_config_file) as config:
                     dict_merge(cfg, yaml.safe_load(config))
@@ -937,7 +938,7 @@ def load_config_files(filename=None):
     # global config file
     sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
     if os.path.isfile(sos_config_file):
-        with fasteners.InterProcessLock(os.path.join(tempfile.gettempdir(), 'sos_config_')):
+        with fasteners.InterProcessLock(config_lock):
             try:
                 with open(sos_config_file) as config:
                     dict_merge(cfg, yaml.safe_load(config))
@@ -950,7 +951,7 @@ def load_config_files(filename=None):
     if filename is not None:
         if not os.path.isfile(os.path.expanduser(filename)):
             raise RuntimeError(f'Config file {filename} not found')
-        with fasteners.InterProcessLock(os.path.join(tempfile.gettempdir(), 'sos_config_')):
+        with fasteners.InterProcessLock(config_lock):
             try:
                 with open(os.path.expanduser(filename)) as config:
                     dict_merge(cfg, yaml.safe_load(config))
