@@ -146,13 +146,13 @@ class SoS_Worker(mp.Process):
                 work = self.pipe.recv()
                 if work is None:
                     break
-                env.logger.debug(f'Worker {self.name} receives request {work}')
+                env.logger.debug(f'Worker {self.name} receives request {short_repr(work)}')
                 if work[0] == 'step':
                     # this is a step ...
                     self.run_step(*work[1:])
                 else:
                     self.run_workflow(*work[1:])
-                env.logger.debug(f'Worker {self.name} completes request {work}')
+                env.logger.debug(f'Worker {self.name} completes request {short_repr(work)}')
             except KeyboardInterrupt:
                 break
 
@@ -818,13 +818,13 @@ class Base_Executor:
                             #
                             continue
                         else:
-                            raise RuntimeError(f'Unexpected value from step {res}')
+                            raise RuntimeError(f'Unexpected value from step {short_repr(res)}')
 
                     # if we does get the result, we send the process to pool
                     pool.append(procs[idx])
                     procs[idx] = None
 
-                    env.logger.debug(f'{i_am()} receive a result {res}')
+                    env.logger.debug(f'{i_am()} receive a result {short_repr(res)}')
                     if hasattr(runnable, '_from_nested'):
                         # if the runnable is from nested, we will need to send the result back to the workflow
                         env.logger.debug(f'{i_am()} send res to nested')

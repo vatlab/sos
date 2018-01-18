@@ -1470,7 +1470,7 @@ class Step_Executor(Base_Step_Executor):
         try:
             res = Base_Step_Executor.run(self)
             if self.pipe is not None:
-                env.logger.debug(f'Step {self.step.step_name()} sends result {res}')
+                env.logger.debug(f'Step {self.step.step_name()} sends result {short_repr(res)}')
                 self.pipe.send(res)
             else:
                 return res
