@@ -487,6 +487,50 @@ report(input=['a.txt', 'b.txt'], output='out.txt')
         for name in ('a.txt', 'b.txt', 'out.txt'):
             self.assertTrue(file_target(name).target_exists())
             file_target(name).remove()
+        #
+        # test report to other types of output: path
+        script = SoS_Script(r'''
+[A_1]
+report: output=path('a.txt')
+    something
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # test report to other types of output: paths
+        script = SoS_Script(r'''
+[A_1]
+report: output=paths('a.txt')
+    something
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # test report to other types of output: file_target
+        script = SoS_Script(r'''
+[A_1]
+output: 'a.txt'
+report: output=_output[0]
+    something
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # test report to other types of output: sos_targets
+        script = SoS_Script(r'''
+[A_1]
+output: 'a.txt'
+report: output=_output
+    something
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        #
+        script = SoS_Script(r'''
+[A_1]
+output: 'a.txt', 'b.txt'
+report: output=_output
+    something 
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
 
     def testOptionWorkdir(self):
         '''Test option workdir of tasks'''

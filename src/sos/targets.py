@@ -705,7 +705,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             raise RuntimeError("Undetermined cannot be inserted as a target")
         elif isinstance(arg, paths):
             self._targets.extend([file_target(x) for x in arg._paths])
-        elif isinstance(arg, str):
+        elif isinstance(arg, (str, path)):
             self._targets.append(file_target(arg))
         elif isinstance(arg, sos_targets):
             self._targets.extend(arg._targets)

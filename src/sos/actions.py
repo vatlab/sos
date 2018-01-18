@@ -44,7 +44,7 @@ import multiprocessing as mp
 from tqdm import tqdm as ProgressBar
 from .utils import env, transcribe, StopInputGroup, TerminateExecution, short_repr, get_traceback
 from .eval import Undetermined, interpolate
-from .targets import file_target, fileMD5, executable, UnknownTarget, BaseTarget, sos_targets
+from .targets import path, paths, file_target, fileMD5, executable, UnknownTarget, BaseTarget, sos_targets
 
 
 __all__ = ['SoS_Action', 'script', 'sos_run',
@@ -834,6 +834,16 @@ def report(script=None, input=None, output=None, **kwargs):
         else:
             file_handle = open(os.path.expanduser(output), 'w')
             writer = file_handle.write
+    elif isinstance(output, (path, file_target)):
+        file_handle = open(os.path.expanduser(str(output)), 'w')
+        writer = file_handle.write
+    elif isinstance(output, (paths, sos_targets)):
+        if len(output) != 1:
+            raise ValueError(f'More than one output is specified {output}')
+        if not isinstance(output[0], (file_target, path)):
+            raise ValueError(f'Action report can only output to file target or standard output')
+        file_handle = open(os.path.expanduser(str(output[0])), 'w')
+        writer = file_handle.write
     elif hasattr(output, 'write'):
         writer = output.write
     elif output is None or output == '':
