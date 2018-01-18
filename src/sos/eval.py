@@ -156,7 +156,10 @@ class on_demand_options(object):
         try:
             return SoS_eval(self._expressions[key])
         except Exception as e:
-            raise ValueError(f'Failed to evaluate option {key} with value {self._expressions[key]}: {e}')
+            if key == 'skip':
+                raise ValueError(f'Failed to evaluate option {key} with value {self._expressions[key]}: Only constant values are allowed for section option skip')
+            else:
+                raise ValueError(f'Failed to evaluate option {key} with value {self._expressions[key]}: {e}')
 
     def __repr__(self):
         return repr(self._expressions)
