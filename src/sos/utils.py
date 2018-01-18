@@ -1106,14 +1106,15 @@ def isPrimitive(obj):
 
 
 def save_var(name, var):
-    if isinstance(var, types.ModuleType) or callable(var) or not isPrimitive(name):
+    if isinstance(var, (bool, int, float, complex, str, bytes)):
+        return f'{name}={repr(var)}\n'
+    if isinstance(var, (types.ModuleType, WorkflowDict)):
         return ''
-    var_repr = stable_repr(var)
-    if '\n' not in var_repr:
-        return f'{name}={var_repr}\n'
-    else:
-         # for more complex type, we use pickle + base64
-         return f'{name}:={base64.b64encode(pickle.dumps(var))}\n'
+    try:
+        # for more complex type, we use pickle + base64
+        return f'{name}:={base64.b64encode(pickle.dumps(var))}\n'
+    except:
+        return ''
 
 def load_var(line):
     from .targets import remote
