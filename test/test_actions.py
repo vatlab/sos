@@ -250,7 +250,7 @@ end
         Base_Executor(wf).run()
 
     @multi_attempts
-    @unittest.skipIf(not with_network, 'Skip test because of no internet connection')
+    @unittest.skipIf(not with_network or 'TRAVIS' in os.environ, 'Skip test because of no internet connection or in travis test')
     def testDownload(self):
         '''Test download of resources'''
         if not os.path.isdir('tmp'):
