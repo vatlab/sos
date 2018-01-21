@@ -33,7 +33,7 @@ from itertools import tee, combinations
 from .utils import env, StopInputGroup, TerminateExecution, short_repr, stable_repr,\
     get_traceback, transcribe, expand_size, format_HHMMSS
 from .pattern import extract_pattern
-from .eval import SoS_eval, SoS_exec, Undetermined
+from .eval import SoS_eval, SoS_exec, Undetermined, stmtHash
 from .targets import BaseTarget, file_target, dynamic, remote, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock, sos_targets, path, paths
 from .syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS, SOS_TAG
@@ -936,21 +936,33 @@ class Base_Step_Executor:
 
     def execute(self, stmt, sig=None):
         try:
-            if sig is None:
-                env.sos_dict.set('__step_sig__', None)
-            else:
-                env.sos_dict.set('__step_sig__', os.path.basename(sig.proc_info).split('.')[0])
-            self.last_res = SoS_exec(stmt, return_result=self.run_mode == 'interactive')
+            #if sig is None:
+            #    env.sos_dict.set('__step_sig__', None)
+            #else:
+            #    env.sos_dict.set('__step_sig__', os.path.basename(sig.proc_info).split('.')[0])
+            self.last_res = SoS_exec(stmt, return_result=False) #self.run_mode == 'interactive')
         except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks):
             raise
         except Exception as e:
             error_class = e.__class__.__name__
             detail = e.args[0]
             cl, exc, tb = sys.exc_info()
-            line_number = traceback.extract_tb(tb)[-1][1]
-            code = '\n'.join([f'{">>>" if i+1 == line_number else "   "} {x.rstrip()}' for i, x in enumerate(stmt.splitlines())][max(line_number - 3, 0):line_number + 3])
-            if code.strip():
-                raise RuntimeError(f'{error_class} at line {line_number} of \n{code}\n{detail}')
+            msg = ''
+            for st in reversed(traceback.extract_tb(tb)):
+                if st.filename.startswith('script_'):
+                    code = stmtHash.script(st.filename)
+                    line_number = st.lineno
+                    code = '\n'.join([f'{"---->" if i+1 == line_number else "     "} {x.rstrip()}' for i, x in enumerate(code.splitlines())][max(line_number - 3, 0):line_number + 3])
+                    msg += f'''\
+{st.filename} in {st.name}
+{code}
+'''
+            if msg:
+                raise RuntimeError(f'''\
+---------------------------------------------------------------------------
+{error_class:42}Traceback (most recent call last)
+{msg}
+{error_class}: {detail}''')
             else:
                 raise RuntimeError(f'{error_class}: {detail}')
         finally:

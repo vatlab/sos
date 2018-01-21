@@ -69,13 +69,28 @@ def _is_expr(expr):
     except Exception:
         return False
 
+class StatementHash(object):
+    stmt_hash = {}
+    def __init__(self):
+        pass
+
+    def hash(self, script):
+        h = hash(script)
+        StatementHash.stmt_hash[h] = script
+        return f'script_{h}'
+
+    def script(self, hash):
+        return StatementHash.stmt_hash[int(hash[7:])]
+
+stmtHash = StatementHash()
+
 def SoS_exec(script, _dict=None, return_result=False):
     '''Execute a statement.'''
     if _dict is None:
         _dict = env.sos_dict._dict
 
     if not return_result:
-        exec(script, _dict)
+        exec(compile(script, filename=stmtHash.hash(script), mode='exec'), _dict)
         return None
 
     try:
@@ -86,12 +101,12 @@ def SoS_exec(script, _dict=None, return_result=False):
             # the last one is an expression and we will try to return the results
             # so we first execute the previous statements
             if len(stmts) > 1:
-                exec(compile(ast.Module(body=stmts[:-1]), filename="<ast>", mode="exec"), _dict)
+                exec(compile(ast.Module(body=stmts[:-1]), filename=stmtHash.hash(script), mode="exec"), _dict)
             # then we eval the last one
-            res = eval(compile(ast.Expression(body=stmts[-1].value), filename="<ast>", mode="eval"), _dict)
+            res = eval(compile(ast.Expression(body=stmts[-1].value), filename=stmtHash.hash(script), mode="eval"), _dict)
         else:
             # otherwise we just execute the entire code
-            exec(script, _dict)
+            exec(compile(script, filename=stmtHash.hash(script), mode='exec'), _dict)
             res = None
     except SyntaxError as e:
         raise SyntaxError(f"Invalid code {script}: {e}")
