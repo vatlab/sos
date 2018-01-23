@@ -480,7 +480,9 @@ class Base_Step_Executor:
             file_map = {x:y for x,y in zip(ifiles, vv)}
             for idx, grp in enumerate(_groups):
                 mapped_vars = [file_map[x] for x in grp]
-                _vars[idx][vn] = mapped_vars
+                # 862. we make the paired variable the same type so that if the input is a paths or sos_targets,
+                # the returned value is of the same type
+                _vars[idx][vn] = type(var_value)(mapped_vars)
 
     @staticmethod
     def handle_group_with(group_with, ifiles, _groups, _vars):
