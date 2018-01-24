@@ -84,7 +84,7 @@ class StatementHash(object):
 
 stmtHash = StatementHash()
 
-def SoS_exec(script, _dict=None, return_result=False):
+def SoS_exec(script, _dict=None, return_result=True):
     '''Execute a statement.'''
     if _dict is None:
         _dict = env.sos_dict._dict

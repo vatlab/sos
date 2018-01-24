@@ -938,11 +938,11 @@ class Base_Step_Executor:
 
     def execute(self, stmt, sig=None):
         try:
-            #if sig is None:
-            #    env.sos_dict.set('__step_sig__', None)
-            #else:
-            #    env.sos_dict.set('__step_sig__', os.path.basename(sig.proc_info).split('.')[0])
-            self.last_res = SoS_exec(stmt, return_result=False) #self.run_mode == 'interactive')
+            if sig is None:
+                env.sos_dict.set('__step_sig__', None)
+            else:
+                env.sos_dict.set('__step_sig__', os.path.basename(sig.proc_info).split('.')[0])
+            self.last_res = SoS_exec(stmt, return_result=self.run_mode == 'interactive')
         except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks):
             raise
         except Exception as e:
