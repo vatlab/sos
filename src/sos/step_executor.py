@@ -947,7 +947,6 @@ class Base_Step_Executor:
             raise
         except Exception as e:
             error_class = e.__class__.__name__
-            detail = e.args[0]
             cl, exc, tb = sys.exc_info()
             msg = ''
             for st in reversed(traceback.extract_tb(tb)):
@@ -959,8 +958,9 @@ class Base_Step_Executor:
 {st.filename} in {st.name}
 {code}
 '''
+            detail = e.args[0] if e.args else ''
             if msg:
-                raise RuntimeError(f'''\
+                raise RuntimeError(f'''
 ---------------------------------------------------------------------------
 {error_class:42}Traceback (most recent call last)
 {msg}
