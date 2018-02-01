@@ -846,12 +846,12 @@ class RuntimeInfo:
         else:
             raise RuntimeError('Dependent files must be a list of filenames or Undetermined for runtime signature.')
 
-        external_output = False
+        self.external_output = False
         if output_files is None:
             self.output_files = []
         elif isinstance(output_files, list):
             self.output_files = [file_target(x) if isinstance(x, str) else x for x in output_files]
-            external_output = self.output_files and isinstance(self.output_files[0], file_target) and self.output_files[0].is_external()
+            self.external_output = self.output_files and isinstance(self.output_files[0], file_target) and self.output_files[0].is_external()
         elif isinstance(output_files, Undetermined):
             self.output_files = output_files
         else:
@@ -863,7 +863,7 @@ class RuntimeInfo:
         self.sig_id = textMD5('{} {} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files,
             '\n'.join(f'{x}:{stable_repr(sdict[x])}' for x in sig_vars)))
 
-        if external_output:
+        if self.external_output:
             # global signature
             self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', f'{self.sig_id}.exe_info')
         else:
@@ -875,7 +875,9 @@ class RuntimeInfo:
                 'output_files': self.output_files,
                 'dependent_files': self.dependent_files,
                 'signature_vars': self.signature_vars,
-                'script': self.script}
+                'script': self.script,
+                'sig_id': self.sig_id,
+                'external': self.external_output}
 
     def __setstate__(self, sdict):
         self.step_md5 = sdict['step_md5']
@@ -884,10 +886,14 @@ class RuntimeInfo:
         self.dependent_files = sdict['dependent_files']
         self.signature_vars = sdict['signature_vars']
         self.script = sdict['script']
+        self.sig_id = sdict['sig_id']
+        self.external_output = sdict['external']
         #
         # the signature might be on a remote machine and has changed location
-        self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime',
-                                      f'{textMD5(f"{self.script} {self.input_files} {self.output_files} {self.dependent_files}")}.exe_info')
+        if self.external_output:
+            self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', f'{self.sig_id}.exe_info')
+        else:
+            self.proc_info = os.path.join(env.exec_dir, '.sos', '.runtime', f'{self.sig_id}.exe_info')
 
 
     def lock(self):

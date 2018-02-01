@@ -324,10 +324,15 @@ class TaskManager:
     def clear_submitted(self):
         self._submitted_tasks = []
 
-def concurrent_execute(stmt, proc_vars={}):
+def concurrent_execute(stmt, proc_vars={}, sig=None):
     env.sos_dict.quick_update(proc_vars)
     try:
+        if sig:
+            sig.lock()
         SoS_exec(stmt, return_result=False)
+        if sig:
+            sig.release()
+            sig.write()
         return {'ret_code': 0}
     except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks) as e:
         return {'ret_code': 1, 'exception': e }
@@ -1292,10 +1297,15 @@ class Base_Step_Executor:
                                     proc_vars['__step_sig__'] = None
                                 else:
                                     proc_vars['__step_sig__'] = os.path.basename(signatures[idx].proc_info).split('.')[0]
+                                    # we need to release the signature otherwise there can be too many opened
+                                    # signatures for concurrent jobs
+                                    signatures[idx].release()
 
                                 self.proc_results.append(
                                         self.concurrent_executor.submit(concurrent_execute, stmt=statement[1],
-                                            proc_vars=proc_vars))
+                                            proc_vars=proc_vars, sig=signatures[idx]))
+                                # signature will be written by the concurrent executor
+                                signatures[idx] = None
                             else:
                                 self.execute(statement[1], signatures[idx])
                         except StopInputGroup as e:
@@ -1304,6 +1314,7 @@ class Base_Step_Executor:
                                 env.logger.info(e)
                             skip_index = True
                             break
+
                 # if this index is skipped, go directly to the next one
                 if skip_index:
                     skip_index = False
@@ -1311,9 +1322,14 @@ class Base_Step_Executor:
                         signatures[idx].release()
                         signatures[idx] = None
                     continue
+
+                # if concurrent input group, there is no task
+                if self.concurrent_input_group:
+                    continue
                 # finally, tasks..
                 # now the regular step process is done and we are going to the task part
                 # we should be able to release the signature because external task has its own signatures
+
                 if signatures[idx] is not None:
                     signatures[idx].release()
 
