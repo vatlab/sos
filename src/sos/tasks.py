@@ -1331,18 +1331,16 @@ class TaskEngine(threading.Thread):
                         self.submitting_tasks.pop(k)
 
             if self.pending_tasks:
-                to_run = []
                 # check status
                 num_active_tasks = len(self.submitting_tasks) + len(self.running_tasks)
                 if num_active_tasks >= self.max_running_jobs:
                     continue
 
-                to_run = self.pending_tasks[ : self.max_running_jobs - num_active_tasks]
                 # assign tasks to self.max_running_jobs workers
                 slots = [[] for i in range(self.max_running_jobs)]
                 sample_slots = list(range(self.max_running_jobs))
                 random.shuffle(sample_slots)
-                for i,tid in enumerate(self.pending_tasks):
+                for i,tid in enumerate(self.pending_tasks[:1000 * self.max_running_jobs]):
                     if self.task_status[tid] == 'running':
                         self.notify(f'{tid} ``runnng``')
                     elif tid in self.canceled_tasks:
