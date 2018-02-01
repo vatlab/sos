@@ -21,7 +21,7 @@
 #
 import os
 import sys
-import hashlib
+import xxhash
 import shlex
 import shutil
 import fasteners
@@ -66,7 +66,7 @@ class UnavailableLock(Error):
 #
 def textMD5(text):
     '''Get md5 of a piece of text'''
-    m = hashlib.md5()
+    m = xxhash.xxh64()
     if isinstance(text, str):
         m.update(text.encode())
     else:
@@ -80,7 +80,7 @@ def fileMD5(filename, partial=True):
     when dealing with large bioinformat ics datasets. '''
     filesize = os.path.getsize(filename)
     # calculate md5 for specified file
-    md5 = hashlib.md5()
+    md5 = xxhash.xxh64()
     block_size = 2**20  # buffer of 1M
     try:
         # 2**24 = 16M

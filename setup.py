@@ -117,6 +117,8 @@ setup(name = "sos",
           'fasteners',
           'pyyaml',
           'pygments',
+          # faster hashlib
+          'xxhash',
           # for DAG, some version requires pydot, some requires pydotplus
           'networkx',
           'pydot',
