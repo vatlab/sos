@@ -26,6 +26,7 @@ import time
 import copy
 import threading
 import lzma
+import random
 from io import StringIO
 from tokenize import generate_tokens
 from collections.abc import Sequence, Mapping
@@ -1313,15 +1314,17 @@ class TaskEngine(threading.Thread):
                         if not self.submitting_tasks[k].running():
                             submitted.append(k)
                             if self.submitting_tasks[k].result():
-                                if k in self.canceled_tasks:
-                                    # task is canceled while being prepared
-                                    self.notify(['change-status', self.agent.alias, k, 'aborted'])
-                                else:
-                                    self.running_tasks.append(k)
-                                    self.notify(['change-status', self.agent.alias, k, 'submitted'])
+                                for tid in k:
+                                    if tid in self.canceled_tasks:
+                                        # task is canceled while being prepared
+                                        self.notify(['change-status', self.agent.alias, tid, 'aborted'])
+                                    else:
+                                        self.running_tasks.append(tid)
+                                        self.notify(['change-status', self.agent.alias, tid, 'submitted'])
                             else:
-                                self.notify(['change-status', self.agent.alias, k, 'failed'])
-                                self.task_status[k] = 'failed'
+                                for tid in k:
+                                    self.notify(['change-status', self.agent.alias, tid, 'failed'])
+                                    self.task_status[tid] = 'failed'
                         #else:
                         #    env.logger.trace('{} is still being submitted.'.format(k))
                     for k in submitted:
@@ -1335,19 +1338,30 @@ class TaskEngine(threading.Thread):
                     continue
 
                 to_run = self.pending_tasks[ : self.max_running_jobs - num_active_tasks]
-                for tid in to_run:
+                # assign tasks to self.max_running_jobs workers
+                slots = [[] for i in range(self.max_running_jobs)]
+                sample_slots = list(range(self.max_running_jobs))
+                random.shuffle(sample_slots)
+                for i,tid in enumerate(self.pending_tasks):
                     if self.task_status[tid] == 'running':
                         self.notify(f'{tid} ``runnng``')
                     elif tid in self.canceled_tasks:
                         # the job is canceled while being prepared to run
                         self.notify(f'{tid} ``canceled``')
                     else:
+                        # randomly spread to tasks, but at most one.
+                        slots[sample_slots[i % self.max_running_jobs]].append(tid)
+                for slot in slots:
+                    if not slot:
+                        continue
+                    for tid in slot:
                         env.logger.trace(f'Start submitting {tid} (status: {self.task_status.get(tid, "unknown")})')
-                        self.submitting_tasks[tid] = self._thread_workers.submit(self.execute_task, tid)
+                    self.submitting_tasks[tuple(slot)] = self._thread_workers.submit(self.execute_tasks, slot)
                 #
                 with threading.Lock():
-                    for tid in to_run:
-                        self.pending_tasks.remove(tid)
+                    for slot in slots:
+                        for tid in slot:
+                            self.pending_tasks.remove(tid)
 
     def submit_task(self, task_id):
         # we wait for the engine to start
@@ -1514,23 +1528,25 @@ class TaskEngine(threading.Thread):
             self.resuming_tasks.add(task)
             self.task_status[task] = 'pending'
 
-    def execute_task(self, task_id):
+    def execute_tasks(self, task_ids):
         # we wait for the engine to start
         self.engine_ready.wait()
-        # this is base class
+        # this is base class, the derived class will actually submit the tasks
 
         # if the task is being resumed, perhaps from another local host,
         # the preparation process can fail (e.g. no def file), but this
         # does not really matter. #587
-        if task_id in self.resuming_tasks:
-            self.resuming_tasks.remove(task_id)
-            try:
-                self.agent.prepare_task(task_id)
-            except Exception:
-                pass
-            return True
-        else:
-            return self.agent.prepare_task(task_id)
+        for task_id in task_ids:
+            if task_id in self.resuming_tasks:
+                self.resuming_tasks.remove(task_id)
+                try:
+                    self.agent.prepare_task(task_id)
+                except Exception:
+                    pass
+            else:
+                if not self.agent.prepare_task(task_id):
+                    return False
+        return True
 
     def purge_tasks(self, tasks, purge_all=False, age=None, status=None, tags=None, verbosity=2):
         try:
@@ -1549,11 +1565,11 @@ class BackgroundProcess_TaskEngine(TaskEngine):
     def __init__(self, agent):
         super(BackgroundProcess_TaskEngine, self).__init__(agent)
 
-    def execute_task(self, task_id):
-        if not super(BackgroundProcess_TaskEngine, self).execute_task(task_id):
+    def execute_tasks(self, task_ids):
+        if not super(BackgroundProcess_TaskEngine, self).execute_tasks(task_ids):
             env.logger.trace(f'Failed to prepare task {task_id}')
             return False
-        cmd = f"sos execute {task_id} -v {env.verbosity} -s {env.config['sig_mode']} {'--dryrun' if env.config['run_mode'] == 'dryrun' else ''}"
+        cmd = f"sos execute {' '.join(task_ids)} -v {env.verbosity} -s {env.config['sig_mode']} {'--dryrun' if env.config['run_mode'] == 'dryrun' else ''}"
         env.logger.trace(f'Execute "{cmd}" (waiting={self.wait_for_task})')
         self.agent.run_command(cmd, wait_for_task = self.wait_for_task)
         return True
