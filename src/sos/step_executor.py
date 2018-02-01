@@ -26,6 +26,7 @@ import copy
 import glob
 import fnmatch
 import traceback
+from concurrent.futures import ProcessPoolExecutor, wait
 
 from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
@@ -322,6 +323,18 @@ class TaskManager:
 
     def clear_submitted(self):
         self._submitted_tasks = []
+
+def concurrent_execute(stmt, proc_vars={}):
+    env.sos_dict.quick_update(proc_vars)
+    try:
+        SoS_exec(stmt, return_result=False)
+        return {'ret_code': 0}
+    except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks) as e:
+        return {'ret_code': 1, 'exception': e }
+    except Exception as e:
+        error_class = e.__class__.__name__
+        detail = e.args[0] if e.args else ''
+        return {'ret_code': 1, 'exception': RuntimeError(f'{error_class}: {detail}')}
 
 class Base_Step_Executor:
     # This base class defines how steps are executed. The derived classes will reimplement
@@ -873,6 +886,11 @@ class Base_Step_Executor:
         return task_id
 
     def wait_for_results(self):
+        if self.concurrent_input_group:
+            self.proc_results = [x.result() for x in self.proc_results]
+            self.concurrent_executor.shutdown()
+            return
+
         if self.task_manager is None:
             return {}
 
@@ -1082,6 +1100,7 @@ class Base_Step_Executor:
             raise ValueError(f'More than one step input are specified in step {self.step.step_name()}')
 
         # if there is an input statement, execute the statements before it, and then the input statement
+        self.concurrent_input_group = False
         if input_statement_idx is not None:
             # execute before input stuff
             for statement in self.step.statements[:input_statement_idx]:
@@ -1113,6 +1132,7 @@ class Base_Step_Executor:
                 # Files will be expanded differently with different running modes
                 input_files = self.expand_input_files(stmt, *args)
                 self._groups, self._vars = self.process_input_args(input_files, **kwargs)
+                self.concurrent_input_group = 'concurrent' in kwargs and kwargs['concurrent'] and len(self._groups) > 1
             except (UnknownTarget, RemovedTarget, UnavailableLock):
                 raise
             except Exception as e:
@@ -1139,6 +1159,16 @@ class Base_Step_Executor:
         # is defined.
         signatures = [None for x in self._groups]
         self.output_groups = [[] for x in self._groups]
+
+        if self.concurrent_input_group:
+            if self.step.task:
+                raise ValueError('Tasks are not allowed in concurrent input groups')
+            conc_stmts = [x for x in self.step.statements[input_statement_idx:] if x[0] != ':']
+            if len(conc_stmts) > 1:
+                raise ValueError('Statements before sos directive is not allowed in concurrent input groups')
+
+            self.concurrent_executor = ProcessPoolExecutor(max_workers=env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
+
         try:
             for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
                 # other variables
@@ -1252,7 +1282,22 @@ class Base_Step_Executor:
                     else:
                         try:
                             self.verify_input()
-                            self.execute(statement[1], signatures[idx])
+                            if self.concurrent_input_group:
+                                proc_vars = env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
+                                    | {'_input', '_output', '_depends', '_index', '__args__', 'step_name', '_runtime',
+                                    '__signature_vars__', '__step_context__'
+                                    })
+
+                                if signatures[idx] is None:
+                                    proc_vars['__step_sig__'] = None
+                                else:
+                                    proc_vars['__step_sig__'] = os.path.basename(signatures[idx].proc_info).split('.')[0]
+
+                                self.proc_results.append(
+                                        self.concurrent_executor.submit(concurrent_execute, stmt=statement[1],
+                                            proc_vars=proc_vars))
+                            else:
+                                self.execute(statement[1], signatures[idx])
                         except StopInputGroup as e:
                             self.output_groups[idx] = []
                             if e.message:
@@ -1271,6 +1316,7 @@ class Base_Step_Executor:
                 # we should be able to release the signature because external task has its own signatures
                 if signatures[idx] is not None:
                     signatures[idx].release()
+
                 if not self.step.task:
                     if signatures[idx] is not None:
                         if 'sos_run' not in env.sos_dict['__signature_vars__']:
