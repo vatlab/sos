@@ -1565,7 +1565,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
 
     def execute_tasks(self, task_ids):
         if not super(BackgroundProcess_TaskEngine, self).execute_tasks(task_ids):
-            env.logger.trace(f'Failed to prepare task {task_id}')
+            env.logger.trace(f'Failed to prepare task {task_ids}')
             return False
         cmd = f"sos execute {' '.join(task_ids)} -v {env.verbosity} -s {env.config['sig_mode']} {'--dryrun' if env.config['run_mode'] == 'dryrun' else ''}"
         env.logger.trace(f'Execute "{cmd}" (waiting={self.wait_for_task})')
