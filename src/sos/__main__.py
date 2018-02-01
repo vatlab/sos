@@ -168,8 +168,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
     if with_workflow:
         parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
             help=workflow_spec)
-    if not interactive:
-        parser.add_argument('-j', type=int, metavar='JOBS',
+    parser.add_argument('-j', type=int, metavar='JOBS',
         default=4, dest='__max_procs__',
         help='''Maximum number of worker processes for the execution of the
             workflow if the workflow can be executed in parallel (namely
