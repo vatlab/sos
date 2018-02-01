@@ -1167,12 +1167,15 @@ class Base_Step_Executor:
 
         if self.concurrent_input_group:
             if self.step.task:
-                raise ValueError('Tasks are not allowed in concurrent input groups')
-            conc_stmts = [x for x in self.step.statements[input_statement_idx:] if x[0] != ':']
-            if len(conc_stmts) > 1:
-                raise ValueError('Statements before sos directive is not allowed in concurrent input groups')
-
-            self.concurrent_executor = ProcessPoolExecutor(max_workers=env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
+                self.concurrent_input_group = False
+                env.logger.warning('Input groups are executed sequentially because of existence of tasks')
+            else:
+                conc_stmts = [x for x in self.step.statements[input_statement_idx:] if x[0] != ':']
+                if len(conc_stmts) > 1:
+                    self.concurrent_input_group = False
+                    env.logger.warning('Input groups are executed sequentially because of existence of directives between statements.')
+                else:
+                    self.concurrent_executor = ProcessPoolExecutor(max_workers=env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
 
         try:
             for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
