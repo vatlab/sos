@@ -369,6 +369,7 @@ run: expand=True
         wf = script.workflow()
         #st = time.time()
         env.config['sig_mode'] = 'force'
+        env.config['max_procs'] = 4
         env.config['wait_for_task'] = False
         ret = Base_Executor(wf).run()
         # sos should quit
