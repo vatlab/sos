@@ -2138,7 +2138,7 @@ def main():
             version='%(prog)s {}'.format(SOS_FULL_VERSION))
         subparsers = master_parser.add_subparsers(title='subcommands',
             # hide pack and unpack
-            metavar = '{run,resume,dryrun,status,push,pull,preview,execute,kill,purge,config,convert,remove}')
+            metavar = '{run,resume,dryrun,status,push,pull,execute,kill,purge,config,convert,remove}')
         #
         # command run
         add_sub_parser(subparsers, get_run_parser(desc_only='run'!=subcommand))
@@ -2160,7 +2160,7 @@ def main():
         add_sub_parser(subparsers, get_pull_parser(desc_only='pull'!=subcommand))
         #
         # command preview
-        add_sub_parser(subparsers, get_preview_parser(desc_only='preview'!=subcommand))
+        add_sub_parser(subparsers, get_preview_parser(desc_only='preview'!=subcommand), hidden=True)
         #
         # command execute
         add_sub_parser(subparsers, get_execute_parser(desc_only='execute'!=subcommand))
