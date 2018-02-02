@@ -169,10 +169,10 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
             help=workflow_spec)
     parser.add_argument('-j', type=int, metavar='JOBS',
-        default=4, dest='__max_procs__',
-        help='''Maximum number of worker processes for the execution of the
-            workflow if the workflow can be executed in parallel (namely
-            having multiple starting points or execution branches).''')
+        dest='__max_procs__', default=max(os.cpu_count() // 2, 1),
+        help='''Maximum number of worker processes for the execution of steps in
+            a workflow and input groups in a step (with input option concurrent),
+            default to half of number of CPUs''')
     parser.add_argument('-J', type=int, metavar='EXTERNAL_JOBS',
         dest='__max_running_jobs__',
         help='''Maximum number of externally running tasks. This option
@@ -2101,13 +2101,20 @@ def sosrunner():
 # add another ArgumentParser to an existing ArgumentParser as
 # a subparser
 #
-def add_sub_parser(subparsers, parser, name=None):
-    return subparsers.add_parser(parser.prog if name is None else name,
-        description=parser.description,
-        epilog=parser.epilog,
+def add_sub_parser(subparsers, parser, name=None, hidden=False):
+    if hidden:
+        return subparsers.add_parser(parser.prog if name is None else name,
+            description=parser.description,
+            epilog=parser.epilog,
+            parents=[parser],
+            add_help=False)
+    else:
+        return subparsers.add_parser(parser.prog if name is None else name,
+            description=parser.description,
+            epilog=parser.epilog,
         help=parser.short_description if hasattr(parser, 'short_description') else parser.description,
-        parents=[parser],
-        add_help=False)
+            parents=[parser],
+            add_help=False)
 
 
 def main():
@@ -2129,7 +2136,9 @@ def main():
     try:
         master_parser.add_argument('--version', action='version',
             version='%(prog)s {}'.format(SOS_FULL_VERSION))
-        subparsers = master_parser.add_subparsers(title='subcommands')
+        subparsers = master_parser.add_subparsers(title='subcommands',
+            # hide pack and unpack
+            metavar = '{run,resume,dryrun,status,push,pull,execute,kill,purge,config,convert,remove}')
         #
         # command run
         add_sub_parser(subparsers, get_run_parser(desc_only='run'!=subcommand))
@@ -2151,7 +2160,7 @@ def main():
         add_sub_parser(subparsers, get_pull_parser(desc_only='pull'!=subcommand))
         #
         # command preview
-        add_sub_parser(subparsers, get_preview_parser(desc_only='preview'!=subcommand))
+        add_sub_parser(subparsers, get_preview_parser(desc_only='preview'!=subcommand), hidden=True)
         #
         # command execute
         add_sub_parser(subparsers, get_execute_parser(desc_only='execute'!=subcommand))
@@ -2173,10 +2182,10 @@ def main():
         add_sub_parser(subparsers, get_remove_parser(desc_only='remove'!=subcommand))
         #
         # command pack
-        add_sub_parser(subparsers, get_pack_parser(desc_only='pack'!=subcommand))
+        add_sub_parser(subparsers, get_pack_parser(desc_only='pack'!=subcommand), hidden=True)
         #
         # command unpack
-        add_sub_parser(subparsers, get_unpack_parser(desc_only='unpack'!=subcommand))
+        add_sub_parser(subparsers, get_unpack_parser(desc_only='unpack'!=subcommand), hidden=True)
         #
         # addon packages
         if subcommand is None or subcommand not in ['run', 'dryrun', 'convert',
