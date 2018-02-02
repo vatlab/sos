@@ -231,10 +231,10 @@ class Base_Executor:
                 if isinstance(arg, str) and arg.startswith('--'):
                     if not wf_pars:
                         raise ValueError(
-                            f'Undefined parameter {arg[2:]} for command line argument "{" ".join(args[idx:])}". Acceptable parameters are: {", ".join(wf_pars)}')
-                    pars = [arg[2:], arg[2:].replace('-', '_')]
+                            f'Undefined parameter {arg[2:]} for command line argument "{" ".join(args[idx:])}".')
+                    pars = [arg[2:], arg[2:].replace('-', '_').split('=')[0]]
                     if arg[2:].startswith('no-'):
-                        pars.extend([arg[5:], arg[5:].replace('-', '_')])
+                        pars.extend([arg[5:], arg[5:].replace('-', '_').split('=')[0]])
                     if not any(x in wf_pars for x in pars):
                         raise ValueError(
                             f'Undefined parameter {arg[2:]} for command line argument "{" ".join(args[idx:])}". Acceptable parameters are: {", ".join(wf_pars)}')
