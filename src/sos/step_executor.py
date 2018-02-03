@@ -325,6 +325,7 @@ class TaskManager:
         self._submitted_tasks = []
 
 def concurrent_execute(stmt, proc_vars={}, sig=None):
+    '''Execute statements in the passed dictionary'''
     env.sos_dict.quick_update(proc_vars)
     try:
         if sig:
@@ -338,8 +339,23 @@ def concurrent_execute(stmt, proc_vars={}, sig=None):
         return {'ret_code': 1, 'exception': e }
     except Exception as e:
         error_class = e.__class__.__name__
+        cl, exc, tb = sys.exc_info()
+        msg = ''
+        for st in reversed(traceback.extract_tb(tb)):
+            if st.filename.startswith('script_'):
+                code = stmtHash.script(st.filename)
+                line_number = st.lineno
+                code = '\n'.join([f'{"---->" if i+1 == line_number else "     "} {x.rstrip()}' for i, x in enumerate(code.splitlines())][max(line_number - 3, 0):line_number + 3])
+                msg += f'''\
+{st.filename} in {st.name}
+{code}
+'''
         detail = e.args[0] if e.args else ''
-        return {'ret_code': 1, 'exception': RuntimeError(f'{error_class}: {detail}')}
+        return {'ret_code': 1, 'exception': RuntimeError(f'''
+---------------------------------------------------------------------------
+{error_class:42}Traceback (most recent call last)
+{msg}
+{error_class}: {detail}''') if msg else RuntimeError(f'{error_class}: {detail}')}
 
 class Base_Step_Executor:
     # This base class defines how steps are executed. The derived classes will reimplement
