@@ -1,9 +1,9 @@
 include LICENSE
 include README.md
 include setup.py
-recursive-include src *.py *.js *.tpl *.m
-recursive-include misc *.vim *.py *.js *.png
-recursive-include test *.vim *.py *.js
+recursive-include src *.py *.js *.tpl *.m *.vim
+recursive-include misc *.py *.js *.png
+recursive-include test *.py *.js
 recursive-include docs/src *.ipynb *.png *.jpg *.sos
 prune */.sos
 global-exclude *~

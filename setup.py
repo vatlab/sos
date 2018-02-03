@@ -155,6 +155,10 @@ sos-term.func = sos.converter:script_to_term
 
 sos-md.parser = sos.converter:get_script_to_markdown_parser
 sos-md.func = sos.converter:script_to_markdown
+
+[sos_install]
+vim-syntax.parser = sos.install:get_install_vim_syntax_parser
+vim-syntax.func = sos.install:install_vim_syntax
 ''',
     extras_require = {
         ':sys_platform=="win32"': ['colorama'],
