@@ -24,7 +24,11 @@ import sys, os
 import shutil
 from setuptools import find_packages, setup
 from distutils import log
-from setuptools.command.install import install
+
+_py_ver = sys.version_info
+if _py_ver.major == 2 or (_py_ver.major == 3 and (_py_ver.minor, _py_ver.micro) < (6, 0)):
+    raise SystemError('sos requires Python 3.6 or higher. Please upgrade your Python {}.{}.{}.'
+        .format(_py_ver.major, _py_ver.minor, _py_ver.micro))
 
 # obtain version of SoS
 with open('src/sos/_version.py') as version:
@@ -33,26 +37,6 @@ with open('src/sos/_version.py') as version:
             __version__ = eval(line.split('=')[1])
             break
 
-
-class InstallWithConfigurations(install):
-    def run(self):
-        # Regular installation
-        install.do_egg_install(self)
-
-        # copy sos.vim and sos-detect.vim to .vim
-        vim_syntax_dir = os.path.expanduser('~/.vim/syntax')
-        vim_syntax_file = os.path.join(vim_syntax_dir, 'sos.vim')
-        if not os.path.isdir(vim_syntax_dir):
-            os.makedirs(vim_syntax_dir)
-        shutil.copy('misc/sos.vim', vim_syntax_file)
-        #
-        vim_ftdetect_dir = os.path.expanduser('~/.vim/ftdetect')
-        vim_ftdetect_file = os.path.join(vim_ftdetect_dir, 'sos.vim')
-        if not os.path.isdir(vim_ftdetect_dir):
-            os.makedirs(vim_ftdetect_dir)
-        shutil.copy('misc/sos-detect.vim', vim_ftdetect_file)
-        log.info('\nSoS is installed and configured to use with vim.')
-        log.info('Use "set syntax=sos" to enable syntax highlighting.')
 
 description = '''\
 Computationally intensive disciplines such as computational biology often 
@@ -107,8 +91,6 @@ setup(name = "sos",
         ],
     packages = find_packages('src'),
     package_dir = {'': 'src'},
-    # install vim syntax highlighting and other stuff
-    cmdclass={'install': InstallWithConfigurations},
     install_requires=[
           'psutil',
           # progress bar
