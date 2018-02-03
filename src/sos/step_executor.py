@@ -910,19 +910,6 @@ class Base_Step_Executor:
         if self.concurrent_input_group:
             self.proc_results = [x.result() for x in self.proc_results]
             self.concurrent_executor.shutdown()
-            for proc_result in [x for x in self.proc_results if x['ret_code'] == 0]:
-                if 'stdout' in proc_result and proc_result['stdout']:
-                    sys.stdout.write(proc_result['stdout'])
-                if 'stderr' in proc_result and proc_result['stderr']:
-                    sys.stderr.write(proc_result['stderr'])
-
-            for proc_result in [x for x in self.proc_results if x['ret_code'] != 0]:
-                if 'stdout' in proc_result and proc_result['stdout']:
-                    sys.stdout.write(proc_result['stdout'])
-                if 'stderr' in proc_result and proc_result['stderr']:
-                    sys.stderr.write(proc_result['stderr'])
-                if 'exception' in proc_result:
-                    raise proc_result['exception']
             return
 
         if self.task_manager is None:
@@ -1416,9 +1403,18 @@ class Base_Step_Executor:
                         signatures[idx].write()
                     signatures[idx] = None
             # check results
-            for x in self.proc_results:
-                if x['ret_code'] != 0:
-                    raise x['exception']
+            for proc_result in [x for x in self.proc_results if x['ret_code'] == 0]:
+                if 'stdout' in proc_result and proc_result['stdout']:
+                    sys.stdout.write(proc_result['stdout'])
+                if 'stderr' in proc_result and proc_result['stderr']:
+                    sys.stderr.write(proc_result['stderr'])
+            for proc_result in [x for x in self.proc_results if x['ret_code'] != 0]:
+                if 'stdout' in proc_result and proc_result['stdout']:
+                    sys.stdout.write(proc_result['stdout'])
+                if 'stderr' in proc_result and proc_result['stderr']:
+                    sys.stderr.write(proc_result['stderr'])
+                if 'exception' in proc_result:
+                    raise proc_result['exception']
             # if output is Undetermined, re-evalulate it
             #
             # NOTE: dynamic output is evaluated at last, so it sets output,
