@@ -68,7 +68,7 @@ def get_install_parser(desc_only=False):
         return parser
     parser.set_defaults(func=cmd_install)
     subparsers = parser.add_subparsers(title='installers', dest='installer_name')
-    for entrypoint in pkg_resources.iter_entry_points(group='sos_install'):
+    for entrypoint in pkg_resources.iter_entry_points(group='sos_installers'):
         try:
             name = entrypoint.name
             if not name.endswith('.parser'):
@@ -82,7 +82,7 @@ def get_install_parser(desc_only=False):
 
 def cmd_install(args, unknown_args):
     from .utils import env, get_traceback
-    for entrypoint in pkg_resources.iter_entry_points(group='sos_install'):
+    for entrypoint in pkg_resources.iter_entry_points(group='sos_installers'):
         try:
             if entrypoint.name == args.installer_name + '.func':
                 func = entrypoint.load()
