@@ -7,6 +7,7 @@ recursive-include test *.vim *.py *.js
 recursive-include docs/src *.ipynb *.png *.jpg *.sos
 prune */.sos
 global-exclude *~
+global-exclude *.bak
 global-exclude *.pyc
 global-exclude *.pyo
 global-exclude .ipynb_checkpoints
