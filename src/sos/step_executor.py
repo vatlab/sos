@@ -26,6 +26,8 @@ import copy
 import glob
 import fnmatch
 import traceback
+import contextlib
+from io import StringIO
 from concurrent.futures import ProcessPoolExecutor, wait
 
 from collections.abc import Sequence, Iterable, Mapping
@@ -324,19 +326,49 @@ class TaskManager:
     def clear_submitted(self):
         self._submitted_tasks = []
 
-def concurrent_execute(stmt, proc_vars={}, sig=None):
+
+# overwrite concurrent_execute defined in Base_Step_Executor because sos notebook
+# can only handle stdout/stderr from the master process
+#
+@contextlib.contextmanager
+def stdoutIO():
+    oldout = sys.stdout
+    olderr = sys.stderr
+    stdout = StringIO()
+    stderr = StringIO()
+    sys.stdout = stdout
+    sys.stderr = stderr
+    yield stdout, stderr
+    sys.stdout = oldout
+    sys.stderr = olderr
+
+def concurrent_execute(stmt, proc_vars={}, sig=None, capture_output=False):
     '''Execute statements in the passed dictionary'''
     env.sos_dict.quick_update(proc_vars)
+    outmsg = ''
+    errmsg = ''
     try:
         if sig:
             sig.lock()
-        SoS_exec(stmt, return_result=False)
+        if capture_output:
+            with stdoutIO() as (out, err):
+                SoS_exec(stmt, return_result=False)
+                outmsg = out.getvalue()
+                errmsg = err.getvalue()
+        else:
+            SoS_exec(stmt, return_result=False)
         if sig:
             sig.release()
             sig.write()
-        return {'ret_code': 0}
+        res = {'ret_code': 0}
+        if capture_output:
+            res.update({'stdout': outmsg, 'stderr': errmsg})
+        return res
     except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks) as e:
-        return {'ret_code': 1, 'exception': e }
+        res = {'ret_code': 1, 'exception': e }
+        if capture_output:
+            res.update({'stdout': outmsg, 'stderr': errmsg})
+        return res
     except Exception as e:
         error_class = e.__class__.__name__
         cl, exc, tb = sys.exc_info()
@@ -351,11 +383,14 @@ def concurrent_execute(stmt, proc_vars={}, sig=None):
 {code}
 '''
         detail = e.args[0] if e.args else ''
-        return {'ret_code': 1, 'exception': RuntimeError(f'''
+        res = {'ret_code': 1, 'exception': RuntimeError(f'''
 ---------------------------------------------------------------------------
 {error_class:42}Traceback (most recent call last)
 {msg}
 {error_class}: {detail}''') if msg else RuntimeError(f'{error_class}: {detail}')}
+        if capture_output:
+            res.update({'stdout': outmsg, 'stderr': errmsg})
+        return res
 
 class Base_Step_Executor:
     # This base class defines how steps are executed. The derived classes will reimplement
@@ -1322,7 +1357,8 @@ class Base_Step_Executor:
 
                                 self.proc_results.append(
                                         self.concurrent_executor.submit(concurrent_execute, stmt=statement[1],
-                                            proc_vars=proc_vars, sig=signatures[idx]))
+                                            proc_vars=proc_vars, sig=signatures[idx],
+                                            capture_output= self.run_mode == 'interactive'))
                                 # signature will be written by the concurrent executor
                                 signatures[idx] = None
                             else:
