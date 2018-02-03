@@ -58,6 +58,43 @@ bindir_help = '''Extra directories in which SoS will look for executables before
     without value to disallow commands under ~/.sos/bin.'''
 
 #
+# subcommand install
+#
+def get_install_parser(desc_only=False):
+    parser = argparse.ArgumentParser('install',
+        description='''Install various component to the system''')
+    parser.short_description = '''Install various components to the system'''
+    if desc_only:
+        return parser
+    parser.set_defaults(func=cmd_install)
+    subparsers = parser.add_subparsers(title='installers', dest='installer_name')
+    for entrypoint in pkg_resources.iter_entry_points(group='sos_install'):
+        try:
+            name = entrypoint.name
+            if not name.endswith('.parser'):
+                continue
+            item = name.rsplit('.',1)[0]
+            subparser = add_sub_parser(subparsers, entrypoint.load()(), name=item)
+        except Exception as e:
+            print('Failed to load installer {}: {}'.format(entrypoint.name, e))
+    return parser
+
+
+def cmd_install(args, unknown_args):
+    from .utils import env, get_traceback
+    for entrypoint in pkg_resources.iter_entry_points(group='sos_install'):
+        try:
+            if entrypoint.name == args.installer_name + '.func':
+                func = entrypoint.load()
+                func(args)
+        except Exception as e:
+            # if no other parameter, with option list all
+            if args.verbosity and args.verbosity > 2:
+                sys.stderr.write(get_traceback())
+            env.logger.error('Failed to execute installer {}: {}'.format(entrypoint.name.rsplit('.', 1)[0], e))
+            sys.exit(1)
+
+#
 # subcommand convert
 #
 def get_convert_parser(desc_only=False):
@@ -2138,7 +2175,10 @@ def main():
             version='%(prog)s {}'.format(SOS_FULL_VERSION))
         subparsers = master_parser.add_subparsers(title='subcommands',
             # hide pack and unpack
-            metavar = '{run,resume,dryrun,status,push,pull,execute,kill,purge,config,convert,remove}')
+            metavar = '{install,run,resume,dryrun,status,push,pull,execute,kill,purge,config,convert,remove}')
+
+        # command install
+        add_sub_parser(subparsers, get_install_parser(desc_only='install'!=subcommand))
         #
         # command run
         add_sub_parser(subparsers, get_run_parser(desc_only='run'!=subcommand))
@@ -2188,7 +2228,7 @@ def main():
         add_sub_parser(subparsers, get_unpack_parser(desc_only='unpack'!=subcommand), hidden=True)
         #
         # addon packages
-        if subcommand is None or subcommand not in ['run', 'dryrun', 'convert',
+        if subcommand is None or subcommand not in ['install', 'run', 'dryrun', 'convert', 'push', 'pull',
                 'remove', 'config', 'pack', 'unpack']:
             for entrypoint in pkg_resources.iter_entry_points(group='sos_addons'):
                 if entrypoint.name.strip().endswith('.parser'):

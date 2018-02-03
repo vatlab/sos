@@ -27,11 +27,11 @@ import argparse
 import shutil
 
 
-def get_install_vim_syntax_spec_parser():
+def get_install_vim_syntax_parser():
     parser = argparse.ArgumentParser(description='Install vim syntax for sos')
     return parser
 
-def install_vim_syntax_spec(args):
+def install_vim_syntax(args):
     
     # copy sos.vim and sos-detect.vim to .vim
     vim_syntax_dir = os.path.join(os.path.expanduser('~'), '.vim', 'syntax')
@@ -49,7 +49,7 @@ def install_vim_syntax_spec(args):
 
 
 if __name__ == '__main__':
-    parser = get_install_vim_syntax_spec_parser()
+    parser = get_install_vim_syntax_parser()
     args = parser.parse_args()
-    install_vim_syntax_spec(args)
+    install_vim_syntax(args)
 
