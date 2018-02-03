@@ -32,7 +32,7 @@ sh:	workdir='..'
 	python setup.py install
 
 sh: workdir='..'
-	python setup.py sdist upload && \
+	python setup.py sdist bdist_wheel upload && \
 	pip install sos --upgrade
   
 [update-docker]
