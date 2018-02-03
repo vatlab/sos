@@ -910,12 +910,18 @@ class Base_Step_Executor:
         if self.concurrent_input_group:
             self.proc_results = [x.result() for x in self.proc_results]
             self.concurrent_executor.shutdown()
-            for proc_result in self.proc_results:
+            for proc_result in [x for x in self.proc_results if x['ret_code'] == 0]:
                 if 'stdout' in proc_result and proc_result['stdout']:
                     sys.stdout.write(proc_result['stdout'])
                 if 'stderr' in proc_result and proc_result['stderr']:
                     sys.stderr.write(proc_result['stderr'])
-                if 'ret_code' != 0 and 'exception' in proc_result:
+
+            for proc_result in [x for x in self.proc_results if x['ret_code'] != 0]:
+                if 'stdout' in proc_result and proc_result['stdout']:
+                    sys.stdout.write(proc_result['stdout'])
+                if 'stderr' in proc_result and proc_result['stderr']:
+                    sys.stderr.write(proc_result['stderr'])
+                if 'exception' in proc_result:
                     raise proc_result['exception']
             return
 
