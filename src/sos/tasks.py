@@ -615,7 +615,8 @@ del sos_handle_parameter_
 
     except StopInputGroup as e:
         # task ignored with stop_if exception
-        env.logger.warning(f'{task_id} ``stopped``: {e.message}')
+        if e.message:
+            env.logger.warning(f'{task_id} ``stopped``: {e.message}')
         return {'ret_code': 0, 'task': task_id, 'input': [],
             'output': [], 'depends': [], 'shared': {}}
     except KeyboardInterrupt:
