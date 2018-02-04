@@ -60,40 +60,40 @@ bindir_help = '''Extra directories in which SoS will look for executables before
 #
 # subcommand install
 #
-def get_install_parser(desc_only=False):
-    parser = argparse.ArgumentParser('install',
-        description='''Install various component to the system''')
-    parser.short_description = '''Install various components to the system'''
-    if desc_only:
-        return parser
-    parser.set_defaults(func=cmd_install)
-    subparsers = parser.add_subparsers(title='installers', dest='installer_name')
-    for entrypoint in pkg_resources.iter_entry_points(group='sos_installers'):
-        try:
-            name = entrypoint.name
-            if not name.endswith('.parser'):
-                continue
-            item = name.rsplit('.',1)[0]
-            subparser = add_sub_parser(subparsers, entrypoint.load()(), name=item)
-        except Exception as e:
-            print('Failed to load installer {}: {}'.format(entrypoint.name, e))
-    return parser
-
-
-def cmd_install(args, unknown_args):
-    from .utils import env, get_traceback
-    for entrypoint in pkg_resources.iter_entry_points(group='sos_installers'):
-        try:
-            if entrypoint.name == args.installer_name + '.func':
-                func = entrypoint.load()
-                func(args)
-        except Exception as e:
-            # if no other parameter, with option list all
-            if args.verbosity and args.verbosity > 2:
-                sys.stderr.write(get_traceback())
-            env.logger.error('Failed to execute installer {}: {}'.format(entrypoint.name.rsplit('.', 1)[0], e))
-            sys.exit(1)
-
+# def get_install_parser(desc_only=False):
+#     parser = argparse.ArgumentParser('install',
+#         description='''Install various component to the system''')
+#     parser.short_description = '''Install various components to the system'''
+#     if desc_only:
+#         return parser
+#     parser.set_defaults(func=cmd_install)
+#     subparsers = parser.add_subparsers(title='installers', dest='installer_name')
+#     for entrypoint in pkg_resources.iter_entry_points(group='sos_installers'):
+#         try:
+#             name = entrypoint.name
+#             if not name.endswith('.parser'):
+#                 continue
+#             item = name.rsplit('.',1)[0]
+#             subparser = add_sub_parser(subparsers, entrypoint.load()(), name=item)
+#         except Exception as e:
+#             print('Failed to load installer {}: {}'.format(entrypoint.name, e))
+#     return parser
+# 
+# 
+# def cmd_install(args, unknown_args):
+#     from .utils import env, get_traceback
+#     for entrypoint in pkg_resources.iter_entry_points(group='sos_installers'):
+#         try:
+#             if entrypoint.name == args.installer_name + '.func':
+#                 func = entrypoint.load()
+#                 func(args)
+#         except Exception as e:
+#             # if no other parameter, with option list all
+#             if args.verbosity and args.verbosity > 2:
+#                 sys.stderr.write(get_traceback())
+#             env.logger.error('Failed to execute installer {}: {}'.format(entrypoint.name.rsplit('.', 1)[0], e))
+#             sys.exit(1)
+# 
 #
 # subcommand convert
 #
@@ -2178,7 +2178,7 @@ def main():
             metavar = '{install,run,resume,dryrun,status,push,pull,execute,kill,purge,config,convert,remove}')
 
         # command install
-        add_sub_parser(subparsers, get_install_parser(desc_only='install'!=subcommand))
+        # add_sub_parser(subparsers, get_install_parser(desc_only='install'!=subcommand))
         #
         # command run
         add_sub_parser(subparsers, get_run_parser(desc_only='run'!=subcommand))
