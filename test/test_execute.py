@@ -1063,5 +1063,18 @@ run: expand=True
             file_target(tfile).remove('both')
 
 
+    def testConcurrentInputOption(self):
+        '''Test input option'''
+        self.touch(['1.txt', '2.txt'])
+        script = SoS_Script('''
+[1]
+n =[str(x) for x in range(2)]
+input: [f'{x+1}.txt' for x in range(2)], paired_with = 'n', concurrent = True
+run: expand = True
+  echo {_n} {_input}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
 if __name__ == '__main__':
     unittest.main()
