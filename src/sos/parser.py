@@ -450,25 +450,37 @@ class SoS_Step:
         task_directive = [idx for idx, statement in enumerate(self.statements) if statement[0] == ':' and statement[1] == 'task']
         if not task_directive:
             self.task = ''
-            return
-        start_task = task_directive[0] + 1
-        # convert statement to task
-        self.task = ''
-        for statement in self.statements[start_task:]:
-            if statement[0] == ':':
-                if statement[1] in ('input', 'output', 'depends'):
-                    raise ValueError(f'{self.step_name()}: Step task should be defined as the last item in a SoS step')
-                elif statement[1] == 'task':
-                    raise ValueError(f'{self.step_name()}: Only one task is allowed for a step')
-                elif statement[1] == 'parameter':
-                    raise ValueError(f'{self.step_name()}: Parameters should be defined before step task')
-                # ignore ...
-                self.task += '\n'
-            else:
-                self.task += statement[1]
-        # remove task from self.statement
-        if task_directive:
-            self.statements = self.statements[:start_task]
+        else:
+            start_task = task_directive[0] + 1
+            # convert statement to task
+            self.task = ''
+            for statement in self.statements[start_task:]:
+                if statement[0] == ':':
+                    if statement[1] in ('input', 'output', 'depends'):
+                        raise ValueError(f'{self.step_name()}: Step task should be defined as the last item in a SoS step')
+                    elif statement[1] == 'task':
+                        raise ValueError(f'{self.step_name()}: Only one task is allowed for a step')
+                    elif statement[1] == 'parameter':
+                        raise ValueError(f'{self.step_name()}: Parameters should be defined before step task')
+                    # ignore ...
+                    self.task += '\n'
+                else:
+                    self.task += statement[1]
+                self.statements = self.statements[:start_task]
+        # merge multiple statments at the end
+        if self.statements[-1][0] == '!' and len(self.statements) > 1:
+            starting = len(self.statements) - 1
+            for idx in range(starting-1,-1,-1):
+                if self.statements[idx][0] == '!':
+                    starting = idx
+                else:
+                    break
+        # merge
+        for idx in range(starting + 1, len(self.statements)):
+            self.statements[starting][1] += self.statements[idx][1]
+        # remove the rest of the statements
+        self.statements = self.statements[:starting + 1]
+
 
     def show(self):
         '''Output for command sos show'''
