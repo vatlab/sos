@@ -43,8 +43,8 @@ from collections.abc import Sequence
 import multiprocessing as mp
 from tqdm import tqdm as ProgressBar
 from .utils import env, transcribe, StopInputGroup, TerminateExecution, short_repr, get_traceback
-from .eval import Undetermined, interpolate
-from .targets import path, paths, file_target, fileMD5, executable, UnknownTarget, BaseTarget, sos_targets
+from .eval import interpolate
+from .targets import path, paths, file_target, fileMD5, executable, UnknownTarget, sos_targets
 
 
 __all__ = ['SoS_Action', 'script', 'sos_run',
@@ -953,7 +953,7 @@ def pandoc(script=None, input=None, output=None, args='{input:q} --output {outpu
         env.logger.error(e)
     if ret != 0:
         temp_file = os.path.join('.sos', f'pandoc_{os.getpid()}.md')
-        shutil.copyfile(input_file, temp_file)
+        shutil.copyfile(input, temp_file)
         cmd = interpolate(f'pandoc {args}', {'input': sos_targets(temp_file), 'output': sos_targets(output)})
         raise RuntimeError(f'Failed to execute script. Please use command \n{cmd}\nunder {os.getcwd()} to test it.')
     if write_to_stdout:
@@ -962,7 +962,7 @@ def pandoc(script=None, input=None, output=None, args='{input:q} --output {outpu
     else:
         env.logger.info(f'Report saved to {output}')
     try:
-        os.remove(input_file)
+        os.remove(input)
     except Exception:
         pass
 

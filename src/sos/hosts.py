@@ -33,7 +33,7 @@ from collections.abc import Sequence
 
 from .utils import env, short_repr, expand_size, format_HHMMSS, expand_time
 from .eval import Undetermined, cfg_interpolate
-from .tasks import BackgroundProcess_TaskEngine, TaskParams, loadTask
+from .tasks import BackgroundProcess_TaskEngine, loadTask
 from .syntax import SOS_LOGLINE
 from .targets import sos_targets, path
 

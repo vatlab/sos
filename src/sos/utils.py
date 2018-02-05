@@ -35,7 +35,6 @@ import base64
 import pickle
 import yaml
 import urllib
-import tempfile
 import urllib.parse
 import urllib.request
 import argparse

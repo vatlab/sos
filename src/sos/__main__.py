@@ -347,8 +347,6 @@ def cmd_run(args, workflow_args):
     from .workflow_executor import Base_Executor
 
     if args.__bin_dirs__:
-        import fasteners
-        import tempfile
         for d in args.__bin_dirs__:
             if d == '~/.sos/bin' and not os.path.isdir(os.path.expanduser(d)):
                 os.makedirs(os.path.expanduser(d), exist_ok=True)

@@ -28,13 +28,13 @@ import fnmatch
 import traceback
 import contextlib
 from io import StringIO
-from concurrent.futures import ProcessPoolExecutor, wait
+from concurrent.futures import ProcessPoolExecutor
 
 from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
 
 from .utils import env, StopInputGroup, TerminateExecution, short_repr, stable_repr,\
-    get_traceback, transcribe, expand_size, format_HHMMSS
+    get_traceback, expand_size, format_HHMMSS
 from .pattern import extract_pattern
 from .eval import SoS_eval, SoS_exec, Undetermined, stmtHash
 from .targets import BaseTarget, file_target, dynamic, remote, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock, sos_targets, path, paths
@@ -282,7 +282,6 @@ class TaskManager:
         # save tasks
         if not self._unsubmitted_tasks:
             return None
-        ol = len(self._unsubmitted_tasks)
         # single tasks
         if self.trunk_size == 1 or all_tasks:
             to_be_submitted = self._unsubmitted_tasks
@@ -917,11 +916,11 @@ class Base_Step_Executor:
             else:
                 trunk_workers = 0
 
-            if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
-                host = env.sos_dict['_runtime']['queue']
-            else:
-                # otherwise, use workflow default
-                host = '__default__'
+            #if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
+            #    host = env.sos_dict['_runtime']['queue']
+            #else:
+            #    # otherwise, use workflow default
+            #    host = '__default__'
 
             self.task_manager = TaskManager(trunk_size, trunk_workers)
 

@@ -35,7 +35,7 @@ from .utils import env, Error, WorkflowDict, get_traceback, short_repr, pickleab
     load_config_files, save_var, load_var
 from .eval import SoS_exec
 from .dag import SoS_DAG
-from .targets import BaseTarget, file_target, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step, Undetermined, sos_targets
+from .targets import BaseTarget, file_target, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step, Undetermined
 from .pattern import extract_pattern
 from .hosts import Host
 
@@ -343,7 +343,7 @@ class Base_Executor:
         env.sos_dict.set('__step_output__', [])
 
         # load configuration files
-        cfg = load_config_files(self.config['config_file'])
+        load_config_files(self.config['config_file'])
         # if check_readonly is set to True, allow checking readonly vars
         #if cfg.get('sos', {}).get('change_all_cap_vars', None) is not None:
         #    if cfg['sos']['change_all_cap_vars'] not in ('warning', 'error'):

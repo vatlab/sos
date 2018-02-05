@@ -665,7 +665,7 @@ class paths(Sequence, os.PathLike):
             return ' '.join(x.__format__(format_spec) for x in self._paths)
 
     def __deepcopy__(self, memo):
-        return sos_paths(deepcopy(self._paths))
+        return paths(deepcopy(self._paths))
 
     def __getattr__(self, key):
         if len(self._paths) == 1:
@@ -679,7 +679,7 @@ class paths(Sequence, os.PathLike):
         return hash(repr(self))
 
     def __eq__(self, other):
-        return self._paths == other._paths if isinstance(other, sos_paths) else other
+        return self._paths == other._paths if isinstance(other, paths) else other
 
     def __repr__(self):
         return '[' + ', '.join(repr(x) for x in self._paths) + ']'

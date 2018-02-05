@@ -29,7 +29,7 @@ from .targets import path, paths
 # silent pyflakes
 logger, get_output, sos_handle_parameter_
 interpolate, sos_namespace_
-expand_pattern
+expand_pattern, path, paths
 
 
 sos_symbols_ = {

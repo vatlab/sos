@@ -19,13 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-import os
-import sys
-import re
-import collections
 import ast
-
-from .utils import env, Error, short_repr, DelayedAction, text_repr
+from .utils import env,  text_repr
 
 def interpolate(text, global_dict=None, local_dict=None):
     '''Evaluate expressions in `text` '''
