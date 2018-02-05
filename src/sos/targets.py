@@ -794,9 +794,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         if len(self._targets) == 1:
             return self._targets[0].__add__(part)
         elif len(self._targets) == 0:
-            raise ValueError(f"Cannot get attribute {key} from empty target list")
+            raise ValueError(f"Cannot add {part} to empty target list")
         else:
-            raise ValueError(f'Cannot get attribute {key} from group of {len(self)} targets {self!r}')
+            raise ValueError(f'Cannot add {part} to group of {len(self)} targets {self!r}')
 
     def __fspath__(self):
         if len(self._targets) == 1:
