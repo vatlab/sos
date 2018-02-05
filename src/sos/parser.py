@@ -475,11 +475,11 @@ class SoS_Step:
                     starting = idx
                 else:
                     break
-        # merge
-        for idx in range(starting + 1, len(self.statements)):
-            self.statements[starting][1] += self.statements[idx][1]
-        # remove the rest of the statements
-        self.statements = self.statements[:starting + 1]
+            # merge
+            for idx in range(starting + 1, len(self.statements)):
+                self.statements[starting][1] += self.statements[idx][1]
+            # remove the rest of the statements
+            self.statements = self.statements[:starting + 1]
 
 
     def show(self):
