@@ -315,21 +315,79 @@ class SoS_ExecuteScript:
                                   {'filename': sos_targets(script_file), 'script': self.script})
                 #
                 if env.config['run_mode'] == 'interactive':
-                    # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
-                    from .utils import pexpect_run
-                    ret = pexpect_run(cmd)
+                    if 'stdout' in kwargs or 'stderr' in kwargs:
+                        child = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, bufsize=0)
+                        out, err = child.communicate()
+                        if 'stdout' in kwargs:
+                            with open(kwargs['stdout'], 'ab') as so:
+                                so.write(out)
+                        else:
+                            sys.stdout.write(out.decode())
+
+                        if 'stderr' in kwargs:
+                            with open(kwargs['stderr'], 'ab') as se:
+                                se.write(err)
+                        else:
+                            sys.stderr.write(err.decode())
+                        ret = child.returncode
+                    else:
+                        # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
+                        from .utils import pexpect_run
+                        ret = pexpect_run(cmd)
                 elif '__std_out__' in env.sos_dict and '__std_err__' in env.sos_dict:
-                    if env.verbosity >= 1:
+                    if 'stdout' in kwargs or 'stderr' in kwargs:
+                        if 'stdout' in kwargs:
+                            so = open(kwargs['stdout'], 'ab')
+                        elif env.verbosity > 0:
+                            so = open(env.sos_dict['__std_out__'], 'ab')
+                        else:
+                            so = subprocess.DEVNULL
+
+                        if 'stderr' in kwargs:
+                            se = open(kwargs['stderr'], 'ab')
+                        elif env.verbosity > 1:
+                            se = open(env.sos_dict['__std_err__'], 'ab')
+                        else:
+                            se = subprocess.DEVNULL
+
+                        p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
+                        ret = p.wait()
+
+                        if so != subprocess.DEVNULL:
+                            so.close()
+                        if se != subprocess.DEVNULL:
+                            se.close()
+
+                    elif env.verbosity >= 1:
                         with open(env.sos_dict['__std_out__'], 'ab') as so, open(env.sos_dict['__std_err__'], 'ab') as se:
                             p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
+                            ret = p.wait()
                     else:
                         p = subprocess.Popen(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-                    ret = p.wait()
+                        ret = p.wait()
                 else:
-                    p = subprocess.Popen(cmd, shell=True,
-                                         stderr=None if env.verbosity > 0 else subprocess.DEVNULL,
-                                         stdout=None if env.verbosity > 1 else subprocess.DEVNULL)
+                    if 'stdout' in kwargs:
+                        so = open(kwargs['stdout'], 'ab')
+                    elif env.verbosity > 0:
+                        so = None
+                    else:
+                        so = subprocess.DEVNULL
+
+                    if 'stderr' in kwargs:
+                        se = open(kwargs['stderr'], 'ab')
+                    elif env.verbosity > 1:
+                        se = None
+                    else:
+                        se = subprocess.DEVNULL
+
+                    p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
+
                     ret = p.wait()
+                    if 'stdout' in kwargs:
+                        so.close()
+                    if 'stderr' in kwargs:
+                        se.close()
                 if ret != 0:
                     with open(debug_script_file, 'w') as sfile:
                         sfile.write(self.script)
