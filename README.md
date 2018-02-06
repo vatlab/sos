@@ -15,6 +15,12 @@ Please refer to the [SoS homepage](http://vatlab.github.io/SOS) for more informa
 
 ### Change Log of SoS and SoS Notebook
 
+SoS 0.9.11.3
+* Add action options `stdout` and `stderr` to redict output from script-executing actions.
+
+SoS 0.9.11.2
+* Separation installation and deployment and use command `python -m sos_notebook.install` to install `sos` kernel to Jupyter.
+
 SoS 0.9.10.19
 
 * Add input option `concurrent=True` to allow parallel execution of input groups
