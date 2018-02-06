@@ -320,14 +320,16 @@ class SoS_ExecuteScript:
                             stderr=subprocess.PIPE, bufsize=0)
                         out, err = child.communicate()
                         if 'stdout' in kwargs:
-                            with open(kwargs['stdout'], 'ab') as so:
-                                so.write(out)
+                            if kwargs['stdout'] is not None:
+                                with open(kwargs['stdout'], 'ab') as so:
+                                    so.write(out)
                         else:
                             sys.stdout.write(out.decode())
 
                         if 'stderr' in kwargs:
-                            with open(kwargs['stderr'], 'ab') as se:
-                                se.write(err)
+                            if kwargs['stderr'] is not None:
+                                with open(kwargs['stderr'], 'ab') as se:
+                                    se.write(err)
                         else:
                             sys.stderr.write(err.decode())
                         ret = child.returncode
@@ -338,14 +340,20 @@ class SoS_ExecuteScript:
                 elif '__std_out__' in env.sos_dict and '__std_err__' in env.sos_dict:
                     if 'stdout' in kwargs or 'stderr' in kwargs:
                         if 'stdout' in kwargs:
-                            so = open(kwargs['stdout'], 'ab')
+                            if kwargs['stdout'] is None:
+                                so = subprocess.DEVNULL
+                            else:
+                                so = open(kwargs['stdout'], 'ab')
                         elif env.verbosity > 0:
                             so = open(env.sos_dict['__std_out__'], 'ab')
                         else:
                             so = subprocess.DEVNULL
 
                         if 'stderr' in kwargs:
-                            se = open(kwargs['stderr'], 'ab')
+                            if kwargs['stderr'] is None:
+                                se = subprocess.DEVNULL
+                            else:
+                                se = open(kwargs['stderr'], 'ab')
                         elif env.verbosity > 1:
                             se = open(env.sos_dict['__std_err__'], 'ab')
                         else:
@@ -368,14 +376,20 @@ class SoS_ExecuteScript:
                         ret = p.wait()
                 else:
                     if 'stdout' in kwargs:
-                        so = open(kwargs['stdout'], 'ab')
+                        if kwargs['stdout'] is None:
+                            so = subprocess.DEVNULL
+                        else:
+                            so = open(kwargs['stdout'], 'ab')
                     elif env.verbosity > 0:
                         so = None
                     else:
                         so = subprocess.DEVNULL
 
                     if 'stderr' in kwargs:
-                        se = open(kwargs['stderr'], 'ab')
+                        if kwargs['stderr'] is None:
+                            se = subprocess.DEVNULL
+                        else:
+                            se = open(kwargs['stderr'], 'ab')
                     elif env.verbosity > 1:
                         se = None
                     else:
@@ -384,9 +398,9 @@ class SoS_ExecuteScript:
                     p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
 
                     ret = p.wait()
-                    if 'stdout' in kwargs:
+                    if so is not None and so != subprocess.DEVNULL:
                         so.close()
-                    if 'stderr' in kwargs:
+                    if se is not None and se != subprocess.DEVNULL:
                         se.close()
                 if ret != 0:
                     with open(debug_script_file, 'w') as sfile:
