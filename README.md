@@ -16,16 +16,17 @@ Please refer to the [SoS homepage](http://vatlab.github.io/SOS) for more informa
 ### Change Log of SoS and SoS Notebook
 
 SoS 0.9.11.3
-* Add action options `stdout` and `stderr` to redict output from script-executing actions.
+* [sos#879](https://github.com/vatlab/SoS/issues/879): Add action options `stdout` and `stderr` to redict output from script-executing actions. 
+* [sos-notebook#42](https://github.com/vatlab/sos-notebook/issues/42): Add option `--append` to magic `%capture` .
 
 SoS 0.9.11.2
-* Separation installation and deployment and use command `python -m sos_notebook.install` to install `sos` kernel to Jupyter.
+* [sos-notebook#39](https://github.com/vatlab/sos-notebook/issues/39): Separation installation and deployment and use command `python -m sos_notebook.install` to install `sos` kernel to Jupyter.
 
 SoS 0.9.10.19
 
-* Add input option `concurrent=True` to allow parallel execution of input groups
-* Optimize task submission of task engines to reduce status checking
+* [sos#874](https://github.com/vatlab/SoS/issues/874): Add input option `concurrent=True` to allow parallel execution of input groups.
+* [sos#874](https://github.com/vatlab/SoS/issues/874): Optimize task submission of task engines to reduce status checking 
 
 SoS Notebook 0.9.10.17
 
-* Add magic `%capture` to capture output of cells
+* [sos-notebook#32](https://github.com/vatlab/sos-notebook/issues/32): Add magic `%capture` to capture output of cells 
