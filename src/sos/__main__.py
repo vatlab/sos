@@ -865,7 +865,7 @@ def cmd_preview(args, unknown_args):
         env.logger.debug('Running "{}"'.format(' '.join(rargs)))
         msgs = eval(host._host_agent.check_output(rargs))
     else:
-        from sos_notebook.preview import get_previewers
+        from .preview import get_previewers
         previewers = get_previewers()
         msgs = []
         style = {'style': args.style, 'options': unknown_args } if args.style else None

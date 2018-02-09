@@ -146,6 +146,21 @@ docker_build = sos.docker.actions:docker_build
 [sos_taskengines]
 process = sos.sos_task:BackgroundProcess_TaskEngine
 
+[sos_previewers]
+*.pdf,1 = sos.preview:preview_pdf
+*.html,1 = sos.preview:preview_html
+*.csv,1 = sos.preview:preview_csv
+*.xls,1 = sos.preview:preview_xls
+*.xlsx,1 = sos.preview:preview_xls
+*.gz,1 = sos.preview:preview_gz
+*.txt,1 = sos.preview:preview_txt
+*.md,1 = sos.preview:preview_md
+*.dot,1 = sos.preview:preview_dot [dot]
+imghdr:what,1 = sos.preview:preview_img
+zipfile:is_zipfile,1 = sos.preview:preview_zip
+tarfile:is_tarfile,1 = sos.preview:preview_tar
+*,0 = sos.preview:preview_txt
+
 [sos_converters]
 sos-html.parser = sos.converter:get_script_to_html_parser
 sos-html.func = sos.converter:script_to_html
