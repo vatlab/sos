@@ -127,6 +127,9 @@ sos_step = sos.targets:sos_step
 env_variable = sos.targets:env_variable
 sos_targets = sos.targets:sos_targets
 
+Py_Module = sos.targets_Python:Py_Module
+R_library = sos.targets_R:R_library
+
 [sos_actions]
 script = sos.actions:script
 sos_run = sos.actions:sos_run
@@ -135,6 +138,26 @@ warn_if = sos.actions:warn_if
 stop_if = sos.actions:stop_if
 download = sos.actions:download
 run = sos.actions:run
+
+bash = sos.actions_Bash:bash
+csh = sos.actions_Bash:csh
+tcsh = sos.actions_Bash:tcsh
+zsh = sos.actions_Bash:zsh
+sh = sos.actions_Bash:sh
+
+node = sos.actions_JavaScript:node
+
+julia = sos.actions_Julia:julia
+
+matlab = sos.actions_MATLAB:matlab
+octave = sos.actions_MATLAB:octave
+
+python = sos.actions_Python:python
+python2 = sos.actions_Python:python2
+python3 = sos.actions_Python:python3
+
+R = sos.actions_R:R
+Rmarkdown = sos.actions_R:Rmarkdown
 
 perl = sos.actions:perl
 ruby = sos.actions:ruby
