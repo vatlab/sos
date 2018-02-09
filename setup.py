@@ -145,7 +145,7 @@ tcsh = sos.actions_bash:tcsh
 zsh = sos.actions_bash:zsh
 sh = sos.actions_bash:sh
 
-node = sos.actions_JavaScript:node
+node = sos.actions_javascript:node
 
 julia = sos.actions_julia:julia
 
