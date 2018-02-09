@@ -910,7 +910,7 @@ def load_config_files(filename=None):
     cfg = {}
     config_lock = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', 'sos_config.lck')
     # site configuration file
-    sos_config_file = os.path.join(os.path.split(__file__)[0], 'site_config.yml')
+    sos_config_file = os.path.join(os.path.split(__file__)[0], 'Site_config.yml')
     if os.path.isfile(sos_config_file):
         with fasteners.InterProcessLock(config_lock):
             try:
@@ -919,8 +919,6 @@ def load_config_files(filename=None):
             except Exception as e:
                 raise RuntimeError(
                     f'Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})')
-    else:
-        env.logger.trace(f"{sos_config_file} does not exist")
 
     # global site file
     sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'hosts.yml')
@@ -932,8 +930,6 @@ def load_config_files(filename=None):
             except Exception as e:
                 raise RuntimeError(
                     f'Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})')
-    else:
-        env.logger.trace(f"{sos_config_file} does not exist")
     # global config file
     sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
     if os.path.isfile(sos_config_file):
@@ -944,8 +940,6 @@ def load_config_files(filename=None):
             except Exception as e:
                 raise RuntimeError(
                     f'Failed to parse global sos config file {sos_config_file}, is it in YAML/JSON format? ({e})')
-    else:
-        env.logger.trace(f"{sos_config_file} does not exist")
     # user-specified configuration file.
     if filename is not None:
         if not os.path.isfile(os.path.expanduser(filename)):
