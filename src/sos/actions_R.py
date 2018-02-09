@@ -30,7 +30,7 @@ from sos.actions import SoS_Action, SoS_ExecuteScript, collect_input
 from sos.utils import env
 from sos.eval import interpolate
 from sos.targets import UnknownTarget, sos_targets
-from .targets_R import R_library
+from .targets_r import R_library
 
 @SoS_Action(acceptable_args=['script', 'args'])
 def R(script, args='', **kwargs):
