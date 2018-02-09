@@ -39,7 +39,7 @@ class TestActions(unittest.TestCase):
         for f in self.temp_files:
             file_target(f).remove('both')
 
-    def testOcttave(self):
+    def testOctave(self):
         '''Test action octave'''
         if os.path.isfile('octave_example.txt'):
             os.remove('octave_example.txt')

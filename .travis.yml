@@ -26,6 +26,8 @@ before_install:
     - conda create -n python_test python=$TRAVIS_PYTHON_VERSION anaconda
     - source activate python_test
 
+    # Octave
+    - sudo apt-get install octave
     # add docker
     - pip install docker
     # packages required by SoS
