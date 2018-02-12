@@ -37,7 +37,7 @@ before_install:
     - pip install fasteners pygments networkx pydot pydotplus 
     # https://github.com/jupyter/jupyter/issues/150
     - pip install entrypoints jupyter coverage codacy-coverage pytest pytest-cov python-coveralls
-    - conda install pandas numpy
+    - conda install pandas numpy gxx_linux-64
 
 sudo: required
 services:
