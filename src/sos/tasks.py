@@ -340,7 +340,8 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
             def copy_out_and_err(result):
                 tid = result['task']
                 out.write(f'{tid}: {"completed" if result["ret_code"] == 0 else "failed"}\n'.encode())
-                out.write(f'output: {result["output"]}\n'.encode())
+                if 'output' in result:
+                    out.write(f'output: {result["output"]}\n'.encode())
                 sub_out = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', tid + '.out')
                 if os.path.isfile(sub_out):
                     with open(sub_out, 'rb') as sout:
@@ -355,38 +356,34 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
             if params.num_workers > 1:
                 from multiprocessing.pool import Pool
                 p = Pool(params.num_workers)
-                try:
-                    results = []
-                    for t in params.task_stack:
-                        results.append(p.apply_async(_execute_task, (t, verbosity, runmode,
-                            sigmode, monitor_interval, resource_monitor_interval), callback=copy_out_and_err))
-                    for idx,r in enumerate(results):
-                        results[idx] = r.get()
-                        if 'exception' in results[idx]:
-                            raise results[idx]['exception']
-                except Exception as e:
-                    if env.verbosity > 2:
-                        sys.stderr.write(get_traceback())
-                    env.logger.error(f'{task_id} ``failed``: {e}')
-                    return {'ret_code': 1, 'exception': e}
+                results = []
+                for t in params.task_stack:
+                    results.append(p.apply_async(_execute_task, (t, verbosity, runmode,
+                        sigmode, monitor_interval, resource_monitor_interval), callback=copy_out_and_err))
+                for idx,r in enumerate(results):
+                    results[idx] = r.get()
+                p.close()
+                p.join()
+                # we wait for all results to be ready to return or raise
+                # but we only raise exception for one of the subtasks
+                for res in results:
+                    if 'exception' in res:
+                        failed = [x.get("task", "") for x in results if "exception" in x]
+                        env.logger.error(f'{task_id} ``failed`` due to failure of subtask{"s" if len(failed) > 1 else ""} {", ".join(failed)}')
+                        return {'ret_code': 1, 'exception': res['exception'], 'task': task_id }
             else:
                 results = []
                 for tid, tdef in params.task_stack:
-                    try:
-                        res = _execute_task((tid, tdef), verbosity=verbosity, runmode=runmode,
-                            sigmode=sigmode, monitor_interval=monitor_interval,
-                            resource_monitor_interval=resource_monitor_interval)
-                        if 'exception' in res:
-                            raise res['exception']
-                        copy_out_and_err(res)
-                        results.append(res)
-                    except Exception as e:
-                        out.write(f'{tid}: failed\n'.encode())
-                        copy_out_and_err({'task': tid, 'ret_code': 1, 'output': []})
-                        if env.verbosity > 2:
-                            sys.stderr.write(get_traceback())
-                        env.logger.error(f'{task_id} ``failed`` due to failure of subtask {tid}')
-                        return {'ret_code': 1, 'exception': e}
+                    res = _execute_task((tid, tdef), verbosity=verbosity, runmode=runmode,
+                        sigmode=sigmode, monitor_interval=monitor_interval,
+                        resource_monitor_interval=resource_monitor_interval)
+                    copy_out_and_err(res)
+                    results.append(res)
+                for res in results:
+                    if 'exception' in res:
+                        failed = [x.get("task", "") for x in results if "exception" in x]
+                        env.logger.error(f'{task_id} ``failed`` due to failure of subtask{"s" if len(failed) > 1 else ""} {", ".join(failed)}')
+                        return {'ret_code': 1, 'exception': res['exception'], 'task': task_id}
         #
         # now we collect result
         all_res = {'ret_code': 0, 'output': {}, 'subtasks': {}, 'shared': {}}
