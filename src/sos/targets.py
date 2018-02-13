@@ -53,10 +53,9 @@ class UnavailableLock(Error):
     immediately, but will be collected and raised at the end """
 
     def __init__(self, signature):
-        Error.__init__(self, ('Failed to obtain a lock for input {} and output {}. It is likely ' +
-            'that these files are protected by another SoS process or concurrant task ' +
-            'that is generating the same set of files.').format(short_repr(signature[0]),
-                short_repr(signature[1])))
+        Error.__init__(self, f'Failed to obtain lock {signature[2]} for input {short_repr(signature[0])} and output {short_repr(signature[1])}. It is likely ' +
+            'that these files are protected by another SoS process or concurrant task that is generating the same set of files. Please manually remove the lockfile ' +
+            'if you are certain that no other process is using the lock.')
         self.input = signature[0]
         self.output = signature[1]
         self.sig_file = signature[2]
