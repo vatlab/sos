@@ -34,7 +34,6 @@ import zipfile
 import shlex
 import gzip
 import tarfile
-import fasteners
 import uuid
 
 from functools import wraps
@@ -42,7 +41,7 @@ from functools import wraps
 from collections.abc import Sequence
 import multiprocessing as mp
 from tqdm import tqdm as ProgressBar
-from .utils import env, transcribe, StopInputGroup, TerminateExecution, short_repr, get_traceback
+from .utils import env, transcribe, StopInputGroup, TerminateExecution, short_repr, get_traceback, TimedInterProcessLock
 from .eval import interpolate
 from .targets import path, paths, file_target, fileMD5, executable, UnknownTarget, sos_targets
 
@@ -924,7 +923,7 @@ def report(script=None, input=None, output=None, **kwargs):
         raise ValueError(f'Invalid output {output}.')
 
     # file lock to prevent race condition
-    with fasteners.InterProcessLock(os.path.join(os.path.expanduser('~'), '.sos', '.runtime', 'report_lock')):
+    with TimedInterProcessLock(os.path.join(os.path.expanduser('~'), '.sos', '.runtime', 'report_lock')):
         if isinstance(script, str) and script.strip():
             writer(script.rstrip() + '\n\n')
         if input is not None:
