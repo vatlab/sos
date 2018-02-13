@@ -953,7 +953,7 @@ def load_config_files(filename=None):
     # site configuration file
     sos_config_file = os.path.join(os.path.split(__file__)[0], 'Site_config.yml')
     if os.path.isfile(sos_config_file):
-        with TimeoutIntergProcessLock(config_lock):
+        with TimeoutInterProcessLock(config_lock):
             try:
                 with open(sos_config_file) as config:
                     cfg = yaml.safe_load(config)
@@ -964,7 +964,7 @@ def load_config_files(filename=None):
     # global site file
     sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'hosts.yml')
     if os.path.isfile(sos_config_file):
-        with TimeoutIntergProcessLock(config_lock):
+        with TimeoutInterProcessLock(config_lock):
             try:
                 with open(sos_config_file) as config:
                     dict_merge(cfg, yaml.safe_load(config))
@@ -974,7 +974,7 @@ def load_config_files(filename=None):
     # global config file
     sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
     if os.path.isfile(sos_config_file):
-        with TimeoutIntergProcessLock(config_lock):
+        with TimeoutInterProcessLock(config_lock):
             try:
                 with open(sos_config_file) as config:
                     dict_merge(cfg, yaml.safe_load(config))
@@ -985,7 +985,7 @@ def load_config_files(filename=None):
     if filename is not None:
         if not os.path.isfile(os.path.expanduser(filename)):
             raise RuntimeError(f'Config file {filename} not found')
-        with TimeoutIntergProcessLock(config_lock):
+        with TimeoutInterProcessLock(config_lock):
             try:
                 with open(os.path.expanduser(filename)) as config:
                     dict_merge(cfg, yaml.safe_load(config))
