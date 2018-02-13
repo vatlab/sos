@@ -33,7 +33,7 @@ from pathlib import Path
 
 from collections.abc import Sequence, Iterable
 
-from .utils import env, Error, short_repr, stable_repr, save_var, load_var, isPrimitive
+from .utils import env, Error, short_repr, stable_repr, save_var, load_var, isPrimitive, TimeoutInterProcessLock
 from .eval import Undetermined
 
 __all__ = ['dynamic', 'executable', 'env_variable', 'sos_variable']
@@ -999,7 +999,7 @@ class RuntimeInfo:
         # successfully write signature, write in workflow runtime info
         if '__workflow_sig__' in env.sos_dict and os.path.isfile(env.sos_dict['__workflow_sig__']):
             workflow_sig = env.sos_dict['__workflow_sig__']
-            with fasteners.InterProcessLock(workflow_sig + '_'):
+            with TimeoutInterProcessLock(workflow_sig + '_'):
                 with open(workflow_sig, 'a') as wf:
                     wf.write(
                         f'EXE_SIG\tstep={self.step_md5}\tsession={os.path.basename(self.proc_info).split(".")[0]}\n')
@@ -1119,7 +1119,7 @@ class RuntimeInfo:
         # validation success, record signature used
         if '__workflow_sig__' in env.sos_dict and os.path.isfile(env.sos_dict['__workflow_sig__']):
             workflow_sig = env.sos_dict['__workflow_sig__']
-            with fasteners.InterProcessLock(workflow_sig + '_'):
+            with TimeoutInterProcessLock(workflow_sig + '_'):
                 with open(workflow_sig, 'a') as wf:
                     wf.write(self.proc_info + '\n')
         return res

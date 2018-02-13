@@ -34,6 +34,7 @@ import threading
 import base64
 import pickle
 import yaml
+import time
 import urllib
 import urllib.parse
 import urllib.request
@@ -1225,3 +1226,43 @@ def pexpect_run(cmd, shell=False, win_width=None):
             sys.stderr.write(str(e))
             return 1
 
+
+class TimeoutInterProcessLock(fasteners.InterProcessLock):
+    #
+    # #871
+    #
+    # For some unknown reason, sos could hang after tasks fail to obtain a lock.
+    # The problem should **NOT** be able to fix by simply removing the lock file
+    # because the new lock file should still be marked as "locked" if the process
+    # that clocks the lock is still valid. However, we have observed cases that
+    # no process could be found to be locking the file, yet the lock appears to
+    # be occupied, and yet removing the lock file **will not** automatically
+    # unlock the waiting process, yet rerunning sos after removing the lock
+    # file would work.
+    #
+    # This is really strange but we are **temporarily** replacing fasteners.InterProcessLock
+    # with this TimeoutInterProcessLock which would try to remove the lock file after
+    # timeout (default to 5) seconds, and try to obtain a lock after the removal of the
+    # lock file.
+    #
+    def __init__(self, path, timeout=5, sleep_func=time.sleep, logger=None):
+        super(TimeoutInterProcessLock, self).__init__(path, sleep_func=sleep_func, logger=logger)
+        self.timeout = timeout
+
+    def __enter__(self):
+        start_time = time.time()
+        msg = False
+        while True:
+            gotten = self.acquire(blocking=False)
+            if gotten:
+                return self
+            self.sleep_func(0.01)
+            if time.time() - start_time > self.timeout:
+                if os.path.exists(self.path):
+                    try:
+                        os.remove(self.path)
+                    except:
+                        pass
+                if not msg:
+                    env.logger.warning(f'Failed to obtain lock {self.path} after {self.timeout} seconds, perhaps you will have to remove the lock file manually.')
+                    msg = True
