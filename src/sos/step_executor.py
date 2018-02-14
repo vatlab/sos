@@ -368,6 +368,8 @@ def concurrent_execute(stmt, proc_vars={}, sig=None, capture_output=False):
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res
+    except KeyboardInterrupt:
+        return {'ret_code': 1, 'exception': e}
     except Exception as e:
         error_class = e.__class__.__name__
         cl, exc, tb = sys.exc_info()
@@ -1500,6 +1502,10 @@ class Base_Step_Executor:
             #
             self.verify_output()
             return self.collect_result()
+        except KeyboardInterrupt:
+            if self.concurrent_input_group:
+                self.concurrent_executor.shutdown()
+            raise
         finally:
             # release all signatures
             for sig in signatures:
