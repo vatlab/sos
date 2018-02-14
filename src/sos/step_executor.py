@@ -357,7 +357,6 @@ def concurrent_execute(stmt, proc_vars={}, sig=None, capture_output=False):
         else:
             SoS_exec(stmt, return_result=False)
         if sig:
-            sig.release()
             sig.write()
         res = {'ret_code': 0}
         if capture_output:
@@ -369,7 +368,11 @@ def concurrent_execute(stmt, proc_vars={}, sig=None, capture_output=False):
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res
     except KeyboardInterrupt:
-        return {'ret_code': 1, 'exception': e}
+        # Note that KeyboardInterrupt is not an instance of Exception so this piece is needed for
+        # the subprocesses to handle keyboard interrupt. We do not pass the exception
+        # back to the master process because the master process would handle KeyboardInterrupt
+        # as well and has no chance to handle the returned code.
+        sys.exit(1)
     except Exception as e:
         error_class = e.__class__.__name__
         cl, exc, tb = sys.exc_info()
@@ -392,6 +395,10 @@ def concurrent_execute(stmt, proc_vars={}, sig=None, capture_output=False):
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res
+    finally:
+        # release the lock even if the process becomes zombie? #871
+        if sig:
+            sig.release(quiet=True)
 
 class Base_Step_Executor:
     # This base class defines how steps are executed. The derived classes will reimplement
@@ -946,6 +953,7 @@ class Base_Step_Executor:
         if self.concurrent_input_group:
             self.proc_results = [x.result() for x in self.proc_results]
             self.concurrent_executor.shutdown()
+            self.concurrent_executor = None
             return
 
         if self.task_manager is None:
@@ -1502,10 +1510,6 @@ class Base_Step_Executor:
             #
             self.verify_output()
             return self.collect_result()
-        except KeyboardInterrupt:
-            if self.concurrent_input_group:
-                self.concurrent_executor.shutdown()
-            raise
         finally:
             # release all signatures
             for sig in signatures:
@@ -1514,6 +1518,18 @@ class Base_Step_Executor:
                         sig.release()
                     except:
                         pass
+            # if the concurrent_executor is not properly shutdown (e.g. interrupted by KeyboardInterrupt #871)
+            # we try to kill all subprocesses. Because it takes time to shutdown all processes, impatient
+            # users might hit Ctrl-C again, interrupting the shutdown process again. In this case we
+            # simply catch the KeyboardInterrupt exception and try again.
+            #
+            if self.concurrent_input_group and self.concurrent_executor:
+                while self.concurrent_executor:
+                    try:
+                        self.concurrent_executor.shutdown()
+                        self.concurrent_executor = None
+                    except KeyboardInterrupt:
+                        continue
 
 
 def _expand_file_list(ignore_unknown, *args):

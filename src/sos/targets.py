@@ -905,13 +905,14 @@ class RuntimeInfo:
         else:
             env.logger.trace(f'Lock acquired for output files {short_repr(self.output_files)}')
 
-    def release(self):
+    def release(self, quiet=False):
         if self._lock:
             try:
                 self._lock.release()
                 env.logger.trace(f'Lock released for output files {short_repr(self.output_files)}')
             except Exception as e:
-                env.logger.warning(f'Unable to release lock for output files {self.output_files}: {e}')
+                if not quiet:
+                    env.logger.warning(f'Unable to release lock for output files {self.output_files}: {e}')
             finally:
                 self._lock = None
 
