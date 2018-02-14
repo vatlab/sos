@@ -639,8 +639,8 @@ class paths(Sequence, os.PathLike):
     def __getstate__(self):
         return self._paths
 
-    def __setstate__(self, names):
-        self._names = names
+    def __setstate__(self, paths):
+        self._paths = paths
 
     def __len__(self):
         return len(self._paths)
