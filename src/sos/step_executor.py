@@ -28,7 +28,7 @@ import fnmatch
 import traceback
 import contextlib
 from io import StringIO
-from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import Pool
 
 from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
@@ -367,12 +367,12 @@ def concurrent_execute(stmt, proc_vars={}, sig=None, capture_output=False):
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res
-    except KeyboardInterrupt:
+    except KeyboardInterrupt as e:
         # Note that KeyboardInterrupt is not an instance of Exception so this piece is needed for
         # the subprocesses to handle keyboard interrupt. We do not pass the exception
         # back to the master process because the master process would handle KeyboardInterrupt
         # as well and has no chance to handle the returned code.
-        sys.exit(1)
+        return {'ret_code': 1, 'exception': e}
     except Exception as e:
         error_class = e.__class__.__name__
         cl, exc, tb = sys.exc_info()
@@ -951,9 +951,10 @@ class Base_Step_Executor:
 
     def wait_for_results(self):
         if self.concurrent_input_group:
-            self.proc_results = [x.result() for x in self.proc_results]
-            self.concurrent_executor.shutdown()
-            self.concurrent_executor = None
+            self.proc_results = [x.get() for x in self.proc_results]
+            self.worker_pool.close()
+            self.worker_pool.join()
+            self.worker_pool = None
             return
 
         if self.task_manager is None:
@@ -1235,7 +1236,7 @@ class Base_Step_Executor:
                     self.concurrent_input_group = False
                     env.logger.warning('Input groups are executed sequentially because of existence of directives between statements.')
                 else:
-                    self.concurrent_executor = ProcessPoolExecutor(max_workers=env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
+                    self.worker_pool = Pool(env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
 
         try:
             for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
@@ -1365,9 +1366,9 @@ class Base_Step_Executor:
                                     signatures[idx].release()
 
                                 self.proc_results.append(
-                                        self.concurrent_executor.submit(concurrent_execute, stmt=statement[1],
+                                        self.worker_pool.apply_async(concurrent_execute, kwds=dict(stmt=statement[1],
                                             proc_vars=proc_vars, sig=signatures[idx],
-                                            capture_output= self.run_mode == 'interactive'))
+                                            capture_output= self.run_mode == 'interactive')))
                                 # signature will be written by the concurrent executor
                                 signatures[idx] = None
                             else:
@@ -1518,16 +1519,16 @@ class Base_Step_Executor:
                         sig.release()
                     except:
                         pass
-            # if the concurrent_executor is not properly shutdown (e.g. interrupted by KeyboardInterrupt #871)
+            # if the worker_pool is not properly shutdown (e.g. interrupted by KeyboardInterrupt #871)
             # we try to kill all subprocesses. Because it takes time to shutdown all processes, impatient
             # users might hit Ctrl-C again, interrupting the shutdown process again. In this case we
             # simply catch the KeyboardInterrupt exception and try again.
             #
-            if self.concurrent_input_group and self.concurrent_executor:
-                while self.concurrent_executor:
+            if self.concurrent_input_group and self.worker_pool:
+                while self.worker_pool:
                     try:
-                        self.concurrent_executor.shutdown()
-                        self.concurrent_executor = None
+                        self.worker_pool.terminate()
+                        self.worker_pool = None
                     except KeyboardInterrupt:
                         continue
 
