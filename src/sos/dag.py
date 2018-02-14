@@ -193,8 +193,7 @@ class SoS_DAG(nx.DiGraph):
         pending_jobs = [x for x in self.nodes() if x._status == 'signature_pending']
         if pending_jobs:
             try:
-                notifier = ActivityNotifier('Waiting for another process for output {}'.format(short_repr(
-                    sum([node._signature[0] for node in pending_jobs], []))))
+                notifier = ActivityNotifier(f'Waiting for {len(pending_jobs)} pending job{"s: e.g." if len(pending_jobs) > 1 else ":"} output {pending_jobs[0]._signature[0]} with signature file {pending_jobs[0]._signature[1] + "_"}')
                 while True:
                     for node in pending_jobs:
                         # if it has not been executed
