@@ -372,6 +372,8 @@ def concurrent_execute(stmt, proc_vars={}, sig=None, capture_output=False):
         # the subprocesses to handle keyboard interrupt. We do not pass the exception
         # back to the master process because the master process would handle KeyboardInterrupt
         # as well and has no chance to handle the returned code.
+        if env.verbosity > 2:
+            env.logger.info(f'{os.getpid()} interrupted')
         return {'ret_code': 1, 'exception': e}
     except Exception as e:
         error_class = e.__class__.__name__
@@ -1525,6 +1527,8 @@ class Base_Step_Executor:
             # simply catch the KeyboardInterrupt exception and try again.
             #
             if self.concurrent_input_group and self.worker_pool:
+                if env.verbosity > 2:
+                    env.logger.info(f'{os.getpid()} terminating worker pool')
                 while self.worker_pool:
                     try:
                         self.worker_pool.terminate()
