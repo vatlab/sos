@@ -218,6 +218,62 @@ class dummy_node:
     def __init__(self):
         pass
 
+class ExecutionManager(object):
+    # this class managers workers and their status ...
+    def __init__(self, max_workers):
+                #
+        # running processes. It consisists of
+        #
+        # [ [proc, queue], pipe, node]
+        #
+        # where:
+        #   proc, queue: process, which is None for the nested workflow.
+        #   pipe: pipe to get information from workers
+        #   node: node that is being executed, which is a dummy node
+        #       created on the fly for steps passed from nested workflow
+        #
+        self.procs = []
+
+        # process pool that is used to pool temporarily unused processed.
+        self.pool = []
+
+        self.max_workers = max_workers
+
+    def execute(self, runnable, config, args, spec):
+        if not self.pool:
+            q1, q2 = mp.Pipe()
+            worker = SoS_Worker(pipe=q2, config=config, args=args)
+            worker.start()
+        else:
+            # get worker, q and runnable is not needed any more
+            worker, q1, _ = self.pool.pop(0)
+        q1.send(spec)
+        self.procs.append((worker, q1, runnable))
+    
+    def mark_idle(self, idx):
+        self.pool.append(self.procs[idx])
+        self.procs[idx] = None
+
+    def cleanup(self):
+        self.procs = [x for x in self.procs if x is not None]
+
+    def terminate(self, brutal=False):
+        self.cleanup()
+        if not brutal:
+            for _, p, _ in self.procs + self.pool:
+                p.send(None)
+            time.sleep(0.1)
+            for w, _, _ in self.procs + self.pool:
+                if w and w.is_alive():
+                    w.terminate()
+                    w.join()
+        else:
+            for p, _, _ in self.procs + self.pool:
+                # p can be fake if from a nested workflow
+                if p:
+                    p.terminate()
+
+
 class Base_Executor:
     '''This is the base class of all executor that provides common
     set up and tear functions for all executors.'''
@@ -726,10 +782,7 @@ class Base_Executor:
         #   node: node that is being executed, which is a dummy node
         #       created on the fly for steps passed from nested workflow
         #
-        procs = []
-        #
-        # process pool that is used to pool temporarily unused processed.
-        pool = []
+        manager = ExecutionManager(env.config['max_procs'])
         #
         wf_result = {'__workflow_id__': my_workflow_id, 'shared': {}}
         #
@@ -742,7 +795,7 @@ class Base_Executor:
             exec_error = ExecuteError(self.workflow.name)
             while True:
                 # step 1: check existing jobs and see if they are completed
-                for idx, proc in enumerate(procs):
+                for idx, proc in enumerate(manager.procs):
                     if proc is None:
                         continue
 
@@ -795,14 +848,6 @@ class Base_Executor:
                             # a workflow needs to be executed immediately because otherwise if all workflows
                             # occupies all workers, no real step could be executed.
 
-                            # if pool is empty, create a new process
-                            if not pool:
-                                q1, q2 = mp.Pipe()
-                                worker = SoS_Worker(pipe=q2, config=config, args=args)
-                                worker.start()
-                            else:
-                                # get worker, q and runnable is not needed any more
-                                worker, q1, _ = pool.pop(0)
 
                             # now we would like to find a worker and
                             runnable._pending_workflow = workflow_id
@@ -813,16 +858,15 @@ class Base_Executor:
                             wfrunnable._status = 'workflow_running_pending'
                             wfrunnable._pending_workflow = workflow_id
                             #
-                            q1.send(('workflow', workflow_id, wf, targets, args, shared, config))
-                            procs.append([worker, q1, wfrunnable])
+                            manager.execute(wfrunnable, config=config, args=args,
+                                    spec=('workflow', workflow_id, wf, targets, args, shared, config))
                             #
                             continue
                         else:
                             raise RuntimeError(f'Unexpected value from step {short_repr(res)}')
 
                     # if we does get the result, we send the process to pool
-                    pool.append(procs[idx])
-                    procs[idx] = None
+                    manager.mark_idle(idx)
 
                     env.logger.debug(f'{i_am()} receive a result {short_repr(res)}')
                     if hasattr(runnable, '_from_nested'):
@@ -870,7 +914,7 @@ class Base_Executor:
                         # if this is a node for a running workflow, need to mark it as failed as well
                         #                        for proc in procs:
                         if isinstance(runnable, dummy_node) and hasattr(runnable, '_pending_workflow'):
-                            for proc in procs:
+                            for proc in manager.procs:
                                 if proc is None:
                                     continue
                                 if proc[2]._status.endswith('_pending') and hasattr(proc[2], '_pending_workflow') \
@@ -909,7 +953,7 @@ class Base_Executor:
                         # the worker process has been returned to the pool, now we need to
                         # notify the step that is waiting for the result
                         env.logger.debug(f'{i_am()} receive workflow result')
-                        for proc in procs:
+                        for proc in manager.procs:
                             if proc is None:
                                 continue
                             if proc[2]._status == 'workflow_pending' and proc[2]._pending_workflow == res['__workflow_id__']:
@@ -920,10 +964,10 @@ class Base_Executor:
                         raise RuntimeError(f'Unrecognized response from a step: {res}')
 
                 # remove None
-                procs = [x for x in procs if x is not None]
+                manager.cleanup()
 
                 # step 2: check if some jobs are done
-                for proc_idx, proc in enumerate(procs):
+                for proc_idx, proc in enumerate(manager.procs):
                     # if a job is pending, check if it is done.
                     if proc[2]._status == 'task_pending':
                         res = proc[2]._host.check_status(proc[2]._pending_tasks)
@@ -961,7 +1005,7 @@ class Base_Executor:
                 # step 3: check if there is room and need for another job
                 while True:
                     #env.logger.error('{} {}'.format(i_am(), [x[2]._status for x in procs]))
-                    num_running = len([x for x in procs if not x[2]._status.endswith('_pending')])
+                    num_running = len([x for x in manager.procs if not x[2]._status.endswith('_pending')])
                     if num_running >= env.config['max_procs']:
                         break
                     #
@@ -970,15 +1014,6 @@ class Base_Executor:
                         step_id, step_param = self.step_queue.popitem()
                         section, context, shared, args, run_mode, sig_mode, verbosity, pipe = step_param
                         # run it!
-                        # if pool is empty, create a new process
-                        if not pool:
-                            q1, q2 = mp.Pipe()
-                            worker = SoS_Worker(pipe=q2, config=self.config, args=self.args)
-                            worker.start()
-                        else:
-                            # get worker, q and runnable is not needed any more
-                            worker, q1, _ = pool.pop(0)
-
                         runnable = dummy_node()
                         runnable._node_id = step_id
                         runnable._status = 'running'
@@ -987,8 +1022,9 @@ class Base_Executor:
 
                         env.logger.debug(
                             f'{i_am()} sends {section.step_name()} from step queue with args {args} and context {context}')
-                        q1.send(('step', section, context, shared, args, run_mode, sig_mode, verbosity))
-                        procs.append( [worker, q1, runnable])
+
+                        manager.execute(runnable, config=self.config, args=self.args,
+                                spec = ('step', section, context, shared, args, run_mode, sig_mode, verbosity))
                         continue
 
                     # find any step that can be executed and run it, and update the DAT
@@ -1029,19 +1065,10 @@ class Base_Executor:
                         runnable._context['__workflow_sig__'] = env.sos_dict['__workflow_sig__']
 
                     if not nested:
-
-                        # if pool is empty, create a new process
-                        if not pool:
-                            q1, q2 = mp.Pipe()
-                            worker = SoS_Worker(pipe=q2, config=self.config, args=self.args)
-                            worker.start()
-                        else:
-                            # get worker, q and runnable is not needed any more
-                            worker, q1, _ = pool.pop(0)
-
                         env.logger.debug(f'{i_am()} execute {section.md5} from DAG')
-                        q1.send(('step', section, runnable._context, shared, self.args, env.config['run_mode'], env.config['sig_mode'], env.verbosity))
-                        procs.append( [worker, q1, runnable])
+                        manager.execute(runnable, config=self.config, args=self.args,
+                                spec=('step', section, runnable._context, shared, self.args,
+                                    env.config['run_mode'], env.config['sig_mode'], env.verbosity))
                     else:
                         # send the step to the parent
                         step_id = uuid.uuid4()
@@ -1052,21 +1079,21 @@ class Base_Executor:
                         parent_pipe.send((section, runnable._context, shared, self.args, env.config['run_mode'], env.config['sig_mode'], env.verbosity, q[1]))
                         # this is a real step
                         runnable._status = 'step_pending'
-                        procs.append([None, q[0], runnable])
+                        manager.procs.append([None, q[0], runnable])
 
                 #
-                num_running = len([x for x in procs if not x[2]._status.endswith('_pending')])
+                num_running = len([x for x in manager.procs if not x[2]._status.endswith('_pending')])
 
-                if not procs or all(x[2]._status == 'failed' for x in procs):
+                if not manager.procs or all(x[2]._status == 'failed' for x in manager.procs):
                     break
                 # if -W is specified, or all task queues are not wait
-                elif all(x[2]._status == 'task_pending' for x in procs) and \
+                elif all(x[2]._status == 'task_pending' for x in manager.procs) and \
                         (env.config['wait_for_task'] is False or \
                         (env.config['wait_for_task'] is None and Host.not_wait_for_tasks())):
                     # if all jobs are pending, let us check if all jbos have been submitted.
                     pending_tasks = []
                     running_tasks = []
-                    for n in [x[2] for x in procs]:
+                    for n in [x[2] for x in manager.procs]:
                         p, r = n._host._task_engine.get_tasks()
                         pending_tasks.extend(p)
                         running_tasks.extend([(n._host.alias, x) for x in r])
@@ -1094,22 +1121,11 @@ class Base_Executor:
                 env.logger.info(task[1])
             # close all processes
         except Exception as e:
-            procs = [x for x in procs if x is not None]
-            for p, _, _ in procs + pool:
-                # p can be fake if from a nested workflow
-                if p:
-                    p.terminate()
+            manager.terminate(brutal=True)
             raise e
         finally:
             if not nested:
-                procs = [x for x in procs if x is not None]
-                for _, p, _ in procs + pool:
-                    p.send(None)
-                time.sleep(0.1)
-                for w, _, _ in procs + pool:
-                    if w and w.is_alive():
-                        w.terminate()
-                        w.join()
+                manager.terminate()
             prog.close()
         #
         if exec_error.errors:
