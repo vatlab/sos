@@ -29,7 +29,7 @@ import traceback
 import contextlib
 import psutil
 from io import StringIO
-from multiprocessing import Pool
+from concurrent.futures import ProcessPoolExecutor
 
 from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
@@ -968,9 +968,8 @@ class Base_Step_Executor:
 
     def wait_for_results(self):
         if self.concurrent_input_group:
-            self.proc_results = [x.get() for x in self.proc_results]
-            self.worker_pool.close()
-            self.worker_pool.join()
+            self.proc_results = [x.result() for x in self.proc_results]
+            self.worker_pool.shutdown()
             self.worker_pool = None
             return
 
@@ -1253,7 +1252,7 @@ class Base_Step_Executor:
                     self.concurrent_input_group = False
                     env.logger.warning('Input groups are executed sequentially because of existence of directives between statements.')
                 else:
-                    self.worker_pool = Pool(env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
+                    self.worker_pool = ProcessPoolExecutor(max_workers=env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
 
         try:
             for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
@@ -1383,9 +1382,9 @@ class Base_Step_Executor:
                                     signatures[idx].release()
 
                                 self.proc_results.append(
-                                        self.worker_pool.apply_async(concurrent_execute, kwds=dict(stmt=statement[1],
+                                        self.worker_pool.submit(concurrent_execute, stmt=statement[1],
                                             proc_vars=proc_vars, sig=signatures[idx],
-                                            capture_output= self.run_mode == 'interactive')))
+                                            capture_output= self.run_mode == 'interactive'))
                                 # signature will be written by the concurrent executor
                                 signatures[idx] = None
                             else:
@@ -1539,7 +1538,7 @@ class Base_Step_Executor:
                     env.logger.info(f'{os.getpid()} terminating worker pool')
                 while self.worker_pool:
                     try:
-                        self.worker_pool.terminate()
+                        self.worker_pool.shutdown()
                         self.worker_pool = None
                     except KeyboardInterrupt:
                         continue
