@@ -24,7 +24,6 @@ import sys
 import time
 import keyword
 import uuid
-from collections import namedtuple
 from collections.abc import Sequence
 import multiprocessing as mp
 
@@ -219,7 +218,23 @@ class dummy_node:
     def __init__(self):
         pass
 
-ProcInfo = namedtuple('ProcInfo', 'worker pipe step')
+class ProcInfo(object):
+    def __init__(self, worker, pipe, step):
+        self.worker = worker
+        self.pipe = pipe
+        self.step = step
+
+    def set_status(self, status):
+        self.step._status = status
+
+    def in_status(self, status):
+        return self.step._status == status
+
+    def status(self):
+        return self.step._status
+
+    def is_pending(self):
+        return self.step._status.endswith('_pending')
 
 class ExecutionManager(object):
     # this class managers workers and their status ...
@@ -249,7 +264,10 @@ class ExecutionManager(object):
             worker.start()
         else:
             # get worker, q and runnable is not needed any more
-            worker, q1, _ = self.pool.pop(0)
+            pi = self.pool.pop(0)
+            worker = pi.worker
+            q1 = pi.pipe
+
         q1.send(spec)
         self.procs.append(ProcInfo(worker=worker, pipe=q1, step=runnable))
 
@@ -258,10 +276,10 @@ class ExecutionManager(object):
         self.procs.append(ProcInfo(worker=None, pipe=pipe, step=runnable))
 
     def all_busy(self):
-        return len([x for x in self.procs if x and not x.step._status.endswith('_pending')]) >= self.max_workers
+        return len([x for x in self.procs if x and not x.is_pending()]) >= self.max_workers
 
     def all_done_or_failed(self):
-        return not self.procs or all(x.step._status == 'failed' for x in self.procs)
+        return not self.procs or all(x.in_status('failed') for x in self.procs)
     
     def mark_idle(self, idx):
         self.pool.append(self.procs[idx])
@@ -812,13 +830,13 @@ class Base_Executor:
                     if proc is None:
                         continue
 
-                    [p, q, runnable] = proc
+                    runnable = proc.step
                     # echck if there is any message from the pipe
-                    if not q.poll():
+                    if not proc.pipe.poll():
                         continue
 
                     # receieve something from the pipe
-                    res = q.recv()
+                    res = proc.pipe.recv()
                     #
                     # if this is NOT a result, rather some request for task, step, workflow etc
                     if isinstance(res, str):
@@ -847,7 +865,7 @@ class Base_Executor:
                         elif res.startswith('step'):
                             # step sent from nested workflow
                             step_id = res.split(' ')[1]
-                            step_params = q.recv()
+                            step_params = proc.pipe.recv()
                             env.logger.debug(f'{i_am()} receives step request {step_id} with args {step_params[3]}')
                             self.step_queue[step_id] = step_params
                             continue
@@ -857,7 +875,7 @@ class Base_Executor:
                             # receive the real definition
                             env.logger.debug(f'{i_am()} receives workflow request {workflow_id}')
                             # (wf, args, shared, config)
-                            wf, targets, args, shared, config = q.recv()
+                            wf, targets, args, shared, config = proc.pipe.recv()
                             # a workflow needs to be executed immediately because otherwise if all workflows
                             # occupies all workers, no real step could be executed.
 
@@ -930,9 +948,9 @@ class Base_Executor:
                             for proc in manager.procs:
                                 if proc is None:
                                     continue
-                                if proc.step._status.endswith('_pending') and hasattr(proc.step, '_pending_workflow') \
+                                if proc.is_pending() and hasattr(proc.step, '_pending_workflow') \
                                     and proc.step._pending_workflow == runnable._pending_workflow:
-                                    proc.step._status = 'failed'
+                                    proc.set_status('failed')
                         prog.update(1)
                     elif '__step_name__' in res:
                         env.logger.debug(f'{i_am()} receive step result ')
@@ -969,9 +987,9 @@ class Base_Executor:
                         for proc in manager.procs:
                             if proc is None:
                                 continue
-                            if proc.step._status == 'workflow_pending' and proc.step._pending_workflow == res['__workflow_id__']:
+                            if proc.in_status('workflow_pending') and proc.step._pending_workflow == res['__workflow_id__']:
                                 proc.pipe.send(res)
-                                proc.step._status = 'running'
+                                proc.set_status('running')
                                 break
                     else:
                         raise RuntimeError(f'Unrecognized response from a step: {res}')
@@ -982,7 +1000,7 @@ class Base_Executor:
                 # step 2: check if some jobs are done
                 for proc_idx, proc in enumerate(manager.procs):
                     # if a job is pending, check if it is done.
-                    if proc.step._status == 'task_pending':
+                    if proc.in_status('task_pending'):
                         res = proc.step._host.check_status(proc.step._pending_tasks)
                         #env.logger.warning(res)
                         if any(x in ('aborted', 'failed', 'signature-mismatch') for x in res):
@@ -997,7 +1015,7 @@ class Base_Executor:
                                 # we try to get .err .out etc even when jobs are failed.
                                 task_status = proc.step._host.retrieve_results(proc.step._pending_tasks)
                                 proc.pipe.send(task_status)
-                                proc.step._status == 'failed'
+                                proc.set_status('failed')
                                 status = [('completed', len([x for x in res if x=='completed'])),
                                     ('failed', len([x for x in res if x=='failed'])),
                                     ('aborted', len([x for x in res if x=='aborted'])),
@@ -1011,13 +1029,13 @@ class Base_Executor:
                             res = proc.step._host.retrieve_results(proc.step._pending_tasks)
                             proc.pipe.send(res)
                             proc.step._pending_tasks = []
-                            proc.step._status = 'running'
+                            proc.set_status('running')
                         else:
                             raise RuntimeError(f'Job returned with status {res}')
 
                 # step 3: check if there is room and need for another job
                 while True:
-                    #env.logger.error('{} {}'.format(i_am(), [x.step._status for x in procs]))
+                    #env.logger.error('{} {}'.format(i_am(), [x.status() for x in procs]))
                     if manager.all_busy():
                         break
                     #
@@ -1096,7 +1114,7 @@ class Base_Executor:
                     break
 
                 # if -W is specified, or all task queues are not wait
-                elif all(x.step._status == 'task_pending' for x in manager.procs) and \
+                elif all(x.in_status('task_pending') for x in manager.procs) and \
                         (env.config['wait_for_task'] is False or \
                         (env.config['wait_for_task'] is None and Host.not_wait_for_tasks())):
                     # if all jobs are pending, let us check if all jbos have been submitted.
