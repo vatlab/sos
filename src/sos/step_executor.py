@@ -30,7 +30,6 @@ import contextlib
 import psutil
 from io import StringIO
 from multiprocessing import Pool
-from multiprocessing.connection import Client
 
 from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
@@ -1254,17 +1253,7 @@ class Base_Step_Executor:
                     self.concurrent_input_group = False
                     env.logger.warning('Input groups are executed sequentially because of existence of directives between statements.')
                 else:
-                    allowed_workers = env.config.get('max_procs', max(int(os.cpu_count() / 2), 1))
-                    if '__listener_port__' in env.sos_dict:
-                        try:
-                            with Client(('localhost', env.sos_dict['__listener_port__']), authkey=env.sos_dict['__listener_key__']) as conn:
-                                allowed_workers = max(conn.recv() + 1, 1)
-                        except Exception as e:
-                            env.logger.debug(f'Failed to query allowed worker from master process: {e}')
-                    if allowed_workers == 1:
-                        self.concurrent_input_group = False
-                    else:
-                        self.worker_pool = Pool(allowed_workers)
+                    self.worker_pool = Pool(env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
 
         try:
             for idx, (g, v) in enumerate(zip(self._groups, self._vars)):

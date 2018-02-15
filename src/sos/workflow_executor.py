@@ -26,11 +26,6 @@ import keyword
 import uuid
 from collections.abc import Sequence
 import multiprocessing as mp
-from multiprocessing.connection import Listener
-from threading import Thread
-import socket
-import random
-from contextlib import closing
 
 from tqdm import tqdm as ProgressBar
 from io import StringIO
@@ -95,7 +90,7 @@ class SoS_Worker(mp.Process):
     '''
     Worker process to process SoS step or workflow in separate process.
     '''
-    def __init__(self,  pipe, config=None, args=None, listener_port=None, listener_key=None, **kwargs):
+    def __init__(self,  pipe, config=None, args=None, **kwargs):
         '''
         cmd_queue: a single direction queue for the master process to push
             items to the worker.
@@ -117,8 +112,6 @@ class SoS_Worker(mp.Process):
         self.pipe = pipe
         self.config = {} if config is None else config
         self.args = [] if args is None else args
-        self.listener_port = listener_port
-        self.listener_key = listener_key
 
     def reset_dict(self):
         env.sos_dict = WorkflowDict()
@@ -130,8 +123,6 @@ class SoS_Worker(mp.Process):
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
         env.sos_dict.set('__step_output__', [])
-        env.sos_dict.set('__listener_port__', self.listener_port)
-        env.sos_dict.set('__listener_key__', self.listener_key)
 
         # load configuration files
         load_config_files(self.config['config_file'])
@@ -245,14 +236,9 @@ class ProcInfo(object):
     def is_pending(self):
         return self.step._status.endswith('_pending')
 
-def find_free_port():
-    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-        s.bind(('', 0))
-        return s.getsockname()[1]
-
 class ExecutionManager(object):
     # this class managers workers and their status ...
-    def __init__(self, max_workers, nested):
+    def __init__(self, max_workers):
                 #
         # running processes. It consisists of
         #
@@ -271,26 +257,10 @@ class ExecutionManager(object):
 
         self.max_workers = max_workers
 
-        self.listener_port = find_free_port()
-        self.listener_key = str(random.randint(1000000, 2000000)).encode()
-
-        if not nested:
-            thread = Thread(target = self.external_listener, args=(self.listener_port, self.listener_key))
-            thread.daemon = True
-            thread.start()
-
-    def external_listener(self, port, key):
-        # this server is used to tell the step workers how many workers are available in
-        # real time
-        with Listener(('localhost', port), authkey=key) as listener:
-            while True:
-                with listener.accept() as conn:
-                    conn.send(self.max_workers - len([x for x in self.procs if x and not x.is_pending()]))
-
     def execute(self, runnable, config, args, spec):
         if not self.pool:
             q1, q2 = mp.Pipe()
-            worker = SoS_Worker(pipe=q2, config=config, args=args, listener_port=self.listener_port, listener_key=self.listener_key)
+            worker = SoS_Worker(pipe=q2, config=config, args=args)
             worker.start()
         else:
             # get worker, q and runnable is not needed any more
@@ -310,7 +280,7 @@ class ExecutionManager(object):
 
     def all_done_or_failed(self):
         return not self.procs or all(x.in_status('failed') for x in self.procs)
-
+    
     def mark_idle(self, idx):
         self.pool.append(self.procs[idx])
         self.procs[idx] = None
@@ -843,7 +813,7 @@ class Base_Executor:
         #   node: node that is being executed, which is a dummy node
         #       created on the fly for steps passed from nested workflow
         #
-        manager = ExecutionManager(env.config['max_procs'], nested)
+        manager = ExecutionManager(env.config['max_procs'])
         #
         wf_result = {'__workflow_id__': my_workflow_id, 'shared': {}}
         #
