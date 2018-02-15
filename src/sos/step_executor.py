@@ -27,6 +27,7 @@ import glob
 import fnmatch
 import traceback
 import contextlib
+import psutil
 from io import StringIO
 from multiprocessing import Pool
 
@@ -367,14 +368,28 @@ def concurrent_execute(stmt, proc_vars={}, sig=None, capture_output=False):
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res
-    except KeyboardInterrupt as e:
+    except (KeyboardInterrupt, SystemExit) as e:
         # Note that KeyboardInterrupt is not an instance of Exception so this piece is needed for
         # the subprocesses to handle keyboard interrupt. We do not pass the exception
         # back to the master process because the master process would handle KeyboardInterrupt
         # as well and has no chance to handle the returned code.
-        if env.verbosity > 2:
-            env.logger.info(f'{os.getpid()} interrupted')
-        return {'ret_code': 1, 'exception': e}
+        procs = psutil.Process().children(recursive=True)
+        if procs:
+            if env.verbosity > 2:
+                env.logger.info(f'{os.getpid()} interrupted. Killing subprocesses {" ".join(str(x.pid) for x in procs)}')
+            for p in procs:
+                p.terminate()
+            gone, alive = psutil.wait_procs(procs, timeout=3)
+            if alive:
+                for p in alive:
+                    p.kill()
+            gone, alive = psutil.wait_procs(procs, timeout=3)
+            if alive:
+                for p in alive:
+                    env.logger.warning(f'Failed to kill subprocess {p.pid}')
+        elif env.verbosity > 2:
+            env.logger.info(f'{os.getpid()} interrupted. No subprocess.')
+        raise e
     except Exception as e:
         error_class = e.__class__.__name__
         cl, exc, tb = sys.exc_info()
@@ -1513,14 +1528,7 @@ class Base_Step_Executor:
             #
             self.verify_output()
             return self.collect_result()
-        finally:
-            # release all signatures
-            for sig in signatures:
-                if sig is not None:
-                    try:
-                        sig.release()
-                    except:
-                        pass
+        except KeyboardInterrupt:
             # if the worker_pool is not properly shutdown (e.g. interrupted by KeyboardInterrupt #871)
             # we try to kill all subprocesses. Because it takes time to shutdown all processes, impatient
             # users might hit Ctrl-C again, interrupting the shutdown process again. In this case we
@@ -1535,6 +1543,14 @@ class Base_Step_Executor:
                         self.worker_pool = None
                     except KeyboardInterrupt:
                         continue
+        finally:
+            # release all signatures
+            for sig in signatures:
+                if sig is not None:
+                    try:
+                        sig.release()
+                    except:
+                        pass
 
 
 def _expand_file_list(ignore_unknown, *args):
