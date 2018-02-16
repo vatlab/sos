@@ -281,13 +281,15 @@ class ExecutionManager(object):
     def all_busy(self):
         n = len([x for x in self.procs if x and not x.is_pending()])
         if self.last_num_procs is None:
-            self.slot_manager.acquire(n, self.max_workers)
+            # we force the increase of numbers because `n` is observed
+            self.slot_manager.acquire(n, self.max_workers, force=True)
             self.last_num_procs = n
         elif n != self.last_num_procs:
             if self.last_num_procs > n:
                 self.slot_manager.release(self.last_num_procs - n)
             else:
-                self.slot_manager.acquire(n - self.last_num_procs, self.max_workers)
+                # we force the increase of numbers because the increment is observed
+                self.slot_manager.acquire(n - self.last_num_procs, self.max_workers, force=True)
             self.last_num_procs = n
         return n >= self.max_workers
 

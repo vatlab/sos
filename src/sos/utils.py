@@ -922,7 +922,7 @@ class SlotManager(object):
         self.lock_file = os.path.join(os.path.expanduser('~'), '.sos', f'manager_{manager_id}.lck')
         self.slot_file = os.path.join(os.path.expanduser('~'), '.sos', f'manager_{manager_id}.slot')
 
-    def acquire(self, num=None, max_slots=10):
+    def acquire(self, num=None, max_slots=10, force=False):
         # if num == None, request as many as possible slots
         if not num:
             num = max_slots
@@ -938,7 +938,7 @@ class SlotManager(object):
                     slots = 0
             # return all available slots
             avail = max_slots - slots
-            ret = min(num, avail)
+            ret = num if force else min(num, avail)
             with open(self.slot_file, 'w') as slot:
                 slot.write(str(ret + slots))
             env.logger.debug(f'{ret} slots requested from {avail} avail')
