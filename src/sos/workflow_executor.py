@@ -238,7 +238,7 @@ class ProcInfo(object):
 
 class ExecutionManager(object):
     # this class managers workers and their status ...
-    def __init__(self, max_workers):
+    def __init__(self, max_workers, master=True):
                 #
         # running processes. It consisists of
         #
@@ -255,7 +255,7 @@ class ExecutionManager(object):
         # process pool that is used to pool temporarily unused processed.
         self.pool = []
 
-        self.slot_manager = SlotManager()
+        self.slot_manager = SlotManager(reset=master)
         self.last_num_procs = None
 
         self.max_workers = max_workers
@@ -281,8 +281,8 @@ class ExecutionManager(object):
     def all_busy(self):
         n = len([x for x in self.procs if x and not x.is_pending()])
         if self.last_num_procs is None:
-            # we force the increase of numbers because `n` is observed
-            self.slot_manager.acquire(n, self.max_workers, force=True)
+            # clear counter file if already exists
+            self.slot_manager.acquire(n, self.max_workers)
             self.last_num_procs = n
         elif n != self.last_num_procs:
             if self.last_num_procs > n:
@@ -832,7 +832,7 @@ class Base_Executor:
         #   node: node that is being executed, which is a dummy node
         #       created on the fly for steps passed from nested workflow
         #
-        manager = ExecutionManager(env.config['max_procs'])
+        manager = ExecutionManager(env.config['max_procs'], master=not nested)
         #
         wf_result = {'__workflow_id__': my_workflow_id, 'shared': {}}
         #

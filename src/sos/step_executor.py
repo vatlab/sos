@@ -1256,11 +1256,13 @@ class Base_Step_Executor:
                 else:
                     sm = SlotManager()
                     # because the master process pool will count one worker in (step)
-                    requested = sm.acquire(len(self._groups) - 1, env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
-                    if requested == 0:
+                    gotten = sm.acquire(len(self._groups) - 1, env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
+                    if gotten == 0:
+                        env.logger.debug(f'Input group executed sequencially due to -j constraint')
                         self.concurrent_input_group = False
                     else:
-                        self.worker_pool = Pool(requested + 1)
+                        env.logger.debug(f'Using process pool with size {gotten+1}')
+                        self.worker_pool = Pool(gotten + 1)
 
         try:
             for idx, (g, v) in enumerate(zip(self._groups, self._vars)):

@@ -917,14 +917,16 @@ def sos_handle_parameter_(key, defvalue):
 #        return True
 
 class SlotManager(object):
-    def __init__(self):
+    def __init__(self, reset=False):
         manager_id = env.config.get('master_md5', 'general')
         self.lock_file = os.path.join(os.path.expanduser('~'), '.sos', f'manager_{manager_id}.lck')
         self.slot_file = os.path.join(os.path.expanduser('~'), '.sos', f'manager_{manager_id}.slot')
+        if reset and os.path.isfile(self.slot_file):
+            os.remove(self.slot_file)
 
     def acquire(self, num=None, max_slots=10, force=False):
         # if num == None, request as many as possible slots
-        if not num:
+        if num is None:
             num = max_slots
         with fasteners.InterProcessLock(self.lock_file) as lock:
             if not os.path.isfile(self.slot_file):
@@ -934,14 +936,14 @@ class SlotManager(object):
                     with open(self.slot_file, 'r') as slot:
                         slots = int(slot.read())
                 except Exception as e:
-                    print(e)
+                    env.logger.error(e)
                     slots = 0
             # return all available slots
             avail = max_slots - slots
-            ret = num if force else min(num, avail)
+            ret = num if force else max(min(num, avail), 0)
             with open(self.slot_file, 'w') as slot:
                 slot.write(str(ret + slots))
-            env.logger.debug(f'{ret} slots requested from {avail} avail')
+            env.logger.debug(f'{num} slots requested  {ret} returned ({slots} active, force={force})')
             return ret
 
     def release(self, num):
@@ -951,7 +953,7 @@ class SlotManager(object):
             # return all available slots
             with open(self.slot_file, 'w') as slot:
                 slot.write(str(max(0, slots - num)))
-            env.logger.debug(f'{num} slots released')
+            env.logger.debug(f'{num} slots released from {slots} active, {slots - num} remain')
             return max(0, slots - num)
 
 
