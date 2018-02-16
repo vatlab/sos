@@ -32,7 +32,7 @@ from io import StringIO
 from ._version import __version__
 from .step_executor import Step_Executor, analyze_section, PendingTasks
 from .utils import env, Error, WorkflowDict, get_traceback, short_repr, pickleable, \
-    load_config_files, save_var, load_var
+    load_config_files, save_var, load_var, SlotManager
 from .eval import SoS_exec
 from .dag import SoS_DAG
 from .targets import BaseTarget, file_target, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step, Undetermined
@@ -255,6 +255,9 @@ class ExecutionManager(object):
         # process pool that is used to pool temporarily unused processed.
         self.pool = []
 
+        self.slot_manager = SlotManager()
+        self.last_num_procs = None
+
         self.max_workers = max_workers
 
     def execute(self, runnable, config, args, spec):
@@ -276,7 +279,17 @@ class ExecutionManager(object):
         self.procs.append(ProcInfo(worker=None, pipe=pipe, step=runnable))
 
     def all_busy(self):
-        return len([x for x in self.procs if x and not x.is_pending()]) >= self.max_workers
+        n = len([x for x in self.procs if x and not x.is_pending()])
+        if self.last_num_procs is None:
+            self.slot_manager.acquire(n, self.max_workers)
+            self.last_num_procs = n
+        elif n != self.last_num_procs:
+            if self.last_num_procs > n:
+                self.slot_manager.release(self.last_num_procs - n)
+            else:
+                self.slot_manager.acquire(n - self.last_num_procs, self.max_workers)
+            self.last_num_procs = n
+        return n >= self.max_workers
 
     def all_done_or_failed(self):
         return not self.procs or all(x.in_status('failed') for x in self.procs)
