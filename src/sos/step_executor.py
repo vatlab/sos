@@ -35,7 +35,7 @@ from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
 
 from .utils import env, StopInputGroup, TerminateExecution, short_repr, stable_repr,\
-    get_traceback, expand_size, format_HHMMSS
+    get_traceback, expand_size, format_HHMMSS, SlotManager
 from .pattern import extract_pattern
 from .eval import SoS_eval, SoS_exec, Undetermined, stmtHash
 from .targets import BaseTarget, file_target, dynamic, remote, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock, sos_targets, path, paths
@@ -969,6 +969,7 @@ class Base_Step_Executor:
     def wait_for_results(self):
         if self.concurrent_input_group:
             self.proc_results = [x.get() for x in self.proc_results]
+            SlotManager().release(self.worker_pool._processes - 1)
             self.worker_pool.close()
             self.worker_pool.join()
             self.worker_pool = None
@@ -1253,7 +1254,13 @@ class Base_Step_Executor:
                     self.concurrent_input_group = False
                     env.logger.warning('Input groups are executed sequentially because of existence of directives between statements.')
                 else:
-                    self.worker_pool = Pool(env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
+                    sm = SlotManager()
+                    # because the master process pool will count one worker in (step)
+                    requested = sm.acquire(len(self._groups) - 1, env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
+                    if requested == 0:
+                        self.concurrent_input_group = False
+                    else:
+                        self.worker_pool = Pool(requested + 1)
 
         try:
             for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
@@ -1540,6 +1547,7 @@ class Base_Step_Executor:
                 while self.worker_pool:
                     try:
                         self.worker_pool.terminate()
+                        SlotManager().release(self.worker_pool._processes - 1)
                         self.worker_pool = None
                     except KeyboardInterrupt:
                         continue

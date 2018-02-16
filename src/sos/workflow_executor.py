@@ -340,6 +340,10 @@ class Base_Executor:
             env.config['sig_mode'] = 'default'
         # interactive mode does not pass workflow
         self.md5 = self.create_signature()
+        #
+        # the md5 of the master workflow would be passed from master workflow...
+        if 'master_md5' not in self.config:
+            self.config['master_md5'] = self.md5
         if env.config['sig_mode'] != 'ignore' and self.workflow:
             # remove old workflow file.
             with open(os.path.join(env.exec_dir, '.sos', f'{self.md5}.sig'), 'a') as sig:
