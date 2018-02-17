@@ -943,7 +943,8 @@ class Base_Executor:
                                     f'Failed to regenerate or resolve {target}{dag.steps_depending_on(target, self.workflow)}.')
                             if not isinstance(runnable._depends_targets, Undetermined):
                                 runnable._depends_targets.append(target)
-                            dag._all_dependent_files[target].append(runnable)
+                            if runnable not in dag._all_dependent_files[target]:
+                                dag._all_dependent_files[target].append(runnable)                            
                             dag.build(self.workflow.auxiliary_sections)
                             #
                             cycle = dag.circular_dependencies()

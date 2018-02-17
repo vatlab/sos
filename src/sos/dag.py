@@ -147,16 +147,20 @@ class SoS_DAG(nx.DiGraph):
             raise RuntimeError(f"output_targets should not be sos_targets {output_targets}")
         if not isinstance(input_targets, (type(None), Undetermined)):
             for x in input_targets:
-                self._all_dependent_files[x].append(node)
+                if node not in self._all_dependent_files[x]:
+                    self._all_dependent_files[x].append(node)
         if not isinstance(depends_targets, (type(None), Undetermined)):
             for x in depends_targets:
-                self._all_dependent_files[x].append(node)
+                if node not in self._all_dependent_files[x]:
+                    self._all_dependent_files[x].append(node)
         if not isinstance(output_targets, (type(None), Undetermined)):
             for x in output_targets:
-                self._all_output_files[x].append(node)
+                if node not in self._all_output_files[x]:
+                    self._all_output_files[x].append(node)
         if context is not None:
             for x in context['__changed_vars__']:
-                self._all_output_files[sos_variable(x)].append(node)
+                if node not in self._all_output_files[sos_variable(x)]:
+                    self._all_output_files[sos_variable(x)].append(node)
         self.add_node(node)
 
     def update_step(self, node, input_targets, depends_targets, output_targets):
@@ -168,13 +172,16 @@ class SoS_DAG(nx.DiGraph):
             raise RuntimeError(f"output_targets should not be sos_targets {output_targets}")
         if not isinstance(input_targets, (type(None), Undetermined)):
             for x in input_targets:
-                self._all_dependent_files[x].append(node)
+                if node not in self._all_dependent_files[x]:
+                    self._all_dependent_files[x].append(node)
         if not isinstance(depends_targets, (type(None), Undetermined)):
             for x in depends_targets:
-                self._all_dependent_files[x].append(node)
+                if node not in self._all_dependent_files[x]:
+                    self._all_dependent_files[x].append(node)
         if not isinstance(output_targets, (type(None), Undetermined)):
             for x in output_targets:
-                self._all_output_files[x].append(node)
+                if node not in self._all_output_files[x]:
+                    self._all_output_files[x].append(node)
 
     def find_executable(self):
         '''Find an executable node, which means nodes that has not been completed
