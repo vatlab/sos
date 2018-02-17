@@ -220,7 +220,7 @@ class sos_step(BaseTarget):
     '''A target for a step of sos.'''
     def __init__(self, step_name):
         super(sos_step, self).__init__()
-        self._step_name = step_name
+        self._step_name = 'default_' + step_name if step_name.isdigit() else step_name
 
     def target_exists(self, mode='any'):
         # the target exists only if it has been executed?
