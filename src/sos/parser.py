@@ -490,7 +490,7 @@ class SoS_Step:
                 if isinstance(plain_output, str) or \
                     (isinstance(plain_output, (list, tuple, set)) and \
                             all(isinstance(x, str) for x in plain_output)):
-                    self.options['provides'] = output_stmt
+                    self.options['autoprovides'] = output_stmt
             except:
                 # if otuput has options and rely on anything, it cannot be treated as
                 # auto output
@@ -1240,7 +1240,7 @@ for __n, __v in {repr(name_map)}.items():
         workflow.'''
         if workflow_name is None and not use_default:
             return SoS_Workflow(self.content, '', '',
-                [section for section in self.sections if 'provides' in section.options or 'shared' in section.options], self.global_def)
+                [section for section in self.sections if any(x in section.options for x in ('provides', 'shared', 'autoprovides'))], self.global_def)
         allowed_steps = None
         if not workflow_name:
             wf_name = ''

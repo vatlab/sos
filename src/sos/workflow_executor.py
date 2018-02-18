@@ -501,9 +501,9 @@ class Base_Executor:
         # for sos_step, we need to match step name
         if isinstance(target, sos_step):
             return step.match(target.target_name())
-        if not 'provides' in step.options:
+        if not 'provides' in step.options and not 'autoprovides' in step.options:
             return False
-        patterns = step.options['provides']
+        patterns = step.options['provides'] if 'provides' in step.options else step.options['autoprovides']
         if isinstance(patterns, (str, BaseTarget)):
             patterns = [patterns]
         elif not isinstance(patterns, Sequence):
