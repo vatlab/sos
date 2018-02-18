@@ -14,6 +14,8 @@ in different languages. It is designed for data scienticists and bioinformatics 
 Please refer to the [SoS homepage](http://vatlab.github.io/SOS) for more information.
 
 ### Change Log of SoS and SoS Notebook
+SoS 0.9.12.3
+* [sos#859](https://github.com/vatlab/SoS/issues/859): Introduce automatic auxiliary steps to simplify the use of makefile steps.
 
 SoS 0.9.11.3
 * [sos#879](https://github.com/vatlab/SoS/issues/879): Add action options `stdout` and `stderr` to redict output from script-executing actions. 
