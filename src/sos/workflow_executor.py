@@ -501,9 +501,9 @@ class Base_Executor:
         # for sos_step, we need to match step name
         if isinstance(target, sos_step):
             return step.match(target.target_name())
-        if not 'provides' in step.options:
+        if not 'provides' in step.options and not 'autoprovides' in step.options:
             return False
-        patterns = step.options['provides']
+        patterns = step.options['provides'] if 'provides' in step.options else step.options['autoprovides']
         if isinstance(patterns, (str, BaseTarget)):
             patterns = [patterns]
         elif not isinstance(patterns, Sequence):
@@ -543,6 +543,11 @@ class Base_Executor:
                 mo = [(x, self.match(target, x)) for x in self.workflow.auxiliary_sections]
                 mo = [x for x in mo if x[1] is not False]
                 if not mo:
+                    #
+                    # if no step produces the target, it is possible that it is an indexed step
+                    # so the execution of its previous steps would solves the dependency
+                    #
+                    # find all the nodes that depends on target
                     nodes = dag._all_dependent_files[target]
                     for node in nodes:
                         # if this is an index step... simply let it depends on previous steps
@@ -552,6 +557,15 @@ class Base_Executor:
                             if not indexed:
                                 raise RuntimeError(
                                     f'No step to generate target {target}{dag.steps_depending_on(target, self.workflow)}')
+                            if isinstance(target, sos_step) and not any(self.workflow.section_by_id(x._step_uuid).match(target.target_name()) for x in indexed):
+                                raise RuntimeError(
+                                    f'No step to generate target {target}{dag.steps_depending_on(target, self.workflow)}')
+                            # now, if it is not a sos_step, but its previous steps have already been executed and still
+                            # could not satisfy the requirement..., we should generate an error
+                            if not any(x._status is None or x._status.endswith('pending') for x in indexed):
+                                # all previous status has been failed or completed...
+                                raise RuntimeError(
+                                    f'Previous step{" has" if len(indexed) == 1 else "s have"} not generated target {target}{dag.steps_depending_on(target, self.workflow)}')
                             if not isinstance(node._input_targets, Undetermined):
                                 node._input_targets = Undetermined('')
                             if not isinstance(node._depends_targets, Undetermined):
@@ -943,7 +957,8 @@ class Base_Executor:
                                     f'Failed to regenerate or resolve {target}{dag.steps_depending_on(target, self.workflow)}.')
                             if not isinstance(runnable._depends_targets, Undetermined):
                                 runnable._depends_targets.append(target)
-                            dag._all_dependent_files[target].append(runnable)
+                            if runnable not in dag._all_dependent_files[target]:
+                                dag._all_dependent_files[target].append(runnable)                            
                             dag.build(self.workflow.auxiliary_sections)
                             #
                             cycle = dag.circular_dependencies()

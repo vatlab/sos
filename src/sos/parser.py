@@ -445,7 +445,7 @@ class SoS_Step:
                 self.statements[idx] = ['!',
                                         f'if "sos_handle_parameter_" in globals():\n    {name} = sos_handle_parameter_({name.strip()!r}, {value})\n', statement[2].strip()]
                 self.parameters[name] = value
-        #
+        # handle tasks
         task_directive = [idx for idx, statement in enumerate(self.statements) if statement[0] == ':' and statement[1] == 'task']
         if not task_directive:
             self.task = ''
@@ -479,6 +479,22 @@ class SoS_Step:
                 self.statements[starting][1] += self.statements[idx][1]
             # remove the rest of the statements
             self.statements = self.statements[:starting + 1]
+        #
+        # auto provides #859
+        if not any(opt in self.options for opt in ('provides', 'shared')) and \
+                len([x for x in self.statements if x[0] == ':' and x[1] == 'output']) == 1:
+            # let us check if output is a "plain output"
+            output_stmt = [x for x in self.statements if x[0] == ':' and x[1] == 'output'][0][2]
+            try:
+                plain_output = eval(output_stmt)
+                if isinstance(plain_output, str) or \
+                    (isinstance(plain_output, (list, tuple, set)) and \
+                            all(isinstance(x, str) for x in plain_output)):
+                    self.options['autoprovides'] = output_stmt
+            except:
+                # if otuput has options and rely on anything, it cannot be treated as
+                # auto output
+                pass
 
 
     def show(self):
@@ -1224,7 +1240,7 @@ for __n, __v in {repr(name_map)}.items():
         workflow.'''
         if workflow_name is None and not use_default:
             return SoS_Workflow(self.content, '', '',
-                [section for section in self.sections if 'provides' in section.options or 'shared' in section.options], self.global_def)
+                [section for section in self.sections if any(x in section.options for x in ('provides', 'shared', 'autoprovides'))], self.global_def)
         allowed_steps = None
         if not workflow_name:
             wf_name = ''

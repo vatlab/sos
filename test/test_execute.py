@@ -1076,5 +1076,26 @@ run: expand = True
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    def testNonExistentDepedentTarget(self):
+        '''Test non existent dependent targets'''
+        script = SoS_Script(r"""
+[1]
+
+[2]
+depends: sos_step('wrong')
+""")
+        wf = script.workflow()
+        self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        #
+        script = SoS_Script(r"""
+[1]
+
+[2]
+depends: 'non-existent.txt'
+""")
+        wf = script.workflow()
+        self.assertRaises(RuntimeError, Base_Executor(wf).run)
+
+
 if __name__ == '__main__':
     unittest.main()
