@@ -23,6 +23,8 @@ import os
 import sys
 import stat
 
+import threading
+import pexpect
 import subprocess
 import multiprocessing as mp
 import pickle
@@ -31,7 +33,7 @@ import glob
 import pkg_resources
 from collections.abc import Sequence
 
-from .utils import env, short_repr, expand_size, format_HHMMSS, expand_time
+from .utils import env, short_repr, expand_size, format_HHMMSS, expand_time, DelayedAction
 from .eval import Undetermined, cfg_interpolate
 from .tasks import BackgroundProcess_TaskEngine, loadTask
 from .syntax import SOS_LOGLINE
@@ -264,6 +266,39 @@ class LocalHost:
         return res
 
 
+def test_remote_connection(con):
+    address, port = con
+    try:
+        p=pexpect.spawn(f'ssh {address} -p {port} pwd')
+        i = p.expect(["(?i)are you sure you want to continue connecting",
+            "Password:",
+            pexpect.EOF],
+            timeout=5)
+
+        if i == 0:
+            p.sendline('yes')
+            env.logger.warning(f"ssh connection to {address} was prompted to establish authenticity. sos has answered yes but you might need to restart your command.")
+            p.expect(["(?i)are you sure you want to continue connecting",
+            "Password:", pexpect.EOF], timeout=5)
+            os._exit(1)
+        if i == 1:
+            env.logger.error(f'ssh connection to {address} was prompted for password. Please set up public key authentication to the remote host before continue.')
+            os._exit(1)
+        if i == 2:
+            env.logger.debug(f"ssh connection prompted for {p.before}")
+    except pexpect.TIMEOUT:
+        env.logger.error(f'ssh connection to {address} time out with prompt: {p.before}')
+        os._exit(1)
+    return True
+
+def check_connection(func):
+    def wrapper(self, *args, **kwargs):
+        a = DelayedAction(test_remote_connection, (self.address, self.port))
+        ret = func(self, *args, **kwargs)
+        del a
+        return ret
+    return wrapper
+
 class RemoteHost:
     '''A remote host class that manages how to communicate with remote host'''
     def __init__(self, config):
@@ -403,6 +438,7 @@ class RemoteHost:
             env.logger.debug(f'Ignore unmappable source {source}')
             return source
 
+    @check_connection
     def send_to_host(self, items):
         # we only copy files and directories, not other types of targets
         if isinstance(items, str):
@@ -456,6 +492,7 @@ class RemoteHost:
             sent[source] = dest
         return sent
 
+    @check_connection
     def receive_from_host(self, items):
         if isinstance(items, dict):
             # specify as local:remote
@@ -583,6 +620,7 @@ class RemoteHost:
         params.save(task_file)
         self.send_task_file(task_file)
 
+    @check_connection
     def send_task_file(self, task_file):
         send_cmd = cfg_interpolate('ssh -q {address} -p {port} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks" && scp -q -P {port} {job_file:ap} {address}:.sos/tasks/',
                 {'job_file': sos_targets(task_file), 'address': self.address, 'port': self.port})
@@ -592,6 +630,7 @@ class RemoteHost:
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f'Failed to copy job {task_file} to {self.alias} using command {send_cmd}: {e}')
 
+    @check_connection
     def check_output(self, cmd: object) -> object:
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
@@ -608,6 +647,7 @@ class RemoteHost:
             env.logger.debug(f'Check output of {cmd} failed: {e}')
             raise
 
+    @check_connection
     def check_call(self, cmd):
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
@@ -624,6 +664,7 @@ class RemoteHost:
             env.logger.debug(f'Check output of {cmd} failed: {e}')
             raise
 
+    @check_connection
     def run_command(self, cmd, wait_for_task, realtime=False, **kwargs):
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
@@ -645,6 +686,7 @@ class RemoteHost:
             p.start()
             p.join()
 
+    @check_connection
     def receive_result(self, task_id):
         # for filetype in ('res', 'status', 'out', 'err'):
         sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
