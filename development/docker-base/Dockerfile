@@ -32,6 +32,8 @@ RUN     mkdir /home/mdabioinfo
 ENV     HOME  /home/mdabioinfo
 WORKDIR ${HOME}
 
+RUN     apt-get update
+RUN     apt-get install -y  gcc
 # these should be installed automatically by sos
 RUN     pip install nbformat --upgrade
 RUN     pip install sos
