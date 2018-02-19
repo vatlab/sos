@@ -23,7 +23,6 @@ import os
 import sys
 import stat
 
-import threading
 import pexpect
 import subprocess
 import multiprocessing as mp
@@ -269,8 +268,8 @@ class LocalHost:
 def test_remote_connection(con):
     address, port = con
     try:
-        cmd = cfg_interpolate(f'ssh {host} -p {port} pwd', {
-                'host': self.address, 'port': self.port})
+        cmd = cfg_interpolate('ssh {host} -p {port} pwd', {
+                'host': address, 'port': port})
         p=pexpect.spawn(cmd)
         i = p.expect(["(?i)are you sure you want to continue connecting",
             "Password:",

@@ -21,7 +21,7 @@
 #
 import os
 from sos.utils import env
-from sos.targets import BaseTarget, textMD5, sos_targets
+from sos.targets import BaseTarget, textMD5
 
 class R_library(BaseTarget):
     '''A target for a R library.'''
@@ -43,7 +43,6 @@ class R_library(BaseTarget):
         installed from github if not available, else from cran or bioc
         '''
         from sos.pattern import glob_wildcards
-        from sos.eval import interpolate
         import tempfile
         import subprocess
 

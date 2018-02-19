@@ -27,7 +27,7 @@ import pickle
 import time
 import fasteners
 
-from .utils import env, ActivityNotifier, short_repr
+from .utils import env, ActivityNotifier
 from .eval import Undetermined
 from .targets import file_target, sos_variable, textMD5, sos_step, sos_targets
 

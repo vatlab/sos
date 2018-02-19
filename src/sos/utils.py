@@ -34,7 +34,6 @@ import threading
 import base64
 import pickle
 import yaml
-import time
 import urllib
 import urllib.parse
 import urllib.request
@@ -928,7 +927,7 @@ class SlotManager(object):
         # if num == None, request as many as possible slots
         if num is None:
             num = max_slots
-        with fasteners.InterProcessLock(self.lock_file) as lock:
+        with fasteners.InterProcessLock(self.lock_file):
             if not os.path.isfile(self.slot_file):
                 slots = 0
             else:
@@ -947,7 +946,7 @@ class SlotManager(object):
             return ret
 
     def release(self, num):
-        with fasteners.InterProcessLock(self.lock_file) as lock:
+        with fasteners.InterProcessLock(self.lock_file):
             with open(self.slot_file, 'r') as slot:
                 slots = int(slot.read())
             # return all available slots

@@ -33,7 +33,7 @@ from collections.abc import Sequence, Mapping
 import concurrent.futures
 import traceback
 
-from .utils import env, short_repr, get_traceback, sample_of_file, tail_of_file, linecount_of_file, \
+from .utils import env, short_repr, sample_of_file, tail_of_file, linecount_of_file, \
     format_HHMMSS, expand_time, expand_size, StopInputGroup
 from .eval import SoS_exec, SoS_eval, stmtHash
 

@@ -21,11 +21,8 @@
 #
 
 import os
-import sys
-import re
 import subprocess
 import tempfile
-import json
 import platform
 import shutil
 import shlex
