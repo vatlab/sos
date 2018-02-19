@@ -91,7 +91,7 @@ RUN      R -e 'source("https://bioconductor.org/biocLite.R"); biocLite("biomaRt"
 
 #COPY    docs /home/$NB_USER/work/doc
 RUN     chown -R $NB_USER /home/jovyan/work
-#RUN     chown -R $NB_USER /home/jovyan/.local
+RUN     chown -R $NB_USER /home/jovyan/.local
 
 USER    $NB_USER
 EXPOSE	8888
