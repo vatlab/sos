@@ -269,7 +269,9 @@ class LocalHost:
 def test_remote_connection(con):
     address, port = con
     try:
-        p=pexpect.spawn(f'ssh {address} -p {port} pwd')
+        cmd = cfg_interpolate(f'ssh {host} -p {port} pwd', {
+                'host': self.address, 'port': self.port})
+        p=pexpect.spawn(cmd)
         i = p.expect(["(?i)are you sure you want to continue connecting",
             "Password:",
             pexpect.EOF],
