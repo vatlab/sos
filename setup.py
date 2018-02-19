@@ -167,7 +167,7 @@ pandoc = sos.actions:pandoc
 docker_build = sos.docker.actions:docker_build
 
 [sos_taskengines]
-process = sos.sos_task:BackgroundProcess_TaskEngine
+process = sos.tasks:BackgroundProcess_TaskEngine
 
 [sos_previewers]
 *.pdf,1 = sos.preview:preview_pdf
