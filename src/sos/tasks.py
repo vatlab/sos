@@ -1239,6 +1239,11 @@ class TaskEngine(threading.Thread):
         else:
             # default
             self.wait_for_task = True
+        #
+        # how to stack jobs ... currently backgroun process queue
+        # allows stacking of up to 1000 tasks, but PBS queue does not
+        # allow stacking.
+        self.batch_size = 1
 
     def notify(self, msg):
         # GUI ...
@@ -1359,7 +1364,7 @@ class TaskEngine(threading.Thread):
                 slots = [[] for i in range(self.max_running_jobs)]
                 sample_slots = list(range(self.max_running_jobs))
                 random.shuffle(sample_slots)
-                for i,tid in enumerate(self.pending_tasks[:1000 * self.max_running_jobs]):
+                for i,tid in enumerate(self.pending_tasks[:self.batch_size * self.max_running_jobs]):
                     if self.task_status[tid] == 'running':
                         self.notify(f'{tid} ``runnng``')
                     elif tid in self.canceled_tasks:
@@ -1585,6 +1590,12 @@ class BackgroundProcess_TaskEngine(TaskEngine):
             self.job_template = self.config['job_template'].replace('\r\n', '\n')
         else:
             self.job_template = None
+        #
+        if 'batch_size' in self.config:
+            self.batch_size = self.config['batch_size']
+        else:
+            # default allow stacking of up to 1000 jobs
+            self.batch_size = 1000
 
     def execute_tasks(self, task_ids):
         if not super(BackgroundProcess_TaskEngine, self).execute_tasks(task_ids):
