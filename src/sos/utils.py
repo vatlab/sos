@@ -948,6 +948,8 @@ class SlotManager(object):
     def release(self, num):
         with fasteners.InterProcessLock(self.lock_file):
             slots = self._read_slot()
+            if slots < num:
+                env.logger.warning(f'Releasing {num} slots from {slots} available ones. Please report this bug to SoS developers.')
             self._write_slot(max(0, slots - num))
             env.logger.debug(f'{num} slots released from {slots} active, {slots - num} remain')
             return max(0, slots - num)
