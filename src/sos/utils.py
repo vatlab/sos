@@ -920,43 +920,36 @@ class SlotManager(object):
         manager_id = env.config.get('master_md5', 'general')
         self.lock_file = os.path.join(os.path.expanduser('~'), '.sos', f'manager_{manager_id}.lck')
         self.slot_file = os.path.join(os.path.expanduser('~'), '.sos', f'manager_{manager_id}.slot')
-        if reset and os.path.isfile(self.slot_file):
-            os.remove(self.slot_file)
+        if reset:
+            self._write_slot(0)
+
+    def _read_slot(self):
+        with open(self.slot_file, 'r') as slot:
+            return int(slot.read())
+
+    def _write_slot(self, val):
+        with open(self.slot_file, 'w') as slot:
+            slot.write(str(val))
 
     def acquire(self, num=None, max_slots=10, force=False):
         # if num == None, request as many as possible slots
         if num is None:
             num = max_slots
         with fasteners.InterProcessLock(self.lock_file):
-            if not os.path.isfile(self.slot_file):
-                slots = 0
-            else:
-                try:
-                    with open(self.slot_file, 'r') as slot:
-                        slots = int(slot.read())
-                except Exception as e:
-                    env.logger.error(e)
-                    slots = 0
+            slots = self._read_slot()
             # return all available slots
             avail = max_slots - slots
             ret = num if force else max(min(num, avail), 0)
-            with open(self.slot_file, 'w') as slot:
-                slot.write(str(ret + slots))
+            self._write_slot(ret + slots)
             env.logger.debug(f'{num} slots requested  {ret} returned ({slots} active, force={force})')
             return ret
 
     def release(self, num):
         with fasteners.InterProcessLock(self.lock_file):
-            with open(self.slot_file, 'r') as slot:
-                slots = int(slot.read())
-            # return all available slots
-            with open(self.slot_file, 'w') as slot:
-                slot.write(str(max(0, slots - num)))
+            slots = self._read_slot()
+            self._write_slot(max(0, slots - num))
             env.logger.debug(f'{num} slots released from {slots} active, {slots - num} remain')
             return max(0, slots - num)
-
-
-
 
 class TimeoutInterProcessLock(fasteners.InterProcessLock):
     #
