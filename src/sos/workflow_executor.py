@@ -281,8 +281,8 @@ class ExecutionManager(object):
     def all_busy(self):
         n = len([x for x in self.procs if x and not x.is_pending()])
         if self.last_num_procs is None:
-            # clear counter file if already exists
-            self.slot_manager.acquire(n, self.max_workers)
+            if n > 0:
+                self.slot_manager.acquire(n, self.max_workers)
             self.last_num_procs = n
         elif n != self.last_num_procs:
             if self.last_num_procs > n:
