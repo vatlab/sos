@@ -35,7 +35,7 @@ import traceback
 
 from .utils import env, short_repr, sample_of_file, tail_of_file, linecount_of_file, \
     format_HHMMSS, expand_time, expand_size, StopInputGroup
-from .eval import SoS_exec, SoS_eval, stmtHash
+from .eval import SoS_exec, SoS_eval, stmtHash, cfg_interpolate
 
 from .targets import textMD5, RuntimeInfo, Undetermined, file_target, UnknownTarget, remote, sos_step, sos_targets
 from .eval import interpolate
@@ -1581,14 +1581,63 @@ class TaskEngine(threading.Thread):
 class BackgroundProcess_TaskEngine(TaskEngine):
     def __init__(self, agent):
         super(BackgroundProcess_TaskEngine, self).__init__(agent)
+        if 'job_template' in self.config:
+            self.job_template = self.config['job_template'].replace('\r\n', '\n')
+        else:
+            self.job_template = None
 
     def execute_tasks(self, task_ids):
         if not super(BackgroundProcess_TaskEngine, self).execute_tasks(task_ids):
             env.logger.trace(f'Failed to prepare task {task_ids}')
             return False
+        if self.job_template:
+            if not self._submit_task_with_template(task_ids):
+                return False
+        else:
+            if not self._submit_task(task_ids):
+                return False
+        return True
+
+    def _submit_task(self, task_ids):
+        # if no template, use a default command
         cmd = f"sos execute {' '.join(task_ids)} -v {env.verbosity} -s {env.config['sig_mode']} {'--dryrun' if env.config['run_mode'] == 'dryrun' else ''}"
         env.logger.trace(f'Execute "{cmd}" (waiting={self.wait_for_task})')
         self.agent.run_command(cmd, wait_for_task = self.wait_for_task)
         return True
 
+    def _submit_task_with_template(self, task_ids):
+        runtime = self.config
+        runtime.update({x:sos_dict['_runtime'][x] for x in ('nodes', 'cores', 'mem', 'walltime', 'cur_dir', 'home_dir',
+            'verbosity', 'sig_mode', 'run_mode') if x in env.sos_dict.get('_runtime', {})})
+        if 'nodes' not in runtime:
+            runtime['nodes'] = 1
+        if 'cores' not in runtime:
+            runtime['cores'] = 1
 
+        # let us first prepare a task file
+        job_text = ''
+        for task_id in task_ids:
+            runtime['task'] = task_id
+            try:
+                job_text += cfg_interpolate(self.job_template, runtime)
+                job_text += '\n'
+            except Exception as e:
+                raise ValueError(f'Failed to generate job file for task {task_id}: {e}')
+
+        filename = task_ids[0] + ('.sh' if len(task_ids) == 1 else f'-{task_ids[-1]}.sh')
+        # now we need to write a job file
+        job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, filename)
+        # do not translate newline under windows because the script will be executed
+        # under linux/mac
+        with open(job_file, 'w', newline='') as job:
+            job.write(job_text)
+
+        # then copy the job file to remote host if necessary
+        self.agent.send_task_file(job_file)
+
+        try:
+            cmd = f'bash ~/.sos/tasks/{filename}'
+            self.agent.run_command(cmd, wait_for_task = self.wait_for_task)
+        except Exception as e:
+            raise RuntimeError(f'Failed to submit task {task_ids}: {e}')
+        return True
