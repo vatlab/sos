@@ -1617,6 +1617,16 @@ class BackgroundProcess_TaskEngine(TaskEngine):
         return True
 
     def _submit_task_with_template(self, task_ids):
+        '''Submit tasks by interpolating a shell script defined in job_template'''
+        env.sos_dict['_runtime']['cur_dir'] = os.getcwd()
+        # we need to record the verbosity and sigmode of task during creation because
+        # they might be changed while the task is in the queue waiting to be
+        # submitted (this happens when tasks are submitted from Jupyter)
+        env.sos_dict['_runtime']['verbosity'] = env.verbosity
+        env.sos_dict['_runtime']['sig_mode'] = env.config.get('sig_mode', 'default')
+        env.sos_dict['_runtime']['run_mode'] = env.config.get('run_mode', 'run')
+        env.sos_dict['_runtime']['home_dir'] = os.path.expanduser('~')
+
         runtime = self.config
         runtime.update({x:sos_dict['_runtime'][x] for x in ('nodes', 'cores', 'mem', 'walltime', 'cur_dir', 'home_dir',
             'verbosity', 'sig_mode', 'run_mode') if x in env.sos_dict.get('_runtime', {})})
