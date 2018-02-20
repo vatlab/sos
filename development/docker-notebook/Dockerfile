@@ -35,32 +35,36 @@ RUN     apt-get update
 RUN     apt-get install -y graphviz
 RUN     apt-get install -y texlive-xetex texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended
 
-#       Bash
-RUN     pip install bash_kernel
-RUN     python -m bash_kernel.install
-
-#       Octave
 RUN     apt-get install -y octave
 RUN     octave --eval 'pkg install -forge dataframe'
-RUN     pip install octave_kernel
-RUN     python -m octave_kernel install
 
-#       JavaScript
 RUN     apt-get purge --auto-remove nodejs npm node
 RUN     rm -rf ~/.nvm 
 RUN     apt-get install -y nodejs-legacy npm
 RUN     npm install -g ijavascript
+
+RUN     apt-get install -y libgmp3-dev
+RUN     apt-get install -y software-properties-common
+RUN     add-apt-repository -y ppa:staticfloat/juliareleases
+#RUN     add-apt-repository -y ppa:staticfloat/julia-deps
+RUN     apt-get update
+RUN     apt-get install -y julia
+
+USER    jovyan
+
+#       Bash
+RUN     pip install bash_kernel
+RUN     python -m bash_kernel.install --user
+
+#       Octave
+RUN     pip install octave_kernel
+RUN     python -m octave_kernel install --user
+
+#       JavaScript
 RUN     npm rebuild
-#RUN     ijsinstall --spec-path=full
+RUN     ijsinstall --spec-path=full
 
 #        Julia
-RUN     apt-get install -y libgmp3-dev
-#RUN     apt-get install -y software-properties-common
-#RUN     add-apt-repository -y ppa:staticfloat/juliareleases
-#RUN     add-apt-repository -y ppa:staticfloat/julia-deps
-#RUN     apt-get update
-
-RUN     apt-get install -y julia
 RUN     julia -e "ENV[\"JUPYTER\"]=\"$(which jupyter)\";Pkg.add(\"IJulia\")"
 RUN     julia -e 'Pkg.add("Feather")'
 RUN     julia -e 'Pkg.add("DataFrames")'
@@ -69,8 +73,8 @@ RUN     julia -e 'Pkg.add("NamedArrays")'
 #       Python 2
 RUN     conda create -n ipykernel_py2 python=2 ipykernel
 RUN     /bin/bash -c "source activate ipykernel_py2"
-#RUN     python -m ipykernel install --user
-#RUN     /bin/bash -c "source deactivate ipykernel_py2"
+RUN     python -m ipykernel install --user
+RUN     /bin/bash -c "source deactivate ipykernel_py2"
 
 # Bioinfo
 RUN     pip install pysam
@@ -86,14 +90,13 @@ RUN     pip install sos sos-notebook sos-r sos-julia sos-python sos-matlab sos-j
 RUN     python -m sos_notebook.install
 
 # Install some R packages for our examples
-#RUN     R -e 'install.packages(c("package1", "package2"), lib="/usr/local/lib/R/site-library")'
-RUN      R -e 'source("https://bioconductor.org/biocLite.R"); biocLite("biomaRt")'
+RUN     R -e 'install.packages(c("package1", "package2"), lib="/usr/local/lib/R/site-library")'
+RUN     R -e 'source("https://bioconductor.org/biocLite.R"); biocLite("biomaRt")'
 
 #COPY    docs /home/$NB_USER/work/doc
-RUN     chown -R $NB_USER /home/jovyan/work
-RUN     chown -R $NB_USER /home/jovyan/.local
+RUN     chown -R jovyan /home/jovyan/work
+RUN     chown -R jovyan /home/jovyan/.local
 
-USER    $NB_USER
-EXPOSE	8888
+#EXPOSE	8888
 
 
