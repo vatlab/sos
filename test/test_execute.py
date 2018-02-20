@@ -740,7 +740,6 @@ for i in range(4):
         #
         shutil.rmtree('temp')
 
-    @unittest.skipIf(sys.platform == 'win32', 'Temporarily disable this test under windows #895')
     def testDynamicInput(self):
         '''Testing dynamic input'''
         #
@@ -751,9 +750,9 @@ for i in range(4):
         script = SoS_Script('''
 [1]
 
+from pathlib import Path
 for i in range(5):
-    run(f"touch temp/test_{i}.txt")
-
+    Path(os.path.join('temp', f'test_{i}.txt')).touch()
 
 [10: shared={'test':'step_output'}]
 input: dynamic(os.path.join('temp', '*.txt')), group_by='single'
