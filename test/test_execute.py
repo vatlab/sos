@@ -21,6 +21,7 @@
 #
 
 import os
+import sys
 import glob
 import unittest
 import shutil
@@ -740,6 +741,7 @@ for i in range(4):
         #
         shutil.rmtree('temp')
 
+    @unittest.skipIf(sys.platform == 'win32', 'Temporarily disable this test under windows #895')
     def testDynamicInput(self):
         '''Testing dynamic input'''
         #
