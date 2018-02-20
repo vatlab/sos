@@ -921,7 +921,8 @@ class SlotManager(object):
         self.lock_file = os.path.join(os.path.expanduser('~'), '.sos', f'manager_{manager_id}.lck')
         self.slot_file = os.path.join(os.path.expanduser('~'), '.sos', f'manager_{manager_id}.slot')
         if reset:
-            self._write_slot(0)
+            with fasteners.InterProcessLock(self.lock_file):
+                self._write_slot(0)
 
     def _read_slot(self):
         with open(self.slot_file, 'r') as slot:
