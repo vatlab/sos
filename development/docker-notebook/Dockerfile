@@ -50,6 +50,10 @@ RUN     add-apt-repository -y ppa:staticfloat/juliareleases
 RUN     apt-get update
 RUN     apt-get install -y julia
 
+# Install some R packages for our examples
+#RUN     R -e 'install.packages(c("package1", "package2"), lib="/usr/local/lib/R/site-library")'
+RUN     R -e 'source("https://bioconductor.org/biocLite.R"); biocLite("biomaRt")'
+
 USER    jovyan
 
 #       Bash
@@ -89,9 +93,6 @@ RUN     pip install nbformat --upgrade
 RUN     pip install sos sos-notebook sos-r sos-julia sos-python sos-matlab sos-javascript sos-bash sos-bioinfo --upgrade
 RUN     python -m sos_notebook.install
 
-# Install some R packages for our examples
-RUN     R -e 'install.packages(c("package1", "package2"), lib="/usr/local/lib/R/site-library")'
-RUN     R -e 'source("https://bioconductor.org/biocLite.R"); biocLite("biomaRt")'
 
 #COPY    docs /home/$NB_USER/work/doc
 RUN     chown -R jovyan /home/jovyan/work
