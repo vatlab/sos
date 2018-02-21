@@ -27,7 +27,7 @@ import pickle
 import time
 import fasteners
 
-from .utils import env, ActivityNotifier
+from .utils import env, ActivityNotifier, short_repr
 from .eval import Undetermined
 from .targets import file_target, sos_variable, textMD5, sos_step, sos_targets
 
@@ -200,7 +200,7 @@ class SoS_DAG(nx.DiGraph):
         pending_jobs = [x for x in self.nodes() if x._status == 'signature_pending']
         if pending_jobs:
             try:
-                notifier = ActivityNotifier(f'Waiting for {len(pending_jobs)} pending job{"s: e.g." if len(pending_jobs) > 1 else ":"} output {pending_jobs[0]._signature[0]} with signature file {pending_jobs[0]._signature[1] + "_"}. You can manually remove this lock file if you are certain that no other process is working on the output.')
+                notifier = ActivityNotifier(f'Waiting for {len(pending_jobs)} pending job{"s: e.g." if len(pending_jobs) > 1 else ":"} output {short_repr(pending_jobs[0]._signature[0])} with signature file {pending_jobs[0]._signature[1] + "_"}. You can manually remove this lock file if you are certain that no other process is working on the output.')
                 while True:
                     for node in pending_jobs:
                         # if it has not been executed
