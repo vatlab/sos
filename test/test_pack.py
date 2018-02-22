@@ -38,19 +38,23 @@ class TestPack(unittest.TestCase):
 parameter: name='t_f1'
 [0]
 output:  name
-run: expand=True
-    dd if=/dev/urandom of={name} count=10000
+import os
+with open(_output, 'wb') as out:
+    out.write(os.urandom(10000))
 
 [1]
-output:  't_d1/t_f2'
-run: expand=True
-    dd if=/dev/urandom of={_output} count=50000
-    dd if=/dev/urandom of=t_d1/ut_f4 count=500
+output:  os.path.join('t_d1', 't_f2')
+import os
+with open(_output, 'wb') as out:
+    out.write(os.urandom(50000))
+with open(os.path.join('t_d1', 'ut_f4'), 'wb') as out:
+    out.write(os.urandom(10000))
 
 [2]
-output:  't_d2/t_d3/t_f3'
-run: expand=True
-    dd if=/dev/urandom of={_output} count=6000
+output:  os.path.join('t_d2', 't_d3', 't_f3')
+import os
+with open(_output, 'wb') as out:
+    out.write(os.urandom(5000))
 
 ''')
         with open('included.sos', 'w') as script:
