@@ -668,7 +668,7 @@ def check_task(task):
     #
     task_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.task')
     if not os.path.isfile(task_file):
-        return 'non-exist'
+        return 'missing'
     pulse_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.pulse')
     if not os.path.isfile(pulse_file):
         pulse_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
@@ -1458,7 +1458,7 @@ class TaskEngine(threading.Thread):
             if task_id in self.canceled_tasks and status != 'aborted':
                 env.logger.debug(f'Task {task_id} is still not killed (status {status})')
                 status = 'aborted'
-            if status != 'non-exist':
+            if status != 'missing':
                 if task_id in self.task_status and self.task_status[task_id] == status:
                     self.notify(['pulse-status', self.agent.alias, task_id, status])
                 else:
