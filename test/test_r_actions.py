@@ -38,10 +38,9 @@ class TestActions(unittest.TestCase):
         for f in self.temp_files:
             file_target(f).remove('both')
 
+    @unittest.skipIf(not shutil.which('Rscript'), 'R not installed')
     def testRmarkdown(self):
         '''Test action Rmarkdown'''
-        if not shutil.which('Rscript'):
-            return
         file_target('myreport.html').remove()
         script = SoS_Script(r'''
 [10]
@@ -63,6 +62,7 @@ Rmarkdown(output=_output[0])
         #
         file_target('myreport.html').remove('both')
 
+    @unittest.skipIf(not shutil.which('Rscript'), 'R not installed')
     def testRmarkdownWithInput(self):
         # Rmarkdown with specified input.
         script = SoS_Script(r'''
@@ -101,6 +101,7 @@ Rmarkdown(input='a.md', output=_output[0])
 #         wf = script.workflow()
 #         Base_Executor(wf).run()
 
+    @unittest.skipIf(not shutil.which('Rscript'), 'R not installed')
     def testRmarkdownWithActionOutput(self):
         script = SoS_Script(r'''
 [10]
@@ -121,6 +122,7 @@ Rmarkdown(input=['default_10.md', 'default_20.md'], output='output.html')
             self.assertTrue(file_target(f).exists())
             file_target(f).remove()
 
+    @unittest.skipIf(not shutil.which('Rscript'), 'R not installed')
     def testRmarkdownToStdout(self):
         script = SoS_Script(r'''
 # generate report

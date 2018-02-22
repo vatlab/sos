@@ -38,11 +38,9 @@ class TestActions(unittest.TestCase):
         for f in self.temp_files:
             file_target(f).remove('both')
 
-
+    @unittest.skipIf(not shutil.which('node'), 'node not installed')
     def testNode(self):
-        '''Test action ruby'''
-        if not shutil.which('node'):
-            return
+        '''Test action node'''
         script = SoS_Script(r'''
 [0]
 node:

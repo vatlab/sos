@@ -40,10 +40,9 @@ class TestActions(unittest.TestCase):
             file_target(f).remove('both')
 
 
+    @unittest.skipIf(not shutil.which('julia'), "julia not available")
     def testJulia(self):
         '''Test action Julia'''
-        if not shutil.which('julia'):
-            return
         if os.path.isfile('julia_example.txt'):
             os.remove('julia_example.txt')
         script = SoS_Script(r'''
