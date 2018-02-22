@@ -68,8 +68,10 @@ def glob_wildcards(pattern, files=None):
     Glob the values of the wildcards by matching the given pattern to the filesystem.
     Returns a named tuple with a list of values for each wildcard.
     """
-    if sys.platform != 'win32':
-        pattern = os.path.normpath(pattern)
+    pattern = os.path.normpath(pattern)
+    if sys.platform == 'win32':
+        # we perform path matching with / slash only
+        pattern = pattern.replace('\\', '/')
     first_wildcard = re.search("{[^{]", pattern)
     dirname = os.path.dirname(pattern[:first_wildcard.start(
     )]) if first_wildcard else os.path.dirname(pattern)
@@ -87,7 +89,8 @@ def glob_wildcards(pattern, files=None):
                  for f in chain(filenames, dirnames))
 
     for f in files:
-        match = re.match(pattern, str(f))
+        # we perform path matching with only / slash
+        match = re.match(pattern, str(f).replace('\\', '/'))
         if match:
             for name, value in match.groupdict().items():
                 res[name].append(value)
