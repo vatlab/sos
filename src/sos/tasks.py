@@ -1492,7 +1492,7 @@ class TaskEngine(threading.Thread):
                 f'--status {" ".join(status)}' if status else '',
                 ))
         except subprocess.CalledProcessError as e:
-            env.logger.error(f'Failed to query status of tasks {tasks}: {e}')
+            env.logger.warning(f'Failed to query status of tasks on {self.alias}')
             return ''
 
     def kill_tasks(self, tasks, tags=None, all_tasks=False):

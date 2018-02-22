@@ -935,29 +935,43 @@ class Host:
         return {task: self._host_agent.receive_result(task) for task in tasks}
 
 
-def list_queues(cfg, verbosity = 1):
+def list_queues(cfg, verbosity = 1, check_status=False):
     hosts = cfg.get('hosts', [])
     if not hosts:
         env.logger.warning("No remote host or task queue is defined in ~/.sos/hosts.yml.")
         return
-    host_description = [['Alias', 'Address', 'Queue Type', 'Description'],
-                        ['-----', '-------', '----------', '-----------']]
+    host_description = [['Alias', 'Address', 'Queue Type'] + (['Running', 'Pending', 'Completed'] if check_status else []) + ['Description'],
+                        ['-----', '-------', '----------'] + (['-------', '-------', '---------'] if check_status else []) + ['-----------']]
     for host in sorted(hosts):
         try:
-            h = Host(host, start_engine=False)
+            h = Host(host, start_engine=check_status)
         except Exception as e:
             env.logger.warning(f'Invalid remote host {host} from localhost: {e}')
             continue
+        if check_status or verbosity > 2:
+            try:
+                status = h._task_engine.query_tasks(tasks=[], verbosity=0)
+            except Exception as e:
+                env.logger.warning(f"Failed to check status of remote host {host}: {e}")
+                continue
+            status = [x.strip() for x in status.splitlines() if x.strip()]
+            running = str(status.count('running'))
+            pending = str(status.count('pending'))
+            completed = str(status.count('completed'))
+
         if verbosity == 0:
             print(h.alias)
         elif verbosity in (1, 2):
-            host_description.append([
-                h.alias, h._host_agent.address, h._task_engine_type, h.description])
+            host_description.append([ h.alias, h._host_agent.address, h._task_engine_type] + \
+                    ([running, pending, completed] if check_status else []) + [h.description])
         else:
             print(f'Queue:       {h.alias}')
             print(f'Address:     {h._host_agent.address}')
             print(f'Queue Type:  {h._task_engine_type}')
             print(f'Description: {h.description}')
+            for k in set(status):
+                if k not in ('running', 'pending', 'completed'):
+                    print(f'{(k+":").ljust(26)} {status.count(k)}')
             print('Configuration:')
             keys = sorted(h.config.keys())
             for key in keys:

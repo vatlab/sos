@@ -1085,7 +1085,7 @@ def cmd_status(args, workflow_args):
         cfg = load_config_files(args.config)
         if args.queue == '':
             from .hosts import list_queues
-            list_queues(cfg, args.verbosity)
+            list_queues(cfg, args.verbosity, check_status=True)
             return
         if not args.queue:
             check_tasks(tasks=args.tasks, verbosity=args.verbosity, html=args.html, start_time=args.start_time,
