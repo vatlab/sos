@@ -1893,9 +1893,9 @@ def cmd_pack(args, unknown_args):
             if not ft.target_exists():
                 env.logger.warning('Missing tracked file {}'.format(ft.target_name()))
             elif ft.is_external():
-                manifest.write('EXTERNAL\t{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.target_signature()))
+                manifest.write('EXTERNAL\t{}\t{}\t{}\t{}\n'.format(f.replace('\\', '/'), ft.mtime(), ft.size(), ft.target_signature()))
             else:
-                manifest.write('TRACKED\t{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.target_signature()))
+                manifest.write('TRACKED\t{}\t{}\t{}\t{}\n'.format(f.replace('\\', '/'), ft.mtime(), ft.size(), ft.target_signature()))
         for f in runtime_files:
             ft = file_target(f)
             if not ft.target_exists():
