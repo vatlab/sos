@@ -480,13 +480,17 @@ class file_target(path, BaseTarget):
             self._attachments = []
 
     def target_exists(self, mode='any'):
-        if mode in ('any', 'target') and self.expanduser().exists():
-            return True
-        elif mode == 'any' and Path(str(self.expanduser()) + '.zapped').exists():
-            return True
-        elif mode == 'signature' and Path(self.sig_file()).exists():
-            return True
-        return False
+        try:
+            if mode in ('any', 'target') and self.expanduser().exists():
+                return True
+            elif mode == 'any' and Path(str(self.expanduser()) + '.zapped').exists():
+                return True
+            elif mode == 'signature' and Path(self.sig_file()).exists():
+                return True
+            return False
+        except Exception as e:
+            env.logger.debug(f"Invalid file_target {self}: {e}")
+            return False
 
     def target_name(self):
         return str(self)
