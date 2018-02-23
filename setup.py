@@ -159,8 +159,9 @@ python3 = sos.actions_python:python3
 R = sos.actions_r:R
 Rmarkdown = sos.actions_r:Rmarkdown
 
+ruby = sos.actions_ruby:ruby
+
 perl = sos.actions:perl
-ruby = sos.actions:ruby
 report = sos.actions:report
 pandoc = sos.actions:pandoc
 

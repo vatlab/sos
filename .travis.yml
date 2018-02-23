@@ -30,6 +30,8 @@ before_install:
     - sudo apt-get install octave
     # R
     - conda install -c r r-markdown r-rmarkdown r-base64enc  pandoc
+    # ruby
+    - sudo apt-get install ruby-full
     # add docker
     - pip install docker
     # packages required by SoS

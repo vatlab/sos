@@ -49,7 +49,7 @@ from .targets import path, paths, file_target, fileMD5, executable, UnknownTarge
 __all__ = ['SoS_Action', 'script', 'sos_run',
     'fail_if', 'warn_if', 'stop_if',
     'download',
-    'run', 'perl', 'ruby', 
+    'run', 'perl', 
     'report', 'pandoc'
     ]
 
@@ -841,12 +841,6 @@ def perl(script, args='', **kwargs):
     specified by option input would be prepended before the specified script.'''
     return SoS_ExecuteScript(script, 'perl', '.pl', args).run(**kwargs)
 
-@SoS_Action(acceptable_args=['script', 'args'])
-def ruby(script, args='', **kwargs):
-    '''Execute specified script using ruby. This action accepts common action arguments such as
-    input, active, workdir, docker_image and args. In particular, content of one or more files
-    specified by option input would be prepended before the specified script.'''
-    return SoS_ExecuteScript(script, 'ruby', '.rb', args).run(**kwargs)
 
 
 def collect_input(script, input):
