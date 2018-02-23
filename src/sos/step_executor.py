@@ -1254,12 +1254,15 @@ class Base_Step_Executor:
         if self.concurrent_input_group:
             if self.step.task:
                 self.concurrent_input_group = False
-                env.logger.warning('Input groups are executed sequentially because of existence of tasks')
+                env.logger.debug('Input groups are executed sequentially because of existence of tasks')
             else:
                 conc_stmts = [x for x in self.step.statements[input_statement_idx:] if x[0] != ':']
                 if len(conc_stmts) > 1:
                     self.concurrent_input_group = False
-                    env.logger.warning('Input groups are executed sequentially because of existence of directives between statements.')
+                    env.logger.debug('Input groups are executed sequentially because of existence of directives between statements.')
+                elif any('sos_run' in x[1] for x in self.step.statements[input_statement_idx:]):
+                    self.concurrent_input_group = False
+                    env.logger.debug('Input groups are executed sequentially because of existence of nested workflow.')
                 else:
                     sm = SlotManager()
                     # because the master process pool will count one worker in (step)
