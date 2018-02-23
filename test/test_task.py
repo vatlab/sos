@@ -375,7 +375,7 @@ run: expand=True
         # sos should quit
         self.assertGreater(len(ret['pending_tasks']), 0)
         #
-        time.sleep(28)
+        time.sleep(38)
         print('RESTART')
         env.config['sig_mode'] = 'default'
         env.config['wait_for_task'] = True
