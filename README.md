@@ -1,4 +1,5 @@
 [![PyPI version](https://badge.fury.io/py/sos.svg)](https://badge.fury.io/py/sos)
+[![Join the chat at https://gitter.im/vatlab/SoS](https://badges.gitter.im/vatlab/SoS.svg)](https://gitter.im/vatlab/SoS?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build Status](https://travis-ci.org/vatlab/SoS.svg?branch=master)](https://travis-ci.org/vatlab/SoS)
 [![Build Status](https://ci.appveyor.com/api/projects/status/x092eusa0tta3msw?svg=true
 )](https://ci.appveyor.com/project/BoPeng/sos)
@@ -15,7 +16,7 @@ Please refer to the [SoS homepage](http://vatlab.github.io/SOS) for more informa
 
 ### Change Log of SoS and SoS Notebook
 
-[![Join the chat at https://gitter.im/vatlab/SoS](https://badges.gitter.im/vatlab/SoS.svg)](https://gitter.im/vatlab/SoS?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 SoS 0.9.12.3
 * [sos#859](https://github.com/vatlab/SoS/issues/859): Introduce automatic auxiliary steps to simplify the use of makefile steps.
 
