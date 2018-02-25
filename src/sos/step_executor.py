@@ -239,6 +239,11 @@ def analyze_section(section, default_input=None):
     # finally, tasks..
     if section.task:
         signature_vars |= accessed_vars(section.task)
+    if '__default_output__' in env.sos_dict and not isinstance(step_output, Undetermined):
+        for out in env.sos_dict['__default_output__']:
+            if out not in step_output:
+                raise ValueError(f'Defined output fail to produce expected output: {step_output} generated, {env.sos_dict["__default_output__"]} expected.')
+ 
     return {
         'step_name': f'{section.name}_{section.index}' if isinstance(section.index, int) else section.name,
         'step_input': step_input if isinstance(step_input, Undetermined) else sos_targets(step_input),
