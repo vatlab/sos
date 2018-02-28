@@ -13,7 +13,11 @@ scripts in multiple languages into a single executable script, an
 a **workflow engine** for the execution of workflows consisting with scripts
 in different languages. It is designed for data scienticists and bioinformatics who routinely work with scripts in different languages such as R, Python, Perl, and bash.
 
-Please refer to the [SoS homepage](http://vatlab.github.io/SOS) for more information.
+Please refer to the [SoS homepage](http://vatlab.github.io/SOS) for more information. 
+
+We welcome and value community contributions: please [post issues](https://github.com/vatlab/SoS/issues) 
+to provide us feedback or get our support; please [send pull requests](https://github.com/vatlab/SoS/pulls) 
+if you have helped fixing bugs or making improvements to the source code.  
 
 ### Change Log of SoS and SoS Notebook
 
