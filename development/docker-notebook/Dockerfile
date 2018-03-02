@@ -50,9 +50,11 @@ RUN     add-apt-repository -y ppa:staticfloat/juliareleases
 RUN     apt-get update
 RUN     apt-get install -y julia
 
-# Install some R packages for our examples
-#RUN     R -e 'install.packages(c("package1", "package2"), lib="/usr/local/lib/R/site-library")'
-RUN     R -e 'source("https://bioconductor.org/biocLite.R"); biocLite("biomaRt")'
+# Install some packages for our examples
+#RUN     R --slave -e 'install.packages(c("package1", "package2"), lib="/usr/local/lib/R/site-library")'
+RUN     R --slave -e 'source("https://bioconductor.org/biocLite.R"); biocLite("biomaRt")'
+RUN     R --slave -e 'install.packages("glmnet", repos="http://cran.us.r-project.org")'
+RUN     pip install sklearn
 
 USER    jovyan
 
