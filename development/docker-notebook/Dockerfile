@@ -92,8 +92,7 @@ RUN     pip install sos sos-notebook sos-r sos-julia sos-python sos-matlab sos-j
 RUN     python -m sos_notebook.install
 
 
-COPY    examples /home/jovyan/examples
-RUN     chown -R jovyan /home/jovyan/examples
+COPY    --chown=jovyan:root examples /home/jovyan/examples
 RUN     chown -R jovyan /home/jovyan/work
 RUN     chown -R jovyan /home/jovyan/.local
 
