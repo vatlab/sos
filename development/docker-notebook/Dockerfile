@@ -36,7 +36,7 @@ RUN     apt-get install -y graphviz
 RUN     apt-get install -y texlive-xetex texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended
 
 RUN     apt-get install -y octave
-RUN     octave --eval 'pkg install -forge dataframe'
+#RUN     octave --eval 'pkg install -forge dataframe'
 
 RUN     apt-get purge --auto-remove nodejs npm node
 RUN     rm -rf ~/.nvm 
@@ -93,10 +93,14 @@ RUN     pip install nbformat --upgrade
 RUN     pip install sos sos-notebook sos-r sos-julia sos-python sos-matlab sos-javascript sos-bash sos-bioinfo --upgrade
 RUN     python -m sos_notebook.install
 
+COPY    examples /home/jovyan/examples
 
-COPY    --chown=jovyan:root examples /home/jovyan/examples
+USER    root
+RUN     chown -R jovyan /home/jovyan/examples
 RUN     chown -R jovyan /home/jovyan/work
 RUN     chown -R jovyan /home/jovyan/.local
+
+USER    jovyan
 
 #EXPOSE	8888
 
