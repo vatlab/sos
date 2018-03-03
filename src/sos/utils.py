@@ -933,6 +933,10 @@ class SlotManager(object):
             slot.write(str(val))
 
     def acquire(self, num=None, max_slots=10, force=False):
+        # if slot manager is not initialized (e.g. for interactive use)
+        # we do not track it.
+        if not os.path.isfile(self.slot_file):
+            return num if force else min(max_slots, num)
         # if num == None, request as many as possible slots
         if num is None:
             num = max_slots
@@ -946,6 +950,9 @@ class SlotManager(object):
             return ret
 
     def release(self, num):
+        # if slot manager is not initialized (e.g. for interactive use), do not track it.
+        if not os.path.isfile(self.slot_file):
+            return 0
         with fasteners.InterProcessLock(self.lock_file):
             slots = self._read_slot()
             if slots < num:
