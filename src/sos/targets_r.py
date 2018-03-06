@@ -48,53 +48,8 @@ class R_library(BaseTarget):
 
         output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.txt', delete=False).name
         script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.R', delete=False).name
-        if len(glob_wildcards('{repo}@{pkg}', [name])['repo']):
-            # package is from github
-            self._install('devtools', None, repos)
-            install_script = f'''
-            options(warn=-1)
-            package_repo <-strsplit("{name}", split="@")[[1]][2]
-            package <-strsplit("{name}", split="@")[[1]][1]
-            if (suppressMessages(require(package, character.only=TRUE, quietly=TRUE))) {{
-                write(paste(package, packageVersion(package), "AVAILABLE"), file="{output_file}")
-            }} else {{
-                devtools::install_github(package_repo)
-                # if it still does not exist, write the package name to output
-                if (suppressMessages(require(package, character.only=TRUE, quietly=TRUE))) {{
-                    write(paste(package, packageVersion(package), "INSTALLED"), file="{output_file}")
-                }} else {{
-                    write(paste(package, "NA", "MISSING"), file="{output_file}")
-                    quit("no")
-                }}
-            }}
-            cur_version <- packageVersion(package)
-            '''
-        else:
-            # package is from cran or bioc
-            install_script = f'''
-            options(warn=-1)
-            package <- "{name}"
-            if (suppressMessages(require(package, character.only=TRUE, quietly=TRUE))) {{
-                write(paste(package, packageVersion(package), "AVAILABLE"), file={output_file!r})
-            }} else {{
-                install.packages(package, repos="{repos}",
-                    quiet=FALSE)
-                # if the package still does not exist
-                if (!suppressMessages(require(package, character.only=TRUE, quietly=TRUE))) {{
-                    source("http://bioconductor.org/biocLite.R")
-                    biocLite(package, suppressUpdates=TRUE, suppressAutoUpdate=TRUE, ask=FALSE)
-                }}
-                # if it still does not exist, write the package name to output
-                if (suppressMessages(require(package, character.only=TRUE, quietly=TRUE))) {{
-                    write(paste(package, packageVersion(package), "INSTALLED"), file={output_file!r})
-                }} else {{
-                    write(paste(package, "NA", "MISSING"), file={output_file!r})
-                    quit("no")
-                }}
-            }}
-            cur_version <- packageVersion(package)
-            '''
-        version_script = ''
+        #
+        version_satisfied = 'TRUE'
         if version is not None:
             version = list(version)
             operators = []
@@ -111,17 +66,62 @@ class R_library(BaseTarget):
             # check version and mark version mismatch
             # if current version satisfies any of the
             # requirement the check program quits
-            for x, y in zip(version, operators):
-                version_script += f'''
-                if (cur_version {y} {repr(x)}) {{
-                  quit("no")
+            version_satisfied = '||'.join([f'(cur_version {y} {repr(x)})' for x, y in zip(version, operators)])
+        #
+        if len(glob_wildcards('{repo}@{pkg}', [name])['repo']):
+            # package is from github
+            self._install('devtools', None, repos)
+            install_script = f'''
+            options(warn=-1)
+            package_repo <-strsplit("{name}", split="@")[[1]][2]
+            package <-strsplit("{name}", split="@")[[1]][1]
+            cur_version <- packageVersion(package)
+            if (suppressMessages(require(package, character.only=TRUE, quietly=TRUE)) && {version_satisfied}) {{
+                write(paste(package, cur_version, "AVAILABLE"), file={repr(output_file)})
+            }} else {{
+                devtools::install_github(package_repo, force = TRUE)
+                cur_version <- packageVersion(package)
+                # if it still does not exist, write the package name to output
+                if (suppressMessages(require(package, character.only=TRUE, quietly=TRUE))) {{
+                    if ({version_satisfied}) write(paste(package, cur_version, "INSTALLED"), file={repr(output_file)})
+                    else write(paste(package, cur_version, "VERSION_MISMATCH"), file={repr(output_file)})
+                }} else {{
+                    write(paste(package, "NA", "MISSING"), file={repr(output_file)})
+                    quit("no")
                 }}
-                '''
-            version_script += f'write(paste(package, cur_version, "VERSION_MISMATCH"), file = {repr(output_file)})'
+            }}
+            '''
+        else:
+            # package is from cran or bioc
+            install_script = f'''
+            options(warn=-1)
+            package <- "{name}"
+            cur_version <- packageVersion(package)
+            if (suppressMessages(require(package, character.only=TRUE, quietly=TRUE)) && {version_satisfied}) {{
+                write(paste(package, cur_version, "AVAILABLE"), file={repr(output_file)})
+            }} else {{
+                install.packages(package, repos="{repos}",
+                    quiet=FALSE)
+                # if the package still does not exist
+                if (!suppressMessages(require(package, character.only=TRUE, quietly=TRUE))) {{
+                    source("http://bioconductor.org/biocLite.R")
+                    biocLite(package, suppressUpdates=TRUE, suppressAutoUpdate=TRUE, ask=FALSE)
+                }}
+                # if it still does not exist, write the package name to output
+                cur_version <- packageVersion(package)
+                if (suppressMessages(require(package, character.only=TRUE, quietly=TRUE))) {{
+                    if ({version_satisfied}) write(paste(package, cur_version, "INSTALLED"), file={repr(output_file)})
+                    else write(paste(package, cur_version, "VERSION_MISMATCH"), file={repr(output_file)})
+                }} else {{
+                    write(paste(package, "NA", "MISSING"), file={repr(output_file)})
+                    quit("no")
+                }}
+            }}
+            '''
         # temporarily change the run mode to run to execute script
         try:
             with open(script_file, 'w') as sfile:
-                sfile.write(install_script + version_script)
+                sfile.write(install_script)
             #
             p = subprocess.Popen(['Rscript', '--default-packages=utils', script_file])
             ret = p.wait()
@@ -137,17 +137,17 @@ class R_library(BaseTarget):
         ret_val = False
         with open(output_file) as tmp:
             for line in tmp:
-                lib, version, status = line.split()
+                lib, cur_version, status = line.split()
                 if status.strip() == "MISSING":
                     env.logger.warning(f'R Library {lib} is not available and cannot be installed.')
                 elif status.strip() == 'AVAILABLE':
-                    env.logger.debug(f'R library {lib} ({version}) is available')
+                    env.logger.debug(f'R library {lib} ({cur_version}) is available')
                     ret_val = True
                 elif status.strip() == 'INSTALLED':
-                    env.logger.debug(f'R library {lib} ({version}) has been installed')
+                    env.logger.debug(f'R library {lib} ({cur_version}) has been installed')
                     ret_val = True
                 elif status.strip() == 'VERSION_MISMATCH':
-                    env.logger.warning(f'R library {lib} ({version}) does not satisfy version requirement!')
+                    env.logger.warning(f'R library {lib} ({cur_version}) does not satisfy version requirement ({"/".join(version)})!')
                 else:
                     raise RuntimeError(f'This should not happen: {line}')
         try:
