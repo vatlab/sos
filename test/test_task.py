@@ -185,7 +185,7 @@ run:
         Base_Executor(wf).run()
 
 
-    def testActiveActionOption(self):
+    def testActiveTaskOption(self):
         '''Test the active option of actions'''
         # disallow
         self.assertRaises(ParsingError, SoS_Script, '''
@@ -211,30 +211,6 @@ touch temp/{ff}
             ]:
             if os.path.isdir('temp'):
                 shutil.rmtree('temp')
-            os.mkdir('temp')
-            # test first iteration
-            script = SoS_Script(('''
-[1]
-rep = range(5)
-input: for_each = 'rep'
-# ff should change and be usable inside run
-ff = f"{_rep}.txt"
-run:  expand=True, active=%s
-echo {ff}
-touch temp/{ff}
-''' % active).replace('/', os.sep))
-            wf = script.workflow()
-            env.config['sig_mode'] = 'force'
-            env.config['wait_for_task'] = True
-            Host.reset()
-            Base_Executor(wf).run()
-            files = list(glob.glob(os.path.join('temp', '*.txt')))
-            self.assertEqual(sorted(files), sorted([x.replace('/', os.sep) for x in result]))
-            #
-            # test last iteration
-            shutil.rmtree('temp')
-            #
-            # test active option for task
             os.mkdir('temp')
             script = SoS_Script(('''
 [1]
