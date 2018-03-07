@@ -29,7 +29,7 @@ from copy import deepcopy
 import pkg_resources
 from shlex import quote
 import subprocess
-from pathlib import Path
+from pathlib import Path, WindowsPath, PosixPath
 
 from collections.abc import Sequence, Iterable
 
@@ -424,6 +424,11 @@ class path(type(Path())):
         'R': lambda x: x,
         }
 
+    def __new__(cls, *args, **kwargs):
+        if cls is Path:
+            cls = WindowsPath if os.name == 'nt' else PosixPath
+
+        return cls._from_parts(*args, **kwargs).expanduser()
 
     def is_external(self):
         try:
