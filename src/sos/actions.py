@@ -92,7 +92,11 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',)):
                         env.logger.warning(
                             f'Passing runtime option "{k}" to action is deprecated. Please use "task: {k}={v}" before action instead.')
             if 'active' in kwargs:
-                if isinstance(kwargs['active'], int):
+                if kwargs['active'] is False:
+                    return None
+                elif kwargs['active'] is True:
+                    pass
+                elif isinstance(kwargs['active'], int):
                     if kwargs['active'] >= 0 and env.sos_dict['_index'] != kwargs['active']:
                         return None
                     if kwargs['active'] < 0 and env.sos_dict['_index'] != kwargs['active'] + env.sos_dict['__num_groups__']:
