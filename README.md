@@ -21,9 +21,10 @@ if you have helped fixing bugs or making improvements to the source code.
 
 ### Change Log of SoS and SoS Notebook
 
-SoS
+SoS 0.9.12.9
 * [sos#914](https://github.com/vatlab/SoS/issues/914): Allow option `active` of actions and tasks to accept conditions.
 * [sos#915](https://github.com/vatlab/SoS/issues/915): Automatically expand user (`~`) for SoS path types `path`, `paths` and `file_targets`.
+* [sos#916](https://github.com/vatlab/SoS/issues/916): Use hashlib instead of faster xxhash under windows
 
 SoS Notebook 0.9.12.9
 * [sos-notebook#41](https://github.com/vatlab/sos-notebook/issues/41): Stop saving unused kernels in sos notebook.
