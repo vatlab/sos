@@ -208,6 +208,8 @@ touch temp/{ff}
             ('slice(1,None)', ['temp/1.txt', 'temp/2.txt', 'temp/3.txt', 'temp/4.txt']),
             ('slice(1,-2)', ['temp/1.txt', 'temp/2.txt']),
             ('slice(None,None,2)', ['temp/0.txt', 'temp/2.txt', 'temp/4.txt']),
+            ('True', ['temp/0.txt', 'temp/1.txt', 'temp/2.txt', 'temp/3.txt', 'temp/4.txt']),
+            ('False', []),
             ]:
             if os.path.isdir('temp'):
                 shutil.rmtree('temp')

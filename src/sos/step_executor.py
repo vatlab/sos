@@ -1449,7 +1449,11 @@ class Base_Step_Executor:
                 # check if the task is active
                 if 'active' in env.sos_dict['_runtime']:
                     active = env.sos_dict['_runtime']['active']
-                    if isinstance(active, int):
+                    if active is True:
+                        pass
+                    elif active is False:
+                        continue
+                    elif isinstance(active, int):
                         if active >= 0 and env.sos_dict['_index'] != active:
                             continue
                         if active < 0 and env.sos_dict['_index'] != active + env.sos_dict['__num_groups__']:
