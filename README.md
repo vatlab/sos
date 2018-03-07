@@ -21,6 +21,12 @@ if you have helped fixing bugs or making improvements to the source code.
 
 ### Change Log of SoS and SoS Notebook
 
+SoS
+* [sos#914](https://github.com/vatlab/SoS/issues/914): Allow option `active` of actions and tasks to accept conditions.
+* [sos#915](https://github.com/vatlab/SoS/issues/915): Automatically expand user (`~`) for SoS path types `path`, `paths` and `file_targets`.
+
+SoS Notebook 0.9.12.9
+* [sos-notebook#41](https://github.com/vatlab/sos-notebook/issues/41): Stop saving unused kernels in sos notebook.
 
 SoS 0.9.12.3
 * [sos#859](https://github.com/vatlab/SoS/issues/859): Introduce automatic auxiliary steps to simplify the use of makefile steps.
