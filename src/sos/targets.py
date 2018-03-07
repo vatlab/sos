@@ -428,7 +428,7 @@ class path(type(Path())):
         if cls is Path:
             cls = WindowsPath if os.name == 'nt' else PosixPath
 
-        return cls._from_parts(*args, **kwargs).expanduser()
+        return cls._from_parts(args).expanduser()
 
     def is_external(self):
         try:
