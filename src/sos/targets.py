@@ -21,7 +21,6 @@
 #
 import os
 import sys
-import xxhash
 import shlex
 import shutil
 import fasteners
@@ -30,6 +29,10 @@ import pkg_resources
 from shlex import quote
 import subprocess
 from pathlib import Path, WindowsPath, PosixPath
+try:
+    from xxhash import xxh64 as hash_md5
+except ImportError:
+    from hashlib import md5 as hash_md5
 
 from collections.abc import Sequence, Iterable
 
@@ -65,7 +68,7 @@ class UnavailableLock(Error):
 #
 def textMD5(text):
     '''Get md5 of a piece of text'''
-    m = xxhash.xxh64()
+    m = hash_md5()
     if isinstance(text, str):
         m.update(text.encode())
     else:
@@ -79,7 +82,7 @@ def fileMD5(filename, partial=True):
     when dealing with large bioinformat ics datasets. '''
     filesize = os.path.getsize(filename)
     # calculate md5 for specified file
-    md5 = xxhash.xxh64()
+    md5 = hash_md5()
     block_size = 2**20  # buffer of 1M
     try:
         # 2**24 = 16M

@@ -99,8 +99,6 @@ setup(name = "sos",
           'fasteners',
           'pyyaml',
           'pygments',
-          # faster hashlib
-          'xxhash',
           # for DAG, some version requires pydot, some requires pydotplus
           'networkx',
           'pydot',
@@ -200,6 +198,8 @@ sos-md.func = sos.converter:script_to_markdown
 #vim-syntax.func = sos.install:install_vim_syntax
     extras_require = {
         ':sys_platform=="win32"': ['colorama'],
+          # faster hashlib
+        ':sys_platform!="win32"': ['xxhash'],
         'dot':      ['graphviz'],
     }
 )
