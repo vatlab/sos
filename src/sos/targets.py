@@ -487,6 +487,11 @@ class file_target(path, BaseTarget):
             self._md5 = None
             self._attachments = []
 
+    def _init(self):
+        super(file_target, self)._init()
+        self._md5 = None
+        self._attachments = []
+
     def target_exists(self, mode='any'):
         try:
             if mode in ('any', 'target') and self.expanduser().exists():
