@@ -76,14 +76,12 @@ class R_library(BaseTarget):
             options(warn=-1)
             package_repo <-strsplit("{name}", split="@")[[1]][2]
             package <-strsplit("{name}", split="@")[[1]][1]
-            if {package_loaded} cur_version <- packageVersion(package)
-            else cur_version <- NULL
+            if ({package_loaded}) cur_version <- packageVersion(package) else cur_version <- NULL
             if (!is.null(cur_version) && {version_satisfied}) {{
                 write(paste(package, cur_version, "AVAILABLE"), file={repr(output_file)})
             }} else {{
                 devtools::install_github(package_repo, force = TRUE)
-                if {package_loaded} cur_version <- packageVersion(package)
-                else cur_version <- NULL
+                if ({package_loaded}) cur_version <- packageVersion(package) else cur_version <- NULL
                 # if it still does not exist, write the package name to output
                 if (!is.null(cur_version)) {{
                     if ({version_satisfied}) write(paste(package, cur_version, "INSTALLED"), file={repr(output_file)})
@@ -99,8 +97,7 @@ class R_library(BaseTarget):
             install_script = f'''
             options(warn=-1)
             package <- "{name}"
-            if {package_loaded} cur_version <- packageVersion(package)
-            else cur_version <- NULL
+            if ({package_loaded}) cur_version <- packageVersion(package) else cur_version <- NULL
             if (!is.null(cur_version) && {version_satisfied}) {{
                 write(paste(package, cur_version, "AVAILABLE"), file={repr(output_file)})
             }} else {{
@@ -110,12 +107,10 @@ class R_library(BaseTarget):
                     source("http://bioconductor.org/biocLite.R")
                     biocLite(package, suppressUpdates=TRUE, suppressAutoUpdate=TRUE, ask=FALSE)
                 }}
-                if {package_loaded} cur_version <- packageVersion(package)
-                else cur_version <- NULL
+                if ({package_loaded}) cur_version <- packageVersion(package) else cur_version <- NULL
                 # if it still does not exist, write the package name to output
                 if (!is.null(cur_version)) {{
-                    if ({version_satisfied}) write(paste(package, cur_version, "INSTALLED"), file={repr(output_file)})
-                    else write(paste(package, cur_version, "VERSION_MISMATCH"), file={repr(output_file)})
+                    if ({version_satisfied}) write(paste(package, cur_version, "INSTALLED"), file={repr(output_file)}) else write(paste(package, cur_version, "VERSION_MISMATCH"), file={repr(output_file)})
                 }} else {{
                     write(paste(package, "NA", "MISSING"), file={repr(output_file)})
                     quit("no")
