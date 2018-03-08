@@ -67,6 +67,7 @@ class R_library(BaseTarget):
             # if current version satisfies any of the
             # requirement the check program quits
             version_satisfied = '||'.join([f'(cur_version {y} {repr(x)})' for x, y in zip(version, operators)])
+            package_loaded = 'suppressMessages(require(package, character.only=TRUE, quietly=TRUE))'
         #
         if len(glob_wildcards('{repo}@{pkg}', [name])['repo']):
             # package is from github
@@ -75,14 +76,16 @@ class R_library(BaseTarget):
             options(warn=-1)
             package_repo <-strsplit("{name}", split="@")[[1]][2]
             package <-strsplit("{name}", split="@")[[1]][1]
-            cur_version <- packageVersion(package)
-            if (suppressMessages(require(package, character.only=TRUE, quietly=TRUE)) && {version_satisfied}) {{
+            if {package_loaded} cur_version <- packageVersion(package)
+            else cur_version <- NULL
+            if (!is.null(cur_version) && {version_satisfied}) {{
                 write(paste(package, cur_version, "AVAILABLE"), file={repr(output_file)})
             }} else {{
                 devtools::install_github(package_repo, force = TRUE)
-                cur_version <- packageVersion(package)
+                if {package_loaded} cur_version <- packageVersion(package)
+                else cur_version <- NULL
                 # if it still does not exist, write the package name to output
-                if (suppressMessages(require(package, character.only=TRUE, quietly=TRUE))) {{
+                if (!is.null(cur_version)) {{
                     if ({version_satisfied}) write(paste(package, cur_version, "INSTALLED"), file={repr(output_file)})
                     else write(paste(package, cur_version, "VERSION_MISMATCH"), file={repr(output_file)})
                 }} else {{
@@ -96,20 +99,21 @@ class R_library(BaseTarget):
             install_script = f'''
             options(warn=-1)
             package <- "{name}"
-            cur_version <- packageVersion(package)
-            if (suppressMessages(require(package, character.only=TRUE, quietly=TRUE)) && {version_satisfied}) {{
+            if {package_loaded} cur_version <- packageVersion(package)
+            else cur_version <- NULL
+            if (!is.null(cur_version) && {version_satisfied}) {{
                 write(paste(package, cur_version, "AVAILABLE"), file={repr(output_file)})
             }} else {{
-                install.packages(package, repos="{repos}",
-                    quiet=FALSE)
+                install.packages(package, repos="{repos}", quiet=FALSE)
                 # if the package still does not exist
-                if (!suppressMessages(require(package, character.only=TRUE, quietly=TRUE))) {{
+                if (!{package_loaded}) {{
                     source("http://bioconductor.org/biocLite.R")
                     biocLite(package, suppressUpdates=TRUE, suppressAutoUpdate=TRUE, ask=FALSE)
                 }}
+                if {package_loaded} cur_version <- packageVersion(package)
+                else cur_version <- NULL
                 # if it still does not exist, write the package name to output
-                cur_version <- packageVersion(package)
-                if (suppressMessages(require(package, character.only=TRUE, quietly=TRUE))) {{
+                if (!is.null(cur_version)) {{
                     if ({version_satisfied}) write(paste(package, cur_version, "INSTALLED"), file={repr(output_file)})
                     else write(paste(package, cur_version, "VERSION_MISMATCH"), file={repr(output_file)})
                 }} else {{
