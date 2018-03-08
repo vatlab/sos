@@ -111,7 +111,7 @@ def fileMD5(filename, partial=True):
     return md5.hexdigest()
 
 
-class BaseTarget:
+class BaseTarget(object):
     '''A base class for all targets (e.g. a file)'''
     def __init__(self, *args):
         self._sigfile = None
@@ -427,11 +427,16 @@ class path(type(Path())):
         'R': lambda x: x,
         }
 
-    def __new__(cls, *args, **kwargs):
-        if cls is Path:
-            cls = WindowsPath if os.name == 'nt' else PosixPath
+    #def __new__(cls, *args, **kwargs):
+    #    if cls is Path:
+    #        cls = WindowsPath if os.name == 'nt' else PosixPath
+    #
+    #    return cls._from_parts(args).expanduser()
 
-        return cls._from_parts(args).expanduser()
+    def _init(self, template=None):
+        super(path, self)._init(template)
+        if self._parts and self._parts[0] == '~':
+            self._parts = self.expanduser()._parts
 
     def is_external(self):
         try:
@@ -487,8 +492,8 @@ class file_target(path, BaseTarget):
             self._md5 = None
             self._attachments = []
 
-    def _init(self):
-        super(file_target, self)._init()
+    def _init(self, template=None):
+        super(file_target, self)._init(template)
         self._md5 = None
         self._attachments = []
 
