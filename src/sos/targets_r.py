@@ -49,6 +49,7 @@ class R_library(BaseTarget):
         output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.txt', delete=False).name
         script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.R', delete=False).name
         #
+        package_loaded = 'suppressMessages(require(package, character.only=TRUE, quietly=TRUE))'
         version_satisfied = 'TRUE'
         if version is not None:
             version = list(version)
@@ -67,7 +68,6 @@ class R_library(BaseTarget):
             # if current version satisfies any of the
             # requirement the check program quits
             version_satisfied = '||'.join([f'(cur_version {y} {repr(x)})' for x, y in zip(version, operators)])
-            package_loaded = 'suppressMessages(require(package, character.only=TRUE, quietly=TRUE))'
         #
         if len(glob_wildcards('{repo}@{pkg}', [name])['repo']):
             # package is from github
