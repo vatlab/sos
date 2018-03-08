@@ -333,6 +333,7 @@ run: expand=True
         # purge by all is not tested because it is dangerous
 
 
+    @unittest.skipIf('TRAVIS' in os.environ, 'Skip test because of slow working environment in travis test')
     def testNoWait(self):
         '''Test no wait'''
         script = SoS_Script(r'''
