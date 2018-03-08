@@ -1357,7 +1357,7 @@ class Base_Step_Executor:
                                     elif env.config['sig_mode'] == 'build':
                                         # build signature require existence of files
                                         if 'sos_run' in env.sos_dict['__signature_vars__']:
-                                            skip_index = True
+                                            skip_index = False
                                         elif signatures[idx].write(rebuild=True):
                                             env.logger.info(
                                                 f'Step ``{self.step.step_name(True)}`` (index={idx}) is ``ignored`` with signature constructed')
