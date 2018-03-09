@@ -681,10 +681,11 @@ def check_task(task):
     def has_res():
         return os.path.isfile(res_file) and os.stat(res_file).st_mtime >= os.stat(task_file).st_mtime
 
-    job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.sh')
-
     def has_job():
-        return os.path.isfile(job_file) and os.stat(job_file).st_mtime >= os.stat(task_file).st_mtime
+        job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.sh')
+        job_id_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.job_id')
+        return os.path.isfile(job_file) and os.stat(job_file).st_mtime >= os.stat(task_file).st_mtime \
+            and os.path.isfile(job_id_file) and os.stat(job_id_file).st_mtime >= os.stat(job_file).st_mtime
 
     if has_res():
         try:
