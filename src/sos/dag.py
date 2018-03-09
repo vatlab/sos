@@ -341,7 +341,23 @@ class SoS_DAG(nx.DiGraph):
                         if j != i:
                             self.add_edge(j, i)
 
+    def _mark_status(self):
+        for x in self.nodes():
+            if x._status is None:
+                pass
+            elif x._status == 'running':
+                self.add_node(x, color = 'green')
+            elif x._status == 'failed':
+                self.add_node(x, color = 'red')
+            elif 'pending' in x._status:
+                self.add_node(x, color = 'yellow')
+            elif x._status is not None:
+                env.logger.warning(f'Unmarked step status {x._status}')
+
     def to_string(self):
+        #
+        #888 We will need to convert our status to color
+        self._mark_status()
         try:
             return nx.drawing.nx_pydot.to_pydot(self).to_string()
         except Exception as e:
@@ -351,6 +367,10 @@ class SoS_DAG(nx.DiGraph):
         # write dot, used by tests
         if not filename:
             return
+        #888 We will need to convert our status to color
+        self._mark_status()
+        for x in self.nodes(data=True):
+            env.logger.error(x)
         try:
             nx.drawing.nx_pydot.write_dot(self, filename)
         except Exception as e:
