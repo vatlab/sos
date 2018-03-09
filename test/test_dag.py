@@ -59,7 +59,7 @@ class TestDAG(unittest.TestCase):
                 dot = d.read()
         else:
             out = StringIO()
-            dag.write_dot(out)
+            dag.save(out)
             dot = out.getvalue()
         self.assertEqual(sorted([x.strip() for x in dot.split('\n') if
             x.strip() and not 'digraph' in x]),
@@ -294,7 +294,7 @@ output: 'e.txt'
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
         dag.show_nodes()
-        #dag.write_dot('a.dot')
+        #dag.save('a.dot')
         self.assertDAG(dag,
 '''
 strict digraph "" {
@@ -378,7 +378,6 @@ input: 'a.txt'
         # and one is to regenerate a.txt because it is not generated
         # by sos (without signature)        #
         #
-        dag.write_dot('a.dot')
         dag.show_nodes()
         self.assertDAG(dag,
 '''

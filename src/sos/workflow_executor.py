@@ -393,30 +393,6 @@ class Base_Executor:
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
 
-    def save_dag(self, dag):
-        if not self.config['output_dag']:
-            return
-        if not hasattr(self, 'dag_count'):
-            self.dag_count = 1
-            self.last_dag = None
-        #
-        out = dag.to_string()
-        if self.last_dag == out:
-            return
-        else:
-            self.last_dag = out
-        # output file name
-        if self.config['output_dag'] == '-':
-            sys.stdout.write(out)
-        else:
-            if self.dag_count == 1:
-                dag_name = self.config['output_dag'] if self.config['output_dag'].endswith('.dot') else self.config['output_dag'] + '.dot'
-            else:
-                dag_name = f'{self.config["output_dag"][:-4] if self.config["output_dag"].endswith(".dot") else self.config["output_dag"]}_{self.dag_count}.dot'
-            #
-            with open(dag_name, 'w') as dfile:
-                dfile.write(out)
-
     def record_quit_status(self, tasks):
         if not self.md5:
             return
@@ -776,7 +752,7 @@ class Base_Executor:
             raise RuntimeError(
                 f'Circular dependency detected {cycle}. It is likely a later step produces input of a previous step.')
 
-        self.save_dag(dag)
+        dag.save(self.config['output_dag'])
         return dag
 
     def save_workflow_signature(self, dag):
@@ -965,7 +941,7 @@ class Base_Executor:
                             if cycle:
                                 raise RuntimeError(
                                     f'Circular dependency detected {cycle}. It is likely a later step produces input of a previous step.')
-                        self.save_dag(dag)
+                        dag.save(self.config['output_dag'])
                     elif isinstance(res, UnavailableLock):
                         runnable._status = 'signature_pending'
                         runnable._signature = (res.output, res.sig_file)

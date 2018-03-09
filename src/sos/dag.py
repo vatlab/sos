@@ -341,7 +341,14 @@ class SoS_DAG(nx.DiGraph):
                         if j != i:
                             self.add_edge(j, i)
 
-    def _mark_status(self):
+    def save(self, dest=None):
+        if not dest:
+            return
+
+        if not hasattr(self, 'dag_count'):
+            self.dag_count = 1
+            self.last_dag = None
+        #
         for x in self.nodes():
             if x._status is None:
                 pass
@@ -354,24 +361,38 @@ class SoS_DAG(nx.DiGraph):
             elif x._status is not None:
                 env.logger.warning(f'Unmarked step status {x._status}')
 
-    def to_string(self):
-        #
-        #888 We will need to convert our status to color
-        self._mark_status()
         try:
-            return nx.drawing.nx_pydot.to_pydot(self).to_string()
+            out = nx.drawing.nx_pydot.to_pydot(self).to_string()
         except Exception as e:
             env.logger.warning(f'Failed to call to_pydot: {e}')
 
-    def write_dot(self, filename):
-        # write dot, used by tests
-        if not filename:
+        if self.last_dag == out:
             return
-        #888 We will need to convert our status to color
-        self._mark_status()
-        for x in self.nodes(data=True):
-            env.logger.error(x)
-        try:
-            nx.drawing.nx_pydot.write_dot(self, filename)
-        except Exception as e:
-            env.logger.warning(f'Failed to call write_dot: {e}')
+        else:
+            self.last_dag = out
+        # output file name
+        if hasattr(dest, 'write'):
+            dest.write(out)
+        elif dest == '-':
+            sys.stdout.write(out)
+        else:
+            if self.dag_count == 1:
+                dag_name = dest if dest.endswith('.dot') else dest + '.dot'
+            else:
+                dag_name = f'{dest[:-4] if dest.endswith(".dot") else dest}_{self.dag_count}.dot'
+            #
+            with open(dag_name, 'w') as dfile:
+                dfile.write(out)
+
+#    def write_dot(self, filename):
+#        # write dot, used by tests
+#        if not filename:
+#            return
+#        #888 We will need to convert our status to color
+#        self._mark_status()
+#        for x in self.nodes(data=True):
+#            env.logger.error(x)
+#        try:
+#            nx.drawing.nx_pydot.write_dot(self, filename)
+#        except Exception as e:
+#            env.logger.warning(f'Failed to call write_dot: {e}')
