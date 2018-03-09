@@ -988,7 +988,7 @@ run:
         wf = script.workflow()
         #
         # test 1, we only need to generate target 'B1.txt'
-        Base_Executor(wf, config={'output_dag':'test'}).initialize_dag(targets=['B1.txt'])
+        Base_Executor(wf, config={'output_dag':'test.dot'}).initialize_dag(targets=['B1.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG('test.dot',
 '''
@@ -1010,7 +1010,7 @@ strict digraph "" {
 }
 ''')
         # test 2, we would like to generate two files
-        Base_Executor(wf, config={'output_dag':'test'}).initialize_dag(targets=['B2.txt', 'C2.txt'])
+        Base_Executor(wf, config={'output_dag':'test.dot'}).initialize_dag(targets=['B2.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG('test.dot',
 '''
@@ -1031,7 +1031,7 @@ strict digraph "" {
 ''')
         # test 3, generate two separate trees
         #
-        Base_Executor(wf, config={'output_dag':'test'}).initialize_dag(targets=['B3.txt', 'C2.txt'])
+        Base_Executor(wf, config={'output_dag':'test.dot'}).initialize_dag(targets=['B3.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG('test.dot',
 '''
@@ -1063,7 +1063,7 @@ run:
 depends: ['{}.txt'.format(i) for i in range(10, 20)]
 ''')
         wf = script.workflow()
-        Base_Executor(wf, config={'output_dag':'test'}).initialize_dag()
+        Base_Executor(wf, config={'output_dag':'test.dot'}).initialize_dag()
         with open('test.dot') as dot:
             lc = len(dot.readlines())
         self.assertTrue(lc, 6)

@@ -20,6 +20,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import sys
 import networkx as nx
 from collections import defaultdict
 import copy
@@ -341,12 +342,11 @@ class SoS_DAG(nx.DiGraph):
                         if j != i:
                             self.add_edge(j, i)
 
-    def save(self, dest=None):
+    def save(self, dest=None, init=False):
         if not dest:
             return
 
         if not hasattr(self, 'dag_count'):
-            self.dag_count = 1
             self.last_dag = None
         #
         for x in self.nodes():
@@ -378,24 +378,11 @@ class SoS_DAG(nx.DiGraph):
         elif dest == '-':
             sys.stdout.write(out)
         else:
-            if self.dag_count == 1:
-                dag_name = dest if dest.endswith('.dot') else dest + '.dot'
+            if '_' in self.name:
+                n, c = self.name.split('_', 1)
+                self.name = f"{n}_{int(c)+1}"
             else:
-                dag_name = f'{dest[:-4] if dest.endswith(".dot") else dest}_{self.dag_count}.dot'
-            #
-            self.dag_count += 1
-            with open(dag_name, 'w') as dfile:
+                self.name = f"{self.name}_{1}"
+            with open(dest, 'w' if init else 'a') as dfile:
                 dfile.write(out)
 
-#    def write_dot(self, filename):
-#        # write dot, used by tests
-#        if not filename:
-#            return
-#        #888 We will need to convert our status to color
-#        self._mark_status()
-#        for x in self.nodes(data=True):
-#            env.logger.error(x)
-#        try:
-#            nx.drawing.nx_pydot.write_dot(self, filename)
-#        except Exception as e:
-#            env.logger.warning(f'Failed to call write_dot: {e}')

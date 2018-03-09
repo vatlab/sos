@@ -275,11 +275,11 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
     output = parser.add_argument_group(title='Output options',
         description='''Output of workflow''')
     output.add_argument('-d', nargs='?', default='', metavar='DAG', dest='__dag__',
-        help='''Output Direct Acyclic Graph (DAGs) in graphiviz .dot format. An
-            exntesion of ".dot" would be added automatically. Because DAG could
-            change during the execution of workflow, multiple DAGs could be
-            outputed with names $FILE_1.dot, $FILE_2.dot. If this option is
-            specified without a name, the DAG would be wrritten to the standard
+        help='''Output Direct Acyclic Graph (DAGs) in graphiviz .dot format.
+            Because DAG and status of nodes will change during the execution of
+            workflow, multiple DAGs will be written to the specified file with
+            names {workflow}_1, {workflow}_2 etc. If this option is specified
+            without a name, the DAG would be wrritten to the standard
             output.''')
     output.add_argument('-v', dest='verbosity', type=int, choices=range(5),
         default=2,

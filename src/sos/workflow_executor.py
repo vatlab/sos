@@ -666,14 +666,14 @@ class Base_Executor:
         #dag.show_nodes()
         return resolved
 
-    def initialize_dag(self, targets=None):
+    def initialize_dag(self, targets=None, nested=False):
         '''Create a DAG by analyzing sections statically.'''
         # this is for testing only and allows tester to call initialize_dag
         # directly to get a DAG
         if not hasattr(self, '_base_symbols'):
             self.reset_dict()
 
-        dag = SoS_DAG()
+        dag = SoS_DAG(name=self.md5)
         default_input = []
         for idx, section in enumerate(self.workflow.sections):
             if self.skip(section):
@@ -752,7 +752,7 @@ class Base_Executor:
             raise RuntimeError(
                 f'Circular dependency detected {cycle}. It is likely a later step produces input of a previous step.')
 
-        dag.save(self.config['output_dag'])
+        dag.save(self.config['output_dag'], init=not nested)
         return dag
 
     def save_workflow_signature(self, dag):
@@ -809,7 +809,7 @@ class Base_Executor:
                 raise RuntimeError('All targets already exists.')
 
         # process step of the pipelinp
-        dag = self.initialize_dag(targets=targets)
+        dag = self.initialize_dag(targets=targets, nested=nested)
         # process step of the pipelinp
         #
         # running processes. It consisists of
@@ -869,6 +869,7 @@ class Base_Executor:
                             for task in new_tasks:
                                 runnable._host.submit_task(task)
                             runnable._status = 'task_pending'
+                            dag.save(self.config['output_dag'])
                             env.logger.trace('Step becomes task_pending')
                             continue
                         elif res.startswith('step'):
@@ -892,10 +893,12 @@ class Base_Executor:
                             # now we would like to find a worker and
                             runnable._pending_workflow = workflow_id
                             runnable._status = 'workflow_pending'
+                            dag.save(self.config['output_dag'])
 
                             wfrunnable = dummy_node()
                             wfrunnable._node_id = workflow_id
                             wfrunnable._status = 'workflow_running_pending'
+                            dag.save(self.config['output_dag'])
                             wfrunnable._pending_workflow = workflow_id
                             #
                             manager.execute(wfrunnable, config=config, args=args,
@@ -913,9 +916,11 @@ class Base_Executor:
                         # if the runnable is from nested, we will need to send the result back to the workflow
                         env.logger.debug(f'{i_am()} send res to nested')
                         runnable._status = 'completed'
+                        dag.save(self.config['output_dag'])
                         runnable._child_pipe.send(res)
                     elif isinstance(res, (UnknownTarget, RemovedTarget)):
                         runnable._status = None
+                        dag.save(self.config['output_dag'])
                         target = res.target
                         if dag.regenerate_target(target):
                             #runnable._depends_targets.append(target)
@@ -944,6 +949,7 @@ class Base_Executor:
                         dag.save(self.config['output_dag'])
                     elif isinstance(res, UnavailableLock):
                         runnable._status = 'signature_pending'
+                        dag.save(self.config['output_dag'])
                         runnable._signature = (res.output, res.sig_file)
                         section = self.workflow.section_by_id(runnable._step_uuid)
                         env.logger.info(f'Waiting on another process for step {section.step_name(True)}')
@@ -951,6 +957,7 @@ class Base_Executor:
                     elif isinstance(res, Exception):
                         env.logger.debug(f'{i_am()} received an exception')
                         runnable._status = 'failed'
+                        dag.save(self.config['output_dag'])
                         exec_error.append(runnable._node_id, res)
                         # if this is a node for a running workflow, need to mark it as failed as well
                         #                        for proc in procs:
@@ -961,6 +968,7 @@ class Base_Executor:
                                 if proc.is_pending() and hasattr(proc.step, '_pending_workflow') \
                                     and proc.step._pending_workflow == runnable._pending_workflow:
                                     proc.set_status('failed')
+                            dag.save(self.config['output_dag'])
                         prog.update(1)
                     elif '__step_name__' in res:
                         env.logger.debug(f'{i_am()} receive step result ')
@@ -988,6 +996,7 @@ class Base_Executor:
                             env.sos_dict['__step_output__'].targets(),
                             env.sos_dict['__step_depends__'].targets())
                         runnable._status = 'completed'
+                        dag.save(self.config['output_dag'])
                         prog.update(1)
                     elif '__workflow_id__' in res:
                         # result from a workflow
@@ -1001,6 +1010,7 @@ class Base_Executor:
                                 proc.pipe.send(res)
                                 proc.set_status('running')
                                 break
+                        dag.save(self.config['output_dag'])
                     else:
                         raise RuntimeError(f'Unrecognized response from a step: {res}')
 
@@ -1057,6 +1067,7 @@ class Base_Executor:
                         runnable = dummy_node()
                         runnable._node_id = step_id
                         runnable._status = 'running'
+                        dag.save(self.config['output_dag'])
                         runnable._from_nested = True
                         runnable._child_pipe = pipe
 
@@ -1079,6 +1090,7 @@ class Base_Executor:
                     section = self.workflow.section_by_id(runnable._step_uuid)
                     # execute section with specified input
                     runnable._status = 'running'
+                    dag.save(self.config['output_dag'])
 
                     # workflow shared variables
                     shared = {x: env.sos_dict[x] for x in self.shared.keys() if x in env.sos_dict and pickleable(env.sos_dict[x], x)}
