@@ -358,6 +358,8 @@ class SoS_DAG(nx.DiGraph):
                 self.add_node(x, color = 'red')
             elif 'pending' in x._status:
                 self.add_node(x, color = 'yellow')
+            elif x._status == 'completed':
+                self.add_node(x, color = 'blue')
             elif x._status is not None:
                 env.logger.warning(f'Unmarked step status {x._status}')
 
@@ -381,6 +383,7 @@ class SoS_DAG(nx.DiGraph):
             else:
                 dag_name = f'{dest[:-4] if dest.endswith(".dot") else dest}_{self.dag_count}.dot'
             #
+            self.dag_count += 1
             with open(dag_name, 'w') as dfile:
                 dfile.write(out)
 
