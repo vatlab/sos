@@ -231,7 +231,7 @@ class SoS_DockerClient:
             # if working_dir (a docker option) is not provided, and if workdir (a sos option_ is provided
             # we use workdir as working_dir
             elif 'workdir' in kwargs:
-                 if not os.path.isabs(kwargs['workdir']):
+                if not os.path.isabs(kwargs['workdir']):
                     env.logger.warning('An absolute path is needed for -w option of docker run command. "{}" provided, "{}" used.'
                         .format(kwargs['workdir'], os.path.abspath(os.path.expanduser(kwargs['workdir']))))
                     workdir_opt = '-w={}'.format(os.path.abspath(os.path.expanduser(kwargs['workdir'])))
