@@ -405,11 +405,21 @@ class executable(BaseTarget):
         else:
             return str(self).__format__(format_spec)
 
+def collapseuser(path):
+    home = os.path.expanduser('~')
+    if path == home:
+        return '~'
+    elif path.startswith(home + os.sep):
+        return '~' + path[len(home):]
+    else:
+        return path
+
 class path(type(Path())):
     '''A regular target for files.
     '''
     CONVERTERS = {
         'u': os.path.expanduser,
+        'U': collapseuser,
         'e': lambda x: x.replace(' ', '\\ '),
         'a': lambda x: os.path.abspath(os.path.expanduser(x)),
         'l': lambda x: os.path.realpath(os.path.expanduser(x)),
