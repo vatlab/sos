@@ -435,8 +435,11 @@ class path(type(Path())):
 
     def _init(self, template=None):
         super(path, self)._init(template)
-        if self._parts and self._parts[0] == '~':
-            self._parts = self.expanduser()._parts
+        if not (self._drv or self._root) and self._parts and self._parts[0][:1] == '~':
+            expanded = self.expanduser()
+            self._parts = expanded._parts
+            self._drv = expanded._drv
+            self._root = expanded._root
 
     def is_external(self):
         try:
