@@ -323,14 +323,14 @@ class SoS_ExecuteScript:
                             stderr=subprocess.PIPE, bufsize=0)
                         out, err = child.communicate()
                         if 'stdout' in kwargs:
-                            if kwargs['stdout'] is not None:
+                            if kwargs['stdout']:
                                 with open(kwargs['stdout'], 'ab') as so:
                                     so.write(out)
                         else:
                             sys.stdout.write(out.decode())
 
                         if 'stderr' in kwargs:
-                            if kwargs['stderr'] is not None:
+                            if kwargs['stderr']:
                                 with open(kwargs['stderr'], 'ab') as se:
                                     se.write(err)
                         else:
@@ -343,7 +343,7 @@ class SoS_ExecuteScript:
                 elif '__std_out__' in env.sos_dict and '__std_err__' in env.sos_dict:
                     if 'stdout' in kwargs or 'stderr' in kwargs:
                         if 'stdout' in kwargs:
-                            if kwargs['stdout'] is None:
+                            if kwargs['stdout'] is False:
                                 so = subprocess.DEVNULL
                             else:
                                 so = open(kwargs['stdout'], 'ab')
@@ -353,7 +353,7 @@ class SoS_ExecuteScript:
                             so = subprocess.DEVNULL
 
                         if 'stderr' in kwargs:
-                            if kwargs['stderr'] is None:
+                            if kwargs['stderr'] is False:
                                 se = subprocess.DEVNULL
                             else:
                                 se = open(kwargs['stderr'], 'ab')
@@ -379,7 +379,7 @@ class SoS_ExecuteScript:
                         ret = p.wait()
                 else:
                     if 'stdout' in kwargs:
-                        if kwargs['stdout'] is None:
+                        if kwargs['stdout'] is False:
                             so = subprocess.DEVNULL
                         else:
                             so = open(kwargs['stdout'], 'ab')
@@ -389,7 +389,7 @@ class SoS_ExecuteScript:
                         so = subprocess.DEVNULL
 
                     if 'stderr' in kwargs:
-                        if kwargs['stderr'] is None:
+                        if kwargs['stderr'] is False:
                             se = subprocess.DEVNULL
                         else:
                             se = open(kwargs['stderr'], 'ab')
@@ -412,11 +412,12 @@ class SoS_ExecuteScript:
                         debug_args = '{filename:q}'
                     else:
                         debug_args = self.args
-                    cmd = interpolate(f'{self.interpreter} {debug_args}',
+                    cmd = interpolate(f'{self.interpreter.strip()} ``{debug_args}``',
                                       {'filename': sos_targets(debug_script_file), 'script': self.script})
-                    raise RuntimeError('Failed to execute commmand ``{}`` (ret={}, workdir={}{})'.format(
+                    raise RuntimeError('Failed to execute commmand "{}" (ret={}, workdir={}{}{})'.format(
                         cmd, ret, os.getcwd(),
-                        f', task={os.path.basename(env.sos_dict["__std_err__"]).split(".")[0]}' if '__std_out__' in env.sos_dict else ''))
+                        f', task={os.path.basename(env.sos_dict["__std_err__"]).split(".")[0]}' if '__std_out__' in env.sos_dict else '',
+                        f', err=``{kwargs["stderr"]}``' if 'stderr' in kwargs and os.path.isfile(kwargs['stderr']) else ''))
             except RuntimeError:
                 raise
             except Exception as e:
