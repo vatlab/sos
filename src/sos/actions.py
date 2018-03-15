@@ -323,14 +323,14 @@ class SoS_ExecuteScript:
                             stderr=subprocess.PIPE, bufsize=0)
                         out, err = child.communicate()
                         if 'stdout' in kwargs:
-                            if kwargs['stdout']:
+                            if kwargs['stdout'] is not False:
                                 with open(kwargs['stdout'], 'ab') as so:
                                     so.write(out)
                         else:
                             sys.stdout.write(out.decode())
 
                         if 'stderr' in kwargs:
-                            if kwargs['stderr']:
+                            if kwargs['stderr'] is not False:
                                 with open(kwargs['stderr'], 'ab') as se:
                                     se.write(err)
                         else:
@@ -416,7 +416,7 @@ class SoS_ExecuteScript:
                                       {'filename': sos_targets(debug_script_file), 'script': self.script})
                     raise RuntimeError('Failed to execute commmand "{}" (ret={}, workdir={}{}{})'.format(
                         cmd, ret, os.getcwd(),
-                        f', task={os.path.basename(env.sos_dict["__std_err__"]).split(".")[0]}' if '__std_out__' in env.sos_dict else '',
+                        f', task={os.path.basename(env.sos_dict["__std_err__"]).split(".")[0]}' if '__std_err__' in env.sos_dict else '',
                         f', err=``{kwargs["stderr"]}``' if 'stderr' in kwargs and os.path.isfile(kwargs['stderr']) else ''))
             except RuntimeError:
                 raise
