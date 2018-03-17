@@ -311,5 +311,5 @@ class SoS_DockerClient:
                     else:
                         raise RuntimeError('Script killed by docker, probably because of lack of RAM (available RAM={:.1f}GB, exitcode=137). '.format(self.tot_mem/1024/1024) + msg)
                 else:
-                    raise RuntimeError(f'Executing script in docker returns an error (exitcode={res}). {msg}')
+                    raise RuntimeError(f'Executing script in docker returns an error (exitcode={ret}). {msg}')
         return 0
