@@ -208,16 +208,16 @@ class SoS_DockerClient:
             volumes_from_opt = ''
             if 'volumes_from' in kwargs:
                 if isinstance(kwargs['volumes_from'], str):
-                    volumes_from_opt = '--volumes_from={}'.format(kwargs['volumes_from'])
+                    volumes_from_opt = f'--volumes_from={kwargs["volumes_from"]}'
                 elif isinstance(kwargs['volumes_from'], list):
-                    volumes_from_opt = ' '.join('--volumes_from={}'.format(x) for x in kwargs['volumes_from'])
+                    volumes_from_opt = ' '.join(f'--volumes_from={x}' for x in kwargs['volumes_from'])
                 else:
                     raise RuntimeError('Option volumes_from only accept a string or list of string: {} specified'.format(kwargs['volumes_from']))
             # we also need to mount the script
             cmd_opt = ''
             if script and interpreter:
                 volumes_opt += ' -v {}:{}'.format(shlex.quote(os.path.join(tempdir, tempscript)), '/var/lib/sos/{}'.format(tempscript))
-                cmd_opt = interpolate('{} {}'.format(interpreter, args),
+                cmd_opt = interpolate(f'{interpreter} {args}',
                             {'filename': sos_targets(f'/var/lib/sos/{tempscript}')})
             #
             working_dir_opt = '-w={}'.format(shlex.quote(os.path.abspath(os.getcwd())))
@@ -232,11 +232,11 @@ class SoS_DockerClient:
             env_opt = ''
             if 'environment' in kwargs:
                 if isinstance(kwargs['environment'], dict):
-                    env_opt = ' '.join('-e {}={}'.format(x,y) for x,y in kwargs['environment'].items())
+                    env_opt = ' '.join(f'-e {x}={y}' for x,y in kwargs['environment'].items())
                 elif isinstance(kwargs['environment'], list):
-                    env_opt = ' '.join('-e {}'.format(x) for x in kwargs['environment'])
+                    env_opt = ' '.join(f'-e {x}' for x in kwargs['environment'])
                 elif isinstance(kwargs['environment'], str):
-                    env_opt = '-e {}'.format(kwargs['environment'])
+                    env_opt = f'-e {kwargs["environment"]}'
                 else:
                     raise RuntimeError('Invalid value for option environment (str, list, or dict is allowd, {} provided)'.format(kwargs['environment']))
             #
@@ -251,7 +251,7 @@ class SoS_DockerClient:
             #
             name_opt = ''
             if 'name' in kwargs:
-                name_opt = '--name={}'.format(kwargs['name'])
+                name_opt = f'--name={kwargs["name"]}'
             #
             stdin_opt = ''
             if 'stdin_open' in kwargs and kwargs['stdin_optn']:
@@ -261,9 +261,11 @@ class SoS_DockerClient:
             if 'tty' in kwargs and not kwargs['tty']:
                 tty_opt = ''
             #
-            user_opt = ''
             if 'user' in kwargs:
-                user_opt = '-u {}'.format(kwargs['user'])
+                user_opt = f'-u {kwargs["user"]}'
+            else:
+                # Tocket #922
+                user_opt = f'-u {os.getuid()}'
             #
             extra_opt = ''
             if 'extra_args' in kwargs:
@@ -309,5 +311,5 @@ class SoS_DockerClient:
                     else:
                         raise RuntimeError('Script killed by docker, probably because of lack of RAM (available RAM={:.1f}GB, exitcode=137). '.format(self.tot_mem/1024/1024) + msg)
                 else:
-                    raise RuntimeError('Executing script in docker returns an error (exitcode={}). '.format(ret) + msg)
+                    raise RuntimeError(f'Executing script in docker returns an error (exitcode={res}). {msg}')
         return 0
