@@ -21,6 +21,10 @@ if you have helped fixing bugs or making improvements to the source code.
 
 ### Change Log of SoS and SoS Notebook
 
+SoS Notebook 0.9.12.11
+* [sos-notebook#44](https://github.com/vatlab/sos-notebook/issues/44): Allow sending text in markdown cells to side panel for execution.
+* [sos-notebook#50](https://github.com/vatlab/sos-notebook/issues/50): Re-design logo for SoS Notebook.
+
 SoS 0.9.12.9
 * [sos#914](https://github.com/vatlab/SoS/issues/914): Allow option `active` of actions and tasks to accept conditions.
 * [sos#915](https://github.com/vatlab/SoS/issues/915): Automatically expand user (`~`) for SoS path types `path`, `paths` and `file_targets`.
