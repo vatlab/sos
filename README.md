@@ -21,8 +21,12 @@ if you have helped fixing bugs or making improvements to the source code.
 
 ### Change Log of SoS and SoS Notebook
 
+SoS 0.9.12.11
+* [sos#922](https://github.com/vatlab/SoS/issues/922): Use user-id for docker execution (-u)
+
 SoS Notebook 0.9.12.11
 * [sos-notebook#44](https://github.com/vatlab/sos-notebook/issues/44): Allow sending text in markdown cells to side panel for execution.
+* [sos-notebook#47](https://github.com/vatlab/sos-notebook/issues/47): Allow clear any HTML element with magic `%clear --class`
 * [sos-notebook#50](https://github.com/vatlab/sos-notebook/issues/50): Re-design logo for SoS Notebook.
 
 SoS 0.9.12.9
