@@ -401,6 +401,18 @@ run:
         sos_zap('testzap.txt', 'testzap1.txt')
         sos_zap(['testzap.txt', 'testzap1.txt'])
 
+    def testZapTargets(self):
+        # sos_targets.zap
+        with open('testzap.txt', 'w') as sf:
+            sf.write('some text')
+        with open('testzap1.txt', 'w') as sf:
+            sf.write('some text')
+        sos_targets(['testzap.txt', 'testzap1.txt']).zap()
+        self.assertTrue(os.path.isfile('testzap.txt.zapped'))
+        self.assertFalse(os.path.isfile('testzap.txt'))
+        self.assertTrue(os.path.isfile('testzap1.txt.zapped'))
+        self.assertFalse(os.path.isfile('testzap1.txt'))
+
 
 if __name__ == '__main__':
     unittest.main()

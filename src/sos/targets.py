@@ -768,6 +768,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         else:
             self._targets.extend(sos_targets(another)._targets)
 
+    def zap(self):
+        for target in self._targets:
+            if isinstance(target, file_target):
+                target.zap()
+            else:
+                raise ValueError(f'{target}')
+                env.logger.debug(f'Ignore {target}')
+
     def has_undetermined(self):
         return any(isinstance(x, Undetermined) for x in self._targets)
 
