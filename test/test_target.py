@@ -28,7 +28,7 @@ import shutil
 from sos.parser import SoS_Script
 from sos.utils import env
 from sos.workflow_executor import Base_Executor
-from sos.targets import file_target, sos_targets
+from sos.targets import file_target, sos_targets, sos_zap
 from sos.eval import interpolate
 import subprocess
 
@@ -376,6 +376,30 @@ run:
         for file in ['t1.txt', 't2.txt', '5.txt', '10.txt', '20.txt']:
             self.assertTrue(file_target(file).target_exists(), file + ' should exist')
             file_target(file).remove('both')
+
+
+    def testZap(self):
+        '''Test zap'''
+        with open('testzap.txt', 'w') as sf:
+            sf.write('some text')
+        file_target('testzap.txt').zap()
+        self.assertTrue(os.path.isfile('testzap.txt.zapped'))
+        self.assertFalse(os.path.isfile('testzap.txt'))
+        # re-zap is ok
+        file_target('testzap.txt').zap()
+        self.assertTrue(os.path.isfile('testzap.txt.zapped'))
+        self.assertFalse(os.path.isfile('testzap.txt'))
+        # non-existent file
+        os.remove('testzap.txt.zapped')
+        self.assertRaises(FileNotFoundError, file_target('testzap.txt').zap)
+        # the sos_zap function
+        with open('testzap.txt', 'w') as sf:
+            sf.write('some text')
+        with open('testzap1.txt', 'w') as sf:
+            sf.write('some text')
+        sos_zap('testzap.txt')
+        sos_zap('testzap.txt', 'testzap1.txt')
+        sos_zap(['testzap.txt', 'testzap1.txt'])
 
 
 if __name__ == '__main__':

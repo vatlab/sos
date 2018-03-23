@@ -510,6 +510,13 @@ class file_target(path, BaseTarget):
         self._md5 = None
         self._attachments = []
 
+    def zap(self):
+        if not self.exists() and path(str(self) + '.zapped').is_file():
+            return
+        self.write_sig()
+        shutil.copy(self.sig_file(), self.fullname() + '.zapped')
+        os.remove(self.fullname())
+
     def target_exists(self, mode='any'):
         try:
             if mode in ('any', 'target') and self.expanduser().exists():
@@ -1158,4 +1165,22 @@ class RuntimeInfo:
                 with open(workflow_sig, 'a') as wf:
                     wf.write(self.proc_info + '\n')
         return res
+
+
+def sos_zap(*args):
+    files = sos_targets(*args)
+    for f in files:
+        if not isinstance(f, file_target):
+            raise ValueError(f'Failed to zap {f}: not a file target')
+        if f.target_exists('any'):
+            if f.target_exists('target'):
+                env.logger.info(f'Zap {f}')
+                try:
+                    f.zap()
+                except Exception as e:
+                    env.logger.warn(f'Failed to zap {f}: {e}')
+            else:
+                env.logger.info(f'{f} already zapped')
+        else:
+            raise ValueError(f'Failed to zap {f}: file not exist')
 
