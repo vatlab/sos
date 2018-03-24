@@ -491,6 +491,16 @@ class path(type(Path())):
     def __hash__(self):
         return hash(repr(self))
 
+    def zap(self):
+        zap_file = self + '.zapped'
+        if not self.exists() and zap_file.is_file():
+            return
+        if not self.exists() or not self.is_file():
+            raise FileNotFoundError(str(self))
+        with open(zap_file, 'w') as md5:
+            md5.write(
+                f'{self.resolve()}\t{os.path.getmtime(self)}\t{os.path.getsize(self)}\t{fileMD5(self)}\n')
+        self.unlink()
 
 class file_target(path, BaseTarget):
     '''A regular target for files.
@@ -509,13 +519,6 @@ class file_target(path, BaseTarget):
         super(file_target, self)._init(template)
         self._md5 = None
         self._attachments = []
-
-    def zap(self):
-        if not self.exists() and path(str(self) + '.zapped').is_file():
-            return
-        self.write_sig()
-        shutil.copy(self.sig_file(), self.fullname() + '.zapped')
-        os.remove(self.fullname())
 
     def target_exists(self, mode='any'):
         try:
@@ -678,6 +681,10 @@ class paths(Sequence, os.PathLike):
         elif arg is not None:
             self._paths.append(path(str(arg)))
 
+    def zap(self):
+        for p in self._paths:
+            p.zap()
+
     def __getstate__(self):
         return self._paths
 
@@ -773,8 +780,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             if isinstance(target, file_target):
                 target.zap()
             else:
-                raise ValueError(f'{target}')
-                env.logger.debug(f'Ignore {target}')
+                env.logger.debug(f'Ignore non-file target {target}')
 
     def has_undetermined(self):
         return any(isinstance(x, Undetermined) for x in self._targets)
@@ -1173,22 +1179,3 @@ class RuntimeInfo:
                 with open(workflow_sig, 'a') as wf:
                     wf.write(self.proc_info + '\n')
         return res
-
-
-def sos_zap(*args):
-    files = sos_targets(*args)
-    for f in files:
-        if not isinstance(f, file_target):
-            raise ValueError(f'Failed to zap {f}: not a file target')
-        if f.target_exists('any'):
-            if f.target_exists('target'):
-                env.logger.info(f'Zap {f}')
-                try:
-                    f.zap()
-                except Exception as e:
-                    env.logger.warn(f'Failed to zap {f}: {e}')
-            else:
-                env.logger.info(f'{f} already zapped')
-        else:
-            raise ValueError(f'Failed to zap {f}: file not exist')
-

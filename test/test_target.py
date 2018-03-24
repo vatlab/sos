@@ -28,7 +28,7 @@ import shutil
 from sos.parser import SoS_Script
 from sos.utils import env
 from sos.workflow_executor import Base_Executor
-from sos.targets import file_target, sos_targets, sos_zap
+from sos.targets import path, paths, file_target, sos_targets
 from sos.eval import interpolate
 import subprocess
 
@@ -382,7 +382,7 @@ run:
         '''Test zap'''
         with open('testzap.txt', 'w') as sf:
             sf.write('some text')
-        file_target('testzap.txt').zap()
+        path('testzap.txt').zap()
         self.assertTrue(os.path.isfile('testzap.txt.zapped'))
         self.assertFalse(os.path.isfile('testzap.txt'))
         # re-zap is ok
@@ -391,18 +391,20 @@ run:
         self.assertFalse(os.path.isfile('testzap.txt'))
         # non-existent file
         os.remove('testzap.txt.zapped')
-        self.assertRaises(FileNotFoundError, file_target('testzap.txt').zap)
-        # the sos_zap function
+        self.assertRaises(FileNotFoundError, path('testzap.txt').zap)
+        # 
         with open('testzap.txt', 'w') as sf:
             sf.write('some text')
         with open('testzap1.txt', 'w') as sf:
             sf.write('some text')
-        sos_zap('testzap.txt')
-        sos_zap('testzap.txt', 'testzap1.txt')
-        sos_zap(['testzap.txt', 'testzap1.txt'])
-
-    def testZapTargets(self):
-        # sos_targets.zap
+        paths('testzap.txt', 'testzap1.txt').zap()
+        self.assertTrue(os.path.isfile('testzap.txt.zapped'))
+        self.assertFalse(os.path.isfile('testzap.txt'))
+        self.assertTrue(os.path.isfile('testzap1.txt.zapped'))
+        self.assertFalse(os.path.isfile('testzap1.txt'))
+        #
+        os.remove('testzap.txt.zapped')
+        os.remove('testzap1.txt.zapped')
         with open('testzap.txt', 'w') as sf:
             sf.write('some text')
         with open('testzap1.txt', 'w') as sf:
@@ -412,7 +414,6 @@ run:
         self.assertFalse(os.path.isfile('testzap.txt'))
         self.assertTrue(os.path.isfile('testzap1.txt.zapped'))
         self.assertFalse(os.path.isfile('testzap1.txt'))
-
 
 if __name__ == '__main__':
     unittest.main()
