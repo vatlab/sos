@@ -916,11 +916,15 @@ def sos_handle_parameter_(key, defvalue):
 #        return True
 
 class SlotManager(object):
-    def __init__(self, reset=False):
+    #
+    # A slot file writes the number of USED slots.
+    #
+    def __init__(self, reset=False, name='process'):
         manager_id = env.config.get('master_md5', 'general')
-        self.lock_file = os.path.join(os.path.expanduser('~'), '.sos', f'manager_{manager_id}.lck')
-        self.slot_file = os.path.join(os.path.expanduser('~'), '.sos', f'manager_{manager_id}.slot')
-        if reset:
+        self.name = f'{name}_{manager_id}'
+        self.lock_file = os.path.join(os.path.expanduser('~'), '.sos', f'{self.name}.lck')
+        self.slot_file = os.path.join(os.path.expanduser('~'), '.sos', f'{self.name}.slot')
+        if reset or not os.path.isfile(self.lock_file):
             with fasteners.InterProcessLock(self.lock_file):
                 self._write_slot(0)
 
@@ -932,22 +936,23 @@ class SlotManager(object):
         with open(self.slot_file, 'w') as slot:
             slot.write(str(val))
 
-    def acquire(self, num=None, max_slots=10, force=False):
-        # if slot manager is not initialized (e.g. for interactive use)
-        # we do not track it.
-        if not os.path.isfile(self.slot_file):
-            return num if force else min(max_slots, num)
+    def acquire(self, num=None, max_slots=10, force=False, wait=False):
         # if num == None, request as many as possible slots
         if num is None:
             num = max_slots
-        with fasteners.InterProcessLock(self.lock_file):
-            slots = self._read_slot()
-            # return all available slots
-            avail = max_slots - slots
-            ret = num if force else max(min(num, avail), 0)
-            self._write_slot(ret + slots)
-            env.logger.debug(f'{num} slots requested  {ret} returned ({slots} active, force={force})')
-            return ret
+        while True:
+            with fasteners.InterProcessLock(self.lock_file):
+                slots = self._read_slot()
+                # return all available slots
+                avail = max_slots - slots
+                if avail >= num or not wait:
+                    ret = num if force else max(min(num, avail), 0)
+                    self._write_slot(ret + slots)
+                    env.logger.debug(f'{self.name}: {num} slots requested  {ret} returned ({slots} active, force={force})')
+                    return ret
+            # if not enough is available, wait
+            env.logger.debug(f'{self.name}: {num} slots requested  {avail} available, waiting for more slots')
+            time.sleep(1)
 
     def release(self, num):
         # if slot manager is not initialized (e.g. for interactive use), do not track it.
@@ -956,9 +961,9 @@ class SlotManager(object):
         with fasteners.InterProcessLock(self.lock_file):
             slots = self._read_slot()
             if slots < num:
-                env.logger.warning(f'Releasing {num} slots from {slots} available ones. Please report this bug to SoS developers.')
+                env.logger.warning(f'{self.name}: Releasing {num} slots from {slots} available ones. Please report this bug to SoS developers.')
             self._write_slot(max(0, slots - num))
-            env.logger.debug(f'{num} slots released from {slots} active, {slots - num} remain')
+            env.logger.debug(f'{self.name}: {num} slots released from {slots} active, {slots - num} remain')
             return max(0, slots - num)
 
 class TimeoutInterProcessLock(fasteners.InterProcessLock):
@@ -1319,4 +1324,5 @@ def pexpect_run(cmd, shell=False, win_width=None):
         except Exception as e:
             sys.stderr.write(str(e))
             return 1
+
 

@@ -41,9 +41,9 @@ from functools import wraps
 from collections.abc import Sequence
 import multiprocessing as mp
 from tqdm import tqdm as ProgressBar
-from .utils import env, transcribe, StopInputGroup, TerminateExecution, short_repr, get_traceback, TimeoutInterProcessLock
+from .utils import env, transcribe, StopInputGroup, TerminateExecution, short_repr, get_traceback, TimeoutInterProcessLock, SlotManager
 from .eval import interpolate
-from .targets import path, paths, file_target, fileMD5, executable, UnknownTarget, sos_targets
+from .targets import path, paths, file_target, fileMD5, executable, UnknownTarget, sos_targets, textMD5
 
 
 __all__ = ['SoS_Action', 'script', 'sos_run',
@@ -551,7 +551,7 @@ def stop_if(expr, msg=''):
 #
 # download file with progress bar
 #
-def downloadURL(URL, dest, decompress=False, index=None):
+def downloadURL(URL, dest, decompress=False, index=None, slot=None):
     dest = os.path.abspath(os.path.expanduser(dest))
     dest_dir, filename = os.path.split(dest)
     #
@@ -615,19 +615,19 @@ def downloadURL(URL, dest, decompress=False, index=None):
                 prog.set_description(message + ': \033[32m signature calculated\033[0m')
                 prog.update()
                 prog.close()
-                return True
+                return True, slot
             elif env.config['sig_mode'] == 'ignore':
                 prog.set_description(message + ': \033[32m use existing\033[0m')
                 prog.update()
                 prog.close()
-                return True
+                return True, slot
             elif env.config['sig_mode'] == 'default':
                 prog.update()
                 if sig.validate():
                     prog.set_description(message + ': \033[32m Validated\033[0m')
                     prog.update()
                     prog.close()
-                    return True
+                    return True, slot
                 else:
                     prog.set_description(message + ':\033[91m Signature mismatch\033[0m')
                     prog.update()
@@ -682,7 +682,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     os.remove(dest_tmp)
                 except OSError:
                     pass
-                return False
+                return False, slot
             except Exception as e:
                 prog.set_description(message + f':\033[91m {e}\033[0m')
                 prog.update()
@@ -691,7 +691,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     os.remove(dest_tmp)
                 except OSError:
                     pass
-                return False
+                return False, slot
         #
         os.rename(dest_tmp, dest)
         decompressed = 0
@@ -707,7 +707,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     if os.path.isdir(os.path.join(dest_dir, name)):
                         continue
                     elif not os.path.isfile(os.path.join(dest_dir, name)):
-                        return False
+                        return False, slot
                     else:
                         sig.add(os.path.join(dest_dir, name))
                         decompressed += 1
@@ -721,7 +721,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     files = [x.name for x in tar.getmembers() if x.isfile()]
                     for name in files:
                         if not os.path.isfile(os.path.join(dest_dir, name)):
-                            return False
+                            return False, slot
                         else:
                             sig.add(os.path.join(dest_dir, name))
                             decompressed += 1
@@ -764,22 +764,25 @@ def downloadURL(URL, dest, decompress=False, index=None):
         if env.verbosity > 2:
              sys.stderr.write(get_traceback())
         env.logger.error(f'Failed to download: {e}')
-        return False
+        return False, slot
     finally:
         # if there is something wrong still remove temporary file
         if os.path.isfile(dest_tmp):
             os.remove(dest_tmp)
     sig.write_sig()
-    return os.path.isfile(dest)
+    return os.path.isfile(dest), slot
 
 
-@SoS_Action(acceptable_args=['URLs', 'dest_dir', 'dest_file', 'decompress'])
-def download(URLs, dest_dir='.', dest_file=None, decompress=False):
+@SoS_Action(acceptable_args=['URLs', 'dest_dir', 'dest_file', 'decompress', 'max_jobs'])
+def download(URLs, dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
     '''Download files from specified URL, which should be space, tab or
     newline separated URLs. The files will be downloaded to specified
     destination. If `filename.md5` files are downloaded, they are used to
     validate downloaded `filename`. Unless otherwise specified, compressed
-    files are decompressed.
+    files are decompressed. If `max_jobs` is given, a maximum of `max_jobs`
+    concurrent download jobs will be used for each domain. This restriction
+    applies to domain names and will be applied to multiple download
+    instances.
     '''
     if env.config['run_mode'] == 'dryrun':
         print(f'download\n{URLs}\n')
@@ -794,41 +797,46 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
     #
     if dest_file is None:
         filenames = []
+        url_hash = []
         for idx, url in enumerate(urls):
             token = urllib.parse.urlparse(url)
             # if no scheme or netloc, the URL is not acceptable
             if not all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
-                filenames.append(None)
-                continue
+                raise ValueError(f'Invalid URL {url}')
             filename = os.path.split(token.path)[-1]
             if not filename:
-                filenames.append(None)
-                continue
+                raise ValueError(f'Cannot determine destination file for {url}')
             filenames.append(os.path.join(dest_dir, filename))
+            url_hash.append(textMD5(token.netloc))
     else:
+        token = urllib.parse.urlparse(urls[0])
+        if not all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
+            raise ValueError(f'Invalid URL {url}')
+        url_hash = [textMD5(token.netloc)]
         filenames = [dest_file]
     #
-    succ = [False for x in urls]
+    succ = [(False, None) for x in urls]
     if len(succ) > 1:
         # first scroll several lines to reserve place for progress bar
-        with mp.Pool(processes = env.sos_dict['CONFIG'].get('sos_download_processes', 5)) as pool:
-            for idx, (url, filename) in enumerate(zip(urls, filenames)):
-                if not filename:
-                    continue
+        with mp.Pool(processes = max_jobs) as pool:
+            for idx, (url, uh, filename) in enumerate(zip(urls, url_hash, filenames)):
+                # if there is alot, start download
+                sm = SlotManager(name=uh).acquire(1, max_jobs, wait=True)
                 succ[idx] = pool.apply_async(downloadURL, (url, filename,
-                    decompress, idx))
+                    decompress, idx, uh), callback=lambda x: SlotManager(name=x[1]).release(1))
             succ = [x.get() if isinstance(x, mp.pool.AsyncResult) else x for x in succ]
     else:
-        if dest_file is not None:
-            succ[0] = downloadURL(urls[0], dest_file, decompress=decompress)
-        else:
-           if filenames[0]:
-                succ[0] = downloadURL(urls[0], filenames[0], decompress=decompress)
+        try:
+            sm = SlotManager(name=url_hash[0])
+            sm.acquire(1, max_jobs, wait=True)
+            succ[0] = downloadURL(urls[0], filenames[0], decompress=decompress, slot=url_hash[0])
+        finally:
+            sm.release(1)
     #
     #for su, url in zip(succ, urls):
     #    if not su:
     #        env.logger.warning('Failed to download {}'.format(url))
-    if not all(succ):
+    if False in [x[0] for x in succ]:
         raise RuntimeError('Not all files have been downloaded')
     return 0
 

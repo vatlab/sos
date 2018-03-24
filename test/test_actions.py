@@ -37,7 +37,7 @@ def internet_on(host='8.8.8.8', port=80, timeout=3):
     '''Test if internet is connected '''
     try:
         socket.setdefaulttimeout(timeout)
-        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
+        socket.create_connection(("www.google.com", 80))
         return True
     except Exception as e:
         print(e)
