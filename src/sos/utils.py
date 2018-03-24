@@ -919,9 +919,9 @@ class SlotManager(object):
     #
     # A slot file writes the number of USED slots.
     #
-    def __init__(self, reset=False, name='process'):
-        manager_id = env.config.get('master_md5', 'general')
-        self.name = f'{name}_{manager_id}'
+    def __init__(self, reset=False, name=None):
+        # if a name is not given, the slot will be workflow dependent
+        self.name = name if name else env.config.get('master_md5', 'general')
         self.lock_file = os.path.join(os.path.expanduser('~'), '.sos', f'{self.name}.lck')
         self.slot_file = os.path.join(os.path.expanduser('~'), '.sos', f'{self.name}.slot')
         if reset or not os.path.isfile(self.lock_file):
