@@ -23,6 +23,8 @@ if you have helped fixing bugs or making improvements to the source code.
 
 SoS 0.9.12.11
 * [sos#922](https://github.com/vatlab/SoS/issues/922): Use user-id for docker execution (-u)
+* [sos#926](https://github.com/vatlab/SoS/issues/926): Add function `zap()` to SoS path classes `path`, `paths`, `file_target`, and `sos_targets`
+
 
 SoS Notebook 0.9.12.11
 * [sos-notebook#44](https://github.com/vatlab/sos-notebook/issues/44): Allow sending text in markdown cells to side panel for execution.
