@@ -923,12 +923,12 @@ class SlotManager(object):
     def __init__(self, reset=False, name=None):
         # if a name is not given, the slot will be workflow dependent
         self.name = name if name else env.config.get('master_md5', 'general')
-        tempdir = tempfile.gettempdir()
-        self.lock_file = os.path.join(tempdir, '.sos', f'{self.name}.lck')
-        self.slot_file = os.path.join(tempdir, '.sos', f'{self.name}.slot')
+        tempdir = os.path.join(tempfile.gettempdir(), getpass.getuser(), 'sos_slots')
+        self.lock_file = os.path.join(tempdir, f'{self.name}.lck')
+        self.slot_file = os.path.join(tempdir, f'{self.name}.slot')
         if reset or not os.path.isfile(self.lock_file):
             with fasteners.InterProcessLock(self.lock_file):
-                os.makedirs(os.path.join(tempdir, '.sos'), exist_ok=True)
+                os.makedirs(tempdir, exist_ok=True)
                 self._write_slot(0)
 
     def _read_slot(self):
