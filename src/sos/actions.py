@@ -791,6 +791,10 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
         urls = [x.strip() for x in URLs.split() if x.strip()]
     else:
         urls = list(URLs)
+
+    if not urls:
+        env.logger.debug(f'No download URL specified: {URLs}')
+        return
     #
     if dest_file is not None and len(urls) != 1:
         raise RuntimeError('Only one URL is allowed if a destination file is specified.')
