@@ -795,6 +795,7 @@ class Base_Executor:
         # python statements in different run modes.
         env.sos_dict.set('run_mode', env.config['run_mode'])
 
+        wf_result = {'__workflow_id__': my_workflow_id, 'shared': {}}
         # if targets are specified and there are only signatures for them, we need
         # to remove the signature and really generate them
         if targets:
@@ -806,7 +807,10 @@ class Base_Executor:
                     file_target(t).remove('signature')
             targets = [x for x in targets if not file_target(x).target_exists('target')]
             if not targets:
-                raise RuntimeError('All targets already exists.')
+                if parent_pipe:
+                    parent_pipe.send(wf_result)
+                else:
+                    return wf_result
 
         # process step of the pipelinp
         dag = self.initialize_dag(targets=targets, nested=nested)
@@ -823,8 +827,6 @@ class Base_Executor:
         #       created on the fly for steps passed from nested workflow
         #
         manager = ExecutionManager(env.config['max_procs'], master=not nested)
-        #
-        wf_result = {'__workflow_id__': my_workflow_id, 'shared': {}}
         #
         # steps sent and queued from the nested workflow
         # they will be executed in random but at a higher priority than the steps
