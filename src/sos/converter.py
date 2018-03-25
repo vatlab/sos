@@ -442,8 +442,8 @@ template_header = '''
       <span class="right">
       </span>
  <div>
-        <a class="header-logo-invertocat" href="https://vatlab.github.io/SOS" data-hotkey="g d" aria-label="Homepage">
-        <img src="http://vatlab.github.io/SOS/img/sos_icon.svg" alt="sos_icon">
+        <a class="header-logo-invertocat" href="https://vatlab.github.io/sos-docs" data-hotkey="g d" aria-label="Homepage">
+        <img src="http://vatlab.github.io/sos-docs/img/sos_icon.svg" alt="sos_icon">
         </a>
 
         <span class="user-mention">%s</span>
