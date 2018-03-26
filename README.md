@@ -21,6 +21,10 @@ if you have helped fixing bugs or making improvements to the source code.
 
 ### Change Log of SoS and SoS Notebook
 
+SoS Notebook 0.9.12.12
+* [sos-notebook#52](https://github.com/vatlab/sos-notebook/issues/52): All new syntax highlighter that highlights expanded expressions
+* [sos-notebook#58](https://github.com/vatlab/sos-notebook/issues/58): Stop removing leading comments from cells.
+
 SoS 0.9.12.11
 * [sos#922](https://github.com/vatlab/SoS/issues/922): Use user-id for docker execution (-u)
 * [sos#926](https://github.com/vatlab/SoS/issues/926): Add function `zap()` to SoS path classes `path`, `paths`, `file_target`, and `sos_targets`
