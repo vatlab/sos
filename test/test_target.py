@@ -417,7 +417,7 @@ run:
 
     def testZapRun(self):
         '''Test run with zapped input files'''
-        with open('zap1.txt') as sf:
+        with open('zap1.txt', 'w') as sf:
             sf.write('seomething')
         script = SoS_Script('''\
 [1]
@@ -428,13 +428,17 @@ run:
 _input.zap()
 ''')
         wf = script.workflow()
+        env.config['sig_mode'] = 'force'
         Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('zap1.txt.zapped'))
         self.assertFalse(os.path.isfile('zap1.txt'))
         self.assertTrue(os.path.isfile('zap2.txt'))
         # can run again
+        env.config['sig_mode'] = 'default'
         Base_Executor(wf).run()
-
+        # now if we remove target
+        os.remove('zap2.txt')
+        self.assertRaises(Exception, Base_Executor(wf).run)
 
 
 if __name__ == '__main__':
