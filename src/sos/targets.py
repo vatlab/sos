@@ -138,13 +138,13 @@ class BaseTarget(object):
     #
     def sig_file(self):
         if self._sigfile is None:
-            self._sigfile = os.path.join(env.exec_dir, '.sos', '.runtime',
-                                         f'{self.__class__.__name__}_{textMD5(self.target_name())}.file_info')
+            self._sigfile = pathlib.Path(env.exec_dir) / '.sos' / '.runtime' /  \
+                f'{self.__class__.__name__}_{textMD5(self.target_name())}.file_info'
         return self._sigfile
 
     def remove_sig(self):
-        if self.sig_file() and os.path.isfile(self.sig_file()):
-            os.remove(self.sig_file())
+        if self.sig_file() and self.sig_file().is_file():
+            self.sig_file().unlink()
 
     def write_sig(self):
         '''Write .sig file with signature'''
@@ -253,32 +253,6 @@ class sos_step(BaseTarget):
             return str(self).__format__(format_spec)
 
 
-# class bundle(BaseTarget):
-#     '''a bundle of other targets'''
-#     def __init__(self, *args):
-#         super(bundle, self).__init__()
-#         self._targets = []
-#         for arg in args:
-#             if isinstance(arg, str):
-#                 self._targets.append(os.path.expanduser(arg))
-#             elif isinstance(arg, Iterable):
-#                 # in case arg is a Generator, check its type will exhaust it
-#                 arg = list(arg)
-#                 if not all(isinstance(x, str) for x in arg):
-#                     raise RuntimeError('Invalid filename: {}'.format(arg))
-#                 self._targets.extend(arg)
-#             else:
-#                 raise RuntimeError('Unrecognized file: {}'.format(arg))
-#
-#     def target_exists(self, mode='any'):
-#         return all(file_target(x).target_exists(mode) for x in self._targets)
-#
-#     def target_name(self):
-#         return repr(self._targets)
-#
-#     def target_signature(self, mode='any'):
-#         return textMD5(repr(self._targets))
-#
 class dynamic(BaseTarget):
     '''A dynamic executable that only handles input files when
     it is available. This target is handled directly with its `resolve`
@@ -459,7 +433,7 @@ class path(type(Path())):
             return True
 
     def fullname(self):
-        return os.path.abspath(os.path.expanduser(str(self)))
+        return os.path.abspath(str(self))
 
     def __fspath__(self):
         return self.fullname()
@@ -522,11 +496,11 @@ class file_target(path, BaseTarget):
 
     def target_exists(self, mode='any'):
         try:
-            if mode in ('any', 'target') and self.expanduser().exists():
+            if mode in ('any', 'target') and self.exists():
                 return True
-            elif mode == 'any' and Path(str(self.expanduser()) + '.zapped').exists():
+            elif mode == 'any' and (self + '.zapped').exists():
                 return True
-            elif mode == 'signature' and Path(self.sig_file()).exists():
+            elif mode == 'signature' and self.sig_file().exists():
                 return True
             return False
         except Exception as e:
@@ -543,22 +517,22 @@ class file_target(path, BaseTarget):
         if self._sigfile is not None:
             return self._sigfile
         # If the output path is outside of the current working directory
-        fullname = str(self.expanduser().resolve())
+        fullname = str(self.resolve())
         name_md5 = textMD5(fullname)
 
         if self.is_external():
-            self._sigfile = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', name_md5 + '.file_info')
+            self._sigfile = path('~') / '.sos' / '.runtime' / name_md5 + '.file_info'
         else:
-            self._sigfile = os.path.join(env.exec_dir, '.sos', '.runtime', name_md5 + '.file_info')
+            self._sigfile = path(env.exec_dir) / '.sos' / '.runtime' / name_md5 + '.file_info'
         return self._sigfile
 
     def target_signature(self, mode='any'):
         '''Return file signature'''
         if mode == 'target':
-            self._md5 = fileMD5(self.fullname())
+            self._md5 = fileMD5(self)
         if self._md5 is not None:
             return self._md5
-        if os.path.isfile(self.sig_file()) and (not os.path.isfile(self.fullname()) or os.path.getmtime(self.sig_file()) > os.path.getmtime(self.fullname())):
+        if self.sig_file().is_file() and (not self.is_file() or os.path.getmtime(self.sig_file()) > os.path.getmtime(self)):
             with open(self.sig_file()) as md5:
                 try:
                     line = md5.readline()
@@ -566,15 +540,15 @@ class file_target(path, BaseTarget):
                     return m.strip()
                 except Exception:
                     pass
-        elif os.path.isfile(self.fullname() + '.zapped'):
-            with open(self.fullname() + '.zapped') as md5:
+        elif (self + '.zapped').is_file():
+            with open(self + '.zapped') as md5:
                 try:
                     line = md5.readline()
                     _, _, _, m = line.rsplit('\t', 3)
                     return m.strip()
                 except Exception:
                     pass
-        self._md5 = fileMD5(self.fullname())
+        self._md5 = fileMD5(self)
         return self._md5
     #
     # file_target - specific functions. Not required by other targets
@@ -584,21 +558,21 @@ class file_target(path, BaseTarget):
         self._attachments.append(os.path.abspath(os.path.expanduser(filename)))
 
     def remove(self, mode='both'):
-        if mode in ('both', 'target') and os.path.isfile(self.fullname()):
-            os.remove(self.fullname())
-        if mode in ('both', 'signature') and os.path.isfile(self.sig_file()):
-            os.remove(self.sig_file())
+        if mode in ('both', 'target') and self.is_file():
+            self.unlink()
+        if mode in ('both', 'signature') and self.sig_file().is_file():
+            self.sig_file().unlink()
 
     def size(self):
         if self.exists():
-            return os.path.getsize(self.fullname())
-        elif os.path.isfile(self.sig_file()):
+            return os.path.getsize(self)
+        elif self.sig_file().is_file():
             with open(self.sig_file()) as md5:
                 line = md5.readline()
                 _, _, s, _ = line.rsplit('\t', 3)
                 return int(s.strip())
-        elif os.path.isfile(self.fullname() + '.zapped'):
-            with open(self.fullname() + '.zapped') as md5:
+        elif (self + '.zapped').is_file():
+            with open(self + '.zapped') as md5:
                 line = md5.readline()
                 _, _, s, _ = line.rsplit('\t', 3)
                 return int(s.strip())
@@ -607,14 +581,14 @@ class file_target(path, BaseTarget):
 
     def mtime(self):
         if self.exists():
-            return os.path.getmtime(self.fullname())
-        elif os.path.isfile(self.sig_file()):
+            return os.path.getmtime(self)
+        elif self.sig_file().is_file():
             with open(self.sig_file()) as md5:
                 line = md5.readline()
                 _, t, _, _ = line.rsplit('\t', 3)
                 return t.strip()
-        elif os.path.isfile(self.fullname() + '.zapped'):
-            with open(self.fullname() + '.zapped') as md5:
+        elif (self + '.zapped').is_file():
+            with open(self + '.zapped') as md5:
                 line = md5.readline()
                 _, t, _, _ = line.rsplit('\t', 3)
                 return t.strip()
@@ -629,13 +603,13 @@ class file_target(path, BaseTarget):
             return
         with open(self.sig_file(), 'w') as md5:
             md5.write(
-                f'{self.fullname()}\t{os.path.getmtime(self.fullname())}\t{os.path.getsize(self.fullname())}\t{self.target_signature()}\n')
+                f'{self.fullname()}\t{os.path.getmtime(self)}\t{os.path.getsize(self)}\t{self.target_signature()}\n')
             for f in self._attachments:
                 md5.write(f'{f}\t{os.path.getmtime(f)}\t{os.path.getsize(f)}\t{fileMD5(f)}\n')
 
     def validate(self):
         '''Check if file matches its signature'''
-        if not os.path.isfile(self.sig_file()):
+        if not self.sig_file().is_file():
             return False
         with open(self.sig_file()) as md5:
             for line in md5:
@@ -923,9 +897,9 @@ class RuntimeInfo:
 
         if self.external_output:
             # global signature
-            self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', f'{self.sig_id}.exe_info')
+            self.proc_info = str(path('~') / '.sos' / '.runtime' / f'{self.sig_id}.exe_info')
         else:
-            self.proc_info = os.path.join(env.exec_dir, '.sos', '.runtime', f'{self.sig_id}.exe_info')
+            self.proc_info = str(path(env.exec_dir) / '.sos' / '.runtime' / f'{self.sig_id}.exe_info')
 
     def __getstate__(self):
         return {'step_md5': self.step_md5,
@@ -949,9 +923,9 @@ class RuntimeInfo:
         #
         # the signature might be on a remote machine and has changed location
         if self.external_output:
-            self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', f'{self.sig_id}.exe_info')
+            self.proc_info = str(path('~') / '.sos' / '.runtime' / f'{self.sig_id}.exe_info')
         else:
-            self.proc_info = os.path.join(env.exec_dir, '.sos', '.runtime', f'{self.sig_id}.exe_info')
+            self.proc_info = str(path(env.exec_dir) / '.sos' / '.runtime' / f'{self.sig_id}.exe_info')
 
 
     def lock(self):
