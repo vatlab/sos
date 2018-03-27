@@ -624,6 +624,9 @@ class file_target(path, BaseTarget):
     def write_sig(self):
         '''Write .file_info file with signature'''
         # path to file
+        if not self.exists() and (self + '.zapped').exists():
+            shutil.copy(self + '.zapped', self.sig_file())
+            return
         with open(self.sig_file(), 'w') as md5:
             md5.write(
                 f'{self.fullname()}\t{os.path.getmtime(self.fullname())}\t{os.path.getsize(self.fullname())}\t{self.target_signature()}\n')
@@ -995,7 +998,7 @@ class RuntimeInfo:
             md5.write(f'{textMD5(self.script)}\n')
             md5.write('# input\n')
             for f in self.input_files:
-                if f.target_exists('target'):
+                if f.target_exists('any'):
                     # this calculates file MD5
                     f.write_sig()
                     md5.write(f'{f}\t{f.target_signature()}\n')
@@ -1006,7 +1009,7 @@ class RuntimeInfo:
                     return False
             md5.write('# output\n')
             for f in self.output_files:
-                if f.target_exists('target'):
+                if f.target_exists('any'):
                     # this calculates file MD5
                     f.write_sig()
                     md5.write(f'{f}\t{f.target_signature()}\n')
@@ -1017,7 +1020,7 @@ class RuntimeInfo:
                     return False
             md5.write('# dependent\n')
             for f in self.dependent_files:
-                if f.target_exists('target'):
+                if f.target_exists('any'):
                     # this calculates file MD5
                     f.write_sig()
                     md5.write(f'{f}\t{f.target_signature()}\n')
