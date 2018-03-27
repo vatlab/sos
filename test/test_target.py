@@ -392,7 +392,7 @@ run:
         # non-existent file
         os.remove('testzap.txt.zapped')
         self.assertRaises(FileNotFoundError, path('testzap.txt').zap)
-        # 
+        #
         with open('testzap.txt', 'w') as sf:
             sf.write('some text')
         with open('testzap1.txt', 'w') as sf:
@@ -414,6 +414,28 @@ run:
         self.assertFalse(os.path.isfile('testzap.txt'))
         self.assertTrue(os.path.isfile('testzap1.txt.zapped'))
         self.assertFalse(os.path.isfile('testzap1.txt'))
+
+    def testZapRun(self):
+        '''Test run with zapped input files'''
+        with open('zap1.txt') as sf:
+            sf.write('seomething')
+        script = SoS_Script('''\
+[1]
+input: 'zap1.txt'
+output: "zap2.txt"
+run:
+  echo asd>zap2.txt
+_input.zap()
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertTrue(os.path.isfile('zap1.txt.zapped'))
+        self.assertFalse(os.path.isfile('zap1.txt'))
+        self.assertTrue(os.path.isfile('zap2.txt'))
+        # can run again
+        Base_Executor(wf).run()
+
+
 
 if __name__ == '__main__':
     unittest.main()
