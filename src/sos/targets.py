@@ -138,7 +138,7 @@ class BaseTarget(object):
     #
     def sig_file(self):
         if self._sigfile is None:
-            self._sigfile = pathlib.Path(env.exec_dir) / '.sos' / '.runtime' /  \
+            self._sigfile = Path(env.exec_dir) / '.sos' / '.runtime' /  \
                 f'{self.__class__.__name__}_{textMD5(self.target_name())}.file_info'
         return self._sigfile
 
