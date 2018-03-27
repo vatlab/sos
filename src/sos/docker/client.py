@@ -265,7 +265,7 @@ class SoS_DockerClient:
                 user_opt = f'-u {kwargs["user"]}'
             else:
                 # Tocket #922
-                user_opt = f'-u {os.getuid()}'
+                user_opt = f'-u {os.getuid()}:{os.getgid()}'
             #
             extra_opt = ''
             if 'extra_args' in kwargs:
