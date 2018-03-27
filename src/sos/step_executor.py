@@ -466,18 +466,11 @@ class Base_Step_Executor:
             return
         # now, if we are actually going to run the script, we
         # need to check the input files actually exists, not just the signatures
-        for target in (env.sos_dict['_input'] if isinstance(env.sos_dict['_input'], list) else []) + \
-            (env.sos_dict['_depends'] if isinstance(env.sos_dict['_depends'], list) else []):
-            # if the file does not exist (although the signature exists)
-            # request generation of files
-            if isinstance(target, str):
-                if not file_target(target).target_exists('target'):
-                    # remove the signature and regenerate the file
-                    file_target(target).remove_sig()
+        for key in ('_input', '_depends'):
+            for target in env.sos_dict[key]:
+                if not target.target_exists('target'):
+                    target.remove_sig()
                     raise RemovedTarget(target)
-            elif not target.target_exists('target'):
-                target.remove_sig()
-                raise RemovedTarget(target)
 
     def verify_output(self):
         if self.run_mode == 'dryrun':

@@ -35,7 +35,7 @@ from .utils import env, Error, WorkflowDict, get_traceback, short_repr, pickleab
     load_config_files, save_var, load_var, SlotManager
 from .eval import SoS_exec
 from .dag import SoS_DAG
-from .targets import BaseTarget, file_target, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step, Undetermined
+from .targets import BaseTarget, path, file_target, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step, Undetermined
 from .pattern import extract_pattern
 from .hosts import Host
 
@@ -924,6 +924,9 @@ class Base_Executor:
                         runnable._status = None
                         dag.save(self.config['output_dag'])
                         target = res.target
+                        # we can resolve all sorts of target but the DAG only accept string format of file_targe
+                        if isinstance(target, path):
+                            target = str(target)
                         if dag.regenerate_target(target):
                             #runnable._depends_targets.append(target)
                             #dag._all_dependent_files[target].append(runnable)
