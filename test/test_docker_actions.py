@@ -201,5 +201,17 @@ run: docker_image='blang/busybox-bash', docker_file = 'hello.tar'
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
+    def testDockerScriptAction(self):
+        '''Test action sh in docker environment'''
+        # test docker
+        script = SoS_Script(r'''
+[0]
+script: docker_image='ubuntu', args='{script}'
+echo 'Echo'
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
 if __name__ == '__main__':
     unittest.main()
