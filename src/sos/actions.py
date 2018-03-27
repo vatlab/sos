@@ -294,22 +294,9 @@ class SoS_ExecuteScript:
                     if not self.args:
                         self.args = '{filename:q}'
                 else:
-                    if sys.platform == 'win32':
-                        # in the case there is no interpreter, we put the script
-                        # at first (this is the case for windows)
-                        #
-                        # and we donot add default args.
-                        self.interpreter = '{filename:q}'
-                    else:
-                        # if there is a shebang line, we ...
-                        if self.script.startswith('#!'):
-                            # make the script executable
-                            os.chmod(script_file, 0o775)
-                            self.interpreter = '{filename:q}'
-                        else:
-                            self.interpreter = '/bin/bash'
-                            if not self.args:
-                                self.args = '-ev {filename:q}'
+                    # make the script executable
+                    os.chmod(script_file, 0o775)
+                    self.interpreter = '{filename:q}'
                 #
                 if env.config['run_mode'] == 'dryrun':
                     print(f'{self.interpreter}:\n{self.script}\n')
@@ -516,14 +503,11 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
         env.sos_dict.set('step_name', my_name)
 
 @SoS_Action(acceptable_args=['script', 'interpreter', 'suffix', 'args'])
-def script(script, interpreter, suffix='', args='', **kwargs):
+def script(script, interpreter='', suffix='', args='', **kwargs):
     '''Execute specified script using specified interpreter. This action accepts common
     action arguments such as input, active, workdir, docker_image and args. In particular,
     content of one or more files specified by option input would be prepended before
     the specified script.'''
-    if env.config['run_mode'] == 'dryrun':
-        print(f'{interpreter}:\n{script}\n')
-        return None
     return SoS_ExecuteScript(script, interpreter, suffix, args).run(**kwargs)
 
 @SoS_Action(acceptable_args=['expr', 'msg'])
@@ -849,7 +833,22 @@ def run(script, args='', **kwargs):
     '''Execute specified script using bash. This action accepts common action arguments such as
     input, active, workdir, docker_image and args. In particular, content of one or more files
     specified by option input would be prepended before the specified script.'''
-    return SoS_ExecuteScript(script, '', '', args).run(**kwargs)
+    if sys.platform == 'win32':
+        # in the case there is no interpreter, we put the script
+        # at first (this is the case for windows)
+        # and we donot add default args.
+        interpreter = ''
+    else:
+        # if there is a shebang line, we ...
+        if not script.startswith('#!'):
+            interpreter = '/bin/bash'
+            if not args:
+                args = '-ev {filename:q}'
+        else:
+            # execute script directly
+            interpreter = ''
+    return SoS_ExecuteScript(script, interpreter, '', args).run(**kwargs)
+
 
 @SoS_Action(acceptable_args=['script', 'args'])
 def perl(script, args='', **kwargs):
