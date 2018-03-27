@@ -164,14 +164,6 @@ class SoS_DockerClient:
             # if there is an interpreter and with args
             if not args:
                 args = '{filename:q}'
-            if not interpreter:
-                interpreter = '/bin/bash'
-                # if there is a shebang line, we ...
-                if script.startswith('#!'):
-                    # make the script executable
-                    env.logger.warning('Shebang line in a docker-run script is ignored')
-            elif not isinstance(interpreter, str):
-                interpreter = interpreter[0]
             #
             binds = []
             if 'volumes' in kwargs:
@@ -214,11 +206,11 @@ class SoS_DockerClient:
                 else:
                     raise RuntimeError('Option volumes_from only accept a string or list of string: {} specified'.format(kwargs['volumes_from']))
             # we also need to mount the script
-            cmd_opt = ''
-            if script and interpreter:
+            if script:
                 volumes_opt += ' -v {}:{}'.format(shlex.quote(os.path.join(tempdir, tempscript)), '/var/lib/sos/{}'.format(tempscript))
-                cmd_opt = interpolate(f'{interpreter} {args}',
-                            {'filename': sos_targets(f'/var/lib/sos/{tempscript}')})
+            cmd_opt = interpolate(f'{interpreter} {args}', {
+                'filename': sos_targets(f'/var/lib/sos/{tempscript}'),
+                'script': script })
             #
             working_dir_opt = '-w={}'.format(shlex.quote(os.path.abspath(os.getcwd())))
             if 'working_dir' in kwargs:
