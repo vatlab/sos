@@ -289,14 +289,12 @@ class SoS_ExecuteScript:
                 script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=self.suffix, delete=False).name
                 with open(script_file, 'w') as sfile:
                     sfile.write(self.script)
-                if self.interpreter:
-                    # if there is an interpreter and with args
-                    if not self.args:
-                        self.args = '{filename:q}'
-                else:
+                if not self.args:
+                    self.args = '{filename:q}'
+                # if no intepreter, let us prepare for the case when the script will be executed directly
+                if not self.interpreter:
                     # make the script executable
                     os.chmod(script_file, 0o775)
-                    self.interpreter = '{filename:q}'
                 #
                 if env.config['run_mode'] == 'dryrun':
                     print(f'{self.interpreter}:\n{self.script}\n')
@@ -399,10 +397,8 @@ class SoS_ExecuteScript:
                         debug_args = '{filename:q}'
                     else:
                         debug_args = self.args
-                    cmd = interpolate(f'{self.interpreter.strip()} ``{debug_args}``',
-                                      {'filename': sos_targets(debug_script_file), 'script': self.script})
-                    raise RuntimeError('Failed to execute commmand "{}" (ret={}, workdir={}{}{})'.format(
-                        cmd, ret, os.getcwd(),
+                    raise RuntimeError('Failed to execute commmand "{}" (ret={}, workdir={}, script now in {}{}{})'.format(
+                        cmd, ret, os.getcwd(), debug_script_file,
                         f', task={os.path.basename(env.sos_dict["__std_err__"]).split(".")[0]}' if '__std_err__' in env.sos_dict else '',
                         f', err=``{kwargs["stderr"]}``' if 'stderr' in kwargs and os.path.isfile(kwargs['stderr']) else ''))
             except RuntimeError:
