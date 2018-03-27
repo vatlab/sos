@@ -423,7 +423,7 @@ class path(type(Path())):
         'e': lambda x: x.replace(' ', '\\ '),
         'a': lambda x: os.path.abspath(os.path.expanduser(x)),
         'l': lambda x: os.path.realpath(os.path.expanduser(x)),
-        'd': os.path.dirname,
+        'd': lambda x: os.path.dirname(x) or '.',
         'b': os.path.basename,
         'n': lambda x: os.path.splitext(x)[0],
         'x': lambda x: os.path.splitext(x)[1],
