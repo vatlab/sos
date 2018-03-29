@@ -66,12 +66,15 @@ def get_actions():
 # with a null action. Option run_mode is deprecated and might be
 # removed later on.
 #
-def SoS_Action(run_mode='deprecated', acceptable_args=('*',)):
+def SoS_Action(run_mode='deprecated', acceptable_args=('*',), default_args={}):
     def runtime_decorator(func):
         @wraps(func)
         def action_wrapper(*args, **kwargs):
             # if docker_image in args, a large number of docker-specific
             # args would be allowed.
+            for k in default_args:
+                if k in default_args and not k in kwargs:
+                    kwargs[k] = default_args[k]
             if '*' not in acceptable_args and 'docker_image' not in kwargs:
                 for key in kwargs.keys():
                     if key not in acceptable_args and key not in SOS_ACTION_OPTIONS:
@@ -183,6 +186,16 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',)):
                     if sig.write(rebuild=True):
                         env.logger.info(f'Action ``{func.__name__}`` is ``ignored`` with signature constructed')
                         return None
+            if 'default_env' in kwargs:
+                if not isinstance(kwargs['default_env'], dict):
+                    raise ValueError(f'Option default_env must be a dictionary, {kwargs["default_env"]} provided')
+                for k in kwargs['default_env']:
+                    if k not in os.environ:
+                        os.environ[k] = kwargs['default_env'][k]
+            if 'env' in kwargs:
+                if not isinstance(kwargs['env'], dict):
+                    raise ValueError(f'Option env must be a dictionary, {kwargs["env"]} provided')
+                os.environ.update(kwargs['env'])
             if 'workdir' in kwargs:
                 if not kwargs['workdir'] or not isinstance(kwargs['workdir'], (str, os.PathLike)):
                     raise RuntimeError(f'workdir option should be a path of type str or path, {kwargs["workdir"]} provided')
