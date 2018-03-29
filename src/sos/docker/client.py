@@ -208,7 +208,7 @@ class SoS_DockerClient:
             # we also need to mount the script
             if script:
                 volumes_opt += ' -v {}:{}'.format(shlex.quote(os.path.join(tempdir, tempscript)), '/var/lib/sos/{}'.format(tempscript))
-            cmd_opt = interpolate(f'{interpreter} {args}', {
+            cmd_opt = interpolate(f'{interpreter if isinstance(str) else interpreter[0]} {args}', {
                 'filename': sos_targets(f'/var/lib/sos/{tempscript}'),
                 'script': script })
             #
