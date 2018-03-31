@@ -104,6 +104,8 @@ setup(name = "sos",
           'pydot',
           'pydotplus',
           'pexpect',
+          # to execute workflow embedded in .ipynb files
+          'nbformat',
           'docker;platform_system!="Windows"',
       ],
     entry_points= '''

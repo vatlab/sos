@@ -682,10 +682,8 @@ class SoS_Script:
             ext = os.path.splitext(self.sos_script)[-1]
             if ext == '.ipynb':
                 # convert ipynb to sos
-                from sos_notebook.converter import notebook_to_script
-                with StringIO() as script:
-                    notebook_to_script(self.sos_script, script)
-                    content = script.getvalue()
+                from .converter import extract_workflow
+                content = extract_workflow(self.sos_script)
                 self.sos_script = '<string>'
                 self.content = SoS_ScriptContent(content, None)
             else:
@@ -741,10 +739,8 @@ class SoS_Script:
             except Exception:
                 content, script_file = locate_script(sos_file + '.ipynb', start=start_path)
                 # convert ipynb to sos
-                from sos_notebook.converter import notebook_to_script
-                with StringIO() as script:
-                    notebook_to_script(script_file, script)
-                    content = script.getvalue()
+                from .converter import extract_workflow
+                content = extract_workflow(script_file)
         except Exception:
             raise RuntimeError(
                 f'Source file for nested workflow {sos_file} with extension .sos or .ipynb does not exist')

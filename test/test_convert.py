@@ -27,7 +27,7 @@ import shutil
 from argparse import Namespace
 
 from sos.utils import env
-from sos.converter import script_to_html, script_to_markdown, script_to_term
+from sos.converter import script_to_html, script_to_markdown, script_to_term, extract_workflow
 
 class TestConvert(unittest.TestCase):
     def setUp(self):
@@ -82,6 +82,22 @@ report('this is action report')
         args = Namespace()
         for script_file in self.scripts:
             script_to_term(script_file, None, args=args)
+
+    def testExtractWorkflow(self):
+        '''Test extract workflow from ipynb file'''
+        content = extract_workflow('sample_workflow.ipynb')
+        self.assertEqual(content, '''\
+#!/usr/bin/env sos-runner
+#fileformat=SOS1.0
+
+[global]
+a = 1
+
+[default]
+print(f'Hello {a}')
+
+''')
+
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestConvert)

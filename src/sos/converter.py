@@ -24,6 +24,7 @@ import os
 import sys
 import argparse
 import webbrowser
+import nbformat
 
 from io import StringIO
 from textwrap import dedent
@@ -39,7 +40,7 @@ from .utils import env, pretty_size
 from .actions import get_actions
 from .parser import SoS_Script
 from .syntax import SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS, SOS_DEPENDS_OPTIONS, \
-    SOS_RUNTIME_OPTIONS, SOS_SECTION_OPTIONS
+    SOS_RUNTIME_OPTIONS, SOS_SECTION_OPTIONS, SOS_SECTION_HEADER
 
 #
 # subcommmand show
@@ -914,3 +915,26 @@ def script_to_term(script_file, output_file, args, unknown_args=None):
             content = [script_line]
     if content:
         write_content(content_type, content, formatter)
+
+def extract_workflow(notebook_file):
+    nb = nbformat.read(notebook_file, nbformat.NO_CONVERT)
+    cells = nb.cells
+    content = '#!/usr/bin/env sos-runner\n#fileformat=SOS1.0\n\n'
+    idx = 0
+    for cell in cells:
+        if cell.cell_type != "code":
+            continue
+        # Non-sos code cells are also ignored
+        if 'kernel' in cell.metadata and cell.metadata['kernel'] not in ('sos', 'SoS', None):
+            continue
+        lines = cell.source.split('\n')
+        valid_cell = False
+        for line in lines:
+            if valid_cell or (line.startswith('%include') or line.startswith('%from')):
+                content += line + '\n'
+            elif SOS_SECTION_HEADER.match(line):
+                valid_cell = True
+                content += line + '\n'
+        if valid_cell:
+            content += '\n'
+    return content

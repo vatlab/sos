@@ -1096,6 +1096,11 @@ depends: 'non-existent.txt'
         wf = script.workflow()
         self.assertRaises(RuntimeError, Base_Executor(wf).run)
 
+    def testExecuteIPynb(self):
+        '''Test extracting and executing workflow from .ipynb files'''
+        script = SoS_Script(filename='sample_workflow.ipynb')
+        wf = script.workflow()
+        Base_Executor(wf).run()
 
 if __name__ == '__main__':
     unittest.main()
