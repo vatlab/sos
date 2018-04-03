@@ -232,9 +232,24 @@ def preview_md(filename, kernel=None, style=None):
 def preview_dot(filename, kernel=None, style=None):
     from graphviz import Source
     with open(filename) as dot:
-        src = Source(dot.read())
-    src.format='png'
+        fileNameElement = "sosDotFilesPng"
+        src = Source(dot.read(), filename = fileNameElement)
+    src.format = 'png'
     outfile = src.render()
-    with open(outfile, 'rb') as content:
-        data = content.read()
-    return {'image/png': base64.b64encode(data).decode('ascii') }
+    from os import listdir
+    from os.path import isfile, join
+    import re
+    pngFiles = [f for f in listdir("./") if isfile(join("./", f)) and fileNameElement in f and ".png" in f and bool(re.search(r'\d', f))]
+    if len(pngFiles == 0):
+        with open(outfile, 'rb') as content:
+            data = content.read()
+        return {'image/png': base64.b64encode(data).decode('ascii') }
+    else:
+        pngFiles.sort(key=lambda x: int(x.split('.')[1]))
+        pngFiles.insert(0, fileNameElement + '.png')
+        images = []
+        for filename in pngFiles:
+            images.append(imageio.imread(filename))
+        data = imageio.mimsave('movie.gif', images, duration = 1)
+        os.remove(pngFiles)
+        return {'image/gif': movie.gif}
