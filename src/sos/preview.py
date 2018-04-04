@@ -69,8 +69,11 @@ def preview_img(filename, kernel=None, style=None):
         try:
             from wand.image import Image
             img = Image(filename=filename)
-            return { 'image/' + image_type: image_data,
-                'image/png': base64.b64encode(img._repr_png_()).decode('ascii') }
+            if image_type == 'gif':
+                return { 'image/' + image_type: image_data}
+            else:
+                return { 'image/' + image_type: image_data,
+                    'image/png': base64.b64encode(img._repr_png_()).decode('ascii') }
         except Exception:
             return { 'image/' + image_type: image_data }
     else:
@@ -261,7 +264,7 @@ def preview_dot(filename, kernel=None, style=None):
             if 'image/gif' in result:
                 #return {'image/gif': result['image/gif'],
                 #        'image/png': result['image/png']}
-                return {'image/gif': result[image/fig]}
+                return {'image/gif': result['image/gif']}
             else:
                 return result
         except Exception as e:
