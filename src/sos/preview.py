@@ -256,7 +256,6 @@ def preview_dot(filename, kernel=None, style=None):
             shutil.rmtree(tempDirectory)
             return {'image/png': base64.b64encode(data).decode('ascii') }
         else:
-            from wand.image import Image
             import imageio
             pngFiles.sort(key=lambda x: int(x.split('.')[1]))
             pngFiles.insert(0, join(tempDirectory, fileNameElement + '.png'))
