@@ -233,36 +233,45 @@ def preview_dot(filename, kernel=None, style=None):
     from os import listdir, remove
     from os.path import isfile, join
     from graphviz import Source
+    import tempfile
+    import shutil
     with open(filename) as dot:
         fileNameElement = "sosDotFilesPng"
-        src = Source(dot.read(), filename = fileNameElement)
+        #tempDirectory = tempfile.TemporaryDirectory()
+        with tempfile.TemporaryDirectory() as tempD:
+            tempDirectory = tempD
+        src = Source(dot.read(), filename = fileNameElement, directory = tempDirectory)
     src.format = 'png'
-    outfile = src.render()
+    outfile = src.render(filename = fileNameElement, directory = tempDirectory)
     #pngFiles = [f for f in listdir(".") if isfile(join(".", f)) and fileNameElement in f and ".png" in f and bool(re.search(r'\d', f))]
-    pngFiles = [f for f in listdir(".") if isfile(join(".", f)) and fileNameElement in f and ".png" in f and any(x.isdigit() for x in f)]
+    pngFiles = [f for f in listdir(tempDirectory) if isfile(join(tempDirectory, f)) 
+                and fileNameElement in f 
+                and ".png" in f 
+                and any(x.isdigit() for x in f) 
+                and fileNameElement in f]
     try:
         if len(pngFiles)==0:
             with open(outfile, 'rb') as content:
                 data = content.read()
+            shutil.rmtree(tempDirectory)
             return {'image/png': base64.b64encode(data).decode('ascii') }
         else:
             from wand.image import Image
             import imageio
+            import tempfile
             pngFiles.sort(key=lambda x: int(x.split('.')[1]))
-            pngFiles.insert(0, fileNameElement + '.png')
+            pngFiles.insert(0, join(tempDirectory, fileNameElement + '.png'))
             images = []
             for filename in pngFiles:
-                images.append(imageio.imread(filename))
+                images.append(imageio.imread(join(tempDirectory, filename)))
             gifName = fileNameElement + '.gif'
-            data = imageio.mimsave(gifName, images, duration = 1)
-            for file in pngFiles:
-                remove(file)
-            remove(gifName.split('.')[0])
-            with open(gifName, 'rb') as f:
+            data = imageio.mimsave(join(tempDirectory, gifName), images, duration = 1)
+            with open(join(tempDirectory, gifName), 'rb') as f:
                 image = f.read()
             image_data = base64.b64encode(image).decode('ascii')
-            img = Image(filename=gifName)
-            remove(gifName)
+            img = Image(filename=join(tempDirectory, gifName))
+            remove(join(tempDirectory, gifName))
+            shutil.rmtree(tempDirectory)
             return { 'image/gif': image_data}
     except Exception as e:
         kernel.warn(e)
