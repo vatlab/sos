@@ -236,18 +236,17 @@ def preview_dot(filename, kernel=None, style=None):
     import tempfile
     with open(filename) as dot, tempfile.TemporaryDirectory() as tempDirectory:
         fileNameElement = "sosDotFilesPng"
-        src = Source(dot.read(), filename = fileNameElement, directory = tempDirectory)
+        src = Source(dot.read())
         src.format = 'png'
         outfile = src.render(filename = fileNameElement, directory = tempDirectory)
-        pngFiles = [f for f in listdir(tempDirectory) if isfile(join(tempDirectory, f))
-                    and fileNameElement in f
+        pngFiles = [f for f in listdir(tempDirectory) if fileNameElement in f
                     and ".png" in f
                     and any(x.isdigit() for x in f)
                     and fileNameElement in f]
+        with open(outfile, 'rb') as content:
+            data = content.read()
+        result = {'image/png': base64.b64encode(data).decode('ascii') }
         try:
-            with open(outfile, 'rb') as content:
-                data = content.read()
-            result = {'image/png': base64.b64encode(data).decode('ascii') }
             if len(pngFiles)!=0:
                 import imageio
                 pngFiles.sort(key=lambda x: int(x.split('.')[1]))
@@ -258,10 +257,11 @@ def preview_dot(filename, kernel=None, style=None):
                 with open(join(tempDirectory, gifName), 'rb') as f:
                     image = f.read()
                 image_data = base64.b64encode(image).decode('ascii')
-                remove(join(tempDirectory, gifName))
                 result['image/gif'] = image_data
             if 'image/gif' in result:
-                return {'image/gif': result['image/gif']}
+                #return {'image/gif': result['image/gif'],
+                #        'image/png': result['image/png']}
+                return {'image/gif': result[image/fig]}
             else:
                 return result
         except Exception as e:
