@@ -234,7 +234,6 @@ def preview_dot(filename, kernel=None, style=None):
     from os.path import isfile, join
     from graphviz import Source
     import tempfile
-    import shutil
     with open(filename) as dot:
         fileNameElement = "sosDotFilesPng"
         with tempfile.TemporaryDirectory() as tempDirectory:
