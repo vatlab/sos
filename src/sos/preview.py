@@ -230,8 +230,8 @@ def preview_md(filename, kernel=None, style=None):
     return {'text/html': html, 'text/plain': text}
 
 def preview_dot(filename, kernel=None, style=None):
-    from os import listdir, remove
-    from os.path import isfile, join
+    from os import listdir
+    from os.path import join
     from graphviz import Source
     import tempfile
     with open(filename) as dot, tempfile.TemporaryDirectory() as tempDirectory:
