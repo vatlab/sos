@@ -234,9 +234,8 @@ def preview_dot(filename, kernel=None, style=None):
     from os.path import isfile, join
     from graphviz import Source
     import tempfile
-    with open(filename) as dot:
+    with open(filename) as dot, tempfile.TemporaryDirectory() as tempDirectory:
         fileNameElement = "sosDotFilesPng"
-        tempDirectory = tempfile.TemporaryDirectory().name
         src = Source(dot.read(), filename = fileNameElement, directory = tempDirectory)
         src.format = 'png'
         outfile = src.render(filename = fileNameElement, directory = tempDirectory)
