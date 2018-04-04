@@ -247,11 +247,11 @@ def preview_dot(filename, kernel=None, style=None):
                         and any(x.isdigit() for x in f) 
                         and fileNameElement in f]
             try:
-                if len(pngFiles)==0:
-                    with open(outfile, 'rb') as content:
-                        data = content.read()
-                    return {'image/png': base64.b64encode(data).decode('ascii') }
-                else:
+                #if len(pngFiles)==0:
+                with open(outfile, 'rb') as content:
+                    data = content.read()
+                result = {'image/png': base64.b64encode(data).decode('ascii') }
+                if len(pngFiles)!=0:
                     import imageio
                     pngFiles.sort(key=lambda x: int(x.split('.')[1]))
                     pngFiles.insert(0, join(tempDirectory, fileNameElement + '.png'))
@@ -264,6 +264,11 @@ def preview_dot(filename, kernel=None, style=None):
                         image = f.read()
                     image_data = base64.b64encode(image).decode('ascii')
                     remove(join(tempDirectory, gifName))
-                    return { 'image/gif': image_data}
+                    result['image/gif'] = image_data
+                if 'image/gif' in result:
+                    return {'image/gif': result['image/gif']}
+                else:
+                    return result
             except Exception as e:
                 kernel.warn(e)
+                return result
