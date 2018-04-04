@@ -236,38 +236,35 @@ def preview_dot(filename, kernel=None, style=None):
     import tempfile
     with open(filename) as dot:
         fileNameElement = "sosDotFilesPng"
-        with tempfile.TemporaryDirectory() as tempDirectory:
-            src = Source(dot.read(), filename = fileNameElement, directory = tempDirectory)
-            src.format = 'png'
-            outfile = src.render(filename = fileNameElement, directory = tempDirectory)
-            pngFiles = [f for f in listdir(tempDirectory) if isfile(join(tempDirectory, f)) 
-                        and fileNameElement in f 
-                        and ".png" in f 
-                        and any(x.isdigit() for x in f) 
-                        and fileNameElement in f]
-            try:
-                #if len(pngFiles)==0:
-                with open(outfile, 'rb') as content:
-                    data = content.read()
-                result = {'image/png': base64.b64encode(data).decode('ascii') }
-                if len(pngFiles)!=0:
-                    import imageio
-                    pngFiles.sort(key=lambda x: int(x.split('.')[1]))
-                    pngFiles.insert(0, join(tempDirectory, fileNameElement + '.png'))
-                    images = []
-                    for filename in pngFiles:
-                        images.append(imageio.imread(join(tempDirectory, filename)))
-                    gifName = fileNameElement + '.gif'
-                    data = imageio.mimsave(join(tempDirectory, gifName), images, duration = 1)
-                    with open(join(tempDirectory, gifName), 'rb') as f:
-                        image = f.read()
-                    image_data = base64.b64encode(image).decode('ascii')
-                    remove(join(tempDirectory, gifName))
-                    result['image/gif'] = image_data
-                if 'image/gif' in result:
-                    return {'image/gif': result['image/gif']}
-                else:
-                    return result
-            except Exception as e:
-                kernel.warn(e)
+        tempDirectory = tempfile.TemporaryDirectory().name
+        src = Source(dot.read(), filename = fileNameElement, directory = tempDirectory)
+        src.format = 'png'
+        outfile = src.render(filename = fileNameElement, directory = tempDirectory)
+        pngFiles = [f for f in listdir(tempDirectory) if isfile(join(tempDirectory, f)) 
+                    and fileNameElement in f 
+                    and ".png" in f 
+                    and any(x.isdigit() for x in f) 
+                    and fileNameElement in f]
+        try:
+            with open(outfile, 'rb') as content:
+                data = content.read()
+            result = {'image/png': base64.b64encode(data).decode('ascii') }
+            if len(pngFiles)!=0:
+                import imageio
+                pngFiles.sort(key=lambda x: int(x.split('.')[1]))
+                pngFiles.insert(0, join(tempDirectory, fileNameElement + '.png'))
+                images = [imageio.imread(join(tempDirectory, x)) for x in pngFiles]
+                gifName = fileNameElement + '.gif'
+                data = imageio.mimsave(join(tempDirectory, gifName), images, duration = 1)
+                with open(join(tempDirectory, gifName), 'rb') as f:
+                    image = f.read()
+                image_data = base64.b64encode(image).decode('ascii')
+                remove(join(tempDirectory, gifName))
+                result['image/gif'] = image_data
+            if 'image/gif' in result:
+                return {'image/gif': result['image/gif']}
+            else:
                 return result
+        except Exception as e:
+            kernel.warn(e)
+            return result
