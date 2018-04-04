@@ -240,10 +240,10 @@ def preview_dot(filename, kernel=None, style=None):
         src = Source(dot.read(), filename = fileNameElement, directory = tempDirectory)
         src.format = 'png'
         outfile = src.render(filename = fileNameElement, directory = tempDirectory)
-        pngFiles = [f for f in listdir(tempDirectory) if isfile(join(tempDirectory, f)) 
-                    and fileNameElement in f 
-                    and ".png" in f 
-                    and any(x.isdigit() for x in f) 
+        pngFiles = [f for f in listdir(tempDirectory) if isfile(join(tempDirectory, f))
+                    and fileNameElement in f
+                    and ".png" in f
+                    and any(x.isdigit() for x in f)
                     and fileNameElement in f]
         try:
             with open(outfile, 'rb') as content:
