@@ -258,7 +258,6 @@ def preview_dot(filename, kernel=None, style=None):
         else:
             from wand.image import Image
             import imageio
-            import tempfile
             pngFiles.sort(key=lambda x: int(x.split('.')[1]))
             pngFiles.insert(0, join(tempDirectory, fileNameElement + '.png'))
             images = []
@@ -269,7 +268,7 @@ def preview_dot(filename, kernel=None, style=None):
             with open(join(tempDirectory, gifName), 'rb') as f:
                 image = f.read()
             image_data = base64.b64encode(image).decode('ascii')
-            img = Image(filename=join(tempDirectory, gifName))
+            #img = Image(filename=join(tempDirectory, gifName))
             remove(join(tempDirectory, gifName))
             shutil.rmtree(tempDirectory)
             return { 'image/gif': image_data}
