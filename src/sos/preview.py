@@ -257,6 +257,7 @@ def preview_dot(filename, kernel=None, style=None):
             data = imageio.mimsave(gifName, images, duration = 1)
             for file in pngFiles:
                 remove(file)
+            remove(gifName.split('.')[0])
             with open(gifName, 'rb') as f:
                 image = f.read()
             image_data = base64.b64encode(image).decode('ascii')
