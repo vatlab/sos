@@ -230,35 +230,38 @@ def preview_md(filename, kernel=None, style=None):
     return {'text/html': html, 'text/plain': text}
 
 def preview_dot(filename, kernel=None, style=None):
+    from os import listdir, remove
+    from os.path import isfile, join
     from graphviz import Source
     with open(filename) as dot:
         fileNameElement = "sosDotFilesPng"
         src = Source(dot.read(), filename = fileNameElement)
     src.format = 'png'
     outfile = src.render()
-    from os import listdir
-    from os.path import isfile, join
-    import re
-    pngFiles = [f for f in listdir("./") if isfile(join("./", f)) and fileNameElement in f and ".png" in f and bool(re.search(r'\d', f))]
-'''
-    if len(pngFiles == 100):
-        with open(outfile, 'rb') as content:
-            data = content.read()
-        return {'image/png': base64.b64encode(data).decode('ascii') }
-'''
-    pngFiles.sort(key=lambda x: int(x.split('.')[1]))
-    pngFiles.insert(0, fileNameElement + '.png')
-    images = []
-    for filename in pngFiles:
-        images.append(imageio.imread(filename))
-    data = imageio.mimsave(fileNameElement + '.gif', images, duration = 1)
-    from wand.image import Image
-    img = Image(filename=fileNameElement + '.gif')
-    with open(fileNameElement + '.gif', 'rb') as f:
-        image = f.read()
-    import imghdr
-    image_type = imghdr.what(None, image)
-    image_data = base64.b64encode(image).decode('ascii')
-    os.remove(pngFiles)
-    return { 'image/' + image_type: image_data,
-            'image/png': base64.b64encode(img._repr_png_()).decode('ascii') }
+    #pngFiles = [f for f in listdir(".") if isfile(join(".", f)) and fileNameElement in f and ".png" in f and bool(re.search(r'\d', f))]
+    pngFiles = [f for f in listdir(".") if isfile(join(".", f)) and fileNameElement in f and ".png" in f and any(x.isdigit() for x in f)]
+    try:
+        if len(pngFiles)==0:
+            with open(outfile, 'rb') as content:
+                data = content.read()
+            return {'image/png': base64.b64encode(data).decode('ascii') }
+        else:
+            from wand.image import Image
+            import imageio
+            pngFiles.sort(key=lambda x: int(x.split('.')[1]))
+            pngFiles.insert(0, fileNameElement + '.png')
+            images = []
+            for filename in pngFiles:
+                images.append(imageio.imread(filename))
+            gifName = fileNameElement + '.gif'
+            data = imageio.mimsave(gifName, images, duration = 1)
+            for file in pngFiles:
+                remove(file)
+            with open(gifName, 'rb') as f:
+                image = f.read()
+            image_data = base64.b64encode(image).decode('ascii')
+            img = Image(filename=gifName)
+            remove(gifName)
+            return { 'image/gif': image_data}
+    except Exception as e:
+        kernel.warn(e)
