@@ -67,11 +67,11 @@ def preview_img(filename, kernel=None, style=None):
     image_data = base64.b64encode(image).decode('ascii')
     if image_type != 'png':
         try:
-            from wand.image import Image
-            img = Image(filename=filename)
             if image_type == 'gif':
                 return { 'image/' + image_type: image_data}
             else:
+                from wand.image import Image
+                img = Image(filename=filename)
                 return { 'image/' + image_type: image_data,
                     'image/png': base64.b64encode(img._repr_png_()).decode('ascii') }
         except Exception:
