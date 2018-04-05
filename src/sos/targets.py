@@ -28,7 +28,7 @@ from copy import deepcopy
 import pkg_resources
 from shlex import quote
 import subprocess
-from pathlib import Path, WindowsPath, PosixPath
+from pathlib import Path
 try:
     from xxhash import xxh64 as hash_md5
 except ImportError:
