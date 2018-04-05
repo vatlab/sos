@@ -68,7 +68,7 @@ def preview_img(filename, kernel=None, style=None):
     if image_type != 'png':
         try:
             if image_type == 'gif':
-                return { 'image/' + image_type: image_data}
+                return { 'image/png': image_data}
             else:
                 from wand.image import Image
                 img = Image(filename=filename)
@@ -233,40 +233,31 @@ def preview_md(filename, kernel=None, style=None):
     return {'text/html': html, 'text/plain': text}
 
 def preview_dot(filename, kernel=None, style=None):
-    from os import listdir
-    from os.path import join
-    from graphviz import Source
+    import os
+    import glob
     import tempfile
+    import importlib
+    from graphviz import Source
     with open(filename) as dot, tempfile.TemporaryDirectory() as tempDirectory:
-        fileNameElement = "sosDotFilesPng"
         src = Source(dot.read())
         src.format = 'png'
-        outfile = src.render(filename = fileNameElement, directory = tempDirectory)
-        pngFiles = [f for f in listdir(tempDirectory) if fileNameElement in f
-                    and ".png" in f
-                    and any(x.isdigit() for x in f)
-                    and fileNameElement in f]
-        with open(outfile, 'rb') as content:
-            data = content.read()
-        result = {'image/png': base64.b64encode(data).decode('ascii') }
-        try:
-            if len(pngFiles)!=0:
-                import imageio
-                pngFiles.sort(key=lambda x: int(x.split('.')[1]))
-                pngFiles.insert(0, join(tempDirectory, fileNameElement + '.png'))
-                images = [imageio.imread(join(tempDirectory, x)) for x in pngFiles]
-                gifName = fileNameElement + '.gif'
-                data = imageio.mimsave(join(tempDirectory, gifName), images, duration = 1)
-                with open(join(tempDirectory, gifName), 'rb') as f:
-                    image = f.read()
-                image_data = base64.b64encode(image).decode('ascii')
-                result['image/gif'] = image_data
-            if 'image/gif' in result:
-                #return {'image/gif': result['image/gif'],
-                #        'image/png': result['image/png']}
-                return {'image/gif': result['image/gif']}
-            else:
-                return result
-        except Exception as e:
-            kernel.warn(e)
-            return result
+        outfile = src.render(filename='sosDot', directory=tempDirectory)
+        # dot command can generate more than outfiles returned by the render function
+        pngFiles = glob.glob(os.path.join(tempDirectory, f'sosDot*.png'))
+        if len(pngFiles) == 1 or not importlib.util.find_spec('imageio'):
+            with open(outfile, 'rb') as content:
+                data = content.read()
+            return {'image/png': base64.b64encode(data).decode('ascii') }
+        else:
+            # create a gif files from multiple png files
+            pngFiles.sort(key=lambda x: int(os.path.basename(x)[:-3].split('.')[1] or 0))
+            import imageio
+            images = [imageio.imread(x) for x in pngFiles]
+            # create a gif file from images
+            gifFile = os.path.join( 'sosDot.gif')
+            imageio.mimsave(gifFile, images, duration = 0.5)
+            with open(gifFile, 'rb') as f:
+                image = f.read()
+            # according to https://github.com/ipython/ipython/issues/10045
+            # I have to use 'image/png' instead of 'image/gif' to get the gif displayed.
+            return {'image/png': base64.b64encode(image).decode('ascii')}
