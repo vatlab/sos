@@ -39,7 +39,7 @@ install:
 
     # install sos
     - pip install pytest
-    - python setup.py install
+    - pip install .
 
 test_script:
     - cd test
