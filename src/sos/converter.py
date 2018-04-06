@@ -920,7 +920,6 @@ def extract_workflow(notebook_file):
     nb = nbformat.read(notebook_file, nbformat.NO_CONVERT)
     cells = nb.cells
     content = '#!/usr/bin/env sos-runner\n#fileformat=SOS1.0\n\n'
-    idx = 0
     for cell in cells:
         if cell.cell_type != "code":
             continue

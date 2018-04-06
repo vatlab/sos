@@ -406,10 +406,6 @@ class SoS_ExecuteScript:
                 if ret != 0:
                     with open(debug_script_file, 'w') as sfile:
                         sfile.write(self.script)
-                    if self.interpreter == '/bin/bash' and self.args == '-ev {filename:q}':
-                        debug_args = '{filename:q}'
-                    else:
-                        debug_args = self.args
                     raise RuntimeError('Failed to execute commmand "{}" (ret={}, workdir={}, script now in {}{}{})'.format(
                         cmd, ret, os.getcwd(), debug_script_file,
                         f', task={os.path.basename(env.sos_dict["__std_err__"]).split(".")[0]}' if '__std_err__' in env.sos_dict else '',
