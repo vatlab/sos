@@ -24,6 +24,7 @@ import sys, os
 import shutil
 from setuptools import find_packages, setup
 from distutils import log
+from setuptools.command.bdist_egg import bdist_egg
 
 _py_ver = sys.version_info
 if _py_ver.major == 2 or (_py_ver.major == 3 and (_py_ver.minor, _py_ver.micro) < (6, 0)):
@@ -65,6 +66,20 @@ cross-platform computation management.
 Please refer to http://vatlab.github.io/SOS/ for more details on SoS.
 '''
 
+
+class bdist_egg_disabled(bdist_egg):
+    """Disabled version of bdist_egg
+
+    Prevents setup.py install performing setuptools' default easy_install,
+    which it should never ever do.
+    """
+    def run(self):
+        sys.exit("Aborting implicit building of eggs. Use `pip install .` to install from source.")
+
+
+cmdclass = {'bdist_egg':  bdist_egg if 'bdist_egg' in sys.argv else bdist_egg_disabled }
+
+
 setup(name = "sos",
     version = __version__,
     description = 'Script of Scripts (SoS): an interactive, cross-platform, and cross-language workflow system for reproducible data analysis',
@@ -90,6 +105,7 @@ setup(name = "sos",
         'Programming Language :: Python :: Implementation :: CPython',
         ],
     packages = find_packages('src'),
+    cmdclass = cmdclass,
     package_dir = {'': 'src'},
     install_requires=[
           'psutil',
