@@ -21,23 +21,27 @@
 #
 
 import os
+import platform
+import shlex
+import shutil
 import subprocess
 import tempfile
-import platform
-import shutil
-import shlex
-import docker
-
 from io import BytesIO
-from sos.utils import env
+
+import docker
 from sos.eval import interpolate
 from sos.targets import sos_targets
+from sos.utils import env
+
 #
 # docker support
 #
+
+
 class SoS_DockerClient:
     '''A singleton class to ensure there is only one client'''
     _instance = None
+
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
             cls._instance = super(SoS_DockerClient, cls).__new__(cls)
@@ -56,7 +60,7 @@ class SoS_DockerClient:
                     # this command log in to the docker machine, check if /Volumes has been mounted,
                     # and try to mount it if possible. This requires users to configure
                     subprocess.call("""docker-machine ssh "{}" 'mount | grep /Volumes || {{ echo "mounting /Volumes"; sudo mount  -t vboxsf Volumes /Volumes; }}' """.format(os.environ['DOCKER_MACHINE_NAME']),
-                        shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                    shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                     env.logger.trace('Sucessfully mount /Volumes to virtual machine')
                     self.has_volumes = True
                 except Exception as e:
@@ -82,49 +86,39 @@ class SoS_DockerClient:
         try:
             images = sum([x.tags for x in self.client.images.list()], [])
         except AttributeError:
-            raise RuntimeError('Incompatible version of docker module detected. If you are using "docker-py", please uninstall it and install module "docker".')
+            raise RuntimeError(
+                'Incompatible version of docker module detected. If you are using "docker-py", please uninstall it and install module "docker".')
         # some earlier version of docker-py returns docker.io/ for global repositories
         images = [x[10:] if x.startswith('docker.io/') else x for x in images]
         return (':' in image and image in images) or \
             (':' not in image and '{}:latest'.format(image) in images)
 
-    #def stream(self, line):
-    #    # properly output streamed output
-    #    try:
-    #        sys.stdout.write(json.loads(line).get('stream', ''))
-    #    except ValueError:
-    #        # sometimes all the data is sent on a single line ????
-    #        #
-    #        # ValueError: Extra data: line 1 column 87 - line 1 column
-    #        # 33268 (char 86 - 33267)
-    #        # This ONLY works because every line is formatted as
-    #        # {"stream": STRING}
-    #        for obj in re.findall('{\s*"stream"\s*:\s*"[^"]*"\s*}', line):
-    #            sys.stdout.write(json.loads(obj).get('stream', ''))
-
     def build(self, script, **kwargs):
         if not self.client:
-            raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
+            raise RuntimeError(
+                'Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
         if script is not None:
             f = BytesIO(script.encode('utf-8'))
             self.client.images.build(fileobj=f, **kwargs)
-            #self.stream(line.decode())
+            # self.stream(line.decode())
         else:
             self.client.images.build(**kwargs)
-            #self.stream(line.decode())
+            # self.stream(line.decode())
         # if a tag is given, check if the image is built
         if 'tag' in kwargs and not self._is_image_avail(kwargs['tag']):
             raise RuntimeError('Image with tag {} is not created.'.format(kwargs['tag']))
 
     def load_image(self, image, **kwargs):
         if not self.client:
-            raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
+            raise RuntimeError(
+                'Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
         env.logger.info('docker load {}'.format(image))
         self.client.images.load(image, **kwargs)
 
     def pull(self, image):
         if not self.client:
-            raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
+            raise RuntimeError(
+                'Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
         # if image is specified, check if it is available locally. If not, pull it
         ret = 0
         if not self._is_image_avail(image):
@@ -132,13 +126,13 @@ class SoS_DockerClient:
             # using subprocess instead of docker-py's pull function because this would have
             # much better progress bar display
             ret = subprocess.call('docker pull {}'.format(image), shell=True)
-            #for line in self.client.pull(image, stream=True):
+            # for line in self.client.pull(image, stream=True):
             #    self.stream(line)
         if not self._is_image_avail(image):
             raise RuntimeError('Failed to pull image {}'.format(image))
         return ret
 
-    #def commit(self, **kwargs):
+    # def commit(self, **kwargs):
     #    if not self.client:
     #        raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
     #    for line in self.client.commit(**kwargs):
@@ -147,7 +141,8 @@ class SoS_DockerClient:
 
     def run(self, image, script='', interpreter='', args='', suffix='.sh', **kwargs):
         if self.client is None:
-            raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
+            raise RuntimeError(
+                'Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
         #
         env.logger.debug('docker_run with keyword args {}'.format(kwargs))
         #
@@ -167,29 +162,38 @@ class SoS_DockerClient:
             #
             binds = []
             if 'volumes' in kwargs:
-                volumes = [kwargs['volumes']] if isinstance(kwargs['volumes'], str) else kwargs['volumes']
+                volumes = [kwargs['volumes']] if isinstance(
+                    kwargs['volumes'], str) else kwargs['volumes']
                 for vol in volumes:
                     if not vol:
                         continue
                     if vol.count(':') != 1:
-                        raise RuntimeError('Please specify columes in the format of host_dir:mnt_dir')
+                        raise RuntimeError(
+                            'Please specify columes in the format of host_dir:mnt_dir')
                     host_dir, mnt_dir = vol.split(':')
                     if platform.system() == 'Darwin':
                         # under Darwin, host_dir must be under /Users
                         if not os.path.abspath(host_dir).startswith('/Users') and not (self.has_volumes and os.path.abspath(host_dir).startswith('/Volumes')):
-                            raise RuntimeError('hostdir ({}) under MacOSX must be under /Users or /Volumes (if properly configured, see https://github.com/vatlab/SOS/wiki/SoS-Docker-guide for details) to be usable in docker container'.format(host_dir))
+                            raise RuntimeError(
+                                'hostdir ({}) under MacOSX must be under /Users or /Volumes (if properly configured, see https://github.com/vatlab/SOS/wiki/SoS-Docker-guide for details) to be usable in docker container'.format(host_dir))
                     binds.append('{}:{}'.format(os.path.abspath(host_dir), mnt_dir))
             #
             volumes_opt = ' '.join('-v {}'.format(x) for x in binds)
             # under mac, we by default share /Users within docker
+            wdir = os.path.abspath(kwargs['working_dir']
+                                   if 'working_dir' in kwargs else os.getcwd())
             if platform.system() == 'Darwin':
                 if not any(x.startswith('/Users:') for x in binds):
                     volumes_opt += ' -v /Users:/Users'
                 if self.has_volumes:
                     volumes_opt += ' -v /Volumes:/Volumes'
+                if not wdir.startswith('/Users'):
+                    volumes_opt += ' -v /{wdir}:/{wdir}'
             elif platform.system() == 'Linux':
                 if not any(x.startswith('/home:') for x in binds):
                     volumes_opt += ' -v /home:/home'
+                if not wdir.startswith('/home/'):
+                    volumes_opt += ' -v /{wdir}:/{wdir}'
             if not any(x.startswith('/tmp:') for x in binds):
                 volumes_opt += ' -v /tmp:/tmp'
             #
@@ -202,35 +206,41 @@ class SoS_DockerClient:
                 if isinstance(kwargs['volumes_from'], str):
                     volumes_from_opt = f'--volumes_from={kwargs["volumes_from"]}'
                 elif isinstance(kwargs['volumes_from'], list):
-                    volumes_from_opt = ' '.join(f'--volumes_from={x}' for x in kwargs['volumes_from'])
+                    volumes_from_opt = ' '.join(
+                        f'--volumes_from={x}' for x in kwargs['volumes_from'])
                 else:
-                    raise RuntimeError('Option volumes_from only accept a string or list of string: {} specified'.format(kwargs['volumes_from']))
+                    raise RuntimeError('Option volumes_from only accept a string or list of string: {} specified'.format(
+                        kwargs['volumes_from']))
+
             # we also need to mount the script
             if script:
-                volumes_opt += ' -v {}:{}'.format(shlex.quote(os.path.join(tempdir, tempscript)), '/var/lib/sos/{}'.format(tempscript))
+                volumes_opt += ' -v {}:{}'.format(shlex.quote(os.path.join(
+                    tempdir, tempscript)), '/var/lib/sos/{}'.format(tempscript))
             cmd_opt = interpolate(f'{interpreter if isinstance(interpreter, str) else interpreter[0]} {args}', {
                 'filename': sos_targets(f'/var/lib/sos/{tempscript}'),
-                'script': script })
+                'script': script})
             #
             working_dir_opt = '-w={}'.format(shlex.quote(os.path.abspath(os.getcwd())))
             if 'working_dir' in kwargs:
                 if not os.path.isabs(kwargs['working_dir']):
                     env.logger.warning('An absolute path is needed for -w option of docker run command. "{}" provided, "{}" used.'
-                        .format(kwargs['working_dir'], os.path.abspath(os.path.expanduser(kwargs['working_dir']))))
-                    working_dir_opt = '-w={}'.format(os.path.abspath(os.path.expanduser(kwargs['working_dir'])))
+                                       .format(kwargs['working_dir'], os.path.abspath(os.path.expanduser(kwargs['working_dir']))))
+                    working_dir_opt = '-w={}'.format(os.path.abspath(
+                        os.path.expanduser(kwargs['working_dir'])))
                 else:
                     working_dir_opt = '-w={}'.format(kwargs['working_dir'])
-            #
+
             env_opt = ''
             if 'environment' in kwargs:
                 if isinstance(kwargs['environment'], dict):
-                    env_opt = ' '.join(f'-e {x}={y}' for x,y in kwargs['environment'].items())
+                    env_opt = ' '.join(f'-e {x}={y}' for x, y in kwargs['environment'].items())
                 elif isinstance(kwargs['environment'], list):
                     env_opt = ' '.join(f'-e {x}' for x in kwargs['environment'])
                 elif isinstance(kwargs['environment'], str):
                     env_opt = f'-e {kwargs["environment"]}'
                 else:
-                    raise RuntimeError('Invalid value for option environment (str, list, or dict is allowd, {} provided)'.format(kwargs['environment']))
+                    raise RuntimeError('Invalid value for option environment (str, list, or dict is allowd, {} provided)'.format(
+                        kwargs['environment']))
             #
             port_opt = '-P'
             if 'port' in kwargs:
@@ -239,7 +249,8 @@ class SoS_DockerClient:
                 elif isinstance(kwargs['port'], list):
                     port_opt = ' '.join('-p {}'.format(x) for x in kwargs['port'])
                 else:
-                    raise RuntimeError('Invalid value for option port (a list of intergers), {} provided'.format(kwargs['port']))
+                    raise RuntimeError(
+                        'Invalid value for option port (a list of intergers), {} provided'.format(kwargs['port']))
             #
             name_opt = ''
             if 'name' in kwargs:
@@ -282,7 +293,7 @@ class SoS_DockerClient:
                 extra_opt,          # any extra parameters
                 image,              # image
                 cmd_opt
-                )
+            )
             env.logger.info(command)
             ret = subprocess.call(command, shell=True)
             if ret != 0:
@@ -301,7 +312,9 @@ class SoS_DockerClient:
                     if self.tot_mem is None:
                         raise RuntimeError('Script killed by docker. ' + msg)
                     else:
-                        raise RuntimeError('Script killed by docker, probably because of lack of RAM (available RAM={:.1f}GB, exitcode=137). '.format(self.tot_mem/1024/1024) + msg)
+                        raise RuntimeError('Script killed by docker, probably because of lack of RAM (available RAM={:.1f}GB, exitcode=137). '.format(
+                            self.tot_mem / 1024 / 1024) + msg)
                 else:
-                    raise RuntimeError(f'Executing script in docker returns an error (exitcode={ret}). {msg}')
+                    raise RuntimeError(
+                        f'Executing script in docker returns an error (exitcode={ret}). {msg}')
         return 0
