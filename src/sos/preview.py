@@ -254,10 +254,9 @@ def preview_dot(filename, kernel=None, style=None):
             pngFiles.sort(key=lambda x: int(os.path.basename(x)[:-3].split('.')[1] or 0))
             # getting the maximum size
             images = [imageio.imread(x) for x in pngFiles]
-            maxSize = [None] * 2
-            maxSize[0] = max([x.shape[0] for x in images])
-            maxSize[1] = max([x.shape[1] for x in images])
-            if images[0].shape[0] >= maxSize[0] and images[1].shape[1] >= maxSize[1]:
+            maxWidth = max([x.shape[0] for x in images])
+            maxHeight = max([x.shape[1] for x in images])
+            if images[0].shape[0] >= maxWidth and images[1].shape[1] >= maxHeight:
                 # create a gif file from images
                 gifFile = os.path.join( 'sosDot.gif')
                 imageio.mimsave(gifFile, images, duration = 0.5)
@@ -268,12 +267,12 @@ def preview_dot(filename, kernel=None, style=None):
                 return {'image/png': base64.b64encode(image).decode('ascii')}
             else:
                 from PIL import Image, ImageOps
-                newFirstImg = ImageOps.expand(Image.open(pngFiles[0]), border=(0,0, (maxSize[1] - images[1].shape[1]), (maxSize[0] - images[0].shape[0])), fill=10)
+                newFirstImg = ImageOps.expand(Image.open(pngFiles[0]), border=(0,0, (maxHeight - images[1].shape[1]), (maxWidth - images[0].shape[0])), fill=0xFFFFFF)
                 newFirstImg.save(pngFiles[0], directory=tempDirectory)
                 # replace the original small one to the expanded one
                 images[0] = imageio.imread(pngFiles[0])
                 # create a gif file from images
-                gifFile = os.path.join( 'sosDot.gif')
+                gifFile = os.path.join('sosDot.gif')
                 imageio.mimsave(gifFile, images, duration = 0.5)
                 with open(gifFile, 'rb') as f:
                     image = f.read()
