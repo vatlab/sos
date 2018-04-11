@@ -249,15 +249,32 @@ def preview_dot(filename, kernel=None, style=None):
                 data = content.read()
             return {'image/png': base64.b64encode(data).decode('ascii') }
         else:
-            # create a gif files from multiple png files
+            import imageio            # create a gif files from multiple png files
             pngFiles.sort(key=lambda x: int(os.path.basename(x)[:-3].split('.')[1] or 0))
-            import imageio
+            # getting the maximum size
             images = [imageio.imread(x) for x in pngFiles]
-            # create a gif file from images
-            gifFile = os.path.join( 'sosDot.gif')
-            imageio.mimsave(gifFile, images, duration = 0.5)
-            with open(gifFile, 'rb') as f:
-                image = f.read()
-            # according to https://github.com/ipython/ipython/issues/10045
-            # I have to use 'image/png' instead of 'image/gif' to get the gif displayed.
-            return {'image/png': base64.b64encode(image).decode('ascii')}
+            maxSize = max([x.shape for x in images])[0:2]
+            if images[0].shape[0] >= maxSize[0] & images[1].shape[1] >= maxSize[1]:
+                # create a gif file from images
+                gifFile = os.path.join( 'sosDot.gif')
+                imageio.mimsave(gifFile, images, duration = 0.5)
+                with open(gifFile, 'rb') as f:
+                    image = f.read()
+                # according to https://github.com/ipython/ipython/issues/10045
+                # I have to use 'image/png' instead of 'image/gif' to get the gif displayed.
+                return {'image/png': base64.b64encode(image).decode('ascii')}
+            else:
+                from PIL import Image, ImageOps
+                newFirstImg = ImageOps.expand(Image.open(pngFiles[0]), border=(0,0, (max_size[0] - scaled[0]), (max_size[1] - scaled[1])))
+                newFirstImg.save(pngFiles[0], directory=tempDirectory)
+                # replace the original small one to the expanded one
+                images[0] = imageio.imread(pngFiles[0])
+                # create a gif file from images
+                gifFile = os.path.join( 'sosDot.gif')
+                imageio.mimsave(gifFile, images, duration = 0.5)
+                with open(gifFile, 'rb') as f:
+                    image = f.read()
+                # according to https://github.com/ipython/ipython/issues/10045
+                # I have to use 'image/png' instead of 'image/gif' to get the gif displayed.
+                return {'image/png': base64.b64encode(image).decode('ascii')}
+
