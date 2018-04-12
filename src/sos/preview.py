@@ -249,15 +249,28 @@ def preview_dot(filename, kernel=None, style=None):
                 data = content.read()
             return {'image/png': base64.b64encode(data).decode('ascii') }
         else:
+            import imageio
             # create a gif files from multiple png files
             pngFiles.sort(key=lambda x: int(os.path.basename(x)[:-3].split('.')[1] or 0))
-            import imageio
+            # getting the maximum size
             images = [imageio.imread(x) for x in pngFiles]
+            maxWidth = max([x.shape[0] for x in images])
+            maxHeight = max([x.shape[1] for x in images])
+            if images[0].shape[0] < maxWidth or images[0].shape[1] < maxHeight:
+                if not importlib.util.find_spec('PIL'):
+                    kernel.warn('''Can't import PIL, the image shown below might not be optimal.''')
+                else:
+                    from PIL import Image, ImageOps
+                    newFirstImg = ImageOps.expand(Image.open(pngFiles[0]), border=(0,0, (maxHeight - images[0].shape[1]), (maxWidth - images[0].shape[0])), fill=0xFFFFFF)
+                    newFirstImg.save(pngFiles[0], directory=tempDirectory)
+                    # replace the original small one to the expanded one
+                    images[0] = imageio.imread(pngFiles[0])
             # create a gif file from images
-            gifFile = os.path.join( 'sosDot.gif')
+            gifFile = os.path.join('sosDot.gif')
             imageio.mimsave(gifFile, images, duration = 0.5)
             with open(gifFile, 'rb') as f:
                 image = f.read()
             # according to https://github.com/ipython/ipython/issues/10045
             # I have to use 'image/png' instead of 'image/gif' to get the gif displayed.
             return {'image/png': base64.b64encode(image).decode('ascii')}
+
