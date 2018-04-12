@@ -256,27 +256,18 @@ def preview_dot(filename, kernel=None, style=None):
             images = [imageio.imread(x) for x in pngFiles]
             maxWidth = max([x.shape[0] for x in images])
             maxHeight = max([x.shape[1] for x in images])
-            if images[0].shape[0] >= maxWidth and images[1].shape[1] >= maxHeight:
-                # create a gif file from images
-                gifFile = os.path.join( 'sosDot.gif')
-                imageio.mimsave(gifFile, images, duration = 0.5)
-                with open(gifFile, 'rb') as f:
-                    image = f.read()
-                # according to https://github.com/ipython/ipython/issues/10045
-                # I have to use 'image/png' instead of 'image/gif' to get the gif displayed.
-                return {'image/png': base64.b64encode(image).decode('ascii')}
-            else:
+            if images[0].shape[0] <= maxWidth or images[1].shape[1] <= maxHeight:
                 from PIL import Image, ImageOps
                 newFirstImg = ImageOps.expand(Image.open(pngFiles[0]), border=(0,0, (maxHeight - images[1].shape[1]), (maxWidth - images[0].shape[0])), fill=0xFFFFFF)
                 newFirstImg.save(pngFiles[0], directory=tempDirectory)
                 # replace the original small one to the expanded one
                 images[0] = imageio.imread(pngFiles[0])
-                # create a gif file from images
-                gifFile = os.path.join('sosDot.gif')
-                imageio.mimsave(gifFile, images, duration = 0.5)
-                with open(gifFile, 'rb') as f:
-                    image = f.read()
-                # according to https://github.com/ipython/ipython/issues/10045
-                # I have to use 'image/png' instead of 'image/gif' to get the gif displayed.
-                return {'image/png': base64.b64encode(image).decode('ascii')}
+            # create a gif file from images
+            gifFile = os.path.join('sosDot.gif')
+            imageio.mimsave(gifFile, images, duration = 0.5)
+            with open(gifFile, 'rb') as f:
+                image = f.read()
+            # according to https://github.com/ipython/ipython/issues/10045
+            # I have to use 'image/png' instead of 'image/gif' to get the gif displayed.
+            return {'image/png': base64.b64encode(image).decode('ascii')}
 
