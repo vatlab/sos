@@ -218,6 +218,6 @@ sos-md.func = sos.converter:script_to_markdown
         ':sys_platform=="win32"': ['colorama'],
           # faster hashlib
         ':sys_platform!="win32"': ['xxhash'],
-        'dot':      ['graphviz'],
+        'dot':      ['graphviz', 'imageio', 'pillow'],
     }
 )

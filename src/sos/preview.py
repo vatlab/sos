@@ -244,7 +244,7 @@ def preview_dot(filename, kernel=None, style=None):
         outfile = src.render(filename='sosDot', directory=tempDirectory)
         # dot command can generate more than outfiles returned by the render function
         pngFiles = glob.glob(os.path.join(tempDirectory, f'sosDot*.png'))
-        if len(pngFiles) == 1 or not importlib.util.find_spec('imageio'):
+        if len(pngFiles) == 1:
             with open(outfile, 'rb') as content:
                 data = content.read()
             return {'image/png': base64.b64encode(data).decode('ascii') }
@@ -253,21 +253,30 @@ def preview_dot(filename, kernel=None, style=None):
             # create a gif files from multiple png files
             pngFiles.sort(key=lambda x: int(os.path.basename(x)[:-3].split('.')[1] or 0))
             # getting the maximum size
-            images = [imageio.imread(x) for x in pngFiles]
+            try:
+                images = [imageio.imread(x) for x in pngFiles]
+            except Exception as e:
+                if kernel:
+                    kernel.warn(f'Failed to read gng file: {e}')
             maxWidth = max([x.shape[0] for x in images])
             maxHeight = max([x.shape[1] for x in images])
             if images[0].shape[0] < maxWidth or images[0].shape[1] < maxHeight:
-                if not importlib.util.find_spec('PIL'):
-                    kernel.warn('''Can't import PIL, the image shown below might not be optimal.''')
-                else:
+                try:
                     from PIL import Image, ImageOps
                     newFirstImg = ImageOps.expand(Image.open(pngFiles[0]), border=(0,0, (maxHeight - images[0].shape[1]), (maxWidth - images[0].shape[0])), fill=0xFFFFFF)
                     newFirstImg.save(pngFiles[0], directory=tempDirectory)
                     # replace the original small one to the expanded one
                     images[0] = imageio.imread(pngFiles[0])
+                except Exception as e:
+                    if kernel:
+                        kernel.warn(f'Failed to resize gif file: {e}')
             # create a gif file from images
             gifFile = os.path.join('sosDot.gif')
-            imageio.mimsave(gifFile, images, duration = 0.5)
+            try:
+                imageio.mimsave(gifFile, images, duration = 0.5)
+            except Exception as e:
+                if kernel:
+                    kernel.warn(f'Failed to generate gif animation: {e}')
             with open(gifFile, 'rb') as f:
                 image = f.read()
             # according to https://github.com/ipython/ipython/issues/10045
