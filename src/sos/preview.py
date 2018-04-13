@@ -258,6 +258,9 @@ def preview_dot(filename, kernel=None, style=None):
             except Exception as e:
                 if kernel:
                     kernel.warn(f'Failed to read gng file: {e}')
+                with open(pngFiles[-1], 'rb') as content:
+                    data = content.read()
+                return {'image/png': base64.b64encode(data).decode('ascii') }
             maxWidth = max([x.shape[0] for x in images])
             maxHeight = max([x.shape[1] for x in images])
             if images[0].shape[0] < maxWidth or images[0].shape[1] < maxHeight:
@@ -277,6 +280,9 @@ def preview_dot(filename, kernel=None, style=None):
             except Exception as e:
                 if kernel:
                     kernel.warn(f'Failed to generate gif animation: {e}')
+                with open(pngFiles[-1], 'rb') as content:
+                    data = content.read()
+                return {'image/png': base64.b64encode(data).decode('ascii') }
             with open(gifFile, 'rb') as f:
                 image = f.read()
             # according to https://github.com/ipython/ipython/issues/10045
