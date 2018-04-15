@@ -196,6 +196,7 @@ process = sos.tasks:BackgroundProcess_TaskEngine
 *.txt,1 = sos.preview:preview_txt
 *.md,1 = sos.preview:preview_md
 *.dot,1 = sos.preview:preview_dot [dot]
+*.svg,1 = sos.preview:preview_svg
 imghdr:what,1 = sos.preview:preview_img
 zipfile:is_zipfile,1 = sos.preview:preview_zip
 tarfile:is_tarfile,1 = sos.preview:preview_tar

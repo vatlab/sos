@@ -79,6 +79,11 @@ def preview_img(filename, kernel=None, style=None):
     else:
         return { 'image/' + image_type: image_data }
 
+def preview_svg(filename, kernel=None, style=None):
+    with open(filename, 'r') as f:
+        image_data = f.read()
+    return { 'image/svg+xml': image_data }
+
 def _preview_pdf_parser():
     parser = argparse.ArgumentParser(prog='%preview *.pdf')
     parser.add_argument('--pages', nargs='+', type=int,
