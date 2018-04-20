@@ -25,6 +25,7 @@ import platform
 import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 from io import BytesIO
 
@@ -278,7 +279,7 @@ class SoS_DockerClient:
             if platform.system() == 'Linux':
                 # this is for a selinux problem when /var/sos/script cannot be executed
                 security_opt = '--security-opt label:disable'
-            command = 'docker run --rm {} {} {} {} {} {} {} {} {} {} {} {} {} {}'.format(
+            cmd = 'docker run --rm {} {} {} {} {} {} {} {} {} {} {} {} {} {}'.format(
                 security_opt,       # security option
                 volumes_opt,        # volumes
                 volumes_from_opt,   # volumes_from
@@ -294,11 +295,101 @@ class SoS_DockerClient:
                 image,              # image
                 cmd_opt
             )
-            env.logger.info(command)
-            ret = subprocess.call(command, shell=True)
+            env.logger.debug(cmd)
+
+            if env.config['run_mode'] == 'interactive':
+                if 'stdout' in kwargs or 'stderr' in kwargs:
+                    child = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
+                                             stderr=subprocess.PIPE, bufsize=0)
+                    out, err = child.communicate()
+                    if 'stdout' in kwargs:
+                        if kwargs['stdout'] is not False:
+                            with open(kwargs['stdout'], 'ab') as so:
+                                so.write(out)
+                    else:
+                        sys.stdout.write(out.decode())
+
+                    if 'stderr' in kwargs:
+                        if kwargs['stderr'] is not False:
+                            with open(kwargs['stderr'], 'ab') as se:
+                                se.write(err)
+                    else:
+                        sys.stderr.write(err.decode())
+                    ret = child.returncode
+                else:
+                    # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
+                    from .utils import pexpect_run
+                    ret = pexpect_run(cmd)
+            elif '__std_out__' in env.sos_dict and '__std_err__' in env.sos_dict:
+                if 'stdout' in kwargs or 'stderr' in kwargs:
+                    if 'stdout' in kwargs:
+                        if kwargs['stdout'] is False:
+                            so = subprocess.DEVNULL
+                        else:
+                            so = open(kwargs['stdout'], 'ab')
+                    elif env.verbosity > 0:
+                        so = open(env.sos_dict['__std_out__'], 'ab')
+                    else:
+                        so = subprocess.DEVNULL
+
+                    if 'stderr' in kwargs:
+                        if kwargs['stderr'] is False:
+                            se = subprocess.DEVNULL
+                        else:
+                            se = open(kwargs['stderr'], 'ab')
+                    elif env.verbosity > 1:
+                        se = open(env.sos_dict['__std_err__'], 'ab')
+                    else:
+                        se = subprocess.DEVNULL
+
+                    p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
+                    ret = p.wait()
+
+                    if so != subprocess.DEVNULL:
+                        so.close()
+                    if se != subprocess.DEVNULL:
+                        se.close()
+
+                elif env.verbosity >= 1:
+                    with open(env.sos_dict['__std_out__'], 'ab') as so, open(env.sos_dict['__std_err__'], 'ab') as se:
+                        p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
+                        ret = p.wait()
+                else:
+                    p = subprocess.Popen(
+                        cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                    ret = p.wait()
+            else:
+                if 'stdout' in kwargs:
+                    if kwargs['stdout'] is False:
+                        so = subprocess.DEVNULL
+                    else:
+                        so = open(kwargs['stdout'], 'ab')
+                elif env.verbosity > 0:
+                    so = None
+                else:
+                    so = subprocess.DEVNULL
+
+                if 'stderr' in kwargs:
+                    if kwargs['stderr'] is False:
+                        se = subprocess.DEVNULL
+                    else:
+                        se = open(kwargs['stderr'], 'ab')
+                elif env.verbosity > 1:
+                    se = None
+                else:
+                    se = subprocess.DEVNULL
+
+                p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
+
+                ret = p.wait()
+                if so is not None and so != subprocess.DEVNULL:
+                    so.close()
+                if se is not None and se != subprocess.DEVNULL:
+                    se.close()
+
             if ret != 0:
                 msg = 'The script has been saved to .sos/{} so that you can execute it using the following command:\n{}'.format(
-                    tempscript, command.replace(tempdir, os.path.abspath('./.sos')))
+                    tempscript, cmd.replace(tempdir, os.path.abspath('./.sos')))
                 shutil.copy(os.path.join(tempdir, tempscript), '.sos')
                 if ret == 125:
                     raise RuntimeError('Docker daemon failed (exitcode=125). ' + msg)
