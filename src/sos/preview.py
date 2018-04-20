@@ -241,7 +241,6 @@ def preview_dot(filename, kernel=None, style=None):
     import os
     import glob
     import tempfile
-    import importlib
     from graphviz import Source
     with open(filename) as dot, tempfile.TemporaryDirectory() as tempDirectory:
         src = Source(dot.read())
