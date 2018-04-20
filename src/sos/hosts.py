@@ -291,7 +291,7 @@ def test_remote_connection(con):
         env.logger.error(f'ssh connection to {address} time out with prompt: {p.before}')
         os._exit(1)
     except Exception as e:
-        env.logger.warning(f'Failed to check remote connection {host}:{port}: {e}')
+        env.logger.warning(f'Failed to check remote connection {address}:{port}: {e}')
     return True
 
 def check_connection(func):
