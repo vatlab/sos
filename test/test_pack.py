@@ -1,30 +1,13 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (SoS), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 
 import os
-import unittest
 import shutil
-
 import subprocess
+import unittest
+
 
 class TestPack(unittest.TestCase):
     def setUp(self):
@@ -79,14 +62,16 @@ a = 1
             self.assertFalse(os.path.exists(fd), '{} still exists'.format(fd))
 
     def testSetup(self):
-        self.assertExists(['ut_d1', 'ut_d2', 'ut_d2/ut_d3', 'ut_f1', 'ut_d1/ut_f2', 'ut_d2/ut_d3/ut_f3'])
+        self.assertExists(['ut_d1', 'ut_d2', 'ut_d2/ut_d3', 'ut_f1',
+                           'ut_d1/ut_f2', 'ut_d2/ut_d3/ut_f3'])
         self.assertExists(['t_f1', 't_d1/t_f2', 't_d2/t_d3/t_f3', 't_d2/t_d3', 't_d2'])
         # this is the tricky part, directory containing untracked file should remain
         self.assertExists(['t_d1', 't_d1/ut_f4'])
 
     def testDryrun(self):
         '''Test dryrun mode'''
-        self.assertEqual(subprocess.call('sos pack -o b.sar -i t_d1/ut_f4 --dryrun', shell=True), 0)
+        self.assertEqual(subprocess.call(
+            'sos pack -o b.sar -i t_d1/ut_f4 --dryrun', shell=True), 0)
         self.assertFalse(os.path.isfile('b.sar'))
 
     def testPackZapped(self):
@@ -140,6 +125,6 @@ a = 1
         except Exception:
             pass
 
+
 if __name__ == '__main__':
     unittest.main()
-

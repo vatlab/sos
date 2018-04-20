@@ -1,36 +1,19 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (sos), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
-
-import sys
-import networkx as nx
-from collections import defaultdict
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 import copy
 import pickle
+import sys
 import time
-import fasteners
+from collections import defaultdict
 
-from .utils import env, ActivityNotifier, short_repr
+import fasteners
+import networkx as nx
+
 from .eval import Undetermined
-from .targets import file_target, sos_variable, textMD5, sos_step, sos_targets
+from .targets import file_target, sos_step, sos_targets, sos_variable, textMD5
+from .utils import ActivityNotifier, env, short_repr
 
 
 #
@@ -95,14 +78,14 @@ from .targets import file_target, sos_variable, textMD5, sos_step, sos_targets
 #
 class SoS_Node(object):
     def __init__(self, step_uuid, node_name, node_index, input_targets=None, depends_targets=None,
-        output_targets=None, context=None):
+                 output_targets=None, context=None):
         self._step_uuid = step_uuid
         self._node_id = node_name
         self._node_index = node_index
         self._input_targets = Undetermined() if input_targets is None else copy.deepcopy(input_targets)
         self._depends_targets = [] if depends_targets is None else copy.deepcopy(depends_targets)
         self._output_targets = Undetermined() if output_targets is None else copy.deepcopy(output_targets)
-        #env.logger.error('Note {}: Input: {} Depends: {} Output: {}'.format(self._node_id, self._input_targets,
+        # env.logger.error('Note {}: Input: {} Depends: {} Output: {}'.format(self._node_id, self._input_targets,
         #      self._depends_targets,  self._output_targets))
         self._context = {} if context is None else copy.deepcopy(context)
         if '__completed__' not in self._context:
@@ -110,9 +93,9 @@ class SoS_Node(object):
         self._status = None
         # unique ID to avoid add duplicate nodes ...
         self._node_uuid = textMD5(pickle.dumps((step_uuid, node_name, node_index,
-                input_targets, depends_targets, output_targets,
-                [] if context is None else [(k, sorted(list(context[k])) if isinstance(context[k], set) else context[k])
-                    for k in sorted(context.keys())])))
+                                                input_targets, depends_targets, output_targets,
+                                                [] if context is None else [(k, sorted(list(context[k])) if isinstance(context[k], set) else context[k])
+                                                                            for k in sorted(context.keys())])))
 
     def __repr__(self):
         return self._node_id
@@ -120,6 +103,7 @@ class SoS_Node(object):
     def show(self):
         print(
             f'{self._node_id} ({self._node_index}, {self._status}): input {self._input_targets}, depends {self._depends_targets}, output {self._output_targets}, context {self._context}')
+
 
 class SoS_DAG(nx.DiGraph):
     def __init__(self, *args, **kwargs):
@@ -132,9 +116,9 @@ class SoS_DAG(nx.DiGraph):
         return nx.number_of_nodes(self)
 
     def add_step(self, step_uuid, node_name, node_index, input_targets, depends_targets,
-        output_targets, context=None):
+                 output_targets, context=None):
         node = SoS_Node(step_uuid, node_name, node_index, input_targets, depends_targets,
-            output_targets, context)
+                        output_targets, context)
         if node._node_uuid in [x._node_uuid for x in self.nodes()]:
             return
         # adding a step would add a sos_step target to met the depends on sos_step
@@ -201,7 +185,8 @@ class SoS_DAG(nx.DiGraph):
         pending_jobs = [x for x in self.nodes() if x._status == 'signature_pending']
         if pending_jobs:
             try:
-                notifier = ActivityNotifier(f'Waiting for {len(pending_jobs)} pending job{"s: e.g." if len(pending_jobs) > 1 else ":"} output {short_repr(pending_jobs[0]._signature[0])} with signature file {pending_jobs[0]._signature[1] + "_"}. You can manually remove this lock file if you are certain that no other process is working on the output.')
+                notifier = ActivityNotifier(
+                    f'Waiting for {len(pending_jobs)} pending job{"s: e.g." if len(pending_jobs) > 1 else ":"} output {short_repr(pending_jobs[0]._signature[0])} with signature file {pending_jobs[0]._signature[1] + "_"}. You can manually remove this lock file if you are certain that no other process is working on the output.')
                 while True:
                     for node in pending_jobs:
                         # if it has not been executed
@@ -307,13 +292,13 @@ class SoS_DAG(nx.DiGraph):
         #
         # several cases triggers dependency.
         indexed = [x for x in self.nodes() if x._node_index is not None]
-        indexed.sort(key = lambda x: x._node_index)
+        indexed.sort(key=lambda x: x._node_index)
 
         for idx, node in enumerate(indexed):
             # 1. if a node changes context (using option alias), all later steps
             # has to rely on it.
             if node._context['__changed_vars__']:
-                for later_node in indexed[idx + 1: ]:
+                for later_node in indexed[idx + 1:]:
                     if node._context['__changed_vars__'] & (later_node._context['__signature_vars__'] | later_node._context['__environ_vars__']):
                         self.add_edge(node, later_node)
 
@@ -325,18 +310,18 @@ class SoS_DAG(nx.DiGraph):
                 if node._input_targets.expr:
                     # if the input is dynamic, has to rely on previous step...
                     if 'dynamic' in node._context['__environ_vars__']:
-                        self.add_edge(indexed[idx-1], node)
+                        self.add_edge(indexed[idx - 1], node)
                     else:
                         # otherwise let us look back.
-                        for prev_node in indexed[idx -1 : :-1]:
+                        for prev_node in indexed[idx - 1::-1]:
                             if node._context['__environ_vars__'] & prev_node._context['__changed_vars__']:
                                 self.add_edge(prev_node, node)
                 else:
-                    self.add_edge(indexed[idx-1], node)
+                    self.add_edge(indexed[idx - 1], node)
         #
         # 3. if the input of a step depends on the output of another step
         for target, in_node in self._all_dependent_files.items():
-            for out_node in [y for (x,y) in self._all_output_files.items() if x == target]:
+            for out_node in [y for (x, y) in self._all_output_files.items() if x == target]:
                 for i in in_node:
                     for j in out_node:
                         if j != i:
@@ -353,13 +338,13 @@ class SoS_DAG(nx.DiGraph):
             if x._status is None:
                 pass
             elif x._status == 'running':
-                self.add_node(x, color = 'green')
+                self.add_node(x, color='green')
             elif x._status == 'failed':
-                self.add_node(x, color = 'red')
+                self.add_node(x, color='red')
             elif 'pending' in x._status:
-                self.add_node(x, color = 'yellow')
+                self.add_node(x, color='yellow')
             elif x._status == 'completed':
-                self.add_node(x, color = 'blue')
+                self.add_node(x, color='blue')
             elif x._status is not None:
                 env.logger.warning(f'Unmarked step status {x._status}')
 
@@ -385,4 +370,3 @@ class SoS_DAG(nx.DiGraph):
                 self.name = f"{self.name}_{1}"
             with open(dest, 'w' if init else 'a') as dfile:
                 dfile.write(out)
-

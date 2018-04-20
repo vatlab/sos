@@ -1,60 +1,46 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (sos), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-##
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 
-import os
-import sys
-import subprocess
-import tempfile
 import copy
+import gzip
+import multiprocessing as mp
+import os
+import shlex
+import shutil
+import subprocess
+import sys
+import tarfile
+import tempfile
 import urllib
-import urllib.request
 import urllib.error
 import urllib.parse
-import shutil
-import zipfile
-import shlex
-import gzip
-import tarfile
+import urllib.request
 import uuid
-
+import zipfile
+from collections.abc import Sequence
 from functools import wraps
 
-from collections.abc import Sequence
-import multiprocessing as mp
 from tqdm import tqdm as ProgressBar
-from .utils import env, transcribe, StopInputGroup, TerminateExecution, short_repr, get_traceback, TimeoutInterProcessLock, SlotManager
-from .eval import interpolate
-from .targets import path, paths, file_target, fileMD5, executable, UnknownTarget, sos_targets, textMD5
 
+from .eval import interpolate
+from .parser import SoS_Script
+from .syntax import SOS_ACTION_OPTIONS, SOS_RUNTIME_OPTIONS
+from .targets import (UnknownTarget, executable, file_target, fileMD5, path,
+                      paths, sos_targets, textMD5)
+from .utils import (SlotManager, StopInputGroup, TerminateExecution,
+                    TimeoutInterProcessLock, env, get_traceback, short_repr,
+                    transcribe)
 
 __all__ = ['SoS_Action', 'script', 'sos_run',
-    'fail_if', 'warn_if', 'stop_if',
-    'download',
-    'run', 'perl', 
-    'report', 'pandoc'
-    ]
+           'fail_if', 'warn_if', 'stop_if',
+           'download',
+           'run', 'perl',
+           'report', 'pandoc'
+           ]
 
-from .syntax import SOS_RUNTIME_OPTIONS, SOS_ACTION_OPTIONS
-from .parser import SoS_Script
+
 
 def get_actions():
     # get the name of all actions, which are identified by an attribute
@@ -66,6 +52,8 @@ def get_actions():
 # with a null action. Option run_mode is deprecated and might be
 # removed later on.
 #
+
+
 def SoS_Action(run_mode='deprecated', acceptable_args=('*',), default_args={}):
     def runtime_decorator(func):
         @wraps(func)
@@ -90,7 +78,7 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',), default_args={}):
                 docker = SoS_DockerClient()
                 docker.pull(kwargs['docker_image'])
             if env.config['run_mode'] == 'interactive':
-                for k,v in kwargs.items():
+                for k, v in kwargs.items():
                     if k in SOS_RUNTIME_OPTIONS and k not in SOS_ACTION_OPTIONS:
                         env.logger.warning(
                             f'Passing runtime option "{k}" to action is deprecated. Please use "task: {k}={v}" before action instead.')
@@ -105,7 +93,8 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',), default_args={}):
                     if kwargs['active'] < 0 and env.sos_dict['_index'] != kwargs['active'] + env.sos_dict['__num_groups__']:
                         return None
                 elif isinstance(kwargs['active'], Sequence):
-                    allowed_index = list([x if x >= 0 else env.sos_dict['__num_groups__'] + x for x in kwargs['active']])
+                    allowed_index = list(
+                        [x if x >= 0 else env.sos_dict['__num_groups__'] + x for x in kwargs['active']])
                     if env.sos_dict['_index'] not in allowed_index:
                         return None
                 elif isinstance(kwargs['active'], slice):
@@ -123,7 +112,8 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',), default_args={}):
                 elif isinstance(kwargs['input'], Sequence):
                     ifiles = list(kwargs['input'])
                 else:
-                    raise ValueError(f'Unacceptable value for parameter input of actions: {kwargs["input"]}')
+                    raise ValueError(
+                        f'Unacceptable value for parameter input of actions: {kwargs["input"]}')
 
                 ifiles = [os.path.expanduser(x) for x in ifiles]
 
@@ -149,7 +139,8 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',), default_args={}):
                 elif kwargs['tracked'] is True:
                     tfiles = []
                 else:
-                    raise ValueError('Parameter tracked of actions can be None, True/False, or one or more filenames')
+                    raise ValueError(
+                        'Parameter tracked of actions can be None, True/False, or one or more filenames')
 
                 # append input and output
                 for t in ('input', 'output'):
@@ -170,7 +161,8 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',), default_args={}):
                 if env.config['sig_mode'] == 'default':
                     matched = sig.validate()
                     if isinstance(matched, dict):
-                        env.logger.info(f'Action ``{func.__name__}`` is ``ignored`` due to saved signature')
+                        env.logger.info(
+                            f'Action ``{func.__name__}`` is ``ignored`` due to saved signature')
                         return None
                     else:
                         env.logger.debug(f'Signature mismatch: {matched}')
@@ -179,16 +171,19 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',), default_args={}):
                     if isinstance(matched, str):
                         raise RuntimeError(f'Signature mismatch: {matched}')
                     else:
-                        env.logger.info(f"Action ``{func.__name__}`` is ``ignored`` with matching signature")
+                        env.logger.info(
+                            f"Action ``{func.__name__}`` is ``ignored`` with matching signature")
                         return None
                 elif env.config['sig_mode'] == 'build':
                     # build signature require existence of files
                     if sig.write(rebuild=True):
-                        env.logger.info(f'Action ``{func.__name__}`` is ``ignored`` with signature constructed')
+                        env.logger.info(
+                            f'Action ``{func.__name__}`` is ``ignored`` with signature constructed')
                         return None
             if 'default_env' in kwargs:
                 if not isinstance(kwargs['default_env'], dict):
-                    raise ValueError(f'Option default_env must be a dictionary, {kwargs["default_env"]} provided')
+                    raise ValueError(
+                        f'Option default_env must be a dictionary, {kwargs["default_env"]} provided')
                 for k in kwargs['default_env']:
                     if k not in os.environ:
                         os.environ[k] = kwargs['default_env'][k]
@@ -198,7 +193,8 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',), default_args={}):
                 os.environ.update(kwargs['env'])
             if 'workdir' in kwargs:
                 if not kwargs['workdir'] or not isinstance(kwargs['workdir'], (str, os.PathLike)):
-                    raise RuntimeError(f'workdir option should be a path of type str or path, {kwargs["workdir"]} provided')
+                    raise RuntimeError(
+                        f'workdir option should be a path of type str or path, {kwargs["workdir"]} provided')
                 if not os.path.isdir(os.path.expanduser(kwargs['workdir'])):
                     os.makedirs(os.path.expanduser(kwargs['workdir']))
                 try:
@@ -228,7 +224,7 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',), default_args={}):
                 for ofile in ofiles:
                     if not ofile.target_exists('any'):
                         raise RuntimeError(
-                                f'Output target {ofile} does not exist after completion of action {func.__name__}')
+                            f'Output target {ofile} does not exist after completion of action {func.__name__}')
             if sig:
                 sig.write()
                 sig.release()
@@ -267,12 +263,13 @@ class SoS_ExecuteScript:
 
         if 'docker_image' in kwargs:
             if env.config['run_mode'] == 'dryrun':
-                print(f'In docker image {kwargs["docker_image"]}\n{self.interpreter}:\n{self.script}\n')
+                print(
+                    f'In docker image {kwargs["docker_image"]}\n{self.interpreter}:\n{self.script}\n')
                 return None
             from .docker.client import SoS_DockerClient
             docker = SoS_DockerClient()
             docker.run(kwargs['docker_image'], self.script, self.interpreter, self.args, self.suffix,
-                **kwargs)
+                       **kwargs)
         else:
             if isinstance(self.interpreter, str):
                 if self.interpreter and not shutil.which(shlex.split(self.interpreter)[0]):
@@ -285,7 +282,8 @@ class SoS_ExecuteScript:
                         found = True
                         break
                 if not found:
-                    raise RuntimeError(f'Failed to locate any of the interpreters {", ".join(self.interpreter)}')
+                    raise RuntimeError(
+                        f'Failed to locate any of the interpreters {", ".join(self.interpreter)}')
             else:
                 raise RuntimeError(f'Unacceptable interpreter {self.interpreter}')
 
@@ -299,7 +297,8 @@ class SoS_ExecuteScript:
 
             try:
                 p = None
-                script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=self.suffix, delete=False).name
+                script_file = tempfile.NamedTemporaryFile(
+                    mode='w+t', suffix=self.suffix, delete=False).name
                 with open(script_file, 'w') as sfile:
                     sfile.write(self.script)
                 if not self.args:
@@ -318,7 +317,7 @@ class SoS_ExecuteScript:
                 if env.config['run_mode'] == 'interactive':
                     if 'stdout' in kwargs or 'stderr' in kwargs:
                         child = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE, bufsize=0)
+                                                 stderr=subprocess.PIPE, bufsize=0)
                         out, err = child.communicate()
                         if 'stdout' in kwargs:
                             if kwargs['stdout'] is not False:
@@ -373,7 +372,8 @@ class SoS_ExecuteScript:
                             p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
                             ret = p.wait()
                     else:
-                        p = subprocess.Popen(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                        p = subprocess.Popen(
+                            cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                         ret = p.wait()
                 else:
                     if 'stdout' in kwargs:
@@ -427,7 +427,8 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
         raise RuntimeError('Executing nested workflow (action sos_run) in tasks is not supported.')
 
     if source is None:
-        script = SoS_Script(env.sos_dict['__step_context__'].content, env.sos_dict['__step_context__'].filename)
+        script = SoS_Script(env.sos_dict['__step_context__'].content,
+                            env.sos_dict['__step_context__'].filename)
         wf = script.workflow(workflow, use_default=not targets)
     else:
         # reading workflow from another file
@@ -436,7 +437,8 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
     # if wf contains the current step or one of the previous one, this constitute
     # recusive nested workflow and should not be allowed
     if env.sos_dict['step_name'] in [f'{x.name}_{x.index}' for x in wf.sections]:
-        raise RuntimeError(f'Nested workflow {workflow} contains the current step {env.sos_dict["step_name"]}')
+        raise RuntimeError(
+            f'Nested workflow {workflow} contains the current step {env.sos_dict["step_name"]}')
     # args can be specified both as a dictionary or keyword arguments
     if args is None:
         args = kwargs
@@ -453,10 +455,11 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
     shared.append('__step_output__')
     try:
         my_name = env.sos_dict['step_name']
-        args_output = ', '.join(f'{x}={short_repr(y)}' for x, y in args.items() if not x.startswith('__'))
+        args_output = ', '.join(f'{x}={short_repr(y)}' for x,
+                                y in args.items() if not x.startswith('__'))
         env.logger.debug('Executing workflow ``{}`` with input ``{}`` and {}'
-            .format(workflow, short_repr(env.sos_dict.get('_input', None), True),
-            'no args' if not args_output else args_output))
+                         .format(workflow, short_repr(env.sos_dict.get('_input', None), True),
+                                 'no args' if not args_output else args_output))
 
         if not hasattr(env, '__pipe__'):
             # if env has no __pipe__, this means the nested workflow is executed from
@@ -470,7 +473,8 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
                     q = mp.Pipe()
                 else:
                     q = None
-                p = mp.Process(target=executor.run, kwargs={'targets': targets, 'parent_pipe': q[1], 'my_workflow_id': None})
+                p = mp.Process(target=executor.run, kwargs={
+                               'targets': targets, 'parent_pipe': q[1], 'my_workflow_id': None})
                 p.start()
                 if shared:
                     res = q[0].recv()
@@ -507,6 +511,7 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
         # restore step_name in case the subworkflow re-defines it
         env.sos_dict.set('step_name', my_name)
 
+
 @SoS_Action(acceptable_args=['script', 'interpreter', 'suffix', 'args'])
 def script(script, interpreter='', suffix='', args='', **kwargs):
     '''Execute specified script using specified interpreter. This action accepts common
@@ -515,6 +520,7 @@ def script(script, interpreter='', suffix='', args='', **kwargs):
     the specified script.'''
     return SoS_ExecuteScript(script, interpreter, suffix, args).run(**kwargs)
 
+
 @SoS_Action(acceptable_args=['expr', 'msg'])
 def fail_if(expr, msg=''):
     '''Raise an exception with `msg` if condition `expr` is False'''
@@ -522,12 +528,14 @@ def fail_if(expr, msg=''):
         raise TerminateExecution(msg if msg else 'error triggered by action fail_if')
     return 0
 
+
 @SoS_Action(acceptable_args=['expr', 'msg'])
 def warn_if(expr, msg=''):
     '''Yield an warning message `msg` if `expr` is False '''
     if expr:
         env.logger.warning(msg)
     return 0
+
 
 @SoS_Action(acceptable_args=['expr', 'msg'])
 def stop_if(expr, msg=''):
@@ -540,6 +548,8 @@ def stop_if(expr, msg=''):
 #
 # download file with progress bar
 #
+
+
 def downloadURL(URL, dest, decompress=False, index=None, slot=None):
     dest = os.path.abspath(os.path.expanduser(dest))
     dest_dir, filename = os.path.split(dest)
@@ -560,7 +570,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
         sig = file_target(dest)
         if os.path.isfile(dest):
             prog = ProgressBar(desc=message + ': \033[32m validating\033[0m', disable=env.verbosity <= 1,
-                position=index, leave=True, bar_format='{desc}', total=10000000)
+                               position=index, leave=True, bar_format='{desc}', total=10000000)
             if env.config['sig_mode'] == 'build':
                 if decompress:
                     prog.set_description(message + ': \033[32m scanning decompressed files\033[0m')
@@ -585,7 +595,8 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                                 if tarinfo.isfile():
                                     dest_file = os.path.join(dest_dir, tarinfo.name)
                                     if not os.path.isfile(dest_file):
-                                        env.logger.warning(f'Missing decompressed file {dest_file}')
+                                        env.logger.warning(
+                                            f'Missing decompressed file {dest_file}')
                                     else:
                                         sig.add(dest_file)
                                         file_count += 1
@@ -622,7 +633,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                     prog.update()
         else:
             prog = ProgressBar(desc=message, disable=env.verbosity <= 1, position=index,
-                leave=True, bar_format='{desc}', total=10000000)
+                               leave=True, bar_format='{desc}', total=10000000)
 
         #
         # Stop using pycurl because of libcurl version compatibility problems
@@ -631,7 +642,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
         # Reason: Incompatible library version: pycurl.cpython-35m-darwin.so
         # requires version 9.0.0 or later, but libcurl.4.dylib provides version 7.0.0
         #
-        #with open(dest_tmp, 'wb') as f:
+        # with open(dest_tmp, 'wb') as f:
         #    c = pycurl.Curl()
         #    c.setopt(pycurl.URL, str(URL))
         #    c.setopt(pycurl.WRITEFUNCTION, f.write)
@@ -639,7 +650,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
         #    c.setopt(pycurl.NOPROGRESS, False)
         #    c.setopt(pycurl.PROGRESSFUNCTION, prog.curlUpdate)
         #    c.perform()
-        #if c.getinfo(pycurl.HTTP_CODE) == 404:
+        # if c.getinfo(pycurl.HTTP_CODE) == 404:
         #    prog.set_description(message + ':\033[91m 404 Error {}\033[0m'.format(' '*(term_width - len(message) - 12)))
         #    try:
         #        os.remove(dest_tmp)
@@ -727,7 +738,8 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                 sig.add(decomp)
                 decompressed += 1
         decompress_msg = '' if not decompressed else f' ({decompressed} file{"" if decompressed <= 1 else "s"} decompressed)'
-        prog.set_description(message + f':\033[32m downloaded{decompress_msg} {" "*(term_width - len(message) - 13 - len(decompress_msg))}\033[0m')
+        prog.set_description(
+            message + f':\033[32m downloaded{decompress_msg} {" "*(term_width - len(message) - 13 - len(decompress_msg))}\033[0m')
         prog.update()
         prog.close()
         # if a md5 file exists
@@ -751,7 +763,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
             prog.close()
     except Exception as e:
         if env.verbosity > 2:
-             sys.stderr.write(get_traceback())
+            sys.stderr.write(get_traceback())
         env.logger.error(f'Failed to download: {e}')
         return False, slot
     finally:
@@ -794,7 +806,7 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
         for idx, url in enumerate(urls):
             token = urllib.parse.urlparse(url)
             # if no scheme or netloc, the URL is not acceptable
-            if not all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
+            if not all([getattr(token, qualifying_attr) for qualifying_attr in ('scheme', 'netloc')]):
                 raise ValueError(f'Invalid URL {url}')
             filename = os.path.split(token.path)[-1]
             if not filename:
@@ -803,7 +815,7 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
             url_hash.append(textMD5(token.netloc))
     else:
         token = urllib.parse.urlparse(urls[0])
-        if not all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
+        if not all([getattr(token, qualifying_attr) for qualifying_attr in ('scheme', 'netloc')]):
             raise ValueError(f'Invalid URL {url}')
         url_hash = [textMD5(token.netloc)]
         filenames = [dest_file]
@@ -811,12 +823,12 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
     succ = [(False, None) for x in urls]
     if len(succ) > 1:
         # first scroll several lines to reserve place for progress bar
-        with mp.Pool(processes = max_jobs) as pool:
+        with mp.Pool(processes=max_jobs) as pool:
             for idx, (url, uh, filename) in enumerate(zip(urls, url_hash, filenames)):
                 # if there is alot, start download
                 sm = SlotManager(name=uh).acquire(1, max_jobs, wait=True)
                 succ[idx] = pool.apply_async(downloadURL, (url, filename,
-                    decompress, idx, uh), callback=lambda x: SlotManager(name=x[1]).release(1))
+                                                           decompress, idx, uh), callback=lambda x: SlotManager(name=x[1]).release(1))
             succ = [x.get() if isinstance(x, mp.pool.AsyncResult) else x for x in succ]
     else:
         try:
@@ -826,12 +838,13 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
         finally:
             sm.release(1)
     #
-    #for su, url in zip(succ, urls):
+    # for su, url in zip(succ, urls):
     #    if not su:
     #        env.logger.warning('Failed to download {}'.format(url))
     if False in [x[0] for x in succ]:
         raise RuntimeError('Not all files have been downloaded')
     return 0
+
 
 @SoS_Action(acceptable_args=['script', 'args'])
 def run(script, args='', **kwargs):
@@ -863,7 +876,6 @@ def perl(script, args='', **kwargs):
     return SoS_ExecuteScript(script, 'perl', '.pl', args).run(**kwargs)
 
 
-
 def collect_input(script, input):
     # determine file extension
     if input is not None:
@@ -884,15 +896,15 @@ def collect_input(script, input):
             try:
                 with open(input) as ifile:
                     tmp.write(ifile.read() + '\n\n')
-            except  Exception as e:
-                    raise ValueError(f'Failed to read input file {input}: {e}')
+            except Exception as e:
+                raise ValueError(f'Failed to read input file {input}: {e}')
         elif isinstance(input, Sequence):
             for ifile in input:
                 try:
                     with open(ifile) as itmp:
                         tmp.write(itmp.read().rstrip() + '\n\n')
-                except  Exception as e:
-                        raise ValueError(f'Failed to read input file {ifile}: {e}')
+                except Exception as e:
+                    raise ValueError(f'Failed to read input file {ifile}: {e}')
     return input_file
 
 
@@ -1019,7 +1031,8 @@ def pandoc(script=None, input=None, output=None, args='{input:q} --output {outpu
     output = sos_targets(output)
     if len(output) == 0:
         write_to_stdout = True
-        output = sos_targets(tempfile.NamedTemporaryFile(mode='w+t', suffix='.html', delete=False).name)
+        output = sos_targets(tempfile.NamedTemporaryFile(
+            mode='w+t', suffix='.html', delete=False).name)
     else:
         write_to_stdout = False
     #
@@ -1040,8 +1053,10 @@ def pandoc(script=None, input=None, output=None, args='{input:q} --output {outpu
     if ret != 0:
         temp_file = os.path.join('.sos', f'pandoc_{os.getpid()}.md')
         shutil.copyfile(input, temp_file)
-        cmd = interpolate(f'pandoc {args}', {'input': sos_targets(temp_file), 'output': sos_targets(output)})
-        raise RuntimeError(f'Failed to execute script. Please use command \n{cmd}\nunder {os.getcwd()} to test it.')
+        cmd = interpolate(f'pandoc {args}', {'input': sos_targets(
+            temp_file), 'output': sos_targets(output)})
+        raise RuntimeError(
+            f'Failed to execute script. Please use command \n{cmd}\nunder {os.getcwd()} to test it.')
     if write_to_stdout:
         with open(output[0].fullname()) as out:
             sys.stdout.write(out.read())
@@ -1051,4 +1066,3 @@ def pandoc(script=None, input=None, output=None, args='{input:q} --output {outpu
         os.remove(input)
     except Exception:
         pass
-

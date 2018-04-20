@@ -1,36 +1,18 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (SoS), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
-
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 
 import os
+import subprocess
 import unittest
 from io import StringIO
 
 from sos.parser import SoS_Script
+from sos.targets import file_target
 from sos.utils import env
 from sos.workflow_executor import Base_Executor
-from sos.targets import file_target
 
-import subprocess
 
 class TestDAG(unittest.TestCase):
     def setUp(self):
@@ -62,9 +44,9 @@ class TestDAG(unittest.TestCase):
             dag.save(out)
             dot = out.getvalue()
         self.assertEqual(sorted([x.strip() for x in dot.split('\n') if
-            x.strip() and not 'digraph' in x]),
-            sorted([x.strip() for x in content.split('\n') if x.strip() and
-                not 'digraph' in x]))
+                                 x.strip() and not 'digraph' in x]),
+                         sorted([x.strip() for x in content.split('\n') if x.strip() and
+                                 not 'digraph' in x]))
 
     def testSimpleDAG(self):
         '''Test DAG with simple dependency'''
@@ -85,7 +67,7 @@ class TestDAG(unittest.TestCase):
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(dag,
-'''strict digraph "" {
+                       '''strict digraph "" {
 A_2;
 A_4;
 A_1;
@@ -111,7 +93,7 @@ input: 'a.txt'
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(dag,
-'''strict digraph "" {
+                       '''strict digraph "" {
 A_2;
 A_4;
 A_1;
@@ -120,7 +102,6 @@ A_1 -> A_2;
 A_3 -> A_4;
 }
 ''')
-
 
         #
         # 1 -> 2 -> 3 -> 4
@@ -146,7 +127,7 @@ output: 'e.txt'
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(dag,
-'''strict digraph "" {
+                       '''strict digraph "" {
 A_2;
 A_4;
 A_1;
@@ -181,7 +162,7 @@ output: 'e.txt'
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(dag,
-'''strict digraph "" {
+                       '''strict digraph "" {
 B_2;
 B_4;
 B_1;
@@ -216,7 +197,7 @@ output: 'e.txt'
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(dag,
-'''strict digraph "" {
+                       '''strict digraph "" {
 B_1;
 B_4;
 B_2;
@@ -251,7 +232,7 @@ output: 'e.txt'
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(dag,
-'''
+                       '''
 strict digraph "" {
 C_1;
 C_4;
@@ -294,9 +275,9 @@ output: 'e.txt'
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
         dag.show_nodes()
-        #dag.save('a.dot')
+        # dag.save('a.dot')
         self.assertDAG(dag,
-'''
+                       '''
 strict digraph "" {
 C_1;
 C_4;
@@ -330,7 +311,7 @@ output: 'e.txt'
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(dag,
-'''
+                       '''
 strict digraph "" {
 C_1;
 C_4;
@@ -380,7 +361,7 @@ input: 'a.txt'
         #
         dag.show_nodes()
         self.assertDAG(dag,
-'''
+                       '''
 strict digraph "" {
 "K ['b.txt']";
 C_3;
@@ -388,8 +369,6 @@ C_2;
 "K ['b.txt']" -> C_2;
 }
 ''')
-
-
 
     def testCycle(self):
         '''Test cycle detection of DAG'''
@@ -480,7 +459,7 @@ run:
         #env.verbosity = 4
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(dag,
-'''
+                       '''
 strict digraph "" {
 "C4 ['C4.txt']";
 "B1 ['B1.txt']";
@@ -575,7 +554,7 @@ run:
         dag = Base_Executor(wf).initialize_dag(targets=['B1.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG(dag,
-'''
+                       '''
 strict digraph "" {
 "B3 ['B3.txt']";
 "C4 ['C4.txt']";
@@ -605,7 +584,7 @@ strict digraph "" {
         dag = Base_Executor(wf).initialize_dag(targets=['B2.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG(dag,
-'''
+                       '''
 strict digraph "" {
 "C4 ['C4.txt']";
 "B2 ['B2.txt']";
@@ -634,7 +613,7 @@ strict digraph "" {
         dag = Base_Executor(wf).initialize_dag(targets=['B3.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG(dag,
-'''
+                       '''
 strict digraph "" {
 "B3 ['B3.txt']";
 "C2 ['C2.txt']";
@@ -689,7 +668,7 @@ run: expand=True
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(dag,
-'''
+                       '''
 strict digraph "" {
 "P ['B2.txt.p']";
 "B1 ['B1.txt']";
@@ -709,7 +688,6 @@ A_1 -> A_2;
             t = file_target(f)
             self.assertTrue(t.target_exists(), '{} should exist'.format(f))
             t.remove('both')
-
 
     def testParallelExecution(self):
         '''Test basic parallel execution
@@ -743,7 +721,7 @@ run:
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(dag,
-'''
+                       '''
 strict digraph "" {
 A_1;
 A_2;
@@ -757,7 +735,6 @@ A_2;
         # the process is slower after switching to spawn mode
         for f in ['A1.txt', 'B2.txt', 'A2.txt']:
             file_target(f).remove('both')
-
 
     def testSharedDependency(self):
         #
@@ -789,7 +766,7 @@ with open(f"{ss}.txt", 'w') as tmp:
         wf = script.workflow('A')
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(dag,
-'''
+                       '''
 strict digraph "" {
 A_3;
 A_1;
@@ -802,7 +779,6 @@ A_1 -> A_3;
         for f in ['A1.txt']:
             self.assertTrue(file_target(f).target_exists())
             file_target(f).remove('both')
-
 
     def testLiteralConnection(self):
         '''Testing the connection of steps with by variables.'''
@@ -841,7 +817,7 @@ input: dynamic(p)
         wf = script.workflow('A')
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(dag,
-'''
+                       '''
 strict digraph "" {
 A_1;
 A_4;
@@ -859,7 +835,6 @@ A_4 -> A_5;
         for f in ['A1.txt']:
             self.assertTrue(file_target(f).target_exists())
             file_target(f).remove('both')
-
 
     def testVariableTarget(self):
         '''Test dependency caused by variable usage.'''
@@ -879,7 +854,6 @@ p = c + b
         wf = script.workflow('all')
         Base_Executor(wf).run()
         self.assertTrue(env.sos_dict['p'], 3)
-
 
     def testReverseSharedVariable(self):
         '''Test shared variables defined in auxiliary steps'''
@@ -988,10 +962,10 @@ run:
         wf = script.workflow()
         #
         # test 1, we only need to generate target 'B1.txt'
-        Base_Executor(wf, config={'output_dag':'test.dot'}).initialize_dag(targets=['B1.txt'])
+        Base_Executor(wf, config={'output_dag': 'test.dot'}).initialize_dag(targets=['B1.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG('test.dot',
-'''
+                       '''
 strict digraph "" {
 "B3 ['B3.txt']";
 "C4 ['C4.txt']";
@@ -1010,10 +984,11 @@ strict digraph "" {
 }
 ''')
         # test 2, we would like to generate two files
-        Base_Executor(wf, config={'output_dag':'test.dot'}).initialize_dag(targets=['B2.txt', 'C2.txt'])
+        Base_Executor(wf, config={'output_dag': 'test.dot'}
+                      ).initialize_dag(targets=['B2.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG('test.dot',
-'''
+                       '''
 strict digraph "" {
 "C4 ['C4.txt']";
 "B2 ['B2.txt']";
@@ -1031,10 +1006,11 @@ strict digraph "" {
 ''')
         # test 3, generate two separate trees
         #
-        Base_Executor(wf, config={'output_dag':'test.dot'}).initialize_dag(targets=['B3.txt', 'C2.txt'])
+        Base_Executor(wf, config={'output_dag': 'test.dot'}
+                      ).initialize_dag(targets=['B3.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG('test.dot',
-'''
+                       '''
 strict digraph "" {
 "B3 ['B3.txt']";
 "C2 ['C2.txt']";
@@ -1063,17 +1039,16 @@ run:
 depends: ['{}.txt'.format(i) for i in range(10, 20)]
 ''')
         wf = script.workflow()
-        Base_Executor(wf, config={'output_dag':'test.dot'}).initialize_dag()
+        Base_Executor(wf, config={'output_dag': 'test.dot'}).initialize_dag()
         with open('test.dot') as dot:
             lc = len(dot.readlines())
         self.assertTrue(lc, 6)
-
 
     def testAuxiliarySosStep(self):
         '''Testing the use of sos_step with auxiliary step. #736'''
         script = SoS_Script('''
 [default]
-depends: ['1.txt'] 
+depends: ['1.txt']
 
 [A_1]
 print("Hi")
@@ -1082,7 +1057,7 @@ print("Hi")
 [C_1: provides = "1.txt"]
 depends: sos_step("A_1")
 run:
-touch 1.txt 
+touch 1.txt
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -1106,6 +1081,7 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertTrue(file_target('a.txt.bak').target_exists())
+
 
 if __name__ == '__main__':
     unittest.main()

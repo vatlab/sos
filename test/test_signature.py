@@ -1,42 +1,26 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (SoS), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 
 import os
+import shutil
+import subprocess
 import sys
 import unittest
-import shutil
 
+from sos.hosts import Host
 from sos.parser import SoS_Script
+from sos.targets import file_target, sos_targets
 from sos.utils import env
 from sos.workflow_executor import Base_Executor
-from sos.targets import file_target, sos_targets
-from sos.hosts import Host
-import subprocess
+
 
 class TestSignature(unittest.TestCase):
     def setUp(self):
         env.reset()
         subprocess.call('sos remove -s', shell=True)
-        #self.resetDir('~/.sos')
+        # self.resetDir('~/.sos')
         self.temp_files = []
         self.resetDir('temp')
         Host.reset()
@@ -60,7 +44,6 @@ class TestSignature(unittest.TestCase):
         if os.path.isdir(os.path.expanduser(dirname)):
             shutil.rmtree(os.path.expanduser(dirname))
         os.mkdir(os.path.expanduser(dirname))
-
 
     def testSignature(self):
         self._testSignature(r"""
@@ -258,7 +241,6 @@ run(f"touch {_output}")
         except Exception:
             pass
 
-
     @unittest.skipIf(sys.platform == 'win32', 'Windows executable cannot execute bash loop.')
     def testSignatureAfterRemovalOfFiles(self):
         '''test action shrink'''
@@ -411,8 +393,6 @@ run: expand=True
             self.assertEqual(tmp.read().strip(), '20')
         file_target('myfile.txt').remove('both')
 
-
-
     def testLoopWiseSignature(self):
         '''Test partial signature'''
         for i in range(10, 12):
@@ -476,8 +456,6 @@ run: expand=True
             with open('myfile_{}.txt'.format(t)) as tmp:
                 self.assertEqual(tmp.read().strip(), str(t))
             file_target('myfile_{}.txt'.format(t)).remove('both')
-
-
 
     def testOutputFromSignature(self):
         'Test restoration of output from signature'''

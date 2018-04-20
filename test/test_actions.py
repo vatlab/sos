@@ -1,38 +1,22 @@
 #!/usr/bin/env python
 #
-# This file is part of Script of Scripts (SoS), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 
-import os
-import sys
 import glob
-import unittest
+import os
 import shutil
-
-from sos.parser import SoS_Script
-from sos.utils import env
-from sos.eval import  Undetermined
-from sos.workflow_executor import Base_Executor, ExecuteError
-from sos.targets import file_target
-
 import socket
+import sys
+import unittest
+
+from sos.eval import Undetermined
+from sos.parser import SoS_Script
+from sos.targets import file_target
+from sos.utils import env
+from sos.workflow_executor import Base_Executor, ExecuteError
+
+
 def internet_on(host='8.8.8.8', port=80, timeout=3):
     '''Test if internet is connected '''
     try:
@@ -43,7 +27,9 @@ def internet_on(host='8.8.8.8', port=80, timeout=3):
         print(e)
         return False
 
+
 with_network = internet_on()
+
 
 def multi_attempts(fn):
     def wrapper(*args, **kwargs):
@@ -55,6 +41,7 @@ def multi_attempts(fn):
                 if n > 1:
                     raise
     return wrapper
+
 
 class TestActions(unittest.TestCase):
     def setUp(self):
@@ -105,7 +92,7 @@ ret = get_output('echo blah', show_command=True)
         # should be ok
         Base_Executor(wf).run()
         self.assertEqual([x.strip() for x in env.sos_dict['ret'].splitlines()],
-            ['$ echo blah', 'blah'])
+                         ['$ echo blah', 'blah'])
         #
         script = SoS_Script(r"""
 [0: shared='ret']
@@ -115,7 +102,7 @@ ret = get_output('echo blah', show_command=True, prompt='% ')
         # should be ok
         Base_Executor(wf).run()
         self.assertEqual([x.strip() for x in env.sos_dict['ret'].splitlines()],
-            ['% echo blah', 'blah'])
+                         ['% echo blah', 'blah'])
         #
         script = SoS_Script(r"""
 [0]
@@ -215,7 +202,6 @@ run:
         wf = script.workflow()
         Base_Executor(wf).run()
 
-
     def testPerl(self):
         '''Test action ruby'''
         script = SoS_Script(r'''
@@ -228,7 +214,6 @@ print "hi NAME\n";
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-
 
     def testRuby(self):
         '''Test action ruby'''
@@ -337,7 +322,6 @@ download: dest_dir='tmp', decompress=True
         #
         shutil.rmtree('tmp')
 
-
     def testPandoc(self):
         '''Test action pandoc'''
         if not shutil.which('pandoc'):
@@ -416,8 +400,6 @@ pandoc(input=['default_10.md', 'default_20.md'], output='output.html')
         for f in ['default_10.md', 'default_20.md', 'output.html']:
             self.assertTrue(file_target(f).target_exists())
             file_target(f).remove()
-
-
 
     def testReport(self):
         '''Test action report'''
@@ -528,7 +510,7 @@ report: output=_output
 [A_1]
 output: 'a.txt', 'b.txt'
 report: output=_output
-    something 
+    something
 ''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
@@ -601,7 +583,6 @@ report:     input=['a1.md', 'a2.md'], output='out.md'
         wf = script.workflow()
         Base_Executor(wf).run()
 
-
     def testActiveActionOption(self):
         '''Test the active option of actions'''
         # disallow
@@ -627,7 +608,7 @@ touch temp/{ff}
             ('slice(None,None,2)', ['temp/0.txt', 'temp/2.txt', 'temp/4.txt']),
             ('True', ['temp/0.txt', 'temp/1.txt', 'temp/2.txt', 'temp/3.txt', 'temp/4.txt']),
             ('False', []),
-            ]:
+        ]:
             if os.path.isdir('temp'):
                 shutil.rmtree('temp')
             os.mkdir('temp')
@@ -651,7 +632,6 @@ touch temp/{ff}
             #
             # test last iteration
             shutil.rmtree('temp')
-
 
 
 if __name__ == '__main__':

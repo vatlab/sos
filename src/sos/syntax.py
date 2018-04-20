@@ -1,36 +1,20 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (sos), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-##
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 
-import re
 import keyword
+import re
 
-SOS_INPUT_OPTIONS = ['group_by', 'filetype', 'paired_with', 'group_with', 'for_each', 'pattern', 'concurrent']
+SOS_INPUT_OPTIONS = ['group_by', 'filetype', 'paired_with',
+                     'group_with', 'for_each', 'pattern', 'concurrent']
 SOS_OUTPUT_OPTIONS = ['group_by']
 SOS_DEPENDS_OPTIONS = []
 SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'active', 'walltime', 'nodes',
-        'cores', 'mem', 'shared', 'env', 'prepend_path', 'queue', 'to_host',
-        'from_host', 'map_vars', 'name', 'trunk_size', 'trunk_workers', 'tags']
+                       'cores', 'mem', 'shared', 'env', 'prepend_path', 'queue', 'to_host',
+                       'from_host', 'map_vars', 'name', 'trunk_size', 'trunk_workers', 'tags']
 SOS_ACTION_OPTIONS = ['workdir', 'docker_image', 'docker_file', 'active', 'input', 'output',
-        'allow_error', 'tracked', 'stdout', 'stderr', 'default_env', 'env']
+                      'allow_error', 'tracked', 'stdout', 'stderr', 'default_env', 'env']
 
 SOS_DIRECTIVES = ['input', 'output', 'depends', 'task', 'parameter']
 SOS_SECTION_OPTIONS = ['skip', 'provides', 'shared', 'workdir']
@@ -67,21 +51,22 @@ See online documentation for details of variables.
 # are needed, to avoid compiling all regular expressions up front even when they
 # are not used
 #
+
+
 class LazyRegex(object):
     """A proxy around a real regex, which won't be compiled until accessed."""
-
 
     # These are the parameters on a real _sre.SRE_Pattern object, which we
     # will map to local members so that we don't have the proxy overhead.
     _regex_attributes_to_copy = [
-                 '__copy__', '__deepcopy__', 'findall', 'finditer', 'match',
-                 'scanner', 'search', 'split', 'sub', 'subn'
-                 ]
+        '__copy__', '__deepcopy__', 'findall', 'finditer', 'match',
+        'scanner', 'search', 'split', 'sub', 'subn'
+    ]
 
     # We use slots to keep the overhead low. But we need a slot entry for
     # all of the attributes we will copy
     __slots__ = ['_real_regex', '_regex_args', '_regex_kwargs',
-                ] + _regex_attributes_to_copy
+                 ] + _regex_attributes_to_copy
 
     def __init__(self, *args, **kwargs):
         """Create a new proxy object, passing in the args to pass to re.compile
@@ -106,14 +91,14 @@ class LazyRegex(object):
         except re.error as e:
             # raise ValueError instead of re.error as this gives a
             # cleaner message to the user.
-            raise ValueError('"' + args[0] + '" ' +str(e))
+            raise ValueError('"' + args[0] + '" ' + str(e))
 
     def __getstate__(self):
         """Return the state to use when pickling."""
         return {
             "args": self._regex_args,
             "kwargs": self._regex_kwargs,
-            }
+        }
 
     def __setstate__(self, sdict):
         """Restore from a pickled state."""

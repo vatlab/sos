@@ -1,96 +1,81 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (SoS), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
-import time
-import os
-import sys
-import re
-import copy
-import types
-import logging
-import tempfile
-import math
-import getpass
-import collections
-import traceback
-import threading
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
+
+import argparse
 import base64
+import collections
+import copy
+import getpass
+import logging
+import math
+import os
 import pickle
-import yaml
+import re
+import sys
+import tempfile
+import threading
+import time
+import traceback
+import types
 import urllib
 import urllib.parse
 import urllib.request
-import argparse
-from tqdm import tqdm as ProgressBar
 from collections.abc import Sequence
-from io import StringIO, FileIO
-
 from html.parser import HTMLParser
+from io import FileIO, StringIO
+
 import fasteners
+import yaml
+from tqdm import tqdm as ProgressBar
 
 __all__ = ['logger', 'get_output']
 
 
-COLOR_CODE={
-    'ENDC':0,  # RESET COLOR
-    'BOLD':1,
-    'UNDERLINE':4,
-    'BLINK':5,
-    'INVERT':7,
-    'CONCEALD':8,
-    'STRIKE':9,
-    'GREY30':90,
-    'GREY40':2,
-    'GREY65':37,
-    'GREY70':97,
-    'GREY20_BG':40,
-    'GREY33_BG':100,
-    'GREY80_BG':47,
-    'GREY93_BG':107,
-    'DARK_RED':31,
-    'RED':91,
-    'RED_BG':41,
-    'LIGHT_RED_BG':101,
-    'DARK_YELLOW':33,
-    'YELLOW':93,
-    'YELLOW_BG':43,
-    'LIGHT_YELLOW_BG':103,
-    'DARK_BLUE':34,
-    'BLUE':94,
-    'BLUE_BG':44,
-    'LIGHT_BLUE_BG':104,
-    'DARK_MAGENTA':35,
-    'PURPLE':95,
-    'MAGENTA_BG':45,
-    'LIGHT_PURPLE_BG':105,
-    'DARK_CYAN':36,
-    'AUQA':96,
-    'CYAN_BG':46,
-    'LIGHT_AUQA_BG':106,
-    'DARK_GREEN':32,
-    'GREEN':92,
-    'GREEN_BG':42,
-    'LIGHT_GREEN_BG':102,
-    'BLACK':30,
+COLOR_CODE = {
+    'ENDC': 0,  # RESET COLOR
+    'BOLD': 1,
+    'UNDERLINE': 4,
+    'BLINK': 5,
+    'INVERT': 7,
+    'CONCEALD': 8,
+    'STRIKE': 9,
+    'GREY30': 90,
+    'GREY40': 2,
+    'GREY65': 37,
+    'GREY70': 97,
+    'GREY20_BG': 40,
+    'GREY33_BG': 100,
+    'GREY80_BG': 47,
+    'GREY93_BG': 107,
+    'DARK_RED': 31,
+    'RED': 91,
+    'RED_BG': 41,
+    'LIGHT_RED_BG': 101,
+    'DARK_YELLOW': 33,
+    'YELLOW': 93,
+    'YELLOW_BG': 43,
+    'LIGHT_YELLOW_BG': 103,
+    'DARK_BLUE': 34,
+    'BLUE': 94,
+    'BLUE_BG': 44,
+    'LIGHT_BLUE_BG': 104,
+    'DARK_MAGENTA': 35,
+    'PURPLE': 95,
+    'MAGENTA_BG': 45,
+    'LIGHT_PURPLE_BG': 105,
+    'DARK_CYAN': 36,
+    'AUQA': 96,
+    'CYAN_BG': 46,
+    'LIGHT_AUQA_BG': 106,
+    'DARK_GREEN': 32,
+    'GREEN': 92,
+    'GREEN_BG': 42,
+    'LIGHT_GREEN_BG': 102,
+    'BLACK': 30,
 }
+
 
 def colorstr(astr, color=None):
     color_code = 0 if color is None else COLOR_CODE[color]
@@ -98,6 +83,7 @@ def colorstr(astr, color=None):
         return astr
     else:
         return f'\033[{color_code}m{astr}\033[0m'
+
 
 def emphasize(msg, color=None):
     level_color = 0 if color is None else COLOR_CODE[color]
@@ -109,11 +95,13 @@ def emphasize(msg, color=None):
     else:
         return re.sub(r'``([^`]*)``', f'\033[0m\033[32m\\1\033[0m\033[{level_color}m', str(msg))
 
+
 class ColoredFormatter(logging.Formatter):
     ''' A logging formatter that uses color to differntiate logging messages
     and emphasize texts. Texts that would be empahsized are quoted with
     double backslashes (`` ``).
     '''
+
     def __init__(self, msg):
         logging.Formatter.__init__(self, msg)
         #
@@ -147,10 +135,10 @@ def short_repr(obj, noneAsNA=False):
         return 'unspecified' if noneAsNA else 'None'
     elif isinstance(obj, str) and len(obj) > 80:
         return '{}...{}'.format(obj[:60].replace('\n', '\\n'), obj[-20:].replace('\n', '\\n'))
-    elif isinstance(obj, (str, int, float, bool)) or (isinstance(obj, collections.Sequence) \
-        and len(obj) <= 2) or len(str(obj)) < 80:
+    elif isinstance(obj, (str, int, float, bool)) or (isinstance(obj, collections.Sequence)
+                                                      and len(obj) <= 2) or len(str(obj)) < 80:
         return repr(obj)
-    elif isinstance(obj, collections.Sequence): # should be a list or tuple
+    elif isinstance(obj, collections.Sequence):  # should be a list or tuple
         return f'[{short_repr(obj[0])}, ...] ({len(obj)} items)'
     elif isinstance(obj, dict):
         if obj:
@@ -164,6 +152,8 @@ def short_repr(obj, noneAsNA=False):
 #
 # SoS Workflow dictionary
 #
+
+
 class WorkflowDict(object):
     """A dictionary object that keeps all SoS workflow objects.
 
@@ -174,6 +164,7 @@ class WorkflowDict(object):
     not found. We then have to embed a real dictionary in WorkflowDict instead of
     deriving a dict from it.
     """
+
     def __init__(self, *args, **kwargs):
         self._dict = dict(*args, **kwargs)
         #self._readonly_vars = {}
@@ -183,7 +174,7 @@ class WorkflowDict(object):
         '''A short cut to set value to key without triggering any logging
         or warning message.'''
         self._dict[key] = value
-        #if self._change_all_cap_vars is not None and key.isupper():
+        # if self._change_all_cap_vars is not None and key.isupper():
         #    self._check_readonly(key, value)
 
     def quick_update(self, obj):
@@ -194,7 +185,7 @@ class WorkflowDict(object):
         '''Redefine update to trigger logging message'''
         self._dict.update(obj)
         for k, v in obj.items():
-            #if k.isupper():
+            # if k.isupper():
             #    self._check_readonly(k, v)
             if env.verbosity > 2:
                 self._log(k, v)
@@ -262,14 +253,17 @@ class WorkflowDict(object):
 #
     def _warn(self, key, value):
         if key.startswith('_') and not key.startswith('__') and key not in ('_input', '_output', '_step', '_index', '_depends', '_runtime'):
-            env.logger.warning(f'{key}: Variables with leading underscore is reserved for SoS temporary variables.')
+            env.logger.warning(
+                f'{key}: Variables with leading underscore is reserved for SoS temporary variables.')
 
     def clone_selected_vars(self, selected=None):
-        return {x:copy.deepcopy(y) for x,y in self._dict.items() if (not selected or x in selected) and pickleable(y, x)}
+        return {x: copy.deepcopy(y) for x, y in self._dict.items() if (not selected or x in selected) and pickleable(y, x)}
 
 #
 # Runtime environment
 #
+
+
 class RuntimeEnvironments(object):
     '''A singleton object that provides runtime environment for SoS.
     Atributes of this object include:
@@ -285,6 +279,7 @@ class RuntimeEnvironments(object):
 
     '''
     _instance = None
+
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
             cls._instance = super(RuntimeEnvironments, cls).__new__(cls)
@@ -294,6 +289,7 @@ class RuntimeEnvironments(object):
         self.reset()
 
     _exec_dir = None
+
     def reset(self):
         # logger
         self._logger = None
@@ -363,13 +359,14 @@ class RuntimeEnvironments(object):
         self._logger.trace = lambda msg, *args: self._logger._log(logging.TRACE, msg, args)
         # output to a log file
         if self._logfile is not None:
-            ch = logging.FileHandler(self._logfile, mode = 'a')
+            ch = logging.FileHandler(self._logfile, mode='a')
             # debug informaiton and time is always written to the log file
             ch.setLevel(logging.DEBUG)
             ch.setFormatter(logging.Formatter('%(asctime)s: %(levelname)s: %(message)s'))
             self._logger.addHandler(ch)
     #
     # attribute exec_dir
+
     def _assure_runtime_dir(self, rdir):
         os.makedirs(os.path.join(rdir, '.sos'), exist_ok=True)
 
@@ -396,6 +393,7 @@ class RuntimeEnvironments(object):
     #
     # attribute verbosity
     #
+
     def _set_verbosity(self, v):
         if v in [0, 1, 2, 3, 4]:
             self._verbosity = v
@@ -406,6 +404,7 @@ class RuntimeEnvironments(object):
     #
     # attribute logfile
     #
+
     def _set_logfile(self, f):
         self._logfile = f
         # reset logger to include log file
@@ -426,6 +425,7 @@ class _DeHTMLParser(HTMLParser):
     '''This parser analyzes input text, removes HTML tags such as
     <p>, <br>, <ul>, <li> etc and returns properly formatted texts.
     '''
+
     def __init__(self):
         HTMLParser.__init__(self)
         self.__text = []
@@ -459,6 +459,7 @@ class _DeHTMLParser(HTMLParser):
     def text(self):
         return ''.join(self.__text).strip()
 
+
 def dehtml(text):
     '''Remove HTML tag in input text and format the texts
     accordingly. '''
@@ -472,6 +473,8 @@ def dehtml(text):
         return text
 
 # exception classes
+
+
 class Error(Exception):
     '''Base class for SoS_ScriptParser exceptions.'''
 
@@ -502,23 +505,27 @@ class Error(Exception):
 
 class StopInputGroup(Error):
     '''Abort a step and continue'''
+
     def __init__(self, msg):
         Error.__init__(self, msg)
 
+
 class TerminateExecution(Error):
     '''Abort a step and continue'''
+
     def __init__(self, msg):
         Error.__init__(self, msg)
+
 
 def get_traceback():
     output = StringIO()
     exc_type, exc_value, exc_traceback = sys.exc_info()
-    #print "*** print_tb:"
+    # print "*** print_tb:"
     traceback.print_tb(exc_traceback, limit=1, file=output)
-    #print "*** print_exception:"
+    # print "*** print_exception:"
     try:
         traceback.print_exception(exc_type, exc_value, exc_traceback,
-                              limit=5, file=output)
+                                  limit=5, file=output)
     except Exception:
         # the above function call can fail under Python 3.4 for some
         # exception but we do not really care if that happens
@@ -526,20 +533,20 @@ def get_traceback():
     result = output.getvalue()
     output.close()
     return result
-    #print "*** print_exc:"
-    #traceback.print_exc()
-    #print "*** format_exc, first and last line:"
+    # print "*** print_exc:"
+    # traceback.print_exc()
+    # print "*** format_exc, first and last line:"
     #formatted_lines = traceback.format_exc().splitlines()
-    #print formatted_lines[0]
-    #print formatted_lines[-1]
-    #print "*** format_exception:"
-    #print repr(traceback.format_exception(exc_type, exc_value,
+    # print formatted_lines[0]
+    # print formatted_lines[-1]
+    # print "*** format_exception:"
+    # print repr(traceback.format_exception(exc_type, exc_value,
     #                                      exc_traceback))
-    #print "*** extract_tb:"
-    #print repr(traceback.extract_tb(exc_traceback))
-    #print "*** format_tb:"
-    #print repr(traceback.format_tb(exc_traceback))
-    #print "*** tb_lineno:", exc_traceback.tb_lineno
+    # print "*** extract_tb:"
+    # print repr(traceback.extract_tb(exc_traceback))
+    # print "*** format_tb:"
+    # print repr(traceback.format_tb(exc_traceback))
+    # print "*** tb_lineno:", exc_traceback.tb_lineno
 
 
 def pickleable(obj, name):
@@ -551,13 +558,16 @@ def pickleable(obj, name):
         pickle.dumps(obj)
         return True
     except Exception as e:
-        env.logger.debug(f'Object {name} with value {short_repr(obj)} is not passed because it is not pickleable: {e}')
+        env.logger.debug(
+            f'Object {name} with value {short_repr(obj)} is not passed because it is not pickleable: {e}')
         return False
+
 
 class ProgressFileObj(FileIO):
     '''A wrapper of a file object that update a progress bar
     during file read.
     '''
+
     def __init__(self, prog, *args, **kwargs):
         FileIO.__init__(self, *args, **kwargs)
         self.prog = prog
@@ -565,6 +575,7 @@ class ProgressFileObj(FileIO):
     def read(self, n, *args):
         self.prog.update(n)
         return FileIO.read(self, n, *args)
+
 
 def stable_repr(obj):
     if isinstance(obj, str):
@@ -582,6 +593,8 @@ def stable_repr(obj):
 
 #
 # A utility function that returns output of a command
+
+
 def get_output(cmd, show_command=False, prompt='$ '):
     import subprocess
     try:
@@ -598,6 +611,8 @@ def get_output(cmd, show_command=False, prompt='$ '):
 #
 # search a path and locate script and other files
 #
+
+
 def locate_script(filename, start=''):
     #
     attemp = os.path.abspath(os.path.expanduser(filename))
@@ -606,7 +621,7 @@ def locate_script(filename, start=''):
     #
     token = urllib.parse.urlparse(filename)
     # if no scheme or netloc, the URL is not acceptable
-    if all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
+    if all([getattr(token, qualifying_attr) for qualifying_attr in ('scheme', 'netloc')]):
         try:
             local_filename, _ = urllib.request.urlretrieve(filename)
             with open(local_filename) as script:
@@ -625,7 +640,8 @@ def locate_script(filename, start=''):
             with open(sos_config_file) as config:
                 cfg = yaml.safe_load(config)
         except Exception as e:
-            raise RuntimeError(f'Failed to parse global sos config file {sos_config_file}, is it in JSON format?')
+            raise RuntimeError(
+                f'Failed to parse global sos config file {sos_config_file}, is it in JSON format?')
         #
         pathes.extend(cfg.get('sos_path', []))
     #
@@ -638,7 +654,7 @@ def locate_script(filename, start=''):
         # is it an URL?
         token = urllib.parse.urlparse(path)
         # if no scheme or netloc, the URL is not acceptable
-        if all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
+        if all([getattr(token, qualifying_attr) for qualifying_attr in ('scheme', 'netloc')]):
             url = path + ('' if path.endswith('/') else '/') + filename
             try:
                 local_filename, _ = urllib.request.urlretrieve(url)
@@ -649,6 +665,7 @@ def locate_script(filename, start=''):
                 pass
     #
     raise ValueError(f'Failed to locate {filename}')
+
 
 def text_repr(text):
     """return a valid string representation of text, but requires that
@@ -671,19 +688,22 @@ def text_repr(text):
     # strings
     return '"' + r.replace('"', r'\"')[1:-1] + '"'
 
+
 def natural_keys(text):
     '''
     alist.sort(key=natural_keys) sorts in human order
     http://nedbatchelder.com/blog/200712/human_sorting.html
     (See Toothy's implementation in the comments)
     '''
-    return [ int(c) if c.isdigit() else c for c in re.split('(\d+)', text) ]
+    return [int(c) if c.isdigit() else c for c in re.split('(\d+)', text)]
+
 
 def transcribe(text, action=None):
     if action is not None:
         text = '{}:\n{}'.format(action, '    ' + text.replace('\n', '\n    ') + '\n')
     with open(os.path.join(env.exec_dir, '.sos', 'transcript.txt'), 'a') as trans:
         trans.write(text)
+
 
 def dict_merge(dct, merge_dct):
     """ Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
@@ -701,11 +721,12 @@ def dict_merge(dct, merge_dct):
         else:
             dct[k] = v
 
+
 def PrettyRelativeTime(time_diff_secs):
     secs = int(time_diff_secs)
     rec = [
-        (secs // (3600*24), 'day'),
-        (secs % (3600*24) // 3600, 'hr'),
+        (secs // (3600 * 24), 'day'),
+        (secs % (3600 * 24) // 3600, 'hr'),
         (secs % 3600 // 60, 'min'),
         (secs % 60, 'sec')]
     txt = ' '.join([f'{x} {y}' for x, y in rec if x > 0])
@@ -714,9 +735,12 @@ def PrettyRelativeTime(time_diff_secs):
 # display file size in K, M, G etc automatically. Code copied from
 # http://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
 # for its compact size
-def pretty_size(n,pow=0,b=1024,u='B',pre=['']+[p+'i'for p in'KMGTPEZY']):
-    pow,n=min(int(math.log(max(n*b**pow,1),b)),len(pre)-1),n*b**pow
-    return "%%.%if %%s%%s"%abs(pow%(-pow-1))%(n/b**float(pow),pre[pow],u)
+
+
+def pretty_size(n, pow=0, b=1024, u='B', pre=[''] + [p + 'i'for p in'KMGTPEZY']):
+    pow, n = min(int(math.log(max(n * b**pow, 1), b)), len(pre) - 1), n * b**pow
+    return "%%.%if %%s%%s" % abs(pow % (-pow - 1)) % (n / b**float(pow), pre[pow], u)
+
 
 def expand_size(size):
     if isinstance(size, int):
@@ -730,12 +754,13 @@ def expand_size(size):
         return sign * int(num)
     if not num:
         num = 1
-    s = {x + 'I' :1024**(idx+1) for idx,x in enumerate('KMGTPEZY')}
-    s.update({x: 1000**(idx+1) for idx,x in enumerate('KMGTPEZY')})
+    s = {x + 'I': 1024**(idx + 1) for idx, x in enumerate('KMGTPEZY')}
+    s.update({x: 1000**(idx + 1) for idx, x in enumerate('KMGTPEZY')})
     unit = unit[:-1].upper() if unit[-1].upper().endswith('B') else unit.upper()
     if unit not in s:
         raise ValueError(f'Invalid size specified: {size}')
     return sign * int(float(num) * s[unit])
+
 
 def find_symbolic_links(item):
     item = os.path.expanduser(item)
@@ -750,6 +775,7 @@ def find_symbolic_links(item):
         for x in os.listdir(item):
             result.update(find_symbolic_links(os.path.join(item, x)))
         return result
+
 
 class ActivityNotifier(threading.Thread):
     def __init__(self, msg, delay=5):
@@ -773,12 +799,13 @@ class ActivityNotifier(threading.Thread):
                 prog = ProgressBar(desc='', position=0, bar_format='{desc}', total=100000000)
             second_elapsed = time.time() - self.start_time
             prog.set_description('Elapsed time {}{}'.format(
-                    '' if second_elapsed < 86400 else f'{int(second_elapsed/86400)} day{"s" if second_elapsed > 172800 else ""} ',
-                    time.strftime('%H:%M:%S', time.gmtime(second_elapsed)) ))
+                '' if second_elapsed < 86400 else f'{int(second_elapsed/86400)} day{"s" if second_elapsed > 172800 else ""} ',
+                time.strftime('%H:%M:%S', time.gmtime(second_elapsed))))
             prog.update(1)
 
     def stop(self):
         self.event.set()
+
 
 class DelayedAction:
     '''Call the passed function with param after a few seconds. It is most often
@@ -790,6 +817,7 @@ class DelayedAction:
 
     if the action finishes very quick, the message will not be displayed.
     '''
+
     def __init__(self, func, param, delay=5):
         self.timer = threading.Timer(delay, func, (param,))
         self.timer.start()
@@ -797,16 +825,20 @@ class DelayedAction:
     def __del__(self):
         self.timer.cancel()
 
+
 class ArgumentError(Error):
     """Raised when an invalid argument is passed."""
+
     def __init__(self, msg):
         Error.__init__(self, msg)
         self.args = (msg, )
+
 
 def _parse_error(msg):
     '''This function will replace error() function in argparse module so that SoS
     can hijack errors raised from it.'''
     raise ArgumentError(msg)
+
 
 def sos_handle_parameter_(key, defvalue):
     '''Parse command line arguments and set values to parameters section.
@@ -841,8 +873,10 @@ def sos_handle_parameter_(key, defvalue):
             feature_parser.add_argument(f'--{key}', dest=key, action='store_true')
             feature_parser.add_argument(f'--no-{key}', dest=key, action='store_false')
             if '_' in key:
-                feature_parser.add_argument(f'--{key.replace("_", "-")}', dest=key, action='store_true')
-                feature_parser.add_argument(f'--no-{key.replace("_", "-")}', dest=key, action='store_false')
+                feature_parser.add_argument(
+                    f'--{key.replace("_", "-")}', dest=key, action='store_true')
+                feature_parser.add_argument(
+                    f'--no-{key.replace("_", "-")}', dest=key, action='store_false')
         else:
             if defvalue is None:
                 defvalue = str
@@ -852,14 +886,16 @@ def sos_handle_parameter_(key, defvalue):
             if '_' in key:
                 feature_parser = parser.add_mutually_exclusive_group(required=True)
                 feature_parser.add_argument(f'--{key}', dest=key, type=str
-                        if hasattr(defvalue, '__iter__') and defvalue not in (file_target, path) else defvalue,
+                                            if hasattr(defvalue, '__iter__') and defvalue not in (file_target, path) else defvalue,
                                             help='', nargs='+' if defvalue not in (str, file_target) and hasattr(defvalue, '__iter__') else '?')
                 feature_parser.add_argument(f'--{key.replace("_", "-")}', dest=key,
-                        type=str if hasattr(defvalue, '__iter__') and defvalue not in (file_target, path) else defvalue,
+                                            type=str if hasattr(defvalue, '__iter__') and defvalue not in (
+                                                file_target, path) else defvalue,
                                             help='', nargs='+' if defvalue not in(str, file_target) and hasattr(defvalue, '__iter__') else '?')
             else:
                 parser.add_argument(f'--{key}', dest=key,
-                        type=str if hasattr(defvalue, '__iter__') and defvalue not in (file_target, path) else defvalue,
+                                    type=str if hasattr(defvalue, '__iter__') and defvalue not in (
+                                        file_target, path) else defvalue,
                                     help='', required=True,
                                     nargs='+' if defvalue not in (str, file_target, path) and hasattr(defvalue, '__iter__') else '?')
     else:
@@ -868,8 +904,10 @@ def sos_handle_parameter_(key, defvalue):
             feature_parser.add_argument(f'--{key}', dest=key, action='store_true')
             feature_parser.add_argument(f'--no-{key}', dest=key, action='store_false')
             if '_' in key:
-                feature_parser.add_argument(f'--{key.replace("_", "-")}', dest=key, action='store_true')
-                feature_parser.add_argument(f'--no-{key.replace("_", "-")}', dest=key, action='store_false')
+                feature_parser.add_argument(
+                    f'--{key.replace("_", "-")}', dest=key, action='store_true')
+                feature_parser.add_argument(
+                    f'--no-{key.replace("_", "-")}', dest=key, action='store_false')
             feature_parser.set_defaults(key=defvalue)
         else:
             if isinstance(defvalue, (file_target, path)):
@@ -893,21 +931,25 @@ def sos_handle_parameter_(key, defvalue):
             if '_' in key:
                 feature_parser = parser.add_mutually_exclusive_group(required=False)
                 feature_parser.add_argument(f'--{key}', dest=key, type=deftype,
-                                            nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
+                                            nargs='*' if isinstance(defvalue, Sequence) and not isinstance(
+                                                defvalue, str) else '?',
                                             default=defvalue)
                 feature_parser.add_argument(f'--{key.replace("_", "-")}', dest=key, type=deftype,
-                                            nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
+                                            nargs='*' if isinstance(defvalue, Sequence) and not isinstance(
+                                                defvalue, str) else '?',
                                             default=defvalue)
             else:
                 parser.add_argument(f'--{key}', dest=key, type=deftype,
-                                    nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
+                                    nargs='*' if isinstance(defvalue,
+                                                            Sequence) and not isinstance(defvalue, str) else '?',
                                     default=defvalue)
     #
     parser.error = _parse_error
-    parsed, _ = parser.parse_known_args(env.sos_dict['__args__']['__args__'] if isinstance(env.sos_dict['__args__'], dict) else env.sos_dict['__args__'])
+    parsed, _ = parser.parse_known_args(env.sos_dict['__args__']['__args__'] if isinstance(
+        env.sos_dict['__args__'], dict) else env.sos_dict['__args__'])
     return ret_type(vars(parsed)[key]) if ret_type else vars(parsed)[key]
 
-#def is_locked(lockfile):
+# def is_locked(lockfile):
 #    lock = fasteners.InterProcessLock(lockfile)
 #    gotten = lock.acquire(blocking=False)
 #    if gotten:
@@ -915,6 +957,7 @@ def sos_handle_parameter_(key, defvalue):
 #        return False
 #    else:
 #        return True
+
 
 class SlotManager(object):
     #
@@ -951,10 +994,12 @@ class SlotManager(object):
                 if avail >= num or not wait:
                     ret = num if force else max(min(num, avail), 0)
                     self._write_slot(ret + slots)
-                    env.logger.debug(f'{self.name}: {num} slots requested  {ret} returned ({slots} active, force={force})')
+                    env.logger.debug(
+                        f'{self.name}: {num} slots requested  {ret} returned ({slots} active, force={force})')
                     return ret
             # if not enough is available, wait
-            env.logger.debug(f'{self.name}: {num} slots requested  {avail} available, waiting for more slots')
+            env.logger.debug(
+                f'{self.name}: {num} slots requested  {avail} available, waiting for more slots')
             time.sleep(1)
 
     def release(self, num):
@@ -964,10 +1009,13 @@ class SlotManager(object):
         with fasteners.InterProcessLock(self.lock_file):
             slots = self._read_slot()
             if slots < num:
-                env.logger.warning(f'{self.name}: Releasing {num} slots from {slots} available ones. Please report this bug to SoS developers.')
+                env.logger.warning(
+                    f'{self.name}: Releasing {num} slots from {slots} available ones. Please report this bug to SoS developers.')
             self._write_slot(max(0, slots - num))
-            env.logger.debug(f'{self.name}: {num} slots released from {slots} active, {slots - num} remain')
+            env.logger.debug(
+                f'{self.name}: {num} slots released from {slots} active, {slots - num} remain')
             return max(0, slots - num)
+
 
 class TimeoutInterProcessLock(fasteners.InterProcessLock):
     #
@@ -1006,8 +1054,10 @@ class TimeoutInterProcessLock(fasteners.InterProcessLock):
                     except:
                         pass
                 if not msg:
-                    env.logger.warning(f'Failed to obtain lock {self.path} after {self.timeout} seconds, perhaps you will have to remove the lock file manually.')
+                    env.logger.warning(
+                        f'Failed to obtain lock {self.path} after {self.timeout} seconds, perhaps you will have to remove the lock file manually.')
                     msg = True
+
 
 def load_config_files(filename=None):
     cfg = {}
@@ -1052,17 +1102,21 @@ def load_config_files(filename=None):
                 with open(os.path.expanduser(filename)) as config:
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
-                raise RuntimeError(f'Failed to parse config file {filename}, is it in YAML/JSON format? ({e})')
+                raise RuntimeError(
+                    f'Failed to parse config file {filename}, is it in YAML/JSON format? ({e})')
     if 'user_name' not in cfg:
         cfg['user_name'] = getpass.getuser().lower()
     env.sos_dict.set('CONFIG', cfg)
     # handle keyword "based_on", which should fill the dictionary with others.
+
     def process_based_on(cfg, item):
         if 'based_on' in item:
             if not isinstance(item['based_on'], (str, list)) or not item['based_on']:
-                raise ValueError(f'A string is expected for key based_on. {item["based_on"]} obtained')
-            
-            referred_keys = [item['based_on']] if isinstance(item['based_on'], str) else item['based_on']
+                raise ValueError(
+                    f'A string is expected for key based_on. {item["based_on"]} obtained')
+
+            referred_keys = [item['based_on']] if isinstance(
+                item['based_on'], str) else item['based_on']
             item.pop('based_on')
             for rkey in referred_keys:
                 # find item...
@@ -1096,9 +1150,10 @@ def load_config_files(filename=None):
             process_based_on(cfg, v)
     return cfg
 
+
 def format_HHMMSS(v):
     if isinstance(v, int):
-        h, m, s = v // 3600, v %3600//60, v % 60
+        h, m, s = v // 3600, v % 3600 // 60, v % 60
     elif isinstance(v, str):
         # the time can be spacified as age.
         try:
@@ -1132,10 +1187,10 @@ def expand_time(v, default_unit='s'):
                     f'Input of option walltime should be an integer with unit s (default), h, m, d or a string in the format of HH:MM:SS. {v} specified: {e}')
         #
         try:
-            unit = {'s': 1, 'm': 60, 'h': 3600, 'd': 3600*24}[v[-1]]
+            unit = {'s': 1, 'm': 60, 'h': 3600, 'd': 3600 * 24}[v[-1]]
             v = v[:-1]
         except Exception:
-            unit =  {'s': 1, 'm': 60, 'h': 3600, 'd': 3600*24}[default_unit]
+            unit = {'s': 1, 'm': 60, 'h': 3600, 'd': 3600 * 24}[default_unit]
         #
         try:
             return sign * unit * int(v)
@@ -1145,9 +1200,8 @@ def expand_time(v, default_unit='s'):
     elif isinstance(v, int):
         return v
     else:
-         raise ValueError(
-             f'Input of option walltime should be an integer with unit s (default), h, m, d or a string in the format of HH:MM:SS. {v} specified.')
-
+        raise ValueError(
+            f'Input of option walltime should be an integer with unit s (default), h, m, d or a string in the format of HH:MM:SS. {v} specified.')
 
 
 def tail_of_file(filename, n, offset=None, ansi2html=False):
@@ -1172,6 +1226,7 @@ def tail_of_file(filename, n, offset=None, ansi2html=False):
                     return '\n'.join(lines[-to_read:offset and -offset or None]) + '\n'
             avg_line_length *= 1.3
 
+
 def sample_of_file(filename, n):
     '''Draw a sample of n lines from filename, largely evenly.'''
     with open(filename) as f:
@@ -1180,7 +1235,7 @@ def sample_of_file(filename, n):
             return ''.join(lines)
         else:
             m = len(lines)
-            return ''.join([lines[x*m//n + m//(2*n)] for x in range(n)])
+            return ''.join([lines[x * m // n + m // (2 * n)] for x in range(n)])
 
 
 def linecount_of_file(filename):
@@ -1195,6 +1250,7 @@ def linecount_of_file(filename):
         buf = read_f(buf_size)
 
     return lines
+
 
 def isPrimitive(obj):
     # test if object is of primitive types (string, number, sequence etc
@@ -1212,6 +1268,7 @@ def save_var(name, var):
         return f'{name}:={base64.b64encode(pickle.dumps(var))}\n'
     except:
         return ''
+
 
 def load_var(line):
     from .targets import remote
@@ -1243,6 +1300,7 @@ def version_info(module):
         except Exception:
             return 'na'
 
+
 def loaded_modules(namespace=None):
     if not namespace:
         return []
@@ -1250,7 +1308,8 @@ def loaded_modules(namespace=None):
     for value in namespace.values():
         if isinstance(value, types.ModuleType):
             res[value.__name__] = version_info(value.__name__)
-    return [(x,y) for x,y in res.items() if y != 'na']
+    return [(x, y) for x, y in res.items() if y != 'na']
+
 
 def convertAnsi2html(txt):
     # 94 is blue, debug
@@ -1267,9 +1326,12 @@ def convertAnsi2html(txt):
         replace('\n', '<br>')
 
 # log to file for debugging purpose only
+
+
 def log_to_file(msg):
     with open(os.path.join(os.path.expanduser('~'), 'jupyter_debug.txt'), 'a') as log:
         log.write(f'{msg}\n')
+
 
 def remove_arg(argv, arg):
     r_idx = [idx for idx, x in enumerate(argv) if x.startswith(arg)]
@@ -1279,18 +1341,18 @@ def remove_arg(argv, arg):
         r_idx = r_idx[0]
     if argv[r_idx] == arg:
         # in case of -r host
-        argv = argv[:r_idx] + argv[r_idx+2:]
+        argv = argv[:r_idx] + argv[r_idx + 2:]
     else:
         # in case of -r=host...
-        argv = argv[:r_idx] + argv[r_idx+1:]
-    return argv        
+        argv = argv[:r_idx] + argv[r_idx + 1:]
+    return argv
 
 
 def pexpect_run(cmd, shell=False, win_width=None):
     if sys.platform == 'win32':
         import subprocess
         child = subprocess.Popen(cmd, shell=shell or isinstance(cmd, str), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, bufsize=0)
+                                 stderr=subprocess.PIPE, bufsize=0)
 
         out, err = child.communicate()
         sys.stdout.write(out.decode())
@@ -1311,7 +1373,8 @@ def pexpect_run(cmd, shell=False, win_width=None):
                     child = pexpect.spawn(cmd, timeout=None)
             else:
                 if shell:
-                    child = pexpect.spawn('/bin/bash', ['-c', subprocess.list2cmdline(cmd)], timeout=None)
+                    child = pexpect.spawn(
+                        '/bin/bash', ['-c', subprocess.list2cmdline(cmd)], timeout=None)
                 else:
                     child = pexpect.spawn(subprocess.list2cmdline(cmd), timeout=None)
             while True:
@@ -1327,5 +1390,3 @@ def pexpect_run(cmd, shell=False, win_width=None):
         except Exception as e:
             sys.stderr.write(str(e))
             return 1
-
-

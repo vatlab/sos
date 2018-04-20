@@ -1,35 +1,20 @@
 #!/usr/bin/env python
 #
-# This file is part of Script of Scripts (sos), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 
-import sys, os
+import os
 import shutil
-from setuptools import find_packages, setup
+import sys
 from distutils import log
+
+from setuptools import find_packages, setup
 from setuptools.command.bdist_egg import bdist_egg
 
 _py_ver = sys.version_info
 if _py_ver.major == 2 or (_py_ver.major == 3 and (_py_ver.minor, _py_ver.micro) < (6, 0)):
     raise SystemError('sos requires Python 3.6 or higher. Please upgrade your Python {}.{}.{}.'
-        .format(_py_ver.major, _py_ver.minor, _py_ver.micro))
+                      .format(_py_ver.major, _py_ver.minor, _py_ver.micro))
 
 # obtain version of SoS
 with open('src/sos/_version.py') as version:
@@ -40,7 +25,7 @@ with open('src/sos/_version.py') as version:
 
 
 description = '''\
-Computationally intensive disciplines such as computational biology often 
+Computationally intensive disciplines such as computational biology often
 requires one to exploit a variety of tools implemented in different programming
 languages, and to analyze large datasets on high performance computing systems.
 Although scientific workflow systems are powerful in organizing and executing
@@ -73,41 +58,42 @@ class bdist_egg_disabled(bdist_egg):
     Prevents setup.py install performing setuptools' default easy_install,
     which it should never ever do.
     """
+
     def run(self):
         sys.exit("Aborting implicit building of eggs. Use `pip install -U --upgrade-strategy only-if-needed .` to install from source.")
 
 
-cmdclass = {'bdist_egg':  bdist_egg if 'bdist_egg' in sys.argv else bdist_egg_disabled }
+cmdclass = {'bdist_egg':  bdist_egg if 'bdist_egg' in sys.argv else bdist_egg_disabled}
 
 
-setup(name = "sos",
-    version = __version__,
-    description = 'Script of Scripts (SoS): an interactive, cross-platform, and cross-language workflow system for reproducible data analysis',
-    long_description = description,
-    author = 'Bo Peng',
-    url = 'https://github.com/vatlab/SoS',
-    author_email = 'bpeng@mdanderson.org',
-    maintainer = 'Bo Peng',
-    maintainer_email = 'bpeng@mdanderson.org',
-    license = 'GPL3',
-    include_package_data = True,
-    classifiers = [
-        'Development Status :: 4 - Beta',
-        'Environment :: Console',
-        'License :: OSI Approved :: GNU General Public License (GPL)',
-        'Natural Language :: English',
-        'Operating System :: POSIX :: Linux',
-        'Operating System :: MacOS :: MacOS X',
-        'Operating System :: Microsoft :: Windows',
-        'Intended Audience :: Information Technology',
-        'Intended Audience :: Science/Research',
-        'Programming Language :: Python :: 3 :: Only',
-        'Programming Language :: Python :: Implementation :: CPython',
-        ],
-    packages = find_packages('src'),
-    cmdclass = cmdclass,
-    package_dir = {'': 'src'},
-    install_requires=[
+setup(name="sos",
+      version=__version__,
+      description='Script of Scripts (SoS): an interactive, cross-platform, and cross-language workflow system for reproducible data analysis',
+      long_description=description,
+      author='Bo Peng',
+      url='https://github.com/vatlab/SoS',
+      author_email='bpeng@mdanderson.org',
+      maintainer='Bo Peng',
+      maintainer_email='bpeng@mdanderson.org',
+      license='GPL3',
+      include_package_data=True,
+      classifiers=[
+          'Development Status :: 4 - Beta',
+          'Environment :: Console',
+          'License :: OSI Approved :: GNU General Public License (GPL)',
+          'Natural Language :: English',
+          'Operating System :: POSIX :: Linux',
+          'Operating System :: MacOS :: MacOS X',
+          'Operating System :: Microsoft :: Windows',
+          'Intended Audience :: Information Technology',
+          'Intended Audience :: Science/Research',
+          'Programming Language :: Python :: 3 :: Only',
+          'Programming Language :: Python :: Implementation :: CPython',
+      ],
+      packages=find_packages('src'),
+      cmdclass=cmdclass,
+      package_dir={'': 'src'},
+      install_requires=[
           'psutil',
           # progress bar
           'tqdm',
@@ -124,7 +110,7 @@ setup(name = "sos",
           'nbformat',
           'docker;platform_system!="Windows"',
       ],
-    entry_points= '''
+      entry_points='''
 [console_scripts]
 sos = sos.__main__:main
 sos-runner = sos.__main__:sosrunner
@@ -212,13 +198,13 @@ sos-term.func = sos.converter:script_to_term
 sos-md.parser = sos.converter:get_script_to_markdown_parser
 sos-md.func = sos.converter:script_to_markdown
 ''',
-#[sos_installers]
-#vim-syntax.parser = sos.install:get_install_vim_syntax_parser
-#vim-syntax.func = sos.install:install_vim_syntax
-    extras_require = {
-        ':sys_platform=="win32"': ['colorama'],
+      # [sos_installers]
+      # vim-syntax.parser = sos.install:get_install_vim_syntax_parser
+      # vim-syntax.func = sos.install:install_vim_syntax
+      extras_require={
+          ':sys_platform=="win32"': ['colorama'],
           # faster hashlib
-        ':sys_platform!="win32"': ['xxhash'],
-        'dot':      ['graphviz', 'imageio', 'pillow'],
-    }
-)
+          ':sys_platform!="win32"': ['xxhash'],
+          'dot':      ['graphviz', 'imageio', 'pillow'],
+      }
+      )

@@ -1,33 +1,18 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (SoS), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 
 import os
-import unittest
-import subprocess
 import shutil
+import subprocess
+import unittest
 from argparse import Namespace
 
+from sos.converter import (extract_workflow, script_to_html,
+                           script_to_markdown, script_to_term)
 from sos.utils import env
-from sos.converter import script_to_html, script_to_markdown, script_to_term, extract_workflow
+
 
 class TestConvert(unittest.TestCase):
     def setUp(self):
@@ -101,6 +86,5 @@ print(f'Hello {a}')
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestConvert)
-    #unittest.TextTestRunner().run(suite)
+    # unittest.TextTestRunner().run(suite)
     unittest.main()
-

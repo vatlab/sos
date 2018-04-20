@@ -1,46 +1,31 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (sos), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 
+import argparse
 import os
 import sys
-import argparse
 import webbrowser
-import nbformat
-
 from io import StringIO
 from textwrap import dedent
 
+import nbformat
 from pygments import highlight
-from pygments.token import Name, Keyword
-from pygments.lexers import PythonLexer, TextLexer, get_lexer_by_name, guess_lexer
 from pygments.formatters import HtmlFormatter, TerminalFormatter
+from pygments.lexers import (PythonLexer, TextLexer, get_lexer_by_name,
+                             guess_lexer)
 from pygments.styles import get_all_styles
+from pygments.token import Keyword, Name
 from pygments.util import shebang_matches
 
-from .utils import env, pretty_size
 from .actions import get_actions
 from .parser import SoS_Script
-from .syntax import SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS, SOS_DEPENDS_OPTIONS, \
-    SOS_RUNTIME_OPTIONS, SOS_SECTION_OPTIONS, SOS_SECTION_HEADER
+from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
+                     SOS_OUTPUT_OPTIONS, SOS_RUNTIME_OPTIONS,
+                     SOS_SECTION_HEADER, SOS_SECTION_OPTIONS)
+from .utils import env, pretty_size
+
 
 #
 # subcommmand show
@@ -490,9 +475,9 @@ class SoS_Lexer(PythonLexer):
 
     PythonLexer.tokens['root'].insert(0, (r'(^\w+)\s*:', Keyword.Namespace))
 
-    EXTRA_KEYWORDS = set( SOS_INPUT_OPTIONS + SOS_OUTPUT_OPTIONS +
-        SOS_DEPENDS_OPTIONS + SOS_RUNTIME_OPTIONS + SOS_SECTION_OPTIONS +
-        get_actions())
+    EXTRA_KEYWORDS = set(SOS_INPUT_OPTIONS + SOS_OUTPUT_OPTIONS +
+                         SOS_DEPENDS_OPTIONS + SOS_RUNTIME_OPTIONS + SOS_SECTION_OPTIONS +
+                         get_actions())
 
     def get_tokens_unprocessed(self, text):
         for index, token, value in \
@@ -503,8 +488,9 @@ class SoS_Lexer(PythonLexer):
                 yield index, token, value
 
     def analyse_text(text):
-        return (shebang_matches(text, r'sos-runner') or \
-            '#fileformat=SOS' in text[:1000])
+        return (shebang_matches(text, r'sos-runner') or
+                '#fileformat=SOS' in text[:1000])
+
 
 class ContinuousHtmlFormatter(HtmlFormatter):
     def _wrap_tablelinenos(self, inner):
@@ -527,7 +513,7 @@ class ContinuousHtmlFormatter(HtmlFormatter):
         if sp:
             lines = []
 
-            for i in range(fl, fl+lncount):
+            for i in range(fl, fl + lncount):
                 if i % st == 0:
                     if i % sp == 0:
                         if aln:
@@ -545,7 +531,7 @@ class ContinuousHtmlFormatter(HtmlFormatter):
             ls = '\n'.join(lines)
         else:
             lines = []
-            for i in range(fl, fl+lncount):
+            for i in range(fl, fl + lncount):
                 if i % st == 0:
                     if aln:
                         lines.append('<a href="#%s-%d">%*d</a>' % (la, i, mw, i))
@@ -570,6 +556,7 @@ class ContinuousHtmlFormatter(HtmlFormatter):
         yield 0, '</td></tr>'
         self.linenostart += lncount
 
+
 def write_html_content(content_type, content, formatter, html):
     # dedent content but still keeps empty lines
     old_class = formatter.cssclass
@@ -585,23 +572,23 @@ def write_html_content(content_type, content, formatter, html):
     elif content_type in ('REPORT', 'report'):
         formatter.cssclass = 'source blob-code sos-report'
         html.write('{}\n'.format(highlight(''.join(content),
-            TextLexer(), formatter)))
+                                           TextLexer(), formatter)))
     elif content_type == 'SECTION':
         formatter.cssclass = 'source blob-code sos-header'
         html.write('{}\n'.format(highlight(''.join(content),
-            SoS_Lexer(), formatter)))
+                                           SoS_Lexer(), formatter)))
     elif content_type == 'DIRECTIVE':
         formatter.cssclass = 'source blob-code sos-directive'
         html.write('{}\n'.format(highlight(''.join(content),
-            SoS_Lexer(), formatter)))
+                                           SoS_Lexer(), formatter)))
     elif content_type == 'STATEMENT':
         formatter.cssclass = 'source blob-code sos-statement'
         html.write('{}\n'.format(highlight(''.join(content),
-            SoS_Lexer(), formatter)))
+                                           SoS_Lexer(), formatter)))
     elif content_type == 'ERROR':
         formatter.cssclass = 'source blob-code sos-error '
         html.write('{}\n'.format(highlight(''.join(content),
-            SoS_Lexer(), formatter)))
+                                           SoS_Lexer(), formatter)))
     else:
         formatter.cssclass = 'source blob-code sos-script '
         if content_type == 'run':
@@ -618,12 +605,14 @@ def write_html_content(content_type, content, formatter, html):
             except Exception:
                 lexer = TextLexer()
         html.write('{}\n'.format(highlight((''.join(content)),
-            lexer, formatter)))
+                                           lexer, formatter)))
     formatter.cssclass = old_class
 
 #
 # utility function
 #
+
+
 def transcribe_script(filename=None, content=None):
     with StringIO() as transcript:
         try:
@@ -636,22 +625,25 @@ def transcribe_script(filename=None, content=None):
 # Converter to HTML
 #
 #
+
+
 def get_script_to_html_parser():
     parser = argparse.ArgumentParser('sos convert FILE.sos FILE.html (or --to html)',
-        description='''Convert sos file to html format with syntax highlighting,
+                                     description='''Convert sos file to html format with syntax highlighting,
         and save the output either to a HTML file or view it in a broaser.''')
     parser.add_argument('--raw', help='''URL to the raw sos file, which will be linked
         to filenames in the HTML output''')
     parser.add_argument('--style', choices=list(get_all_styles()),
-        help='''Pygments style for the HTML output.''',
-        default='default')
+                        help='''Pygments style for the HTML output.''',
+                        default='default')
     parser.add_argument('--linenos', action='store_true',
-        help='''Display lineno to the left of the source code''')
+                        help='''Display lineno to the left of the source code''')
     parser.add_argument('-v', '--view', action='store_true',
-        help='''Open the output file in a broswer. In case no html file is specified,
+                        help='''Open the output file in a broswer. In case no html file is specified,
         this option will display the HTML file in a browser, instead of writing its
         content to standard output.''')
     return parser
+
 
 def script_to_html(script_file, html_file, args=None, unknown_args=None):
     '''
@@ -667,7 +659,7 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
         raise ValueError('Unrecognized parameter {}'.format(unknown_args))
     if args:
         formatter = ContinuousHtmlFormatter(cssclass="source", full=False,
-            **{x:y for x,y in vars(args).items() if x != ('raw', 'view')})
+                                            **{x: y for x, y in vars(args).items() if x != ('raw', 'view')})
     else:
         formatter = ContinuousHtmlFormatter(cssclass="source", full=False)
 
@@ -684,7 +676,7 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
             raw_link = script_file
             script_link = os.path.basename(script_file)
         html.write(template_header % (script_link, raw_link,
-            pretty_size(os.path.getsize(script_file))))
+                                      pretty_size(os.path.getsize(script_file))))
         #
         html.write('<table class="highlight tab-size js-file-line-container">')
         content = []
@@ -746,6 +738,7 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
 #
 #
 
+
 def markdown_content(content_type, content, fh):
     # write content to a file
     import re
@@ -772,11 +765,13 @@ def markdown_content(content_type, content, fh):
             content_type = ''
         fh.write(f'```{content_type}\n{"".join(content)}```\n')
 
+
 def get_script_to_markdown_parser():
     parser = argparse.ArgumentParser('sos convert FILE.sos FILE.md (or --to md)',
-        description='''Convert SOS script to a markdown format with scripts
+                                     description='''Convert SOS script to a markdown format with scripts
             quoted in markdown syntax.''')
     return parser
+
 
 def script_to_markdown(script_file, markdown_file, style_args=None, unknown_args=None):
     '''
@@ -827,6 +822,8 @@ def script_to_markdown(script_file, markdown_file, style_args=None, unknown_args
 #
 # Output to terminal
 #
+
+
 def write_content(content_type, content, formatter, fh=sys.stdout):
     #
     nlines = len(content)
@@ -863,15 +860,17 @@ def write_content(content_type, content, formatter, fh=sys.stdout):
                 lexer = TextLexer()
         fh.write(highlight((''.join(content)), lexer, formatter))
 
+
 def get_script_to_term_parser():
     parser = argparse.ArgumentParser('sos convert FILE.sos --to term',
-        description='Write script to terminal with syntax highlighting.')
+                                     description='Write script to terminal with syntax highlighting.')
     parser.add_argument('--bg', choices=['light', 'dark'],
-        help='Color theme of the output',
-        default='light')
+                        help='Color theme of the output',
+                        default='light')
     parser.add_argument('--linenos', action='store_true',
-        help='Display lineno to the left of the script')
+                        help='Display lineno to the left of the script')
     return parser
+
 
 def script_to_term(script_file, output_file, args, unknown_args=None):
     '''
@@ -915,6 +914,7 @@ def script_to_term(script_file, output_file, args, unknown_args=None):
             content = [script_line]
     if content:
         write_content(content_type, content, formatter)
+
 
 def extract_workflow(notebook_file):
     nb = nbformat.read(notebook_file, nbformat.NO_CONVERT)

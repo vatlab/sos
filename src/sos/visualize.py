@@ -1,40 +1,22 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (sos), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
-
-
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 import argparse
-import pandas
-import numpy
-
-from collections import defaultdict
 import json
-
-from itertools import tee
 import operator
+from collections import defaultdict
+from itertools import tee
+
+import numpy
+import pandas
+
 
 def is_sorted(iterable, compare=operator.le):
-  a, b = tee(iterable)
-  next(b, None)
-  return all(map(compare, a, b))
+    a, b = tee(iterable)
+    next(b, None)
+    return all(map(compare, a, b))
+
 
 class Visualizer:
     def __init__(self, kernel, style):
@@ -63,7 +45,7 @@ class Visualizer:
             import random
             return random.randint(0, 1000000)
         if not hasattr(self.kernel, '_tid'):
-            self.kernel._tid = { vis_type: 1 }
+            self.kernel._tid = {vis_type: 1}
         elif vis_type not in self.kernel._tid:
             self.kernel._tid[vis_type] = 1
         else:
@@ -75,10 +57,10 @@ class Visualizer:
     #
     def _get_table_parser(self):
         parser = argparse.ArgumentParser(prog='%preview -s table',
-            description='''Preview Pandas DataFrame (or csv files) in tablular
+                                         description='''Preview Pandas DataFrame (or csv files) in tablular
             format with search and sort capacity''')
         parser.add_argument('-l', '--limit', type=int, default=200,
-            help='''Limit the number of displayed records. A negative value indicates
+                            help='''Limit the number of displayed records. A negative value indicates
             showing all records.''')
         parser.error = self._parse_error
         return parser
@@ -104,20 +86,21 @@ class Visualizer:
 
         # if the user already specified a value other than 200, we do not display the warning
         if args.limit >= 0 and df.shape[0] > args.limit and args.limit == 200 and self.kernel:
-                self.kernel.warn(
-                    f"Only the first {args.limit} of the {df.shape[0]} records are previewed. Use option --limit to set a new limit.")
+            self.kernel.warn(
+                f"Only the first {args.limit} of the {df.shape[0]} records are previewed. Use option --limit to set a new limit.")
         if args.limit >= 0:
             code = df.head(args.limit).to_html(index=True).replace('class="',
                                                                    f'id="dataframe_{tid}" class="sos_dataframe ', 1)
         else:
-            code = df.to_html(index=True).replace('class="', f'id="dataframe_{tid}" class="sos_dataframe ', 1)
+            code = df.to_html(index=True).replace(
+                'class="', f'id="dataframe_{tid}" class="sos_dataframe ', 1)
 
         hr, rest = code.split('</tr>', 1)
         index_type = 'numeric' if isinstance(df.index, pandas.RangeIndex) else 'alphabetic'
         col_type = ['numeric' if self._is_numeric_type(x) else 'alphabetic' for x in df.dtypes]
         code = ''.join('''{} &nbsp; <i class="fa fa-sort" style="color:lightgray" onclick="sortDataFrame('{}', {}, '{}')"></th>'''.format(x,
-            tid, idx,
-            index_type if idx == 0 else col_type[idx-1]) if '<th' in x else x for idx,x in enumerate(hr.split('</th>')  )) + '</tr>' + rest
+                                                                                                                                          tid, idx,
+                                                                                                                                          index_type if idx == 0 else col_type[idx - 1]) if '<th' in x else x for idx, x in enumerate(hr.split('</th>'))) + '</tr>' + rest
 
         # we put max-height 400px here because the notebook could be exported without using sos template
         # and associated css, resulting in very long table.
@@ -140,10 +123,12 @@ class Visualizer:
             igured if the dataframe has only one or two columns.''')
         parser.add_argument('--ylim', nargs=2, help='''Range of y-axis''')
         parser.add_argument('--xlim', nargs=2, help='''Range of x-axis''')
-        parser.add_argument('--log', choices=['x', 'y', 'xy', 'yx'], help='''Make x-axis, y-axis, or both to logarithmic''')
+        parser.add_argument('--log', choices=['x', 'y', 'xy', 'yx'],
+                            help='''Make x-axis, y-axis, or both to logarithmic''')
         parser.add_argument('--width', default='50vw', help='''Width of the plot.''')
         parser.add_argument('--height', default='38vw', help='''Height of the plot.''')
-        parser.add_argument('-b', '--by', nargs='+', help='''columns by which the data points are stratified.''')
+        parser.add_argument('-b', '--by', nargs='+',
+                            help='''columns by which the data points are stratified.''')
         parser.add_argument('--show', nargs='+', help='''What to show in the plot,
             can be 'lines', 'points' or both. Default to points, and lines if x-axis is
             sorted.''')
@@ -200,7 +185,8 @@ class Visualizer:
             elif df.shape[1] == 2:
                 args.cols = list(df.columns)
             else:
-                raise ValueError(f'Please specify columns for plot. Available columns are {" ".join(df.columns)}')
+                raise ValueError(
+                    f'Please specify columns for plot. Available columns are {" ".join(df.columns)}')
 
         if len(args.cols) == 1:
             args.cols = ['_index', args.cols[0]]
@@ -252,19 +238,20 @@ class Visualizer:
 
             tooltip = ['<br>'.join([f'{"index" if t == "_index" else t}: {idxvalue if t == "_index" else df[t][idx]}'
                                     for t in args.tooltip])
-                for idx,idxvalue in enumerate(indexes)]
+                       for idx, idxvalue in enumerate(indexes)]
 
             all_data = [(x, y, z) for x, y, z in zip(val_x, val_y, tooltip)]
 
             if args.by:
                 for cat in categories:
                     series = {}
-                    series['label'] = col + ' (' + ' '.join(f'{x}={y}' for x, y in zip(args.by, cat)) + ')'
+                    series['label'] = col + \
+                        ' (' + ' '.join(f'{x}={y}' for x, y in zip(args.by, cat)) + ')'
                     # find index of values that falls into the category
                     series['data'] = [
-                            all_data[i] for i in range(len(all_data)) if
-                                all(data[b][i]==v for b,v in zip(args.by, cat))
-                            ]
+                        all_data[i] for i in range(len(all_data)) if
+                        all(data[b][i] == v for b, v in zip(args.by, cat))
+                    ]
                     if len(series['data']) > 0:
                         all_series.append(series)
             else:
@@ -275,15 +262,17 @@ class Visualizer:
         options = defaultdict(dict)
         options['xaxis'] = {}
         options['yaxis'] = {}
-        options['series']['lines'] = {'show': is_sorted(val_x) and not args.by if not args.show or 'lines' in args.show else False }
-        options['series']['points'] = {'show': True if not args.show or 'points' in args.show else False }
+        options['series']['lines'] = {'show': is_sorted(
+            val_x) and not args.by if not args.show or 'lines' in args.show else False}
+        options['series']['points'] = {
+            'show': True if not args.show or 'points' in args.show else False}
         options['grid']['hoverable'] = True
         options['grid']['clickable'] = True
 
         # if there are actual indexes... and plot by x
         class_name = 'scatterplot'
         if args.cols[0] == '_index' and not isinstance(df.index, pandas.RangeIndex):
-            options['xaxis']['ticks'] = [[x,str(y)] for x,y in enumerate(indexes)]
+            options['xaxis']['ticks'] = [[x, str(y)] for x, y in enumerate(indexes)]
             class_name = 'scatterplot_by_rowname'
 
         if args.xlim:
@@ -310,7 +299,7 @@ class Visualizer:
                 options['xaxis']['max'] = range_x[1]
         if args.log and 'y' in args.log:
             range_y = [min([min([x[1] for x in series['data']]) for series in all_series]),
-                max([max([x[1] for x in series['data']]) for series in all_series])]
+                       max([max([x[1] for x in series['data']]) for series in all_series])]
             optfunc += '''
                 options['yaxis']['transform'] = function(v) { return Math.log(v); };
                 options['yaxis']['inverseTransform'] = function(v) { return Math.exp(v); };

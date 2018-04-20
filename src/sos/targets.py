@@ -1,55 +1,46 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (SoS), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
+
 import os
-import sys
 import shlex
 import shutil
-import fasteners
-from copy import deepcopy
-import pkg_resources
-from shlex import quote
 import subprocess
+import sys
+from collections.abc import Iterable, Sequence
+from copy import deepcopy
 from pathlib import Path
+from shlex import quote
+
+import fasteners
+import pkg_resources
+
+from .eval import Undetermined
+from .utils import (Error, TimeoutInterProcessLock, env, isPrimitive, load_var,
+                    save_var, short_repr, stable_repr)
+
 try:
     from xxhash import xxh64 as hash_md5
 except ImportError:
     from hashlib import md5 as hash_md5
 
-from collections.abc import Sequence, Iterable
 
-from .utils import env, Error, short_repr, stable_repr, save_var, load_var, isPrimitive, TimeoutInterProcessLock
-from .eval import Undetermined
 
 __all__ = ['dynamic', 'executable', 'env_variable', 'sos_variable']
+
 
 class UnknownTarget(Error):
     def __init__(self, target):
         Error.__init__(self, 'Target unavailable: %s' % target)
         self.target = target
 
+
 class RemovedTarget(Error):
     def __init__(self, target):
         Error.__init__(self, 'Target removed: %s' % target)
         self.target = target
+
 
 class UnavailableLock(Error):
     """Raised when there are errors in prepare mode. Such errors are not raised
@@ -57,8 +48,8 @@ class UnavailableLock(Error):
 
     def __init__(self, signature):
         Error.__init__(self, f'Failed to obtain lock {signature[2]} for input {short_repr(signature[0])} and output {short_repr(signature[1])}. It is likely ' +
-            'that these files are protected by another SoS process or concurrant task that is generating the same set of files. Please manually remove the lockfile ' +
-            'if you are certain that no other process is using the lock.')
+                       'that these files are protected by another SoS process or concurrant task that is generating the same set of files. Please manually remove the lockfile ' +
+                       'if you are certain that no other process is using the lock.')
         self.input = signature[0]
         self.output = signature[1]
         self.sig_file = signature[2]
@@ -66,6 +57,8 @@ class UnavailableLock(Error):
 #
 # Runtime signature
 #
+
+
 def textMD5(text):
     '''Get md5 of a piece of text'''
     m = hash_md5()
@@ -74,6 +67,7 @@ def textMD5(text):
     else:
         m.update(text)
     return m.hexdigest()
+
 
 def fileMD5(filename, partial=True):
     '''Calculate partial MD5, basically the first and last 8M
@@ -113,6 +107,7 @@ def fileMD5(filename, partial=True):
 
 class BaseTarget(object):
     '''A base class for all targets (e.g. a file)'''
+
     def __init__(self, *args):
         self._sigfile = None
 
@@ -161,8 +156,10 @@ class BaseTarget(object):
     def __eq__(self, obj):
         return isinstance(obj, self.__class__) and self.target_signature() == obj.target_signature()
 
+
 class sos_variable(BaseTarget):
     '''A target for a SoS variable.'''
+
     def __init__(self, var):
         super(sos_variable, self).__init__()
         self._var = var
@@ -192,6 +189,7 @@ class sos_variable(BaseTarget):
 
 class env_variable(BaseTarget):
     '''A target for an environmental variable.'''
+
     def __init__(self, var):
         super(env_variable, self).__init__()
         self._var = var
@@ -221,6 +219,7 @@ class env_variable(BaseTarget):
 
 class sos_step(BaseTarget):
     '''A target for a step of sos.'''
+
     def __init__(self, step_name):
         super(sos_step, self).__init__()
         self._step_name = 'default_' + step_name if step_name.isdigit() else step_name
@@ -257,6 +256,7 @@ class dynamic(BaseTarget):
     '''A dynamic executable that only handles input files when
     it is available. This target is handled directly with its `resolve`
     function called by the executor. '''
+
     def __init__(self, target):
         self._target = target
 
@@ -276,6 +276,7 @@ class dynamic(BaseTarget):
 
 class remote(BaseTarget):
     '''A remote target is not tracked and not translated during task execution'''
+
     def __init__(self, *targets):
         super(remote, self).__init__()
         self.__unresolvable_object__ = True
@@ -314,6 +315,7 @@ class remote(BaseTarget):
         else:
             return str(self).__format__(format_spec)
 
+
 class executable(BaseTarget):
     '''A target for an executable command.'''
 
@@ -336,7 +338,7 @@ class executable(BaseTarget):
             if self._version:
                 try:
                     output = subprocess.check_output(self._cmd,
-                        stderr=subprocess.STDOUT, shell=True, timeout=5).decode()
+                                                     stderr=subprocess.STDOUT, shell=True, timeout=5).decode()
                 except subprocess.TimeoutExpired as e:
                     env.logger.warning(e)
                     return False
@@ -379,6 +381,7 @@ class executable(BaseTarget):
         else:
             return str(self).__format__(format_spec)
 
+
 def collapseuser(path):
     home = os.path.expanduser('~')
     if path == home:
@@ -387,6 +390,7 @@ def collapseuser(path):
         return '~' + path[len(home):]
     else:
         return path
+
 
 class path(type(Path())):
     '''A regular target for files.
@@ -409,9 +413,9 @@ class path(type(Path())):
         ',': lambda x: x,
         '!': lambda x: x,
         'R': lambda x: x,
-        }
+    }
 
-    #def __new__(cls, *args, **kwargs):
+    # def __new__(cls, *args, **kwargs):
     #    if cls is Path:
     #        cls = WindowsPath if os.name == 'nt' else PosixPath
     #
@@ -440,18 +444,19 @@ class path(type(Path())):
 
     def __eq__(self, other):
         return os.path.abspath(self.fullname()) == os.path.abspath((other
-            if isinstance(other, file_target) else path(other)).fullname())
+                                                                    if isinstance(other, file_target) else path(other)).fullname())
 
     def __add__(self, part):
         if isinstance(part, (str, path)):
             return path(str(self) + str(part))
         else:
-            raise ValueError(f"Cannot concatenate path to {part} of type {type(part).__name__}: expect a string or path")
+            raise ValueError(
+                f"Cannot concatenate path to {part} of type {type(part).__name__}: expect a string or path")
 
     def __format__(self, format_spec):
         # handling special !q conversion flag
         obj = str(self)
-        for i,c in enumerate(format_spec):
+        for i, c in enumerate(format_spec):
             if c in self.CONVERTERS:
                 obj = self.CONVERTERS[c](obj)
             else:
@@ -460,7 +465,7 @@ class path(type(Path())):
         return obj
 
     def __lt__(self, other):
-        return str(self)  < str(other)
+        return str(self) < str(other)
 
     def __hash__(self):
         return hash(repr(self))
@@ -476,11 +481,13 @@ class path(type(Path())):
                 f'{self.resolve()}\t{os.path.getmtime(self)}\t{os.path.getsize(self)}\t{fileMD5(self)}\n')
         self.unlink()
 
+
 class file_target(path, BaseTarget):
     '''A regular target for files.
     '''
+
     def __init__(self, *args):
-        # this is path segments 
+        # this is path segments
         super(file_target, self).__init__(*args)
         if len(args) == 1 and isinstance(args[0], file_target):
             self._md5 = args[0]._md5
@@ -553,6 +560,7 @@ class file_target(path, BaseTarget):
     #
     # file_target - specific functions. Not required by other targets
     #
+
     def add(self, filename):
         '''add related files to the same signature'''
         self._attachments.append(os.path.abspath(os.path.expanduser(filename)))
@@ -627,6 +635,7 @@ class file_target(path, BaseTarget):
 
 class paths(Sequence, os.PathLike):
     '''A collection of targets'''
+
     def __init__(self, *args):
         self._paths = []
         for arg in args:
@@ -648,7 +657,8 @@ class paths(Sequence, os.PathLike):
             self._paths.append(path(arg))
         elif isinstance(arg, sos_targets):
             if not all(isinstance(x, file_target) for x in arg._targets):
-                raise ValueError(f'Cannot convert a sos_targets object {arg} with non-file target to paths')
+                raise ValueError(
+                    f'Cannot convert a sos_targets object {arg} with non-file target to paths')
             self._paths.extend([path(str(x)) for x in arg._targets])
         elif isinstance(arg, file_target):
             self._paths.append(path(str(arg)))
@@ -680,7 +690,8 @@ class paths(Sequence, os.PathLike):
         elif len(self._paths) == 0:
             raise ValueError(f"Cannot treat an empty paths as single path")
         else:
-            raise ValueError(f'Cannot treat an paths object {self} with more than one paths as a single path')
+            raise ValueError(
+                f'Cannot treat an paths object {self} with more than one paths as a single path')
 
     def __format__(self, format_spec):
         if ',' in format_spec:
@@ -698,7 +709,8 @@ class paths(Sequence, os.PathLike):
         elif len(self._paths) == 0:
             raise AttributeError(f"Cannot get attribute {key} from empty target list")
         else:
-            raise AttributeError(f'Cannot get attribute {key} from group of {len(self)} targets {self!r}')
+            raise AttributeError(
+                f'Cannot get attribute {key} from group of {len(self)} targets {self!r}')
 
     def __hash__(self):
         return hash(repr(self))
@@ -712,8 +724,10 @@ class paths(Sequence, os.PathLike):
     def __str__(self):
         return self.__format__('')
 
+
 class sos_targets(BaseTarget, Sequence, os.PathLike):
     '''A collection of targets'''
+
     def __init__(self, *args):
         super(BaseTarget, self).__init__()
         self._targets = []
@@ -792,7 +806,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             return self._targets[0].target_exists(mode)
         else:
             raise ValueError(f'Cannot test existense for group of {len(self)} targets {self!r}')
-    
+
     def __deepcopy__(self, memo):
         return sos_targets(deepcopy(self._targets))
 
@@ -802,7 +816,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         elif len(self._targets) == 0:
             raise AttributeError(f"Cannot get attribute {key} from empty target list")
         else:
-            raise AttributeError(f'Cannot get attribute {key} from group of {len(self)} targets {self!r}')
+            raise AttributeError(
+                f'Cannot get attribute {key} from group of {len(self)} targets {self!r}')
 
     def target_name(self):
         if len(self._targets) == 1:
@@ -836,7 +851,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         elif len(self._targets) == 0:
             raise ValueError(f"Cannot treat an empty sos_targets as single target")
         else:
-            raise ValueError(f'Cannot treat an sos_targets object {self} with more than one targets as a single target')
+            raise ValueError(
+                f'Cannot treat an sos_targets object {self} with more than one targets as a single target')
 
     def __repr__(self):
         return '[' + ', '.join(repr(x) for x in self._targets) + ']'
@@ -844,12 +860,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def __str__(self):
         return self.__format__('')
 
+
 class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
     .exe_info files are used.
     '''
-    def __init__(self, step_md5, script, input_files=None, output_files=None, dependent_files = None,
-        signature_vars = None, sdict=None):
+
+    def __init__(self, step_md5, script, input_files=None, output_files=None, dependent_files=None,
+                 signature_vars=None, sdict=None):
         '''Runtime information for specified output files
 
         output_files:
@@ -865,41 +883,49 @@ class RuntimeInfo:
             if input_files is None:
                 self.input_files = []
             else:
-                raise RuntimeError('Input files must be a list of filenames for runtime signature.')
+                raise RuntimeError(
+                    'Input files must be a list of filenames for runtime signature.')
         else:
             self.input_files = [file_target(x) if isinstance(x, str) else x for x in input_files]
 
         if dependent_files is None:
             self.dependent_files = []
         elif isinstance(dependent_files, list):
-            self.dependent_files = [file_target(x) if isinstance(x, str) else x for x in dependent_files]
+            self.dependent_files = [file_target(x) if isinstance(
+                x, str) else x for x in dependent_files]
         elif isinstance(dependent_files, Undetermined):
             self.dependent_files = dependent_files
         else:
-            raise RuntimeError('Dependent files must be a list of filenames or Undetermined for runtime signature.')
+            raise RuntimeError(
+                'Dependent files must be a list of filenames or Undetermined for runtime signature.')
 
         self.external_output = False
         if output_files is None:
             self.output_files = []
         elif isinstance(output_files, list):
             self.output_files = [file_target(x) if isinstance(x, str) else x for x in output_files]
-            self.external_output = self.output_files and isinstance(self.output_files[0], file_target) and self.output_files[0].is_external()
+            self.external_output = self.output_files and isinstance(
+                self.output_files[0], file_target) and self.output_files[0].is_external()
         elif isinstance(output_files, Undetermined):
             self.output_files = output_files
         else:
-            raise RuntimeError('Output files must be a list of filenames or Undetermined for runtime signature.')
+            raise RuntimeError(
+                'Output files must be a list of filenames or Undetermined for runtime signature.')
 
-        self.signature_vars = {} if signature_vars is None else {x: sdict[x] if x in sdict else Undetermined() for x in signature_vars}
+        self.signature_vars = {} if signature_vars is None else {
+            x: sdict[x] if x in sdict else Undetermined() for x in signature_vars}
 
-        sig_vars = [] if signature_vars is None else sorted([x for x in signature_vars if x in sdict and isPrimitive(sdict[x])])
+        sig_vars = [] if signature_vars is None else sorted(
+            [x for x in signature_vars if x in sdict and isPrimitive(sdict[x])])
         self.sig_id = textMD5('{} {} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files,
-            '\n'.join(f'{x}:{stable_repr(sdict[x])}' for x in sig_vars)))
+                                                      '\n'.join(f'{x}:{stable_repr(sdict[x])}' for x in sig_vars)))
 
         if self.external_output:
             # global signature
             self.proc_info = str(path('~') / '.sos' / '.runtime' / f'{self.sig_id}.exe_info')
         else:
-            self.proc_info = str(path(env.exec_dir) / '.sos' / '.runtime' / f'{self.sig_id}.exe_info')
+            self.proc_info = str(path(env.exec_dir) / '.sos' /
+                                 '.runtime' / f'{self.sig_id}.exe_info')
 
     def __getstate__(self):
         return {'step_md5': self.step_md5,
@@ -925,8 +951,8 @@ class RuntimeInfo:
         if self.external_output:
             self.proc_info = str(path('~') / '.sos' / '.runtime' / f'{self.sig_id}.exe_info')
         else:
-            self.proc_info = str(path(env.exec_dir) / '.sos' / '.runtime' / f'{self.sig_id}.exe_info')
-
+            self.proc_info = str(path(env.exec_dir) / '.sos' /
+                                 '.runtime' / f'{self.sig_id}.exe_info')
 
     def lock(self):
         # we will need to lock on a file that we do not really write to
@@ -945,7 +971,8 @@ class RuntimeInfo:
                 env.logger.trace(f'Lock released for output files {short_repr(self.output_files)}')
             except Exception as e:
                 if not quiet:
-                    env.logger.warning(f'Unable to release lock for output files {self.output_files}: {e}')
+                    env.logger.warning(
+                        f'Unable to release lock for output files {self.output_files}: {e}')
             finally:
                 self._lock = None
 
@@ -979,7 +1006,8 @@ class RuntimeInfo:
                 elif not rebuild and f.target_exists('signature'):
                     md5.write(f'{f}\t{f.target_signature()}\n')
                 else:
-                    env.logger.warning(f'Failed to create signature: input target {f} does not exist')
+                    env.logger.warning(
+                        f'Failed to create signature: input target {f} does not exist')
                     return False
             md5.write('# output\n')
             for f in self.output_files:
@@ -990,7 +1018,8 @@ class RuntimeInfo:
                 elif not rebuild and f.target_exists('signature'):
                     md5.write(f'{f}\t{f.target_signature()}\n')
                 else:
-                    env.logger.warning(f'Failed to create signature: output target {f} does not exist')
+                    env.logger.warning(
+                        f'Failed to create signature: output target {f} does not exist')
                     return False
             md5.write('# dependent\n')
             for f in self.dependent_files:
@@ -1001,7 +1030,8 @@ class RuntimeInfo:
                 elif not rebuild and f.target_exists('signature'):
                     md5.write(f'{f}\t{f.target_signature()}\n')
                 else:
-                    env.logger.warning(f'Failed to create signature: dependent target {f} does not exist')
+                    env.logger.warning(
+                        f'Failed to create signature: dependent target {f} does not exist')
                     return False
             # context that will be needed for validation
             md5.write('# init context\n')
@@ -1014,7 +1044,8 @@ class RuntimeInfo:
                         if var_expr:
                             md5.write(var_expr)
                     except Exception:
-                        env.logger.debug(f'Variable {var} of value {short_repr(value)} is ignored from step signature')
+                        env.logger.debug(
+                            f'Variable {var} of value {short_repr(value)} is ignored from step signature')
             # context used to return context
             md5.write('# end context\n')
             for var in sorted(self.signature_vars.keys()):
@@ -1024,7 +1055,8 @@ class RuntimeInfo:
                     try:
                         md5.write(save_var(var, value))
                     except Exception:
-                        env.logger.debug(f'Variable {var} of value {short_repr(value)} is ignored from step signature')
+                        env.logger.debug(
+                            f'Variable {var} of value {short_repr(value)} is ignored from step signature')
             md5.write('# step process\n')
             md5.write(self.script)
             md5.write('# step process\n')
@@ -1064,7 +1096,8 @@ class RuntimeInfo:
             if not x.target_exists('any'):
                 return f'Missing target {x}'
         #
-        files_checked = {x.target_name():False for x in sig_files if not isinstance(x, Undetermined)}
+        files_checked = {
+            x.target_name(): False for x in sig_files if not isinstance(x, Undetermined)}
         res = {'input': [], 'output': [], 'depends': [], 'vars': {}}
         cur_type = 'input'
         with open(self.proc_info) as md5:
@@ -1100,7 +1133,8 @@ class RuntimeInfo:
                             if env.sos_dict[key] != value:
                                 return f'Context variable {key} value mismatch: {short_repr(value)} saved, {short_repr(env.sos_dict[key])} current'
                         except Exception as e:
-                            env.logger.debug(f"Variable {key} of type {type(value).__name__} cannot be compared: {e}")
+                            env.logger.debug(
+                                f"Variable {key} of type {type(value).__name__} cannot be compared: {e}")
                     except Exception as e:
                         env.logger.warning(f'Failed to restore variable {key} from signature: {e}')
                     continue
@@ -1138,7 +1172,8 @@ class RuntimeInfo:
                         fmd5 = freal.target_signature()
                     else:
                         return f'File {f} not exist'
-                    res[cur_type].append(freal.target_name() if isinstance(freal, file_target) else freal)
+                    res[cur_type].append(freal.target_name() if isinstance(
+                        freal, file_target) else freal)
                     if fmd5 != m.strip():
                         return f'File has changed {f}'
                     files_checked[freal.target_name()] = True

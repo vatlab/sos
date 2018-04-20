@@ -1,42 +1,26 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (SoS), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 
 import os
+import shutil
+import subprocess
 import sys
 import unittest
-import shutil
 
+from sos.eval import interpolate
 from sos.parser import SoS_Script
+from sos.targets import file_target, path, paths, sos_targets
 from sos.utils import env
 from sos.workflow_executor import Base_Executor
-from sos.targets import path, paths, file_target, sos_targets
-from sos.eval import interpolate
-import subprocess
+
 
 class TestTarget(unittest.TestCase):
     def setUp(self):
         env.reset()
         subprocess.call('sos remove -s', shell=True)
-        #self.resetDir('~/.sos')
+        # self.resetDir('~/.sos')
         self.temp_files = []
 
     def tearDown(self):
@@ -63,21 +47,21 @@ class TestTarget(unittest.TestCase):
                 (sos_targets('/a/b/a.txt'), 'b', 'a.txt'),
                 (sos_targets('a b.txt'), 'q', ("'a b.txt'", '"a b.txt"')),
                 (sos_targets('a b.txt'), 'x', ".txt"),
-                ]:
+        ]:
             if isinstance(res, str):
                 self.assertEqual(
                     interpolate('{{target:{}}}'.format(fmt), globals(), locals()), res,
-                        "Interpolation of {}:{} should be {}".format(target, fmt, res))
+                    "Interpolation of {}:{} should be {}".format(target, fmt, res))
             else:
                 self.assertTrue(
                     interpolate('{{target:{}}}'.format(fmt), globals(), locals()) in res,
-                        "Interpolation of {}:{} should be one of {}".format(target, fmt, res))
+                    "Interpolation of {}:{} should be one of {}".format(target, fmt, res))
 
     def testIterTargets(self):
         '''Test iterator interface of targets'''
         t = sos_targets('1', '2', ['3', '4'])
         self.assertEqual(len(t), 4)
-        for idx,i in enumerate(t):
+        for idx, i in enumerate(t):
             self.assertEqual(str(i), str(idx + 1))
 
     def resetDir(self, dirname):
@@ -177,15 +161,14 @@ a = 5
 #        '''Test section option workdir'''
 #        script = SoS_Script(r"""
 #
-#[1: workdir='tmp']
-#run:
+# [1: workdir='tmp']
+# run:
 #    touch 'a.txt'
-#""")
+# """)
 #        wf = script.workflow()
 #        Base_Executor(wf).run()
 #        self.assertTrue(os.path.isfile('tmp/a.txt'))
 #        shutil.rmtree('tmp')
-
 
     def testDependsExecutable(self):
         '''Testing target executable.'''
@@ -222,7 +205,6 @@ run:
         env.config['sig_mode'] = 'default'
         Base_Executor(wf).run()
         file_target('lls').remove('both')
-
 
     def testDependsEnvVariable(self):
         '''Testing target env_variable.'''
@@ -376,7 +358,6 @@ run:
         for file in ['t1.txt', 't2.txt', '5.txt', '10.txt', '20.txt']:
             self.assertTrue(file_target(file).target_exists(), file + ' should exist')
             file_target(file).remove('both')
-
 
     def testZap(self):
         '''Test zap'''

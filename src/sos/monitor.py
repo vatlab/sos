@@ -1,31 +1,17 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (SoS), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 import os
-import psutil
+import stat
 import threading
 import time
 from datetime import datetime
-import stat
+
+import psutil
+
 from .utils import env, expand_time, format_HHMMSS
+
 
 class ProcessMonitor(threading.Thread):
     def __init__(self, task_id, monitor_interval, resource_monitor_interval, max_walltime=None, max_mem=None, max_procs=None):
@@ -40,7 +26,8 @@ class ProcessMonitor(threading.Thread):
             self.max_walltime = expand_time(self.max_walltime)
         self.max_mem = max_mem
         self.max_procs = max_procs
-        self.pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.pulse')
+        self.pulse_file = os.path.join(os.path.expanduser(
+            '~'), '.sos', 'tasks', task_id + '.pulse')
         # remove previous status file, which could be readonly if the job is killed
         if os.path.isfile(self.pulse_file):
             if not os.access(self.pulse_file, os.W_OK):
@@ -65,12 +52,12 @@ class ProcessMonitor(threading.Thread):
         return par_cpu, par_mem, n_children, ch_cpu, ch_mem
 
     def _exceed_resource(self, msg):
-        err_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.task_id + '.err')
+        err_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.task_id + '.err')
         with open(err_file, 'a') as err:
             err.write(msg + '\n')
         # kill the task
         from stat import S_IREAD, S_IRGRP, S_IROTH
-        os.chmod(self.pulse_file, S_IREAD|S_IRGRP|S_IROTH)
+        os.chmod(self.pulse_file, S_IREAD | S_IRGRP | S_IROTH)
         p = psutil.Process(self.pid)
         p.kill()
 
@@ -107,9 +94,10 @@ class ProcessMonitor(threading.Thread):
                 # if the process died, exit the thread
                 # the warning message is usually:
                 # WARNING: psutil.NoSuchProcess no process found with pid XXXXX
-                #env.logger.warning(e)
+                # env.logger.warning(e)
                 env.logger.debug(f'Monitor of {self.task_id} failed with message {e}')
                 break
+
 
 def summarizeExecution(task_id, status='Unknown'):
     pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.pulse')
@@ -157,14 +145,11 @@ def summarizeExecution(task_id, status='Unknown'):
         ('nproc', str(peak_nch)),
         ('start', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))),
         ('end', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(end_time))),
-        ('duration', ('' if second_elapsed < 86400 else f'{int(second_elapsed/86400)} day{"s" if second_elapsed > 172800 else ""} ') + \
+        ('duration', ('' if second_elapsed < 86400 else f'{int(second_elapsed/86400)} day{"s" if second_elapsed > 172800 else ""} ') +
          time.strftime('%H:%M:%S', time.gmtime(second_elapsed))),
         ('cpu_peak', f'{peak_cpu:.1f}'),
         ('cpu_avg', f'{0 if count == 0 else accu_cpu/count:.1f}'),
         ('mem_peak', f'{peak_mem/1024/1024:.1f}Mb'),
         ('mem_avg', f'{0 if count == 0 else accu_mem/1024/1024/count:.1f}Mb')
-        ]
+    ]
     return '\n'.join(f'{x:20s} {y}' for x, y in result)
-
-
-

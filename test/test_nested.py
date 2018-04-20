@@ -1,34 +1,17 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (SoS), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
-
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 import os
-import unittest
 import shutil
 import subprocess
+import unittest
 
-from sos.utils import env
 from sos.parser import SoS_Script
-from sos.workflow_executor import Base_Executor, ExecuteError
 from sos.targets import file_target
+from sos.utils import env
+from sos.workflow_executor import Base_Executor, ExecuteError
+
 
 class TestNested(unittest.TestCase):
     def setUp(self):
@@ -121,7 +104,7 @@ sos_run('a+b', shared=['executed', 'inputs'])
         Base_Executor(wf).run()
         # order of execution is not guaranteed
         self.assertEqual(sorted(env.sos_dict['executed']), sorted(['c_0', 'a_1', 'a_2', 'a_3', 'a_4',
-            'b_1', 'b_2', 'b_3', 'b_4']))
+                                                                   'b_1', 'b_2', 'b_3', 'b_4']))
         # step will be looped
         self.touch(['a.txt', 'b.txt'])
         script = SoS_Script('''
@@ -237,7 +220,7 @@ sos_run('a+b', shared='executed')
         wf = script.workflow('c')
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['c_0', 'c_1', 'a_1', 'a_2', 'a_3',
-            'b_1', 'b_2', 'a_1', 'a_2'])
+                                                    'b_1', 'b_2', 'a_1', 'a_2'])
         #
         #
         # nested subworkflow with step option and others
@@ -301,7 +284,7 @@ sos_run(wf, shared='executed')
 ''')
         wf = script.workflow()
         Base_Executor(wf, args=['--wf', 'b']).run()
-        self.assertEqual(env.sos_dict['executed'], [ 'default_0', 'b_1', 'b_2', 'b_3'])
+        self.assertEqual(env.sos_dict['executed'], ['default_0', 'b_1', 'b_2', 'b_3'])
         #
         Base_Executor(wf, args=['--wf', 'a']).run()
         self.assertEqual(env.sos_dict['executed'], ['default_0', 'a_1', 'a_2', 'a_3'])
@@ -366,10 +349,10 @@ sos_run('k.A', shared='executed')
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['k'].GLB, 5)
         self.assertEqual(env.sos_dict['k'].parB, 10)
-        self.assertEqual(env.sos_dict['executed'], ['g.b_1', 't.k.A_1', 't.k.A_2', 't.k.A_1', 't.k.A_2'])
+        self.assertEqual(env.sos_dict['executed'], [
+                         'g.b_1', 't.k.A_1', 't.k.A_2', 't.k.A_1', 't.k.A_2'])
         #
         os.remove('inc.sos')
-
 
     def testSoSRun(self):
         '''Test action sos_run with keyword parameters'''
@@ -471,7 +454,6 @@ for i in range(3):
             self.assertTrue(file_target(f).target_exists())
             file_target(f).remove('both')
 
-
     def testPassingVarsToNestedWorkflow(self):
         '''Test if variables can be passed to nested workflows'''
         script = SoS_Script(r"""
@@ -530,7 +512,6 @@ myfunc()
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['test'], ['a45'])
 
-
     def testConfigFileOfNestedWorkflow(self):
         '''Test passing of configurationg to nested workflow'''
         script = SoS_Script('''
@@ -545,7 +526,6 @@ sos_run('test:1', key = '1')
             conf.write("""{'1':'hi'}""")
         wf = script.workflow()
         Base_Executor(wf, config={'config_file': 'test.conf'}).run()
-
 
     def testErrorFromSubworkflow(self):
         '''Test if error from subworkflow is passed to master (#396)'''
@@ -585,7 +565,8 @@ sos_run('mse')
         sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
         shutil.copy(sos_config_file, 'test.yml')
         #
-        subprocess.call('sos config --set sos_path {0}/crazy_path {0}/crazy_path/more_crazy/'.format(os.getcwd()), shell=True)
+        subprocess.call(
+            'sos config --set sos_path {0}/crazy_path {0}/crazy_path/more_crazy/'.format(os.getcwd()), shell=True)
         #
         if not os.path.isdir('crazy_path'):
             os.mkdir('crazy_path')
@@ -609,7 +590,6 @@ print('hay, I am crazy')
         os.remove(sos_config_file)
         shutil.copy('test.yml', sos_config_file)
 
-
     def testNestedWorkdir(self):
         '''Test nested runtime option for work directory'''
         if os.path.isdir('tmp'):
@@ -629,7 +609,6 @@ sos_run('step', workdir='tmp')
         os.path.isfile('tmp/tmp/a.txt')
         shutil.rmtree('tmp')
 
-
     def testFailureOfNestedWorkflow(self):
         '''Test failure of nested workflow #838'''
         if os.path.isfile('a.txt'):
@@ -644,7 +623,6 @@ sos_run('something')
         wf = script.workflow()
         # this should be ok.
         self.assertRaises(Exception, Base_Executor(wf).run)
-
 
     def testNestedFromAnotherFile(self):
         '''Test nested runtime option for work directory'''
@@ -664,10 +642,11 @@ sos_run('whatever', source='another.sos')
         wf = script.workflow()
         # this should be ok.
         Base_Executor(wf).run()
-        self.assertTrue(os.path.isfile('a.txt'), 'a.txt should have been created by nested workflow from another file')
+        self.assertTrue(os.path.isfile('a.txt'),
+                        'a.txt should have been created by nested workflow from another file')
 
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
-    #unittest.TextTestRunner(, suite).run()
+    # unittest.TextTestRunner(, suite).run()
     unittest.main()

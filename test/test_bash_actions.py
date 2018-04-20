@@ -1,33 +1,16 @@
 #!/usr/bin/env python
 #
-# This file is part of Script of Scripts (SoS), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
-
-import unittest
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 import os
 import shutil
+import unittest
 
 from sos.parser import SoS_Script
+from sos.targets import file_target
 from sos.utils import env
 from sos.workflow_executor import Base_Executor, ExecuteError
-from sos.targets import file_target
+
 
 class TestActions(unittest.TestCase):
     def setUp(self):
@@ -83,7 +66,6 @@ echo 'Echo
         wf = script.workflow()
         self.assertRaises(ExecuteError, Base_Executor(wf).run)
 
-
     def testCsh(self):
         '''Test action csh'''
         if not shutil.which('csh'):
@@ -135,6 +117,7 @@ sh: args='-n {filename:q}'
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertFalse(os.path.exists('a.txt'))
+
 
 if __name__ == '__main__':
     unittest.main()

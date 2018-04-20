@@ -1,57 +1,45 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (sos), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-##
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
-import re
-import os
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 import ast
 import copy
 import fnmatch
-import textwrap
+import glob
+import os
+import re
 import shutil
-import types
-
 # used by structural directive
 import sys
-assert sys
-import glob
-assert glob
-
+import textwrap
+import types
 from io import StringIO
 from tokenize import generate_tokens
 from uuid import uuid4
 
-from .utils import env, Error, locate_script, text_repr
 from .eval import on_demand_options
-from .targets import textMD5, file_target, sos_targets, path, paths
-from .syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
-    SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
-    SOS_SUBWORKFLOW, SOS_INCLUDE, SOS_FROM_INCLUDE, SOS_AS, SOS_STRU, SOS_IF, \
-    SOS_ELIF, SOS_ELSE, SOS_ENDIF, SOS_CELL, SOS_MAGIC, INDENTED
+from .syntax import (INDENTED, SOS_AS, SOS_CELL, SOS_DIRECTIVE, SOS_DIRECTIVES,
+                     SOS_ELIF, SOS_ELSE, SOS_ENDIF, SOS_FORMAT_LINE,
+                     SOS_FORMAT_VERSION, SOS_FROM_INCLUDE, SOS_IF, SOS_INCLUDE,
+                     SOS_MAGIC, SOS_SECTION_HEADER, SOS_SECTION_NAME,
+                     SOS_SECTION_OPTION, SOS_STRU, SOS_SUBWORKFLOW)
+from .targets import file_target, path, paths, sos_targets, textMD5
+from .utils import Error, env, locate_script, text_repr
+
+assert sys
+assert glob
+
+
 
 __all__ = ['SoS_Script']
 
+
 class ParsingError(Error):
     '''Raised when a configuration file does not follow legal syntax.'''
+
     def __init__(self, filename):
-        Error.__init__(self, f'File contains parsing errors: {filename if filename != "<string>" else ""}')
+        Error.__init__(
+            self, f'File contains parsing errors: {filename if filename != "<string>" else ""}')
         self.filename = filename
         self.errors = []
         self.args = (filename, )
@@ -62,10 +50,11 @@ class ParsingError(Error):
         self.errors.append((lineno, line))
         self.message += f'\n\t[line {lineno:2d}]: {line}\n{msg}'
 
+
 def get_type_hint(stmt):
     try:
         ns = {'file_target': file_target, 'sos_targets': sos_targets,
-                'path': path, 'paths': paths}
+              'path': path, 'paths': paths}
         # let us grab the part before =
         exec(stmt.split('=', 1)[0], ns)
         # if it can compile, it can be typetrait, or something like
@@ -83,22 +72,27 @@ def get_type_hint(stmt):
         # python: args='whatever'
         return None
 
+
 def extract_option_from_arg_list(options, optname, default_value):
     if not options:
         return default_value, options
     try:
         args = list(ast.iter_fields(ast.parse(f"f({options})", mode='eval')))[0][1].keywords
-        for idx,field in enumerate(args):
+        for idx, field in enumerate(args):
             if field.arg == optname:
                 try:
-                    value = eval(compile(ast.Expression(body=field.value), filename="<ast>", mode="eval"))
-                    new_options = ','.join([x for x in options.split(',') if not x.strip().startswith(optname)])
+                    value = eval(compile(ast.Expression(body=field.value),
+                                         filename="<ast>", mode="eval"))
+                    new_options = ','.join([x for x in options.split(
+                        ',') if not x.strip().startswith(optname)])
                     return value, new_options.strip()
                 except:
-                    raise ValueError(f"A constant value is expected for option {optname}: {options} provided.")
+                    raise ValueError(
+                        f"A constant value is expected for option {optname}: {options} provided.")
         return default_value, options
     except SyntaxError as e:
         raise ValueError(f"Expect a list of keyword arguments: {options} provided")
+
 
 def separate_options(options):
     pieces = options.split(',')
@@ -106,7 +100,8 @@ def separate_options(options):
     while True:
         try:
             # test current group
-            compile(pieces[idx].strip(), filename = '<string>', mode='exec' if '=' in pieces[idx] else 'eval')
+            compile(pieces[idx].strip(), filename='<string>',
+                    mode='exec' if '=' in pieces[idx] else 'eval')
             # if it is ok, go next
             idx += 1
             if idx == len(pieces):
@@ -122,19 +117,20 @@ def separate_options(options):
                 if idx == 0:
                     raise ValueError('Invalid section option')
                 # break myself again
-                pieces = pieces[: idx] + pieces[idx].split(',') + pieces[idx+1:]
+                pieces = pieces[: idx] + pieces[idx].split(',') + pieces[idx + 1:]
                 # go back
                 idx -= 1
                 pieces[idx] += '\n' + pieces[idx + 1]
-                pieces.pop(idx+1)
+                pieces.pop(idx + 1)
     return pieces
+
 
 def replace_sigil(text, sigil):
     if sigil == '{ }':
         return text
-    if sigil is not None and (sigil.count(' ') != 1 or sigil[0] in (' ', "'") or \
-        sigil[-1] in (' ', "'") or \
-        sigil.split(' ')[0] == sigil.split(' ')[1]):
+    if sigil is not None and (sigil.count(' ') != 1 or sigil[0] in (' ', "'") or
+                              sigil[-1] in (' ', "'") or
+                              sigil.split(' ')[0] == sigil.split(' ')[1]):
         raise ValueError(f'Incorrect sigil "{sigil}"')
     # then we need to replace left sigil as { and right sigil asn }
     l, r = sigil.split(' ')
@@ -161,11 +157,11 @@ def replace_sigil(text, sigil):
     return final_text
 
 
-
 class SoS_Step:
     '''Parser of a SoS step. This class accepts strings sent by the parser, determine
     their types and add them to appropriate sections (directive, statement,
     scripts etc) '''
+
     def __init__(self, context=None, names=None, options=None, is_global=False):
         '''A sos step '''
         self.context = context
@@ -201,7 +197,7 @@ class SoS_Step:
     def has_external_task(self):
         return self.task != ''
 
-    def step_name(self, alias = False):
+    def step_name(self, alias=False):
         if not self.name:
             n, i, a = self.names[0]
             if alias and a:
@@ -240,7 +236,8 @@ class SoS_Step:
                     if self.values[-1].strip().endswith(','):
                         return False
                     try:
-                        compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
+                        compile('func(' + ''.join(self.values) + ')',
+                                filename='<string>', mode='eval')
                     except Exception:
                         return False
                     return True
@@ -277,7 +274,8 @@ class SoS_Step:
                 try:
                     compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
                 except:
-                    compile('def func(' + ''.join(self.values) + '):\n  pass', filename='<string>', mode='exec')
+                    compile('def func(' + ''.join(self.values) + '):\n  pass',
+                            filename='<string>', mode='exec')
             elif self.category() == 'statements':
                 compile((''.join(self.values)), filename='<string>', mode='exec')
             elif self.category() == 'script':
@@ -389,7 +387,8 @@ class SoS_Step:
             else:
                 prefix = 'f'
                 self._script = replace_sigil(self._script, sigil)
-        self.statements[-1] = ['!', f'{self._action}({prefix}{self._script}{(", " + opt) if opt else ""})\n']
+        self.statements[-1] = ['!',
+                               f'{self._action}({prefix}{self._script}{(", " + opt) if opt else ""})\n']
         self.values = []
         self._action = None
         self._action_options = None
@@ -426,7 +425,8 @@ class SoS_Step:
                 if '=' not in statement[2]:
                     if ':' in statement[2]:
                         if not get_type_hint(statement[2]):
-                            raise ValueError(f'Invalid type trait in parameter specification {statement[2]}')
+                            raise ValueError(
+                                f'Invalid type trait in parameter specification {statement[2]}')
                         name, value = statement[2].split(':')
                     else:
                         name = statement[2]
@@ -437,16 +437,19 @@ class SoS_Step:
                     name = name.split(':')[0]
                 name = name.strip()
                 if name.startswith('_'):
-                    raise ValueError(f'Invalid parameter name {name}: names with leading underscore is not allowed.')
+                    raise ValueError(
+                        f'Invalid parameter name {name}: names with leading underscore is not allowed.')
                 if name in SOS_DIRECTIVES:
                     raise ValueError(f'Invalid parameter name {name}: {name} is a SoS keyword')
                 if not value.strip():
-                    raise ValueError(f'{self.step_name()}: Invalid parameter definition: {statement[2]}')
+                    raise ValueError(
+                        f'{self.step_name()}: Invalid parameter definition: {statement[2]}')
                 self.statements[idx] = ['!',
                                         f'if "sos_handle_parameter_" in globals():\n    {name} = sos_handle_parameter_({name.strip()!r}, {value})\n', statement[2].strip()]
                 self.parameters[name] = value
         # handle tasks
-        task_directive = [idx for idx, statement in enumerate(self.statements) if statement[0] == ':' and statement[1] == 'task']
+        task_directive = [idx for idx, statement in enumerate(
+            self.statements) if statement[0] == ':' and statement[1] == 'task']
         if not task_directive:
             self.task = ''
         else:
@@ -456,11 +459,14 @@ class SoS_Step:
             for statement in self.statements[start_task:]:
                 if statement[0] == ':':
                     if statement[1] in ('input', 'output', 'depends'):
-                        raise ValueError(f'{self.step_name()}: Step task should be defined as the last item in a SoS step')
+                        raise ValueError(
+                            f'{self.step_name()}: Step task should be defined as the last item in a SoS step')
                     elif statement[1] == 'task':
-                        raise ValueError(f'{self.step_name()}: Only one task is allowed for a step')
+                        raise ValueError(
+                            f'{self.step_name()}: Only one task is allowed for a step')
                     elif statement[1] == 'parameter':
-                        raise ValueError(f'{self.step_name()}: Parameters should be defined before step task')
+                        raise ValueError(
+                            f'{self.step_name()}: Parameters should be defined before step task')
                     # ignore ...
                     self.task += '\n'
                 else:
@@ -469,7 +475,7 @@ class SoS_Step:
         # merge multiple statments at the end
         if self.statements[-1][0] == '!' and len(self.statements) > 1:
             starting = len(self.statements) - 1
-            for idx in range(starting-1,-1,-1):
+            for idx in range(starting - 1, -1, -1):
                 if self.statements[idx][0] == '!':
                     starting = idx
                 else:
@@ -488,14 +494,13 @@ class SoS_Step:
             try:
                 plain_output = eval(output_stmt)
                 if isinstance(plain_output, str) or \
-                    (isinstance(plain_output, (list, tuple, set)) and \
-                            all(isinstance(x, str) for x in plain_output)):
+                    (isinstance(plain_output, (list, tuple, set)) and
+                     all(isinstance(x, str) for x in plain_output)):
                     self.options['autoprovides'] = output_stmt
             except:
                 # if otuput has options and rely on anything, it cannot be treated as
                 # auto output
                 pass
-
 
     def show(self):
         '''Output for command sos show'''
@@ -503,9 +508,9 @@ class SoS_Step:
         text = f'  {self.step_name() + ":":<20} ' + self.comment
         print('\n'.join(
             textwrap.wrap(text,
-                width=textWidth,
-                initial_indent='',
-                subsequent_indent=' '*22)))
+                          width=textWidth,
+                          initial_indent='',
+                          subsequent_indent=' ' * 22)))
         for statement in self.statements:
             if statement[0] == '!' and statement[1].startswith('if "sos_handle_parameter_" '):
                 print(f'    Parameter: {statement[2]}')
@@ -514,6 +519,7 @@ class SoS_Step:
 class SoS_Workflow:
     '''A SoS workflow with multiple steps. It is created from multiple sections of a SoS script
     and consists of multiple SoS_Step.'''
+
     def __init__(self, content, workflow_name, allowed_steps, sections, global_def):
         '''create a workflow from its name and a list of SoS_Sections (using name matching)'''
         self.content = content
@@ -524,7 +530,7 @@ class SoS_Workflow:
         #
         for section in sections:
             for name, index, alias in section.names:
-                #if 'provides' in section.options or 'shared' in section.options:
+                # if 'provides' in section.options or 'shared' in section.options:
                 self.auxiliary_sections.append(section)
                 self.auxiliary_sections[-1].name = section.names[0][0]
                 self.auxiliary_sections[-1].index = None if index is None else int(index)
@@ -544,7 +550,7 @@ class SoS_Workflow:
         #
         # disable some disallowed steps
         if allowed_steps:
-            all_steps = {x.index:False for x in self.sections if x.index >= 0}
+            all_steps = {x.index: False for x in self.sections if x.index >= 0}
             #
             for item in allowed_steps.split(','):
                 # remove space
@@ -555,7 +561,7 @@ class SoS_Workflow:
                 elif '-' in item and item.count('-') == 1:
                     l, u = item.split('-')
                     if (l and not l.isdigit()) or (u and not u.isdigit()) or \
-                        (l and u and int(l) > int(u)):
+                            (l and u and int(l) > int(u)):
                         raise ValueError(f'Invalid pipeline step item {item}')
                     # pipeline:-100, pipeline:100+ or pipeline:10-100
                     if not l:
@@ -572,9 +578,9 @@ class SoS_Workflow:
             self.sections = [x for x in self.sections if x.index < 0 or all_steps[x.index]]
         #
         env.logger.debug('Workflow {} created with {} sections: {}'
-            .format(workflow_name, len(self.sections),
-            ', '.join(f'{section.name}_{"global" if section.index == -2 else section.index}'
-                      for section in self.sections)))
+                         .format(workflow_name, len(self.sections),
+                                 ', '.join(f'{section.name}_{"global" if section.index == -2 else section.index}'
+                                           for section in self.sections)))
 
     def section_by_id(self, uuid):
         for section in self.sections:
@@ -592,7 +598,7 @@ class SoS_Workflow:
 
     def has_external_task(self):
         return any(x.has_external_task() for x in self.sections) or \
-                any(x.has_external_task() for x in self.auxiliary_sections)
+            any(x.has_external_task() for x in self.auxiliary_sections)
 
     def parameters(self):
         # collect parameters defined by `parameter:` of steps
@@ -601,9 +607,11 @@ class SoS_Workflow:
             par.update(x.parameters)
         return par
 
+
 class SoS_ScriptContent:
     '''A small class to record the script information to be used by nested
     workflow.'''
+
     def __init__(self, content='', filename=None):
         self.content = content
         self.filename = filename
@@ -633,12 +641,12 @@ class SoS_ScriptContent:
     def __repr__(self):
         return f'{self.md5}: filename: {self.filename}, content: {self.content}'
 
-
     def __eq__(self, other):
         return self.md5 == other.md5
 
     def __ne__(self, other):
         return self.md5 != other.md5
+
 
 class SoS_Script:
     def __init__(self, content='', filename=None, transcript=None):
@@ -669,10 +677,12 @@ class SoS_Script:
                     except Exception:
                         if not filename.endswith('.ipynb'):
                             try:
-                                content, self.sos_script = locate_script(filename + '.ipynb', start='.')
+                                content, self.sos_script = locate_script(
+                                    filename + '.ipynb', start='.')
                             except Exception as e:
                                 env.logger.debug(e)
-                                env.logger.error(f'Failed to locate {filename}, {filename}.sos, or {filename}.ipynb')
+                                env.logger.error(
+                                    f'Failed to locate {filename}, {filename}.sos, or {filename}.ipynb')
                                 sys.exit(1)
                         else:
                             raise
@@ -707,8 +717,8 @@ class SoS_Script:
         #
         # workflows in this script, from sections that are not skipped.
         all_section_steps = sum([x.names for x in self.sections], [])
-        forward_section_steps = sum([x.names for x in self.sections if \
-            not any(opt in x.options for opt in ('provides', 'shared'))], [])
+        forward_section_steps = sum([x.names for x in self.sections if
+                                     not any(opt in x.options for opt in ('provides', 'shared'))], [])
         # (name, None) is auxiliary steps
         self.workflows = list(set([x[0] for x in all_section_steps if '*' not in x[0]]))
         forward_workflows = list(set([x[0] for x in forward_section_steps if '*' not in x[0]]))
@@ -756,7 +766,8 @@ class SoS_Script:
         # section names are changed from A to sos_file.A
         for section in script.sections:
             for idx in range(len(section.names)):
-                section.names[idx] = [alias + '.' + section.names[idx][0]] + list(section.names[idx][1:])
+                section.names[idx] = [alias + '.' + section.names[idx][0]] + \
+                    list(section.names[idx][1:])
         # The global definition of sos_file should be accessible as
         # sos_file.name
         self.sections.extend(script.sections)
@@ -819,7 +830,8 @@ for __n, __v in {repr(name_map)}.items():
 
                 if SOS_INCLUDE.match(line) or SOS_FROM_INCLUDE.match(line):
                     if cursect is not None:
-                        parsing_errors.append(lineno, line, 'include magic can only be defined before any other statemetns.')
+                        parsing_errors.append(
+                            lineno, line, 'include magic can only be defined before any other statemetns.')
 
                     # handle import
                     mo = SOS_INCLUDE.match(line)
@@ -837,7 +849,8 @@ for __n, __v in {repr(name_map)}.items():
                             for wf in mo.group('names').split(','):
                                 ma = SOS_AS.match(wf.strip())
                                 if not ma:
-                                    parsing_errors.append(lineno, line, f'unacceptable include name "{wf}"')
+                                    parsing_errors.append(
+                                        lineno, line, f'unacceptable include name "{wf}"')
                                 else:
                                     name_map[ma.group('name')] = ma.group('alias')
                         self._include_content(sos_file, name_map=name_map)
@@ -901,7 +914,8 @@ for __n, __v in {repr(name_map)}.items():
                     continue
 
                 else:
-                    parsing_errors.append(lineno, line, f'Unrecognized SoS magic statement: {line}')
+                    parsing_errors.append(
+                        lineno, line, f'Unrecognized SoS magic statement: {line}')
                     continue
 
             if condition_ignore:
@@ -1028,17 +1042,20 @@ for __n, __v in {repr(name_map)}.items():
                     if mo:
                         n, i, di, al = mo.group('name', 'index', 'default_index', 'alias')
                         if n == 'global' and i is not None:
-                            parsing_errors.append(lineno, line, 'Invalid global section definition')
+                            parsing_errors.append(
+                                lineno, line, 'Invalid global section definition')
                         if n:
                             if i is None and '*' in n:
-                                parsing_errors.append(lineno, line, 'Unindexed section name cannot contain wildcard character (*).')
+                                parsing_errors.append(
+                                    lineno, line, 'Unindexed section name cannot contain wildcard character (*).')
                             step_names.append([n, i, al])
                         if di:
                             step_names.append(['default', di, al])
                     else:
                         parsing_errors.append(lineno, line, 'Invalid section name')
                 if 'global' in [x[0] for x in step_names] and len(step_names) > 1:
-                    parsing_errors.append(lineno, line, 'Global section cannot be shared with another step')
+                    parsing_errors.append(
+                        lineno, line, 'Global section cannot be shared with another step')
                 if section_option is not None:
                     # this does not work directly because list parameter can have ,
                     # without having to really evaluate all complex expressions, we
@@ -1057,7 +1074,7 @@ for __n, __v in {repr(name_map)}.items():
                     except Exception as e:
                         parsing_errors.append(lineno, line, e)
                     env.logger.trace('Header parsed with names {} and options {}'
-                        .format(step_names, step_options))
+                                     .format(step_names, step_options))
                 for name in step_names:
                     prev_workflows = [x[0] for x in all_step_names if '*' not in x[0]]
                     for prev_name in all_step_names:
@@ -1069,11 +1086,13 @@ for __n, __v in {repr(name_map)}.items():
                             continue
                         # index equal and one of them have wild card character
                         if '*' in name[0]:
-                            names = [x for x in prev_workflows if re.match(name[0].replace('*', '.*'), x)]
+                            names = [x for x in prev_workflows if re.match(
+                                name[0].replace('*', '.*'), x)]
                         else:
                             names = [name[0]]
                         if '*' in prev_name:
-                            prev_names = [x for x in prev_workflows if re.match(prev_name[0].replace('*', '.*'), x)]
+                            prev_names = [x for x in prev_workflows if re.match(
+                                prev_name[0].replace('*', '.*'), x)]
                         else:
                             prev_names = [prev_name[0]]
                         if len(set(prev_names) & set(names)) and 'global' not in names:
@@ -1081,7 +1100,8 @@ for __n, __v in {repr(name_map)}.items():
                 all_step_names.extend(step_names)
                 if 'global' in [x[0] for x in step_names]:
                     if step_options:
-                        parsing_errors.append(lineno, line, 'Global section does not accept any option')
+                        parsing_errors.append(
+                            lineno, line, 'Global section does not accept any option')
                     self.sections.append(SoS_Step(is_global=True))
                 else:
                     self.sections.append(SoS_Step(self.content, step_names, step_options))
@@ -1197,21 +1217,21 @@ for __n, __v in {repr(name_map)}.items():
             for section in [x for x in self.sections if x.is_global]:
                 if self.sections[-1].task != '':
                     parsing_errors.append(cursect.lineno, 'Invalid section',
-                                'Cannot define multiple default sections with a task in between.')
+                                          'Cannot define multiple default sections with a task in between.')
                 self.sections[-1].statements.extend(section.statements)
                 self.sections[-1].task = section.task
                 self.global_def = ''
                 global_parameters.update(section.parameters)
             # The sections should have been finalized so there is no need to finalize
             # again. In particular, finalizing a section would reset existing task #833
-            #self.sections[-1].finalize()
+            # self.sections[-1].finalize()
         else:
             # as the last step, let us insert the global section to all sections
-            for idx,sec in [(idx,x) for idx,x in enumerate(self.sections) if x.is_global]:
+            for idx, sec in [(idx, x) for idx, x in enumerate(self.sections) if x.is_global]:
                 for statement in sec.statements:
                     if statement[0] == ':':
                         parsing_errors.append(cursect.lineno, f'{statement[1]}:{statement[2]}',
-                                'Global section cannot contain sos input, ouput, and task statements')
+                                              'Global section cannot contain sos input, ouput, and task statements')
                     else:
                         self.global_def += statement[1]
                 global_parameters.update(sec.parameters)
@@ -1236,7 +1256,7 @@ for __n, __v in {repr(name_map)}.items():
         workflow.'''
         if workflow_name is None and not use_default:
             return SoS_Workflow(self.content, '', '',
-                [section for section in self.sections if any(x in section.options for x in ('provides', 'shared', 'autoprovides'))], self.global_def)
+                                [section for section in self.sections if any(x in section.options for x in ('provides', 'shared', 'autoprovides'))], self.global_def)
         allowed_steps = None
         if not workflow_name:
             wf_name = ''
@@ -1270,13 +1290,14 @@ for __n, __v in {repr(name_map)}.items():
                 wf_name = self.default_workflow
             else:
                 raise ValueError('Name of workflow should be specified because '
-                    'the script defines more than one pipelines without a default one. '
-                    'Available pipelines are: {}.'.format(', '.join(self.workflows)))
+                                 'the script defines more than one pipelines without a default one. '
+                                 'Available pipelines are: {}.'.format(', '.join(self.workflows)))
         elif wf_name not in self.workflows:
-            raise ValueError(f'Workflow {wf_name} is undefined. Available workflows are: {", ".join(self.workflows)}')
+            raise ValueError(
+                f'Workflow {wf_name} is undefined. Available workflows are: {", ".join(self.workflows)}')
         # do not send extra parameters of ...
         #sections = []
-        #for section in self.sections:
+        # for section in self.sections:
         #    # skip, skip=True, skip=1 etc are all allowed.
         #    if 'provides' in section.options or 'shared' in section.options:
         #        # section global is shared by all workflows

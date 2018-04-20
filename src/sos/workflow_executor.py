@@ -1,43 +1,31 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (sos), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-##
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
+
+import keyword
+import multiprocessing as mp
 import os
 import sys
 import time
-import keyword
 import uuid
 from collections.abc import Sequence
-import multiprocessing as mp
+from io import StringIO
 
 from tqdm import tqdm as ProgressBar
-from io import StringIO
+
 from ._version import __version__
-from .step_executor import Step_Executor, analyze_section, PendingTasks
-from .utils import env, Error, WorkflowDict, get_traceback, short_repr, pickleable, \
-    load_config_files, save_var, load_var, SlotManager
-from .eval import SoS_exec
 from .dag import SoS_DAG
-from .targets import BaseTarget, path, file_target, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step, Undetermined
-from .pattern import extract_pattern
+from .eval import SoS_exec
 from .hosts import Host
+from .pattern import extract_pattern
+from .step_executor import PendingTasks, Step_Executor, analyze_section
+from .targets import (BaseTarget, RemovedTarget, UnavailableLock, Undetermined,
+                      UnknownTarget, file_target, path, sos_step, sos_variable,
+                      textMD5)
+from .utils import (Error, SlotManager, WorkflowDict, env, get_traceback,
+                    load_config_files, load_var, pickleable, save_var,
+                    short_repr)
 
 __all__ = []
 
@@ -48,9 +36,11 @@ try:
 except:
     pass
 
+
 class ExecuteError(Error):
     """An exception to collect exceptions raised during run time so that
     other branches of the DAG would continue if some nodes fail to execute."""
+
     def __init__(self, workflow):
         Error.__init__(self)
         self.workflow = workflow
@@ -71,6 +61,7 @@ class ExecuteError(Error):
         newline = '\n' if self.message else ''
         self.message += f'{newline}[{short_line}]: {error}'
 
+
 def __null_func__(*args, **kwargs):
     '''This function will be passed to SoS's namespace and be executed
     to evaluate functions of input, output, and depends directives.'''
@@ -86,10 +77,12 @@ def __null_func__(*args, **kwargs):
 
     return _flatten(args), kwargs
 
+
 class SoS_Worker(mp.Process):
     '''
     Worker process to process SoS step or workflow in separate process.
     '''
+
     def __init__(self,  pipe, config=None, args=None, **kwargs):
         '''
         cmd_queue: a single direction queue for the master process to push
@@ -129,7 +122,8 @@ class SoS_Worker(mp.Process):
 
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
-        self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(keyword.kwlist)
+        self._base_symbols = set(dir(__builtins__)) | set(
+            env.sos_dict['sos_symbols_']) | set(keyword.kwlist)
         # if users use sos_run, the "scope" of the step goes beyong names in this step
         # so we cannot save signatures for it.
         self._base_symbols -= {'dynamic', 'sos_run'}
@@ -166,7 +160,8 @@ class SoS_Worker(mp.Process):
         # we are in a separate process and need to set verbosity from workflow config
         # but some tests do not provide verbosity
         env.verbosity = config.get('verbosity', 2)
-        env.logger.debug(f'Worker {self.name} working on a workflow {workflow_id} with args {args}')
+        env.logger.debug(
+            f'Worker {self.name} working on a workflow {workflow_id} with args {args}')
         executer = Base_Executor(wf, args=args, shared=shared, config=config)
         # we send the pipe to subworkflow, which would send
         # everything directly to the master process, so we do not
@@ -175,7 +170,6 @@ class SoS_Worker(mp.Process):
             executer.run(targets=targets, parent_pipe=self.pipe, my_workflow_id=workflow_id)
         except Exception as e:
             self.pipe.send(e)
-
 
     def run_step(self, section, context, shared, args, run_mode, sig_mode, verbosity):
         env.logger.debug(f'Worker {self.name} working on {section.step_name()} with args {args}')
@@ -212,11 +206,13 @@ class SoS_Worker(mp.Process):
         executor = Step_Executor(section, self.pipe, mode=env.config['run_mode'])
         executor.run()
 
+
 class dummy_node:
     # a dummy node object to store information of node passed
     # from nested workflow
     def __init__(self):
         pass
+
 
 class ProcInfo(object):
     def __init__(self, worker, pipe, step):
@@ -235,6 +231,7 @@ class ProcInfo(object):
 
     def is_pending(self):
         return self.step._status.endswith('_pending')
+
 
 class ExecutionManager(object):
     # this class managers workers and their status ...
@@ -295,7 +292,7 @@ class ExecutionManager(object):
 
     def all_done_or_failed(self):
         return not self.procs or all(x.in_status('failed') for x in self.procs)
-    
+
     def mark_idle(self, idx):
         self.pool.append(self.procs[idx])
         self.procs[idx] = None
@@ -323,12 +320,13 @@ class ExecutionManager(object):
 class Base_Executor:
     '''This is the base class of all executor that provides common
     set up and tear functions for all executors.'''
+
     def __init__(self, workflow=None, args=None, shared=None, config=None):
         self.workflow = workflow
         self.args = [] if args is None else args
         if '__args__' not in self.args:
             # if there is __args__, this is a nested workflow and we do not test this.
-            for idx,arg in enumerate(self.args):
+            for idx, arg in enumerate(self.args):
                 wf_pars = self.workflow.parameters().keys()
                 if isinstance(arg, str) and arg.startswith('--'):
                     if not wf_pars:
@@ -348,7 +346,8 @@ class Base_Executor:
             if key not in self.config:
                 self.config[key] = None
         if self.config['config_file'] is not None:
-            self.config['config_file'] = os.path.abspath(os.path.expanduser(self.config['config_file']))
+            self.config['config_file'] = os.path.abspath(
+                os.path.expanduser(self.config['config_file']))
         #
         # if the executor is not called from command line, without sigmode setting
         if env.config['sig_mode'] is None:
@@ -364,9 +363,11 @@ class Base_Executor:
             with open(os.path.join(env.exec_dir, '.sos', f'{self.md5}.sig'), 'a') as sig:
                 sig.write(f'# workflow: {self.workflow.name}\n')
                 sig.write(f'# script: {self.workflow.content.filename}\n')
-                sig.write(f'# included: {",".join([x[1] for x in self.workflow.content.included])}\n')
+                sig.write(
+                    f'# included: {",".join([x[1] for x in self.workflow.content.included])}\n')
                 sig.write(f'# configuration: {self.config.get("config_file", "")}\n')
-                sig.write(f'# start time: {time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())}\n')
+                sig.write(
+                    f'# start time: {time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())}\n')
                 sig.write(self.sig_content)
                 sig.write('# runtime signatures\n')
         #
@@ -417,7 +418,8 @@ class Base_Executor:
 
         # inject a few things
         if self.md5:
-            env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', f'{self.md5}.sig'))
+            env.sos_dict.set('__workflow_sig__', os.path.join(
+                env.exec_dir, '.sos', f'{self.md5}.sig'))
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('__args__', self.args)
         # initial values
@@ -427,7 +429,7 @@ class Base_Executor:
         # load configuration files
         load_config_files(self.config['config_file'])
         # if check_readonly is set to True, allow checking readonly vars
-        #if cfg.get('sos', {}).get('change_all_cap_vars', None) is not None:
+        # if cfg.get('sos', {}).get('change_all_cap_vars', None) is not None:
         #    if cfg['sos']['change_all_cap_vars'] not in ('warning', 'error'):
         #        env.logger.error(
         #            f'Configuration sos.change_all_cap_vars can only be warning or error: {cfg["sos"]["change_all_cap_vars"]} provided')
@@ -436,7 +438,8 @@ class Base_Executor:
 
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
-        self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(keyword.kwlist)
+        self._base_symbols = set(dir(__builtins__)) | set(
+            env.sos_dict['sos_symbols_']) | set(keyword.kwlist)
         self._base_symbols -= {'dynamic'}
 
         # excute global definition to get some basic setup
@@ -466,7 +469,8 @@ class Base_Executor:
         if 'skip' in section.options:
             val_skip = section.options['skip']
             if val_skip is None or val_skip is True:
-                env.logger.info(f'``{section.step_name(True)}`` is ``ignored`` due to skip option.')
+                env.logger.info(
+                    f'``{section.step_name(True)}`` is ``ignored`` due to skip option.')
                 return True
             elif val_skip is not False:
                 raise RuntimeError(
@@ -495,7 +499,7 @@ class Base_Executor:
             # if this is a regular string
             res = extract_pattern(p, [target])
             if res and not any(None in x for x in res.values()):
-                return {x:y[0] for x,y in res.items()}
+                return {x: y[0] for x, y in res.items()}
             # string match
             elif file_target(p) == file_target(target):
                 return True
@@ -509,7 +513,8 @@ class Base_Executor:
             added_node = 0
             dangling_targets, existing_targets = dag.dangling(targets)
             if dangling_targets:
-                env.logger.debug(f'Resolving {dangling_targets} objects from {dag.number_of_nodes()} nodes')
+                env.logger.debug(
+                    f'Resolving {dangling_targets} objects from {dag.number_of_nodes()} nodes')
             # find matching steps
             # check auxiliary steps and see if any steps provides it
             for target in dangling_targets:
@@ -528,8 +533,9 @@ class Base_Executor:
                     for node in nodes:
                         # if this is an index step... simply let it depends on previous steps
                         if node._node_index is not None:
-                            indexed = [x for x in dag.nodes() if x._node_index is not None and x._node_index < node._node_index and isinstance(x._output_targets, Undetermined)]
-                            indexed.sort(key = lambda x: x._node_index)
+                            indexed = [x for x in dag.nodes() if x._node_index is not None and x._node_index <
+                                       node._node_index and isinstance(x._output_targets, Undetermined)]
+                            indexed.sort(key=lambda x: x._node_index)
                             if not indexed:
                                 raise RuntimeError(
                                     f'No step to generate target {target}{dag.steps_depending_on(target, self.workflow)}')
@@ -563,7 +569,7 @@ class Base_Executor:
                 #
                 section = mo[0][0]
                 if isinstance(mo[0][1], dict):
-                    for k,v in mo[0][1].items():
+                    for k, v in mo[0][1].items():
                         env.sos_dict.set(k, v)
                 #
                 # for auxiliary, we need to set input and output, here
@@ -571,7 +577,8 @@ class Base_Executor:
                 # from patten), we should specify all output as output of step. Otherwise the
                 # step will be created for multiple outputs. issue #243
                 if mo[0][1]:
-                    env.sos_dict['__default_output__'] = [] if isinstance(target, sos_step) else [target]
+                    env.sos_dict['__default_output__'] = [] if isinstance(target, sos_step) else [
+                        target]
                 elif isinstance(section.options['provides'], Sequence):
                     env.sos_dict['__default_output__'] = section.options['provides']
                 else:
@@ -622,7 +629,7 @@ class Base_Executor:
                 #
                 section = mo[0][0]
                 if isinstance(mo[0][1], dict):
-                    for k,v in mo[0][1].items():
+                    for k, v in mo[0][1].items():
                         env.sos_dict.set(k, v)
                 #
                 # for auxiliary, we need to set input and output, here
@@ -663,7 +670,7 @@ class Base_Executor:
                 # resolved += 1
             if added_node == 0:
                 break
-        #dag.show_nodes()
+        # dag.show_nodes()
         return resolved
 
     def initialize_dag(self, targets=None, nested=False):
@@ -696,11 +703,11 @@ class Base_Executor:
                     section.options.set('provides', [])
                 #
                 section.options.set('provides',
-                    section.options['provides'] + [sos_variable(var) for var in changed_vars])
+                                    section.options['provides'] + [sos_variable(var) for var in changed_vars])
 
-            context={'__signature_vars__': signature_vars,
-                    '__environ_vars__': environ_vars,
-                    '__changed_vars__': changed_vars}
+            context = {'__signature_vars__': signature_vars,
+                       '__environ_vars__': environ_vars,
+                       '__changed_vars__': changed_vars}
 
             # for nested workflow, the input is specified by sos_run, not None.
             if idx == 0:
@@ -709,12 +716,12 @@ class Base_Executor:
             # NOTE: if a section has option 'shared', the execution of this step would
             # change dictionary, essentially making all later steps rely on this step.
             dag.add_step(section.uuid,
-                section.step_name(),
-                idx,
-                res['step_input'].targets(),
-                res['step_depends'].targets(),
-                res['step_output'].targets(),
-                context = context)
+                         section.step_name(),
+                         idx,
+                         res['step_input'].targets(),
+                         res['step_depends'].targets(),
+                         res['step_output'].targets(),
+                         context=context)
             default_input = res['step_output']
         #
         # analyze auxiliary steps
@@ -735,14 +742,14 @@ class Base_Executor:
                     section.options.set('provides', [])
                 #
                 section.options.set('provides',
-                    section.options['provides'] + [sos_variable(var) for var in changed_vars])
+                                    section.options['provides'] + [sos_variable(var) for var in changed_vars])
         #
         if self.resolve_dangling_targets(dag, targets) == 0:
             if targets:
                 raise RuntimeError(f'No auxiliary step to generate target {targets}.')
         # now, there should be no dangling targets, let us connect nodes
         dag.build(self.workflow.auxiliary_sections)
-        #dag.show_nodes()
+        # dag.show_nodes()
         # trim the DAG if targets are specified
         if targets:
             dag = dag.subgraph_from(targets)
@@ -761,7 +768,8 @@ class Base_Executor:
         '''
         if '__workflow_sig__' in env.sos_dict:
             with open(env.sos_dict['__workflow_sig__'], 'a') as sigfile:
-                sigfile.write(f'# end time: {time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())}\n')
+                sigfile.write(
+                    f'# end time: {time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())}\n')
                 sigfile.write('# input and dependent files\n')
 
     def run(self, targets=None, parent_pipe=None, my_workflow_id=None, mode='run'):
@@ -833,7 +841,8 @@ class Base_Executor:
         # on the master process.
         self.step_queue = {}
         try:
-            prog = ProgressBar(desc=self.workflow.name, total=dag.num_nodes(), disable=dag.num_nodes() <= 1 or env.verbosity != 1)
+            prog = ProgressBar(desc=self.workflow.name, total=dag.num_nodes(),
+                               disable=dag.num_nodes() <= 1 or env.verbosity != 1)
             exec_error = ExecuteError(self.workflow.name)
             while True:
                 # step 1: check existing jobs and see if they are completed
@@ -878,7 +887,8 @@ class Base_Executor:
                             # step sent from nested workflow
                             step_id = res.split(' ')[1]
                             step_params = proc.pipe.recv()
-                            env.logger.debug(f'{i_am()} receives step request {step_id} with args {step_params[3]}')
+                            env.logger.debug(
+                                f'{i_am()} receives step request {step_id} with args {step_params[3]}')
                             self.step_queue[step_id] = step_params
                             continue
                             #
@@ -890,7 +900,6 @@ class Base_Executor:
                             wf, targets, args, shared, config = proc.pipe.recv()
                             # a workflow needs to be executed immediately because otherwise if all workflows
                             # occupies all workers, no real step could be executed.
-
 
                             # now we would like to find a worker and
                             runnable._pending_workflow = workflow_id
@@ -904,7 +913,7 @@ class Base_Executor:
                             wfrunnable._pending_workflow = workflow_id
                             #
                             manager.execute(wfrunnable, config=config, args=args,
-                                    spec=('workflow', workflow_id, wf, targets, args, shared, config))
+                                            spec=('workflow', workflow_id, wf, targets, args, shared, config))
                             #
                             continue
                         else:
@@ -928,8 +937,8 @@ class Base_Executor:
                         if isinstance(target, path):
                             target = str(target)
                         if dag.regenerate_target(target):
-                            #runnable._depends_targets.append(target)
-                            #dag._all_dependent_files[target].append(runnable)
+                            # runnable._depends_targets.append(target)
+                            # dag._all_dependent_files[target].append(runnable)
                             dag.build(self.workflow.auxiliary_sections)
                             #
                             cycle = dag.circular_dependencies()
@@ -944,7 +953,7 @@ class Base_Executor:
                             if not isinstance(runnable._depends_targets, Undetermined):
                                 runnable._depends_targets.append(target)
                             if runnable not in dag._all_dependent_files[target]:
-                                dag._all_dependent_files[target].append(runnable)                            
+                                dag._all_dependent_files[target].append(runnable)
                             dag.build(self.workflow.auxiliary_sections)
                             #
                             cycle = dag.circular_dependencies()
@@ -957,7 +966,8 @@ class Base_Executor:
                         dag.save(self.config['output_dag'])
                         runnable._signature = (res.output, res.sig_file)
                         section = self.workflow.section_by_id(runnable._step_uuid)
-                        env.logger.info(f'Waiting on another process for step {section.step_name(True)}')
+                        env.logger.info(
+                            f'Waiting on another process for step {section.step_name(True)}')
                     # if the job is failed
                     elif isinstance(res, Exception):
                         env.logger.debug(f'{i_am()} received an exception')
@@ -971,7 +981,7 @@ class Base_Executor:
                                 if proc is None:
                                     continue
                                 if proc.is_pending() and hasattr(proc.step, '_pending_workflow') \
-                                    and proc.step._pending_workflow == runnable._pending_workflow:
+                                        and proc.step._pending_workflow == runnable._pending_workflow:
                                     proc.set_status('failed')
                             dag.save(self.config['output_dag'])
                         prog.update(1)
@@ -991,15 +1001,15 @@ class Base_Executor:
                             node = edge[1]
                             # if node is the logical next step...
                             if node._node_index is not None and runnable._node_index is not None:
-                                #and node._node_index == runnable._node_index + 1:
+                                # and node._node_index == runnable._node_index + 1:
                                 node._context.update(env.sos_dict.clone_selected_vars(
-                                    node._context['__signature_vars__'] | node._context['__environ_vars__'] \
+                                    node._context['__signature_vars__'] | node._context['__environ_vars__']
                                     | {'_input', '__step_output__', '__default_output__', '__args__'}))
                             node._context.update(svar)
                             node._context['__completed__'].append(res['__step_name__'])
                         dag.update_step(runnable, env.sos_dict['__step_input__'].targets(),
-                            env.sos_dict['__step_output__'].targets(),
-                            env.sos_dict['__step_depends__'].targets())
+                                        env.sos_dict['__step_output__'].targets(),
+                                        env.sos_dict['__step_depends__'].targets())
                         runnable._status = 'completed'
                         dag.save(self.config['output_dag'])
                         prog.update(1)
@@ -1027,7 +1037,7 @@ class Base_Executor:
                     # if a job is pending, check if it is done.
                     if proc.in_status('task_pending'):
                         res = proc.step._host.check_status(proc.step._pending_tasks)
-                        #env.logger.warning(res)
+                        # env.logger.warning(res)
                         if any(x in ('aborted', 'failed', 'signature-mismatch') for x in res):
                             for t, s in zip(proc.step._pending_tasks, res):
                                 if s in ('aborted', 'failed', 'signature-mismatch') and not (hasattr(proc.step, '_killed_tasks') and t in proc.step._killed_tasks):
@@ -1038,14 +1048,16 @@ class Base_Executor:
                                         proc.step._killed_tasks.add(t)
                             if all(x in ('completed', 'aborted', 'failed', 'signature-mismatch') for x in res):
                                 # we try to get .err .out etc even when jobs are failed.
-                                task_status = proc.step._host.retrieve_results(proc.step._pending_tasks)
+                                task_status = proc.step._host.retrieve_results(
+                                    proc.step._pending_tasks)
                                 proc.pipe.send(task_status)
                                 proc.set_status('failed')
-                                status = [('completed', len([x for x in res if x=='completed'])),
-                                    ('failed', len([x for x in res if x=='failed'])),
-                                    ('aborted', len([x for x in res if x=='aborted'])),
-                                    ('result mismatch', len([x for x in res if x=='signature-mismatch']))]
-                                raise RuntimeError(', '.join([f'{y} job{"s" if y > 1 else ""} {x}' for x, y in status if y > 0]))
+                                status = [('completed', len([x for x in res if x == 'completed'])),
+                                          ('failed', len([x for x in res if x == 'failed'])),
+                                          ('aborted', len([x for x in res if x == 'aborted'])),
+                                          ('result mismatch', len([x for x in res if x == 'signature-mismatch']))]
+                                raise RuntimeError(
+                                    ', '.join([f'{y} job{"s" if y > 1 else ""} {x}' for x, y in status if y > 0]))
                         if any(x in ('pending', 'submitted', 'running') for x in res):
                             continue
                         elif all(x == 'completed' for x in res):
@@ -1080,7 +1092,7 @@ class Base_Executor:
                             f'{i_am()} sends {section.step_name()} from step queue with args {args} and context {context}')
 
                         manager.execute(runnable, config=self.config, args=self.args,
-                                spec = ('step', section, context, shared, args, run_mode, sig_mode, verbosity))
+                                        spec=('step', section, context, shared, args, run_mode, sig_mode, verbosity))
                         continue
 
                     # find any step that can be executed and run it, and update the DAT
@@ -1088,7 +1100,7 @@ class Base_Executor:
                     runnable = dag.find_executable()
                     if runnable is None:
                         # no runnable
-                        #dag.show_nodes()
+                        # dag.show_nodes()
                         break
 
                     # find the section from runnable
@@ -1098,7 +1110,8 @@ class Base_Executor:
                     dag.save(self.config['output_dag'])
 
                     # workflow shared variables
-                    shared = {x: env.sos_dict[x] for x in self.shared.keys() if x in env.sos_dict and pickleable(env.sos_dict[x], x)}
+                    shared = {x: env.sos_dict[x] for x in self.shared.keys(
+                    ) if x in env.sos_dict and pickleable(env.sos_dict[x], x)}
                     if 'shared' in section.options:
                         if isinstance(section.options['shared'], str):
                             svars = [section.options['shared']]
@@ -1115,8 +1128,10 @@ class Base_Executor:
                                     raise ValueError(
                                         f'Unacceptable value for parameter shared: {section.options["shared"]}')
                         else:
-                            raise ValueError(f'Unacceptable value for parameter shared: {section.options["shared"]}')
-                        shared.update({x: env.sos_dict[x] for x in svars if x in env.sos_dict and pickleable(env.sos_dict[x], x)})
+                            raise ValueError(
+                                f'Unacceptable value for parameter shared: {section.options["shared"]}')
+                        shared.update(
+                            {x: env.sos_dict[x] for x in svars if x in env.sos_dict and pickleable(env.sos_dict[x], x)})
 
                     if '__workflow_sig__' in env.sos_dict:
                         runnable._context['__workflow_sig__'] = env.sos_dict['__workflow_sig__']
@@ -1124,8 +1139,8 @@ class Base_Executor:
                     if not nested:
                         env.logger.debug(f'{i_am()} execute {section.md5} from DAG')
                         manager.execute(runnable, config=self.config, args=self.args,
-                                spec=('step', section, runnable._context, shared, self.args,
-                                    env.config['run_mode'], env.config['sig_mode'], env.verbosity))
+                                        spec=('step', section, runnable._context, shared, self.args,
+                                              env.config['run_mode'], env.config['sig_mode'], env.verbosity))
                     else:
                         # send the step to the parent
                         step_id = uuid.uuid4()
@@ -1133,7 +1148,8 @@ class Base_Executor:
                             f'{i_am()} send step {section.step_name()} to master with args {self.args} and context {runnable._context}')
                         parent_pipe.send(f'step {step_id}')
                         q = mp.Pipe()
-                        parent_pipe.send((section, runnable._context, shared, self.args, env.config['run_mode'], env.config['sig_mode'], env.verbosity, q[1]))
+                        parent_pipe.send((section, runnable._context, shared, self.args,
+                                          env.config['run_mode'], env.config['sig_mode'], env.verbosity, q[1]))
                         # this is a real step
                         manager.add_placeholder_worker(runnable, q[0])
 
@@ -1142,8 +1158,8 @@ class Base_Executor:
 
                 # if -W is specified, or all task queues are not wait
                 elif all(x.in_status('task_pending') for x in manager.procs) and \
-                        (env.config['wait_for_task'] is False or \
-                        (env.config['wait_for_task'] is None and Host.not_wait_for_tasks())):
+                        (env.config['wait_for_task'] is False or
+                         (env.config['wait_for_task'] is None and Host.not_wait_for_tasks())):
                     # if all jobs are pending, let us check if all jbos have been submitted.
                     pending_tasks = []
                     running_tasks = []
@@ -1152,7 +1168,8 @@ class Base_Executor:
                         pending_tasks.extend(p)
                         running_tasks.extend([(n._host.alias, x) for x in r])
                     if not pending_tasks and running_tasks:
-                        env.logger.trace(f'Exit with {len(running_tasks)} running tasks: {running_tasks}')
+                        env.logger.trace(
+                            f'Exit with {len(running_tasks)} running tasks: {running_tasks}')
                         raise PendingTasks(running_tasks)
                 else:
                     time.sleep(0.1)
@@ -1160,7 +1177,8 @@ class Base_Executor:
             if exec_error.errors:
                 failed_steps, pending_steps = dag.pending()
                 if pending_steps:
-                    sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in pending_steps]
+                    sections = [self.workflow.section_by_id(
+                        x._step_uuid).step_name() for x in pending_steps]
                     exec_error.append(self.workflow.name,
                                       RuntimeError(
                                           f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'))
@@ -1170,7 +1188,8 @@ class Base_Executor:
         except PendingTasks as e:
             self.record_quit_status(e.tasks)
             wf_result['pending_tasks'] = [x[1] for x in running_tasks]
-            env.logger.info(f'Workflow {self.workflow.name} (ID={self.md5}) exits with {len(e.tasks)} running tasks')
+            env.logger.info(
+                f'Workflow {self.workflow.name} (ID={self.md5}) exits with {len(e.tasks)} running tasks')
             for task in e.tasks:
                 env.logger.info(task[1])
             # close all processes
@@ -1184,13 +1203,14 @@ class Base_Executor:
         #
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
-            #if failed_steps:
-                #sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in failed_steps]
-                #exec_error.append(self.workflow.name,
-                #    RuntimeError('{} failed step{}: {}'.format(len(sections),
-                #        's' if len(sections) > 1 else '', ', '.join(sections))))
+            # if failed_steps:
+            #sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in failed_steps]
+            # exec_error.append(self.workflow.name,
+            #    RuntimeError('{} failed step{}: {}'.format(len(sections),
+            #        's' if len(sections) > 1 else '', ', '.join(sections))))
             if pending_steps:
-                sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in pending_steps]
+                sections = [self.workflow.section_by_id(
+                    x._step_uuid).step_name() for x in pending_steps]
                 exec_error.append(self.workflow.name,
                                   RuntimeError(
                                       f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'))
@@ -1208,11 +1228,12 @@ class Base_Executor:
             except Exception as e:
                 env.logger.warning(f'Failed to clear workflow status file: {e}')
             self.save_workflow_signature(dag)
-            env.logger.info(f'Workflow {self.workflow.name} (ID={self.md5}) is executed successfully.')
+            env.logger.info(
+                f'Workflow {self.workflow.name} (ID={self.md5}) is executed successfully.')
         else:
             # exit with pending tasks
             pass
-        wf_result['shared'] = {x:env.sos_dict[x] for x in self.shared.keys() if x in env.sos_dict}
+        wf_result['shared'] = {x: env.sos_dict[x] for x in self.shared.keys() if x in env.sos_dict}
         if parent_pipe:
             parent_pipe.send(wf_result)
         else:

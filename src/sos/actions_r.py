@@ -1,42 +1,27 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (sos), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-##
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 
 import os
-import sys
-import subprocess
 import shutil
+import subprocess
+import sys
 import tempfile
 
 from sos.actions import SoS_Action, SoS_ExecuteScript, collect_input
-from sos.utils import env
 from sos.eval import interpolate
 from sos.targets import UnknownTarget, sos_targets
+from sos.utils import env
+
 from .targets_r import R_library
 
-@SoS_Action(acceptable_args=['script', 'args'], default_args={'default_env' : {'R_DEFAULT_PACKAGES': 'datasets,methods,utils,stats,grDevices,graphics'} })
+
+@SoS_Action(acceptable_args=['script', 'args'], default_args={'default_env': {'R_DEFAULT_PACKAGES': 'datasets,methods,utils,stats,grDevices,graphics'}})
 def R(script, args='', **kwargs):
     '''Execute specified script with command Rscript, with default options
     "--default-packages=datasets,methods,utils,stats,grDevices,graphics". This action accepts
-    common action arguments such as input, active, workdir, docker_image and args. 
+    common action arguments such as input, active, workdir, docker_image and args.
     In particular, content of one or more files  specified by option input would be
     prepended before the specified script.
     '''
@@ -44,6 +29,7 @@ def R(script, args='', **kwargs):
     # [1] "datasets"  "utils"     "grDevices" "graphics"  "stats"     "methods"
     return SoS_ExecuteScript(
         script, 'Rscript', '.R', args).run(**kwargs)
+
 
 @SoS_Action(acceptable_args=['script', 'args'])
 def Rmarkdown(script=None, input=None, output=None, args='{input:r}, output_file={output:ar}', **kwargs):
@@ -77,7 +63,8 @@ def Rmarkdown(script=None, input=None, output=None, args='{input:r}, output_file
     output = sos_targets(output)
     if len(output) == 0:
         write_to_stdout = True
-        output = sos_targets(tempfile.NamedTemporaryFile(mode='w+t', suffix='.html', delete=False).name)
+        output = sos_targets(tempfile.NamedTemporaryFile(
+            mode='w+t', suffix='.html', delete=False).name)
     else:
         write_to_stdout = False
     #
@@ -110,11 +97,10 @@ def Rmarkdown(script=None, input=None, output=None, args='{input:r}, output_file
         shutil.copyfile(str(input), temp_file)
         cmd = interpolate(f'Rscript -e "rmarkdown::render({args})"',
                           {'input': input, 'output': sos_targets(temp_file)})
-        raise RuntimeError(f'Failed to execute script. Please use command \n"{cmd}"\nunder {os.getcwd()} to test it.')
+        raise RuntimeError(
+            f'Failed to execute script. Please use command \n"{cmd}"\nunder {os.getcwd()} to test it.')
     if write_to_stdout:
         with open(str(output[0])) as out:
             sys.stdout.write(out.read())
     else:
         env.logger.info(f'Report saved to {output}')
-
-

@@ -1,50 +1,37 @@
 #!/usr/bin/env python
 #
-# This file is part of Script of Scripts (SoS), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 
-import unittest
+import os
 import signal
 import sys
-import os
 import threading
+import unittest
+from contextlib import contextmanager
+
+from sos.parser import SoS_Script
+from sos.targets import file_target
+from sos.utils import env
+from sos.workflow_executor import Base_Executor, ExecuteError
+
 try:
     import _thread
 except Exception:
     import _dummy_thread as _thread
-from contextlib import contextmanager
 
-from sos.parser import SoS_Script
-from sos.utils import env
 try:
     from sos.docker.client import SoS_DockerClient
 except ImportError:
     print('Docker is not available')
     has_docker = False
 
-from sos.workflow_executor import Base_Executor, ExecuteError
-from sos.targets import file_target
+
 
 class TimeoutException(Exception):
     def __init__(self, msg=''):
         self.msg = msg
+
 
 @contextmanager
 def time_limit(seconds, msg=''):
@@ -87,6 +74,7 @@ except Exception as e:
     print(e)
     has_docker = False
 
+
 class TestDockerActions(unittest.TestCase):
     def setUp(self):
         self.olddir = os.getcwd()
@@ -126,7 +114,6 @@ echo 'Echo'
         wf = script.workflow()
         Base_Executor(wf).run()
 
-
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testShInDocker(self):
         '''Test action sh in docker environment'''
@@ -140,8 +127,6 @@ echo 'Echo
         self.assertRaises(ExecuteError, Base_Executor(wf).run)
         #
         Base_Executor(wf).run(mode='dryrun')
-
-
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerBuild(self):
@@ -212,6 +197,7 @@ echo 'Echo'
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,5 +1,7 @@
 #!/usr/bin/bash
-
+#
+# Copyright (c) Bo Peng and UT MD Anderson Cancer Center
+# Distributed under the terms of the Modified BSD License.
 #
 # Make sure we have local public key
 #
@@ -80,7 +82,7 @@ remote_user: root
 limited:
     max_cores: 1
     max_mem: 1G
-   
+
 hosts:
     localhost:
         description: localhost

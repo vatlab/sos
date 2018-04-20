@@ -1,32 +1,17 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (SoS), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
+
+import collections
+import copy
 import os
 import re
 import sys
-import copy
-import collections
 from itertools import chain
-from .utils import env
+
 from .syntax import SOS_WILDCARD
+from .utils import env
 
 __all__ = ['expand_pattern']
 
@@ -38,6 +23,7 @@ __all__ = ['expand_pattern']
 #
 # I will re-implement it if there is any license issue with the code
 #
+
 
 def regex(filepattern):
     f = []
@@ -96,6 +82,7 @@ def glob_wildcards(pattern, files=None):
                 res[name].append(value)
     return res
 
+
 def apply_wildcards(pattern,
                     wildcards,
                     fill_missing=False,
@@ -119,6 +106,7 @@ def apply_wildcards(pattern,
 
     return SOS_WILDCARD.sub(format_match, pattern)
 
+
 def extract_pattern(pattern, ifiles):
     '''This function match pattern to a list of input files, extract and return
     pieces of filenames as a list of variables with keys defined by pattern.'''
@@ -132,6 +120,7 @@ def extract_pattern(pattern, ifiles):
             else:
                 res[key].extend(matched[key])
     return res
+
 
 def expand_pattern(pattern):
     '''This function expand patterns against the current namespace
@@ -159,5 +148,5 @@ def expand_pattern(pattern):
     #
     for card in wildcard:
         ofiles.append(apply_wildcards(pattern, card, fill_missing=False,
-           fail_dynamic=False, dynamic_fill=None, keep_dynamic=False))
+                                      fail_dynamic=False, dynamic_fill=None, keep_dynamic=False))
     return ofiles

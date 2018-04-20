@@ -1,34 +1,20 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (SoS), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
+
 import os
-from sos.utils import env
+
 from sos.targets import BaseTarget, textMD5
+from sos.utils import env
+
 
 class R_library(BaseTarget):
     '''A target for a R library.'''
 
     LIB_STATUS_CACHE = {}
 
-    def __init__(self, library, version = None, repos = 'http://cran.us.r-project.org'):
+    def __init__(self, library, version=None, repos='http://cran.us.r-project.org'):
         super(R_library, self).__init__()
         self._library = library
         if version is not None:
@@ -67,7 +53,8 @@ class R_library(BaseTarget):
             # check version and mark version mismatch
             # if current version satisfies any of the
             # requirement the check program quits
-            version_satisfied = '||'.join([f'(cur_version {y} {repr(x)})' for x, y in zip(version, operators)])
+            version_satisfied = '||'.join(
+                [f'(cur_version {y} {repr(x)})' for x, y in zip(version, operators)])
         #
         if len(glob_wildcards('{repo}@{pkg}', [name])['repo']):
             # package is from github
@@ -138,7 +125,8 @@ class R_library(BaseTarget):
             for line in tmp:
                 lib, cur_version, status = line.split()
                 if status.strip() == "MISSING":
-                    env.logger.warning(f'R Library {lib} is not available and cannot be installed.')
+                    env.logger.warning(
+                        f'R Library {lib} is not available and cannot be installed.')
                 elif status.strip() == 'AVAILABLE':
                     env.logger.debug(f'R library {lib} ({cur_version}) is available')
                     ret_val = True
@@ -146,7 +134,8 @@ class R_library(BaseTarget):
                     env.logger.debug(f'R library {lib} ({cur_version}) has been installed')
                     ret_val = True
                 elif status.strip() == 'VERSION_MISMATCH':
-                    env.logger.warning(f'R library {lib} ({cur_version}) does not satisfy version requirement ({"/".join(version)})!')
+                    env.logger.warning(
+                        f'R library {lib} ({cur_version}) does not satisfy version requirement ({"/".join(version)})!')
                 else:
                     raise RuntimeError(f'This should not happen: {line}')
         try:

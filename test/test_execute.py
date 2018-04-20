@@ -1,37 +1,21 @@
 #!/usr/bin/env python3
 #
-# This file is part of Script of Scripts (SoS), a workflow system
-# for the execution of commands and scripts in different languages.
-# Please visit https://github.com/vatlab/SOS for more information.
-#
-# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 
-import os
 import glob
-import unittest
+import os
 import shutil
-
-from sos.parser import SoS_Script
-from sos._version import __version__
-from sos.utils import env
-from sos.eval import Undetermined
-from sos.workflow_executor import Base_Executor, ExecuteError
-from sos.targets import file_target, sos_targets
 import subprocess
+import unittest
+
+from sos._version import __version__
+from sos.eval import Undetermined
+from sos.parser import SoS_Script
+from sos.targets import file_target, sos_targets
+from sos.utils import env
+from sos.workflow_executor import Base_Executor, ExecuteError
+
 
 def multi_attempts(fn):
     def wrapper(*args, **kwargs):
@@ -44,11 +28,12 @@ def multi_attempts(fn):
                     raise
     return wrapper
 
+
 class TestExecute(unittest.TestCase):
     def setUp(self):
         env.reset()
         subprocess.call('sos remove -s', shell=True)
-        #self.resetDir('~/.sos')
+        # self.resetDir('~/.sos')
         self.temp_files = []
 
     def tearDown(self):
@@ -81,41 +66,65 @@ class TestExecute(unittest.TestCase):
 [L]
 a =1
 ''')
-        result = subprocess.check_output('sos --version', stderr=subprocess.STDOUT, shell=True).decode()
+        result = subprocess.check_output(
+            'sos --version', stderr=subprocess.STDOUT, shell=True).decode()
         self.assertTrue(result.startswith('sos {}'.format(__version__)))
-        self.assertEqual(subprocess.call('sos', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos run -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos', stderr=subprocess.DEVNULL,
+                                         stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos -h', stderr=subprocess.DEVNULL,
+                                         stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos run -h', stderr=subprocess.DEVNULL,
+                                         stdout=subprocess.DEVNULL, shell=True), 0)
         # list queues
-        self.assertEqual(subprocess.call('sos run test_cl -q', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos run test_cl -q',
+                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos execute a23 -q', shell=True), 0)
         #self.assertEqual(subprocess.call('sos resume -r', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos push something -t', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos pull something -f', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos preview something -r', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos kill -a -q', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos push something -t',
+                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos pull something -f',
+                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos preview something -r',
+                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos kill -a -q', stderr=subprocess.DEVNULL,
+                                         stdout=subprocess.DEVNULL, shell=True), 0)
         #
-        self.assertEqual(subprocess.call('sos run test_cl -w -W', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
-        self.assertEqual(subprocess.call('sos-runner -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos dryrun -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos dryrun test_cl', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos dryrun test_cl.sos', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos dryrun test_cl L', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos-runner test_cl L', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos run test_cl -w -W',
+                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
+        self.assertEqual(subprocess.call('sos-runner -h', stderr=subprocess.DEVNULL,
+                                         stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos dryrun -h', stderr=subprocess.DEVNULL,
+                                         stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos dryrun test_cl',
+                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos dryrun test_cl.sos',
+                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos dryrun test_cl L',
+                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos-runner test_cl L',
+                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         # script help
-        self.assertEqual(subprocess.call('sos-runner test_cl -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos convert -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos-runner test_cl -h',
+                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos convert -h', stderr=subprocess.DEVNULL,
+                                         stdout=subprocess.DEVNULL, shell=True), 0)
         #self.assertEqual(subprocess.call('sos convert sos-ipynb -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         #
-        self.assertEqual(subprocess.call('sos config -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos config -g --get', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos config', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos config --get', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos config -g --set a 5', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos config --get a', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos config -g --unset a', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos config -h', stderr=subprocess.DEVNULL,
+                                         stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos config -g --get',
+                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos config', stderr=subprocess.DEVNULL,
+                                         stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos config --get',
+                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos config -g --set a 5',
+                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos config --get a',
+                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos config -g --unset a',
+                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         #
-
 
     def testInterpolation(self):
         '''Test string interpolation during execution'''
@@ -148,7 +157,8 @@ output: [f'{x}_{y}_processed.txt' for x,y in zip(name, model)]
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['res'],  ['a_1_processed.txt', 'b_2_processed.txt', 'c_2_processed.txt'])
+        self.assertEqual(env.sos_dict['res'],  ['a_1_processed.txt',
+                                                'b_2_processed.txt', 'c_2_processed.txt'])
         #
         script = SoS_Script(r"""
 [0: shared={'res':'step_output'}]
@@ -158,7 +168,8 @@ output: [f"{x}_{y}_process.txt" for x,y in zip(name, model)]
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['res'],  ['a_1_process.txt', 'b_2_process.txt', 'c_2_process.txt'])
+        self.assertEqual(env.sos_dict['res'],  ['a_1_process.txt',
+                                                'b_2_process.txt', 'c_2_process.txt'])
         #
         script = SoS_Script(r"""
 [0: shared={'res':'step_output'}]
@@ -171,7 +182,8 @@ output: add_a([f"{x}_{y}_process.txt" for x,y in zip(name, model)])
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['res'],  ['aa_1_process.txt', 'ab_2_process.txt', 'ac_2_process.txt'])
+        self.assertEqual(env.sos_dict['res'],  ['aa_1_process.txt',
+                                                'ab_2_process.txt', 'ac_2_process.txt'])
 
     def testGlobalVars(self):
         '''Test SoS defined variables'''
@@ -250,7 +262,8 @@ processed.append((_par, _res))
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['processed'], [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
+        self.assertEqual(env.sos_dict['processed'], [
+                         ((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
         #
         # test for each for pandas dataframe
         script = SoS_Script(r"""
@@ -324,7 +337,8 @@ processed.append((par, res))
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['processed'], [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
+        self.assertEqual(env.sos_dict['processed'], [
+                         ((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
         #
         # test for each for pandas dataframe
         script = SoS_Script(r"""
@@ -390,7 +404,6 @@ output: f"{A}.txt"
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['res'], ['2.txt', '4.txt'])
-
 
     def testPairedWith(self):
         '''Test option paired_with '''
@@ -504,7 +517,6 @@ run: expand=True
             self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).remove('both')
 
-
     def testInputPattern(self):
         '''Test option pattern of step input '''
         #env.verbosity = 4
@@ -541,8 +553,8 @@ output: expand_pattern('{base}-{name}-{par}.txt'), expand_pattern('{par}.txt')
         self.assertEqual(env.sos_dict['base'], ["a-20", 'b-10'])
         self.assertEqual(env.sos_dict['name'], ["a", 'b'])
         self.assertEqual(env.sos_dict['par'], ["20", '10'])
-        self.assertEqual(env.sos_dict['_output'], ['a-20-a-20.txt', 'b-10-b-10.txt', '20.txt', '10.txt'])
-
+        self.assertEqual(env.sos_dict['_output'], ['a-20-a-20.txt',
+                                                   'b-10-b-10.txt', '20.txt', '10.txt'])
 
     def testFileType(self):
         '''Test input option filetype'''
@@ -604,7 +616,6 @@ counter += 1
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['counter'], 2)
         self.assertEqual(env.sos_dict['step'], ['a.txt.bak', 'b.txt.bak'])
-
 
     def testReadOnlyStepVars(self):
         '''Test if the step variables can be changed.'''
@@ -694,18 +705,18 @@ e = d + 1
 #    def testCollectionOfErrors(self):
 #        '''Test collection of errors when running in dryrun mode.'''
 #        script = SoS_Script('''
-#[0]
+# [0]
 #depends: executable('a1')
-#[1: skip='blah']
+# [1: skip='blah']
 #depends: executable('a2')
 #
-#[2]
+# [2]
 #input: None
 #depends: executable('a3')
-#[3]
+# [3]
 #depends: executable('a4')
 #
-#''')
+# ''')
 #        wf = script.workflow()
 #        # we should see a single error with 2 messages.
 #        # because 2 being on a separate branch will be executed but
@@ -714,8 +725,6 @@ e = d + 1
 #            Base_Executor(wf).run(mode='dryrun')
 #        except Exception as e:
 #            self.assertEqual(len(e.errors), 3)
-
-
 
     def testDynamicOutput(self):
         '''Testing dynamic output'''
@@ -736,7 +745,8 @@ for i in range(4):
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['test'], ['temp/something{}.html'.format(x) for x in range(4)])
+        self.assertEqual(env.sos_dict['test'], [
+                         'temp/something{}.html'.format(x) for x in range(4)])
         #
         shutil.rmtree('temp')
 
@@ -763,13 +773,14 @@ touch {_input}.bak
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['test'], [os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)])
+        self.assertEqual(env.sos_dict['test'], [os.path.join(
+            'temp', 'test_{}.txt.bak'.format(x)) for x in range(5)])
         # this time we use th existing signature
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['test'], [os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)])
+        self.assertEqual(env.sos_dict['test'], [os.path.join(
+            'temp', 'test_{}.txt.bak'.format(x)) for x in range(5)])
         #
         shutil.rmtree('temp')
-
 
     def testAssignmentAfterInput(self):
         '''Testing assignment after input should be usable inside step process.'''
@@ -941,7 +952,6 @@ with open('b.txt', 'w') as txt:
         # takes less than 5 seconds
         file_target('lock.sos').remove('both')
 
-
     def testRemovedIntermediateFiles(self):
         '''Test behavior of workflow with removed internediate files'''
         file_target('a.txt').remove('both')
@@ -977,7 +987,6 @@ run: expand=True
         #
         file_target('a.txt').remove('both')
         file_target('aa.txt').remove('both')
-
 
     def testStoppedOutput(self):
         '''test output with stopped step'''
@@ -1035,7 +1044,7 @@ input: for_each={'i': range(2)}
         os.remove('test_script.sos')
 
     def testDependsCausedDependency(self):
-        #test for #674
+        # test for #674
         for tfile in ('1.txt', '2.txt', '3.txt'):
             file_target(tfile).remove('both')
         script = SoS_Script('''
@@ -1061,7 +1070,6 @@ run: expand=True
         for tfile in ('1.txt', '2.txt', '3.txt'):
             self.assertTrue(file_target(tfile).target_exists())
             file_target(tfile).remove('both')
-
 
     def testConcurrentInputOption(self):
         '''Test input option'''
@@ -1101,6 +1109,7 @@ depends: 'non-existent.txt'
         script = SoS_Script(filename='sample_workflow.ipynb')
         wf = script.workflow()
         Base_Executor(wf).run()
+
 
 if __name__ == '__main__':
     unittest.main()
