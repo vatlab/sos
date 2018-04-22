@@ -22,7 +22,7 @@ from .pattern import extract_pattern
 from .step_executor import PendingTasks, Step_Executor, analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock, Undetermined,
                       UnknownTarget, file_target, path, sos_step, sos_variable,
-                      textMD5)
+                      sos_targets, paths, textMD5)
 from .utils import (Error, SlotManager, WorkflowDict, env, get_traceback,
                     load_config_files, load_var, pickleable, save_var,
                     short_repr)
@@ -484,10 +484,10 @@ class Base_Executor:
         if not 'provides' in step.options and not 'autoprovides' in step.options:
             return False
         patterns = step.options['provides'] if 'provides' in step.options else step.options['autoprovides']
-        if isinstance(patterns, (str, BaseTarget)):
+        if isinstance(patterns, (str, BaseTarget, path)):
             patterns = [patterns]
-        elif not isinstance(patterns, Sequence):
-            raise RuntimeError(f'Unknown target to match: {patterns}')
+        elif not isinstance(patterns, (sos_targets, Sequence, paths)):
+            raise RuntimeError(f'Unknown target to match: {patterns} of type {patterns.__class__.__name__}')
         #
         for p in patterns:
             # other targets has to match exactly
