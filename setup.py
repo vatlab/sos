@@ -63,6 +63,7 @@ class bdist_egg_disabled(bdist_egg):
         sys.exit("Aborting implicit building of eggs. Use `pip install -U --upgrade-strategy only-if-needed .` to install from source.")
 
 
+cmdclass = {'bdist_egg':  bdist_egg if 'bdist_egg' in sys.argv else bdist_egg_disabled}
 
 
 setup(name="sos",
@@ -90,6 +91,7 @@ setup(name="sos",
           'Programming Language :: Python :: Implementation :: CPython',
       ],
       packages=find_packages('src'),
+      cmdclass=cmdclass,
       package_dir={'': 'src'},
       install_requires=[
           'psutil',
