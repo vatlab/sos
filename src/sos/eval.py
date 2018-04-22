@@ -4,6 +4,9 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import ast
+from typing import Any, Dict, List, Optional, Set, Union
+
+from sos.targets import sos_variable
 
 from .utils import env, text_repr
 
@@ -29,7 +32,7 @@ def cfg_interpolate(text, local_dict={}):
     return res
 
 
-def accessed_vars(statement, filename='<string>', mode='exec'):
+def accessed_vars(statement: str, filename: str = '<string>', mode: str = 'exec') -> Set[str]:
     '''Parse a Python statement and analyze the symbols used. The result
     will be used to determine what variables a step depends upon.'''
     try:
@@ -42,7 +45,7 @@ def accessed_vars(statement, filename='<string>', mode='exec'):
             raise RuntimeError(f'Failed to parse statement: {statement}')
 
 
-def SoS_eval(expr):
+def SoS_eval(expr: str) -> Any:
     '''Evaluate an expression with sos dict.'''
     return eval(expr, env.sos_dict._dict)
 
@@ -58,22 +61,22 @@ def _is_expr(expr):
 class StatementHash(object):
     stmt_hash = {}
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
-    def hash(self, script):
+    def hash(self, script: str) -> str:
         h = hash(script)
         StatementHash.stmt_hash[h] = script
         return f'script_{h}'
 
-    def script(self, hash):
+    def script(self, hash: str) -> str:
         return StatementHash.stmt_hash[int(hash[7:])]
 
 
 stmtHash = StatementHash()
 
 
-def SoS_exec(script, _dict=None, return_result=True):
+def SoS_exec(script: str, _dict: dict = None, return_result: bool = True) -> None:
     '''Execute a statement.'''
     if _dict is None:
         _dict = env.sos_dict._dict
@@ -113,7 +116,7 @@ def SoS_exec(script, _dict=None, return_result=True):
 
 
 class Undetermined(object):
-    def __init__(self, expr=''):
+    def __init__(self, expr: str = '') -> None:
         if not isinstance(expr, str):
             raise RuntimeError(f'Undetermined expression has to be a string: "{expr}" passed')
         self.expr = expr.strip()
@@ -121,14 +124,14 @@ class Undetermined(object):
     def value(self):
         return SoS_eval(self.expr)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'Undetermined({self.expr!r})'
 
     def __hash__(self):
         raise RuntimeError('Undetermined expression should be evaluated before used. '
                            'This is certainly a bug so please report this to SoS developer.')
 
-    def targets(self):
+    def targets(self) -> Undetermined:
         return self
 
 
@@ -136,7 +139,7 @@ class sos_namespace_(object):
     '''A namespace that is created by evaluating statements
     and use the results as attributes of the object.'''
 
-    def __init__(self, stmts):
+    def __init__(self, stmts: str) -> None:
         # we need to define functions defined by sos ...
         exec('from sos.runtime import *', self.__dict__)
         # the results of the statments will be saved as
@@ -147,21 +150,21 @@ class sos_namespace_(object):
 class on_demand_options(object):
     '''Expression that will be evaluated upon request.'''
 
-    def __init__(self, items):
+    def __init__(self, items: Optional[Dict[str, Any]]) -> None:
         self._expressions = {}
         if items:
             self._expressions.update(items)
 
-    def set(self, key, value):
+    def set(self, key: str, value: Any) -> None:
         self._expressions[key] = repr(value)
 
-    def __contains__(self, key):
+    def __contains__(self, key: str) -> bool:
         return key in self._expressions
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: str) -> None:
         self._expressions[key] = value
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         # first check if the value if cached
         if key not in self._expressions:
             raise KeyError(key)

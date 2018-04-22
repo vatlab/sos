@@ -25,6 +25,7 @@ import urllib.request
 from collections.abc import Sequence
 from html.parser import HTMLParser
 from io import FileIO, StringIO
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
 import fasteners
 import yaml
@@ -77,7 +78,7 @@ COLOR_CODE = {
 }
 
 
-def colorstr(astr, color=None):
+def colorstr(astr: str, color: Optional[str]=None) -> str:
     color_code = 0 if color is None else COLOR_CODE[color]
     if sys.platform == 'win32':
         return astr
@@ -85,7 +86,7 @@ def colorstr(astr, color=None):
         return f'\033[{color_code}m{astr}\033[0m'
 
 
-def emphasize(msg, color=None):
+def emphasize(msg: str, color: Optional[str]=None):
     level_color = 0 if color is None else COLOR_CODE[color]
     # display text within `` and `` in green
     if sys.platform == 'win32':
@@ -102,7 +103,7 @@ class ColoredFormatter(logging.Formatter):
     double backslashes (`` ``).
     '''
 
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         logging.Formatter.__init__(self, msg)
         #
         # color for different logging levels. The current terminal color
@@ -115,7 +116,7 @@ class ColoredFormatter(logging.Formatter):
             'CRITICAL': 'RED_BG',
         }
 
-    def format(self, record):
+    def format(self, record: str):
         level_name = record.levelname
         if level_name in self.LEVEL_COLOR:
             level_color = self.LEVEL_COLOR[level_name]
@@ -1285,7 +1286,7 @@ def load_var(line):
             return key, SoS_eval(value.strip())
 
 
-def version_info(module):
+def version_info(module: str):
     # return the version of Python module
     try:
         code = ("import %s; version=str(%s.__version__)" %

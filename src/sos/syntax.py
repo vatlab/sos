@@ -6,6 +6,7 @@
 import keyword
 import re
 
+from typing import Callable
 SOS_INPUT_OPTIONS = ['group_by', 'filetype', 'paired_with',
                      'group_with', 'for_each', 'pattern', 'concurrent']
 SOS_OUTPUT_OPTIONS = ['group_by']
@@ -68,7 +69,7 @@ class LazyRegex(object):
     __slots__ = ['_real_regex', '_regex_args', '_regex_kwargs',
                  ] + _regex_attributes_to_copy
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         """Create a new proxy object, passing in the args to pass to re.compile
         :param args: The `*args` to pass to re.compile
         :param kwargs: The `**kwargs` to pass to re.compile
@@ -77,7 +78,7 @@ class LazyRegex(object):
         self._regex_args = args
         self._regex_kwargs = kwargs
 
-    def _compile_and_collapse(self):
+    def _compile_and_collapse(self) -> None:
         """Actually compile the requested regex"""
         self._real_regex = self._real_re_compile(*self._regex_args,
                                                  **self._regex_kwargs)
@@ -106,7 +107,7 @@ class LazyRegex(object):
         setattr(self, "_regex_args", sdict["args"])
         setattr(self, "_regex_kwargs", sdict["kwargs"])
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str) -> Callable:
         """Return a member from the proxied regex object.
         If the regex hasn't been compiled yet, compile it
         """

@@ -11,7 +11,12 @@ import time
 import uuid
 from collections.abc import Sequence
 from io import StringIO
+from multiprocessing.connection import Connection
+from typing import Any, Dict, List, Optional, Tuple, Union
 
+from sos.dag import SoS_DAG, SoS_Node
+from sos.parser import SoS_Step, SoS_Workflow
+from sos.targets import executable, sos_step, sos_variable
 from tqdm import tqdm as ProgressBar
 
 from ._version import __version__
@@ -21,8 +26,8 @@ from .hosts import Host
 from .pattern import extract_pattern
 from .step_executor import PendingTasks, Step_Executor, analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock, Undetermined,
-                      UnknownTarget, file_target, path, sos_step, sos_variable,
-                      sos_targets, paths, textMD5)
+                      UnknownTarget, file_target, path, paths, sos_step,
+                      sos_targets, sos_variable, textMD5)
 from .utils import (Error, SlotManager, WorkflowDict, env, get_traceback,
                     load_config_files, load_var, pickleable, save_var,
                     short_repr)
@@ -41,14 +46,14 @@ class ExecuteError(Error):
     """An exception to collect exceptions raised during run time so that
     other branches of the DAG would continue if some nodes fail to execute."""
 
-    def __init__(self, workflow):
+    def __init__(self, workflow: str) -> None:
         Error.__init__(self)
         self.workflow = workflow
         self.errors = []
         self.traces = []
         self.args = (workflow, )
 
-    def append(self, line, error):
+    def append(self, line: str, error: Exception) -> None:
         lines = [x for x in line.split('\n') if x.strip()]
         if not lines:
             short_line = '<empty>'
@@ -62,7 +67,7 @@ class ExecuteError(Error):
         self.message += f'{newline}[{short_line}]: {error}'
 
 
-def __null_func__(*args, **kwargs):
+def __null_func__(*args, **kwargs) -> Any:
     '''This function will be passed to SoS's namespace and be executed
     to evaluate functions of input, output, and depends directives.'''
     def _flatten(x):
@@ -83,7 +88,7 @@ class SoS_Worker(mp.Process):
     Worker process to process SoS step or workflow in separate process.
     '''
 
-    def __init__(self,  pipe, config=None, args=None, **kwargs):
+    def __init__(self,  pipe: Connection, config: Optional[Dict[str, Any]] = None, args: Optional[Any] = None, **kwargs) -> None:
         '''
         cmd_queue: a single direction queue for the master process to push
             items to the worker.
@@ -210,32 +215,32 @@ class SoS_Worker(mp.Process):
 class dummy_node:
     # a dummy node object to store information of node passed
     # from nested workflow
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
 
 class ProcInfo(object):
-    def __init__(self, worker, pipe, step):
+    def __init__(self, worker: SoS_Worker, pipe: Connection, step: Union[SoS_Node, dummy_node]) -> None:
         self.worker = worker
         self.pipe = pipe
         self.step = step
 
-    def set_status(self, status):
+    def set_status(self, status: str) -> None:
         self.step._status = status
 
-    def in_status(self, status):
+    def in_status(self, status: str) -> bool:
         return self.step._status == status
 
     def status(self):
         return self.step._status
 
-    def is_pending(self):
+    def is_pending(self) -> bool:
         return self.step._status.endswith('_pending')
 
 
 class ExecutionManager(object):
     # this class managers workers and their status ...
-    def __init__(self, max_workers, master=True):
+    def __init__(self, max_workers: int, master: bool = True) -> None:
                 #
         # running processes. It consisists of
         #
@@ -257,7 +262,7 @@ class ExecutionManager(object):
 
         self.max_workers = max_workers
 
-    def execute(self, runnable, config, args, spec):
+    def execute(self, runnable: Union[SoS_Node, dummy_node], config: Dict[str, Union[str, int, NoneType]], args: Any, spec: Any) -> None:
         if not self.pool:
             q1, q2 = mp.Pipe()
             worker = SoS_Worker(pipe=q2, config=config, args=args)
@@ -275,7 +280,7 @@ class ExecutionManager(object):
         runnable._status = 'step_pending'
         self.procs.append(ProcInfo(worker=None, pipe=pipe, step=runnable))
 
-    def all_busy(self):
+    def all_busy(self) -> bool:
         n = len([x for x in self.procs if x and not x.is_pending()])
         if self.last_num_procs is None:
             if n > 0:
@@ -290,17 +295,17 @@ class ExecutionManager(object):
             self.last_num_procs = n
         return n >= self.max_workers
 
-    def all_done_or_failed(self):
+    def all_done_or_failed(self) -> bool:
         return not self.procs or all(x.in_status('failed') for x in self.procs)
 
-    def mark_idle(self, idx):
+    def mark_idle(self, idx: int) -> None:
         self.pool.append(self.procs[idx])
         self.procs[idx] = None
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         self.procs = [x for x in self.procs if x is not None]
 
-    def terminate(self, brutal=False):
+    def terminate(self, brutal: bool = False) -> None:
         self.cleanup()
         if not brutal:
             for proc in self.procs + self.pool:
@@ -321,7 +326,8 @@ class Base_Executor:
     '''This is the base class of all executor that provides common
     set up and tear functions for all executors.'''
 
-    def __init__(self, workflow=None, args=None, shared=None, config=None):
+    def __init__(self, workflow: Optional[SoS_Workflow] = None, args: Optional[Any] = None, shared: None = None,
+                 config: Optional[Dict[str, Any]] = None) -> None:
         self.workflow = workflow
         self.args = [] if args is None else args
         if '__args__' not in self.args:
@@ -394,14 +400,14 @@ class Base_Executor:
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
 
-    def record_quit_status(self, tasks):
+    def record_quit_status(self, tasks: List[Tuple[str, str]]) -> None:
         if not self.md5:
             return
         with open(os.path.join(os.path.expanduser('~'), '.sos', self.md5 + '.status'), 'a') as status:
             for q, t in tasks:
                 status.write(save_var('pending_task', [q, t]))
 
-    def create_signature(self):
+    def create_signature(self) -> str:
         with StringIO() as sig:
             sig.write('# Sections\n')
             for step in self.workflow.sections + self.workflow.auxiliary_sections:
@@ -411,7 +417,7 @@ class Base_Executor:
             self.sig_content = sig.getvalue()
         return textMD5(self.sig_content)[:16]
 
-    def reset_dict(self):
+    def reset_dict(self) -> None:
         env.sos_dict = WorkflowDict()
         env.parameter_vars.clear()
         env.config.update(self.config)
@@ -457,7 +463,7 @@ class Base_Executor:
                 if not key.startswith('__'):
                     env.sos_dict.set(key, value)
 
-    def skip(self, section):
+    def skip(self, section: SoS_Step) -> bool:
         if section.global_def:
             try:
                 SoS_exec(section.global_def)
@@ -477,7 +483,7 @@ class Base_Executor:
                     f'The value of section option skip can only be None, True or False, {val_skip} provided')
         return False
 
-    def match(self, target, step):
+    def match(self, target: Union[BaseTarget, sos_step, str, path, paths, sos_targets], step: SoS_Step) -> Union[Dict[str, str], bool]:
         # for sos_step, we need to match step name
         if isinstance(target, sos_step):
             return step.match(target.target_name())
@@ -487,7 +493,8 @@ class Base_Executor:
         if isinstance(patterns, (str, BaseTarget, path)):
             patterns = [patterns]
         elif not isinstance(patterns, (sos_targets, Sequence, paths)):
-            raise RuntimeError(f'Unknown target to match: {patterns} of type {patterns.__class__.__name__}')
+            raise RuntimeError(
+                f'Unknown target to match: {patterns} of type {patterns.__class__.__name__}')
         #
         for p in patterns:
             # other targets has to match exactly
@@ -505,7 +512,7 @@ class Base_Executor:
                 return True
         return False
 
-    def resolve_dangling_targets(self, dag, targets=None):
+    def resolve_dangling_targets(self, dag: SoS_DAG, targets: Optional[List[str]] = None) -> int:
         '''Feed dangling targets with their dependncies from auxiliary steps,
         optionally add other targets'''
         resolved = 0
@@ -673,7 +680,7 @@ class Base_Executor:
         # dag.show_nodes()
         return resolved
 
-    def initialize_dag(self, targets=None, nested=False):
+    def initialize_dag(self, targets: Optional[List[str]] = None, nested: bool = False) -> SoS_DAG:
         '''Create a DAG by analyzing sections statically.'''
         # this is for testing only and allows tester to call initialize_dag
         # directly to get a DAG
@@ -762,7 +769,7 @@ class Base_Executor:
         dag.save(self.config['output_dag'], init=not nested)
         return dag
 
-    def save_workflow_signature(self, dag):
+    def save_workflow_signature(self, dag: SoS_DAG) -> None:
         '''Save tracked files in .sos so that untracked files can be cleaned by command
         sos clean.
         '''
@@ -772,7 +779,7 @@ class Base_Executor:
                     f'# end time: {time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())}\n')
                 sigfile.write('# input and dependent files\n')
 
-    def run(self, targets=None, parent_pipe=None, my_workflow_id=None, mode='run'):
+    def run(self, targets: Optional[List[str]] = None, parent_pipe: None = None, my_workflow_id: None = None, mode: str = 'run') -> Dict[str, Union[NoneType, List[str]]]:
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''

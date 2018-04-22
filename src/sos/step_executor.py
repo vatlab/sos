@@ -30,16 +30,20 @@ from .utils import (SlotManager, StopInputGroup, TerminateExecution, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr,
                     stable_repr)
 
+from sos.eval import Undetermined
+from sos.parser import SoS_Step
+from sos.targets import sos_targets
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 __all__ = []
 
 
 class PendingTasks(Exception):
-    def __init__(self, tasks, *args, **kwargs):
+    def __init__(self, tasks: List[Tuple[str, str]], *args, **kwargs) -> None:
         super(PendingTasks, self).__init__(*args, **kwargs)
         self.tasks = tasks
 
 
-def analyze_section(section, default_input=None):
+def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets, Undetermined]] = None) -> Dict[str, Union[str, Undetermined, sos_targets, Set[str]]]:
     '''Analyze a section for how it uses input and output, what variables
     it uses, and input, output, etc.'''
     from .workflow_executor import __null_func__
@@ -1602,7 +1606,7 @@ class Base_Step_Executor:
                         pass
 
 
-def _expand_file_list(ignore_unknown, *args):
+def _expand_file_list(ignore_unknown: bool, *args) -> Any:
     ifiles = []
 
     for arg in args:

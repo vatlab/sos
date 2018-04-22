@@ -13,6 +13,7 @@ from itertools import chain
 from .syntax import SOS_WILDCARD
 from .utils import env
 
+from typing import Any, Dict, List, Union
 __all__ = ['expand_pattern']
 
 #
@@ -25,7 +26,7 @@ __all__ = ['expand_pattern']
 #
 
 
-def regex(filepattern):
+def regex(filepattern: str) -> str:
     f = []
     last = 0
     wildcards = set()
@@ -49,7 +50,7 @@ def regex(filepattern):
     return "".join(f)
 
 
-def glob_wildcards(pattern, files=None):
+def glob_wildcards(pattern: str, files: Optional[List[str]] = None) -> Dict[str, Union[List[Any], List[str]]]:
     """
     Glob the values of the wildcards by matching the given pattern to the filesystem.
     Returns a named tuple with a list of values for each wildcard.
@@ -83,12 +84,12 @@ def glob_wildcards(pattern, files=None):
     return res
 
 
-def apply_wildcards(pattern,
-                    wildcards,
-                    fill_missing=False,
-                    fail_dynamic=False,
-                    dynamic_fill=None,
-                    keep_dynamic=False):
+def apply_wildcards(pattern: str,
+                    wildcards: Dict[str, Union[int, str]],
+                    fill_missing: bool = False,
+                    fail_dynamic: bool = False,
+                    dynamic_fill: None = None,
+                    keep_dynamic: bool = False) -> str:
     def format_match(match):
         name = match.group("name")
         try:
@@ -107,7 +108,7 @@ def apply_wildcards(pattern,
     return SOS_WILDCARD.sub(format_match, pattern)
 
 
-def extract_pattern(pattern, ifiles):
+def extract_pattern(pattern: str, ifiles: List[str]) -> Dict[str, Union[List[NoneType], List[str]]]:
     '''This function match pattern to a list of input files, extract and return
     pieces of filenames as a list of variables with keys defined by pattern.'''
     res = glob_wildcards(pattern, [])
@@ -122,7 +123,7 @@ def extract_pattern(pattern, ifiles):
     return res
 
 
-def expand_pattern(pattern):
+def expand_pattern(pattern: str) -> List[str]:
     '''This function expand patterns against the current namespace
     and return a list of filenames'''
     ofiles = []
