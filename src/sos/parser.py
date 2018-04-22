@@ -2,20 +2,20 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
+
 import ast
 import copy
 import fnmatch
-import glob
 import os
 import re
 import shutil
-# used by structural directive
 import sys
 import textwrap
 import types
-from io import StringIO
+from io import StringIO, TextIOBase
 from tokenize import generate_tokens
-from uuid import uuid4
+from typing import Any, Dict, List, Optional, Tuple
+from uuid import UUID, uuid4
 
 from .eval import on_demand_options
 from .syntax import (INDENTED, SOS_AS, SOS_CELL, SOS_DIRECTIVE, SOS_DIRECTIVES,
@@ -26,32 +26,27 @@ from .syntax import (INDENTED, SOS_AS, SOS_CELL, SOS_DIRECTIVE, SOS_DIRECTIVES,
 from .targets import file_target, path, paths, sos_targets, textMD5
 from .utils import Error, env, locate_script, text_repr
 
-assert sys
-assert glob
-
-
-
 __all__ = ['SoS_Script']
 
 
 class ParsingError(Error):
     '''Raised when a configuration file does not follow legal syntax.'''
 
-    def __init__(self, filename):
+    def __init__(self, filename: str) -> None:
         Error.__init__(
             self, f'File contains parsing errors: {filename if filename != "<string>" else ""}')
         self.filename = filename
         self.errors = []
         self.args = (filename, )
 
-    def append(self, lineno, line, msg):
+    def append(self, lineno: int, line: str, msg: str) -> None:
         if (lineno, line) in self.errors:
             return
         self.errors.append((lineno, line))
         self.message += f'\n\t[line {lineno:2d}]: {line}\n{msg}'
 
 
-def get_type_hint(stmt):
+def get_type_hint(stmt: str) -> Any:
     try:
         ns = {'file_target': file_target, 'sos_targets': sos_targets,
               'path': path, 'paths': paths}
@@ -73,7 +68,7 @@ def get_type_hint(stmt):
         return None
 
 
-def extract_option_from_arg_list(options, optname, default_value):
+def extract_option_from_arg_list(options: str, optname: str, default_value: None) -> Tuple[any, str]:
     if not options:
         return default_value, options
     try:
@@ -94,7 +89,7 @@ def extract_option_from_arg_list(options, optname, default_value):
         raise ValueError(f"Expect a list of keyword arguments: {options} provided")
 
 
-def separate_options(options):
+def separate_options(options: str) -> List[str]:
     pieces = options.split(',')
     idx = 0
     while True:
@@ -125,7 +120,7 @@ def separate_options(options):
     return pieces
 
 
-def replace_sigil(text, sigil):
+def replace_sigil(text: str, sigil: str) -> str:
     if sigil == '{ }':
         return text
     if sigil is not None and (sigil.count(' ') != 1 or sigil[0] in (' ', "'") or
@@ -162,7 +157,9 @@ class SoS_Step:
     their types and add them to appropriate sections (directive, statement,
     scripts etc) '''
 
-    def __init__(self, context=None, names=None, options=None, is_global=False):
+    def __init__(self, context: Optional['SoS_ScriptContent'] = None,
+                 names=None,
+                 options=None, is_global: bool = False) -> None:
         '''A sos step '''
         self.context = context
         # A step will not have a name and index until it is copied to separate workflows
@@ -194,10 +191,10 @@ class SoS_Step:
         self._action_options = ''
         self._script = ''
 
-    def has_external_task(self):
+    def has_external_task(self) -> bool:
         return self.task != ''
 
-    def step_name(self, alias=False):
+    def step_name(self, alias: bool = False) -> str:
         if not self.name:
             n, i, a = self.names[0]
             if alias and a:
@@ -212,20 +209,20 @@ class SoS_Step:
                 return self.name + \
                     (f'_{self.index}' if isinstance(self.index, int) else '')
 
-    def match(self, step_name):
+    def match(self, step_name: str) -> bool:
         # if this step provides name...
         for name, index, _ in self.names:
             if step_name == name or step_name == f'{name}_{index}':
                 return True
         return False
 
-    def indented_script(self):
+    def indented_script(self) -> bool:
         ''' check self._script and see if it is indented '''
         # get all leading space, tab and newline
         leading = INDENTED.match(self._script)
-        return leading is not None and leading.group(2)
+        return leading is not None and bool(leading.group(2))
 
-    def category(self):
+    def category(self) -> Optional[str]:
         '''Determine the category of existing statement'''
         if self.statements:
             if self.statements[-1][0] == ':':
@@ -250,7 +247,7 @@ class SoS_Step:
         else:
             return None
 
-    def isValid(self):
+    def isValid(self) -> bool:
         '''Determine if the statement, expression or directive is valid. Otherwise
         the parser will continue until a valid multi-line expression or statement
         can be found.'''
@@ -302,11 +299,11 @@ class SoS_Step:
             self.error_msg = repr(e)
             return False
 
-    def empty(self):
+    def empty(self) -> bool:
         '''If there is no content (comment does not count)'''
         return self.category() is None
 
-    def extend(self, line):
+    def extend(self, line: str) -> None:
         '''Extend the current directive, expression or script'''
         if self.category() == 'directive':
             self.add_directive(None, line)
@@ -315,15 +312,15 @@ class SoS_Step:
         else:
             self.add_statement(line)
 
-    def add_comment(self, line):
+    def add_comment(self, line: str) -> None:
         '''Add comment line'''
         if self.empty() and not self.comment_ended:
             self.comment += (' ' if self.comment else '') + line.lstrip('#').strip()
 
-    def end_comment(self):
+    def end_comment(self) -> None:
         self.comment_ended = True
 
-    def add_directive(self, key, value, lineno=None):
+    def add_directive(self, key: Optional[str], value: str, lineno: Optional[int] = None) -> None:
         '''Assignments are items with ':' type '''
         if key is None:
             # continuation of multi-line directive
@@ -338,7 +335,7 @@ class SoS_Step:
         if lineno:
             self.lineno = lineno
 
-    def add_script(self, key, value, lineno=None):
+    def add_script(self, key: str, value: str, lineno: Optional[int] = None) -> None:
         '''script starts with key: value'''
         # we need a fake directive here because the : directive can be multi-line and
         # we need to borrow the syntax checking of directives here.
@@ -349,7 +346,7 @@ class SoS_Step:
         if lineno:
             self.lineno = lineno
 
-    def add_statement(self, line, lineno=None):
+    def add_statement(self, line: str, lineno: Optional[int] = None) -> None:
         '''statements are regular python statements'''
         # there can be only one statement block
         if self.category() != 'statements':
@@ -363,7 +360,7 @@ class SoS_Step:
         if lineno:
             self.lineno = lineno
 
-    def wrap_script(self):
+    def wrap_script(self) -> None:
         '''convert action: script to task: action(script)'''
         if self._action is None:
             return
@@ -394,7 +391,7 @@ class SoS_Step:
         self._action_options = None
         self._script = ''
 
-    def get_tokens(self):
+    def get_tokens(self) -> str:
         '''Get tokens after input statement'''
         def _get_tokens(statement):
             return [x[1] for x in generate_tokens(StringIO(statement).readline)]
@@ -413,7 +410,7 @@ class SoS_Step:
 
         return ' '.join(tokens)
 
-    def finalize(self):
+    def finalize(self) -> None:
         ''' split statement and task by last directive '''
         self.wrap_script()
         if not self.statements:
@@ -520,7 +517,7 @@ class SoS_Workflow:
     '''A SoS workflow with multiple steps. It is created from multiple sections of a SoS script
     and consists of multiple SoS_Step.'''
 
-    def __init__(self, content, workflow_name, allowed_steps, sections, global_def):
+    def __init__(self, content: 'SoS_ScriptContent', workflow_name: str, allowed_steps: Optional[str], sections: List[SoS_Step], global_def: str) -> None:
         '''create a workflow from its name and a list of SoS_Sections (using name matching)'''
         self.content = content
         self.name = workflow_name
@@ -582,7 +579,7 @@ class SoS_Workflow:
                                  ', '.join(f'{section.name}_{"global" if section.index == -2 else section.index}'
                                            for section in self.sections)))
 
-    def section_by_id(self, uuid):
+    def section_by_id(self, uuid: UUID) -> SoS_Step:
         for section in self.sections:
             if uuid == section.uuid:
                 return section
@@ -591,16 +588,16 @@ class SoS_Workflow:
                 return section
         raise RuntimeError(f'Failed to find section with uuid {uuid}')
 
-    def extend(self, workflow):
+    def extend(self, workflow: 'SoS_Workflow') -> None:
         '''Append another workflow to existing one to created a combined workflow'''
         # all sections are simply appended ...
         self.sections.extend(workflow.sections)
 
-    def has_external_task(self):
+    def has_external_task(self) -> bool:
         return any(x.has_external_task() for x in self.sections) or \
             any(x.has_external_task() for x in self.auxiliary_sections)
 
-    def parameters(self):
+    def parameters(self) -> Dict[str, str]:
         # collect parameters defined by `parameter:` of steps
         par = {}
         for x in self.sections + self.auxiliary_sections:
@@ -612,13 +609,13 @@ class SoS_ScriptContent:
     '''A small class to record the script information to be used by nested
     workflow.'''
 
-    def __init__(self, content='', filename=None):
+    def __init__(self, content: str = '', filename: Optional[str] = None) -> None:
         self.content = content
         self.filename = filename
         self.included = []
         self.md5 = self.calc_md5()
 
-    def calc_md5(self):
+    def calc_md5(self) -> str:
         if self.content:
             cnt = self.content
         else:
@@ -630,7 +627,7 @@ class SoS_ScriptContent:
         #
         return textMD5(cnt)
 
-    def add(self, content='', filename=None):
+    def add(self, content: str = '', filename: Optional[str] = None) -> None:
         if filename and not content:
             with open(filename) as script:
                 content = script.read()
@@ -649,7 +646,7 @@ class SoS_ScriptContent:
 
 
 class SoS_Script:
-    def __init__(self, content='', filename=None, transcript=None):
+    def __init__(self, content: Optional[str] = '', filename: Optional[str] = None, transcript: Optional[StringIO] = None) -> None:
         '''Parse a sectioned SoS script file. Please refer to the SoS manual
         for detailed specification of this format.
 
@@ -736,7 +733,7 @@ class SoS_Script:
             if section.is_global:
                 section.names = self.workflows
 
-    def _find_include_file(self, sos_file):
+    def _find_include_file(self, sos_file: str) -> Tuple[str, str]:
         # we could almost use SoS_script directly but we need to be able to start searching
         # from path of the master file.
         try:
@@ -757,7 +754,7 @@ class SoS_Script:
 
         return content, script_file
 
-    def _include_namespace(self, sos_file, alias):
+    def _include_namespace(self, sos_file: str, alias: Optional[str]) -> None:
         content, script_file = self._find_include_file(sos_file)
         self.content.add(content, script_file)
         script = SoS_Script(content, script_file)
@@ -773,7 +770,7 @@ class SoS_Script:
         self.sections.extend(script.sections)
         self.global_def += f"{alias} = sos_namespace_({repr(script.global_def)})\n"
 
-    def _include_content(self, sos_file, name_map):
+    def _include_content(self, sos_file: str, name_map: Dict[str, str]) -> None:
         content, script_file = self._find_include_file(sos_file)
         #
         self.content.add(content, script_file)
@@ -798,7 +795,7 @@ for __n, __v in {repr(name_map)}.items():
 '''
             # env.logger.trace(self.global_def)
 
-    def _read(self, fp):
+    def _read(self, fp: TextIOBase) -> None:
         self.sections = []
         self.format_version = '1.0'
         self.gloal_def = ''
@@ -963,7 +960,7 @@ for __n, __v in {repr(name_map)}.items():
                             try:
                                 cursect.wrap_script()
                             except Exception as e:
-                                parsing_errors.append(lineno, line, e)
+                                parsing_errors.append(lineno, line, str(e))
                             cursect.add_comment(line)
                             if self.transcript:
                                 self.transcript.write(f'COMMENT\t{lineno}\t{line}')
@@ -1030,7 +1027,7 @@ for __n, __v in {repr(name_map)}.items():
                     try:
                         cursect.finalize()
                     except Exception as e:
-                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), e)
+                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), str(e))
                 # start a new section
                 section_name = mo.group('section_name').strip()
                 section_option = mo.group('section_option')
@@ -1072,7 +1069,7 @@ for __n, __v in {repr(name_map)}.items():
                             else:
                                 parsing_errors.append(lineno, line, 'Invalid section option')
                     except Exception as e:
-                        parsing_errors.append(lineno, line, e)
+                        parsing_errors.append(lineno, line, str(e))
                     env.logger.trace('Header parsed with names {} and options {}'
                                      .format(step_names, step_options))
                 for name in step_names:
@@ -1123,7 +1120,7 @@ for __n, __v in {repr(name_map)}.items():
                     try:
                         cursect.wrap_script()
                     except Exception as e:
-                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), e)
+                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), str(e))
                 else:
                     self.sections.append(SoS_Step(is_global=True))
                     cursect = self.sections[-1]
@@ -1161,7 +1158,7 @@ for __n, __v in {repr(name_map)}.items():
                     try:
                         cursect.wrap_script()
                     except Exception as e:
-                        parsing_errors.append(lineno, line, e)
+                        parsing_errors.append(lineno, line, str(e))
                 else:
                     cursect.extend(line)
                     if self.transcript:
@@ -1200,7 +1197,7 @@ for __n, __v in {repr(name_map)}.items():
                 try:
                     cursect.finalize()
                 except Exception as e:
-                    parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), e)
+                    parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), str(e))
 
         # non-matching %if ...
         if condition_met is not None:
@@ -1250,7 +1247,7 @@ for __n, __v in {repr(name_map)}.items():
             section.tokens = section.get_tokens()
             section.md5 = textMD5(self.content.md5 + section.tokens)
 
-    def workflow(self, workflow_name=None, use_default=True):
+    def workflow(self, workflow_name: Optional[str] = None, use_default: bool = True) -> SoS_Workflow:
         '''Return a workflow with name_step+name_step specified in wf_name
         This function might be called recursively because of nested
         workflow.'''
