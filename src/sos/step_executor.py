@@ -15,10 +15,12 @@ from collections.abc import Iterable, Mapping, Sequence
 from io import StringIO
 from itertools import combinations, tee
 from multiprocessing import Pool
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import psutil
 
 from .eval import SoS_eval, SoS_exec, Undetermined, stmtHash
+from .parser import SoS_Step
 from .pattern import extract_pattern
 from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
                      SOS_OUTPUT_OPTIONS, SOS_RUNTIME_OPTIONS, SOS_TAG)
@@ -30,10 +32,6 @@ from .utils import (SlotManager, StopInputGroup, TerminateExecution, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr,
                     stable_repr)
 
-from sos.eval import Undetermined
-from sos.parser import SoS_Step
-from sos.targets import sos_targets
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
 __all__ = []
 
 
@@ -43,7 +41,7 @@ class PendingTasks(Exception):
         self.tasks = tasks
 
 
-def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets, Undetermined]] = None) -> Dict[str, Union[str, Undetermined, sos_targets, Set[str]]]:
+def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets, Undetermined]] = None) -> Dict[str, Any]:
     '''Analyze a section for how it uses input and output, what variables
     it uses, and input, output, etc.'''
     from .workflow_executor import __null_func__
@@ -70,7 +68,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets
         if '__default_output__' in env.sos_dict:
             step_output = env.sos_dict['__default_output__']
     else:
-        #env.sos_dict = WorkflowDict()
+        # env.sos_dict = WorkflowDict()
         env.sos_dict.set('__null_func__', __null_func__)
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
@@ -1167,7 +1165,7 @@ class Base_Step_Executor:
                 if isinstance(env.sos_dict['__step_output__'], (Undetermined, sos_targets)):
                     env.sos_dict.set('step_input', copy.deepcopy(env.sos_dict['__step_output__']))
                 elif isinstance(env.sos_dict['__step_output__'], list):
-                    #env.logger.warning(f"__step_output__ should not be list")
+                    # env.logger.warning(f"__step_output__ should not be list")
                     env.sos_dict.set('step_input', sos_targets(env.sos_dict['__step_output__']))
                 else:
                     raise RuntimeError(

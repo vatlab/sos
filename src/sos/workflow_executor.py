@@ -14,20 +14,18 @@ from io import StringIO
 from multiprocessing.connection import Connection
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from sos.dag import SoS_DAG, SoS_Node
-from sos.parser import SoS_Step, SoS_Workflow
-from sos.targets import executable, sos_step, sos_variable
 from tqdm import tqdm as ProgressBar
 
 from ._version import __version__
-from .dag import SoS_DAG
+from .dag import SoS_DAG, SoS_Node
 from .eval import SoS_exec
 from .hosts import Host
+from .parser import SoS_Step, SoS_Workflow
 from .pattern import extract_pattern
 from .step_executor import PendingTasks, Step_Executor, analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock, Undetermined,
-                      UnknownTarget, file_target, path, paths, sos_step,
-                      sos_targets, sos_variable, textMD5)
+                      UnknownTarget, executable, file_target, path, paths,
+                      sos_step, sos_targets, sos_variable, textMD5)
 from .utils import (Error, SlotManager, WorkflowDict, env, get_traceback,
                     load_config_files, load_var, pickleable, save_var,
                     short_repr)
@@ -262,7 +260,7 @@ class ExecutionManager(object):
 
         self.max_workers = max_workers
 
-    def execute(self, runnable: Union[SoS_Node, dummy_node], config: Dict[str, Union[str, int, NoneType]], args: Any, spec: Any) -> None:
+    def execute(self, runnable: Union[SoS_Node, dummy_node], config: Dict[str, Any], args: Any, spec: Any) -> None:
         if not self.pool:
             q1, q2 = mp.Pipe()
             worker = SoS_Worker(pipe=q2, config=config, args=args)
@@ -779,7 +777,7 @@ class Base_Executor:
                     f'# end time: {time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())}\n')
                 sigfile.write('# input and dependent files\n')
 
-    def run(self, targets: Optional[List[str]] = None, parent_pipe: None = None, my_workflow_id: None = None, mode: str = 'run') -> Dict[str, Union[NoneType, List[str]]]:
+    def run(self, targets: Optional[List[str]] = None, parent_pipe: None = None, my_workflow_id: None = None, mode: str = 'run') -> Dict[str, Any]:
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''

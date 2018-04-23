@@ -6,8 +6,6 @@
 import ast
 from typing import Any, Dict, List, Optional, Set, Union
 
-from sos.targets import sos_variable
-
 from .utils import env, text_repr
 
 
@@ -131,7 +129,7 @@ class Undetermined(object):
         raise RuntimeError('Undetermined expression should be evaluated before used. '
                            'This is certainly a bug so please report this to SoS developer.')
 
-    def targets(self) -> Undetermined:
+    def targets(self) -> 'Undetermined':
         return self
 
 

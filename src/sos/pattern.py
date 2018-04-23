@@ -9,11 +9,11 @@ import os
 import re
 import sys
 from itertools import chain
+from typing import Any, Dict, List, Optional, Union
 
 from .syntax import SOS_WILDCARD
 from .utils import env
 
-from typing import Any, Dict, List, Union
 __all__ = ['expand_pattern']
 
 #
@@ -108,7 +108,7 @@ def apply_wildcards(pattern: str,
     return SOS_WILDCARD.sub(format_match, pattern)
 
 
-def extract_pattern(pattern: str, ifiles: List[str]) -> Dict[str, Union[List[NoneType], List[str]]]:
+def extract_pattern(pattern: str, ifiles: List[str]) -> Dict[str, any]:
     '''This function match pattern to a list of input files, extract and return
     pieces of filenames as a list of variables with keys defined by pattern.'''
     res = glob_wildcards(pattern, [])
