@@ -106,6 +106,10 @@ setup(name="sos",
           'pydot',
           'pydotplus',
           'pexpect',
+          #
+          'sos-pbs',
+          'sos-rq',
+          'sos-bioinfo',
           # to execute workflow embedded in .ipynb files
           'nbformat',
           'docker;platform_system!="Windows"',
@@ -207,4 +211,4 @@ sos-md.func = sos.converter:script_to_markdown
           ':sys_platform!="win32"': ['xxhash'],
           'dot':      ['graphviz', 'imageio', 'pillow'],
       }
-      )
+)
