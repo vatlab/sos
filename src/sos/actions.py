@@ -406,14 +406,14 @@ class SoS_ExecuteScript:
                 if ret != 0:
                     with open(debug_script_file, 'w') as sfile:
                         sfile.write(self.script)
-                    cmd = cmd.replace(script_file, debug_script_file)
+                    cmd = cmd.replace(script_file, f'.sos/{path(debug_script_file):b}')
                     raise subprocess.CalledProcessError(
                             returncode=ret,
                             cmd=cmd,
-                            stderr='Failed to execute commmand `{}` (ret={}, workdir={}{}{})'.format(
+                            stderr='\nFailed to execute ``{}``\nexitcode={}, workdir=``{}``{}{}\n{}'.format(
                         cmd, ret, os.getcwd(),
                         f', task={os.path.basename(env.sos_dict["__std_err__"]).split(".")[0]}' if '__std_err__' in env.sos_dict else '',
-                        f', err=``{kwargs["stderr"]}``' if 'stderr' in kwargs and os.path.isfile(kwargs['stderr']) else ''))
+                        f', err=``{kwargs["stderr"]}``' if 'stderr' in kwargs and os.path.isfile(kwargs['stderr']) else '', '-'*75))
             except RuntimeError:
                 raise
             except Exception as e:
