@@ -371,9 +371,10 @@ class SoS_DockerClient:
                     se.close()
 
             if ret != 0:
-                msg = 'The script has been saved to .sos/{}. To reproduce the error please run:\n``{}``'.format(
-                    tempscript, cmd.replace(tempdir, os.path.abspath('./.sos')))
-                shutil.copy(os.path.join(tempdir, tempscript), '.sos')
+                debug_script_dir = os.path.join(env.exec_dir, '.sos')
+                msg = 'The script has been saved to {}/{}. To reproduce the error please run:\n``{}``'.format(
+                    debug_script_dir, tempscript, cmd.replace(tempdir, debug_script_dir))
+                shutil.copy(os.path.join(tempdir, tempscript), debug_script_dir)
                 if ret == 125:
                     raise RuntimeError('Docker daemon failed (exitcode=125). ' + msg)
                 elif ret == 126:
