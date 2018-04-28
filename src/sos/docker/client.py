@@ -371,7 +371,7 @@ class SoS_DockerClient:
                     se.close()
 
             if ret != 0:
-                msg = 'The script has been saved to .sos/{} so that you can execute it using the following command:\n{}'.format(
+                msg = 'The script has been saved to .sos/{}. To reproduce the error please run:\n``{}``'.format(
                     tempscript, cmd.replace(tempdir, os.path.abspath('./.sos')))
                 shutil.copy(os.path.join(tempdir, tempscript), '.sos')
                 if ret == 125:
@@ -390,5 +390,5 @@ class SoS_DockerClient:
                             self.tot_mem / 1024 / 1024) + msg)
                 else:
                     raise RuntimeError(
-                        f'Executing script in docker returns an error (exitcode={ret}). {msg}')
+                        f"Executing script in docker returns an error (exitcode={ret}{', err=``%s``' % kwargs['stderr'] if 'stderr' in kwargs and os.path.isfile(kwargs['stderr']) else ''}).\n{msg}")
         return 0
