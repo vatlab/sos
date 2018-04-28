@@ -4,6 +4,7 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import ast
+import sys
 from typing import Any, Dict, List, Optional, Set, Union
 
 from .utils import env, text_repr
@@ -63,7 +64,7 @@ class StatementHash(object):
         pass
 
     def hash(self, script: str) -> str:
-        h = hash(script)
+        h = hash(script) & sys.maxsize
         StatementHash.stmt_hash[h] = script
         return f'script_{h}'
 
