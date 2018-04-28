@@ -11,6 +11,7 @@ import os
 import re
 import sys
 import traceback
+import subprocess
 from collections.abc import Iterable, Mapping, Sequence
 from io import StringIO
 from itertools import combinations, tee
@@ -394,6 +395,12 @@ def concurrent_execute(stmt, proc_vars={}, sig=None, capture_output=False):
         elif env.verbosity > 2:
             env.logger.info(f'{os.getpid()} interrupted. No subprocess.')
         raise e
+    except subprocess.CalledProcessError as e:
+        # cannot pass CalledProcessError back because it is not pickleable
+        res = {'ret_code': e.returncode, 'exception': RuntimeError(e.stderr)}
+        if capture_output:
+            res.update({'stdout': outmsg, 'stderr': errmsg})
+        return res
     except Exception as e:
         error_class = e.__class__.__name__
         cl, exc, tb = sys.exc_info()
@@ -1052,6 +1059,8 @@ class Base_Step_Executor:
             self.last_res = SoS_exec(stmt, return_result=self.run_mode == 'interactive')
         except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks):
             raise
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(e.stderr)
         except Exception as e:
             error_class = e.__class__.__name__
             cl, exc, tb = sys.exc_info()

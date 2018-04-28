@@ -376,20 +376,23 @@ class SoS_DockerClient:
                     debug_script_dir, tempscript, cmd.replace(tempdir, debug_script_dir))
                 shutil.copy(os.path.join(tempdir, tempscript), debug_script_dir)
                 if ret == 125:
-                    raise RuntimeError('Docker daemon failed (exitcode=125). ' + msg)
+                    msg = 'Docker daemon failed (exitcode=125). ' + msg
                 elif ret == 126:
-                    raise RuntimeError('Failed to invoke specified command (exitcode=126). ' + msg)
+                    msg = 'Failed to invoke specified command (exitcode=126). ' + msg
                 elif ret == 127:
-                    raise RuntimeError('Failed to locate specified command (exitcode=127). ' + msg)
+                    msg = 'Failed to locate specified command (exitcode=127). ' + msg
                 elif ret == 137:
                     if not hasattr(self, 'tot_mem'):
                         self.tot_mem = self.total_memory(image)
                     if self.tot_mem is None:
-                        raise RuntimeError('Script killed by docker. ' + msg)
+                        msg = 'Script killed by docker. ' + msg
                     else:
-                        raise RuntimeError('Script killed by docker, probably because of lack of RAM (available RAM={:.1f}GB, exitcode=137). '.format(
-                            self.tot_mem / 1024 / 1024) + msg)
+                        msg = 'Script killed by docker, probably because of lack of RAM (available RAM={:.1f}GB, exitcode=137). '.format(
+                            self.tot_mem / 1024 / 1024) + msg
                 else:
-                    raise RuntimeError(
-                        f"Executing script in docker returns an error (exitcode={ret}{', err=``%s``' % kwargs['stderr'] if 'stderr' in kwargs and os.path.isfile(kwargs['stderr']) else ''}).\n{msg}")
+                    msg =  f"Executing script in docker returns an error (exitcode={ret}{', err=``%s``' % kwargs['stderr'] if 'stderr' in kwargs and os.path.isfile(kwargs['stderr']) else ''}).\n{msg}"
+                raise subprocess.CalledProcessError(
+                            returncode = ret,
+                            cmd = cmd.replace(tempdir, debug_script_dir),
+                            stderr = msg)
         return 0
