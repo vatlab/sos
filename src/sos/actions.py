@@ -406,17 +406,18 @@ class SoS_ExecuteScript:
                 if ret != 0:
                     with open(debug_script_file, 'w') as sfile:
                         sfile.write(self.script)
+                    cmd = cmd.replace(script_file, debug_script_file)
                     raise subprocess.CalledProcessError(
                             returncode=ret,
                             cmd=cmd,
-                            stderr='Failed to execute commmand "{}" (ret={}, workdir={}, script now in ``{}``{}{})'.format(
-                        cmd, ret, os.getcwd(), debug_script_file,
+                            stderr='Failed to execute commmand `{}` (ret={}, workdir={}{}{})'.format(
+                        cmd, ret, os.getcwd(),
                         f', task={os.path.basename(env.sos_dict["__std_err__"]).split(".")[0]}' if '__std_err__' in env.sos_dict else '',
                         f', err=``{kwargs["stderr"]}``' if 'stderr' in kwargs and os.path.isfile(kwargs['stderr']) else ''))
             except RuntimeError:
                 raise
             except Exception as e:
-                env.logger.error(f'Failed to execute script: {e}')
+                env.logger.error(e)
                 raise
             finally:
                 os.remove(script_file)
