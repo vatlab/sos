@@ -189,6 +189,8 @@ class SoS_Worker(mp.Process):
         # SoS namespace.
         try:
             SoS_exec(section.global_def)
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(e.stderr)
         except RuntimeError:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
@@ -465,6 +467,8 @@ class Base_Executor:
         if section.global_def:
             try:
                 SoS_exec(section.global_def)
+            except subprocess.CalledProcessError as e:
+                raise RuntimeError(e.stderr)
             except RuntimeError as e:
                 if env.verbosity > 2:
                     sys.stderr.write(get_traceback())

@@ -85,6 +85,8 @@ def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets
     if section.global_def:
         try:
             SoS_exec('del sos_handle_parameter_\n' + section.global_def)
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(e.stderr)
         except RuntimeError as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())

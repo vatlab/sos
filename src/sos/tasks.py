@@ -626,6 +626,9 @@ del sos_handle_parameter_
     except KeyboardInterrupt:
         env.logger.error(f'{task_id} ``interrupted``')
         raise
+    except subprocess.CalledProcessError as e:
+        return {'ret_code': e.returncode, 'task': task_id, 'shared': {},
+                'exception': RuntimeError(e.stderr) }
     except Exception as e:
 
         error_class = e.__class__.__name__
