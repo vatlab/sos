@@ -18,7 +18,7 @@ import pkg_resources
 
 from .eval import Undetermined
 from .utils import (Error, TimeoutInterProcessLock, env, isPrimitive, load_var,
-                    save_var, short_repr, stable_repr)
+                    save_var, short_repr, stable_repr, pickleable)
 
 try:
     from xxhash import xxh64 as hash_md5
@@ -932,7 +932,7 @@ class RuntimeInfo:
                 'input_files': self.input_files,
                 'output_files': self.output_files,
                 'dependent_files': self.dependent_files,
-                'signature_vars': self.signature_vars,
+                'signature_vars': {x:y for x,y in self.signature_vars.items() if pickleable(y,x)},
                 'script': self.script,
                 'sig_id': self.sig_id,
                 'external': self.external_output}
