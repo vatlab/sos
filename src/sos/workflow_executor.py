@@ -281,7 +281,7 @@ class ExecutionManager(object):
         self.procs.append(ProcInfo(worker=None, pipe=pipe, step=runnable))
 
     def all_busy(self) -> bool:
-        n = len([x for x in self.procs if x and not x.is_pending()])
+        n = len([x for x in self.procs if x and not x.is_pending() and not x.in_status('failed')])
         if self.last_num_procs is None:
             if n > 0:
                 self.slot_manager.acquire(n, self.max_workers)
