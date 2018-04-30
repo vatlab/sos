@@ -1064,7 +1064,7 @@ def load_config_files(filename=None):
     cfg = {}
     config_lock = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', 'sos_config.lck')
     # site configuration file
-    sos_config_file = os.path.join(os.path.split(__file__)[0], 'Site_config.yml')
+    sos_config_file = os.path.join(os.path.split(__file__)[0], 'site_config.yml')
     if os.path.isfile(sos_config_file):
         with TimeoutInterProcessLock(config_lock):
             try:
