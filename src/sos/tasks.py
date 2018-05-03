@@ -16,6 +16,7 @@ import traceback
 from collections import OrderedDict
 from collections.abc import Mapping, Sequence
 from io import StringIO
+from stat import S_IREAD, S_IRGRP, S_IROTH
 from tokenize import generate_tokens
 
 from .eval import SoS_eval, SoS_exec, cfg_interpolate, interpolate, stmtHash
@@ -1105,7 +1106,12 @@ def kill_tasks(tasks, tags=None):
 def kill_task(task):
     status = check_task(task)
     if status == 'pending':
-        return 'cancelled'
+        # the task engine will remove it from lists if killed through a task engine
+        # but it can also be killed through command line externally, so we will need
+        # to mark the task as killed
+        pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.pulse')
+        os.open(pulse_file, flags=os.O_CREAT | os.O_RDONLY)
+        return 'aborted'
     # remove job file as well
     job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.sh')
     if os.path.isfile(job_file):
@@ -1117,7 +1123,6 @@ def kill_task(task):
         return status
     # job is running
     pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.pulse')
-    from stat import S_IREAD, S_IRGRP, S_IROTH
     os.chmod(pulse_file, S_IREAD | S_IRGRP | S_IROTH)
     return 'killed'
 
