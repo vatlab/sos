@@ -731,7 +731,7 @@ def check_task(task):
         start_stamp = os.stat(pulse_file).st_mtime
         elapsed = time.time() - start_stamp
         if elapsed < 0:
-            env.logger.warning(
+            env.logger.debug(
                 f'{pulse_file} is created in the future. Your system time might be problematic')
         # if the file is within 5 seconds
         if elapsed < monitor_interval:
