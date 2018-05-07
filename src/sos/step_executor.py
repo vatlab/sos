@@ -1021,6 +1021,8 @@ class Base_Step_Executor:
         # now, if the task has shared variable, merge to sos_dict
         shared = {}
         for res in self.proc_results:
+            if 'shared' not in res:
+                continue
             #
             # shared looks like: {0: {'a': 100}} where the first 0 is _index
             # we need to convert it to {'a': {0: 100}}
