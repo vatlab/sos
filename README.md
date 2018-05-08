@@ -21,6 +21,9 @@ if you have helped fixing bugs or making improvements to the source code.
 
 ### Change Log of SoS and SoS Notebook
 
+SoS Notebook 0.9.13.4
+* [jupyterlab-sos#11](https://github.com/vatlab/jupyterlab-sos/issues/11): Magic `%cd` now changes directory of all subkernels
+
 SoS Notebook 0.9.12.12
 * [sos-notebook#52](https://github.com/vatlab/sos-notebook/issues/52): All new syntax highlighter that highlights expanded expressions
 * [sos-notebook#58](https://github.com/vatlab/sos-notebook/issues/58): Stop removing leading comments from cells.
