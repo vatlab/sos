@@ -1561,10 +1561,11 @@ class TaskEngine(threading.Thread):
 
         self.canceled_tasks.extend(tasks)
         #
-        cmd = "sos kill {} {} {} -v {}".format('' if all_tasks else ' '.join(tasks),
+        # verbosity cannot be send to underlying command because task engines
+        # rely on the output of certain verbosity (-v1) to post kill the jobs
+        cmd = "sos kill {} {} {}".format('' if all_tasks else ' '.join(tasks),
                                          f'--tags {" ".join(tags)}' if tags else '',
-                                         '-a' if all_tasks else '',
-                                         env.verbosity)
+                                         '-a' if all_tasks else '')
 
         try:
             ret = self.agent.check_output(cmd)
