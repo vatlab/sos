@@ -1244,7 +1244,7 @@ def cmd_kill(args, workflow_args):
         # remote host?
         cfg = load_config_files(args.config)
         host = Host(args.queue)
-        print(host._task_engine.kill_tasks(tasks=args.tasks, tags=args.tags))
+        print(host._task_engine.kill_tasks(tasks=args.tasks, tags=args.tags, all_tasks=args.all))
 
 #
 # command remove

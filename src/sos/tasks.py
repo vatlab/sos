@@ -1535,6 +1535,8 @@ class TaskEngine(threading.Thread):
     def kill_tasks(self, tasks, tags=None, all_tasks=False):
         # we wait for the engine to start
         self.engine_ready.wait()
+        if all_tasks:
+            tasks = self.pending_tasks + list(self.submitting_tasks.keys()) + self.running_tasks
 
         for task in tasks:
             with threading.Lock():
@@ -1549,6 +1551,8 @@ class TaskEngine(threading.Thread):
                     # submitted at a new thread.
                     env.logger.debug(f'Cancel submission of task {task}')
                 elif task in self.running_tasks:
+                    # the job will be killed from command line with
+                    # status updated here
                     env.logger.debug(f'Killing running task {task}')
                 else:
                     # it is not in the system, so we need to know what the
@@ -1557,7 +1561,7 @@ class TaskEngine(threading.Thread):
 
         self.canceled_tasks.extend(tasks)
         #
-        cmd = "sos kill {} {} {}".format(' '.join(tasks),
+        cmd = "sos kill {} {} {}".format('' if all_tasks else ' '.join(tasks),
                                          f'--tags {" ".join(tags)}' if tags else '',
                                          '-a' if all_tasks else '')
 
