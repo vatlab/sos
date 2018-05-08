@@ -1572,7 +1572,7 @@ class TaskEngine(threading.Thread):
             ret = self.agent.check_output(cmd)
             env.logger.debug(f'"{cmd}" executed with response "{ret}"')
         except subprocess.CalledProcessError:
-            env.logger.error(f'Failed to kill task {tasks}')
+            env.logger.error(f'Failed to kill all tasks' if all_tasks else f'Failed to kill tasks {' '.join(tasks)}')
             return ''
         return ret
 
