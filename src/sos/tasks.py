@@ -1097,7 +1097,8 @@ def kill_tasks(tasks, tags=None):
         env.logger.warning('No task to kill')
         return
     all_tasks = sorted(list(set(all_tasks)))
-    p = Pool(len(all_tasks))
+    # at most 20 threads
+    p = Pool(min(20, len(all_tasks)))
     killed = p.map(kill_task, all_tasks)
     for s, t in zip(killed, all_tasks):
         print(f'{t}\t{s}')
