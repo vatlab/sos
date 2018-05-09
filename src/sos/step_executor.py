@@ -10,6 +10,7 @@ import glob
 import os
 import re
 import sys
+import time
 import traceback
 import subprocess
 from collections.abc import Iterable, Mapping, Sequence
@@ -90,7 +91,8 @@ def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets
         except RuntimeError as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
-            raise RuntimeError(f'Failed to execute statements\n"{section.global_def}"\n{e}')
+            raise RuntimeError(
+                f'Failed to execute statements\n"{section.global_def}"\n{e}')
         finally:
             SoS_exec('from sos.runtime import sos_handle_parameter_', None)
 
@@ -142,9 +144,11 @@ def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets
                         else:
                             step_depends = _expand_file_list(True, *args)
                     except Exception as e:
-                        env.logger.debug(f"Args {value} cannot be determined: {e}")
+                        env.logger.debug(
+                            f"Args {value} cannot be determined: {e}")
                 else:
-                    raise RuntimeError(f'Step input should be specified before {statement[1]}')
+                    raise RuntimeError(
+                        f'Step input should be specified before {statement[1]}')
             else:
                 environ_vars |= accessed_vars(statement[1])
         #
@@ -176,7 +180,8 @@ def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets
                     # value supplied, no environ var
                     environ_vars |= set()
                 else:
-                    raise ValueError(f'Unacceptable value for parameter paired_with: {pw}')
+                    raise ValueError(
+                        f'Unacceptable value for parameter paired_with: {pw}')
             if 'group_with' in kwargs:
                 pw = kwargs['group_with']
                 if pw is None or not pw:
@@ -189,7 +194,8 @@ def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets
                     # value supplied, no environ var
                     environ_vars |= set()
                 else:
-                    raise ValueError(f'Unacceptable value for parameter group_with: {pw}')
+                    raise ValueError(
+                        f'Unacceptable value for parameter group_with: {pw}')
             if 'for_each' in kwargs:
                 fe = kwargs['for_each']
                 if fe is None or not fe:
@@ -198,9 +204,11 @@ def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets
                     environ_vars |= set([x.strip() for x in fe.split(',')])
                 elif isinstance(fe, Sequence):
                     for fei in fe:
-                        environ_vars |= set([x.strip() for x in fei.split(',')])
+                        environ_vars |= set([x.strip()
+                                             for x in fei.split(',')])
                 else:
-                    raise ValueError(f'Unacceptable value for parameter fe: {fe}')
+                    raise ValueError(
+                        f'Unacceptable value for parameter fe: {fe}')
         except Exception as e:
             # if anything is not evalutable, keep Undetermined
             env.logger.debug(
@@ -292,7 +300,8 @@ class TaskManager:
             self._unsubmitted_tasks = []
         else:
             # save complete blocks
-            num_tasks = len(self._unsubmitted_tasks) // self.trunk_size * self.trunk_size
+            num_tasks = len(
+                self._unsubmitted_tasks) // self.trunk_size * self.trunk_size
             to_be_submitted = self._unsubmitted_tasks[: num_tasks]
             self._unsubmitted_tasks = self._unsubmitted_tasks[num_tasks:]
 
@@ -300,7 +309,8 @@ class TaskManager:
         ids = []
         if self.trunk_size == 1 or (all_tasks and len(self._unsubmitted_tasks) == 1):
             for task_id, taskdef, _ in to_be_submitted:
-                job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
+                job_file = os.path.join(os.path.expanduser(
+                    '~'), '.sos', 'tasks', task_id + '.def')
                 taskdef.save(job_file)
                 ids.append(task_id)
         else:
@@ -488,15 +498,21 @@ class Base_Step_Executor:
         if env.sos_dict['step_output'] is None:
             return
         if isinstance(env.sos_dict['step_output'], Undetermined):
-            raise RuntimeError('Output of a completed step cannot be undetermined.')
+            raise RuntimeError(
+                'Output of a completed step cannot be undetermined.')
         for target in env.sos_dict['step_output']:
             if isinstance(target, str):
                 if not file_target(target).target_exists('any'):
-                    raise RuntimeError(
-                        f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]} (curdir={os.getcwd()})')
+                    # latency wait for 5 seconds because the file system might be slow
+                    time.sleep(5)
+                    if not file_target(target).target_exists('any'):
+                        raise RuntimeError(
+                            f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]} (curdir={os.getcwd()})')
             elif not target.target_exists('any'):
-                raise RuntimeError(
-                    f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]}')
+                time.sleep(5)
+                if not target.target_exists('any'):
+                    raise RuntimeError(
+                        f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]}')
 
     def step_signature(self, index):
         '''returns a signature of the step. Change of the step content will
@@ -539,7 +555,8 @@ class Base_Step_Executor:
                 env.logger.warning(
                     f'Number of samples ({len(ifiles)}) is not a multiple of group_by ({group_by}). The last group would have less files than the other groups.')
             if group_by < 1:
-                raise ValueError('Value of paramter group_by should be a positive number.')
+                raise ValueError(
+                    'Value of paramter group_by should be a positive number.')
             return [ifiles[i:i + group_by] for i in range(0, len(ifiles), group_by)]
         else:
             raise ValueError(f'Unsupported group_by option ``{group_by}``!')
@@ -565,18 +582,21 @@ class Base_Step_Executor:
             try:
                 var_name = ['_' + x for x in paired_with]
             except Exception:
-                raise ValueError(f'Invalud value for option paired_with {paired_with}')
+                raise ValueError(
+                    f'Invalud value for option paired_with {paired_with}')
             var_value = []
             for vn in var_name:
                 if vn[1:] not in env.sos_dict:
                     raise ValueError(f'Variable {vn[1:]} does not exist.')
                 var_value.append(env.sos_dict[vn[1:]])
         else:
-            raise ValueError(f'Unacceptable value for parameter paired_with: {paired_with}')
+            raise ValueError(
+                f'Unacceptable value for parameter paired_with: {paired_with}')
         #
         for vn, vv in zip(var_name, var_value):
             if isinstance(vv, str) or not isinstance(vv, Iterable):
-                raise ValueError(f'paired_with variable {vn} is not a sequence ("{vv}")')
+                raise ValueError(
+                    f'paired_with variable {vn} is not a sequence ("{vv}")')
             if len(vv) != len(ifiles):
                 raise ValueError(
                     f'Length of variable {vn} (length {len(vv)}) should match the number of input files (length {len(ifiles)}).')
@@ -608,18 +628,21 @@ class Base_Step_Executor:
             try:
                 var_name = ['_' + x for x in group_with]
             except Exception:
-                raise ValueError(f'Invalud value for option group_with {group_with}')
+                raise ValueError(
+                    f'Invalud value for option group_with {group_with}')
             var_value = []
             for vn in var_name:
                 if vn[1:] not in env.sos_dict:
                     raise ValueError(f'Variable {vn[1:]} does not exist.')
                 var_value.append(env.sos_dict[vn[1:]])
         else:
-            raise ValueError(f'Unacceptable value for parameter group_with: {group_with}')
+            raise ValueError(
+                f'Unacceptable value for parameter group_with: {group_with}')
         #
         for vn, vv in zip(var_name, var_value):
             if isinstance(vv, str) or not isinstance(vv, Iterable):
-                raise ValueError(f'group_with variable {vn} is not a sequence ("{vv}")')
+                raise ValueError(
+                    f'group_with variable {vn} is not a sequence ("{vv}")')
             if len(vv) != len(_groups):
                 raise ValueError(
                     f'Length of variable {vn} (length {len(vv)}) should match the number of input groups (length {len(_groups)}).')
@@ -636,17 +659,20 @@ class Base_Step_Executor:
         elif isinstance(pattern, Iterable):
             patterns = pattern
         else:
-            raise ValueError(f'Unacceptable value for parameter pattern: {pattern}')
+            raise ValueError(
+                f'Unacceptable value for parameter pattern: {pattern}')
         #
         for pattern in patterns:
             res = extract_pattern(pattern, ifiles)
             # now, assign the variables to env
             for k, v in res.items():
                 if k in ('step_input', 'step_output', 'step_depends') or k.startswith('_'):
-                    raise RuntimeError(f'Pattern defined variable {k} is not allowed')
+                    raise RuntimeError(
+                        f'Pattern defined variable {k} is not allowed')
                 env.sos_dict[k] = v
             # also make k, v pair with _input
-            Base_Step_Executor.handle_paired_with(res.keys(), ifiles, _groups, _vars)
+            Base_Step_Executor.handle_paired_with(
+                res.keys(), ifiles, _groups, _vars)
 
     @staticmethod
     def handle_for_each(for_each, _groups, _vars):
@@ -657,7 +683,8 @@ class Base_Step_Executor:
         elif isinstance(for_each, Sequence):
             for_each = for_each
         else:
-            raise ValueError(f'Unacceptable value for parameter for_each: {for_each}')
+            raise ValueError(
+                f'Unacceptable value for parameter for_each: {for_each}')
         #
         for fe_all in for_each:
             if isinstance(fe_all, dict):
@@ -709,7 +736,8 @@ class Base_Step_Executor:
                             raise ValueError(
                                 f'Unacceptable for_each data type {values.__class__.__name__}')
                     except Exception as e:
-                        raise ValueError(f'Cannot iterate through variable {name}: {e}')
+                        raise ValueError(
+                            f'Cannot iterate through variable {name}: {e}')
                 if loop_size is None:
                     loop_size = len(values)
                 elif loop_size != len(values):
@@ -775,23 +803,28 @@ class Base_Step_Executor:
         #
         # handle group_by
         if 'group_by' in kwargs:
-            _groups = Base_Step_Executor.handle_group_by(ifiles, kwargs['group_by'])
+            _groups = Base_Step_Executor.handle_group_by(
+                ifiles, kwargs['group_by'])
         else:
             _groups = [ifiles]
         #
         _vars = [{} for x in _groups]
         # handle paired_with
         if 'paired_with' in kwargs:
-            Base_Step_Executor.handle_paired_with(kwargs['paired_with'], ifiles,  _groups, _vars)
+            Base_Step_Executor.handle_paired_with(
+                kwargs['paired_with'], ifiles,  _groups, _vars)
         # handle pattern
         if 'pattern' in kwargs:
-            Base_Step_Executor.handle_extract_pattern(kwargs['pattern'], ifiles, _groups, _vars)
+            Base_Step_Executor.handle_extract_pattern(
+                kwargs['pattern'], ifiles, _groups, _vars)
         # handle group_with
         if 'group_with' in kwargs:
-            Base_Step_Executor.handle_group_with(kwargs['group_with'], ifiles,  _groups, _vars)
+            Base_Step_Executor.handle_group_with(
+                kwargs['group_with'], ifiles,  _groups, _vars)
         # handle for_each
         if 'for_each' in kwargs:
-            Base_Step_Executor.handle_for_each(kwargs['for_each'], _groups, _vars)
+            Base_Step_Executor.handle_for_each(
+                kwargs['for_each'], _groups, _vars)
         return _groups, _vars
 
     def process_depends_args(self, dfiles, **kwargs):
@@ -825,7 +858,8 @@ class Base_Step_Executor:
                         os.makedirs(parent_dir)
 
         if 'group_by' in kwargs:
-            _ogroups = Base_Step_Executor.handle_group_by(ofiles, kwargs['group_by'])
+            _ogroups = Base_Step_Executor.handle_group_by(
+                ofiles, kwargs['group_by'])
             if len(_ogroups) != len(self._groups):
                 raise RuntimeError(
                     f'Output option group_by produces {len(_ogroups)} output groups which is different from the number of input groups ({len(self._groups)}).')
@@ -862,7 +896,8 @@ class Base_Step_Executor:
             args, _ = SoS_eval(f'__null_func__({env.sos_dict["output"].expr})')
             # handle dynamic args
             args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-            env.sos_dict.set('step_output', sos_targets(self.expand_output_files('', *args)))
+            env.sos_dict.set('step_output', sos_targets(
+                self.expand_output_files('', *args)))
         else:
             # this needs to be re-visited
             for target in env.sos_dict['step_output'].targets():
@@ -870,8 +905,10 @@ class Base_Step_Executor:
                     continue
                 args, _ = SoS_eval(f'__null_func__({target.expr})')
                 # handle dynamic args
-                args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-                env.sos_dict.set('step_output', sos_targets(self.expand_output_files('', *args)))
+                args = [x.resolve() if isinstance(
+                    x, dynamic) else x for x in args]
+                env.sos_dict.set('step_output', sos_targets(
+                    self.expand_output_files('', *args)))
 
     def prepare_task(self):
         env.sos_dict['_runtime']['cur_dir'] = os.getcwd()
@@ -879,12 +916,15 @@ class Base_Step_Executor:
         # they might be changed while the task is in the queue waiting to be
         # submitted (this happens when tasks are submitted from Jupyter)
         env.sos_dict['_runtime']['verbosity'] = env.verbosity
-        env.sos_dict['_runtime']['sig_mode'] = env.config.get('sig_mode', 'default')
-        env.sos_dict['_runtime']['run_mode'] = env.config.get('run_mode', 'run')
+        env.sos_dict['_runtime']['sig_mode'] = env.config.get(
+            'sig_mode', 'default')
+        env.sos_dict['_runtime']['run_mode'] = env.config.get(
+            'run_mode', 'run')
         env.sos_dict['_runtime']['home_dir'] = os.path.expanduser('~')
         if 'workdir' in env.sos_dict['_runtime'] and not os.path.isdir(os.path.expanduser(env.sos_dict['_runtime']['workdir'])):
             try:
-                os.makedirs(os.path.expanduser(env.sos_dict['_runtime']['workdir']))
+                os.makedirs(os.path.expanduser(
+                    env.sos_dict['_runtime']['workdir']))
             except Exception:
                 raise RuntimeError(
                     f'Failed to create workdir {env.sos_dict["_runtime"]["workdir"]}')
@@ -915,7 +955,8 @@ class Base_Step_Executor:
                 if not SOS_TAG.match(tag):
                     new_tag = re.sub(r'[^\w_.-]', '', tag)
                     if new_tag:
-                        env.logger.warning(f'Invalid tag "{tag}" is added as "{new_tag}"')
+                        env.logger.warning(
+                            f'Invalid tag "{tag}" is added as "{new_tag}"')
                         task_tags.append(new_tag)
                     else:
                         env.logger.warning(f'Invalid tag "{tag}" is ignored')
@@ -924,7 +965,8 @@ class Base_Step_Executor:
 
         # save task to a file
         taskdef = TaskParams(
-            name='{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
+            name='{} (index={})'.format(
+                self.step.step_name(), env.sos_dict['_index']),
             global_def=self.step.global_def,
             task=self.step.task,          # task
             sos_dict=task_vars,
@@ -933,8 +975,9 @@ class Base_Step_Executor:
         # if no output (thus no signature)
         # temporarily create task signature to obtain sig_id
         task_id = RuntimeInfo(self.step.md5, self.step.task, task_vars['_input'].targets(),
-                              task_vars['_output'].targets(), task_vars['_depends'].targets(),
-                              task_vars['__signature_vars__'], task_vars).sig_id
+                              task_vars['_output'].targets(
+        ), task_vars['_depends'].targets(),
+            task_vars['__signature_vars__'], task_vars).sig_id
 
         # workflow ID should be included but not part of the signature, this is why it is included
         # after task_id is created.
@@ -969,13 +1012,15 @@ class Base_Step_Executor:
         # it is possible that identical tasks are executed (with different underlying random numbers)
         # we should either give a warning or produce different ids...
         if self.task_manager.has_task(task_id):
-            raise RuntimeError(f'Identical task generated from _index={env.sos_dict["_index"]}.')
+            raise RuntimeError(
+                f'Identical task generated from _index={env.sos_dict["_index"]}.')
         elif self.task_manager.has_output(task_vars['_output']):
             raise RuntimeError(
                 f'Task produces output files {", ".join(task_vars["_output"])} that are output of other tasks.')
         # if no trunk_size, the job will be submitted immediately
         # otherwise tasks will be accumulated and submitted in batch
-        self.task_manager.append((task_id, taskdef, task_vars['_output'].targets()))
+        self.task_manager.append(
+            (task_id, taskdef, task_vars['_output'].targets()))
         tasks = self.task_manager.get_job()
         if tasks:
             self.submit_tasks(tasks)
@@ -1043,24 +1088,30 @@ class Base_Step_Executor:
             env.logger.trace(f'Handling input statement {msg}')
         elif stage == '_input':
             if env.sos_dict['_input'] is not None:
-                env.logger.debug(f'_input: ``{short_repr(env.sos_dict["_input"])}``')
+                env.logger.debug(
+                    f'_input: ``{short_repr(env.sos_dict["_input"])}``')
         elif stage == '_depends':
             if env.sos_dict['_depends'] is not None:
-                env.logger.debug(f'_depends: ``{short_repr(env.sos_dict["_depends"])}``')
+                env.logger.debug(
+                    f'_depends: ``{short_repr(env.sos_dict["_depends"])}``')
         elif stage == 'input':
             if env.sos_dict['step_input'] is not None:
-                env.logger.info(f'input:   ``{short_repr(env.sos_dict["step_input"])}``')
+                env.logger.info(
+                    f'input:   ``{short_repr(env.sos_dict["step_input"])}``')
         elif stage == 'output':
             if env.sos_dict['step_output'] is not None:
-                env.logger.info(f'output:   ``{short_repr(env.sos_dict["step_output"])}``')
+                env.logger.info(
+                    f'output:   ``{short_repr(env.sos_dict["step_output"])}``')
 
     def execute(self, stmt, sig=None):
         try:
             if sig is None:
                 env.sos_dict.set('__step_sig__', None)
             else:
-                env.sos_dict.set('__step_sig__', os.path.basename(sig.proc_info).split('.')[0])
-            self.last_res = SoS_exec(stmt, return_result=self.run_mode == 'interactive')
+                env.sos_dict.set('__step_sig__', os.path.basename(
+                    sig.proc_info).split('.')[0])
+            self.last_res = SoS_exec(
+                stmt, return_result=self.run_mode == 'interactive')
         except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks):
             raise
         except subprocess.CalledProcessError as e:
@@ -1110,20 +1161,24 @@ class Base_Step_Executor:
             rvars = self.step.options['shared']
             if isinstance(rvars, str):
                 result['__changed_vars__'].add(rvars)
-                result['__shared__'][rvars] = copy.deepcopy(env.sos_dict[rvars])
+                result['__shared__'][rvars] = copy.deepcopy(
+                    env.sos_dict[rvars])
             elif isinstance(rvars, Mapping):
                 result['__changed_vars__'] |= rvars.keys()
                 for var in rvars.keys():
-                    result['__shared__'][var] = copy.deepcopy(env.sos_dict[var])
+                    result['__shared__'][var] = copy.deepcopy(
+                        env.sos_dict[var])
             elif isinstance(rvars, Sequence):
                 for item in rvars:
                     if isinstance(item, str):
                         result['__changed_vars__'].add(item)
-                        result['__shared__'][item] = copy.deepcopy(env.sos_dict[item])
+                        result['__shared__'][item] = copy.deepcopy(
+                            env.sos_dict[item])
                     elif isinstance(item, Mapping):
                         result['__changed_vars__'] |= item.keys()
                         for var in item.keys():
-                            result['__shared__'][var] = copy.deepcopy(env.sos_dict[var])
+                            result['__shared__'][var] = copy.deepcopy(
+                                env.sos_dict[var])
                     else:
                         raise ValueError(
                             f'Option shared should be a string, a mapping of expression, or a list of string or mappings. {rvars} provided')
@@ -1156,7 +1211,8 @@ class Base_Step_Executor:
             env.sos_dict.set('workflow_id', os.path.split(
                 env.sos_dict['__workflow_sig__'])[-1].split('.')[0])
         except Exception as e:
-            env.logger.debug(f'Failed to set workflow_id for step {self.step.step_name()}: {e}')
+            env.logger.debug(
+                f'Failed to set workflow_id for step {self.step.step_name()}: {e}')
             env.sos_dict.set('workflow_id', env.config.get('master_md5', ''))
         # used by nested workflow
         env.sos_dict.set('__step_context__', self.step.context)
@@ -1176,10 +1232,12 @@ class Base_Step_Executor:
         else:
             if env.sos_dict['__step_output__'] is not None:
                 if isinstance(env.sos_dict['__step_output__'], (Undetermined, sos_targets)):
-                    env.sos_dict.set('step_input', copy.deepcopy(env.sos_dict['__step_output__']))
+                    env.sos_dict.set('step_input', copy.deepcopy(
+                        env.sos_dict['__step_output__']))
                 elif isinstance(env.sos_dict['__step_output__'], list):
                     # env.logger.warning(f"__step_output__ should not be list")
-                    env.sos_dict.set('step_input', sos_targets(env.sos_dict['__step_output__']))
+                    env.sos_dict.set('step_input', sos_targets(
+                        env.sos_dict['__step_output__']))
                 else:
                     raise RuntimeError(
                         '__step_output__ can only be None, Undetermined, or a list of files.')
@@ -1191,8 +1249,10 @@ class Base_Step_Executor:
         if '__default_output__' in env.sos_dict:
             # if not isinstance(env.sos_dict['__default_output__'], sos_targets):
             #    env.logger.warning("__default_output__ should be sos_targets")
-            env.sos_dict.set('step_output', sos_targets(env.sos_dict['__default_output__']))
-            env.sos_dict.set('_output', sos_targets(env.sos_dict['__default_output__']))
+            env.sos_dict.set('step_output', sos_targets(
+                env.sos_dict['__default_output__']))
+            env.sos_dict.set('_output', sos_targets(
+                env.sos_dict['__default_output__']))
         else:
             env.sos_dict.set('step_output', sos_targets())
             env.sos_dict.set('_output', sos_targets())
@@ -1220,7 +1280,8 @@ class Base_Step_Executor:
                 if statement[0] == ':':
                     key, value = statement[1:]
                     if key != 'depends':
-                        raise ValueError(f'Step input should be specified before {key}')
+                        raise ValueError(
+                            f'Step input should be specified before {key}')
                     try:
                         args, kwargs = SoS_eval(f'__null_func__({value})')
                         dfiles = self.expand_depends_files(*args)
@@ -1229,7 +1290,8 @@ class Base_Step_Executor:
                     except (UnknownTarget, RemovedTarget, UnavailableLock):
                         raise
                     except Exception as e:
-                        raise RuntimeError(f'Failed to process step {key}: {value.strip()} ({e})')
+                        raise RuntimeError(
+                            f'Failed to process step {key}: {value.strip()} ({e})')
                 else:
                     try:
                         self.execute(statement[1])
@@ -1244,13 +1306,15 @@ class Base_Step_Executor:
                 args, kwargs = SoS_eval(f"__null_func__({stmt})")
                 # Files will be expanded differently with different running modes
                 input_files = self.expand_input_files(stmt, *args)
-                self._groups, self._vars = self.process_input_args(input_files, **kwargs)
+                self._groups, self._vars = self.process_input_args(
+                    input_files, **kwargs)
                 self.concurrent_input_group = 'concurrent' in kwargs and kwargs['concurrent'] and len(
                     self._groups) > 1
             except (UnknownTarget, RemovedTarget, UnavailableLock):
                 raise
             except Exception as e:
-                raise ValueError(f'Failed to process input statement {stmt}: {e}')
+                raise ValueError(
+                    f'Failed to process input statement {stmt}: {e}')
 
             input_statement_idx += 1
         else:
@@ -1280,7 +1344,8 @@ class Base_Step_Executor:
                 env.logger.debug(
                     'Input groups are executed sequentially because of existence of tasks')
             else:
-                conc_stmts = [x for x in self.step.statements[input_statement_idx:] if x[0] != ':']
+                conc_stmts = [
+                    x for x in self.step.statements[input_statement_idx:] if x[0] != ':']
                 if len(conc_stmts) > 1:
                     self.concurrent_input_group = False
                     env.logger.debug(
@@ -1295,10 +1360,12 @@ class Base_Step_Executor:
                     gotten = sm.acquire(len(self._groups) - 1,
                                         env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
                     if gotten == 0:
-                        env.logger.debug(f'Input group executed sequencially due to -j constraint')
+                        env.logger.debug(
+                            f'Input group executed sequencially due to -j constraint')
                         self.concurrent_input_group = False
                     else:
-                        env.logger.debug(f'Using process pool with size {gotten+1}')
+                        env.logger.debug(
+                            f'Using process pool with size {gotten+1}')
                         self.worker_pool = Pool(gotten + 1)
 
         try:
@@ -1328,7 +1395,8 @@ class Base_Step_Executor:
                             if key == 'output':
                                 # if output is defined, its default value needs to be cleared
                                 if idx == 0:
-                                    env.sos_dict.set('step_output', sos_targets())
+                                    env.sos_dict.set(
+                                        'step_output', sos_targets())
                                 ofiles = self.expand_output_files(value, *args)
                                 if not isinstance(g, (type(None), Undetermined)) and not isinstance(ofiles, (type(None), Undetermined)):
                                     if any(x in g for x in ofiles):
@@ -1336,7 +1404,8 @@ class Base_Step_Executor:
                                             f'Overlapping input and output files: {", ".join(repr(x) for x in ofiles if x in g)}')
                                 # set variable _output and output
                                 self.process_output_args(ofiles, **kwargs)
-                                self.output_groups[idx] = env.sos_dict['_output'].targets()
+                                self.output_groups[idx] = env.sos_dict['_output'].targets(
+                                )
 
                                 # ofiles can be Undetermined
                                 sg = self.step_signature(idx)
@@ -1352,7 +1421,8 @@ class Base_Step_Executor:
                                         if 'sos_run' in env.sos_dict['__signature_vars__']:
                                             skip_index = False
                                         else:
-                                            matched = signatures[idx].validate()
+                                            matched = signatures[idx].validate(
+                                            )
                                             if isinstance(matched, dict):
                                                 # in this case, an Undetermined output can get real output files
                                                 # from a signature
@@ -1362,16 +1432,19 @@ class Base_Step_Executor:
                                                     '_depends', sos_targets(matched['depends']))
                                                 env.sos_dict.set(
                                                     '_output', sos_targets(matched['output']))
-                                                env.sos_dict.update(matched['vars'])
+                                                env.sos_dict.update(
+                                                    matched['vars'])
                                                 env.logger.info(
                                                     f'``{self.step.step_name(True)}`` (index={idx}) is ``ignored`` due to saved signature')
                                                 skip_index = True
                                             else:
-                                                env.logger.debug(f'Signature mismatch: {matched}')
+                                                env.logger.debug(
+                                                    f'Signature mismatch: {matched}')
                                     elif env.config['sig_mode'] == 'assert':
                                         matched = signatures[idx].validate()
                                         if isinstance(matched, str):
-                                            raise RuntimeError(f'Signature mismatch: {matched}')
+                                            raise RuntimeError(
+                                                f'Signature mismatch: {matched}')
                                         else:
                                             env.sos_dict.set(
                                                 '_input', sos_targets(matched['input']))
@@ -1379,7 +1452,8 @@ class Base_Step_Executor:
                                                 '_depends', sos_targets(matched['depends']))
                                             env.sos_dict.set(
                                                 '_output', sos_targets(matched['output']))
-                                            env.sos_dict.update(matched['vars'])
+                                            env.sos_dict.update(
+                                                matched['vars'])
                                             env.logger.info(
                                                 f'Step ``{self.step.step_name(True)}`` (index={idx}) is ``ignored`` with matching signature')
                                             skip_index = True
@@ -1410,7 +1484,8 @@ class Base_Step_Executor:
                             elif key == 'task':
                                 self.process_task_args(*args, **kwargs)
                             else:
-                                raise RuntimeError(f'Unrecognized directive {key}')
+                                raise RuntimeError(
+                                    f'Unrecognized directive {key}')
                         except (UnknownTarget, RemovedTarget, UnavailableLock):
                             raise
                         except Exception as e:
@@ -1440,7 +1515,8 @@ class Base_Step_Executor:
 
                                 self.proc_results.append(
                                     self.worker_pool.apply_async(concurrent_execute, kwds=dict(stmt=statement[1],
-                                                                                               proc_vars=proc_vars, sig=signatures[idx],
+                                                                                               proc_vars=proc_vars, sig=signatures[
+                                                                                                   idx],
                                                                                                capture_output=self.run_mode == 'interactive')))
                                 # signature will be written by the concurrent executor
                                 signatures[idx] = None
@@ -1496,11 +1572,13 @@ class Base_Step_Executor:
                         if env.sos_dict['_index'] not in allowed_index:
                             continue
                     elif isinstance(active, slice):
-                        allowed_index = list(range(env.sos_dict['__num_groups__']))[active]
+                        allowed_index = list(
+                            range(env.sos_dict['__num_groups__']))[active]
                         if env.sos_dict['_index'] not in allowed_index:
                             continue
                     else:
-                        raise RuntimeError(f'Unacceptable value for option active: {active}')
+                        raise RuntimeError(
+                            f'Unacceptable value for option active: {active}')
 
                 #
                 self.log('task')
@@ -1558,7 +1636,8 @@ class Base_Step_Executor:
                     # finalize output from output_groups because some output might be skipped
                     # this is the final version of the output but we do maintain output
                     # during the execution of step, for compatibility.
-                    env.sos_dict.set('step_output', sos_targets(self.output_groups[0]))
+                    env.sos_dict.set(
+                        'step_output', sos_targets(self.output_groups[0]))
                     for og in self.output_groups[1:]:
                         if og != env.sos_dict['step_output'].targets():
                             env.sos_dict['step_output'].extend(og)
@@ -1638,7 +1717,8 @@ def _expand_file_list(ignore_unknown: bool, *args) -> Any:
                 raise RuntimeError(f'Invalid target: {arg}')
             ifiles.extend(arg)
         else:
-            raise RuntimeError(f'Unrecognized file: {arg} of type {type(arg).__name__}')
+            raise RuntimeError(
+                f'Unrecognized file: {arg} of type {type(arg).__name__}')
 
     # expand files with wildcard characters and check if files exist
     tmp = []
@@ -1717,7 +1797,8 @@ class Step_Executor(Base_Step_Executor):
         try:
             res = Base_Step_Executor.run(self)
             if self.pipe is not None:
-                env.logger.debug(f'Step {self.step.step_name()} sends result {short_repr(res)}')
+                env.logger.debug(
+                    f'Step {self.step.step_name()} sends result {short_repr(res)}')
                 self.pipe.send(res)
             else:
                 return res
@@ -1725,7 +1806,8 @@ class Step_Executor(Base_Step_Executor):
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
             if self.pipe is not None:
-                env.logger.debug(f'Step {self.step.step_name()} sends exception {e}')
+                env.logger.debug(
+                    f'Step {self.step.step_name()} sends exception {e}')
                 self.pipe.send(e)
             else:
                 raise e
