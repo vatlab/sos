@@ -15,7 +15,7 @@ from io import BytesIO
 import docker
 from sos.eval import interpolate
 from sos.targets import sos_targets
-from sos.utils import env
+from sos.utils import env, pexpect_run
 
 #
 # docker support
@@ -301,7 +301,6 @@ class SoS_DockerClient:
                     ret = child.returncode
                 else:
                     # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
-                    from .utils import pexpect_run
                     ret = pexpect_run(cmd)
             elif '__std_out__' in env.sos_dict and '__std_err__' in env.sos_dict:
                 if 'stdout' in kwargs or 'stderr' in kwargs:
