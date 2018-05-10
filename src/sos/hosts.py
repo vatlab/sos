@@ -1092,15 +1092,23 @@ def status_of_queues(cfg, hosts=[], verbosity=1):
     for host in sorted(hosts):
         try:
             h = Host(host, start_engine=True)
-        except Exception as e:
-            env.logger.warning(
-                f'Invalid remote host {host} from localhost: {e}')
-            continue
-        try:
             status = h._task_engine.query_tasks(tasks=[], verbosity=0)
+            if not status:
+                raise ValueError("Failed to query status")
         except Exception as e:
-            env.logger.warning(
-                f"Failed to check status of remote host {host}: {e}")
+            if verbosity == 0:
+                print(f'{host} ({e})')
+            elif verbosity in (1, 2):
+                host_description.append([host, '?', '?', '?', '?', '?'])
+            else:
+                print(f'Queue:       {host}')
+                print(f'Error:       {str(e)}')
+                if isinstance(cfg['hosts'][host], dict):
+                    print('Configuration:')
+                    for key in cfg['hosts'][host].keys():
+                        print(
+                            f'  {(key + ":").ljust(24)} {cfg["hosts"][host][key]}')
+                print()
             continue
         status = [x.strip() for x in status.splitlines() if x.strip()]
         running = str(status.count('running'))

@@ -765,7 +765,7 @@ def cmd_remote(args, workflow_args):
             from .hosts import list_queues
             list_queues(cfg, args.hosts, args.verbosity)
         elif args.status:
-            from .hosts import list_queues
+            from .hosts import status_of_queues
             status_of_queues(cfg, args.hosts, args.verbosity)
         elif args.test:
             from .hosts import test_queues
