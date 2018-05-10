@@ -852,8 +852,8 @@ class Host:
                 return host
         for host, host_info in env.sos_dict['CONFIG']['hosts'].items():
             # find by address
-            if 'address' in host_info and (host_info['address'].split('@')[-1].lower() == hostname or \
-                    host_info['address'].split('.', 1)[0].split('@')[-1].lower() == hostname):
+            if 'address' in host_info and (host_info['address'].split('@')[-1].lower() == hostname or
+                                           host_info['address'].split('.', 1)[0].split('@')[-1].lower() == hostname):
                 return host
         # try IP Address
         hostname = socket.gethostname()
@@ -1043,7 +1043,7 @@ def list_queues(cfg, hosts=[], verbosity=1):
                         ['-----', '-------', '----------', '-----------']]
     for host in sorted(hosts):
         try:
-            h = Host(host)
+            h = Host(host, start_engine=False)
         except Exception as e:
             if verbosity == 0:
                 print(f'{host} ({e})')
