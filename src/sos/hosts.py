@@ -8,6 +8,7 @@ import multiprocessing as mp
 import os
 import pickle
 import shutil
+import socket
 import stat
 import subprocess
 import sys
@@ -789,33 +790,59 @@ class Host:
     def not_wait_for_tasks(cls):
         return all(host._task_engine.wait_for_task is False for host in cls.host_instances.values())
 
-    def _get_config(self, alias):
+    def _get_local_host(self):
+        if 'CONFIG' not in env.sos_dict:
+            from .utils import load_config_files
+            load_config_files()
+        # look for an entry with gethost
+        if 'hosts' not in env.sos_dict['CONFIG']:
+            return 'localhost'
+        # try host name
+        hostname = socket.gethostname().lower()
+        for host, host_info in env.sos_dict['CONFIG']['hosts'].items():
+            # find by key hostname
+            if 'hostname' in host_info and host_info['hostname'].lower() == hostname:
+                return host
+            # find by alias
+            if host.lower() == hostname:
+                return host
+            # find by address
+            if 'address' in host_info and host_info['address'].split('.', 1)[0].split('@')[-1].lower() == hostname:
+                return host
+        # try IP Address
+        hostname = socket.gethostname()
+        ips = socket.gethostbyname_ex(hostname)[2]
+        ips = [ip for ip in ips if not ip.startswith("127.")]
+        # if the IP matches any address?
+        for host, host_info in env.sos_dict['CONFIG']['hosts'].items():
+            # find by key hostname
+            if 'address' in host_info and any(ip == host_info['address'].split('@')[-1] for ip in ips):
+                return host
+        # now check if a key localhost is defined
+        if 'localhost' in env.sos_dict['CONFIG']:
+            if env.sos_dict['CONFIG']['localhost'] not in env.sos_dict['CONFIG']['hosts']:
+                raise ValueError(f"Undefined localhost {env.sos_dict['CONFIG']['localhost']}")
+            env.logger.debug(f"Using hardcoded localhost {env.sos_dict['CONFIG']['localhost']}")
+            return env.sos_dict['CONFIG']['localhost']
+
+    def _get_remote_host(self, alias):
+        # get a remote host specified by Alias
         if 'CONFIG' not in env.sos_dict:
             from .utils import load_config_files
             load_config_files()
         if not alias or alias == 'localhost':
-            # if no alias is specified, we are using localhost  ->  localhost
-            if 'localhost' not in env.sos_dict['CONFIG']:
-                # true default ... we are running localhost  ->  localhost without definition
-                self.alias = 'localhost'
-                LOCAL = 'localhost'
-            else:
-                # use local host ... it is possible that localhost is a queue system
-                self.alias = env.sos_dict['CONFIG']['localhost']
-                LOCAL = self.alias
-        elif not isinstance(alias, str):
-            raise ValueError(f'An alias or host address is expected. {self.alias} provided.')
-        else:
-            # specified "remote" host.
-            # but then we would require a definition for localhost
-            if 'localhost' not in env.sos_dict['CONFIG']:
-                raise ValueError(
-                    f'localhost undefined in sos configuration file when a remote host {alias} is specified.')
-            self.alias = alias
-            LOCAL = env.sos_dict['CONFIG']['localhost']
+            return self._get_local_host()
+        if not isinstance(alias, str):
+            raise ValueError(f'A string is expected for host {alias}')
+        if 'hosts' not in env.sos_dict['CONFIG'] or alias not in env.sos_dict['CONFIG']['hosts']:
+            raise ValueError(f'Undefined remote host {alias}')
+        return alias
 
-        # just to make it clear that alias refers to remote_host
-        REMOTE = self.alias
+    def _get_config(self, alias):
+        LOCAL = self._get_local_host()
+        REMOTE = self._get_remote_host(alias)
+        self.alias = REMOTE
+
         # now we need to find definition for local and remote host
         if LOCAL == 'localhost' and REMOTE == 'localhost':
             self.config = {
