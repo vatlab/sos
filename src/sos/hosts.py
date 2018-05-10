@@ -350,17 +350,17 @@ class RemoteHost:
     def _get_send_cmd(self, rename=False):
         if rename:
             return '''ssh -q {host} -p {port} "mkdir -p {dest:dpq}" && ''' + \
-                '''rsync -av -e 'ssh -p {port}' {source:aep} "{host}:{dest:dep}" && ''' + \
+                '''rsync -a --no-g -e 'ssh -p {port}' {source:aep} "{host}:{dest:dep}" && ''' + \
                 '''ssh -q {host} -p {port} "mv {dest:dep}/{source:b} {dest:ep}" '''
         else:
-            return '''ssh -q {host} -p {port} "mkdir -p {dest:dpq}" && rsync -av -e 'ssh -p {port}' {source:aep} "{host}:{dest:dep}"'''
+            return '''ssh -q {host} -p {port} "mkdir -p {dest:dpq}" && rsync -a --no-g -e 'ssh -p {port}' {source:aep} "{host}:{dest:dep}"'''
 
     def _get_receive_cmd(self, rename=False):
         if rename:
-            return '''rsync -av -e 'ssh -p {port}' {host}:{source:e} "{dest:adep}" && ''' + \
+            return '''rsync -a --no-g -e 'ssh -p {port}' {host}:{source:e} "{dest:adep}" && ''' + \
                 '''mv "{dest:adep}/{source:b}" "{dest:aep}"'''
         else:
-            return '''rsync -av -e 'ssh -p {port}' {host}:{source:e} "{dest:adep}"'''
+            return '''rsync -a --no-g -e 'ssh -p {port}' {host}:{source:e} "{dest:adep}"'''
 
     def _get_execute_cmd(self):
         return self.config.get('execute_cmd',
