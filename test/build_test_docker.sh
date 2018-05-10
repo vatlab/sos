@@ -46,7 +46,7 @@ RUN  pip install fasteners pygments ipython ptpython networkx pydotplus
 
 ARG  SHA=LATEST
 RUN  SHA=$SHA git clone http://github.com/vatlab/sos sos
-RUN  cd sos && python setup.py install
+RUN  cd sos && pip install . -U
 
 RUN  echo "export TS_SLOTS=10" >> /root/.bash_profile
 

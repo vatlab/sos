@@ -803,9 +803,11 @@ class Host:
             # find by key hostname
             if 'hostname' in host_info and host_info['hostname'].lower() == hostname:
                 return host
+        for host, host_info in env.sos_dict['CONFIG']['hosts'].items():
             # find by alias
             if host.lower() == hostname:
                 return host
+        for host, host_info in env.sos_dict['CONFIG']['hosts'].items():
             # find by address
             if 'address' in host_info and host_info['address'].split('.', 1)[0].split('@')[-1].lower() == hostname:
                 return host
