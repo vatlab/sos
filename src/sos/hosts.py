@@ -1131,6 +1131,18 @@ def test_ssh(host):
 def test_send(host):
     if host.address == 'localhost':
         return 'OK'
+    # test send task file
+    import random
+    task_filename = os.path.join(os.path.expanduser('~'), '.sos',
+                                 f'test_{random.randint(1, 10000)}.tmp')
+    with open(task_filename, 'w') as test_task:
+        test_task.write('test task')
+    # test scp
+    try:
+        host.send_task_file(task_filename)
+    except Exception as e:
+        return str(e)
+    # test rsync
     return 'OK'
 
 
@@ -1186,7 +1198,7 @@ def test_queues(cfg, hosts=[], verbosity=1):
             "No remote host or task queue is defined in ~/.sos/hosts.yml.")
         return
     host_description = [['Alias', 'Address', 'Queue Type', 'ssh', 'send', 'receive', 'sos', 'paths', 'shared'],
-                        ['-----', '-------', '----------', '---', '-----', '------', '-----', '------']]
+                        ['-----', '-------', '----------', '---', '-----', '------', '---', '-----', '------']]
     for host in hosts:
         if host not in all_hosts:
             env.logger.warning(f'Undefined host {host}')
