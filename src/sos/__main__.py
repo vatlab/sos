@@ -737,15 +737,13 @@ def get_remote_parser(desc_only=False):
                                      description='''Listing and testing remote configurations''')
     if desc_only:
         return parser
-    parser.add_argument('hosts', nargs='*', help='''Remote hosts to list or test, default to all
-        hosts defined in sos configuration files.''')
     grp = parser.add_mutually_exclusive_group(required=True)
-    grp.add_argument('-l', '--list', action='store_true',
-                     help='''List information of remote hosts''')
-    grp.add_argument('-t', '--test', action='store_true',
-                     help='''Test the remote hosts and check their usability''')
-    grp.add_argument('-s', '--status', action='store_true',
-                     help='''List status of tasks on specified or all hosts''')
+    grp.add_argument('-l', '--list', nargs='*', metavar='hosts',
+                     help='''List information of all or specified remote hosts''')
+    grp.add_argument('-t', '--test', nargs='*', metavar='hosts',
+                     help='''Test the usability of all or specified remote hosts''')
+    grp.add_argument('-s', '--status', nargs='*', metavar='hosts',
+                     help='''List status of tasks on specified or all remote hosts''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global sos config.yml files.''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
@@ -761,15 +759,15 @@ def cmd_remote(args, workflow_args):
     env.verbosity = args.verbosity
     cfg = load_config_files(args.config)
     try:
-        if args.list:
+        if args.list is not None:
             from .hosts import list_queues
-            list_queues(cfg, args.hosts, args.verbosity)
-        elif args.status:
+            list_queues(cfg, args.list, args.verbosity)
+        elif args.status is not None:
             from .hosts import status_of_queues
-            status_of_queues(cfg, args.hosts, args.verbosity)
-        elif args.test:
+            status_of_queues(cfg, args.status, args.verbosity)
+        elif args.test is not None:
             from .hosts import test_queues
-            test_queues(cfg, args.hosts, args.verbosity)
+            test_queues(cfg, args.test, args.verbosity)
     except Exception as e:
         from .utils import get_traceback
         if args.verbosity and args.verbosity > 2:
