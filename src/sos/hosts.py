@@ -1184,7 +1184,10 @@ def test_shared(host):
         local_files = os.listdir(dir)
         # remote?
         dest = host.path_map[dir]
-        remote_files = host.check_output(f'ls -a {path(dest):q}')
+        try:
+            remote_files = host.check_output(f'ls -a {path(dest):q}')
+        except:
+            return f'Failed to access shared directory {dest} on remote host.'
         remote_files = [x for x in remote_files.splitlines() if x not in ('.', '..')]
         #
         if sorted(local_files) != sorted(remote_files):
