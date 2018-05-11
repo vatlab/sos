@@ -163,7 +163,6 @@ class LocalHost:
         if 'max_mem' not in self.config and 'max_cores' not in self.config and 'max_walltime' not in self.config:
             shutil.copyfile(def_file, task_file)
         else:
-
             task_vars['_runtime']['max_mem'] = self.config.get('max_mem', None)
             task_vars['_runtime']['max_cores'] = self.config.get(
                 'max_cores', None)
@@ -1133,9 +1132,9 @@ def test_scp(host):
         return 'OK'
     # test send task file
     import random
-    rng = random.randint(1, 100000)
+    tID = random.randint(1, 100000)
     task_filename = os.path.join(os.path.expanduser('~'), '.sos',
-                                 f'test_{rng}.tmp')
+                                 f'test_{tID}.tmp')
     with open(task_filename, 'w') as test_task:
         test_task.write('test task')
     # test scp
@@ -1145,16 +1144,10 @@ def test_scp(host):
         return str(e)
     # test remove file using ssh
     try:
-        host.check_call(f'rm -f ~/.sos/test_{rng}.tmp')
+        host.check_call(f'rm -f ~/.sos/test_{tID}.tmp')
     except Exception as e:
         return str(e)
     # test rsync
-    return 'OK'
-
-
-def test_receive(host):
-    if host.address == 'localhost':
-        return 'OK'
     return 'OK'
 
 
@@ -1177,18 +1170,62 @@ def test_paths(host):
     # instantly available on the remote host
     if not host.path_map:
         return 'No path_map between local and remote host.'
+    import random
+    tID = random.randint(1, 100000)
     for local, remote in host.path_map.items():
         if local in host.shared_dirs:
             # will be tested by 'shared'
             continue
         # now, let us see if two directory has the same files?
         if not os.path.isdir(local):
-            return f'shared directory {local} does not exist.'
+            return f'Mapped directory {local} does not exist.'
         # remote?
         try:
             remote_files = host.check_output(f'ls -a {path(remote):q}')
         except:
             return f'Failed to access shared directory {remote} on remote host.'
+
+        # test if local directory is writable
+        try:
+            with open(os.path.join(local, f".sos_test_{tID}.txt"), 'w') as tFile:
+                tFile.write(f'{tID}')
+        except:
+            return f'Failed to write to mapped directory {local}'
+        # test if file can be sent
+        try:
+            host.send_to_host(os.path.join(local, f".sos_test_{tID}.txt"))
+        except Exception as e:
+            return f'Failed to send files under {local} to remote host under {remote}: {e}'
+        # the file should be available on remote host
+        try:
+            remote_content = host.check_output(f'cat {remote}/.sos_test_{tID}.txt')
+        except Exception as e:
+            return f'Failed to send files under {local} to remote host under {remote}: {e}'
+        if remote_content != str(tID):
+            return f'Content of file sent does not match: {tID} sent, {remote_content} received'
+        # test retrieving files
+        # remove local file
+        os.remove(os.path.join(local, f".sos_test_{tID}.txt"))
+        # copy file back
+        try:
+            host.receive_from_host(os.path.join(local, f".sos_test_{tID}.txt"))
+        except Exception as e:
+            return f'Failed to receive file from remote host {remote}: {e}'
+        #
+        if not os.path.isfile(os.path.join(local, f".sos_test_{tID}.txt")):
+            return f'Failed to receive file from remote host {remote}: file does not exist'
+        # check file content?
+        with open(os.path.join(local, f".sos_test_{tID}.txt"), 'r') as tFile:
+            remote_content = tFile.read()
+        if remote_content != str(tID):
+            return f'Content of received file does not match: {tID} expected, {remote_content} received.'
+        # if everything ok, remove local and remote test files
+        os.remove(os.path.join(local, f".sos_test_{tID}.txt"))
+        #
+        try:
+            remote_content = host.check_output(f'rm {remote}/.sos_test_{tID}.txt')
+        except Exception as e:
+            return f'Failed to remove test file on remote host: {e}'
     return 'OK'
 
 
@@ -1215,7 +1252,7 @@ def test_shared(host):
         if sorted(local_files) != sorted(remote_files):
             return f'shared directory {local} has different content on remote host under {remote}'
 
-    return f'OK (shared {' '.join(host.shared_dirs)})'
+    return f'OK (shared {" ".join(host.shared_dirs)})'
 
 
 def test_queue(host):
@@ -1244,6 +1281,8 @@ def test_queues(cfg, hosts=[], verbosity=1):
         if host not in all_hosts:
             env.logger.warning(f'Undefined host {host}')
     hosts = [x for x in hosts if x in all_hosts] if hosts else all_hosts
+    if not hosts:
+        return
     from multiprocessing import Pool
     pool = Pool(min(len(hosts), 10))
     host_description.extend(pool.map(test_queue, hosts))
@@ -1259,6 +1298,8 @@ def test_queues(cfg, hosts=[], verbosity=1):
         max_width = [max(x) for x in zip(*width)]
         print('\n'.join(' '.join([t.ljust(w) for t, w in zip(row, max_width)])
                         for row in shortened))
+        if any('FAILED' in row for row in shortened):
+            print('\nUse command "sos remote --test host -v3" to check details of hosts with failed tests.')
     else:
         for row in host_description[2:]:
             print(f'Alias:       {row[0]}')
