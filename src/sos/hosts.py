@@ -1034,14 +1034,14 @@ class Host:
 
 
 def list_queues(cfg, hosts=[], verbosity=1):
-    hosts = cfg.get('hosts', [])
-    if not hosts:
+    all_hosts = cfg.get('hosts', [])
+    if not all_hosts:
         env.logger.warning(
             "No remote host or task queue is defined in ~/.sos/hosts.yml.")
         return
     host_description = [['Alias', 'Address', 'Queue Type', 'Description'],
                         ['-----', '-------', '----------', '-----------']]
-    for host in sorted(hosts):
+    for host in sorted([x for x in hosts if x in all_hosts] if hosts else all_hosts):
         try:
             h = Host(host, start_engine=False)
         except Exception as e:
@@ -1082,14 +1082,14 @@ def list_queues(cfg, hosts=[], verbosity=1):
 
 
 def status_of_queues(cfg, hosts=[], verbosity=1):
-    hosts = cfg.get('hosts', [])
-    if not hosts:
+    all_hosts = cfg.get('hosts', [])
+    if not all_hosts:
         env.logger.warning(
             "No remote host or task queue is defined in ~/.sos/hosts.yml.")
         return
     host_description = [['Alias', 'Address', 'Queue Type', 'Running', 'Pending', 'Completed'],
                         ['-----', '-------', '----------', '-------', '-------', '---------']]
-    for host in sorted(hosts):
+    for host in sorted([x for x in hosts if x in all_hosts] if hosts else all_hosts):
         try:
             h = Host(host, start_engine=True)
             status = h._task_engine.query_tasks(tasks=[], verbosity=0)
