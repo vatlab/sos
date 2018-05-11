@@ -216,10 +216,10 @@ class LocalHost:
             env.logger.warning(f'Check output of {cmd} failed: {e}')
             raise
 
-    def check_call(self, cmd):
+    def check_call(self, cmd, **kwargs):
         # get the output of command
         try:
-            return subprocess.check_call(cmd, shell=isinstance(cmd, str))
+            return subprocess.check_call(cmd, shell=isinstance(cmd, str), **kwargs)
         except Exception as e:
             env.logger.warning(f'Check output of {cmd} failed: {e}')
             raise
@@ -260,49 +260,6 @@ class LocalHost:
                 if l != r:
                     shutil.copy(r, l)
         return res
-
-
-def test_remote_connection(con):
-    address, port = con
-    try:
-        cmd = cfg_interpolate('ssh {host} -p {port} pwd', {
-            'host': address, 'port': port})
-        p = pexpect.spawn(cmd)
-        i = p.expect(["(?i)are you sure you want to continue connecting",
-                      "Password:",
-                      pexpect.EOF],
-                     timeout=5)
-
-        if i == 0:
-            p.sendline('yes')
-            env.logger.warning(
-                f"ssh connection to {address} was prompted to establish authenticity. sos has answered yes but you might need to restart your command.")
-            p.expect(["(?i)are you sure you want to continue connecting",
-                      "Password:", pexpect.EOF], timeout=5)
-            os._exit(1)
-        if i == 1:
-            env.logger.error(
-                f'ssh connection to {address} was prompted for password. Please set up public key authentication to the remote host before continue.')
-            os._exit(1)
-        if i == 2:
-            env.logger.debug(f"ssh connection prompted for {p.before}")
-    except pexpect.TIMEOUT:
-        env.logger.error(
-            f'ssh connection to {address} time out with prompt: {p.before}')
-        os._exit(1)
-    except Exception as e:
-        env.logger.warning(
-            f'Failed to check remote connection {address}:{port}: {e}')
-    return True
-
-
-def check_connection(func):
-    def wrapper(self, *args, **kwargs):
-        a = DelayedAction(test_remote_connection, (self.address, self.port))
-        ret = func(self, *args, **kwargs)
-        del a
-        return ret
-    return wrapper
 
 
 class RemoteHost:
@@ -452,7 +409,6 @@ class RemoteHost:
             env.logger.debug(f'Ignore unmappable source {source}')
             return source
 
-    @check_connection
     def send_to_host(self, items):
         # we only copy files and directories, not other types of targets
         if isinstance(items, str):
@@ -514,7 +470,6 @@ class RemoteHost:
             sent[source] = dest
         return sent
 
-    @check_connection
     def receive_from_host(self, items):
         if isinstance(items, dict):
             # specify as local:remote
@@ -662,7 +617,6 @@ class RemoteHost:
         params.save(task_file)
         self.send_task_file(task_file)
 
-    @check_connection
     def send_task_file(self, task_file):
         send_cmd = cfg_interpolate('ssh -q {address} -p {port} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks" && scp -q -P {port} {job_file:ap} {address}:.sos/tasks/',
                                    {'job_file': sos_targets(task_file), 'address': self.address, 'port': self.port})
@@ -673,7 +627,6 @@ class RemoteHost:
             raise RuntimeError(
                 f'Failed to copy job {task_file} to {self.alias} using command {send_cmd}: {e}')
 
-    @check_connection
     def check_output(self, cmd: object) -> object:
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
@@ -691,8 +644,7 @@ class RemoteHost:
             env.logger.debug(f'Check output of {cmd} failed: {e}')
             raise
 
-    @check_connection
-    def check_call(self, cmd):
+    def check_call(self, cmd, **kwargs):
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
@@ -703,12 +655,11 @@ class RemoteHost:
             raise ValueError(f'Failed to run command {cmd}: {e}')
         env.logger.debug(f'Executing command ``{cmd}``')
         try:
-            return subprocess.check_call(cmd, shell=True)
+            return subprocess.check_call(cmd, shell=True, **kwargs)
         except Exception as e:
             env.logger.debug(f'Check output of {cmd} failed: {e}')
             raise
 
-    @check_connection
     def run_command(self, cmd, wait_for_task, realtime=False, **kwargs):
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
@@ -730,7 +681,6 @@ class RemoteHost:
             p.start()
             p.join()
 
-    @check_connection
     def receive_result(self, task_id):
         # for filetype in ('res', 'status', 'out', 'err'):
         sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
@@ -1034,11 +984,15 @@ class Host:
 
 
 def list_queues(cfg, hosts=[], verbosity=1):
+    env.verbosity = 1
     all_hosts = cfg.get('hosts', [])
     if not all_hosts:
         env.logger.warning(
             "No remote host or task queue is defined in ~/.sos/hosts.yml.")
         return
+    for host in hosts:
+        if host not in all_hosts:
+            env.logger.warning(f'Undefined host {host}')
     host_description = [['Alias', 'Address', 'Queue Type', 'Description'],
                         ['-----', '-------', '----------', '-----------']]
     for host in sorted([x for x in hosts if x in all_hosts] if hosts else all_hosts):
@@ -1082,11 +1036,15 @@ def list_queues(cfg, hosts=[], verbosity=1):
 
 
 def status_of_queues(cfg, hosts=[], verbosity=1):
+    env.verbosity = 1
     all_hosts = cfg.get('hosts', [])
     if not all_hosts:
         env.logger.warning(
             "No remote host or task queue is defined in ~/.sos/hosts.yml.")
         return
+    for host in hosts:
+        if host not in all_hosts:
+            env.logger.warning(f'Undefined host {host}')
     host_description = [['Alias', 'Address', 'Queue Type', 'Running', 'Pending', 'Completed'],
                         ['-----', '-------', '----------', '-------', '-------', '---------']]
     for host in sorted([x for x in hosts if x in all_hosts] if hosts else all_hosts):
@@ -1116,7 +1074,7 @@ def status_of_queues(cfg, hosts=[], verbosity=1):
         completed = str(status.count('completed'))
 
         if verbosity == 0:
-            print(h.alias)
+            print(f'{h.alias} {running} {pending} {completed}')
         elif verbosity in (1, 2):
             host_description.append(
                 [h.alias, h._host_agent.address, h._task_engine_type, running, pending, completed])
@@ -1138,3 +1096,125 @@ def status_of_queues(cfg, hosts=[], verbosity=1):
         max_width = [max(x) for x in zip(*width)]
         print('\n'.join(' '.join([t.ljust(w) for t, w in zip(row, max_width)])
                         for row in host_description))
+
+
+def test_ssh(host):
+    if host.address == 'localhost':
+        return 'OK'
+    address, port = host.address, host.port
+    try:
+        cmd = cfg_interpolate('ssh {host} -p {port} true', {
+            'host': address, 'port': port})
+        p = pexpect.spawn(cmd)
+        i = p.expect(["(?i)are you sure you want to continue connecting",
+                      "Password:",
+                      pexpect.EOF],
+                     timeout=5)
+        if i == 0:
+            p.sendline('yes')
+            p.expect(["(?i)are you sure you want to continue connecting",
+                      "Password:", pexpect.EOF], timeout=5)
+        if i == 1:
+            return f'ssh connection to {address} was prompted for password. Please set up public key authentication to the remote host before continue.'
+        if i == 2:
+            if not p.before:
+                return "OK"
+            else:
+                return f"ssh connection prompted for {str(p.before)}"
+    except pexpect.TIMEOUT:
+        return f'ssh connection to {address} time out with prompt: {str(p.before)}'
+    except Exception as e:
+        return f'Failed to check remote connection {address}:{port}: {e}'
+    return "OK"
+
+
+def test_send(host):
+    if host.address == 'localhost':
+        return 'OK'
+    return 'OK'
+
+
+def test_receive(host):
+    if host.address == 'localhost':
+        return 'OK'
+    return 'OK'
+
+
+def test_sos(host):
+    # test the execution of sos commands
+    try:
+        ret = host.check_call('sos -h', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if ret == 0:
+            return 'OK'
+        else:
+            return 'sos not installed or not accessible on host.'
+    except Exception as e:
+        return str(e)
+
+
+def test_paths(host):
+    if host.address == 'localhost':
+        return 'OK'
+    return 'OK'
+
+
+def test_shared(host):
+    if host.address == 'localhost':
+        return 'OK'
+    return 'OK'
+
+
+def test_queue(host):
+    try:
+        h = Host(host, start_engine=False)
+    except Exception as e:
+        return [host, '?', '?', 'FAIL', 'FAIL', 'FAIL', 'FAIL', 'FAIL']
+    return [h.alias, h._host_agent.address, h._task_engine_type,
+            test_ssh(h._host_agent),
+            test_send(h._host_agent),
+            test_receive(h._host_agent),
+            test_sos(h._host_agent),
+            test_paths(h._host_agent),
+            test_shared(h._host_agent)]
+
+
+def test_queues(cfg, hosts=[], verbosity=1):
+    env.verbosity = 1
+    all_hosts = cfg.get('hosts', [])
+    if not all_hosts:
+        env.logger.warning(
+            "No remote host or task queue is defined in ~/.sos/hosts.yml.")
+        return
+    host_description = [['Alias', 'Address', 'Queue Type', 'ssh', 'send', 'receive', 'sos', 'paths', 'shared'],
+                        ['-----', '-------', '----------', '---', '-----', '------', '-----', '------']]
+    for host in hosts:
+        if host not in all_hosts:
+            env.logger.warning(f'Undefined host {host}')
+    hosts = [x for x in hosts if x in all_hosts] if hosts else all_hosts
+    from multiprocessing import Pool
+    pool = Pool(min(len(hosts), 10))
+    host_description.extend(pool.map(test_queue, hosts))
+    if verbosity == 0:
+        # just print succ or self
+        for hd in host_description:
+            print(f'{hd[0]} {"OK" if all(x=="OK" for x in hd[3:]) else "FAIL"}')
+    elif verbosity in (1, 2):
+        shortened = host_description[: 2]
+        for row in host_description[2:]:
+            shortened.append(row[: 3] + ['OK' if x == 'OK' else 'FAIL' for x in row[3:]])
+        width = [(len(x) for x in row) for row in shortened]
+        max_width = [max(x) for x in zip(*width)]
+        print('\n'.join(' '.join([t.ljust(w) for t, w in zip(row, max_width)])
+                        for row in shortened))
+    else:
+        for row in host_description[2:]:
+            print(f'Alias:       {row[0]}')
+            print(f'Address:     {row[1]}')
+            print(f'Queue Type:  {row[2]}')
+            print(f'ssh:         {row[3]}')
+            print(f'send:        {row[4]}')
+            print(f'receive:     {row[4]}')
+            print(f'sos:         {row[5]}')
+            print(f'paths:       {row[6]}')
+            print(f'shared:      {row[7]}')
+            print()

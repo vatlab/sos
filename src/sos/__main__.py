@@ -756,7 +756,6 @@ def get_remote_parser(desc_only=False):
 def cmd_remote(args, workflow_args):
     from .utils import env, load_config_files
     from .hosts import Host
-    env.verbosity = args.verbosity
     cfg = load_config_files(args.config)
     try:
         if args.list is not None:
