@@ -1167,6 +1167,20 @@ def test_sos(host):
 def test_paths(host):
     if host.address == 'localhost':
         return 'OK'
+    # shared means, if localhost creates a file, it should be
+    # instantly available on the remote host
+    for local, remote in host.path_map.items():
+        if local in host.shared_dirs:
+            # will be tested by 'shared'
+            continue
+        # now, let us see if two directory has the same files?
+        if not os.path.isdir(local):
+            return f'shared directory {local} does not exist.'
+        # remote?
+        try:
+            remote_files = host.check_output(f'ls -a {path(remote):q}')
+        except:
+            return f'Failed to access shared directory {remote} on remote host.'
     return 'OK'
 
 
@@ -1175,23 +1189,23 @@ def test_shared(host):
         return 'OK'
     # shared means, if localhost creates a file, it should be
     # instantly available on the remote host
-    for dir in host.shared_dirs:
-        if dir not in host.path_map:
-            return f'shared directory {dir} not in path_map'
+    for local in host.shared_dirs:
+        if local not in host.path_map:
+            return f'shared directory {local} not in path_map'
         # now, let us see if two directory has the same files?
-        if not os.path.isdir(dir):
-            return f'shared directory {dir} does not exist.'
-        local_files = os.listdir(dir)
+        if not os.path.isdir(local):
+            return f'shared directory {local} does not exist.'
+        local_files = os.listdir(local)
         # remote?
-        dest = host.path_map[dir]
+        remote = host.path_map[local]
         try:
-            remote_files = host.check_output(f'ls -a {path(dest):q}')
+            remote_files = host.check_output(f'ls -a {path(remote):q}')
         except:
-            return f'Failed to access shared directory {dest} on remote host.'
+            return f'Failed to access shared directory {remote} on remote host.'
         remote_files = [x for x in remote_files.splitlines() if x not in ('.', '..')]
         #
         if sorted(local_files) != sorted(remote_files):
-            return f'shared directory {dir} has different content on remote host under {dest}'
+            return f'shared directory {local} has different content on remote host under {remote}'
 
     return 'OK'
 
