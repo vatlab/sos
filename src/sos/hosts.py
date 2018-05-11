@@ -1169,6 +1169,8 @@ def test_paths(host):
         return 'OK'
     # shared means, if localhost creates a file, it should be
     # instantly available on the remote host
+    if not host.path_map:
+        return 'No path_map between local and remote host.'
     for local, remote in host.path_map.items():
         if local in host.shared_dirs:
             # will be tested by 'shared'
