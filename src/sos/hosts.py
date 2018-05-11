@@ -1128,18 +1128,24 @@ def test_ssh(host):
     return "OK"
 
 
-def test_send(host):
+def test_scp(host):
     if host.address == 'localhost':
         return 'OK'
     # test send task file
     import random
+    rng = random.randint(1, 100000)
     task_filename = os.path.join(os.path.expanduser('~'), '.sos',
-                                 f'test_{random.randint(1, 10000)}.tmp')
+                                 f'test_{rng}.tmp')
     with open(task_filename, 'w') as test_task:
         test_task.write('test task')
     # test scp
     try:
         host.send_task_file(task_filename)
+    except Exception as e:
+        return str(e)
+    # test remove file using ssh
+    try:
+        host.check_call(f'rm -f ~/.sos/test_{rng}.tmp')
     except Exception as e:
         return str(e)
     # test rsync
@@ -1188,7 +1194,7 @@ def test_paths(host):
 
 def test_shared(host):
     if host.address == 'localhost':
-        return 'OK'
+        return 'OK (localhost)'
     # shared means, if localhost creates a file, it should be
     # instantly available on the remote host
     for local in host.shared_dirs:
@@ -1209,18 +1215,17 @@ def test_shared(host):
         if sorted(local_files) != sorted(remote_files):
             return f'shared directory {local} has different content on remote host under {remote}'
 
-    return 'OK'
+    return f'OK (shared {' '.join(host.shared_dirs)})'
 
 
 def test_queue(host):
     try:
         h = Host(host, start_engine=False)
     except Exception as e:
-        return [host, '?', '?', 'FAIL', 'FAIL', 'FAIL', 'FAIL', 'FAIL', 'FAIL']
+        return [host, '?', '?', 'FAIL', 'FAIL', 'FAIL', 'FAIL', 'FAIL']
     return [h.alias, h._host_agent.address, h._task_engine_type,
             test_ssh(h._host_agent),
-            test_send(h._host_agent),
-            test_receive(h._host_agent),
+            test_scp(h._host_agent),
             test_sos(h._host_agent),
             test_paths(h._host_agent),
             test_shared(h._host_agent)]
@@ -1233,8 +1238,8 @@ def test_queues(cfg, hosts=[], verbosity=1):
         env.logger.warning(
             "No remote host or task queue is defined in ~/.sos/hosts.yml.")
         return
-    host_description = [['Alias', 'Address', 'Queue Type', 'ssh', 'send', 'receive', 'sos', 'paths', 'shared'],
-                        ['-----', '-------', '----------', '---', '-----', '------', '---', '-----', '------']]
+    host_description = [['Alias', 'Address', 'Queue Type', 'ssh', 'scp', 'sos', 'paths', 'shared'],
+                        ['-----', '-------', '----------', '---', '---', '---', '-----', '------']]
     for host in hosts:
         if host not in all_hosts:
             env.logger.warning(f'Undefined host {host}')
@@ -1249,7 +1254,7 @@ def test_queues(cfg, hosts=[], verbosity=1):
     elif verbosity in (1, 2):
         shortened = host_description[: 2]
         for row in host_description[2:]:
-            shortened.append(row[: 3] + ['OK' if x == 'OK' else 'FAIL' for x in row[3:]])
+            shortened.append(row[: 3] + ['OK' if x.startswith('OK') else 'FAIL' for x in row[3:]])
         width = [(len(x) for x in row) for row in shortened]
         max_width = [max(x) for x in zip(*width)]
         print('\n'.join(' '.join([t.ljust(w) for t, w in zip(row, max_width)])
@@ -1260,9 +1265,8 @@ def test_queues(cfg, hosts=[], verbosity=1):
             print(f'Address:     {row[1]}')
             print(f'Queue Type:  {row[2]}')
             print(f'ssh:         {row[3]}')
-            print(f'send:        {row[4]}')
-            print(f'receive:     {row[5]}')
-            print(f'sos:         {row[6]}')
-            print(f'paths:       {row[7]}')
-            print(f'shared:      {row[8]}')
+            print(f'scp:         {row[4]}')
+            print(f'sos:         {row[5]}')
+            print(f'paths:       {row[6]}')
+            print(f'shared:      {row[7]}')
             print()
