@@ -1173,6 +1173,23 @@ def test_paths(host):
 def test_shared(host):
     if host.address == 'localhost':
         return 'OK'
+    # shared means, if localhost creates a file, it should be
+    # instantly available on the remote host
+    for dir in host.shared_dirs:
+        if dir not in host.path_map:
+            return f'shared directory {dir} not in path_map'
+        # now, let us see if two directory has the same files?
+        if not os.path.isdir(dir):
+            return f'shared directory {dir} does not exist.'
+        local_files = os.listdir(dir)
+        # remote?
+        dest = host.path_map[dir]
+        remote_files = eval(host.check_output(
+            f'''python -c "import os;print(os.listdir('{dest}'))"'''))
+        #
+        if sorted(local_files) != sorted(remote_files):
+            return f'shared directory {dir} has different content on remote host under {dest}'
+
     return 'OK'
 
 
