@@ -1184,8 +1184,8 @@ def test_shared(host):
         local_files = os.listdir(dir)
         # remote?
         dest = host.path_map[dir]
-        remote_files = eval(host.check_output(
-            f'''python -c "import os;print(os.listdir('{dest}'))"'''))
+        remote_files = host.check_output(f'ls -a {path(dest):q}')
+        remote_files = [x for x in remote_files.splitlines() if x not in ('.', '..')]
         #
         if sorted(local_files) != sorted(remote_files):
             return f'shared directory {dir} has different content on remote host under {dest}'
@@ -1197,7 +1197,7 @@ def test_queue(host):
     try:
         h = Host(host, start_engine=False)
     except Exception as e:
-        return [host, '?', '?', 'FAIL', 'FAIL', 'FAIL', 'FAIL', 'FAIL']
+        return [host, '?', '?', 'FAIL', 'FAIL', 'FAIL', 'FAIL', 'FAIL', 'FAIL']
     return [h.alias, h._host_agent.address, h._task_engine_type,
             test_ssh(h._host_agent),
             test_send(h._host_agent),
@@ -1242,8 +1242,8 @@ def test_queues(cfg, hosts=[], verbosity=1):
             print(f'Queue Type:  {row[2]}')
             print(f'ssh:         {row[3]}')
             print(f'send:        {row[4]}')
-            print(f'receive:     {row[4]}')
-            print(f'sos:         {row[5]}')
-            print(f'paths:       {row[6]}')
-            print(f'shared:      {row[7]}')
+            print(f'receive:     {row[5]}')
+            print(f'sos:         {row[6]}')
+            print(f'paths:       {row[7]}')
+            print(f'shared:      {row[8]}')
             print()
