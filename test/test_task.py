@@ -627,7 +627,7 @@ print('a')
         '''test list hosts using sos status -q'''
         for v in ['0', '1', '3', '4']:
             output = subprocess.check_output(
-                ['sos', 'status', '-c', '~/docker.yml', '-q', '-v', v]).decode()
+                ['sos', 'remote', '--list', '-c', '~/docker.yml', '-q', '-v', v]).decode()
             self.assertTrue('local_limited' in output)
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
