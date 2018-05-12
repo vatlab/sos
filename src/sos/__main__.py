@@ -737,12 +737,14 @@ def get_remote_parser(desc_only=False):
                                      description='''Listing and testing remote configurations''')
     if desc_only:
         return parser
-    parser.add_argument('action', choices=['test', 'status', 'list'],
-                        help='''List, check status, or test configuration of all or specified remote hosts''')
+    parser.add_argument('action', choices=['list', 'status', 'setup', 'test'],
+                        help='''List, check status, setup, or test configuration of all or specified remote hosts''')
     parser.add_argument('hosts', nargs='*', metavar='hosts',
                         help='''Hosts to be checked or tested. All hosts will be included if unspecified.''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global sos config.yml files.''')
+    parser.add_argument('-p', '--password', help='''Password used to copy public key to remote host. You will be prompted
+            for a password if a password is needed and is not passed from command line.''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
                         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
@@ -761,6 +763,9 @@ def cmd_remote(args, workflow_args):
         elif args.action == 'status':
             from .hosts import status_of_queues
             status_of_queues(cfg, args.hosts, args.verbosity)
+        elif args.action == 'setup':
+            from .hosts import setup_remote_access
+            setup_remote_access(cfg, args.hosts, args.password, args.verbosity)
         elif args.action == 'test':
             from .hosts import test_queues
             test_queues(cfg, args.hosts, args.verbosity)

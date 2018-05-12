@@ -1312,3 +1312,57 @@ def test_queues(cfg, hosts=[], verbosity=1):
             print(f'paths:       {row[6]}')
             print(f'shared:      {row[7]}')
             print()
+
+
+def copy_public_key(host, password):
+    return 'OK'
+
+def setup_remote_access(cfg, hosts=[], password='', verbosity=1):
+    env.verbosity = verbosity
+    all_hosts = cfg.get('hosts', [])
+    if not all_hosts:
+        env.logger.warning(
+            "No remote host or task queue is defined in ~/.sos/hosts.yml.")
+        return
+    for host in hosts:
+        if host not in all_hosts:
+            env.logger.warning(f'Undefined host {host}')
+    # public_key
+    public_key = os.path.join(os.path.expanduser('~'), '.ssh', 'id_rsa.pub')
+
+    for host in sorted([x for x in hosts if x in all_hosts] if hosts else all_hosts):
+        try:
+            h = Host(host, start_engine=True)
+        except Exception as e:
+            env.logger.error(f'Failed to start task engine {host}.')
+            continue
+
+        if not os.path.isfile(public_key):
+            env.logger.info('No public key is found. Creating one.')
+            try:
+                subprocess.check_call('echo | ssh-keygen -t rsa', shell=True,
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                if not os.path.isfile(public_key):
+                    raise RuntimeError('public key not found after ssh-keygen')
+            except Exception as e:
+                raise RuntimeError(f'Failed to create public key: {e}')
+        #
+        # can ssh?
+        response = test_ssh(h._host_agent)
+        if response.startswith('OK'):
+            continue
+        #
+        if password is None:
+            import getpass
+            password = getpass.getpass(f'Please enter your password to {h._host_agent.address}:')
+        response = copy_public_key(h._host_agent, password)
+        if not response.startswith('OK'):
+            env.logger.error(response)
+            continue
+        # file copied, check ssh again.
+        response = test_ssh(h._host_agent)
+        if response.startswith('OK'):
+            continue
+        else:
+            env.logger.error(f'Failed to connect to {host} after passing public key. Possible problems include permission of .ssh and home directories.')
+
