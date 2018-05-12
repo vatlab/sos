@@ -740,11 +740,14 @@ def get_remote_parser(desc_only=False):
     parser.add_argument('action', choices=['list', 'status', 'setup', 'test'],
                         help='''List, check status, setup, or test configuration of all or specified remote hosts''')
     parser.add_argument('hosts', nargs='*', metavar='hosts',
-                        help='''Hosts to be checked or tested. All hosts will be included if unspecified.''')
+                        help='''Hosts to be checked or tested. All hosts defined in SoS configurations will be
+        included if unspecified. As a special case for "sos remote setup", an address is acceptable even if it
+        is defined in configuration file.''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global sos config.yml files.''')
-    parser.add_argument('-p', '--password', help='''Password used to copy public key to remote host. You will be prompted
-            for a password if a password is needed and is not passed from command line.''')
+    parser.add_argument('-p', '--password', help='''Password used to copy public key to remote hosts. You will be prompted
+            for a password if a password is needed and is not passed from command line. The same password will be used for
+            all specified hosts so you will need to use separate setup commands for hosts with different passwords.''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
                         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')

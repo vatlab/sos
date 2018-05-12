@@ -1104,23 +1104,26 @@ def test_ssh(host):
     try:
         cmd = cfg_interpolate('ssh {host} -p {port} true', {
             'host': address, 'port': port})
+        env.logger.info(cmd)
         p = pexpect.spawn(cmd)
         # could be prompted for Password or password, so use assword
         i = p.expect(["(?i)are you sure you want to continue connecting",
-                      "assword:",
-                      pexpect.EOF],
-                     timeout=5)
+                      "[pP]assword:",
+                      pexpect.EOF], timeout=5)
         if i == 0:
             p.sendline('yes')
             p.expect(["(?i)are you sure you want to continue connecting",
-                      "assword:", pexpect.EOF], timeout=5)
+                      "[pP]assword:", pexpect.EOF], timeout=5)
         if i == 1:
+            p.close(force=True)
+            stty_sane()
             return f'ssh connection to {address} was prompted for password. Please set up public key authentication to the remote host before continue.'
         if i == 2:
             if not p.before:
                 return "OK"
             else:
-                return f"ssh connection prompted for {str(p.before)}"
+                p.close(force=True)
+                return p.before.decode()
     except pexpect.TIMEOUT:
         return f'ssh connection to {address} time out with prompt: {str(p.before)}'
     except Exception as e:
@@ -1255,6 +1258,11 @@ def test_shared(host):
 
     return f'OK (shared {" ".join(host.shared_dirs)})'
 
+def stty_sane():
+    try:
+        subprocess.check_call('stty sane', shell=True)
+    except:
+        pass
 
 def test_queue(host):
     try:
@@ -1314,7 +1322,58 @@ def test_queues(cfg, hosts=[], verbosity=1):
             print()
 
 
-def copy_public_key(host, password):
+def copy_public_key(host, agent, password):
+    try:
+        if password is None:
+            import getpass
+            password = getpass.getpass(f'Please enter password for {agent.address}: ')
+        cmd = f"scp {os.path.expanduser('~')}/.ssh/id_rsa.pub {agent.address}:id_rsa.pub.{host}"
+        env.logger.info(cmd)
+        p = pexpect.spawn(cmd, echo=False)
+        i = p.expect(["(?i)are you sure you want to continue connecting",
+                "[pP]assword:", pexpect.EOF])
+        if i == 0:
+            p.sendline('yes')
+            p.expect(["(?i)are you sure you want to continue connecting",
+                      "[pP]assword:", pexpect.EOF], timeout=5)
+
+        if i == 1:
+            p.sendline(password)
+            i = p.expect(['assword:', pexpect.EOF])
+            if i == 0:
+                p.close(force=True)
+                return f'Incorrect password specified (you can try to specify it with command line option --password)'
+        if i == 2:
+            p.close()
+            return f'Failed to copy public key to {agent.address}'
+    except Exception as e:
+        p.close()
+        return f'Failed to copy public key to {host}: {e}'
+    #
+    # ssh
+    try:
+        cmd = f"ssh {agent.address} -p {agent.port} '[ -d .ssh ] || mkdir .ssh; cat id_rsa.pub.{host} >> .ssh/authorized_keys; rm -f id_rsa.pub.{host}'"
+        env.logger.info(cmd)
+        p = pexpect.spawn(cmd, echo=False)
+        i = p.expect(["(?i)are you sure you want to continue connecting",
+            'assword:', pexpect.EOF])
+        if i==0:
+            p.sendline('yes')
+            p.expect(["(?i)are you sure you want to continue connecting",
+                      "[pP]assword:", pexpect.EOF], timeout=5)
+
+        if i == 1:
+            p.sendline(password)
+            i = p.expect(['assword:', pexpect.EOF])
+            if i == 0:
+                p.close(force=True)
+                return f'Incorrect password specified (you can try to specify it with command line option --password)'
+        elif i != 1:
+            p.close()
+            return f'Failed to append public key to .ssh/authorized_keys'
+    except Exception as e:
+        p.close()
+        return f'Failed to append public key to .ssh/authorized_keys: {e}'
     return 'OK'
 
 def setup_remote_access(cfg, hosts=[], password='', verbosity=1):
@@ -1326,18 +1385,25 @@ def setup_remote_access(cfg, hosts=[], password='', verbosity=1):
         return
     for host in hosts:
         if host not in all_hosts:
-            env.logger.warning(f'Undefined host {host}')
+            env.logger.warning(f'Treating undefined host {host} as address of a remote host.')
     # public_key
     public_key = os.path.join(os.path.expanduser('~'), '.ssh', 'id_rsa.pub')
 
-    for host in sorted([x for x in hosts if x in all_hosts] if hosts else all_hosts):
+    for host in sorted(hosts if hosts else all_hosts):
         try:
-            h = Host(host, start_engine=True)
+            if host in all_hosts:
+                h = Host(host, start_engine=False)
+                host_agent = h._host_agent
+            else:
+                from argparse import Namespace
+                host_agent = Namespace(address=host, port=22)
         except Exception as e:
             env.logger.error(f'Failed to start task engine {host}.')
             continue
 
-        if not os.path.isfile(public_key):
+        if os.path.isfile(public_key):
+            env.logger.info('Using existing public key .ssh/id_rsa.pub')
+        else:
             env.logger.info('No public key is found. Creating one.')
             try:
                 subprocess.check_call('echo | ssh-keygen -t rsa', shell=True,
@@ -1348,20 +1414,23 @@ def setup_remote_access(cfg, hosts=[], password='', verbosity=1):
                 raise RuntimeError(f'Failed to create public key: {e}')
         #
         # can ssh?
-        response = test_ssh(h._host_agent)
+        response = test_ssh(host_agent)
         if response.startswith('OK'):
+            env.logger.info(f'Public key access is already enabled for host ``{host}`` with address ``{host_agent.address}``')
             continue
+        elif 'Could not resolve hostname' in response:
+            env.logger.error(response)
+            sys.exit(1)
         #
-        if password is None:
-            import getpass
-            password = getpass.getpass(f'Please enter your password to {h._host_agent.address}:')
-        response = copy_public_key(h._host_agent, password)
+        response = copy_public_key(host, host_agent, password)
+        stty_sane()
         if not response.startswith('OK'):
             env.logger.error(response)
-            continue
+            sys.exit(1)
         # file copied, check ssh again.
-        response = test_ssh(h._host_agent)
+        response = test_ssh(host_agent)
         if response.startswith('OK'):
+            env.logger.info(f'Public key access is successfully set up for host ``{host}`` with address ``{host_agent.address}``')
             continue
         else:
             env.logger.error(f'Failed to connect to {host} after passing public key. Possible problems include permission of .ssh and home directories.')
