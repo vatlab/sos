@@ -1260,13 +1260,13 @@ def test_queue(host):
     try:
         h = Host(host, start_engine=False)
     except Exception as e:
-        return [host, '?', '?', 'SKIP', 'SKIP', 'SKIP', 'SKIP', 'SKIP']
+        return [host, '?', '?', '-', '-', '-', '-', '-']
     ssh_res = test_ssh(h._host_agent)
     return [h.alias, h._host_agent.address, h._task_engine_type, ssh_res,
-            test_scp(h._host_agent) if ssh_res.startswith('OK') else 'SKIP',
-            test_sos(h._host_agent) if ssh_res.startswith('OK') else 'SKIP',
-            test_paths(h._host_agent) if ssh_res.startswith('OK') else 'SKIP',
-            test_shared(h._host_agent) if ssh_res.startswith('OK') else 'SKIP']
+            test_scp(h._host_agent) if ssh_res.startswith('OK') else '-',
+            test_sos(h._host_agent) if ssh_res.startswith('OK') else '-',
+            test_paths(h._host_agent) if ssh_res.startswith('OK') else '-',
+            test_shared(h._host_agent) if ssh_res.startswith('OK') else '-']
 
 
 def test_queues(cfg, hosts=[], verbosity=1):
@@ -1294,7 +1294,7 @@ def test_queues(cfg, hosts=[], verbosity=1):
     elif verbosity in (1, 2):
         shortened = host_description[: 2]
         for row in host_description[2:]:
-            shortened.append(row[: 3] + ['OK' if x.startswith('OK') else ('SKIP' if x == 'SKIP' else 'FAIL') for x in row[3:]])
+            shortened.append(row[: 3] + ['OK' if x.startswith('OK') else ('-' if x == '-' else 'FAIL') for x in row[3:]])
         width = [(len(x) for x in row) for row in shortened]
         max_width = [max(x) for x in zip(*width)]
         print('\n'.join(' '.join([t.ljust(w) for t, w in zip(row, max_width)])
