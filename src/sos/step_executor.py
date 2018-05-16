@@ -16,10 +16,7 @@ import subprocess
 from collections.abc import Iterable, Mapping, Sequence
 from io import StringIO
 from itertools import combinations, tee
-try:
-    from billiard import Pool
-except:
-    from multiprocessing import Pool
+from billiard import Pool
 
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
@@ -1034,7 +1031,7 @@ class Base_Step_Executor:
         if self.concurrent_input_group:
             sm = SlotManager()
             nMax = env.config.get('max_procs', max(int(os.cpu_count() / 2), 1))
-            if hasattr(self.worker_pool, 'grow') and nMax > self.worker_pool._processes - 1 and len(self._groups) > nMax:
+            if nMax > self.worker_pool._processes - 1 and len(self._groups) > nMax:
                 # use billiard pool, can expand pool if more slots are available
                 while True:
                     nPending = [not x.ready() for x in self.proc_results].count(True)

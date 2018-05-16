@@ -106,6 +106,7 @@ setup(name="sos",
           'pydot',
           'pydotplus',
           'pexpect',
+          'billiard',
           #
           'sos-pbs',
           'sos-rq',
