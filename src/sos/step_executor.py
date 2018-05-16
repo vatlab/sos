@@ -1404,8 +1404,7 @@ class Base_Step_Executor:
                                             f'Overlapping input and output files: {", ".join(repr(x) for x in ofiles if x in g)}')
                                 # set variable _output and output
                                 self.process_output_args(ofiles, **kwargs)
-                                self.output_groups[idx] = env.sos_dict['_output'].targets(
-                                )
+                                self.output_groups[idx] = env.sos_dict['_output'].targets()
 
                                 # ofiles can be Undetermined
                                 sg = self.step_signature(idx)
@@ -1697,6 +1696,10 @@ class Base_Step_Executor:
 
 
 def _expand_file_list(ignore_unknown: bool, *args) -> Any:
+
+    if ignore_unknown and all(isinstance(x, str) and '*' not in x and '?' not in x for x in args):
+        return args
+
     ifiles = []
 
     for arg in args:
