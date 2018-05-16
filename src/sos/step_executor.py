@@ -16,7 +16,11 @@ import subprocess
 from collections.abc import Iterable, Mapping, Sequence
 from io import StringIO
 from itertools import combinations, tee
-from multiprocessing import Pool
+try:
+    from billiard import Pool
+except:
+    from multiprocessing import Pool
+
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import psutil
@@ -1028,7 +1032,23 @@ class Base_Step_Executor:
 
     def wait_for_results(self):
         if self.concurrent_input_group:
-            self.proc_results = [x.get() for x in self.proc_results]
+            sm = SlotManager()
+            nMax = env.config.get('max_procs', max(int(os.cpu_count() / 2), 1))
+            if hasattr(self.worker_pool, 'grow') and nMax > self.worker_pool._processes - 1 and len(self._groups) > nMax:
+                # use billiard pool, can expand pool if more slots are available
+                while True:
+                    nPending = [not x.ready() for x in self.proc_results].count(True)
+                    if nPending == 0:
+                        self.proc_results = [x.get() for x in self.proc_results]
+                        break
+                    if sm.available(nMax) > 0:
+                        extra = sm.acquire(nPending - 1, nMax)
+                        if extra > 0:
+                            self.worker_pool.grow(extra)
+                            env.logger.debug(f'Expand pool by {extra} slots')
+                    time.sleep(1)
+            else:
+                self.proc_results = [x.get() for x in self.proc_results]
             SlotManager().release(self.worker_pool._processes - 1)
             self.worker_pool.close()
             self.worker_pool.join()
@@ -1359,14 +1379,8 @@ class Base_Step_Executor:
                     # because the master process pool will count one worker in (step)
                     gotten = sm.acquire(len(self._groups) - 1,
                                         env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
-                    if gotten == 0:
-                        env.logger.debug(
-                            f'Input group executed sequencially due to -j constraint')
-                        self.concurrent_input_group = False
-                    else:
-                        env.logger.debug(
-                            f'Using process pool with size {gotten+1}')
-                        self.worker_pool = Pool(gotten + 1)
+                    env.logger.debug(f'Using process pool with size {gotten+1}')
+                    self.worker_pool = Pool(gotten + 1)
 
         try:
             for idx, (g, v) in enumerate(zip(self._groups, self._vars)):

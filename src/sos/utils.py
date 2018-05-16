@@ -983,6 +983,11 @@ class SlotManager(object):
         with open(self.slot_file, 'w') as slot:
             slot.write(str(val))
 
+    def available(self, max_slots=10):
+        with fasteners.InterProcessLock(self.lock_file):
+            slots = self._read_slot()
+            return max_slots - slots
+
     def acquire(self, num=None, max_slots=10, force=False, wait=False):
         # if num == None, request as many as possible slots
         if num is None:
