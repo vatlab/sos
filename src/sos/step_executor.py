@@ -1049,7 +1049,7 @@ class Base_Step_Executor:
                     time.sleep(1)
             else:
                 self.proc_results = [x.get() for x in self.proc_results]
-            SlotManager().release(self.worker_pool._processes - 1)
+            sm.release(self.worker_pool._processes - 1)
             self.worker_pool.close()
             self.worker_pool.join()
             self.worker_pool = None
