@@ -1278,7 +1278,7 @@ class Base_Executor:
                 env.logger.warning(f'Failed to clear workflow status file: {e}')
             self.save_workflow_signature(dag)
             env.logger.info(
-                f'Workflow {self.workflow.name} (ID={self.md5}) is {"executed successfully" if self.completed["__step_completed__"] > 0 else "skipped"} with {self.describe_completed()}.')
+                f'Workflow {self.workflow.name} (ID={self.md5}) is {"executed successfully" if self.completed["__step_completed__"] > 0 else "ignored"} with {self.describe_completed()}.')
         else:
             # exit with pending tasks
             pass
