@@ -783,16 +783,16 @@ class Base_Executor:
                 sigfile.write('# input and dependent files\n')
 
     def describe_completed(self):
-        # return a string to summarize completed and skipped steps, input groups, and tasks
+        # return a string to summarize completed and skipped steps, substeps, and tasks
         res = []
         if '__step_completed__' in self.completed and self.completed['__step_completed__']:
             res.append(f"{self.completed['__step_completed__']} completed step{'s' if self.completed['__step_completed__'] > 1 else ''}")
-            if '__input_completed__' in self.completed and self.completed['__input_completed__'] and self.completed['__input_completed__'] != self.completed['__step_completed__']:
-                res.append(f"{self.completed['__input_completed__']} completed input group{'s' if self.completed['__input_completed__'] > 1 else ''}")
+            if '__substep_completed__' in self.completed and self.completed['__substep_completed__'] and self.completed['__substep_completed__'] != self.completed['__step_completed__']:
+                res.append(f"{self.completed['__substep_completed__']} completed substep{'s' if self.completed['__substep_completed__'] > 1 else ''}")
         if '__step_skipped__' in self.completed and self.completed['__step_skipped__']:
             res.append(f"{self.completed['__step_skipped__']} skipped step{'s' if self.completed['__step_skipped__'] > 1 else ''}")
-            if '__input_skipped__' in self.completed and self.completed['__input_skipped__'] and self.completed['__input_skipped__'] != self.completed['__step_skipped__']:
-                res.append(f"{self.completed['__input_skipped__']} skipped input{'s' if self.completed['__input_skipped__'] > 1 else ''}")
+            if '__substep_skipped__' in self.completed and self.completed['__substep_skipped__'] and self.completed['__substep_skipped__'] != self.completed['__step_skipped__']:
+                res.append(f"{self.completed['__substep_skipped__']} skipped input{'s' if self.completed['__substep_skipped__'] > 1 else ''}")
         if '__task_completed__' in self.completed and self.completed['__task_completed__']:
             res.append(f"{self.completed['__task_completed__']} completed task{'s' if self.completed['__task_completed__'] > 1 else ''}")
         if '__task_skipped__' in self.completed and self.completed['__task_skipped__']:
@@ -1017,7 +1017,7 @@ class Base_Executor:
                         env.logger.debug(f'{i_am()} receive step result ')
                         for k,v in res['__completed__'].items():
                             self.completed[k] += v
-                        if res['__completed__']['__input_completed__'] == 0:
+                        if res['__completed__']['__substep_completed__'] == 0:
                             self.completed['__step_skipped__'] += 1
                         else:
                             self.completed['__step_completed__'] += 1

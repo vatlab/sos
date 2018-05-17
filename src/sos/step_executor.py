@@ -862,9 +862,9 @@ class Base_Step_Executor:
         if 'group_by' in kwargs:
             _ogroups = Base_Step_Executor.handle_group_by(
                 ofiles, kwargs['group_by'])
-            if len(_ogroups) != len(self._groups):
+            if len(_ogroups) != len(self._substeps):
                 raise RuntimeError(
-                    f'Output option group_by produces {len(_ogroups)} output groups which is different from the number of input groups ({len(self._groups)}).')
+                    f'Output option group_by produces {len(_ogroups)} output groups which is different from the number of input groups ({len(self._substeps)}).')
             ofiles = _ogroups[env.sos_dict['_index']]
 
         if isinstance(ofiles, sos_targets):
@@ -1029,10 +1029,10 @@ class Base_Step_Executor:
         return task_id
 
     def wait_for_results(self):
-        if self.concurrent_input_group:
+        if self.concurrent_substep:
             sm = SlotManager()
             nMax = env.config.get('max_procs', max(int(os.cpu_count() / 2), 1))
-            if nMax > self.worker_pool._processes - 1 and len(self._groups) > nMax:
+            if nMax > self.worker_pool._processes - 1 and len(self._substeps) > nMax:
                 # use billiard pool, can expand pool if more slots are available
                 while True:
                     nPending = [not x.ready() for x in self.proc_results].count(True)
@@ -1298,7 +1298,7 @@ class Base_Step_Executor:
                 f'More than one step input are specified in step {self.step.step_name()}')
 
         # if there is an input statement, execute the statements before it, and then the input statement
-        self.concurrent_input_group = False
+        self.concurrent_substep = False
         if input_statement_idx is not None:
             # execute before input stuff
             for statement in self.step.statements[:input_statement_idx]:
@@ -1331,10 +1331,10 @@ class Base_Step_Executor:
                 args, kwargs = SoS_eval(f"__null_func__({stmt})")
                 # Files will be expanded differently with different running modes
                 input_files = self.expand_input_files(stmt, *args)
-                self._groups, self._vars = self.process_input_args(
+                self._substeps, self._vars = self.process_input_args(
                     input_files, **kwargs)
-                self.concurrent_input_group = 'concurrent' in kwargs and kwargs['concurrent'] and len(
-                    self._groups) > 1
+                self.concurrent_substep = 'concurrent' in kwargs and kwargs['concurrent'] and len(
+                    self._substeps) > 1
             except (UnknownTarget, RemovedTarget, UnavailableLock):
                 raise
             except Exception as e:
@@ -1344,7 +1344,7 @@ class Base_Step_Executor:
             input_statement_idx += 1
         else:
             # default case
-            self._groups = [env.sos_dict['step_input'].targets()]
+            self._substeps = [env.sos_dict['step_input'].targets()]
             self._vars = [{}]
             # assuming everything starts from 0 is after input
             input_statement_idx = 0
@@ -1354,44 +1354,44 @@ class Base_Step_Executor:
         self.proc_results = []
         # run steps after input statement, which will be run multiple times for each input
         # group.
-        env.sos_dict.set('__num_groups__', len(self._groups))
+        env.sos_dict.set('__num_groups__', len(self._substeps))
 
         # determine if a single index or the whole step should be skipped
         skip_index = False
         # signatures of each index, which can remain to be None if no output
         # is defined.
-        signatures = [None for x in self._groups]
-        self.output_groups = [[] for x in self._groups]
+        signatures = [None for x in self._substeps]
+        self.output_groups = [[] for x in self._substeps]
 
-        if self.concurrent_input_group:
+        if self.concurrent_substep:
             if self.step.task:
-                self.concurrent_input_group = False
+                self.concurrent_substep = False
                 env.logger.debug(
                     'Input groups are executed sequentially because of existence of tasks')
             else:
                 conc_stmts = [
                     x for x in self.step.statements[input_statement_idx:] if x[0] != ':']
                 if len(conc_stmts) > 1:
-                    self.concurrent_input_group = False
+                    self.concurrent_substep = False
                     env.logger.debug(
                         'Input groups are executed sequentially because of existence of directives between statements.')
                 elif any('sos_run' in x[1] for x in self.step.statements[input_statement_idx:]):
-                    self.concurrent_input_group = False
+                    self.concurrent_substep = False
                     env.logger.debug(
                         'Input groups are executed sequentially because of existence of nested workflow.')
                 else:
                     sm = SlotManager()
                     # because the master process pool will count one worker in (step)
-                    gotten = sm.acquire(len(self._groups) - 1,
+                    gotten = sm.acquire(len(self._substeps) - 1,
                                         env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
                     env.logger.debug(f'Using process pool with size {gotten+1}')
                     self.worker_pool = Pool(gotten + 1)
 
         try:
-            self.completed['__input_skipped__'] = 0
-            self.completed['__input_completed__'] = len(self._groups)
+            self.completed['__substep_skipped__'] = 0
+            self.completed['__substep_completed__'] = len(self._substeps)
 
-            for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
+            for idx, (g, v) in enumerate(zip(self._substeps, self._vars)):
                 # other variables
                 #
                 env.sos_dict.update(v)
@@ -1519,7 +1519,7 @@ class Base_Step_Executor:
                     else:
                         try:
                             self.verify_input()
-                            if self.concurrent_input_group:
+                            if self.concurrent_substep:
                                 proc_vars = env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__']
                                                                              | {'_input', '_output', '_depends', '_index', '__args__', 'step_name', '_runtime',
                                                                                 '__signature_vars__', '__step_context__'
@@ -1552,8 +1552,8 @@ class Base_Step_Executor:
 
                 # if this index is skipped, go directly to the next one
                 if skip_index:
-                    self.completed['__input_skipped__'] += 1
-                    self.completed['__input_completed__'] -= 1
+                    self.completed['__substep_skipped__'] += 1
+                    self.completed['__substep_completed__'] -= 1
                     skip_index = False
                     if signatures[idx]:
                         signatures[idx].release()
@@ -1561,7 +1561,7 @@ class Base_Step_Executor:
                     continue
 
                 # if concurrent input group, there is no task
-                if self.concurrent_input_group:
+                if self.concurrent_substep:
                     continue
                 # finally, tasks..
                 # now the regular step process is done and we are going to the task part
@@ -1699,7 +1699,7 @@ class Base_Step_Executor:
             # users might hit Ctrl-C again, interrupting the shutdown process again. In this case we
             # simply catch the KeyboardInterrupt exception and try again.
             #
-            if self.concurrent_input_group and self.worker_pool:
+            if self.concurrent_substep and self.worker_pool:
                 if env.verbosity > 2:
                     env.logger.info(f'{os.getpid()} terminating worker pool')
                 while self.worker_pool:
