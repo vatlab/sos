@@ -785,6 +785,10 @@ class Base_Executor:
     def describe_completed(self):
         # return a string to summarize completed and skipped steps, substeps, and tasks
         res = []
+        #if '__subworkflow_completed__' in self.completed and self.completed['__subworkflow_completed__']:
+        #    res.append(f"{self.completed['__subworkflow_completed__']} completed subworkflow{'s' if self.completed['__subworkflow_completed__'] > 1 else ''}")
+        #if '__subworkflow_skipped__' in self.completed and self.completed['__subworkflow_skipped__']:
+        #    res.append(f"{self.completed['__subworkflow_skipped__']} skipped subworkflow{'s' if self.completed['__subworkflow_skipped__'] > 1 else ''}")
         if '__step_completed__' in self.completed and self.completed['__step_completed__']:
             res.append(f"{self.completed['__step_completed__']} completed step{'s' if self.completed['__step_completed__'] > 1 else ''}")
             if '__substep_completed__' in self.completed and self.completed['__substep_completed__'] and self.completed['__substep_completed__'] != self.completed['__step_completed__']:
@@ -797,7 +801,10 @@ class Base_Executor:
             res.append(f"{self.completed['__task_completed__']} completed task{'s' if self.completed['__task_completed__'] > 1 else ''}")
         if '__task_skipped__' in self.completed and self.completed['__task_skipped__']:
             res.append(f"{self.completed['__task_skipped__']} skipped task{'s' if self.completed['__task_skipped__'] > 1 else ''}")
-        return ', '.join(res)
+        if len(res) > 1:
+            return ', '.join(res[:-1]) + ' and ' + res[-1]
+        else:
+            return res[0]
 
     def run(self, targets: Optional[List[str]] = None, parent_pipe: None = None, my_workflow_id: None = None, mode: str = 'run') -> Dict[str, Any]:
         '''Execute a workflow with specified command line args. If sub is True, this
@@ -1053,6 +1060,13 @@ class Base_Executor:
                         # the worker process has been returned to the pool, now we need to
                         # notify the step that is waiting for the result
                         env.logger.debug(f'{i_am()} receive workflow result')
+                        # aggregate steps etc with subworkflows
+                        for k, v in res['__completed__'].items():
+                            self.completed[k] += v
+                        #if res['__completed__']['__step_completed__'] == 0:
+                        #    self.completed['__subworkflow_skipped__'] += 1
+                        #else:
+                        #    self.completed['__subworkflow_completed__'] += 1
                         for proc in manager.procs:
                             if proc is None:
                                 continue
@@ -1264,11 +1278,12 @@ class Base_Executor:
                 env.logger.warning(f'Failed to clear workflow status file: {e}')
             self.save_workflow_signature(dag)
             env.logger.info(
-                f'Workflow {self.workflow.name} (ID={self.md5}) is executed successfully with {self.describe_completed()}.')
+                f'Workflow {self.workflow.name} (ID={self.md5}) is {"executed successfully" if self.completed["__step_completed__"] > 0 else "skipped"} with {self.describe_completed()}.')
         else:
             # exit with pending tasks
             pass
         wf_result['shared'] = {x: env.sos_dict[x] for x in self.shared.keys() if x in env.sos_dict}
+        wf_result['__completed__'] = self.completed
         if parent_pipe:
             parent_pipe.send(wf_result)
         else:
