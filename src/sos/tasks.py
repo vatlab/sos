@@ -222,7 +222,7 @@ def taskTags(task):
         os.utime(filename, (atime, os.path.getmtime(filename)))
 
 
-def collect_task_result(task_id, sos_dict):
+def collect_task_result(task_id, sos_dict, skipped=False):
     shared = {}
     if 'shared' in env.sos_dict['_runtime']:
         svars = env.sos_dict['_runtime']['shared']
@@ -289,7 +289,7 @@ def collect_task_result(task_id, sos_dict):
     depends = {} if env.sos_dict['_depends'] is None or sos_dict['_depends'] is None else {
         x: file_target(x).target_signature() for x in sos_dict['_depends'] if isinstance(x, (str, file_target))}
     return {'ret_code': 0, 'task': task_id, 'input': input, 'output': output, 'depends': depends,
-            'shared': {env.sos_dict['_index']: shared}}
+            'shared': {env.sos_dict['_index']: shared}, 'skipped': skipped}
 
 
 def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_interval=5,
@@ -390,12 +390,14 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                         return {'ret_code': 1, 'exception': res['exception'], 'task': task_id}
         #
         # now we collect result
-        all_res = {'ret_code': 0, 'output': {}, 'subtasks': {}, 'shared': {}}
+        all_res = {'ret_code': 0, 'output': {}, 'subtasks': {}, 'shared': {}, 'skipped': False}
         for tid, x in zip(params.task_stack, results):
             all_res['ret_code'] += x['ret_code']
             all_res['output'].update(x['output'])
             all_res['subtasks'][tid[0]] = x
             all_res['shared'].update(x['shared'])
+            # does not care if one or all subtasks are executed or skipped.
+            all_res['skipped'] = x['skipped']
         return all_res
 
     global_def, task, sos_dict = params.global_def, params.task, params.sos_dict
@@ -519,7 +521,7 @@ del sos_handle_parameter_
 
     if skipped:
         env.logger.info(f'{task_id} ``skipped``')
-        return collect_task_result(task_id, sos_dict)
+        return collect_task_result(task_id, sos_dict, skipped=True)
 
     # if we are to really execute the task, touch the task file so that sos status shows correct
     # execution duration.

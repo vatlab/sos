@@ -9,6 +9,7 @@ import os
 import sys
 import time
 import uuid
+from collections import defaultdict
 from collections.abc import Sequence
 from io import StringIO
 from multiprocessing.connection import Connection
@@ -781,6 +782,23 @@ class Base_Executor:
                     f'# end time: {time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())}\n')
                 sigfile.write('# input and dependent files\n')
 
+    def describe_completed(self):
+        # return a string to summarize completed and skipped steps, input groups, and tasks
+        res = []
+        if '__step_completed__' in self.completed and self.completed['__step_completed__']:
+            res.append(f"{self.completed['__step_completed__']} completed step{'s' if self.completed['__step_completed__'] > 1 else ''}")
+            if '__input_completed__' in self.completed and self.completed['__input_completed__'] and self.completed['__input_completed__'] != self.completed['__step_completed__']:
+                res.append(f"{self.completed['__input_completed__']} completed input group{'s' if self.completed['__input_completed__'] > 1 else ''}")
+        if '__step_skipped__' in self.completed and self.completed['__step_skipped__']:
+            res.append(f"{self.completed['__step_skipped__']} skipped step{'s' if self.completed['__step_skipped__'] > 1 else ''}")
+            if '__input_skipped__' in self.completed and self.completed['__input_skipped__'] and self.completed['__input_skipped__'] != self.completed['__step_skipped__']:
+                res.append(f"{self.completed['__input_skipped__']} skipped input{'s' if self.completed['__input_skipped__'] > 1 else ''}")
+        if '__task_completed__' in self.completed and self.completed['__task_completed__']:
+            res.append(f"{self.completed['__task_completed__']} completed task{'s' if self.completed['__task_completed__'] > 1 else ''}")
+        if '__task_skipped__' in self.completed and self.completed['__task_skipped__']:
+            res.append(f"{self.completed['__task_skipped__']} skipped task{'s' if self.completed['__task_skipped__'] > 1 else ''}")
+        return ', '.join(res)
+
     def run(self, targets: Optional[List[str]] = None, parent_pipe: None = None, my_workflow_id: None = None, mode: str = 'run') -> Dict[str, Any]:
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
@@ -795,6 +813,7 @@ class Base_Executor:
         #   handle its own tasks.
         #
         nested = parent_pipe is not None and my_workflow_id is not None
+        self.completed = defaultdict(int)
 
         def i_am():
             return 'Nested' if nested else 'Master'
@@ -996,6 +1015,13 @@ class Base_Executor:
                         prog.update(1)
                     elif '__step_name__' in res:
                         env.logger.debug(f'{i_am()} receive step result ')
+                        for k,v in res['__completed__'].items():
+                            self.completed[k] += v
+                        if res['__completed__']['__input_completed__'] == 0:
+                            self.completed['__step_skipped__'] += 1
+                        else:
+                            self.completed['__step_completed__'] += 1
+
                         # if the result of the result of a step
                         svar = {}
                         for k, v in res.items():
@@ -1238,7 +1264,7 @@ class Base_Executor:
                 env.logger.warning(f'Failed to clear workflow status file: {e}')
             self.save_workflow_signature(dag)
             env.logger.info(
-                f'Workflow {self.workflow.name} (ID={self.md5}) is executed successfully.')
+                f'Workflow {self.workflow.name} (ID={self.md5}) is executed successfully with {self.describe_completed()}.')
         else:
             # exit with pending tasks
             pass

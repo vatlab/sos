@@ -13,6 +13,7 @@ import sys
 import time
 import traceback
 import subprocess
+from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from io import StringIO
 from itertools import combinations, tee
@@ -1085,6 +1086,11 @@ class Base_Step_Executor:
         for res in self.proc_results:
             if 'shared' not in res:
                 continue
+            if 'skipped' in res:
+                if res['skipped']:
+                    self.completed['__task_skipped__'] += 1
+                else:
+                    self.completed['__task_completed__'] += 1
             #
             # shared looks like: {0: {'a': 100}} where the first 0 is _index
             # we need to convert it to {'a': {0: 100}}
@@ -1170,6 +1176,7 @@ class Base_Step_Executor:
             '__step_output__': env.sos_dict['step_output'],
             '__step_depends__': env.sos_dict['step_depends'],
             '__step_name__': env.sos_dict['step_name'],
+            '__completed__': self.completed,
         }
         result['__last_res__'] = self.last_res
         result['__changed_vars__'] = set()
@@ -1214,6 +1221,7 @@ class Base_Step_Executor:
         of the last expression. '''
         # return value of the last executed statement
         self.last_res = None
+        self.completed = defaultdict(int)
         #
         self.log('start')
         #
@@ -1380,6 +1388,9 @@ class Base_Step_Executor:
                     self.worker_pool = Pool(gotten + 1)
 
         try:
+            self.completed['__input_skipped__'] = 0
+            self.completed['__input_completed__'] = len(self._groups)
+
             for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
                 # other variables
                 #
@@ -1541,6 +1552,8 @@ class Base_Step_Executor:
 
                 # if this index is skipped, go directly to the next one
                 if skip_index:
+                    self.completed['__input_skipped__'] += 1
+                    self.completed['__input_completed__'] -= 1
                     skip_index = False
                     if signatures[idx]:
                         signatures[idx].release()
