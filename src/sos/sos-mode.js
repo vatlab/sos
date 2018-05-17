@@ -392,7 +392,7 @@
                   // really
                   let mode = findMode(stream.current().slice(0, -1).toLowerCase());
                   if (mode) {
-                    state.sos_state = "entering " + mode;
+                    state.sos_state = "entering " + stream.current().slice(0, -1);
                   } else {
                     state.sos_state = 'unknown_language';
                   }
@@ -472,7 +472,7 @@
               // really
               let mode = findMode(state.sos_state.slice(6).toLowerCase());
               if (mode) {
-                state.sos_state = "entering " + mode;
+                state.sos_state = "entering " + state.sos_state.slice(6);
               } else {
                 state.sos_state = 'unknown_language';
               }
