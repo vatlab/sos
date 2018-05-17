@@ -794,13 +794,13 @@ class Base_Executor:
             if '__substep_completed__' in self.completed and self.completed['__substep_completed__'] and self.completed['__substep_completed__'] != self.completed['__step_completed__']:
                 res.append(f"{self.completed['__substep_completed__']} completed substep{'s' if self.completed['__substep_completed__'] > 1 else ''}")
         if '__step_skipped__' in self.completed and self.completed['__step_skipped__']:
-            res.append(f"{self.completed['__step_skipped__']} skipped step{'s' if self.completed['__step_skipped__'] > 1 else ''}")
+            res.append(f"{self.completed['__step_skipped__']} ignored step{'s' if self.completed['__step_skipped__'] > 1 else ''}")
             if '__substep_skipped__' in self.completed and self.completed['__substep_skipped__'] and self.completed['__substep_skipped__'] != self.completed['__step_skipped__']:
-                res.append(f"{self.completed['__substep_skipped__']} skipped input{'s' if self.completed['__substep_skipped__'] > 1 else ''}")
+                res.append(f"{self.completed['__substep_skipped__']} ignored substep{'s' if self.completed['__substep_skipped__'] > 1 else ''}")
         if '__task_completed__' in self.completed and self.completed['__task_completed__']:
             res.append(f"{self.completed['__task_completed__']} completed task{'s' if self.completed['__task_completed__'] > 1 else ''}")
         if '__task_skipped__' in self.completed and self.completed['__task_skipped__']:
-            res.append(f"{self.completed['__task_skipped__']} skipped task{'s' if self.completed['__task_skipped__'] > 1 else ''}")
+            res.append(f"{self.completed['__task_skipped__']} ignored task{'s' if self.completed['__task_skipped__'] > 1 else ''}")
         if len(res) > 1:
             return ', '.join(res[:-1]) + ' and ' + res[-1]
         else:
