@@ -201,7 +201,7 @@ class SoS_Step:
                 return a
             else:
                 return n + \
-                    (f'_{i}' if isinstance(i, str) and i.isdigit() else '')
+                    (f'_{int(i)}' if isinstance(i, str) and i.isdigit() else '')
         else:
             if alias and self.alias:
                 return self.alias
@@ -212,7 +212,7 @@ class SoS_Step:
     def match(self, step_name: str) -> bool:
         # if this step provides name...
         for name, index, _ in self.names:
-            if step_name == name or step_name == f'{name}_{index}':
+            if step_name == name or step_name == f'{name}_{0 if index is None else int(index)}':
                 return True
         return False
 

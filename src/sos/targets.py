@@ -222,7 +222,13 @@ class sos_step(BaseTarget):
 
     def __init__(self, step_name):
         super(sos_step, self).__init__()
-        self._step_name = 'default_' + step_name if step_name.isdigit() else step_name
+        if step_name.isdigit():
+            self._step_name = 'default_' + step_name.lstrip('0')
+        elif '_' in step_name and step_name.rsplit('_', 1)[-1].isdigit():
+            n, i = step_name.rsplit('_', 1)
+            self._step_name = f'{n}_{int(i)}'
+        else:
+            self._step_name = step_name
 
     def target_exists(self, mode='any'):
         # the target exists only if it has been executed?
