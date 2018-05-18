@@ -21,6 +21,12 @@ if you have helped fixing bugs or making improvements to the source code.
 
 ### Change Log of SoS and SoS Notebook
 
+SoS Notebook 0.9.14.1
+* [sos-notebook#74](https://github.com/vatlab/sos-notebook/issues/74): Add a `%revisions` magic to display revision history of the current document.
+
+SoS 0.9.14.1
+* [sos#925](https://github.com/vatlab/SoS/issues/924): Output summary of executed and ignored step, substeps, and tasks after the execution of workflows.
+
 SoS Notebook 0.9.13.4
 * [jupyterlab-sos#11](https://github.com/vatlab/jupyterlab-sos/issues/11): Magic `%cd` now changes directory of all subkernels
 
