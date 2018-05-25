@@ -95,10 +95,12 @@ class MasterTaskParams(TaskParams):
         else:
             for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem', 'max_mem',
                         'name', 'cur_dir', 'home_dir'):
-                val0 = self.task_stack[0][1].sos_dict['_runtime'].get(key, None)
+                val0 = self.task_stack[0][1].sos_dict['_runtime'].get(
+                    key, None)
                 val = params.sos_dict['_runtime'].get(key, None)
                 if val0 != val:
-                    raise ValueError(f'All tasks should have the same resource {key}')
+                    raise ValueError(
+                        f'All tasks should have the same resource {key}')
                 #
                 nrow = len(self.task_stack) if self.num_workers <= 1 else ((len(self.task_stack) + 1) //
                                                                            self.num_workers + (0 if (len(self.task_stack) + 1) % self.num_workers == 0 else 1))
@@ -113,11 +115,13 @@ class MasterTaskParams(TaskParams):
                     continue
                 elif key == 'walltime':
                     # if define walltime
-                    self.sos_dict['_runtime']['walltime'] = format_HHMMSS(nrow * expand_time(val0))
+                    self.sos_dict['_runtime']['walltime'] = format_HHMMSS(
+                        nrow * expand_time(val0))
                 elif key == 'mem':
                     # number of columns * mem for each + 100M for master
                     self.sos_dict['_runtime']['mem'] = ncol * \
-                        expand_size(val0) + (expand_size('100M') if self.num_workers > 0 else 0)
+                        expand_size(val0) + (expand_size('100M')
+                                             if self.num_workers > 0 else 0)
                 elif key == 'cores':
                     # number of columns * cores for each + 1 for the master
                     self.sos_dict['_runtime']['cores'] = ncol * \
@@ -198,12 +202,14 @@ def addTags(filename, new_tags):
 
 
 def taskDuration(task):
-    filename = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', f'{task}.task')
+    filename = os.path.join(os.path.expanduser(
+        '~'), '.sos', 'tasks', f'{task}.task')
     return os.path.getatime(filename) - os.path.getmtime(filename)
 
 
 def taskTags(task):
-    filename = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', f'{task}.task')
+    filename = os.path.join(os.path.expanduser(
+        '~'), '.sos', 'tasks', f'{task}.task')
     atime = os.path.getatime(filename)
     try:
         with open(filename, 'rb') as task:
@@ -277,7 +283,8 @@ def collect_task_result(task_id, sos_dict, skipped=False):
         args, _ = SoS_eval(f'__null_func__({env.sos_dict["_output"].expr})')
         # handle dynamic args
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-        output = {x: file_target(x).target_signature() for x in _expand_file_list(True, *args)}
+        output = {x: file_target(x).target_signature()
+                  for x in _expand_file_list(True, *args)}
     elif sos_dict['_output'] is None:
         output = {}
     else:
@@ -297,7 +304,8 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     res = _execute_task(task_id, verbosity, runmode, sigmode,
                         monitor_interval, resource_monitor_interval)
     # write result file
-    res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.res')
+    res_file = os.path.join(os.path.expanduser(
+        '~'), '.sos', 'tasks', task_id + '.res')
     with open(res_file, 'wb') as res_file:
         pickle.dump(res, res_file)
     if res['ret_code'] != 0 and 'exception' in res:
@@ -315,7 +323,8 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
     # start a monitoring file, which would be killed after the job
     # is done (killed etc)
     if isinstance(task_id, str):
-        task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
+        task_file = os.path.join(os.path.expanduser(
+            '~'), '.sos', 'tasks', task_id + '.task')
         params = loadTask(task_file)
         subtask = False
     else:
@@ -328,13 +337,17 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
         # pulse thread
         m = ProcessMonitor(task_id, monitor_interval=monitor_interval,
                            resource_monitor_interval=resource_monitor_interval,
-                           max_walltime=params.sos_dict['_runtime'].get('max_walltime', None),
-                           max_mem=params.sos_dict['_runtime'].get('max_mem', None),
+                           max_walltime=params.sos_dict['_runtime'].get(
+                               'max_walltime', None),
+                           max_mem=params.sos_dict['_runtime'].get(
+                               'max_mem', None),
                            max_procs=params.sos_dict['_runtime'].get('max_procs', None))
         m.start()
 
-        master_out = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out')
-        master_err = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
+        master_out = os.path.join(os.path.expanduser(
+            '~'), '.sos', 'tasks', task_id + '.out')
+        master_err = os.path.join(os.path.expanduser(
+            '~'), '.sos', 'tasks', task_id + '.err')
         # if this is a master task, calling each sub task
         with open(master_out, 'wb') as out, open(master_err, 'wb') as err:
             def copy_out_and_err(result):
@@ -343,12 +356,14 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                     f'{tid}: {"completed" if result["ret_code"] == 0 else "failed"}\n'.encode())
                 if 'output' in result:
                     out.write(f'output: {result["output"]}\n'.encode())
-                sub_out = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', tid + '.out')
+                sub_out = os.path.join(os.path.expanduser(
+                    '~'), '.sos', 'tasks', tid + '.out')
                 if os.path.isfile(sub_out):
                     with open(sub_out, 'rb') as sout:
                         out.write(sout.read())
 
-                sub_err = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', tid + '.err')
+                sub_err = os.path.join(os.path.expanduser(
+                    '~'), '.sos', 'tasks', tid + '.err')
                 err.write(
                     f'{tid}: {"completed" if result["ret_code"] == 0 else "failed"}\n'.encode())
                 if os.path.isfile(sub_err):
@@ -370,7 +385,8 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                 # but we only raise exception for one of the subtasks
                 for res in results:
                     if 'exception' in res:
-                        failed = [x.get("task", "") for x in results if "exception" in x]
+                        failed = [x.get("task", "")
+                                  for x in results if "exception" in x]
                         env.logger.error(
                             f'{task_id} ``failed`` due to failure of subtask{"s" if len(failed) > 1 else ""} {", ".join(failed)}')
                         return {'ret_code': 1, 'exception': res['exception'], 'task': task_id}
@@ -384,13 +400,15 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                     results.append(res)
                 for res in results:
                     if 'exception' in res:
-                        failed = [x.get("task", "") for x in results if "exception" in x]
+                        failed = [x.get("task", "")
+                                  for x in results if "exception" in x]
                         env.logger.error(
                             f'{task_id} ``failed`` due to failure of subtask{"s" if len(failed) > 1 else ""} {", ".join(failed)}')
                         return {'ret_code': 1, 'exception': res['exception'], 'task': task_id}
         #
         # now we collect result
-        all_res = {'ret_code': 0, 'output': {}, 'subtasks': {}, 'shared': {}, 'skipped': False}
+        all_res = {'ret_code': 0, 'output': {},
+                   'subtasks': {}, 'shared': {}, 'skipped': False}
         for tid, x in zip(params.task_stack, results):
             all_res['ret_code'] += x['ret_code']
             all_res['output'].update(x['output'])
@@ -407,7 +425,8 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
         os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out'))
     env.sos_dict.set('__std_err__', os.path.join(
         os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'))
-    env.logfile = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
+    env.logfile = os.path.join(os.path.expanduser(
+        '~'), '.sos', 'tasks', task_id + '.err')
     # clear the content of existing .out and .err file if exists, but do not create one if it does not exist
     if os.path.exists(env.sos_dict['__std_out__']):
         open(env.sos_dict['__std_out__'], 'w').close()
@@ -430,7 +449,8 @@ CONFIG = {}
 del sos_handle_parameter_
 ''' + global_def)
     except Exception as e:
-        env.logger.trace(f'Failed to execute global definition {short_repr(global_def)}: {e}')
+        env.logger.trace(
+            f'Failed to execute global definition {short_repr(global_def)}: {e}')
 
     if '_runtime' not in sos_dict:
         sos_dict['_runtime'] = {}
@@ -438,7 +458,8 @@ del sos_handle_parameter_
     # pulse thread
     m = ProcessMonitor(task_id, monitor_interval=monitor_interval,
                        resource_monitor_interval=resource_monitor_interval,
-                       max_walltime=sos_dict['_runtime'].get('max_walltime', None),
+                       max_walltime=sos_dict['_runtime'].get(
+                           'max_walltime', None),
                        max_mem=sos_dict['_runtime'].get('max_mem', None),
                        max_procs=sos_dict['_runtime'].get('max_procs', None))
 
@@ -476,8 +497,9 @@ del sos_handle_parameter_
         # try to add #task so that the signature can be different from the step
         # if everything else is the same
         sig = RuntimeInfo(textMD5('#task\n' + ' '.join(tokens)), task,
-                          env.sos_dict['_input'].targets(), env.sos_dict['_output'].targets(),
-                          env.sos_dict['_depends'].targets(), env.sos_dict['__signature_vars__'])
+                          env.sos_dict['_input'].targets(
+        ), env.sos_dict['_output'].targets(),
+            env.sos_dict['_depends'].targets(), env.sos_dict['__signature_vars__'])
         sig.lock()
 
         idx = env.sos_dict['_index']
@@ -517,7 +539,8 @@ del sos_handle_parameter_
         elif env.config['sig_mode'] == 'force':
             skipped = False
         else:
-            raise RuntimeError(f'Unrecognized signature mode {env.config["sig_mode"]}')
+            raise RuntimeError(
+                f'Unrecognized signature mode {env.config["sig_mode"]}')
 
     if skipped:
         env.logger.info(f'{task_id} ``skipped``')
@@ -533,13 +556,16 @@ del sos_handle_parameter_
         if '_runtime' in sos_dict and 'cur_dir' in sos_dict['_runtime']:
             if not os.path.isdir(os.path.expanduser(sos_dict['_runtime']['cur_dir'])):
                 try:
-                    os.makedirs(os.path.expanduser(sos_dict['_runtime']['cur_dir']))
-                    os.chdir(os.path.expanduser(sos_dict['_runtime']['cur_dir']))
+                    os.makedirs(os.path.expanduser(
+                        sos_dict['_runtime']['cur_dir']))
+                    os.chdir(os.path.expanduser(
+                        sos_dict['_runtime']['cur_dir']))
                 except Exception as e:
                     # sometimes it is not possible to go to a "cur_dir" because of
                     # file system differences, but this should be ok if a work_dir
                     # has been specified.
-                    env.logger.debug(f'Failed to create cur_dir {sos_dict["_runtime"]["cur_dir"]}')
+                    env.logger.debug(
+                        f'Failed to create cur_dir {sos_dict["_runtime"]["cur_dir"]}')
             else:
                 os.chdir(os.path.expanduser(sos_dict['_runtime']['cur_dir']))
         #
@@ -576,13 +602,15 @@ del sos_handle_parameter_
                         except Exception as e:
                             # this can fail but we do not really care because the task itself might
                             # create this directory, or if the directory has already been created by other tasks
-                            env.logger.warning(f'Failed to create directory {parent_dir}: {e}')
+                            env.logger.warning(
+                                f'Failed to create directory {parent_dir}: {e}')
 
         # go to user specified workdir
         if '_runtime' in sos_dict and 'workdir' in sos_dict['_runtime']:
             if not os.path.isdir(os.path.expanduser(sos_dict['_runtime']['workdir'])):
                 try:
-                    os.makedirs(os.path.expanduser(sos_dict['_runtime']['workdir']))
+                    os.makedirs(os.path.expanduser(
+                        sos_dict['_runtime']['workdir']))
                 except Exception as e:
                     raise RuntimeError(
                         f'Failed to create workdir {sos_dict["_runtime"]["workdir"]}')
@@ -631,7 +659,7 @@ del sos_handle_parameter_
         raise
     except subprocess.CalledProcessError as e:
         return {'ret_code': e.returncode, 'task': task_id, 'shared': {},
-                'exception': RuntimeError(e.stderr) }
+                'exception': RuntimeError(e.stderr)}
     except Exception as e:
 
         error_class = e.__class__.__name__
@@ -681,24 +709,30 @@ def check_task(task):
     # status of the job, please refer to https://github.com/vatlab/SOS/issues/529
     # for details.
     #
-    task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.task')
+    task_file = os.path.join(os.path.expanduser(
+        '~'), '.sos', 'tasks', task + '.task')
     if not os.path.isfile(task_file):
         return 'missing'
-    pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.pulse')
+    pulse_file = os.path.join(os.path.expanduser(
+        '~'), '.sos', 'tasks', task + '.pulse')
     if not os.path.isfile(pulse_file):
-        pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
+        pulse_file = os.path.join(os.path.expanduser(
+            '~'), '.sos', 'tasks', task + '.status')
 
     def has_pulse():
         return os.path.isfile(pulse_file) and os.stat(pulse_file).st_mtime >= os.stat(task_file).st_mtime
 
-    res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
+    res_file = os.path.join(os.path.expanduser(
+        '~'), '.sos', 'tasks', task + '.res')
 
     def has_res():
         return os.path.isfile(res_file) and os.stat(res_file).st_mtime >= os.stat(task_file).st_mtime
 
     def has_job():
-        job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.sh')
-        job_id_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.job_id')
+        job_file = os.path.join(os.path.expanduser(
+            '~'), '.sos', 'tasks', task + '.sh')
+        job_id_file = os.path.join(os.path.expanduser(
+            '~'), '.sos', 'tasks', task + '.job_id')
         return os.path.isfile(job_file) and os.stat(job_file).st_mtime >= os.stat(task_file).st_mtime \
             and os.path.isfile(job_id_file) and os.stat(job_id_file).st_mtime >= os.stat(job_file).st_mtime
 
@@ -713,7 +747,8 @@ def check_task(task):
                         continue
                     for x, y in res[var].items():
                         if not file_target(x).target_exists() or file_target(x).target_signature() != y:
-                            env.logger.debug(f'{x} not found or signature mismatch')
+                            env.logger.debug(
+                                f'{x} not found or signature mismatch')
                             return 'signature-mismatch'
                 return 'completed'
             else:
@@ -766,8 +801,10 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
     import glob
     from multiprocessing.pool import ThreadPool as Pool
     if not tasks:
-        tasks = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
-        all_tasks = [(os.path.basename(x)[:-5], os.path.getmtime(x)) for x in tasks]
+        tasks = glob.glob(os.path.join(
+            os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
+        all_tasks = [(os.path.basename(x)[:-5], os.path.getmtime(x))
+                     for x in tasks]
         if not all_tasks:
             return
     else:
@@ -775,7 +812,8 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
         for t in tasks:
             matched = glob.glob(os.path.join(os.path.expanduser('~'),
                                              '.sos', 'tasks', f'{t}*.task'))
-            matched = [(os.path.basename(x)[:-5], os.path.getmtime(x)) for x in matched]
+            matched = [(os.path.basename(x)[:-5], os.path.getmtime(x))
+                       for x in matched]
             if not matched:
                 all_tasks.append((t, None))
             else:
@@ -787,10 +825,12 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
         else:
             all_tasks = [x for x in all_tasks if time.time() - x[1] <= -age]
 
-    all_tasks = sorted(list(set(all_tasks)), key=lambda x: 0 if x[1] is None else x[1])
+    all_tasks = sorted(list(set(all_tasks)),
+                       key=lambda x: 0 if x[1] is None else x[1])
 
     if tags:
-        all_tasks = [x for x in all_tasks if any(x in tags for x in taskTags(x[0]).split(' '))]
+        all_tasks = [x for x in all_tasks if any(
+            x in tags for x in taskTags(x[0]).split(' '))]
 
     if not all_tasks:
         env.logger.info('No matching tasks')
@@ -799,7 +839,8 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
     p = Pool(min(20, len(all_tasks)))
     obtained_status = p.map(check_task, [x[0] for x in all_tasks])
     if status:
-        all_tasks = [x for x, s in zip(all_tasks, obtained_status) if s in status]
+        all_tasks = [x for x, s in zip(
+            all_tasks, obtained_status) if s in status]
         obtained_status = [x for x in obtained_status if x in status]
     #
     # automatically remove non-running tasks that are more than 30 days old
@@ -830,10 +871,12 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
                 if d is None:
                     print(f'{t}\t{taskTags(t)}\t{"":>15}\t{s}')
                 elif s in ('pending', 'submitted', 'running'):
-                    print(f'{t}\t{taskTags(t)}\t{PrettyRelativeTime(time.time() - d):>15}\t{s}')
+                    print(
+                        f'{t}\t{taskTags(t)}\t{PrettyRelativeTime(time.time() - d):>15}\t{s}')
                 else:
                     # completed or failed
-                    print(f'{t}\t{taskTags(t)}\t{PrettyRelativeTime(taskDuration(t)):>15}\t{s}')
+                    print(
+                        f'{t}\t{taskTags(t)}\t{PrettyRelativeTime(taskDuration(t)):>15}\t{s}')
     elif verbosity > 2:
         from .utils import PrettyRelativeTime
         import pprint
@@ -844,7 +887,8 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
                 to_be_removed.append(t)
                 continue
             print(f'{t}\t{s}\n')
-            task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.task')
+            task_file = os.path.join(os.path.expanduser(
+                '~'), '.sos', 'tasks', t + '.task')
             if not os.path.isfile(task_file):
                 continue
             if d is not None:
@@ -865,16 +909,19 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
             job_vars = params.sos_dict
             for k in sorted(job_vars.keys()):
                 v = job_vars[k]
-                print(f'{k:22}{short_repr(v) if verbosity == 3 else pprint.pformat(v)}')
+                print(
+                    f'{k:22}{short_repr(v) if verbosity == 3 else pprint.pformat(v)}')
             print()
             print('EXECUTION STATS:\n================')
             print(summarizeExecution(t, status=s))
             if verbosity == 4:
                 # if there are other files such as job file, print them.
-                files = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
+                files = glob.glob(os.path.join(
+                    os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
                 for f in sorted([x for x in files if os.path.splitext(x)[-1] not in ('.res',
                                                                                      '.task', '.pulse', '.status', '.def')]):
-                    print(f'{os.path.basename(f)}:\n{"="*(len(os.path.basename(f))+1)}')
+                    print(
+                        f'{os.path.basename(f)}:\n{"="*(len(os.path.basename(f))+1)}')
                     try:
                         with open(f) as fc:
                             print(fc.read())
@@ -889,9 +936,11 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
 
         def row(th=None, td=None):
             if td is None:
-                print(f'<tr><th align="right" width="30%">{th}</th><td></td></tr>')
+                print(
+                    f'<tr><th align="right" width="30%">{th}</th><td></td></tr>')
             elif th is None:
-                print(f'<tr><td colspan="2" align="left"  width="30%">{td}</td></tr>')
+                print(
+                    f'<tr><td colspan="2" align="left"  width="30%">{td}</td></tr>')
             else:
                 print(
                     f'<tr><th align="right"  width="30%">{th}</th><td align="left"><div class="one_liner">{td}</div></td></tr>')
@@ -901,7 +950,8 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
                 continue
             row('ID', t)
             row('Status', s)
-            task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.task')
+            task_file = os.path.join(os.path.expanduser(
+                '~'), '.sos', 'tasks', t + '.task')
             if not os.path.isfile(task_file):
                 print('</table>')
                 continue
@@ -909,7 +959,8 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
                 row('Start', f'{PrettyRelativeTime(time.time() - d):>15} ago')
             if s not in ('pending', 'submitted', 'running'):
                 row('Duration', f'{PrettyRelativeTime(taskDuration(t)):>15}')
-            task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.task')
+            task_file = os.path.join(os.path.expanduser(
+                '~'), '.sos', 'tasks', t + '.task')
             if not os.path.isfile(task_file):
                 continue
             params = loadTask(task_file)
@@ -919,7 +970,8 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
             row(td=f'<pre style="text-align:left">{" ".join(params.tags)}</pre>')
             if params.global_def:
                 row('Global')
-                row(td=f'<pre style="text-align:left">{params.global_def}</pre>')
+                row(
+                    td=f'<pre style="text-align:left">{params.global_def}</pre>')
             # row('Environment')
             job_vars = params.sos_dict
             for k in sorted(job_vars.keys()):
@@ -930,7 +982,8 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
                             if isPrimitive(_v) and _v not in (None, '', [], (), {}):
                                 row(_k, _v)
                     elif isPrimitive(v) and v not in (None, '', [], (), {}):
-                        row(k, f'<pre style="text-align:left">{pprint.pformat(v)}</pre>')
+                        row(k,
+                            f'<pre style="text-align:left">{pprint.pformat(v)}</pre>')
             summary = summarizeExecution(t, status=s)
             if summary:
                 # row('Execution')
@@ -942,7 +995,8 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
                 # this is a placeholder for the frontend to draw figure
                 row(td=f'<div id="res_{t}"></div>')
             #
-            files = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
+            files = glob.glob(os.path.join(
+                os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
             for f in sorted([x for x in files if os.path.splitext(x)[-1] not in ('.def', '.res', '.task', '.pulse', '.status')]):
                 numLines = linecount_of_file(f)
                 row(os.path.splitext(f)[-1], '(empty)' if numLines ==
@@ -955,7 +1009,8 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
             print('</table>')
             #
             # supplement run time information
-            pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.pulse')
+            pulse_file = os.path.join(os.path.expanduser(
+                '~'), '.sos', 'tasks', t + '.pulse')
             if not os.path.isfile(pulse_file):
                 return
             else:
@@ -1080,7 +1135,8 @@ def kill_tasks(tasks, tags=None):
     import glob
     from multiprocessing.pool import ThreadPool as Pool
     if not tasks:
-        tasks = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
+        tasks = glob.glob(os.path.join(
+            os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
         all_tasks = [os.path.basename(x)[:-5] for x in tasks]
     else:
         all_tasks = []
@@ -1093,7 +1149,8 @@ def kill_tasks(tasks, tags=None):
             else:
                 all_tasks.extend(matched)
     if tags:
-        all_tasks = [x for x in all_tasks if any(x in tags for x in taskTags(x).split(' '))]
+        all_tasks = [x for x in all_tasks if any(
+            x in tags for x in taskTags(x).split(' '))]
 
     if not all_tasks:
         env.logger.warning('No task to kill')
@@ -1112,11 +1169,13 @@ def kill_task(task):
         # the task engine will remove it from lists if killed through a task engine
         # but it can also be killed through command line externally, so we will need
         # to mark the task as killed
-        pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.pulse')
+        pulse_file = os.path.join(os.path.expanduser(
+            '~'), '.sos', 'tasks', task + '.pulse')
         os.open(pulse_file, flags=os.O_CREAT | os.O_RDONLY)
         return 'aborted'
     # remove job file as well
-    job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.sh')
+    job_file = os.path.join(os.path.expanduser(
+        '~'), '.sos', 'tasks', task + '.sh')
     if os.path.isfile(job_file):
         try:
             os.remove(job_file)
@@ -1125,7 +1184,8 @@ def kill_task(task):
     if status != 'running':
         return status
     # job is running
-    pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.pulse')
+    pulse_file = os.path.join(os.path.expanduser(
+        '~'), '.sos', 'tasks', task + '.pulse')
     os.chmod(pulse_file, S_IREAD | S_IRGRP | S_IROTH)
     return 'killed'
 
@@ -1138,11 +1198,14 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
         for t in tasks:
             matched = glob.glob(os.path.join(os.path.expanduser('~'),
                                              '.sos', 'tasks', f'{t}*.task'))
-            matched = [(os.path.basename(x)[:-5], os.path.getmtime(x)) for x in matched]
+            matched = [(os.path.basename(x)[:-5], os.path.getmtime(x))
+                       for x in matched]
             all_tasks.extend(matched)
     else:
-        tasks = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
-        all_tasks = [(os.path.basename(x)[:-5], os.path.getmtime(x)) for x in tasks]
+        tasks = glob.glob(os.path.join(
+            os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
+        all_tasks = [(os.path.basename(x)[:-5], os.path.getmtime(x))
+                     for x in tasks]
     #
     if age is not None:
         age = expand_time(age, default_unit='d')
@@ -1159,7 +1222,8 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
         all_tasks = [x for x, s in zip(all_tasks, task_status) if s in status]
 
     if tags:
-        all_tasks = [x for x in all_tasks if any(x in tags for x in taskTags(x[0]).split(' '))]
+        all_tasks = [x for x in all_tasks if any(
+            x in tags for x in taskTags(x[0]).split(' '))]
     #
     # remoe all task files
     all_tasks = set([x[0] for x in all_tasks])
@@ -1190,7 +1254,8 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
     elif verbosity > 1:
         env.logger.info('No matching tasks')
     if purge_all:
-        matched = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '*'))
+        matched = glob.glob(os.path.join(
+            os.path.expanduser('~'), '.sos', 'tasks', '*'))
         count = 0
         for f in matched:
             if os.path.isdir(f):
@@ -1209,7 +1274,8 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
                     if verbosity > 0:
                         env.logger.warning(f'Failed to remove {e}')
         if count > 0 and verbosity > 1:
-            env.logger.info(f'{count} other files and directories are removed.')
+            env.logger.info(
+                f'{count} other files and directories are removed.')
     return ''
 
 
@@ -1228,7 +1294,6 @@ class TaskEngine(threading.Thread):
         self.agent = agent
         self.config = agent.config
         self.alias = self.config['alias']
-
         self.engine_ready = threading.Event()
 
         self.running_tasks = []
@@ -1261,7 +1326,8 @@ class TaskEngine(threading.Thread):
         # to submit jobs this way. Multi-processing is possible but that can be done
         # later.
         #
-        self._thread_workers = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        self._thread_workers = concurrent.futures.ThreadPoolExecutor(
+            max_workers=1)
         self._status_checker = None
         #
         if env.config['wait_for_task'] is not None:
@@ -1312,7 +1378,8 @@ class TaskEngine(threading.Thread):
 
     def get_tasks(self):
         with threading.Lock():
-            pending = copy.deepcopy(self.pending_tasks + list(self.submitting_tasks.keys()))
+            pending = copy.deepcopy(
+                self.pending_tasks + list(self.submitting_tasks.keys()))
             running = copy.deepcopy(self.running_tasks)
         return pending, running
 
@@ -1353,7 +1420,8 @@ class TaskEngine(threading.Thread):
                     try:
                         tid, tst = line.split('\t')
                         if tid not in self.running_tasks:
-                            env.logger.trace(f'Task {tid} removed since status check.')
+                            env.logger.trace(
+                                f'Task {tid} removed since status check.')
                             continue
                         self.update_task_status(tid, tst)
                     except Exception as e:
@@ -1384,7 +1452,8 @@ class TaskEngine(threading.Thread):
                                             ['change-status', self.agent.alias, tid, 'submitted'])
                             else:
                                 for tid in k:
-                                    self.notify(['change-status', self.agent.alias, tid, 'failed'])
+                                    self.notify(
+                                        ['change-status', self.agent.alias, tid, 'failed'])
                                     self.task_status[tid] = 'failed'
                         # else:
                         #    env.logger.trace('{} is still being submitted.'.format(k))
@@ -1393,7 +1462,8 @@ class TaskEngine(threading.Thread):
 
             if self.pending_tasks:
                 # check status
-                num_active_tasks = len(self.submitting_tasks) + len(self.running_tasks)
+                num_active_tasks = len(
+                    self.submitting_tasks) + len(self.running_tasks)
                 if num_active_tasks >= self.max_running_jobs:
                     continue
 
@@ -1409,7 +1479,8 @@ class TaskEngine(threading.Thread):
                         self.notify(f'{tid} ``canceled``')
                     else:
                         # randomly spread to tasks, but at most one.
-                        slots[sample_slots[i % self.max_running_jobs]].append(tid)
+                        slots[sample_slots[i %
+                                           self.max_running_jobs]].append(tid)
                 for slot in slots:
                     if not slot:
                         continue
@@ -1496,13 +1567,16 @@ class TaskEngine(threading.Thread):
         #
         with threading.Lock():
             if task_id in self.canceled_tasks and status != 'aborted':
-                env.logger.debug(f'Task {task_id} is still not killed (status {status})')
+                env.logger.debug(
+                    f'Task {task_id} is still not killed (status {status})')
                 status = 'aborted'
             if status != 'missing':
                 if task_id in self.task_status and self.task_status[task_id] == status:
-                    self.notify(['pulse-status', self.agent.alias, task_id, status])
+                    self.notify(
+                        ['pulse-status', self.agent.alias, task_id, status])
                 else:
-                    self.notify(['change-status', self.agent.alias, task_id, status])
+                    self.notify(
+                        ['change-status', self.agent.alias, task_id, status])
             self.task_status[task_id] = status
             if status == 'pening' and task_id not in self.pending_tasks:
                 self.pending_tasks.append(task_id)
@@ -1533,14 +1607,16 @@ class TaskEngine(threading.Thread):
             ))
         except subprocess.CalledProcessError as e:
             if verbosity >= 3:
-                env.logger.warning(f'Failed to query status of tasks on {self.alias}')
+                env.logger.warning(
+                    f'Failed to query status of tasks on {self.alias}')
             return ''
 
     def kill_tasks(self, tasks, tags=None, all_tasks=False):
         # we wait for the engine to start
         self.engine_ready.wait()
         if all_tasks:
-            tasks = self.pending_tasks + list(self.submitting_tasks.keys()) + self.running_tasks
+            tasks = self.pending_tasks + \
+                list(self.submitting_tasks.keys()) + self.running_tasks
 
         for task in tasks:
             with threading.Lock():
@@ -1575,7 +1651,8 @@ class TaskEngine(threading.Thread):
             ret = self.agent.check_output(cmd)
             env.logger.debug(f'"{cmd}" executed with response "{ret}"')
         except subprocess.CalledProcessError:
-            env.logger.error(f'Failed to kill all tasks' if all_tasks else f'Failed to kill tasks {" ".join(tasks)}')
+            env.logger.error(
+                f'Failed to kill all tasks' if all_tasks else f'Failed to kill tasks {" ".join(tasks)}')
             return ''
         return ret
 
@@ -1635,7 +1712,8 @@ class BackgroundProcess_TaskEngine(TaskEngine):
     def __init__(self, agent):
         super(BackgroundProcess_TaskEngine, self).__init__(agent)
         if 'job_template' in self.config:
-            self.job_template = self.config['job_template'].replace('\r\n', '\n')
+            self.job_template = self.config['job_template'].replace(
+                '\r\n', '\n')
         else:
             self.job_template = None
         #
@@ -1689,11 +1767,14 @@ class BackgroundProcess_TaskEngine(TaskEngine):
                 job_text += cfg_interpolate(self.job_template, runtime)
                 job_text += '\n'
             except Exception as e:
-                raise ValueError(f'Failed to generate job file for task {task_id}: {e}')
+                raise ValueError(
+                    f'Failed to generate job file for task {task_id}: {e}')
 
-        filename = task_ids[0] + ('.sh' if len(task_ids) == 1 else f'-{task_ids[-1]}.sh')
+        filename = task_ids[0] + ('.sh' if len(task_ids)
+                                  == 1 else f'-{task_ids[-1]}.sh')
         # now we need to write a job file
-        job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, filename)
+        job_file = os.path.join(os.path.expanduser(
+            '~'), '.sos', 'tasks', self.alias, filename)
         # do not translate newline under windows because the script will be executed
         # under linux/mac
         with open(job_file, 'w', newline='') as job:
