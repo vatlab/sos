@@ -137,7 +137,7 @@ class LocalHost:
         self.alias = config.get('alias', 'localhost')
         self.address = 'localhost'
         # we checkk local jobs more aggressively
-        self.config = {'alias': 'localhost', 'status_check_interval': 2}
+        self.config = {'alias': self.alias, 'status_check_interval': 2}
         self.config.update(config)
 
         self.task_dir = os.path.join(
@@ -1158,7 +1158,8 @@ def test_scp(host):
 def test_sos(host):
     # test the execution of sos commands
     try:
-        ret = host.check_call('sos -h', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        ret = host.check_call(
+            'sos -h', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if ret == 0:
             return 'OK'
         else:
@@ -1202,7 +1203,8 @@ def test_paths(host):
             return f'Failed to send files under {local} to remote host under {remote}: {e}'
         # the file should be available on remote host
         try:
-            remote_content = host.check_output(f'cat {remote}/.sos_test_{tID}.txt')
+            remote_content = host.check_output(
+                f'cat {remote}/.sos_test_{tID}.txt')
         except Exception as e:
             return f'Failed to send files under {local} to remote host under {remote}: {e}'
         if remote_content != str(tID):
@@ -1227,7 +1229,8 @@ def test_paths(host):
         os.remove(os.path.join(local, f".sos_test_{tID}.txt"))
         #
         try:
-            remote_content = host.check_output(f'rm {remote}/.sos_test_{tID}.txt')
+            remote_content = host.check_output(
+                f'rm {remote}/.sos_test_{tID}.txt')
         except Exception as e:
             return f'Failed to remove test file on remote host: {e}'
     return 'OK'
@@ -1251,18 +1254,21 @@ def test_shared(host):
             remote_files = host.check_output(f'ls -a {path(remote):q}')
         except:
             return f'Failed to access shared directory {remote} on remote host.'
-        remote_files = [x for x in remote_files.splitlines() if x not in ('.', '..')]
+        remote_files = [x for x in remote_files.splitlines()
+                        if x not in ('.', '..')]
         #
         if sorted(local_files) != sorted(remote_files):
             return f'shared directory {local} has different content on remote host under {remote}'
 
     return f'OK (shared {" ".join(host.shared_dirs)})'
 
+
 def stty_sane():
     try:
         subprocess.check_call('stty sane', shell=True)
     except:
         pass
+
 
 def test_queue(host):
     try:
@@ -1302,13 +1308,15 @@ def test_queues(cfg, hosts=[], verbosity=1):
     elif verbosity in (1, 2):
         shortened = host_description[: 2]
         for row in host_description[2:]:
-            shortened.append(row[: 3] + ['OK' if x.startswith('OK') else ('-' if x == '-' else 'FAIL') for x in row[3:]])
+            shortened.append(row[: 3] + ['OK' if x.startswith('OK')
+                                         else ('-' if x == '-' else 'FAIL') for x in row[3:]])
         width = [(len(x) for x in row) for row in shortened]
         max_width = [max(x) for x in zip(*width)]
         print('\n'.join(' '.join([t.ljust(w) for t, w in zip(row, max_width)])
                         for row in shortened))
         if any('FAILED' in row for row in shortened):
-            print('\nUse command "sos remote --test host -v3" to check details of hosts with failed tests.')
+            print(
+                '\nUse command "sos remote --test host -v3" to check details of hosts with failed tests.')
     else:
         for row in host_description[2:]:
             print(f'Alias:       {row[0]}')
@@ -1326,12 +1334,13 @@ def copy_public_key(host, agent, password):
     try:
         if password is None:
             import getpass
-            password = getpass.getpass(f'Please enter password for {agent.address}: ')
+            password = getpass.getpass(
+                f'Please enter password for {agent.address}: ')
         cmd = f"scp {os.path.expanduser('~')}/.ssh/id_rsa.pub {agent.address}:id_rsa.pub.{host}"
         env.logger.info(cmd)
         p = pexpect.spawn(cmd, echo=False)
         i = p.expect(["(?i)are you sure you want to continue connecting",
-                "[pP]assword:", pexpect.EOF])
+                      "[pP]assword:", pexpect.EOF])
         if i == 0:
             p.sendline('yes')
             p.expect(["(?i)are you sure you want to continue connecting",
@@ -1356,8 +1365,8 @@ def copy_public_key(host, agent, password):
         env.logger.info(cmd)
         p = pexpect.spawn(cmd, echo=False)
         i = p.expect(["(?i)are you sure you want to continue connecting",
-            'assword:', pexpect.EOF])
-        if i==0:
+                      'assword:', pexpect.EOF])
+        if i == 0:
             p.sendline('yes')
             p.expect(["(?i)are you sure you want to continue connecting",
                       "[pP]assword:", pexpect.EOF], timeout=5)
@@ -1376,6 +1385,7 @@ def copy_public_key(host, agent, password):
         return f'Failed to append public key to .ssh/authorized_keys: {e}'
     return 'OK'
 
+
 def setup_remote_access(cfg, hosts=[], password='', verbosity=1):
     env.verbosity = verbosity
     all_hosts = cfg.get('hosts', [])
@@ -1385,7 +1395,8 @@ def setup_remote_access(cfg, hosts=[], password='', verbosity=1):
         return
     for host in hosts:
         if host not in all_hosts:
-            env.logger.warning(f'Treating undefined host {host} as address of a remote host.')
+            env.logger.warning(
+                f'Treating undefined host {host} as address of a remote host.')
     # public_key
     public_key = os.path.join(os.path.expanduser('~'), '.ssh', 'id_rsa.pub')
 
@@ -1407,7 +1418,7 @@ def setup_remote_access(cfg, hosts=[], password='', verbosity=1):
             env.logger.info('No public key is found. Creating one.')
             try:
                 subprocess.check_call('echo | ssh-keygen -t rsa', shell=True,
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 if not os.path.isfile(public_key):
                     raise RuntimeError('public key not found after ssh-keygen')
             except Exception as e:
@@ -1416,7 +1427,8 @@ def setup_remote_access(cfg, hosts=[], password='', verbosity=1):
         # can ssh?
         response = test_ssh(host_agent)
         if response.startswith('OK'):
-            env.logger.info(f'Public key access is already enabled for host ``{host}`` with address ``{host_agent.address}``')
+            env.logger.info(
+                f'Public key access is already enabled for host ``{host}`` with address ``{host_agent.address}``')
             continue
         elif 'Could not resolve hostname' in response:
             env.logger.error(response)
@@ -1430,8 +1442,9 @@ def setup_remote_access(cfg, hosts=[], password='', verbosity=1):
         # file copied, check ssh again.
         response = test_ssh(host_agent)
         if response.startswith('OK'):
-            env.logger.info(f'Public key access is successfully set up for host ``{host}`` with address ``{host_agent.address}``')
+            env.logger.info(
+                f'Public key access is successfully set up for host ``{host}`` with address ``{host_agent.address}``')
             continue
         else:
-            env.logger.error(f'Failed to connect to {host} after passing public key. Possible problems include permission of .ssh and home directories.')
-
+            env.logger.error(
+                f'Failed to connect to {host} after passing public key. Possible problems include permission of .ssh and home directories.')
