@@ -21,6 +21,9 @@ if you have helped fixing bugs or making improvements to the source code.
 
 ### Change Log of SoS and SoS Notebook
 
+SoS Notebook 0.9.14.4:
+* [sos-notebook#79](https://github.com/vatlab/sos-notebook/issues/79): Allow auto-completion and inspection in subkernel cells.
+
 SoS Notebook 0.9.14.1
 * [sos-notebook#74](https://github.com/vatlab/sos-notebook/issues/74): Add a `%revisions` magic to display revision history of the current document.
 
