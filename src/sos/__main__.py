@@ -2239,7 +2239,7 @@ def sosrunner():
         try:
             from .parser import SoS_Script
             script = SoS_Script(filename=sys.argv[1])
-            script.print_help()
+            script.print_help(sys.argv[1])
             sys.exit(0)
         except Exception as e:
             sys.exit('No help information is available for script {}: {}'.format(
