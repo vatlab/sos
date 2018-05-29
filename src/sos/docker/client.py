@@ -35,20 +35,6 @@ class SoS_DockerClient:
         try:
             self.client = docker.from_env()
             self.client.info()
-            # mount the /Volumes folder under mac, please refer to
-            #    http://vatlab.github.io/SOS/doc/tutorials/SoS_Docker_Guide.html
-            # for details.
-            self.has_volumes = False
-            if platform.system() == 'Darwin':
-                try:
-                    # this command log in to the docker machine, check if /Volumes has been mounted,
-                    # and try to mount it if possible. This requires users to configure
-                    subprocess.call("""docker-machine ssh "{}" 'mount | grep /Volumes || {{ echo "mounting /Volumes"; sudo mount  -t vboxsf Volumes /Volumes; }}' """.format(os.environ['DOCKER_MACHINE_NAME']),
-                                    shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    env.logger.trace('Sucessfully mount /Volumes to virtual machine')
-                    self.has_volumes = True
-                except Exception as e:
-                    env.logger.trace('Failed to mount /Volumes to virtual machine: {}'.format(e))
         except Exception as e:
             env.logger.debug('Docker client init fail: {}'.format(e))
             self.client = None
@@ -57,7 +43,8 @@ class SoS_DockerClient:
         '''Get the available ram fo the docker machine in Kb'''
         try:
             ret = subprocess.check_output(
-                '''docker run -t {} cat /proc/meminfo  | grep MemTotal'''.format(image),
+                '''docker run -t {} cat /proc/meminfo  | grep MemTotal'''.format(
+                    image),
                 shell=True, stdin=subprocess.DEVNULL)
             # ret: MemTotal:       30208916 kB
             self.tot_mem = int(ret.split()[1])
@@ -90,7 +77,8 @@ class SoS_DockerClient:
             # self.stream(line.decode())
         # if a tag is given, check if the image is built
         if 'tag' in kwargs and not self._is_image_avail(kwargs['tag']):
-            raise RuntimeError('Image with tag {} is not created.'.format(kwargs['tag']))
+            raise RuntimeError(
+                'Image with tag {} is not created.'.format(kwargs['tag']))
 
     def load_image(self, image, **kwargs):
         if not self.client:
@@ -144,42 +132,41 @@ class SoS_DockerClient:
             if not args:
                 args = '{filename:q}'
             #
+            # under mac, we by default share /Users within docker
+            wdir = os.getcwd()
             binds = []
             if 'volumes' in kwargs:
                 volumes = [kwargs['volumes']] if isinstance(
                     kwargs['volumes'], str) else kwargs['volumes']
+                has_wdir = False
                 for vol in volumes:
                     if not vol:
                         continue
-                    if vol.count(':') != 1:
-                        raise RuntimeError(
-                            'Please specify columes in the format of host_dir:mnt_dir')
-                    host_dir, mnt_dir = vol.split(':')
-                    if platform.system() == 'Darwin':
-                        # under Darwin, host_dir must be under /Users
-                        if not os.path.abspath(host_dir).startswith('/Users') and not (self.has_volumes and os.path.abspath(host_dir).startswith('/Volumes')):
-                            raise RuntimeError(
-                                'hostdir ({}) under MacOSX must be under /Users or /Volumes (if properly configured, see https://github.com/vatlab/SOS/wiki/SoS-Docker-guide for details) to be usable in docker container'.format(host_dir))
-                    binds.append('{}:{}'.format(os.path.abspath(host_dir), mnt_dir))
-            #
-            volumes_opt = ' '.join('-v {}'.format(x) for x in binds)
-            # under mac, we by default share /Users within docker
-            wdir = os.path.abspath(kwargs['working_dir']
-                                   if 'working_dir' in kwargs else os.getcwd())
-            if platform.system() == 'Darwin':
-                if not any(x.startswith('/Users:') for x in binds):
-                    volumes_opt += ' -v /Users:/Users'
-                if self.has_volumes:
-                    volumes_opt += ' -v /Volumes:/Volumes'
-                if not wdir.startswith('/Users'):
-                    volumes_opt += f' -v /{wdir}:/{wdir}'
-            elif platform.system() == 'Linux':
-                if not any(x.startswith('/home:') for x in binds):
-                    volumes_opt += ' -v /home:/home'
-                if not wdir.startswith('/home/'):
-                    volumes_opt += f' -v /{wdir}:/{wdir}'
-            if not any(x.startswith('/tmp:') for x in binds):
-                volumes_opt += ' -v /tmp:/tmp'
+                    if vol.count(':') == 0:
+                        host_dir, mnt_dir = vol, vol
+                    elif vol.count(':') == 1:
+                        host_dir, mnt_dir = vol.split(':', 1)
+                    binds.append('{}:{}'.format(
+                        os.path.abspath(os.path.expanduser(host_dir)), mnt_dir))
+                    if os.path.abspath(os.path.expanduser(host_dir)).startswith(os.path.abspath(os.path.expanduser(wdir))):
+                        has_wdir = True
+                volumes_opt = ' '.join('-v {}'.format(x) for x in binds)
+                if not has_wdir:
+                    volumes_opt += f' -v /{os.path.abspath(os.path.expanduser(wdir))}:/{os.path.abspath(os.path.expanduser(wdir))}'
+            else:
+                volumes_opt = ''
+                if platform.system() == 'Darwin':
+                    if not any(x.startswith('/Users:') for x in binds):
+                        volumes_opt += ' -v /Users:/Users'
+                    if not wdir.startswith('/Users'):
+                        volumes_opt += f' -v /{wdir}:/{wdir}'
+                elif platform.system() == 'Linux':
+                    if not any(x.startswith('/home:') for x in binds):
+                        volumes_opt += ' -v /home:/home'
+                    if not wdir.startswith('/home/'):
+                        volumes_opt += f' -v /{wdir}:/{wdir}'
+                if not any(x.startswith('/tmp:') for x in binds):
+                    volumes_opt += ' -v /tmp:/tmp'
             #
             mem_limit_opt = ''
             if 'mem_limit' in kwargs:
@@ -204,22 +191,27 @@ class SoS_DockerClient:
                 'filename': sos_targets(f'/var/lib/sos/{tempscript}'),
                 'script': script})
             #
-            working_dir_opt = '-w={}'.format(shlex.quote(os.path.abspath(os.getcwd())))
-            if 'working_dir' in kwargs:
-                if not os.path.isabs(kwargs['working_dir']):
+            workdir_opt = ''
+            if 'docker_workdir' in kwargs and kwargs['docker_workdir'] is not None:
+                if not os.path.isabs(kwargs['docker_workdir']):
                     env.logger.warning('An absolute path is needed for -w option of docker run command. "{}" provided, "{}" used.'
-                                       .format(kwargs['working_dir'], os.path.abspath(os.path.expanduser(kwargs['working_dir']))))
-                    working_dir_opt = '-w={}'.format(os.path.abspath(
-                        os.path.expanduser(kwargs['working_dir'])))
+                                       .format(kwargs['docker_workdir'], os.path.abspath(os.path.expanduser(kwargs['docker_workdir']))))
+                    workdir_opt = '-w={}'.format(os.path.abspath(
+                        os.path.expanduser(kwargs['docker_workdir'])))
                 else:
-                    working_dir_opt = '-w={}'.format(kwargs['working_dir'])
+                    workdir_opt = '-w={}'.format(kwargs['docker_workdir'])
+            elif 'docker_workdir' not in kwargs:
+                # by default, map current working directoryself.
+                workdir_opt = f'-w={os.path.abspath(os.path.expanduser(wdir))}'
 
             env_opt = ''
             if 'environment' in kwargs:
                 if isinstance(kwargs['environment'], dict):
-                    env_opt = ' '.join(f'-e {x}={y}' for x, y in kwargs['environment'].items())
+                    env_opt = ' '.join(
+                        f'-e {x}={y}' for x, y in kwargs['environment'].items())
                 elif isinstance(kwargs['environment'], list):
-                    env_opt = ' '.join(f'-e {x}' for x in kwargs['environment'])
+                    env_opt = ' '.join(
+                        f'-e {x}' for x in kwargs['environment'])
                 elif isinstance(kwargs['environment'], str):
                     env_opt = f'-e {kwargs["environment"]}'
                 else:
@@ -231,7 +223,8 @@ class SoS_DockerClient:
                 if isinstance(kwargs['port'], (str, int)):
                     port_opt = '-p {}'.format(kwargs['port'])
                 elif isinstance(kwargs['port'], list):
-                    port_opt = ' '.join('-p {}'.format(x) for x in kwargs['port'])
+                    port_opt = ' '.join('-p {}'.format(x)
+                                        for x in kwargs['port'])
                 else:
                     raise RuntimeError(
                         'Invalid value for option port (a list of intergers), {} provided'.format(kwargs['port']))
@@ -249,7 +242,8 @@ class SoS_DockerClient:
                 tty_opt = ''
             #
             if 'user' in kwargs:
-                user_opt = f'-u {kwargs["user"]}'
+                if kwargs['user'] is not None:
+                    user_opt = f'-u {kwargs["user"]}'
             else:
                 # Tocket #922
                 user_opt = f'-u {os.getuid()}:{os.getgid()}'
@@ -270,7 +264,7 @@ class SoS_DockerClient:
                 stdin_opt,          # stdin_optn
                 tty_opt,            # tty
                 port_opt,           # port
-                working_dir_opt,    # working dir
+                workdir_opt,    # working dir
                 user_opt,           # user
                 env_opt,            # environment
                 mem_limit_opt,      # memory limit
@@ -334,7 +328,8 @@ class SoS_DockerClient:
 
                 elif env.verbosity >= 1:
                     with open(env.sos_dict['__std_out__'], 'ab') as so, open(env.sos_dict['__std_err__'], 'ab') as se:
-                        p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
+                        p = subprocess.Popen(
+                            cmd, shell=True, stderr=se, stdout=so)
                         ret = p.wait()
                 else:
                     p = subprocess.Popen(
@@ -373,7 +368,8 @@ class SoS_DockerClient:
                 debug_script_dir = os.path.join(env.exec_dir, '.sos')
                 msg = 'The script has been saved to {}/{}. To reproduce the error please run:\n``{}``'.format(
                     debug_script_dir, tempscript, cmd.replace(tempdir, debug_script_dir))
-                shutil.copy(os.path.join(tempdir, tempscript), debug_script_dir)
+                shutil.copy(os.path.join(tempdir, tempscript),
+                            debug_script_dir)
                 if ret == 125:
                     msg = 'Docker daemon failed (exitcode=125). ' + msg
                 elif ret == 126:
@@ -389,9 +385,9 @@ class SoS_DockerClient:
                         msg = 'Script killed by docker, probably because of lack of RAM (available RAM={:.1f}GB, exitcode=137). '.format(
                             self.tot_mem / 1024 / 1024) + msg
                 else:
-                    msg =  f"Executing script in docker returns an error (exitcode={ret}{', err=``%s``' % kwargs['stderr'] if 'stderr' in kwargs and os.path.isfile(kwargs['stderr']) else ''}).\n{msg}"
+                    msg = f"Executing script in docker returns an error (exitcode={ret}{', err=``%s``' % kwargs['stderr'] if 'stderr' in kwargs and os.path.isfile(kwargs['stderr']) else ''}).\n{msg}"
                 raise subprocess.CalledProcessError(
-                            returncode = ret,
-                            cmd = cmd.replace(tempdir, debug_script_dir),
-                            stderr = msg)
+                    returncode=ret,
+                    cmd=cmd.replace(tempdir, debug_script_dir),
+                    stderr=msg)
         return 0
