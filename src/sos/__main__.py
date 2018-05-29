@@ -2380,7 +2380,7 @@ def main():
                 try:
                     from .parser import SoS_Script
                     script = SoS_Script(filename=sys.argv[2])
-                    script.print_help()
+                    script.print_help(sys.argv[2])
                     sys.exit(0)
                 except Exception as e:
                     sys.exit('No help information is available for script {}: {}'.format(
