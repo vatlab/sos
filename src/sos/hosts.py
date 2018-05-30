@@ -919,18 +919,20 @@ class Host:
             self.config['max_mem'] = expand_size(self.config['max_mem'])
 
     def _get_host_agent(self, start_engine):
+        if 'queue_type' not in self.config:
+            self._task_engine_type = 'process'
+        else:
+            self._task_engine_type = self.config['queue_type'].strip()
         if self.alias not in self.host_instances:
             if self.config['address'] == 'localhost':
                 self.host_instances[self.alias] = LocalHost(self.config)
             else:
                 self.host_instances[self.alias] = RemoteHost(self.config)
 
-            if 'queue_type' not in self.config:
-                self._task_engine_type = 'process'
+            if self._task_engine_type == 'process':
                 task_engine = BackgroundProcess_TaskEngine(
                     self.host_instances[self.alias])
             else:
-                self._task_engine_type = self.config['queue_type'].strip()
                 task_engine = None
 
                 available_engines = []
