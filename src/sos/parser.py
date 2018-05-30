@@ -576,19 +576,12 @@ class SoS_Step:
             print('    Workflow Options:')
         for name, (value, comment) in local_parameters.items():
             par_str = f'      {format_par(name, value)}'
-            if len(par_str) > 24:
-                print(par_str)
-                if comment:
-                    print('\n'.join(textwrap.wrap(comment,
-                          width=textWidth,
-                          initial_indent=' '*24,
-                          subsequent_indent=' ' * 24)))
-            else:
-                print(par_str + '\n'.join(textwrap.wrap(comment,
-                          width=textWidth,
-                          initial_indent=' '*(24 - len(par_str)),
-                          subsequent_indent=' ' * 24)))
-
+            print(par_str)
+            if comment:
+                print('\n'.join(textwrap.wrap(comment,
+                                              width=textWidth,
+                                              initial_indent=' '*24,
+                                              subsequent_indent=' ' * 24)))
 
 
 class SoS_Workflow:
@@ -1450,19 +1443,12 @@ for __n, __v in {repr(name_map)}.items():
             print('\nGlobal Workflow Options:')
             for name, (value,comment) in global_parameters.items():
                 par_str = f'  {format_par(name, value)}'
-                if len(par_str) > 24:
-                    print(par_str)
-                    if comment:
-                        print('\n'.join(textwrap.wrap(comment,
-                          width=textWidth,
-                          initial_indent=' '*24,
-                          subsequent_indent=' ' * 24)))
-                else:
-                    print(par_str + '\n'.join(textwrap.wrap(comment,
-                          width=textWidth,
-                          initial_indent=' '*(24 - len(par_str)),
-                          subsequent_indent=' ' * 24)))
-
+                print(par_str)
+                if comment:
+                    print('\n'.join(textwrap.wrap(comment,
+                                                  width=textWidth,
+                                                  initial_indent=' '*24,
+                                                  subsequent_indent=' ' * 24)))
         print('\nSections')
         for section in self.sections:
             section.show()
