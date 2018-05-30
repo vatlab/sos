@@ -524,7 +524,7 @@ class SoS_Step:
         if local_parameters:
             print('    Parameters:')
         for name, value in local_parameters.items():
-            print(f'      {name:17} {value.strip()}')
+            print(f'      --{name:15} {value.strip()}')
 
 
 class SoS_Workflow:
@@ -736,9 +736,9 @@ class SoS_Script:
                                      not any(opt in x.options for opt in ('provides', 'shared'))], [])
         # (name, None) is auxiliary steps
         self.workflows = list(
-            set([x[0] for x in all_section_steps if '*' not in x[0]]))
+            dict.fromkeys([x[0] for x in all_section_steps if '*' not in x[0]]))
         forward_workflows = list(
-            set([x[0] for x in forward_section_steps if '*' not in x[0]]))
+            dict.fromkeys([x[0] for x in forward_section_steps if '*' not in x[0]]))
         if not forward_workflows:
             self.workflows.append('default')
             self.default_workflow = 'default'
@@ -1361,21 +1361,19 @@ for __n, __v in {repr(name_map)}.items():
 
     def print_help(self, script_name: str):
         '''print a help message from the script'''
-        description = [x.lstrip('# ').strip() for x in self.description]
-        try:
-            # this does not work, but hopefully the author of mdv can make
-            # the trivial change to make mdv compatible with python 3
-            from mdv import main
-            print(main(md=textwrap.dedent('\n'.join(description))))
-        except Exception:
-            print(textwrap.dedent('\n'.join(description)))
-        #
-        print('\nUsage:')
-        print(
-            f'sos-runner {script_name} [workflow_name] [options] [workflow_options]')
+        if len(script_name) > 20:
+            print(f'usage: sos run {script_name}')
+            print('               [workflow_name] [options] [workflow_options]')
+        else:
+            print(f'usage: sos run {script_name} [workflow_name] [options] [workflow_options]')
         print('  workflow_name:        Single or combined workflows defined in this script')
-        print('  options:              Single-hyphen sos parameters (see "sos-runner -h" for details)')
-        print('  workflow_options:     Double-hyphen workflow-specific parameters')
+        print('  options:              Single-hyphen sos parameters (see "sos run -h" for details)')
+        print('  workflow_options:     Double-hyphen workflow-specific parameters\n')
+        description = [x.lstrip('# ').strip() for x in self.description]
+        description = textwrap.dedent('\n'.join(description)).strip()
+        if description:
+            print('\n' + description)
+        #
         print('\nWorkflows:')
         print('  ' + '\n  '.join(self.workflows))
         #
@@ -1385,7 +1383,7 @@ for __n, __v in {repr(name_map)}.items():
         if global_parameters:
             print('\nGlobal Parameters:')
             for k, v in global_parameters.items():
-                print(f'  {k:21} {v.strip()}')
+                print(f'  --{k:19} {v.strip()}')
         print('\nSections')
         for section in self.sections:
             section.show()
