@@ -681,7 +681,7 @@ class SoS_Workflow:
         par = {}
         for x in self.sections + self.auxiliary_sections:
             par.update(x.parameters)
-        return par
+        return {x:y[0] for x,y in par.items()}
 
 
 class SoS_ScriptContent:
