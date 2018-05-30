@@ -1418,7 +1418,7 @@ def format_par(name, par):
             elif isinstance(val, Sequence) and not isinstance(val, str):
                 return f'--{name} {" ".join(str(x) for x in val)} (as {val.__class__.__name__})'
             elif isinstance(val, str):
-                return f'--{name} {val!r}'
+                return f'--{name} {val if val.isalnum() else repr(val)}'
             else:
                 return f'--{name} {val} (as {val.__class__.__name__})'
     except:
