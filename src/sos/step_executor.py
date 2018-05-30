@@ -138,7 +138,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets
             if statement[0] == ':':
                 if statement[1] == 'depends':
                     environ_vars |= accessed_vars(statement[2])
-                    key, value = statement[1:]
+                    key, value = statement[1:3]
                     try:
                         args, kwargs = SoS_eval(f'__null_func__({value})')
                         if any(isinstance(x, (dynamic, remote)) for x in args):
@@ -228,7 +228,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets
         if statement[0] == '=':
             signature_vars |= accessed_vars('='.join(statement[1:3]))
         elif statement[0] == ':':
-            key, value = statement[1:]
+            key, value = statement[1:3]
             # if key == 'depends':
             environ_vars |= accessed_vars(value)
             # output, depends, and process can be processed multiple times
@@ -1303,7 +1303,7 @@ class Base_Step_Executor:
             # execute before input stuff
             for statement in self.step.statements[:input_statement_idx]:
                 if statement[0] == ':':
-                    key, value = statement[1:]
+                    key, value = statement[1:3]
                     if key != 'depends':
                         raise ValueError(
                             f'Step input should be specified before {key}')
@@ -1409,7 +1409,7 @@ class Base_Step_Executor:
                     if isinstance(g, Undetermined) and statement[0] != ':':
                         return self.collect_result()
                     if statement[0] == ':':
-                        key, value = statement[1:]
+                        key, value = statement[1:3]
                         # output, depends, and process can be processed multiple times
                         try:
                             args, kwargs = SoS_eval(f'__null_func__({value})')
