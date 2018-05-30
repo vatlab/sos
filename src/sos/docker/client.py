@@ -133,7 +133,7 @@ class SoS_DockerClient:
                 args = '{filename:q}'
             #
             # under mac, we by default share /Users within docker
-            wdir = os.getcwd()
+            wdir = os.path.abspath(os.getcwd())
             binds = []
             if 'volumes' in kwargs:
                 volumes = [kwargs['volumes']] if isinstance(
@@ -148,25 +148,14 @@ class SoS_DockerClient:
                         host_dir, mnt_dir = vol.split(':', 1)
                     binds.append('{}:{}'.format(
                         os.path.abspath(os.path.expanduser(host_dir)), mnt_dir))
-                    if os.path.abspath(os.path.expanduser(host_dir)).startswith(os.path.abspath(os.path.expanduser(wdir))):
+                    if wdir.startswith(os.path.abspath(os.path.expanduser(host_dir))):
                         has_wdir = True
                 volumes_opt = ' '.join('-v {}'.format(x) for x in binds)
                 if not has_wdir:
-                    volumes_opt += f' -v /{os.path.abspath(os.path.expanduser(wdir))}:/{os.path.abspath(os.path.expanduser(wdir))}'
+                    volumes_opt += f' -v {wdir}:{wdir}'
             else:
-                volumes_opt = ''
-                if platform.system() == 'Darwin':
-                    if not any(x.startswith('/Users:') for x in binds):
-                        volumes_opt += ' -v /Users:/Users'
-                    if not wdir.startswith('/Users'):
-                        volumes_opt += f' -v /{wdir}:/{wdir}'
-                elif platform.system() == 'Linux':
-                    if not any(x.startswith('/home:') for x in binds):
-                        volumes_opt += ' -v /home:/home'
-                    if not wdir.startswith('/home/'):
-                        volumes_opt += f' -v /{wdir}:/{wdir}'
-                if not any(x.startswith('/tmp:') for x in binds):
-                    volumes_opt += ' -v /tmp:/tmp'
+                volumes_opt = f' -v {wdir}:{wdir}'
+
             #
             mem_limit_opt = ''
             if 'mem_limit' in kwargs:
@@ -202,7 +191,7 @@ class SoS_DockerClient:
                     workdir_opt = '-w={}'.format(kwargs['docker_workdir'])
             elif 'docker_workdir' not in kwargs:
                 # by default, map current working directoryself.
-                workdir_opt = f'-w={os.path.abspath(os.path.expanduser(wdir))}'
+                workdir_opt = f'-w={wdir}'
 
             env_opt = ''
             if 'environment' in kwargs:
