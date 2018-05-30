@@ -174,6 +174,7 @@ class SoS_Step:
         self.names = [] if names is None else names
         self.comment = ''
         self.comment_ended = False
+        self.other_comment = ''
         # everything before step process
         self.statements = []
         self.global_parameters = {}
@@ -322,12 +323,57 @@ class SoS_Step:
 
     def add_comment(self, line: str) -> None:
         '''Add comment line'''
-        if self.empty() and not self.comment_ended:
-            self.comment += (' ' if self.comment else '') + \
-                line.lstrip('#').strip()
+        # case 1:
+        #
+        # [10]
+        # #
+        # # <-    self.empty, not ended
+        #
+        # case 2:
+        #
+        # [10]
+        # #
+        # #
+        #
+        # # <-      self.empty, ended
+        #
+        #
+        if self.empty():
+            if self.comment_ended:
+                # belong to others
+                self.other_comment += (' ' if self.other_comment else '') + \
+                    line.lstrip('#').strip()
+            else:
+                self.comment += (' ' if self.comment else '') + \
+                    line.lstrip('#').strip()
+        # case 3:
+        #
+        # [10]
+        # #
+        # input:
+        # # <-    not self.empty, not ended
+        #
+        # case 4:
+        #
+        # [10]
+        # #
+        # #
+        #
+        # # <-     not self.empty, ended
+        else:
+            if self.comment_ended:
+                # replace with new comment
+                self.other_comment = line.lstrip('#').strip()
+            else:
+                self.other_comment += (' ' if self.other_comment else '') + \
+                    line.lstrip('#').strip()
+            self.comment_ended = False
 
     def end_comment(self) -> None:
+        if self.comment_ended:
+            self.other_comment = ''
         self.comment_ended = True
+
 
     def add_directive(self, key: Optional[str], value: str, lineno: Optional[int] = None) -> None:
         '''Assignments are items with ':' type '''
@@ -339,10 +385,11 @@ class SoS_Step:
                 self._action_options += value
         else:
             # new directive, the comment before it are used
-            self.statements.append([':', key, value])
+            self.statements.append([':', key, value, self.other_comment])
             self.values = [value]
         if lineno:
             self.lineno = lineno
+        self.other_comment = ''
 
     def add_script(self, key: str, value: str, lineno: Optional[int] = None) -> None:
         '''script starts with key: value'''
@@ -354,6 +401,7 @@ class SoS_Step:
         self._action_options = value
         if lineno:
             self.lineno = lineno
+        self.other_comment = ''
 
     def add_statement(self, line: str, lineno: Optional[int] = None) -> None:
         '''statements are regular python statements'''
@@ -368,6 +416,7 @@ class SoS_Step:
             self.statements.append(['!', line])
         if lineno:
             self.lineno = lineno
+        self.other_comment = ''
 
     def wrap_script(self) -> None:
         '''convert action: script to task: action(script)'''
@@ -453,7 +502,7 @@ class SoS_Step:
                         f'{self.step_name()}: Invalid parameter definition: {statement[2]}')
                 self.statements[idx] = ['!',
                                         f'if "sos_handle_parameter_" in globals():\n    {name} = sos_handle_parameter_({name.strip()!r}, {value})\n', statement[2].strip()]
-                self.parameters[name] = value
+                self.parameters[name] = (value, statement[3])
         # handle tasks
         task_directive = [idx for idx, statement in enumerate(
             self.statements) if statement[0] == ':' and statement[1] == 'task']
@@ -523,8 +572,21 @@ class SoS_Step:
             x: y for x, y in self.parameters.items() if x not in self.global_parameters}
         if local_parameters:
             print('    Parameters:')
-        for name, value in local_parameters.items():
-            print(f'      --{name:15} {value.strip()}')
+        for name, (value, comment) in local_parameters.items():
+            par_str = f'      --{name} {value.strip()}'
+            if len(par_str) > 24:
+                print(par_str)
+                if comment:
+                    print('\n'.join(textwrap.wrap(comment,
+                          width=textWidth,
+                          initial_indent=' '*24,
+                          subsequent_indent=' ' * 24)))
+            else:
+                print(par_str + '\n'.join(textwrap.wrap(comment,
+                          width=textWidth,
+                          initial_indent=' '*(24 - len(par_str)),
+                          subsequent_indent=' ' * 24)))
+
 
 
 class SoS_Workflow:
@@ -1015,6 +1077,7 @@ for __n, __v in {repr(name_map)}.items():
                                     f'FOLLOW\t{lineno}\t{line}')
                     else:
                         # ignored.
+                        cursect.add_comment(line)
                         if self.transcript:
                             self.transcript.write(f'FOLLOW\t{lineno}\t{line}')
                 continue
@@ -1026,8 +1089,7 @@ for __n, __v in {repr(name_map)}.items():
                 else:
                     if cursect.category() in ('statements', 'script'):
                         cursect.extend(line)
-                    elif cursect.comment:
-                        cursect.end_comment()
+                    cursect.end_comment()
                 if self.transcript:
                     self.transcript.write(f'FOLLOW\t{lineno}\t{line}')
                 continue
@@ -1361,6 +1423,8 @@ for __n, __v in {repr(name_map)}.items():
 
     def print_help(self, script_name: str):
         '''print a help message from the script'''
+        textWidth = max(60, shutil.get_terminal_size((80, 20)).columns)
+
         if len(script_name) > 20:
             print(f'usage: sos run {script_name}')
             print('               [workflow_name] [options] [workflow_options]')
@@ -1368,7 +1432,7 @@ for __n, __v in {repr(name_map)}.items():
             print(f'usage: sos run {script_name} [workflow_name] [options] [workflow_options]')
         print('  workflow_name:        Single or combined workflows defined in this script')
         print('  options:              Single-hyphen sos parameters (see "sos run -h" for details)')
-        print('  workflow_options:     Double-hyphen workflow-specific parameters\n')
+        print('  workflow_options:     Double-hyphen workflow-specific parameters')
         description = [x.lstrip('# ').strip() for x in self.description]
         description = textwrap.dedent('\n'.join(description)).strip()
         if description:
@@ -1382,8 +1446,21 @@ for __n, __v in {repr(name_map)}.items():
             global_parameters.update(section.global_parameters)
         if global_parameters:
             print('\nGlobal Parameters:')
-            for k, v in global_parameters.items():
-                print(f'  --{k:19} {v.strip()}')
+            for name, (value,comment) in global_parameters.items():
+                par_str = f'  --{name} {value.strip()}'
+                if len(par_str) > 24:
+                    print(par_str)
+                    if comment:
+                        print('\n'.join(textwrap.wrap(comment,
+                          width=textWidth,
+                          initial_indent=' '*24,
+                          subsequent_indent=' ' * 24)))
+                else:
+                    print(par_str + '\n'.join(textwrap.wrap(comment,
+                          width=textWidth,
+                          initial_indent=' '*(24 - len(par_str)),
+                          subsequent_indent=' ' * 24)))
+
         print('\nSections')
         for section in self.sections:
             section.show()
