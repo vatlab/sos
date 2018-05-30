@@ -1389,7 +1389,7 @@ def copy_public_key(host, agent, password):
 def setup_remote_access(cfg, hosts=[], password='', verbosity=1):
     env.verbosity = verbosity
     all_hosts = cfg.get('hosts', [])
-    if not all_hosts:
+    if not all_hosts and not hosts:
         env.logger.warning(
             "No remote host or task queue is defined in ~/.sos/hosts.yml.")
         return
@@ -1415,7 +1415,7 @@ def setup_remote_access(cfg, hosts=[], password='', verbosity=1):
         if os.path.isfile(public_key):
             env.logger.info('Using existing public key .ssh/id_rsa.pub')
         else:
-            env.logger.info('No public key is found. Creating one.')
+            env.logger.info(f'Public key {public_key} is found. Creating one.')
             try:
                 subprocess.check_call('echo | ssh-keygen -t rsa', shell=True,
                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
