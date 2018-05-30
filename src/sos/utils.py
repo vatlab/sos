@@ -1396,3 +1396,28 @@ def pexpect_run(cmd, shell=False, win_width=None):
         except Exception as e:
             sys.stderr.write(str(e))
             return 1
+
+def format_par(name, par):
+    from .targets import path, paths, sos_targets, file_target
+    try:
+        name = name.replace("_", "-")
+        val = eval(par)
+        # specify type
+        if isinstance(val, type) or val is None:
+            if val == bool:
+                return f'--[no-]{name} (required)'
+            elif val is None:
+                return f'--{name} VAL (required)'
+            elif val not in (str, file_target, path) and hasattr(val, '__iter__'):
+                return f'--{name} VAL VAL ... (as {val.__class__.__name__}, required)'
+            else:
+                return f'--{name} VAL (as {val.__name__}, required)'
+        else:
+            if val is True or val is False:
+                return f'--[no-]{name} (default to {val})'
+            elif isinstance(val, Sequence) and not isinstance(val, str):
+                return f'--{name} {" ".join(str(x) for x in val)} (as {val.__class__.__name__})'
+            else:
+                return f'--{name} {val} (as {val.__class__.__name__})'
+    except:
+        return f'--{name} {par}'

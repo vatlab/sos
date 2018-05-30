@@ -24,7 +24,7 @@ from .syntax import (INDENTED, SOS_AS, SOS_CELL, SOS_DIRECTIVE, SOS_DIRECTIVES,
                      SOS_MAGIC, SOS_SECTION_HEADER, SOS_SECTION_NAME,
                      SOS_SECTION_OPTION, SOS_STRU, SOS_SUBWORKFLOW)
 from .targets import file_target, path, paths, sos_targets, textMD5
-from .utils import Error, env, locate_script, text_repr
+from .utils import Error, env, locate_script, text_repr, format_par
 
 __all__ = ['SoS_Script']
 
@@ -500,8 +500,10 @@ class SoS_Step:
                 if not value.strip():
                     raise ValueError(
                         f'{self.step_name()}: Invalid parameter definition: {statement[2]}')
+                # there is a possibility that value contains # so  sos_handle_parameter(name, val # aaa) will fail
                 self.statements[idx] = ['!',
-                                        f'if "sos_handle_parameter_" in globals():\n    {name} = sos_handle_parameter_({name.strip()!r}, {value})\n', statement[2].strip()]
+                                        f'if "sos_handle_parameter_" in globals():\n    {name} = sos_handle_parameter_({name.strip()!r}, {value}' + \
+                                        ('\n)\n' if '#' in value else ')\n'), statement[2].strip()]
                 self.parameters[name] = (value, statement[3])
         # handle tasks
         task_directive = [idx for idx, statement in enumerate(
@@ -573,7 +575,7 @@ class SoS_Step:
         if local_parameters:
             print('    Parameters:')
         for name, (value, comment) in local_parameters.items():
-            par_str = f'      --{name} {value.strip()}'
+            par_str = f'      {format_par(name, value)}'
             if len(par_str) > 24:
                 print(par_str)
                 if comment:
@@ -1447,7 +1449,7 @@ for __n, __v in {repr(name_map)}.items():
         if global_parameters:
             print('\nGlobal Parameters:')
             for name, (value,comment) in global_parameters.items():
-                par_str = f'  --{name} {value.strip()}'
+                par_str = f'  {format_par(name, value)}'
                 if len(par_str) > 24:
                     print(par_str)
                     if comment:
