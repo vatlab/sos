@@ -1385,7 +1385,7 @@ def pexpect_run(cmd, shell=False, win_width=None):
                     child = pexpect.spawn(subprocess.list2cmdline(cmd), timeout=None)
             while True:
                 try:
-                    child.expect('\n')
+                    child.expect('\r\n')
                     if env.verbosity > 0:
                         sys.stdout.write(child.before.decode() + '\n')
                 except pexpect.EOF:
