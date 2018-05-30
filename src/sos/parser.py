@@ -573,7 +573,7 @@ class SoS_Step:
         local_parameters = {
             x: y for x, y in self.parameters.items() if x not in self.global_parameters}
         if local_parameters:
-            print('    Parameters:')
+            print('    Workflow Options:')
         for name, (value, comment) in local_parameters.items():
             par_str = f'      {format_par(name, value)}'
             if len(par_str) > 24:
@@ -1447,7 +1447,7 @@ for __n, __v in {repr(name_map)}.items():
         for section in self.sections:
             global_parameters.update(section.global_parameters)
         if global_parameters:
-            print('\nGlobal Parameters:')
+            print('\nGlobal Workflow Options:')
             for name, (value,comment) in global_parameters.items():
                 par_str = f'  {format_par(name, value)}'
                 if len(par_str) > 24:
