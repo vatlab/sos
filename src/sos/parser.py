@@ -163,7 +163,8 @@ class SoS_Step:
 
     def __init__(self, context: Optional['SoS_ScriptContent'] = None,
                  names=None,
-                 options=None, is_global: bool = False) -> None:
+                 options=None, is_global: bool = False,
+                 comment: str = '') -> None:
         '''A sos step '''
         self.context = context
         # A step will not have a name and index until it is copied to separate workflows
@@ -172,9 +173,6 @@ class SoS_Step:
         self.alias = None
         # it initially hold multiple names with/without wildcard characters
         self.names = [] if names is None else names
-        self.comment = ''
-        self.comment_ended = False
-        self.other_comment = ''
         # everything before step process
         self.statements = []
         self.global_parameters = {}
@@ -182,6 +180,7 @@ class SoS_Step:
         # step processes
         self.global_def = ''
         self.task = ''
+        self.comment = comment
         # is it global section? This is a temporary indicator because the global section
         # will be inserted to each step of the workflow.
         self.is_global = is_global
@@ -321,61 +320,7 @@ class SoS_Step:
         else:
             self.add_statement(line)
 
-    def add_comment(self, line: str) -> None:
-        '''Add comment line'''
-        # case 1:
-        #
-        # [10]
-        # #
-        # # <-    self.empty, not ended
-        #
-        # case 2:
-        #
-        # [10]
-        # #
-        # #
-        #
-        # # <-      self.empty, ended
-        #
-        #
-        if self.empty():
-            if self.comment_ended or self.is_global:
-                # belong to others
-                self.other_comment += (' ' if self.other_comment else '') + \
-                    line.lstrip('#').strip()
-            else:
-                self.comment += (' ' if self.comment else '') + \
-                    line.lstrip('#').strip()
-        # case 3:
-        #
-        # [10]
-        # #
-        # input:
-        # # <-    not self.empty, not ended
-        #
-        # case 4:
-        #
-        # [10]
-        # #
-        # #
-        #
-        # # <-     not self.empty, ended
-        else:
-            if self.comment_ended:
-                # replace with new comment
-                self.other_comment = line.lstrip('#').strip()
-            else:
-                self.other_comment += (' ' if self.other_comment else '') + \
-                    line.lstrip('#').strip()
-            self.comment_ended = False
-
-    def end_comment(self) -> None:
-        if self.comment_ended:
-            self.other_comment = ''
-        self.comment_ended = True
-
-
-    def add_directive(self, key: Optional[str], value: str, lineno: Optional[int] = None) -> None:
+    def add_directive(self, key: Optional[str], value: str,  lineno: Optional[int] = None, comment: str = '') -> None:
         '''Assignments are items with ':' type '''
         if key is None:
             # continuation of multi-line directive
@@ -385,11 +330,10 @@ class SoS_Step:
                 self._action_options += value
         else:
             # new directive, the comment before it are used
-            self.statements.append([':', key, value, self.other_comment])
+            self.statements.append([':', key, value, comment])
             self.values = [value]
         if lineno:
             self.lineno = lineno
-        self.other_comment = ''
 
     def add_script(self, key: str, value: str, lineno: Optional[int] = None) -> None:
         '''script starts with key: value'''
@@ -401,7 +345,6 @@ class SoS_Step:
         self._action_options = value
         if lineno:
             self.lineno = lineno
-        self.other_comment = ''
 
     def add_statement(self, line: str, lineno: Optional[int] = None) -> None:
         '''statements are regular python statements'''
@@ -416,7 +359,6 @@ class SoS_Step:
             self.statements.append(['!', line])
         if lineno:
             self.lineno = lineno
-        self.other_comment = ''
 
     def wrap_script(self) -> None:
         '''convert action: script to task: action(script)'''
@@ -502,7 +444,7 @@ class SoS_Step:
                         f'{self.step_name()}: Invalid parameter definition: {statement[2]}')
                 # there is a possibility that value contains # so  sos_handle_parameter(name, val # aaa) will fail
                 self.statements[idx] = ['!',
-                                        f'if "sos_handle_parameter_" in globals():\n    {name} = sos_handle_parameter_({name.strip()!r}, {value}' + \
+                                        f'if "sos_handle_parameter_" in globals():\n    {name} = sos_handle_parameter_({name.strip()!r}, {value}' +
                                         ('\n)\n' if '#' in value else ')\n'), statement[2].strip()]
                 self.parameters[name] = (value, statement[3])
         # handle tasks
@@ -592,7 +534,7 @@ class SoS_Step:
             if comment:
                 print('\n'.join(textwrap.wrap(comment,
                                               width=textWidth,
-                                              initial_indent=' '*24,
+                                              initial_indent=' ' * 24,
                                               subsequent_indent=' ' * 24)))
 
 
@@ -688,7 +630,7 @@ class SoS_Workflow:
         par = {}
         for x in self.sections + self.auxiliary_sections:
             par.update(x.parameters)
-        return {x:y[0] for x,y in par.items()}
+        return {x: y[0] for x, y in par.items()}
 
 
 class SoS_ScriptContent:
@@ -790,7 +732,7 @@ class SoS_Script:
         self.global_def = ''
 
         self.description = []
-
+        self._last_comment = ''
         # open the file
         if content:
             with StringIO(content) as fp:
@@ -860,6 +802,21 @@ class SoS_Script:
         # sos_file.name
         self.sections.extend(script.sections)
         self.global_def += f"{alias} = sos_namespace_({repr(script.global_def)})\n"
+
+    def add_comment(self, line: str) -> None:
+        '''Keeping track of "last comment" for section and parameter '''
+        # the rule is like
+        #
+        # # comment line  --> add to last comment
+        # blank line --> clears last comment
+        # [ ] --> use last comment
+        # parameter: --> use last comment
+        # All others: clear last comment
+        self._last_comment += (' ' if self._last_comment else '') + \
+            line.lstrip('#').strip()
+
+    def clear_comment(self):
+        self._last_comment = ''
 
     def _include_content(self, sos_file: str, name_map: Dict[str, str]) -> None:
         content, script_file = self._find_include_file(sos_file)
@@ -1022,6 +979,7 @@ for __n, __v in {repr(name_map)}.items():
             # comments in SoS scripts are mostly informative
             if line.startswith('#'):
                 # Comment blocks before any section
+                self.add_comment(line)
                 if cursect is None:
                     if comment_block == 1:
                         # look for format information
@@ -1038,7 +996,7 @@ for __n, __v in {repr(name_map)}.items():
                             else:
                                 parsing_errors.append(lineno, line,
                                                       f'Unrecognized file format version in {format_name}.')
-                    elif comment_block > 1:
+                    elif comment_block == 2:
                         # anything before the first section can be pipeline
                         # description.
                         if cursect is None:
@@ -1048,7 +1006,6 @@ for __n, __v in {repr(name_map)}.items():
                 else:
                     # this is description of the section
                     if cursect.empty():
-                        cursect.add_comment(line)
                         if self.transcript:
                             self.transcript.write(f'COMMENT\t{lineno}\t{line}')
                     # this is comment in scripts (and perhaps not even comment)
@@ -1060,7 +1017,6 @@ for __n, __v in {repr(name_map)}.items():
                                 cursect.wrap_script()
                             except Exception as e:
                                 parsing_errors.append(lineno, line, str(e))
-                            cursect.add_comment(line)
                             if self.transcript:
                                 self.transcript.write(
                                     f'COMMENT\t{lineno}\t{line}')
@@ -1073,7 +1029,6 @@ for __n, __v in {repr(name_map)}.items():
                     elif cursect.category() == 'statements':
                         if cursect.isValid():
                              # this can be comment or back comment
-                            cursect.add_comment(line)
                             if self.transcript:
                                 self.transcript.write(
                                     f'COMMENT\t{lineno}\t{line}')
@@ -1084,19 +1039,18 @@ for __n, __v in {repr(name_map)}.items():
                                     f'FOLLOW\t{lineno}\t{line}')
                     else:
                         # ignored.
-                        cursect.add_comment(line)
                         if self.transcript:
                             self.transcript.write(f'FOLLOW\t{lineno}\t{line}')
                 continue
             elif not line.strip():
                 # a blank line start a new comment block if we are still
                 # in the front of the script
+                self.clear_comment()
                 if cursect is None:
                     comment_block += 1
                 else:
                     if cursect.category() in ('statements', 'script'):
                         cursect.extend(line)
-                    cursect.end_comment()
                 if self.transcript:
                     self.transcript.write(f'FOLLOW\t{lineno}\t{line}')
                 continue
@@ -1211,8 +1165,11 @@ for __n, __v in {repr(name_map)}.items():
                             lineno, line, 'Global section does not accept any option')
                     self.sections.append(SoS_Step(is_global=True))
                 else:
+                    # the second block is attached to
+                    if comment_block == 2:
+                        self.description = ''
                     self.sections.append(
-                        SoS_Step(self.content, step_names, step_options))
+                        SoS_Step(self.content, step_names, step_options, comment=self._last_comment))
                 cursect = self.sections[-1]
                 if self.transcript:
                     self.transcript.write(f'SECTION\t{lineno}\t{line}')
@@ -1248,20 +1205,23 @@ for __n, __v in {repr(name_map)}.items():
                         continue
                     cursect.add_directive(
                         directive_name, directive_value, lineno)
+                    self.clear_comment()
                     if self.transcript:
                         self.transcript.write(f'DIRECTIVE\t{lineno}\t{line}')
                 else:
                     if directive_name == 'parameter':
+                        if comment_block == 2:
+                            self.description = ''
                         cursect.add_directive(
-                            directive_name, directive_value, lineno)
+                            directive_name, directive_value, lineno, comment=self._last_comment)
                         if self.transcript:
                             self.transcript.write(
                                 f'DIRECTIVE\t{lineno}\t{line}')
                     else:
                         # let us check if this is an acture action, or a type hint
-
                         cursect.add_script(
                             directive_name, directive_value, lineno)
+                        self.clear_comment()
                         if self.transcript:
                             self.transcript.write(
                                 f'SCRIPT_{directive_name}\t{lineno}\t{line}')
@@ -1287,6 +1247,7 @@ for __n, __v in {repr(name_map)}.items():
                 self.sections.append(SoS_Step(is_global=True))
                 cursect = self.sections[-1]
                 cursect.add_statement(line, lineno)
+                self.clear_comment()
                 if self.transcript:
                     self.transcript.write(f'STATEMENT\t{lineno}\t{line}')
                 continue
@@ -1434,9 +1395,11 @@ for __n, __v in {repr(name_map)}.items():
 
         if len(script_name) > 20:
             print(f'usage: sos run {script_name}')
-            print('               [workflow_name | -t targets] [options] [workflow_options]')
+            print(
+                '               [workflow_name | -t targets] [options] [workflow_options]')
         else:
-            print(f'usage: sos run {script_name} [workflow_name | -t targets] [options] [workflow_options]')
+            print(
+                f'usage: sos run {script_name} [workflow_name | -t targets] [options] [workflow_options]')
         print('  workflow_name:        Single or combined workflows defined in this script')
         print('  targets:              One or more targets to generate')
         print('  options:              Single-hyphen sos parameters (see "sos run -h" for details)')
@@ -1454,13 +1417,13 @@ for __n, __v in {repr(name_map)}.items():
             global_parameters.update(section.global_parameters)
         if global_parameters:
             print('\nGlobal Workflow Options:')
-            for name, (value,comment) in global_parameters.items():
+            for name, (value, comment) in global_parameters.items():
                 par_str = f'  {format_par(name, value)}'
                 print(par_str)
                 if comment:
                     print('\n'.join(textwrap.wrap(comment,
                                                   width=textWidth,
-                                                  initial_indent=' '*24,
+                                                  initial_indent=' ' * 24,
                                                   subsequent_indent=' ' * 24)))
         # targets
         targets = []
