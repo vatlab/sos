@@ -339,7 +339,7 @@ class SoS_Step:
         #
         #
         if self.empty():
-            if self.comment_ended:
+            if self.comment_ended or self.is_global:
                 # belong to others
                 self.other_comment += (' ' if self.other_comment else '') + \
                     line.lstrip('#').strip()
