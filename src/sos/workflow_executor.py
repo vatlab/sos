@@ -774,7 +774,7 @@ class Base_Executor:
         if self.resolve_dangling_targets(dag, targets) == 0:
             if targets:
                 raise RuntimeError(
-                    f'No auxiliary step to generate target {targets}.')
+                    f'No step to generate target {targets}.')
         # now, there should be no dangling targets, let us connect nodes
         dag.build(self.workflow.auxiliary_sections)
         # dag.show_nodes()
@@ -868,12 +868,16 @@ class Base_Executor:
         if targets:
             for t in targets:
                 if file_target(t).target_exists('target'):
-                    env.logger.info(f'Target {t} already exists')
+                    if env.config['sig_mode'] == 'force':
+                        env.logger.info(f'Re-generating {t}')
+                        file_target(t).remove('both')
+                    else:
+                        env.logger.info(f'Target {t} already exists')
                 elif file_target(t).target_exists('signature'):
                     env.logger.info(f'Re-generating {t}')
                     file_target(t).remove('signature')
             targets = [x for x in targets if not file_target(
-                x).target_exists('target')]
+                x).target_exists('target') or env.config['sig_mode'] == 'force']
             if not targets:
                 if parent_pipe:
                     parent_pipe.send(wf_result)
