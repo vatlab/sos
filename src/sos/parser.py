@@ -1412,6 +1412,15 @@ for __n, __v in {repr(name_map)}.items():
         print('\nWorkflows:')
         print('  ' + '\n  '.join(self.workflows))
         #
+        # targets
+        targets = []
+        for section in self.sections:
+            if 'autoprovides' in section.options:
+                targets.append(section.options['autoprovides'])
+        if targets:
+            print('\nTargets:')
+            print('\n'.join('  ' + x for x in list(dict.fromkeys(targets))))
+        #
         global_parameters = {}
         for section in self.sections:
             global_parameters.update(section.global_parameters)
@@ -1425,14 +1434,7 @@ for __n, __v in {repr(name_map)}.items():
                                                   width=textWidth,
                                                   initial_indent=' ' * 24,
                                                   subsequent_indent=' ' * 24)))
-        # targets
-        targets = []
-        for section in self.sections:
-            if 'autoprovides' in section.options:
-                targets.append(section.options['autoprovides'])
-        if targets:
-            print('\nProvided Targets')
-            print('\n'.join('  ' + x for x in list(dict.fromkeys(targets))))
+        #
         print('\nSections')
         for section in self.sections:
             section.show()
