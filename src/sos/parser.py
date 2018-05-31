@@ -24,7 +24,7 @@ from .syntax import (INDENTED, SOS_AS, SOS_CELL, SOS_DIRECTIVE, SOS_DIRECTIVES,
                      SOS_MAGIC, SOS_SECTION_HEADER, SOS_SECTION_NAME,
                      SOS_SECTION_OPTION, SOS_STRU, SOS_SUBWORKFLOW)
 from .targets import file_target, path, paths, sos_targets, textMD5
-from .utils import Error, env, locate_script, text_repr, format_par
+from .utils import Error, env, locate_script, text_repr, format_par, short_repr
 
 __all__ = ['SoS_Script']
 
@@ -556,6 +556,18 @@ class SoS_Step:
                     (isinstance(plain_output, (list, tuple, set)) and
                      all(isinstance(x, str) for x in plain_output)):
                     self.options['autoprovides'] = output_stmt
+            except:
+                # if otuput has options and rely on anything, it cannot be treated as
+                # auto output
+                pass
+        if 'provides' in self.options:
+            # let us check if provides is a "plain output"
+            try:
+                plain_output = eval(self.options['provides'])
+                if isinstance(plain_output, str) or \
+                    (isinstance(plain_output, (list, tuple, set)) and
+                     all(isinstance(x, str) for x in plain_output)):
+                    self.options['autoprovides'] = self.options['provides']
             except:
                 # if otuput has options and rely on anything, it cannot be treated as
                 # auto output
@@ -1422,10 +1434,11 @@ for __n, __v in {repr(name_map)}.items():
 
         if len(script_name) > 20:
             print(f'usage: sos run {script_name}')
-            print('               [workflow_name] [options] [workflow_options]')
+            print('               [workflow_name | -t targets] [options] [workflow_options]')
         else:
-            print(f'usage: sos run {script_name} [workflow_name] [options] [workflow_options]')
+            print(f'usage: sos run {script_name} [workflow_name | -t targets] [options] [workflow_options]')
         print('  workflow_name:        Single or combined workflows defined in this script')
+        print('  targets:              One or more targets to generate')
         print('  options:              Single-hyphen sos parameters (see "sos run -h" for details)')
         print('  workflow_options:     Double-hyphen workflow-specific parameters')
         description = [x.lstrip('# ').strip() for x in self.description]
@@ -1449,6 +1462,14 @@ for __n, __v in {repr(name_map)}.items():
                                                   width=textWidth,
                                                   initial_indent=' '*24,
                                                   subsequent_indent=' ' * 24)))
+        # targets
+        targets = []
+        for section in self.sections:
+            if 'autoprovides' in section.options:
+                targets.append(section.options['autoprovides'])
+        if targets:
+            print('\nProvided Targets')
+            print('\n'.join('  ' + x for x in list(dict.fromkeys(targets))))
         print('\nSections')
         for section in self.sections:
             section.show()
