@@ -1323,9 +1323,15 @@ class Base_Executor:
                 env.logger.warning(
                     f'Failed to clear workflow status file: {e}')
             self.save_workflow_signature(dag)
+            if self.completed["__step_completed__"] == 0:
+                sts = 'ignored'
+            elif env.config["run_mode"] == 'dryrun':
+                sts = 'tested successfully'
+            else:
+                std = 'executed successfully'
             env.logger.info(
-                f'Workflow {self.workflow.name} (ID={self.md5}) is {"executed successfully" if self.completed["__step_completed__"] > 0 else "ignored"} with {self.describe_completed()}.')
-            if not parent_pipe and env.config['output_report'] and env.sos_dict.get('__workflow_sig__'):
+                f'Workflow {self.workflow.name} (ID={self.md5}) is {sts} with {self.describe_completed()}.')
+            if env.config["run_mode"] != 'dryrun' and not parent_pipe and env.config['output_report'] and env.sos_dict.get('__workflow_sig__'):
                 # if this is the outter most workflow
                 from .report import render_report
                 render_report(env.config['output_report'],

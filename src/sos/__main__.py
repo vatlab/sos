@@ -460,6 +460,7 @@ def workflow_status(workflow):
         '{("-s " + sig_mode) if sig_mode not in ("", "default") else ""} '
         '{("-q " + default_queue) if default_queue else ""} '
         '{("-d " + output_dag) if output_dag not in ("", None) else ""} '
+        '{("-p " + output_report) if output_report not in ("", None) else ""} '
         '{("-b " + " ".join(bin_dirs)) if bin_dirs and bin_dirs != ["~/.sos/bin"] else ""} '
         '{("-j " + str(max_procs)) if max_procs != 4 else ""} '
         '{("-J " + str(max_running_jobs)) if max_running_jobs else ""} '
@@ -570,6 +571,8 @@ def cmd_resume(args, workflow_args):
     args.__queue__ = None if res['default_queue'] == '' else res['default_queue']
     args.__dag__ = None if res['output_dag'] == '-' else (
         '' if res['output_dag'] is None else res['output_dag'])
+    args.__report__ = None if res['output_report'] == '-' else (
+        '' if res['output_report'] is None else res['output_report'])
     args.__targets__ = res['targets']
     args.script = res['script']
     args.workflow = res['workflow']
@@ -636,6 +639,7 @@ def cmd_dryrun(args, workflow_args):
     args.__max_procs__ = 1
     args.__max_running_jobs__ = 1
     args.dryrun = True
+    args.__report__ = None
     args.__wait__ = True
     args.__no_wait__ = False
     args.__bin_dirs__ = []
