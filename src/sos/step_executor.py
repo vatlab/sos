@@ -13,8 +13,7 @@ import sys
 import time
 import traceback
 import subprocess
-from collections import defaultdict
-from collections.abc import Iterable, Mapping, Sequence
+from collections import defaultdict, Iterable, Mapping, Sequence
 from io import StringIO
 from itertools import combinations, tee
 from billiard import Pool
@@ -1035,9 +1034,11 @@ class Base_Step_Executor:
             if nMax > self.worker_pool._processes - 1 and len(self._substeps) > nMax:
                 # use billiard pool, can expand pool if more slots are available
                 while True:
-                    nPending = [not x.ready() for x in self.proc_results].count(True)
+                    nPending = [not x.ready()
+                                for x in self.proc_results].count(True)
                     if nPending == 0:
-                        self.proc_results = [x.get() for x in self.proc_results]
+                        self.proc_results = [x.get()
+                                             for x in self.proc_results]
                         break
                     if sm.available(nMax) > 0:
                         extra = sm.acquire(nPending - 1, nMax)
@@ -1384,7 +1385,8 @@ class Base_Step_Executor:
                     # because the master process pool will count one worker in (step)
                     gotten = sm.acquire(len(self._substeps) - 1,
                                         env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
-                    env.logger.debug(f'Using process pool with size {gotten+1}')
+                    env.logger.debug(
+                        f'Using process pool with size {gotten+1}')
                     self.worker_pool = Pool(gotten + 1)
 
         try:
@@ -1426,7 +1428,8 @@ class Base_Step_Executor:
                                             f'Overlapping input and output files: {", ".join(repr(x) for x in ofiles if x in g)}')
                                 # set variable _output and output
                                 self.process_output_args(ofiles, **kwargs)
-                                self.output_groups[idx] = env.sos_dict['_output'].targets()
+                                self.output_groups[idx] = env.sos_dict['_output'].targets(
+                                )
 
                                 # ofiles can be Undetermined
                                 sg = self.step_signature(idx)

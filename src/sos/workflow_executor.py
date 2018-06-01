@@ -1325,6 +1325,11 @@ class Base_Executor:
             self.save_workflow_signature(dag)
             env.logger.info(
                 f'Workflow {self.workflow.name} (ID={self.md5}) is {"executed successfully" if self.completed["__step_completed__"] > 0 else "ignored"} with {self.describe_completed()}.')
+            if not parent_pipe and env.config['output_report'] and env.sos_dict.get('__workflow_sig__'):
+                # if this is the outter most workflow
+                from .report import render_report
+                render_report(env.config['output_report'],
+                              env.sos_dict.get('__workflow_sig__'))
         else:
             # exit with pending tasks
             pass

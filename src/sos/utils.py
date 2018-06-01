@@ -22,7 +22,7 @@ import types
 import urllib
 import urllib.parse
 import urllib.request
-from collections.abc import Sequence
+from collections import Sequence, defaultdict
 from html.parser import HTMLParser
 from io import FileIO, StringIO
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
@@ -122,7 +122,8 @@ class ColoredFormatter(logging.Formatter):
             level_color = self.LEVEL_COLOR[level_name]
             record.color_levelname = colorstr(level_name, level_color)
             record.color_name = colorstr(record.name, level_color)
-            record.color_msg = colorstr(emphasize(record.msg, level_color), level_color)
+            record.color_msg = colorstr(
+                emphasize(record.msg, level_color), level_color)
         else:
             # for INFO, use default color
             record.color_levelname = record.levelname
@@ -300,9 +301,11 @@ class RuntimeEnvironments(object):
         #
         # run mode, this mode controls how SoS actions behave
         #
-        self.config = {
+        self.config = defaultdict(str)
+        self.config.update({
             'config_file': None,
             'output_dag': None,
+            'output_report': None,
             'wait_for_task': None,
             'resume_mode': False,
             'default_queue': '',
@@ -310,7 +313,7 @@ class RuntimeEnvironments(object):
             'max_running_jobs': None,
             'sig_mode': 'default',
             'run_mode': 'run',
-        }
+        })
 
         #
         # global dictionaries used by SoS during the
@@ -324,8 +327,10 @@ class RuntimeEnvironments(object):
         # this directory will be used by a lot of processes
         self.exec_dir = os.getcwd()
         #
-        os.makedirs(os.path.join(os.path.expanduser('~'), '.sos', 'tasks'), exist_ok=True)
-        os.makedirs(os.path.join(os.path.expanduser('~'), '.sos', '.runtime'), exist_ok=True)
+        os.makedirs(os.path.join(os.path.expanduser(
+            '~'), '.sos', 'tasks'), exist_ok=True)
+        os.makedirs(os.path.join(os.path.expanduser(
+            '~'), '.sos', '.runtime'), exist_ok=True)
         os.makedirs(os.path.join('.sos', '.runtime'), exist_ok=True)
 
     #
@@ -355,15 +360,18 @@ class RuntimeEnvironments(object):
         }
         #
         cout.setLevel(levels[self._verbosity])
-        cout.setFormatter(ColoredFormatter('%(color_levelname)s: %(color_msg)s'))
+        cout.setFormatter(ColoredFormatter(
+            '%(color_levelname)s: %(color_msg)s'))
         self._logger.addHandler(cout)
-        self._logger.trace = lambda msg, *args: self._logger._log(logging.TRACE, msg, args)
+        self._logger.trace = lambda msg, * \
+            args: self._logger._log(logging.TRACE, msg, args)
         # output to a log file
         if self._logfile is not None:
             ch = logging.FileHandler(self._logfile, mode='a')
             # debug informaiton and time is always written to the log file
             ch.setLevel(logging.DEBUG)
-            ch.setFormatter(logging.Formatter('%(asctime)s: %(levelname)s: %(message)s'))
+            ch.setFormatter(logging.Formatter(
+                '%(asctime)s: %(levelname)s: %(message)s'))
             self._logger.addHandler(ch)
     #
     # attribute exec_dir
@@ -582,7 +590,8 @@ def stable_repr(obj):
     if isinstance(obj, str):
         return repr(obj)
     elif isinstance(obj, collections.abc.Mapping):
-        items = [stable_repr(k) + ':' + stable_repr(obj[k]) for k in obj.keys()]
+        items = [stable_repr(k) + ':' + stable_repr(obj[k])
+                 for k in obj.keys()]
         return '{' + ', '.join(sorted(items)) + '}'
     elif isinstance(obj, collections.abc.Set):
         items = [stable_repr(x) for x in obj]
@@ -599,7 +608,8 @@ def stable_repr(obj):
 def get_output(cmd, show_command=False, prompt='$ '):
     import subprocess
     try:
-        output = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, shell=True).decode()
+        output = subprocess.check_output(
+            cmd, stderr=subprocess.DEVNULL, shell=True).decode()
     except subprocess.CalledProcessError as e:
         if e.output.decode():
             env.logger.error(e.output.decode())
@@ -635,7 +645,8 @@ def locate_script(filename, start=''):
     #
     # a search path
     pathes = [start]
-    sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
+    sos_config_file = os.path.join(
+        os.path.expanduser('~'), '.sos', 'config.yml')
     if os.path.isfile(sos_config_file):
         try:
             with open(sos_config_file) as config:
@@ -649,7 +660,8 @@ def locate_script(filename, start=''):
     for path in pathes:
         if not path:
             continue
-        attemp = os.path.join(os.path.expanduser(path), os.path.expanduser(filename))
+        attemp = os.path.join(os.path.expanduser(
+            path), os.path.expanduser(filename))
         if os.path.isfile(attemp):
             return ('', attemp)
         # is it an URL?
@@ -701,7 +713,8 @@ def natural_keys(text):
 
 def transcribe(text, action=None):
     if action is not None:
-        text = '{}:\n{}'.format(action, '    ' + text.replace('\n', '\n    ') + '\n')
+        text = '{}:\n{}'.format(
+            action, '    ' + text.replace('\n', '\n    ') + '\n')
     with open(os.path.join(env.exec_dir, '.sos', 'transcript.txt'), 'a') as trans:
         trans.write(text)
 
@@ -739,7 +752,8 @@ def PrettyRelativeTime(time_diff_secs):
 
 
 def pretty_size(n, pow=0, b=1024, u='B', pre=[''] + [p + 'i'for p in'KMGTPEZY']):
-    pow, n = min(int(math.log(max(n * b**pow, 1), b)), len(pre) - 1), n * b**pow
+    pow, n = min(int(math.log(max(n * b**pow, 1), b)),
+                 len(pre) - 1), n * b**pow
     return "%%.%if %%s%%s" % abs(pow % (-pow - 1)) % (n / b**float(pow), pre[pow], u)
 
 
@@ -797,7 +811,8 @@ class ActivityNotifier(threading.Thread):
                 break
             if not prog:
                 print(self.msg)
-                prog = ProgressBar(desc='', position=0, bar_format='{desc}', total=100000000)
+                prog = ProgressBar(desc='', position=0,
+                                   bar_format='{desc}', total=100000000)
             second_elapsed = time.time() - self.start_time
             prog.set_description('Elapsed time {}{}'.format(
                 '' if second_elapsed < 86400 else f'{int(second_elapsed/86400)} day{"s" if second_elapsed > 172800 else ""} ',
@@ -852,7 +867,8 @@ def sos_handle_parameter_(key, defvalue):
     env.parameter_vars.add(key)
     if not env.sos_dict['__args__']:
         if isinstance(defvalue, type):
-            raise ArgumentError(f'Argument {key} of type {defvalue.__name__} is required')
+            raise ArgumentError(
+                f'Argument {key} of type {defvalue.__name__} is required')
         return defvalue
     # if the parameter is passed from action sos_run
     if isinstance(env.sos_dict['__args__'], dict):
@@ -871,8 +887,10 @@ def sos_handle_parameter_(key, defvalue):
     if isinstance(defvalue, type) or defvalue is None:
         if defvalue == bool:
             feature_parser = parser.add_mutually_exclusive_group(required=True)
-            feature_parser.add_argument(f'--{key}', dest=key, action='store_true')
-            feature_parser.add_argument(f'--no-{key}', dest=key, action='store_false')
+            feature_parser.add_argument(
+                f'--{key}', dest=key, action='store_true')
+            feature_parser.add_argument(
+                f'--no-{key}', dest=key, action='store_false')
             if '_' in key:
                 feature_parser.add_argument(
                     f'--{key.replace("_", "-")}', dest=key, action='store_true')
@@ -885,7 +903,8 @@ def sos_handle_parameter_(key, defvalue):
                 ret_type = defvalue
             # if only a type is specified, it is a required document of required type
             if '_' in key:
-                feature_parser = parser.add_mutually_exclusive_group(required=True)
+                feature_parser = parser.add_mutually_exclusive_group(
+                    required=True)
                 feature_parser.add_argument(f'--{key}', dest=key, type=str
                                             if hasattr(defvalue, '__iter__') and defvalue not in (file_target, path) else defvalue,
                                             help='', nargs='+' if defvalue not in (str, file_target) and hasattr(defvalue, '__iter__') else '?')
@@ -901,9 +920,12 @@ def sos_handle_parameter_(key, defvalue):
                                     nargs='+' if defvalue not in (str, file_target, path) and hasattr(defvalue, '__iter__') else '?')
     else:
         if isinstance(defvalue, bool):
-            feature_parser = parser.add_mutually_exclusive_group(required=False)
-            feature_parser.add_argument(f'--{key}', dest=key, action='store_true')
-            feature_parser.add_argument(f'--no-{key}', dest=key, action='store_false')
+            feature_parser = parser.add_mutually_exclusive_group(
+                required=False)
+            feature_parser.add_argument(
+                f'--{key}', dest=key, action='store_true')
+            feature_parser.add_argument(
+                f'--no-{key}', dest=key, action='store_false')
             if '_' in key:
                 feature_parser.add_argument(
                     f'--{key.replace("_", "-")}', dest=key, action='store_true')
@@ -930,7 +952,8 @@ def sos_handle_parameter_(key, defvalue):
                 deftype = type(defvalue)
 
             if '_' in key:
-                feature_parser = parser.add_mutually_exclusive_group(required=False)
+                feature_parser = parser.add_mutually_exclusive_group(
+                    required=False)
                 feature_parser.add_argument(f'--{key}', dest=key, type=deftype,
                                             nargs='*' if isinstance(defvalue, Sequence) and not isinstance(
                                                 defvalue, str) else '?',
@@ -967,7 +990,8 @@ class SlotManager(object):
     def __init__(self, reset=False, name=None):
         # if a name is not given, the slot will be workflow dependent
         self.name = name if name else env.config.get('master_md5', 'general')
-        tempdir = os.path.join(tempfile.gettempdir(), getpass.getuser(), 'sos_slots')
+        tempdir = os.path.join(tempfile.gettempdir(),
+                               getpass.getuser(), 'sos_slots')
         self.lock_file = os.path.join(tempdir, f'{self.name}.lck')
         self.slot_file = os.path.join(tempdir, f'{self.name}.slot')
         if reset or not os.path.isfile(self.lock_file):
@@ -1042,7 +1066,8 @@ class TimeoutInterProcessLock(fasteners.InterProcessLock):
     # lock file.
     #
     def __init__(self, path, timeout=5, sleep_func=time.sleep, logger=None):
-        super(TimeoutInterProcessLock, self).__init__(path, sleep_func=sleep_func, logger=logger)
+        super(TimeoutInterProcessLock, self).__init__(
+            path, sleep_func=sleep_func, logger=logger)
         self.timeout = timeout
 
     def __enter__(self):
@@ -1067,9 +1092,11 @@ class TimeoutInterProcessLock(fasteners.InterProcessLock):
 
 def load_config_files(filename=None):
     cfg = {}
-    config_lock = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', 'sos_config.lck')
+    config_lock = os.path.join(os.path.expanduser(
+        '~'), '.sos', '.runtime', 'sos_config.lck')
     # site configuration file
-    sos_config_file = os.path.join(os.path.split(__file__)[0], 'site_config.yml')
+    sos_config_file = os.path.join(
+        os.path.split(__file__)[0], 'site_config.yml')
     if os.path.isfile(sos_config_file):
         with TimeoutInterProcessLock(config_lock):
             try:
@@ -1080,7 +1107,8 @@ def load_config_files(filename=None):
                     f'Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})')
 
     # global site file
-    sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'hosts.yml')
+    sos_config_file = os.path.join(
+        os.path.expanduser('~'), '.sos', 'hosts.yml')
     if os.path.isfile(sos_config_file):
         with TimeoutInterProcessLock(config_lock):
             try:
@@ -1090,7 +1118,8 @@ def load_config_files(filename=None):
                 raise RuntimeError(
                     f'Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})')
     # global config file
-    sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
+    sos_config_file = os.path.join(
+        os.path.expanduser('~'), '.sos', 'config.yml')
     if os.path.isfile(sos_config_file):
         with TimeoutInterProcessLock(config_lock):
             try:
@@ -1131,7 +1160,8 @@ def load_config_files(filename=None):
                     if not isinstance(val, dict):
                         raise ValueError(f'Based on key {item} not found')
                     if key not in val:
-                        raise ValueError(f'Based on key {key} not found in config')
+                        raise ValueError(
+                            f'Based on key {key} not found in config')
                     else:
                         val = val[key]
                 #
@@ -1374,7 +1404,8 @@ def pexpect_run(cmd, shell=False, win_width=None):
         try:
             if isinstance(cmd, str):
                 if shell:
-                    child = pexpect.spawn('/bin/bash', ['-c', cmd], timeout=None)
+                    child = pexpect.spawn(
+                        '/bin/bash', ['-c', cmd], timeout=None)
                 else:
                     child = pexpect.spawn(cmd, timeout=None)
             else:
@@ -1382,7 +1413,8 @@ def pexpect_run(cmd, shell=False, win_width=None):
                     child = pexpect.spawn(
                         '/bin/bash', ['-c', subprocess.list2cmdline(cmd)], timeout=None)
                 else:
-                    child = pexpect.spawn(subprocess.list2cmdline(cmd), timeout=None)
+                    child = pexpect.spawn(
+                        subprocess.list2cmdline(cmd), timeout=None)
             while True:
                 try:
                     child.expect('\r\n')
@@ -1396,6 +1428,7 @@ def pexpect_run(cmd, shell=False, win_width=None):
         except Exception as e:
             sys.stderr.write(str(e))
             return 1
+
 
 def format_par(name, par):
     from .targets import path, paths, sos_targets, file_target

@@ -6,7 +6,7 @@
 import argparse
 import os
 import sys
-
+import datetime
 import pkg_resources
 
 script_help = '''A SoS script that defines one or more workflows, in format
@@ -240,10 +240,6 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             to remote host and invoke sos command there. No path translation
             and input/output file synchronization will be performed before or
             after the execution of the workflow.''')
-    # parser.add_argument('-r', dest='__remote__', action='store_true',
-    #    help='''Forcing all targets specified in input, output, and
-    #        depends are remote targets so that they are not synchronized
-    #        between local and remote hosts.''')
     # parser.add_argument('-t', dest='__transcript__', nargs='?',
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(title='Run mode options',
@@ -272,6 +268,12 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             names {workflow}_1, {workflow}_2 etc. If this option is specified
             without a name, the DAG would be wrritten to the standard
             output.''')
+    output.add_argument('-p', nargs='?', default='', metavar='REPORT', dest='__report__',
+                        help='''Output a report that summarizes the execution of the
+            workflow after the completion of the execution. This includes command line,
+            steps executed, tasks executed, CPU/memory of tasks, and DAG if option -d
+            is also specified. The report will by be named {script_name}_{timestamp}.html
+            unless a separate filename is specified.''')
     output.add_argument('-v', dest='verbosity', type=int, choices=range(5),
                         default=2,
                         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
@@ -320,6 +322,12 @@ def cmd_run(args, workflow_args):
         args.__dag__ = '-'
     elif args.__dag__ == '':
         args.__dag__ = None
+
+    if args.__report__ is None:
+        dt = datetime.datetime.now().strftime('%m%d%y_%H%M')
+        args.__report__ = f'{args.script.rsplit(".", 1)[-1]}_{dt}.html'
+    elif args.__report__ == '':
+        args.__report__ = None
     env.verbosity = args.verbosity
 
     from .workflow_executor import Base_Executor
@@ -344,6 +352,7 @@ def cmd_run(args, workflow_args):
         executor = Base_Executor(workflow, args=workflow_args, config={
             'config_file': args.__config__,
             'output_dag': args.__dag__,
+            'output_report': args.__report__,
             # wait if -w or in dryrun mode, not wait if -W, otherwise use queue default
             'wait_for_task': True if args.__wait__ is True or args.dryrun else (False if args.__no_wait__ else None),
             'default_queue': '' if args.__queue__ is None else args.__queue__,
