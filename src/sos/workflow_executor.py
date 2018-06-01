@@ -1328,7 +1328,7 @@ class Base_Executor:
             elif env.config["run_mode"] == 'dryrun':
                 sts = 'tested successfully'
             else:
-                std = 'executed successfully'
+                sts = 'executed successfully'
             env.logger.info(
                 f'Workflow {self.workflow.name} (ID={self.md5}) is {sts} with {self.describe_completed()}.')
             if env.config["run_mode"] != 'dryrun' and not parent_pipe and env.config['output_report'] and env.sos_dict.get('__workflow_sig__'):
