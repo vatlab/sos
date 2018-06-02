@@ -9,6 +9,7 @@ import os
 import sys
 import time
 import uuid
+import subprocess
 from collections import defaultdict
 from collections.abc import Sequence
 from io import StringIO
@@ -501,7 +502,7 @@ class Base_Executor:
         # for sos_step, we need to match step name
         if isinstance(target, sos_step):
             return step.match(target.target_name())
-        if not 'provides' in step.options and not 'autoprovides' in step.options:
+        if not 'provides' in step.options and 'autoprovides' not in step.options:
             return False
         patterns = step.options['provides'] if 'provides' in step.options else step.options['autoprovides']
         if isinstance(patterns, (str, BaseTarget, path)):

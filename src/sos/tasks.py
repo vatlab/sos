@@ -1364,7 +1364,7 @@ class TaskEngine(threading.Thread):
         # we only monitor running tasks
         with threading.Lock():
             for task in tasks:
-                if self.task_status[task] in ('submitted', 'running') and not task in self.running_tasks:
+                if self.task_status[task] in ('submitted', 'running') and task not in self.running_tasks:
                     # these tasks will be actively monitored
                     self.running_tasks.append(task)
         #

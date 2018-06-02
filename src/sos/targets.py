@@ -19,6 +19,7 @@ import pkg_resources
 from .eval import Undetermined
 from .utils import (Error, TimeoutInterProcessLock, env, isPrimitive, load_var,
                     save_var, short_repr, stable_repr, pickleable)
+from .report import workflow_report
 
 try:
     from xxhash import xxh64 as hash_md5
@@ -938,7 +939,7 @@ class RuntimeInfo:
                 'input_files': self.input_files,
                 'output_files': self.output_files,
                 'dependent_files': self.dependent_files,
-                'signature_vars': {x:y for x,y in self.signature_vars.items() if pickleable(y,x)},
+                'signature_vars': {x: y for x,y in self.signature_vars.items() if pickleable(y,x)},
                 'script': self.script,
                 'sig_id': self.sig_id,
                 'external': self.external_output}
@@ -1068,24 +1069,21 @@ class RuntimeInfo:
             md5.write('# step process\n')
             md5.write(self.script)
         # successfully write signature, write in workflow runtime info
-        if '__workflow_sig__' in env.sos_dict and os.path.isfile(env.sos_dict['__workflow_sig__']):
-            workflow_sig = env.sos_dict['__workflow_sig__']
-            with TimeoutInterProcessLock(workflow_sig + '_'):
-                with open(workflow_sig, 'a') as wf:
+        with workflow_report() as wf:
+            wf.write(
+                f'EXE_SIG\tstep={self.step_md5}\tsession={os.path.basename(self.proc_info).split(".")[0]}\n')
+            for f in self.input_files:
+                if isinstance(f, file_target):
                     wf.write(
-                        f'EXE_SIG\tstep={self.step_md5}\tsession={os.path.basename(self.proc_info).split(".")[0]}\n')
-                    for f in self.input_files:
-                        if isinstance(f, file_target):
-                            wf.write(
-                                f'IN_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
-                    for f in self.dependent_files:
-                        if isinstance(f, file_target):
-                            wf.write(
-                                f'IN_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
-                    for f in self.output_files:
-                        if isinstance(f, file_target):
-                            wf.write(
-                                f'OUT_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
+                        f'IN_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
+            for f in self.dependent_files:
+                if isinstance(f, file_target):
+                    wf.write(
+                        f'IN_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
+            for f in self.output_files:
+                if isinstance(f, file_target):
+                    wf.write(
+                        f'OUT_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
         return True
 
     def validate(self):
