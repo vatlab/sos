@@ -9,22 +9,22 @@ import fnmatch
 import glob
 import os
 import re
+import subprocess
 import sys
 import time
 import traceback
-import subprocess
-from collections import defaultdict, Iterable, Mapping, Sequence
+from collections import Iterable, Mapping, Sequence, defaultdict
 from io import StringIO
 from itertools import combinations, tee
-from billiard import Pool
-
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import psutil
+from billiard import Pool
 
 from .eval import SoS_eval, SoS_exec, Undetermined, stmtHash
 from .parser import SoS_Step
 from .pattern import extract_pattern
+from .report import workflow_report
 from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
                      SOS_OUTPUT_OPTIONS, SOS_RUNTIME_OPTIONS, SOS_TAG)
 from .targets import (BaseTarget, RemovedTarget, RuntimeInfo, UnavailableLock,

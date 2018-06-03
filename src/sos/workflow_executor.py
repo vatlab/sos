@@ -6,10 +6,10 @@
 import keyword
 import multiprocessing as mp
 import os
+import subprocess
 import sys
 import time
 import uuid
-import subprocess
 from collections import defaultdict
 from collections.abc import Sequence
 from io import StringIO
@@ -24,8 +24,7 @@ from .eval import SoS_exec
 from .hosts import Host
 from .parser import SoS_Step, SoS_Workflow
 from .pattern import extract_pattern
-from .report import workflow_report, render_report
-
+from .report import render_report, workflow_report
 from .step_executor import PendingTasks, Step_Executor, analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock, Undetermined,
                       UnknownTarget, executable, file_target, path, paths,
@@ -371,25 +370,20 @@ class Base_Executor:
         if env.config['sig_mode'] is None:
             env.config['sig_mode'] = 'default'
         # interactive mode does not pass workflow
-        self.md5 = self.create_signature()
+        self.md5 = self.calculate_md5()
         env.sos_dict.set('__workflow_sig__', os.path.join(
-                        env.exec_dir, '.sos', f'{self.md5}.sig'))
+            env.exec_dir, '.sos', f'{self.md5}.sig'))
         #
         # the md5 of the master workflow would be passed from master workflow...
         if 'master_md5' not in self.config:
             self.config['master_md5'] = self.md5
         if env.config['sig_mode'] != 'ignore' and self.workflow:
             with workflow_report(mode='w') as sig:
-                sig.write(f'># workflow: {self.workflow.name}\n')
-                sig.write(f'># script: {self.workflow.content.filename}\n')
-                sig.write(
-                    f'># included: {",".join([x[1] for x in self.workflow.content.included])}\n')
-                sig.write(
-                    f'># configuration: {self.config.get("config_file", "")}\n')
-                sig.write(
-                    f'># start time: {time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())}\n')
-                sig.write(self.sig_content)
-                sig.write('># runtime signatures\n')
+                sig.write(f'''
+workflow\t{self.md5}\tname={self.workflow.name}
+workflow\t{self.md5}\tstart_time={time.time()}
+workflow\t{self.md5}\tcommand_line={subprocess.list2cmdline(sys.argv)}
+''')
         #
         env.config['resumed_tasks'] = set()
         wf_status = os.path.join(os.path.expanduser(
@@ -422,14 +416,11 @@ class Base_Executor:
             for q, t in tasks:
                 status.write(save_var('pending_task', [q, t]))
 
-    def create_signature(self) -> str:
+    def calculate_md5(self) -> str:
         with StringIO() as sig:
-            sig.write('># Sections\n')
             for step in self.workflow.sections + self.workflow.auxiliary_sections:
-                sig.write(f'>{step.step_name()}: {step.md5}\n')
-            sig.write('># Command line options\n')
-            sig.write(f'>{self.args}\n')
-            self.sig_content = sig.getvalue()
+                sig.write(f'{step.step_name()}: {step.md5}\n')
+            sig.write(f'{self.args}\n')
         return textMD5(self.sig_content)[:16]
 
     def reset_dict(self) -> None:
@@ -1316,9 +1307,9 @@ class Base_Executor:
             except Exception as e:
                 env.logger.warning(
                     f'Failed to clear workflow status file: {e}')
-            with workflow_report() as sig:
-                sig.write(
-                    f'>END_TIME\ttime={time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())}\n')
+            if '__workflow_sig__' in env.sos_dict:
+                with workflow_report() as sig:
+                    sig.write(f'workflow\t{self.md5}\tend_time={time.time()}\n')
             if self.completed["__step_completed__"] == 0:
                 sts = 'ignored'
             elif env.config["run_mode"] == 'dryrun':

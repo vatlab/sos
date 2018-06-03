@@ -17,15 +17,14 @@ import fasteners
 import pkg_resources
 
 from .eval import Undetermined
-from .utils import (Error, TimeoutInterProcessLock, env, isPrimitive, load_var,
-                    save_var, short_repr, stable_repr, pickleable)
 from .report import workflow_report
+from .utils import (Error, TimeoutInterProcessLock, env, isPrimitive, load_var,
+                    pickleable, save_var, short_repr, stable_repr)
 
 try:
     from xxhash import xxh64 as hash_md5
 except ImportError:
     from hashlib import md5 as hash_md5
-
 
 
 __all__ = ['dynamic', 'executable', 'env_variable', 'sos_variable']
@@ -939,7 +938,7 @@ class RuntimeInfo:
                 'input_files': self.input_files,
                 'output_files': self.output_files,
                 'dependent_files': self.dependent_files,
-                'signature_vars': {x: y for x,y in self.signature_vars.items() if pickleable(y,x)},
+                'signature_vars': {x: y for x, y in self.signature_vars.items() if pickleable(y, x)},
                 'script': self.script,
                 'sig_id': self.sig_id,
                 'external': self.external_output}
@@ -1069,21 +1068,20 @@ class RuntimeInfo:
             md5.write('# step process\n')
             md5.write(self.script)
         # successfully write signature, write in workflow runtime info
-        with workflow_report() as wf:
-            wf.write(
-                f'>STEP_SIG\tstep={self.step_md5}\tsession={os.path.basename(self.proc_info).split(".")[0]}\n')
-            for f in self.input_files:
-                if isinstance(f, file_target):
-                    wf.write(
-                        f'>INPUT_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
-            for f in self.dependent_files:
-                if isinstance(f, file_target):
-                    wf.write(
-                        f'>DEPENDENT_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
-            for f in self.output_files:
-                if isinstance(f, file_target):
-                    wf.write(
-                        f'>OUTPUT_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
+        if '__workflow_sig__' in env.sos_dict:
+            with workflow_report() as wf:
+                for f in self.input_files:
+                    if isinstance(f, file_target):
+                        wf.write(
+                            f'step\t{self.step_md5}\tinput\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
+                for f in self.dependent_files:
+                    if isinstance(f, file_target):
+                        wf.write(
+                            f'step\t{self.step_md5}\tdependent\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
+                for f in self.output_files:
+                    if isinstance(f, file_target):
+                        wf.write(
+                            f'step\t{self.step_md5}\toutput\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
         return True
 
     def validate(self):
@@ -1188,10 +1186,4 @@ class RuntimeInfo:
         if not all(files_checked.values()):
             return f'No MD5 signature for {", ".join(x for x,y in files_checked.items() if not y)}'
         env.logger.trace(f'Signature matches and returns {res}')
-        # validation success, record signature used
-        if '__workflow_sig__' in env.sos_dict and os.path.isfile(env.sos_dict['__workflow_sig__']):
-            workflow_sig = env.sos_dict['__workflow_sig__']
-            with TimeoutInterProcessLock(workflow_sig + '_'):
-                with open(workflow_sig, 'a') as wf:
-                    wf.write(self.proc_info + '\n')
         return res
