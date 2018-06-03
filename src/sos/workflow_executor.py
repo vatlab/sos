@@ -24,6 +24,8 @@ from .eval import SoS_exec
 from .hosts import Host
 from .parser import SoS_Step, SoS_Workflow
 from .pattern import extract_pattern
+from .report import workflow_report, render_report
+
 from .step_executor import PendingTasks, Step_Executor, analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock, Undetermined,
                       UnknownTarget, executable, file_target, path, paths,
@@ -370,23 +372,24 @@ class Base_Executor:
             env.config['sig_mode'] = 'default'
         # interactive mode does not pass workflow
         self.md5 = self.create_signature()
+        env.sos_dict.set('__workflow_sig__', os.path.join(
+                        env.exec_dir, '.sos', f'{self.md5}.sig'))
         #
         # the md5 of the master workflow would be passed from master workflow...
         if 'master_md5' not in self.config:
             self.config['master_md5'] = self.md5
         if env.config['sig_mode'] != 'ignore' and self.workflow:
-            # remove old workflow file.
-            with open(os.path.join(env.exec_dir, '.sos', f'{self.md5}.sig'), 'a') as sig:
-                sig.write(f'# workflow: {self.workflow.name}\n')
-                sig.write(f'# script: {self.workflow.content.filename}\n')
+            with workflow_report(mode='w') as sig:
+                sig.write(f'># workflow: {self.workflow.name}\n')
+                sig.write(f'># script: {self.workflow.content.filename}\n')
                 sig.write(
-                    f'# included: {",".join([x[1] for x in self.workflow.content.included])}\n')
+                    f'># included: {",".join([x[1] for x in self.workflow.content.included])}\n')
                 sig.write(
-                    f'# configuration: {self.config.get("config_file", "")}\n')
+                    f'># configuration: {self.config.get("config_file", "")}\n')
                 sig.write(
-                    f'# start time: {time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())}\n')
+                    f'># start time: {time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())}\n')
                 sig.write(self.sig_content)
-                sig.write('# runtime signatures\n')
+                sig.write('># runtime signatures\n')
         #
         env.config['resumed_tasks'] = set()
         wf_status = os.path.join(os.path.expanduser(
@@ -421,11 +424,11 @@ class Base_Executor:
 
     def create_signature(self) -> str:
         with StringIO() as sig:
-            sig.write('# Sections\n')
+            sig.write('># Sections\n')
             for step in self.workflow.sections + self.workflow.auxiliary_sections:
-                sig.write(f'{step.step_name()}: {step.md5}\n')
-            sig.write('# Command line options\n')
-            sig.write(f'{self.args}\n')
+                sig.write(f'>{step.step_name()}: {step.md5}\n')
+            sig.write('># Command line options\n')
+            sig.write(f'>{self.args}\n')
             self.sig_content = sig.getvalue()
         return textMD5(self.sig_content)[:16]
 
@@ -790,16 +793,6 @@ class Base_Executor:
 
         dag.save(self.config['output_dag'], init=not nested)
         return dag
-
-    def save_workflow_signature(self, dag: SoS_DAG) -> None:
-        '''Save tracked files in .sos so that untracked files can be cleaned by command
-        sos clean.
-        '''
-        if '__workflow_sig__' in env.sos_dict:
-            with open(env.sos_dict['__workflow_sig__'], 'a') as sigfile:
-                sigfile.write(
-                    f'# end time: {time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())}\n')
-                sigfile.write('# input and dependent files\n')
 
     def describe_completed(self):
         # return a string to summarize completed and skipped steps, substeps, and tasks
@@ -1323,7 +1316,9 @@ class Base_Executor:
             except Exception as e:
                 env.logger.warning(
                     f'Failed to clear workflow status file: {e}')
-            self.save_workflow_signature(dag)
+            with workflow_report() as sig:
+                sig.write(
+                    f'>END_TIME\ttime={time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())}\n')
             if self.completed["__step_completed__"] == 0:
                 sts = 'ignored'
             elif env.config["run_mode"] == 'dryrun':
@@ -1334,7 +1329,6 @@ class Base_Executor:
                 f'Workflow {self.workflow.name} (ID={self.md5}) is {sts} with {self.describe_completed()}.')
             if env.config["run_mode"] != 'dryrun' and not parent_pipe and env.config['output_report'] and env.sos_dict.get('__workflow_sig__'):
                 # if this is the outter most workflow
-                from .report import render_report
                 render_report(env.config['output_report'],
                               env.sos_dict.get('__workflow_sig__'))
         else:

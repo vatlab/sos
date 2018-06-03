@@ -1071,19 +1071,19 @@ class RuntimeInfo:
         # successfully write signature, write in workflow runtime info
         with workflow_report() as wf:
             wf.write(
-                f'EXE_SIG\tstep={self.step_md5}\tsession={os.path.basename(self.proc_info).split(".")[0]}\n')
+                f'>STEP_SIG\tstep={self.step_md5}\tsession={os.path.basename(self.proc_info).split(".")[0]}\n')
             for f in self.input_files:
                 if isinstance(f, file_target):
                     wf.write(
-                        f'IN_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
+                        f'>INPUT_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
             for f in self.dependent_files:
                 if isinstance(f, file_target):
                     wf.write(
-                        f'IN_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
+                        f'>DEPENDENT_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
             for f in self.output_files:
                 if isinstance(f, file_target):
                     wf.write(
-                        f'OUT_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
+                        f'>OUTPUT_FILE\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
         return True
 
     def validate(self):

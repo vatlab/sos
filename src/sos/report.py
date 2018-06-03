@@ -9,12 +9,12 @@ from .utils import env, TimeoutInterProcessLock
 from contextlib import contextmanager
 
 @contextmanager
-def workflow_report():
-    if '__workflow_sig__' not in env.sos_dict or not os.path.isfile(env.sos_dict['__workflow_sig__']):
-        return
+def workflow_report(mode='a'):
+    if '__workflow_sig__' not in env.sos_dict:
+        raise RuntimeError('workflow_sig is not defined.')
     workflow_sig = env.sos_dict['__workflow_sig__']
     with TimeoutInterProcessLock(workflow_sig + '_'):
-        with open(workflow_sig, 'a') as sig:
+        with open(workflow_sig, mode) as sig:
             yield sig
 
 
