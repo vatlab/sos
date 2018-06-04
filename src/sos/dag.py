@@ -358,5 +358,8 @@ class SoS_DAG(nx.DiGraph):
         else:
             self.last_dag = out
         # output file name
-        with open(dest, 'w' if init else 'a') as dfile:
-            dfile.write(out)
+        if hasattr(dest, 'write'):
+            dest.write(out)
+        else:
+            with open(dest, 'w' if init else 'a') as dfile:
+                dfile.write(out)
