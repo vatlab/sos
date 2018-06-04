@@ -11,9 +11,11 @@
     <h1>SoS Workflow Report</h1>
 
     <table class='info_table'>
+    {% if workflow_cmd %}
     <tr>
     <th> Command Line</th><td><code>{{workflow_cmd}}</code></td>
     </tr>
+    {% endif %}
     <tr>
     <th> Worklow Name</th><td>{{workflow_name}}</td>
     </tr>

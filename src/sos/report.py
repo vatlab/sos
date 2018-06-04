@@ -40,14 +40,14 @@ class Report(object):
             return list(self.data['workflow_subworkflows'].keys())[0]
         except Exception as e:
             env.logger.warning(f'Failed to obtain master id: {e}')
-            return 'NA'
+            return ''
 
     def workflow_name(self, id):
         try:
             return self.data['workflow_name'][id][0]
         except Exception as e:
             env.logger.warning(f'Failed to obtain workflow_name for {id}: {e}')
-            return 'NA'
+            return ''
 
     def workflow_start_time(self, id):
         try:
@@ -55,7 +55,7 @@ class Report(object):
                                  time.localtime(float(self.data['workflow_start_time'][id][0])))
         except Exception as e:
             env.logger.warning(f'Failed to obtain workflow_start_time {id}: {e}')
-            return 'NA'
+            return ''
 
     def workflow_end_time(self, id):
         try:
@@ -63,7 +63,7 @@ class Report(object):
                                  time.localtime(float(self.data['workflow_end_time'][id][0])))
         except Exception as e:
             env.logger.warning(f'Failed to obtain workflow_end_time {id}: {e}')
-            return 'NA'
+            return ''
 
     def workflow_duration(self, id):
         try:
@@ -71,7 +71,7 @@ class Report(object):
                                      - float(self.data['workflow_start_time'][id][0])))
         except Exception as e:
             env.logger.warning(f'Failed to obtain workflow duration {id}: {e}')
-            return 'NA'
+            return ''
 
     def workflow_stat(self, id):
         try:
@@ -85,14 +85,13 @@ class Report(object):
             return self.data['workflow_subworkflows'][id]
         except Exception as e:
             env.logger.warning(f'Failed to obtain workflow_subworkflows {id}: {e}')
-            return 'NA'
+            return ''
 
     def workflow_command_line(self, id):
         try:
             return self.data['workflow_command_line'][id][0]
         except Exception as e:
-            env.logger.warning(f'Failed to obtain command line {id}: {e}')
-            return 'NA'
+            return ''
 
     def tasks(self):
         try:
