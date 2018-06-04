@@ -377,12 +377,12 @@ class Base_Executor:
         # the md5 of the master workflow would be passed from master workflow...
         if 'master_md5' not in self.config:
             self.config['master_md5'] = self.md5
-        if env.config['sig_mode'] != 'ignore' and self.workflow:
-            with workflow_report(mode='w') as sig:
-                sig.write(f'''
-workflow\t{self.md5}\tname={self.workflow.name}
-workflow\t{self.md5}\tstart_time={time.time()}
-workflow\t{self.md5}\tcommand_line={subprocess.list2cmdline(sys.argv)}
+        with workflow_report(mode='w') as sig:
+            sig.write(f'''
+workflow_name\t{self.md5}\t{self.workflow.name}
+workflow_start_time\t{self.md5}\t{time.time()}
+workflow_command_line\t{self.md5}\t{subprocess.list2cmdline(sys.argv)}
+workflow_subworkflows\t{self.config['master_md5']}\t{self.md5}
 ''')
         #
         env.config['resumed_tasks'] = set()
@@ -421,7 +421,7 @@ workflow\t{self.md5}\tcommand_line={subprocess.list2cmdline(sys.argv)}
             for step in self.workflow.sections + self.workflow.auxiliary_sections:
                 sig.write(f'{step.step_name()}: {step.md5}\n')
             sig.write(f'{self.args}\n')
-        return textMD5(self.sig_content)[:16]
+            return textMD5(sig.getvalue())[:16]
 
     def reset_dict(self) -> None:
         env.sos_dict = WorkflowDict()
@@ -1307,9 +1307,6 @@ workflow\t{self.md5}\tcommand_line={subprocess.list2cmdline(sys.argv)}
             except Exception as e:
                 env.logger.warning(
                     f'Failed to clear workflow status file: {e}')
-            if '__workflow_sig__' in env.sos_dict:
-                with workflow_report() as sig:
-                    sig.write(f'workflow\t{self.md5}\tend_time={time.time()}\n')
             if self.completed["__step_completed__"] == 0:
                 sts = 'ignored'
             elif env.config["run_mode"] == 'dryrun':
@@ -1318,6 +1315,9 @@ workflow\t{self.md5}\tcommand_line={subprocess.list2cmdline(sys.argv)}
                 sts = 'executed successfully'
             env.logger.info(
                 f'Workflow {self.workflow.name} (ID={self.md5}) is {sts} with {self.describe_completed()}.')
+            with workflow_report() as sig:
+                sig.write(f'workflow_end_time\t{self.md5}\t{time.time()}\n')
+                sig.write(f'workflow_stat\t{self.md5}\t{dict(self.completed)}\n')
             if env.config["run_mode"] != 'dryrun' and not parent_pipe and env.config['output_report'] and env.sos_dict.get('__workflow_sig__'):
                 # if this is the outter most workflow
                 render_report(env.config['output_report'],
