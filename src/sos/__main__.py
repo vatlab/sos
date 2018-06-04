@@ -265,9 +265,8 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
                         help='''Output Direct Acyclic Graph (DAGs) in graphiviz .dot format.
             Because DAG and status of nodes will change during the execution of
             workflow, multiple DAGs will be written to the specified file with
-            names {workflow}_1, {workflow}_2 etc. If this option is specified
-            without a name, the DAG would be wrritten to the standard
-            output.''')
+            names {workflow}_1, {workflow}_2 etc. The dot file would be named
+            {script_name}_{timestamp}.dot unless a separate filename is specified.''')
     output.add_argument('-p', nargs='?', default='', metavar='REPORT', dest='__report__',
                         help='''Output a report that summarizes the execution of the
             workflow after the completion of the execution. This includes command line,
@@ -318,13 +317,13 @@ def cmd_run(args, workflow_args):
         sys.exit(host._host_agent.check_call(argv))
 
     # '' means no -d
+    dt = datetime.datetime.now().strftime('%m%d%y_%H%M')
     if args.__dag__ is None:
-        args.__dag__ = '-'
+        args.__dag__ = f'{args.script.rsplit(".", 1)[-1]}_{dt}.dot'
     elif args.__dag__ == '':
         args.__dag__ = None
 
     if args.__report__ is None:
-        dt = datetime.datetime.now().strftime('%m%d%y_%H%M')
         args.__report__ = f'{args.script.rsplit(".", 1)[-1]}_{dt}.html'
     elif args.__report__ == '':
         args.__report__ = None
@@ -569,10 +568,8 @@ def cmd_resume(args, workflow_args):
     args.__no_wait__ = args.__no_wait__ if args.__no_wait__ is True else None
     args.__bin_dirs__ = res['bin_dirs']
     args.__queue__ = None if res['default_queue'] == '' else res['default_queue']
-    args.__dag__ = None if res['output_dag'] == '-' else (
-        '' if res['output_dag'] is None else res['output_dag'])
-    args.__report__ = None if res['output_report'] == '-' else (
-        '' if res['output_report'] is None else res['output_report'])
+    args.__dag__ = '' if res['output_dag'] is None else res['output_dag']
+    args.__report__ = '' if res['output_report'] is None else res['output_report']
     args.__targets__ = res['targets']
     args.script = res['script']
     args.workflow = res['workflow']

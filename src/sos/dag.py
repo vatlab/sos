@@ -358,15 +358,5 @@ class SoS_DAG(nx.DiGraph):
         else:
             self.last_dag = out
         # output file name
-        if hasattr(dest, 'write'):
-            dest.write(out)
-        elif dest == '-':
-            sys.stdout.write(out)
-        else:
-            if '_' in self.name:
-                n, c = self.name.split('_', 1)
-                self.name = f"{n}_{int(c)+1}"
-            else:
-                self.name = f"{self.name}_{1}"
-            with open(dest, 'w' if init else 'a') as dfile:
-                dfile.write(out)
+        with open(dest, 'w' if init else 'a') as dfile:
+            dfile.write(out)

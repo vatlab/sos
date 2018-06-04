@@ -91,6 +91,13 @@
     </table>
     {% endif %}
 
+    {% if dag_image %}
+    <h2> Execution DAG </h2>
+
+    <img class="dag-image" src="data:image/png;base64,{{ dag_image }}">
+
+    {% endif %}
+
     <h2> Summary </h2>
     <table class='summary_table'>
     <tr>

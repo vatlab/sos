@@ -1315,9 +1315,13 @@ workflow_subworkflows\t{self.config['master_md5']}\t{self.md5}
                 sts = 'executed successfully'
             env.logger.info(
                 f'Workflow {self.workflow.name} (ID={self.md5}) is {sts} with {self.describe_completed()}.')
+            if self.config['output_dag']:
+                env.logger.info(f"Workflow DAG saved to {self.config['output_dag']}")
             with workflow_report() as sig:
                 sig.write(f'workflow_end_time\t{self.md5}\t{time.time()}\n')
                 sig.write(f'workflow_stat\t{self.md5}\t{dict(self.completed)}\n')
+                if self.config['output_dag']:
+                    sig.write(f"workflow_dag\t{self.md5}\t{self.config['output_dag']}\n")
             if env.config["run_mode"] != 'dryrun' and not parent_pipe and env.config['output_report'] and env.sos_dict.get('__workflow_sig__'):
                 # if this is the outter most workflow
                 render_report(env.config['output_report'],

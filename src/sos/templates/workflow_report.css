@@ -90,3 +90,7 @@ tbody tr:nth-child(odd) {
 tbody tr:hover {
   background: rgba(66, 165, 245, 0.2);
 }
+
+.dag-image img {
+  max-width: 80%;
+}

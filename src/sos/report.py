@@ -5,10 +5,11 @@
 
 import os
 import time
+import base64
 from collections import defaultdict
 from contextlib import contextmanager
 
-from .utils import TimeoutInterProcessLock, env, format_duration
+from .utils import TimeoutInterProcessLock, env, format_duration, dot_to_gif
 
 
 @contextmanager
@@ -105,6 +106,18 @@ class Report(object):
         except:
             return {}
 
+    def dag(self, id, type='dot'):
+        try:
+            dag_file = self.data['workflow_dag'][id][0]
+            if type == 'dot':
+                return dag_file
+            dag_image = dot_to_gif(dag_file, warn = env.logger.warning)
+            with open(dag_image, 'rb') as content:
+                data = content.read()
+            return base64.b64encode(data).decode('ascii')
+        except:
+            return ''
+
 def render_report(output_file, workflow_info):
     data = Report(workflow_info)
     id = data.master_id()
@@ -114,6 +127,7 @@ def render_report(output_file, workflow_info):
         loader=PackageLoader('sos', 'templates'),
         autoescape=select_autoescape(['html', 'xml'])
     ).get_template('workflow_report.tpl')
+        
     with open(output_file, 'w') as wo:
         wo.write(template.render({
             'workflow_name': data.workflow_name(id),
@@ -124,5 +138,7 @@ def render_report(output_file, workflow_info):
             'stat': data.workflow_stat(id),
             'tasks': data.tasks(),
             'steps': data.steps(),
+            'dag_file': data.dag(id, 'dot'),
+            'dag_image': data.dag(id, 'image'),
         }))
     env.logger.info(f'Summary of workflow saved to {output_file}')

@@ -7,7 +7,7 @@ import argparse
 import base64
 
 import pkg_resources
-from sos.utils import dehtml, env
+from sos.utils import dehtml, env, dot_to_gif
 
 
 def get_previewers():
@@ -239,58 +239,9 @@ def preview_md(filename, kernel=None, style=None):
 
 
 def preview_dot(filename, kernel=None, style=None):
-    import os
-    import glob
-    import tempfile
-    from graphviz import Source
-    with open(filename) as dot, tempfile.TemporaryDirectory() as tempDirectory:
-        src = Source(dot.read())
-        src.format = 'png'
-        outfile = src.render(filename='sosDot', directory=tempDirectory)
-        # dot command can generate more than outfiles returned by the render function
-        pngFiles = glob.glob(os.path.join(tempDirectory, f'sosDot*.png'))
-        if len(pngFiles) == 1:
-            with open(outfile, 'rb') as content:
-                data = content.read()
-            return {'image/png': base64.b64encode(data).decode('ascii')}
-        else:
-            import imageio
-            # create a gif files from multiple png files
-            pngFiles.sort(key=lambda x: int(os.path.basename(x)[:-3].split('.')[1] or 0))
-            # getting the maximum size
-            try:
-                images = [imageio.imread(x) for x in pngFiles]
-            except Exception as e:
-                if kernel:
-                    kernel.warn(f'Failed to read gng file: {e}')
-                with open(pngFiles[-1], 'rb') as content:
-                    data = content.read()
-                return {'image/png': base64.b64encode(data).decode('ascii')}
-            maxWidth = max([x.shape[0] for x in images])
-            maxHeight = max([x.shape[1] for x in images])
-            if images[0].shape[0] < maxWidth or images[0].shape[1] < maxHeight:
-                try:
-                    from PIL import Image, ImageOps
-                    newFirstImg = ImageOps.expand(Image.open(pngFiles[0]), border=(
-                        0, 0, (maxHeight - images[0].shape[1]), (maxWidth - images[0].shape[0])), fill=0xFFFFFF)
-                    newFirstImg.save(pngFiles[0], directory=tempDirectory)
-                    # replace the original small one to the expanded one
-                    images[0] = imageio.imread(pngFiles[0])
-                except Exception as e:
-                    if kernel:
-                        kernel.warn(f'Failed to resize gif file: {e}')
-            # create a gif file from images
-            gifFile = os.path.join('sosDot.gif')
-            try:
-                imageio.mimsave(gifFile, images, duration=0.5)
-            except Exception as e:
-                if kernel:
-                    kernel.warn(f'Failed to generate gif animation: {e}')
-                with open(pngFiles[-1], 'rb') as content:
-                    data = content.read()
-                return {'image/png': base64.b64encode(data).decode('ascii')}
-            with open(gifFile, 'rb') as f:
-                image = f.read()
-            # according to https://github.com/ipython/ipython/issues/10045
-            # I have to use 'image/png' instead of 'image/gif' to get the gif displayed.
-            return {'image/png': base64.b64encode(image).decode('ascii')}
+    ret = dot_to_gif(filename, warn = kernel.warn if kernel else env.logger.warning)
+    with open(outfile, 'rb') as content:
+        data = content.read()
+    # according to https://github.com/ipython/ipython/issues/10045
+    # I have to use 'image/png' instead of 'image/gif' to get the gif displayed.
+    return {'image/png': base64.b64encode(data).decode('ascii')}

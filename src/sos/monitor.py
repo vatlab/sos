@@ -80,10 +80,8 @@ class ProcessMonitor(threading.Thread):
                     cpu, mem, nch, ch_cpu, ch_mem = self._check()
                     if 'peak_cpu' not in self.sos_dict or self.sos_dict['peak_cpu'] < cpu + ch_cpu:
                         self.sos_dict['peak_cpu'] = cpu + ch_cpu
-                        env.logger.error(f'write peak cpu {cpu + ch_cpu}')
                     if 'peak_mem' not in self.sos_dict or self.sos_dict['peak_mem'] < mem + ch_mem:
                         self.sos_dict['peak_mem'] = mem + ch_mem
-                        env.logger.error(f'write peak mem {mem + ch_mem}')
 
                     with open(self.pulse_file, 'a') as pd:
                         pd.write(f'{time.time()}\t{cpu:.2f}\t{mem}\t{nch}\t{ch_cpu}\t{ch_mem}\n')

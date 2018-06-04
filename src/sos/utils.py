@@ -1487,3 +1487,50 @@ def format_par(name, par):
                 return f'--{name} {val} (as {val.__class__.__name__})'
     except:
         return f'--{name} {par}'
+
+def dot_to_gif(filename: str, warn = None):
+    import glob
+    import tempfile
+    from graphviz import Source
+    with open(filename) as dot, tempfile.TemporaryDirectory() as tempDirectory:
+        src = Source(dot.read())
+        src.format = 'png'
+        outfile = src.render(filename='sosDot', directory=tempDirectory)
+        # dot command can generate more than outfiles returned by the render function
+        pngFiles = glob.glob(os.path.join(tempDirectory, f'sosDot*.png'))
+        if len(pngFiles) == 1:
+            return outfile
+        else:
+            import imageio
+            # create a gif files from multiple png files
+            pngFiles.sort(key=lambda x: int(os.path.basename(x)[:-3].split('.')[1] or 0))
+            # getting the maximum size
+            try:
+                images = [imageio.imread(x) for x in pngFiles]
+            except Exception as e:
+                if warn:
+                    warn(f'Failed to read gng file: {e}')
+                return pngFiles[-1]
+            maxWidth = max([x.shape[0] for x in images])
+            maxHeight = max([x.shape[1] for x in images])
+            if images[0].shape[0] < maxWidth or images[0].shape[1] < maxHeight:
+                try:
+                    from PIL import Image, ImageOps
+                    newFirstImg = ImageOps.expand(Image.open(pngFiles[0]), border=(
+                        0, 0, (maxHeight - images[0].shape[1]), (maxWidth - images[0].shape[0])), fill=0xFFFFFF)
+                    newFirstImg.save(pngFiles[0], directory=tempDirectory)
+                    # replace the original small one to the expanded one
+                    images[0] = imageio.imread(pngFiles[0])
+                except Exception as e:
+                    if warn:
+                        warn(f'Failed to resize gif file: {e}')
+            # create a gif file from images
+            gifFile = os.path.join('sosDot.gif')
+            try:
+                imageio.mimsave(gifFile, images, duration=0.5)
+            except Exception as e:
+                if warn:
+                    warn(f'Failed to generate gif animation: {e}')
+                return pngFiles[-1]
+            return gifFile
+
