@@ -33,7 +33,7 @@ from .targets import (BaseTarget, RemovedTarget, RuntimeInfo, UnavailableLock,
 from .tasks import MasterTaskParams, TaskParams
 from .utils import (SlotManager, StopInputGroup, TerminateExecution, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr,
-                    stable_repr)
+                    stable_repr, format_duration)
 
 __all__ = []
 
@@ -276,12 +276,18 @@ class TaskManager:
         self._all_output = []
         #
         self._terminate = False
+        #
+        self._tags = {}
 
     def append(self, task_def):
         self._unsubmitted_tasks.append(task_def)
         if isinstance(task_def[2], Sequence):
             self._all_output.extend(task_def[2])
         self._all_ids.append(task_def[0])
+        self._tags[task_def[0]] = task_def[1].tags
+
+    def tags(self, task_id):
+        return self._tags.get(task_id, [])
 
     def has_task(self, task_id):
         return task_id in self._all_ids
@@ -1068,7 +1074,25 @@ class Base_Step_Executor:
         # report task
         with workflow_report() as rep:
             for id, result in results.items():
-                rep.write(f'task\t{id}\t{result}\n')
+                # turn to string to avoid naming lookup issue
+                rep_result = {x:(y if isinstance(y, (int, bool, float, str)) else short_repr(y)) for x,y in result.items()}
+                rep_result['tags'] = ' '.join(self.task_manager.tags(id))
+                try:
+                    if 'start_time' in rep_result:
+                        if 'end_time' in rep_result:
+                            rep_result['duration'] = format_duration(int(rep_result['end_time'] 
+                                - rep_result['start_time']))
+                            rep_result['end_time'] = time.strftime('%Y-%m-%d %H:%M:%S',
+                                     time.localtime(rep_result['end_time']))
+                        rep_result['start_time'] = time.strftime('%Y-%m-%d %H:%M:%S',
+                                     time.localtime(rep_result['start_time']))
+                        if 'peak_cpu' in rep_result:
+                            rep_result['peak_cpu'] = f'{rep_result["peak_cpu"]:.1f}%'
+                    if 'peak_mem' in rep_result:
+                        rep_result['peak_mem'] = f'{rep_result["peak_mem"] / 1024 / 1024 :.1f}Mb'
+                except Exception as e:
+                    env.logger.warning(f'Failed to get time stamps for task {id}: {e}')
+                rep.write(f'task\t{id}\t{rep_result}\n')
         self.task_manager.clear_submitted()
         for idx, task in enumerate(self.proc_results):
             # if it is done
@@ -1700,6 +1724,15 @@ class Base_Step_Executor:
                                         f'Failed to evaluate shared variable {var} from expression {val}: {e}')
             #
             self.verify_output()
+            with workflow_report() as rep:
+                step_info = {
+                    'stepname': self.step.step_name(True),
+                    'substeps': len(self._substeps),
+                    'input': short_repr(env.sos_dict['step_input']) if env.sos_dict['step_input'] else '',
+                    'output': short_repr(env.sos_dict['step_output']) if env.sos_dict['step_output'] else '',
+                    'completed': dict(self.completed)
+                }
+                rep.write(f'step\t{self.step.md5}\t{step_info}\n')            
             return self.collect_result()
         except KeyboardInterrupt:
             # if the worker_pool is not properly shutdown (e.g. interrupted by KeyboardInterrupt #871)

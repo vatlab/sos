@@ -5,7 +5,6 @@
 
 import argparse
 import base64
-import collections
 import copy
 import getpass
 import logging
@@ -22,7 +21,7 @@ import types
 import urllib
 import urllib.parse
 import urllib.request
-from collections import Sequence, defaultdict
+from collections import Sequence, Mapping, Set, defaultdict
 from html.parser import HTMLParser
 from io import FileIO, StringIO
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
@@ -137,19 +136,34 @@ def short_repr(obj, noneAsNA=False):
         return 'unspecified' if noneAsNA else 'None'
     elif isinstance(obj, str) and len(obj) > 80:
         return '{}...{}'.format(obj[:60].replace('\n', '\\n'), obj[-20:].replace('\n', '\\n'))
-    elif isinstance(obj, (str, int, float, bool)) or (isinstance(obj, collections.Sequence)
-                                                      and len(obj) <= 2) or len(str(obj)) < 80:
+    elif isinstance(obj, (str, int, float, bool)):
         return repr(obj)
-    elif isinstance(obj, collections.Sequence):  # should be a list or tuple
-        return f'[{short_repr(obj[0])}, ...] ({len(obj)} items)'
-    elif isinstance(obj, dict):
-        if obj:
-            first_key = list(obj.keys())[0]
-            return f'{{{first_key!r}:{short_repr(obj[first_key])!r}, ...}} ({len(obj)} items)'
+    elif isinstance(obj, Sequence):  # should be a list or tuple
+        if len(obj) == 0:
+            return '[]'
+        elif len(obj) == 1:
+            return f'[{short_repr(obj[0])}]'
+        elif len(obj) == 2:
+            return f'[{short_repr(obj[0])}, {short_repr(obj[1])}]'
         else:
+            return f'[{short_repr(obj[0])}, {short_repr(obj[1])}, ...] ({len(obj)} items)'
+    elif isinstance(obj, dict):
+        if not obj:
             return '{}'
+        elif len(obj) == 1:
+            first_key = list(obj.keys())[0]
+            return f'{{{short_repr(first_key)!r}:{short_repr(obj[first_key])!r}}}'
+        else:
+            first_key = list(obj.keys())[0]
+            return f'{{{short_repr(first_key)}:{short_repr(obj[first_key])}, ...}} ({len(obj)} items)'
+    elif hasattr(obj, 'target_name'):
+        return obj.target_name()
     else:
-        return f'{repr(obj)[:60]}...'
+        ret = repr(obj)
+        if len(ret) > 40:
+            return f'{repr(obj)[:35]}...'
+        else:
+            return ret
 
 #
 # SoS Workflow dictionary
@@ -589,14 +603,14 @@ class ProgressFileObj(FileIO):
 def stable_repr(obj):
     if isinstance(obj, str):
         return repr(obj)
-    elif isinstance(obj, collections.abc.Mapping):
+    elif isinstance(obj, Mapping):
         items = [stable_repr(k) + ':' + stable_repr(obj[k])
                  for k in obj.keys()]
         return '{' + ', '.join(sorted(items)) + '}'
-    elif isinstance(obj, collections.abc.Set):
+    elif isinstance(obj, Set):
         items = [stable_repr(x) for x in obj]
         return '{' + ', '.join(sorted(items)) + '}'
-    elif isinstance(obj, collections.abc.Sequence):
+    elif isinstance(obj, Sequence):
         return '[' + ', '.join(stable_repr(k) for k in obj) + ']'
     else:
         return repr(obj)
@@ -1186,6 +1200,23 @@ def load_config_files(filename=None):
             process_based_on(cfg, v)
     return cfg
 
+
+def format_duration(seconds: int):
+    res = []
+    day = seconds // 86400
+    if day > 0:
+       res.append(f'{day} day')
+    hh = (seconds % 86400) // 3600;
+    if hh > 0:
+      res.append(f'{hh} hr')
+    mm = (seconds % 3600) // 60;
+    if mm > 0:
+      res.append(f'{mm} min')
+    ss = seconds % 60;
+    if ss > 0:
+      res.append(f'{ss} sec')
+    res = ' '.join(res);
+    return res if res else "0 sec"
 
 def format_HHMMSS(v):
     if isinstance(v, int):

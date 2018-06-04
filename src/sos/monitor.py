@@ -14,7 +14,9 @@ from .utils import env, expand_time, format_HHMMSS
 
 
 class ProcessMonitor(threading.Thread):
-    def __init__(self, task_id, monitor_interval, resource_monitor_interval, max_walltime=None, max_mem=None, max_procs=None):
+    def __init__(self, task_id, monitor_interval,
+            resource_monitor_interval, max_walltime=None, max_mem=None,
+            max_procs=None, sos_dict={}):
         threading.Thread.__init__(self)
         self.task_id = task_id
         self.pid = os.getpid()
@@ -33,6 +35,7 @@ class ProcessMonitor(threading.Thread):
             if not os.access(self.pulse_file, os.W_OK):
                 os.chmod(self.pulse_file, stat.S_IREAD | stat.S_IWRITE)
             os.remove(self.pulse_file)
+        self.sos_dict = sos_dict
         with open(self.pulse_file, 'w') as pd:
             pd.write(f'#task: {task_id}\n')
             pd.write(f'#started at {datetime.now().strftime("%A, %d. %B %Y %I:%M%p")}\n#\n')
@@ -75,14 +78,21 @@ class ProcessMonitor(threading.Thread):
                     os.utime(self.pulse_file, None)
                 else:
                     cpu, mem, nch, ch_cpu, ch_mem = self._check()
+                    if 'peak_cpu' not in self.sos_dict or self.sos_dict['peak_cpu'] < cpu + ch_cpu:
+                        self.sos_dict['peak_cpu'] = cpu + ch_cpu
+                        env.logger.error(f'write peak cpu {cpu + ch_cpu}')
+                    if 'peak_mem' not in self.sos_dict or self.sos_dict['peak_mem'] < mem + ch_mem:
+                        self.sos_dict['peak_mem'] = mem + ch_mem
+                        env.logger.error(f'write peak mem {mem + ch_mem}')
+
                     with open(self.pulse_file, 'a') as pd:
                         pd.write(f'{time.time()}\t{cpu:.2f}\t{mem}\t{nch}\t{ch_cpu}\t{ch_mem}\n')
-                    if self.max_procs is not None and cpu > self.max_procs:
+                    if self.max_procs is not None and cpu + ch_cpu > self.max_procs:
                         self._exceed_resource(
-                            f'Task {self.task_id} exits because of excessive use of procs (used {cpu}, limit {self.max_procs})')
-                    if self.max_mem is not None and mem > self.max_mem:
+                            f'Task {self.task_id} exits because of excessive use of procs (used {cpu + ch_cpu}, limit {self.max_procs})')
+                    if self.max_mem is not None and mem + ch_mem > self.max_mem:
                         self._exceed_resource(
-                            f'Task {self.task_id} exits because of excessive use of max_mem (used {mem}, limit {self.max_mem})')
+                            f'Task {self.task_id} exits because of excessive use of max_mem (used {mem + ch_mem}, limit {self.max_mem})')
                 # walltime can be checked more frequently and does not have to wait for resource option
                 elapsed = time.time() - start_time
                 if self.max_walltime is not None and elapsed > self.max_walltime:

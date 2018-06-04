@@ -8,7 +8,7 @@ import time
 from collections import defaultdict
 from contextlib import contextmanager
 
-from .utils import TimeoutInterProcessLock, env, format_HHMMSS
+from .utils import TimeoutInterProcessLock, env, format_duration
 
 
 @contextmanager
@@ -66,7 +66,7 @@ class Report(object):
 
     def workflow_duration(self, id):
         try:
-            return format_HHMMSS(int(float(self.data['workflow_end_time'][id][0])
+            return format_duration(int(float(self.data['workflow_end_time'][id][0])
                                      - float(self.data['workflow_start_time'][id][0])))
         except Exception as e:
             env.logger.warning(f'Failed to obtain workflow duration {id}: {e}')
@@ -99,6 +99,11 @@ class Report(object):
         except:
             return {}
 
+    def steps(self):
+        try:
+            return {id: eval(res[0]) for id, res in self.data['step'].items()}
+        except:
+            return {}
 
 def render_report(output_file, workflow_info):
     data = Report(workflow_info)
@@ -112,10 +117,12 @@ def render_report(output_file, workflow_info):
     with open(output_file, 'w') as wo:
         wo.write(template.render({
             'workflow_name': data.workflow_name(id),
+            'workflow_cmd': data.workflow_command_line(id),
             'workflow_start_time': data.workflow_start_time(id),
             'workflow_end_time': data.workflow_end_time(id),
             'workflow_duration': data.workflow_duration(id),
             'stat': data.workflow_stat(id),
             'tasks': data.tasks(),
+            'steps': data.steps(),
         }))
     env.logger.info(f'Summary of workflow saved to {output_file}')

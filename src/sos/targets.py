@@ -1068,20 +1068,20 @@ class RuntimeInfo:
             md5.write('# step process\n')
             md5.write(self.script)
         # successfully write signature, write in workflow runtime info
-        if '__workflow_sig__' in env.sos_dict:
-            with workflow_report() as wf:
-                for f in self.input_files:
-                    if isinstance(f, file_target):
-                        wf.write(
-                            f'step\t{self.step_md5}\tinput\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
-                for f in self.dependent_files:
-                    if isinstance(f, file_target):
-                        wf.write(
-                            f'step\t{self.step_md5}\tdependent\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
-                for f in self.output_files:
-                    if isinstance(f, file_target):
-                        wf.write(
-                            f'step\t{self.step_md5}\toutput\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
+        #if '__workflow_sig__' in env.sos_dict:
+        #    with workflow_report() as wf:
+        #        for f in self.input_files:
+        #            if isinstance(f, file_target):
+        #                wf.write(
+        #                    f'step\t{self.step_md5}\tinput\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
+        #        for f in self.dependent_files:
+        #            if isinstance(f, file_target):
+        #                wf.write(
+        #                    f'step\t{self.step_md5}\tdependent\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
+        #        for f in self.output_files:
+        #            if isinstance(f, file_target):
+        #                wf.write(
+        #                    f'step\t{self.step_md5}\toutput\tfilename={f}\tsession={self.step_md5}\tsize={f.size()}\tmd5={f.target_signature()}\n')
         return True
 
     def validate(self):

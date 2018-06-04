@@ -30,7 +30,6 @@ from .utils import (StopInputGroup, env, expand_size, expand_time,
 monitor_interval = 5
 resource_monitor_interval = 60
 
-
 class TaskParams(object):
     '''A parameter object that encaptulates parameters sending to
     task executors. This would makes the output of workers, especially
@@ -296,7 +295,11 @@ def collect_task_result(task_id, sos_dict, skipped=False):
     depends = {} if env.sos_dict['_depends'] is None or sos_dict['_depends'] is None else {
         x: file_target(x).target_signature() for x in sos_dict['_depends'] if isinstance(x, (str, file_target))}
     return {'ret_code': 0, 'task': task_id, 'input': input, 'output': output, 'depends': depends,
-            'shared': {env.sos_dict['_index']: shared}, 'skipped': skipped}
+            'shared': {env.sos_dict['_index']: shared}, 'skipped': skipped,
+            'start_time': sos_dict['start_time'], 
+            'peak_cpu': sos_dict.get('peak_cpu', 0),
+            'peak_mem': sos_dict.get('peak_mem', 0),
+            'end_time': time.time()}
 
 
 def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_interval=5,
@@ -341,7 +344,8 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                                'max_walltime', None),
                            max_mem=params.sos_dict['_runtime'].get(
                                'max_mem', None),
-                           max_procs=params.sos_dict['_runtime'].get('max_procs', None))
+                           max_procs=params.sos_dict['_runtime'].get('max_procs', None),
+                           sos_dict = sos_dict)
         m.start()
 
         master_out = os.path.join(os.path.expanduser(
@@ -461,7 +465,8 @@ del sos_handle_parameter_
                        max_walltime=sos_dict['_runtime'].get(
                            'max_walltime', None),
                        max_mem=sos_dict['_runtime'].get('max_mem', None),
-                       max_procs=sos_dict['_runtime'].get('max_procs', None))
+                       max_procs=sos_dict['_runtime'].get('max_procs', None),
+                       sos_dict = sos_dict)
 
     m.start()
     if sigmode is not None:
@@ -550,6 +555,7 @@ del sos_handle_parameter_
     # execution duration.
     if not subtask:
         os.utime(task_file, None)
+        sos_dict['start_time'] = time.time()
 
     try:
         # go to 'cur_dir'
