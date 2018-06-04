@@ -1064,6 +1064,11 @@ class Base_Step_Executor:
 
         # waiting for results of specified IDs
         results = self.wait_for_tasks(self.task_manager._submitted_tasks)
+        #
+        # report task
+        with workflow_report() as rep:
+            for id, result in results.items():
+                rep.write(f'task\t{id}\t{result}\n')
         self.task_manager.clear_submitted()
         for idx, task in enumerate(self.proc_results):
             # if it is done

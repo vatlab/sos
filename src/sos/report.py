@@ -72,11 +72,11 @@ class Report(object):
             env.logger.warning(f'Failed to obtain workflow duration {id}: {e}')
             return 'NA'
 
-    def workflow_stat(self, id, key):
+    def workflow_stat(self, id):
         try:
-            return eval(self.data['workflow_stat'][id][0])[key]
+            return eval(self.data['workflow_stat'][id][0])
         except:
-            #env.logger.warning(f'Failed to obtain workflow_stat {id} {key}: {e}')
+            # env.logger.warning(f'Failed to obtain workflow_stat {id} {key}: {e}')
             return '0'
 
     def workflow_subworkflows(self, id):
@@ -93,30 +93,29 @@ class Report(object):
             env.logger.warning(f'Failed to obtain command line {id}: {e}')
             return 'NA'
 
+    def tasks(self):
+        try:
+            return {id: eval(res[0]) for id, res in self.data['task'].items()}
+        except:
+            return {}
+
 
 def render_report(output_file, workflow_info):
     data = Report(workflow_info)
     id = data.master_id()
+
+    from jinja2 import Environment, PackageLoader, select_autoescape
+    template = Environment(
+        loader=PackageLoader('sos', 'templates'),
+        autoescape=select_autoescape(['html', 'xml'])
+    ).get_template('workflow_report.tpl')
     with open(output_file, 'w') as wo:
-        wo.write(f'''
-# SoS Workflow Execution report
-
-* Workflow Name: {data.workflow_name(id)}
-* Workflow Start Time: {data.workflow_start_time(id)}
-* Workflow End Time: {data.workflow_end_time(id)}
-# Workflow Duration: {data.workflow_duration(id)}
-
-# Summary:
-
-Summary of workflow {data.workflow_name(id)}
-
-* Completed steps: {data.workflow_stat(id, '__step_completed__')}
-* Ignored steps: {data.workflow_stat(id, '__step_skipped__')}
-* Completed substeps: {data.workflow_stat(id, '__substep_completed__')}
-* Ignored substeps: {data.workflow_stat(id, '__substep_skipped__')}
-* Completed tasks: {data.workflow_stat(id, '__task_completed__')}
-* Ignored tasks: {data.workflow_stat(id, '__task_skipped__')}
-
-        ''')
-
+        wo.write(template.render({
+            'workflow_name': data.workflow_name(id),
+            'workflow_start_time': data.workflow_start_time(id),
+            'workflow_end_time': data.workflow_end_time(id),
+            'workflow_duration': data.workflow_duration(id),
+            'stat': data.workflow_stat(id),
+            'tasks': data.tasks(),
+        }))
     env.logger.info(f'Summary of workflow saved to {output_file}')
