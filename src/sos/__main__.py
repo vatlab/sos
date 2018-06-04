@@ -2366,12 +2366,12 @@ def main():
             desc_only='remove' != subcommand))
         #
         # command pack
-        add_sub_parser(subparsers, get_pack_parser(
-            desc_only='pack' != subcommand), hidden=True)
+        # add_sub_parser(subparsers, get_pack_parser(
+        #     desc_only='pack' != subcommand), hidden=True)
         #
         # command unpack
-        add_sub_parser(subparsers, get_unpack_parser(
-            desc_only='unpack' != subcommand), hidden=True)
+        # add_sub_parser(subparsers, get_unpack_parser(
+        #     desc_only='unpack' != subcommand), hidden=True)
         #
         # addon packages
         if subcommand is None or subcommand not in ['install', 'run', 'dryrun', 'convert', 'push', 'pull',

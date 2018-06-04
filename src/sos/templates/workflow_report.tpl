@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
     <title>{{workflow_name}}</title>
+    <style type="text/css">
+    {% include "workflow_report.css" %}
+    </style>
 </head>
 <body>
 
