@@ -1072,11 +1072,21 @@ class Base_Step_Executor:
         #
         # report task
         with workflow_report() as rep:
+            # what we should do here is to get the alias of the Host
+            # because it can be different (e.g. not localhost
+            if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
+                queue = env.sos_dict['_runtime']['queue']
+            elif env.run_options['default_queue']:
+                queue = env.run_options['default_queue']
+            else:
+                queue = 'localhost'
+
             for id, result in results.items():
                 # turn to string to avoid naming lookup issue
                 rep_result = {x: (y if isinstance(y, (int, bool, float, str)) else short_repr(
                     y)) for x, y in result.items()}
                 rep_result['tags'] = ' '.join(self.task_manager.tags(id))
+                rep_result['queue'] = queue
                 try:
                     if 'start_time' in rep_result and rep_result['start_time']:
                         if 'end_time' in rep_result:

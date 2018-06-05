@@ -143,6 +143,7 @@
     <table class='task_table'>
     <tr>
     <th>Task ID</th>
+    <th>Queue</th>
     <th>Status</th>
     <th>Tags</th>
     <th>Start Time</th>
@@ -153,6 +154,7 @@
     {% for task, info in tasks.items() %}
         <tr>
         <td><code>{{ task }}</code></td>
+        <td>{{ info.queue }}</td>
         <td>{{ "Ignored" if info.skipped else ("Success" if info.ret_code == 0 else "Failed") }}</td>
         <td><code>{{ info.tags }}</code></td>
         <td>{{ info.start_time }}</td>
