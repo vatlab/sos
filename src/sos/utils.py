@@ -142,20 +142,20 @@ def short_repr(obj, noneAsNA=False):
         if len(obj) == 0:
             return '[]'
         elif len(obj) == 1:
-            return f'[{short_repr(obj[0])}]'
+            return f'{short_repr(obj[0])}'
         elif len(obj) == 2:
-            return f'[{short_repr(obj[0])}, {short_repr(obj[1])}]'
+            return f'{short_repr(obj[0])}, {short_repr(obj[1])}'
         else:
-            return f'[{short_repr(obj[0])}, {short_repr(obj[1])}, ...] ({len(obj)} items)'
+            return f'{short_repr(obj[0])}, {short_repr(obj[1])}, ... ({len(obj)} items)'
     elif isinstance(obj, dict):
         if not obj:
-            return '{}'
+            return ''
         elif len(obj) == 1:
             first_key = list(obj.keys())[0]
-            return f'{{{short_repr(first_key)!r}:{short_repr(obj[first_key])!r}}}'
+            return f'{short_repr(first_key)!r}:{short_repr(obj[first_key])!r}'
         else:
             first_key = list(obj.keys())[0]
-            return f'{{{short_repr(first_key)}:{short_repr(obj[first_key])}, ...}} ({len(obj)} items)'
+            return f'{short_repr(first_key)}:{short_repr(obj[first_key])}, ... ({len(obj)} items)'
     elif hasattr(obj, 'target_name'):
         return obj.target_name()
     else:

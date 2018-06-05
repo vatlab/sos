@@ -17,18 +17,55 @@
     </tr>
     {% endif %}
     <tr>
-    <th> Worklow Name</th><td>{{workflow_name}}</td>
+    <th> Worklow Name</th><td>{{ workflow_name[master_id] }}</td>
     </tr>
     <tr>
-    <th> Worklow Start Time</th><td>{{workflow_start_time}}</td>
+    <th> Worklow Start Time</th><td>{{ workflow_start_time[master_id] }}</td>
     </tr>
     <tr>
-    <th> Worklow End Time</th><td>{{workflow_end_time}}</td>
+    <th> Worklow End Time</th><td>{{workflow_end_time[master_id]}}</td>
     </tr>
     <tr>
-    <th> Worklow Duration</th><td>{{workflow_duration}}</td>
+    <th> Worklow Duration</th><td>{{workflow_duration[master_id]}}</td>
     </tr>
     </table>
+
+    {% if subworkflows %}
+    <h2> Subworkflows </h1>
+    <table class='workflow_table'>
+    <tr>
+    <th>Workflow Name</th>
+    <th>Start Time</th>
+    <th>Duration</th>
+    <th>Steps</th>
+    <th>Tasks</th>
+    </tr>
+
+    {% for name in subworkflows %}
+        <tr>
+        <td>{{ workflow_name[name] }}</td>
+        <td>{{ workflow_start_time[name] }}</td>
+        <td>{{ workflow_duration[name] }}</td>
+        <td>
+            {% if workflow_stat[name].__step_completed__ %}
+            {{ workflow_stat[name].__step_completed__  }} completed &nbsp;
+            {% endif %}
+            {% if workflow_stat[name].__step_skipped__  %}
+            {{ workflow_stat[name].__step_skipped__ }} ignored
+            {% endif %}
+        </td>
+        <td>
+            {% if workflow_stat[name].__task_completed__ %}
+            {{ workflow_stat[name].__task_completed__  }} completed &nbsp;
+            {% endif %}
+            {% if workflow_stat[name].__task_skipped__  %}
+            {{ workflow_stat[name].__task_skipped__ }} ignored
+            {% endif %}
+        </td>
+        </tr>
+    {% endfor %}
+    </table>
+    {% endif %}
 
     {% if steps %}
     <h2> Steps </h1>
@@ -103,36 +140,36 @@
     <h2> Summary </h2>
     <table class='summary_table'>
     <tr>
-    {% if stat.__step_completed__  %}
+    {% if workflow_stat.__step_completed__  %}
     <tr>
-    <th>Completed steps</th><td>{{ stat.__step_completed__ }}</td>
+    <th>Completed steps</th><td>{{ workflow_stat.__step_completed__ }}</td>
     </tr>
     {% endif %}
-    {% if stat.__step_skipped__  %}
+    {% if workflow_stat.__step_skipped__  %}
     <tr>
-    <th>Ignored steps</th><td>{{ stat.__step_skipped__ }}</td>
-    </tr>
-    {% endif %}
-
-    {% if stat.__substep_completed__  %}
-    <tr>
-    <th>Completed substeps</th><td>{{ stat.__substep_completed__ }}</td>
-    </tr>
-    {% endif %}
-    {% if stat.__substep_skipped__  %}
-    <tr>
-    <th>Ignored substeps</th><td>{{ stat.__substep_skipped__ }}</td>
+    <th>Ignored steps</th><td>{{ workflow_stat.__step_skipped__ }}</td>
     </tr>
     {% endif %}
 
-    {% if stat.__task_completed__  %}
+    {% if workflow_stat.__substep_completed__  %}
     <tr>
-    <th>Completed tasks</th><td>{{ stat.__task_completed__ }}</td>
+    <th>Completed substeps</th><td>{{ workflow_stat.__substep_completed__ }}</td>
     </tr>
     {% endif %}
-    {% if stat.__task_skipped__  %}
+    {% if workflow_stat.__substep_skipped__  %}
     <tr>
-    <th>Ignored tasks</th><td>{{ stat.__task_skipped__ }}</td>
+    <th>Ignored substeps</th><td>{{ workflow_stat.__substep_skipped__ }}</td>
+    </tr>
+    {% endif %}
+
+    {% if workflow_stat.__task_completed__  %}
+    <tr>
+    <th>Completed tasks</th><td>{{ workflow_stat.__task_completed__ }}</td>
+    </tr>
+    {% endif %}
+    {% if workflow_stat.__task_skipped__  %}
+    <tr>
+    <th>Ignored tasks</th><td>{{ workflow_stat.__task_skipped__ }}</td>
     </tr>
     {% endif %}
     </table>
