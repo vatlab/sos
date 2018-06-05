@@ -345,7 +345,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                            max_mem=params.sos_dict['_runtime'].get(
                                'max_mem', None),
                            max_procs=params.sos_dict['_runtime'].get('max_procs', None),
-                           sos_dict = sos_dict)
+                           sos_dict = params.sos_dict)
         m.start()
 
         master_out = os.path.join(os.path.expanduser(
