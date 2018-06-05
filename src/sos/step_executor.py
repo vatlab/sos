@@ -1261,14 +1261,14 @@ class Base_Step_Executor:
         #               actions dynamically.
         env.sos_dict.set('step_name', self.step.step_name())
         env.sos_dict.set('step_id', self.step.md5)
-        env.sos_dict.set('master_id', env.config.get('master_md5', ''))
+        env.sos_dict.set('master_id', env.config.get('master_id', ''))
         try:
             env.sos_dict.set('workflow_id', os.path.split(
                 env.sos_dict['__workflow_sig__'])[-1].split('.')[0])
         except Exception as e:
             env.logger.debug(
                 f'Failed to set workflow_id for step {self.step.step_name()}: {e}')
-            env.sos_dict.set('workflow_id', env.config.get('master_md5', ''))
+            env.sos_dict.set('workflow_id', env.config.get('master_id', ''))
         # used by nested workflow
         env.sos_dict.set('__step_context__', self.step.context)
 

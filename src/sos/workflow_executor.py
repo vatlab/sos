@@ -375,14 +375,14 @@ class Base_Executor:
             env.exec_dir, '.sos', f'{self.md5}.sig'))
         #
         # the md5 of the master workflow would be passed from master workflow...
-        if 'master_md5' not in self.config:
-            self.config['master_md5'] = self.md5
+        if 'master_id' not in self.config:
+            self.config['master_id'] = self.md5
         with workflow_report(mode='w') as sig:
             sig.write(f'''
 workflow_name\t{self.md5}\t{self.workflow.name}
 workflow_start_time\t{self.md5}\t{time.time()}
 workflow_command_line\t{self.md5}\t{subprocess.list2cmdline([os.path.basename(sys.argv[0])] + sys.argv[1:])}
-workflow_subworkflows\t{self.config['master_md5']}\t{self.md5}
+workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
 ''')
         #
         env.config['resumed_tasks'] = set()

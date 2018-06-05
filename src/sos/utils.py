@@ -1003,7 +1003,7 @@ class SlotManager(object):
     #
     def __init__(self, reset=False, name=None):
         # if a name is not given, the slot will be workflow dependent
-        self.name = name if name else env.config.get('master_md5', 'general')
+        self.name = name if name else env.config.get('master_id', 'general')
         tempdir = os.path.join(tempfile.gettempdir(),
                                getpass.getuser(), 'sos_slots')
         self.lock_file = os.path.join(tempdir, f'{self.name}.lck')
