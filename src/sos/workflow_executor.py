@@ -371,8 +371,7 @@ class Base_Executor:
             env.config['sig_mode'] = 'default'
         # interactive mode does not pass workflow
         self.md5 = self.calculate_md5()
-        env.sos_dict.set('__workflow_sig__', os.path.join(
-            env.exec_dir, '.sos', f'{self.md5}.sig'))
+        env.sos_dict.set('workflow_id', self.md5)
         #
         # the md5 of the master workflow would be passed from master workflow...
         if 'master_id' not in self.config:
@@ -430,8 +429,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
 
         # inject a few things
         if self.md5:
-            env.sos_dict.set('__workflow_sig__', os.path.join(
-                env.exec_dir, '.sos', f'{self.md5}.sig'))
+            env.sos_dict.set('workflow_id', self.md5)
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('__args__', self.args)
         # initial values
@@ -1210,8 +1208,8 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                         shared.update(
                             {x: env.sos_dict[x] for x in svars if x in env.sos_dict and pickleable(env.sos_dict[x], x)})
 
-                    if '__workflow_sig__' in env.sos_dict:
-                        runnable._context['__workflow_sig__'] = env.sos_dict['__workflow_sig__']
+                    if 'workflow_id' in env.sos_dict:
+                        runnable._context['workflow_id'] = env.sos_dict['workflow_id']
 
                     if not nested:
                         env.logger.debug(
@@ -1316,16 +1314,19 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
             env.logger.info(
                 f'Workflow {self.workflow.name} (ID={self.md5}) is {sts} with {self.describe_completed()}.')
             if self.config['output_dag']:
-                env.logger.info(f"Workflow DAG saved to {self.config['output_dag']}")
+                env.logger.info(
+                    f"Workflow DAG saved to {self.config['output_dag']}")
             with workflow_report() as sig:
                 sig.write(f'workflow_end_time\t{self.md5}\t{time.time()}\n')
-                sig.write(f'workflow_stat\t{self.md5}\t{dict(self.completed)}\n')
+                sig.write(
+                    f'workflow_stat\t{self.md5}\t{dict(self.completed)}\n')
                 if self.config['output_dag']:
-                    sig.write(f"workflow_dag\t{self.md5}\t{self.config['output_dag']}\n")
-            if env.config["run_mode"] != 'dryrun' and not parent_pipe and env.config['output_report'] and env.sos_dict.get('__workflow_sig__'):
+                    sig.write(
+                        f"workflow_dag\t{self.md5}\t{self.config['output_dag']}\n")
+            if env.config["run_mode"] != 'dryrun' and not parent_pipe and env.config['output_report'] and env.sos_dict.get('workflow_id'):
                 # if this is the outter most workflow
                 render_report(env.config['output_report'],
-                              env.sos_dict.get('__workflow_sig__'))
+                              env.sos_dict.get('workflow_id'))
         else:
             # exit with pending tasks
             pass

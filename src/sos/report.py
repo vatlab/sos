@@ -14,11 +14,12 @@ from .utils import TimeoutInterProcessLock, env, format_duration, dot_to_gif
 
 @contextmanager
 def workflow_report(mode='a'):
-    if '__workflow_sig__' not in env.sos_dict:
+    if 'workflow_id' not in env.sos_dict:
         with open(os.devnull, "w") as sig:
             yield sig
     else:
-        workflow_sig = env.sos_dict['__workflow_sig__']
+        workflow_sig = os.path.join(
+            env.exec_dir, '.sos', f'{env.sos_dict["workflow_id"]}.sig')
         with TimeoutInterProcessLock(workflow_sig + '_'):
             with open(workflow_sig, mode) as sig:
                 yield sig
@@ -54,7 +55,8 @@ class WorkflowSig(object):
             return time.strftime('%Y-%m-%d %H:%M:%S',
                                  time.localtime(float(self.data['workflow_start_time'][id][0])))
         except Exception as e:
-            env.logger.warning(f'Failed to obtain workflow_start_time {id}: {e}')
+            env.logger.warning(
+                f'Failed to obtain workflow_start_time {id}: {e}')
             return ''
 
     def workflow_end_time(self, id):
@@ -68,7 +70,7 @@ class WorkflowSig(object):
     def workflow_duration(self, id):
         try:
             return format_duration(int(float(self.data['workflow_end_time'][id][0])
-                                     - float(self.data['workflow_start_time'][id][0])))
+                                       - float(self.data['workflow_start_time'][id][0])))
         except Exception as e:
             env.logger.warning(f'Failed to obtain workflow duration {id}: {e}')
             return ''
@@ -84,7 +86,8 @@ class WorkflowSig(object):
         try:
             return self.data['workflow_subworkflows'][id]
         except Exception as e:
-            env.logger.warning(f'Failed to obtain workflow_subworkflows {id}: {e}')
+            env.logger.warning(
+                f'Failed to obtain workflow_subworkflows {id}: {e}')
             return ''
 
     def workflow_command_line(self, id):
@@ -110,19 +113,22 @@ class WorkflowSig(object):
             dag_file = self.data['workflow_dag'][id][0]
             if type == 'dot':
                 return dag_file
-            return dot_to_gif(dag_file, warn = env.logger.warning)
+            return dot_to_gif(dag_file, warn=env.logger.warning)
         except:
             return ''
 
     def tracked_files(self):
         try:
-            files = sum(self.data['input_file'].values(), []) + sum(self.data['output_file'].values(), []) + sum(self.data['dependent_file'].values(), [])
+            files = sum(self.data['input_file'].values(), []) + sum(
+                self.data['output_file'].values(), []) + sum(self.data['dependent_file'].values(), [])
             return [eval(x) for x in files]
         except:
             return []
 
-def render_report(output_file, workflow_info):
-    data = WorkflowSig(workflow_info)
+
+def render_report(output_file, workflow_id):
+    data = WorkflowSig(os.path.join(
+        env.exec_dir, '.sos', f'{workflow_id}.sig'))
     id = data.master_id()
 
     from jinja2 import Environment, PackageLoader, select_autoescape
@@ -130,7 +136,7 @@ def render_report(output_file, workflow_info):
         loader=PackageLoader('sos', 'templates'),
         autoescape=select_autoescape(['html', 'xml'])
     ).get_template('workflow_report.tpl')
-        
+
     with open(output_file, 'w') as wo:
         wo.write(template.render({
             'workflow_name': data.workflow_name(id),

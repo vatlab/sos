@@ -945,8 +945,8 @@ class Base_Step_Executor:
                                                         '__signature_vars__', '__step_context__'
                                                         })
 
-        task_tags = [env.sos_dict.get('step_name', ''), os.path.basename(
-            env.sos_dict.get('__workflow_sig__', '')).rsplit('.', 1)[0]]
+        task_tags = [env.sos_dict.get(
+            'step_name', ''), env.sos_dict.get('workflow_id', '')]
         if 'tags' in env.sos_dict['_runtime']:
             if isinstance(env.sos_dict['_runtime']['tags'], str):
                 tags = [env.sos_dict['_runtime']['tags']]
@@ -988,8 +988,8 @@ class Base_Step_Executor:
 
         # workflow ID should be included but not part of the signature, this is why it is included
         # after task_id is created.
-        if '__workflow_sig__' in env.sos_dict and env.sos_dict['__workflow_sig__']:
-            task_vars['__workflow_sig__'] = env.sos_dict['__workflow_sig__']
+        if 'workflow_id' in env.sos_dict and env.sos_dict['workflow_id']:
+            task_vars['workflow_id'] = env.sos_dict['workflow_id']
 
         if self.task_manager is None:
             if 'trunk_size' in env.sos_dict['_runtime']:
@@ -1075,23 +1075,25 @@ class Base_Step_Executor:
         with workflow_report() as rep:
             for id, result in results.items():
                 # turn to string to avoid naming lookup issue
-                rep_result = {x:(y if isinstance(y, (int, bool, float, str)) else short_repr(y)) for x,y in result.items()}
+                rep_result = {x: (y if isinstance(y, (int, bool, float, str)) else short_repr(
+                    y)) for x, y in result.items()}
                 rep_result['tags'] = ' '.join(self.task_manager.tags(id))
                 try:
                     if 'start_time' in rep_result and rep_result['start_time']:
                         if 'end_time' in rep_result:
-                            rep_result['duration'] = format_duration(int(rep_result['end_time'] 
-                                - rep_result['start_time']))
+                            rep_result['duration'] = format_duration(int(rep_result['end_time']
+                                                                         - rep_result['start_time']))
                             rep_result['end_time'] = time.strftime('%Y-%m-%d %H:%M:%S',
-                                     time.localtime(rep_result['end_time']))
+                                                                   time.localtime(rep_result['end_time']))
                         rep_result['start_time'] = time.strftime('%Y-%m-%d %H:%M:%S',
-                                     time.localtime(rep_result['start_time']))
+                                                                 time.localtime(rep_result['start_time']))
                         if 'peak_cpu' in rep_result:
                             rep_result['peak_cpu'] = f'{rep_result["peak_cpu"]:.1f}%'
                     if 'peak_mem' in rep_result:
                         rep_result['peak_mem'] = f'{rep_result["peak_mem"] / 1024 / 1024 :.1f}Mb'
                 except Exception as e:
-                    env.logger.warning(f'Failed to get time stamps for task {id}: {e}')
+                    env.logger.warning(
+                        f'Failed to get time stamps for task {id}: {e}')
                 rep.write(f'task\t{id}\t{rep_result}\n')
         self.task_manager.clear_submitted()
         for idx, task in enumerate(self.proc_results):
@@ -1262,12 +1264,9 @@ class Base_Step_Executor:
         env.sos_dict.set('step_name', self.step.step_name())
         env.sos_dict.set('step_id', self.step.md5)
         env.sos_dict.set('master_id', env.config.get('master_id', ''))
-        try:
-            env.sos_dict.set('workflow_id', os.path.split(
-                env.sos_dict['__workflow_sig__'])[-1].split('.')[0])
-        except Exception as e:
+        if 'workflow_id' not in env.sos_dict:
             env.logger.debug(
-                f'Failed to set workflow_id for step {self.step.step_name()}: {e}')
+                f'Failed to set workflow_id for step {self.step.step_name()}')
             env.sos_dict.set('workflow_id', env.config.get('master_id', ''))
         # used by nested workflow
         env.sos_dict.set('__step_context__', self.step.context)
@@ -1732,7 +1731,7 @@ class Base_Step_Executor:
                     'output': short_repr(env.sos_dict['step_output']) if env.sos_dict['step_output'] else '',
                     'completed': dict(self.completed)
                 }
-                rep.write(f'step\t{self.step.md5}\t{step_info}\n')            
+                rep.write(f'step\t{self.step.md5}\t{step_info}\n')
             return self.collect_result()
         except KeyboardInterrupt:
             # if the worker_pool is not properly shutdown (e.g. interrupted by KeyboardInterrupt #871)
