@@ -1354,26 +1354,12 @@ class AnswerMachine:
 
 
 def get_tracked_files(sig_file):
-    from .targets import file_target
-    with open(sig_file) as sig:
-        tracked_files = []
-        script_files = []
-        runtime_files = [sig_file]
-        for line in sig:
-            if line.startswith('IN_FILE') or line.startswith('OUT_FILE'):
-                # format is something like IN_FILE\tfilename=xxxx\tsession=...
-                tracked_files.append(line.rsplit('\t', 4)[1][9:])
-                t = file_target(tracked_files[-1])
-                if t.target_exists('signature'):
-                    runtime_files.append(t.sig_file())
-            elif line.startswith('EXE_SIG'):
-                runtime_files.append(
-                    '.sos/.runtime/{}.exe_info'.format(line.split('session=', 1)[1].strip()))
-            elif line.startswith('# script:'):
-                script_files.append(line.split(':', 1)[1].strip())
-            elif line.startswith('# included:'):
-                script_files.extend(line.split(':', 1)[-1].strip().split(','))
-    return set([x for x in script_files if x.strip()]), set(tracked_files), set(runtime_files)
+    from .report import WorkflowSig
+    from .target import file_target
+    sig = WorkflowSig(sig_file)
+    tracked_files = set([x['filename'] for x in sig.tracked_files()])
+    runtime_files = set(x.sig_file() for x in tracked_files if file_target(x).target_exists('signature'))
+    return set(), tracked_files, runtime_files
 
 
 def cmd_remove(args, unknown_args):

@@ -296,7 +296,7 @@ def collect_task_result(task_id, sos_dict, skipped=False):
         x: file_target(x).target_signature() for x in sos_dict['_depends'] if isinstance(x, (str, file_target))}
     return {'ret_code': 0, 'task': task_id, 'input': input, 'output': output, 'depends': depends,
             'shared': {env.sos_dict['_index']: shared}, 'skipped': skipped,
-            'start_time': sos_dict['start_time'], 
+            'start_time': sos_dict.get('start_time', ''),
             'peak_cpu': sos_dict.get('peak_cpu', 0),
             'peak_mem': sos_dict.get('peak_mem', 0),
             'end_time': time.time()}

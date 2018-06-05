@@ -1078,7 +1078,7 @@ class Base_Step_Executor:
                 rep_result = {x:(y if isinstance(y, (int, bool, float, str)) else short_repr(y)) for x,y in result.items()}
                 rep_result['tags'] = ' '.join(self.task_manager.tags(id))
                 try:
-                    if 'start_time' in rep_result:
+                    if 'start_time' in rep_result and rep_result['start_time']:
                         if 'end_time' in rep_result:
                             rep_result['duration'] = format_duration(int(rep_result['end_time'] 
                                 - rep_result['start_time']))

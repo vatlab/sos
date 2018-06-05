@@ -24,7 +24,7 @@ def workflow_report(mode='a'):
                 yield sig
 
 
-class Report(object):
+class WorkflowSig(object):
     def __init__(self, workflow_info):
         self.data = defaultdict(lambda: defaultdict(list))
         with open(workflow_info, 'r') as wi:
@@ -117,8 +117,15 @@ class Report(object):
         except:
             return ''
 
+    def tracked_files(self):
+        try:
+            files = sum(self.data['input_file'].values(), []) + sum(self.data['output_file'].values(), []) + sum(self.data['dependent_file'].values(), [])
+            return [eval(x) for x in files]
+        except:
+            return []
+
 def render_report(output_file, workflow_info):
-    data = Report(workflow_info)
+    data = WorkflowSig(workflow_info)
     id = data.master_id()
 
     from jinja2 import Environment, PackageLoader, select_autoescape
