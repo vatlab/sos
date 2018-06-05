@@ -239,9 +239,7 @@ def preview_md(filename, kernel=None, style=None):
 
 
 def preview_dot(filename, kernel=None, style=None):
-    ret = dot_to_gif(filename, warn = kernel.warn if kernel else env.logger.warning)
-    with open(outfile, 'rb') as content:
-        data = content.read()
+    data = dot_to_gif(filename, warn = kernel.warn if kernel else env.logger.warning)
     # according to https://github.com/ipython/ipython/issues/10045
     # I have to use 'image/png' instead of 'image/gif' to get the gif displayed.
-    return {'image/png': base64.b64encode(data).decode('ascii')}
+    return {'image/png': data}

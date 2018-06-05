@@ -1488,6 +1488,11 @@ def format_par(name, par):
     except:
         return f'--{name} {par}'
 
+def b64_of(filename: str):
+    with open(filename, 'rb') as content:
+        data = content.read()
+    return base64.b64encode(data).decode('ascii')
+
 def dot_to_gif(filename: str, warn = None):
     import glob
     import tempfile
@@ -1499,7 +1504,7 @@ def dot_to_gif(filename: str, warn = None):
         # dot command can generate more than outfiles returned by the render function
         pngFiles = glob.glob(os.path.join(tempDirectory, f'sosDot*.png'))
         if len(pngFiles) == 1:
-            return outfile
+            return b64_of(outfile)
         else:
             import imageio
             # create a gif files from multiple png files
@@ -1510,7 +1515,7 @@ def dot_to_gif(filename: str, warn = None):
             except Exception as e:
                 if warn:
                     warn(f'Failed to read gng file: {e}')
-                return pngFiles[-1]
+                return b64_of(pngFiles[-1])
             maxWidth = max([x.shape[0] for x in images])
             maxHeight = max([x.shape[1] for x in images])
             if images[0].shape[0] < maxWidth or images[0].shape[1] < maxHeight:
@@ -1531,6 +1536,6 @@ def dot_to_gif(filename: str, warn = None):
             except Exception as e:
                 if warn:
                     warn(f'Failed to generate gif animation: {e}')
-                return pngFiles[-1]
-            return gifFile
+                return b64_of(pngFiles[-1])
+            return b64_of(gifFile)
 

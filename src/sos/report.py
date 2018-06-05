@@ -110,10 +110,7 @@ class WorkflowSig(object):
             dag_file = self.data['workflow_dag'][id][0]
             if type == 'dot':
                 return dag_file
-            dag_image = dot_to_gif(dag_file, warn = env.logger.warning)
-            with open(dag_image, 'rb') as content:
-                data = content.read()
-            return base64.b64encode(data).decode('ascii')
+            return dot_to_gif(dag_file, warn = env.logger.warning)
         except:
             return ''
 
