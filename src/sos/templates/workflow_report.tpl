@@ -41,25 +41,25 @@
     <th>Tasks</th>
     </tr>
 
-    {% for step, info in steps.items() %}
+    {% for step in steps %}
         <tr>
-        <td>{{ info.stepname }}</td>
-        <td>{{ info.input }}</td>
-        <td>{{ info.output }}</td>
+        <td>{{ step.stepname }}</td>
+        <td>{{ step.input }}</td>
+        <td>{{ step.output }}</td>
         <td>
-            {% if info.completed.__substep_completed__ %} 
-            {{ info.completed.__substep_completed__ }} completed &nbsp;
+            {% if step.completed.__substep_completed__ %}
+            {{ step.completed.__substep_completed__ }} completed &nbsp;
             {% endif %}
-            {% if info.completed.__substep_skipped__ %} 
-            {{ info.completed.__substep_skipped__ }} ignored
+            {% if step.completed.__substep_skipped__ %}
+            {{ step.completed.__substep_skipped__ }} ignored
             {% endif %}
         </td>
         <td>
-            {% if info.completed.__task_completed__ %} 
-            {{ info.completed.__task_completed__ }} completed &nbsp;
+            {% if step.completed.__task_completed__ %}
+            {{ step.completed.__task_completed__ }} completed &nbsp;
             {% endif %}
-            {% if info.completed.__task_skipped__ %} 
-            {{ info.completed.__task_skipped__ }} ignored
+            {% if step.completed.__task_skipped__ %}
+            {{ step.completed.__task_skipped__ }} ignored
             {% endif %}
         </td>
         </tr>
@@ -138,5 +138,3 @@
     </table>
 </body>
 </html>
-
-

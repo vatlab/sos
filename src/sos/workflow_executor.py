@@ -372,11 +372,18 @@ class Base_Executor:
         # not been set so we set it for all other workflows
         if not env.run_options['master_id']:
             env.run_options['master_id'] = self.md5
-        with workflow_report(mode='w') as sig:
-            sig.write(f'''\
+            with workflow_report(mode='w') as sig:
+                sig.write(f'''\
 workflow_name\t{self.md5}\t{self.workflow.name}
 workflow_start_time\t{self.md5}\t{time.time()}
 workflow_command_line\t{self.md5}\t{subprocess.list2cmdline([os.path.basename(sys.argv[0])] + sys.argv[1:])}
+workflow_subworkflows\t{env.run_options['master_id']}\t{self.md5}
+''')
+        else:
+            with workflow_report() as sig:
+                sig.write(f'''\
+workflow_name\t{self.md5}\t{self.workflow.name}
+workflow_start_time\t{self.md5}\t{time.time()}
 workflow_subworkflows\t{env.run_options['master_id']}\t{self.md5}
 ''')
         #
@@ -423,7 +430,7 @@ workflow_subworkflows\t{env.run_options['master_id']}\t{self.md5}
         env.parameter_vars.clear()
 
         env.sos_dict.set('workflow_id', self.md5)
-        env.sos_dict.set('master_id', env.config['master_id'])
+        env.sos_dict.set('master_id', env.run_options['master_id'])
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('__args__', self.args)
         # initial values

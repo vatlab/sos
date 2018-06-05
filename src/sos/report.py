@@ -14,15 +14,11 @@ from .utils import TimeoutInterProcessLock, env, format_duration, dot_to_gif
 
 @contextmanager
 def workflow_report(mode='a'):
-    if 'workflow_id' not in env.sos_dict:
-        with open(os.devnull, "w") as sig:
+    workflow_sig = os.path.join(
+        env.exec_dir, '.sos', f'{env.run_options["master_id"]}.sig')
+    with TimeoutInterProcessLock(workflow_sig + '_'):
+        with open(workflow_sig, mode) as sig:
             yield sig
-    else:
-        workflow_sig = os.path.join(
-            env.exec_dir, '.sos', f'{env.sos_dict["workflow_id"]}.sig')
-        with TimeoutInterProcessLock(workflow_sig + '_'):
-            with open(workflow_sig, mode) as sig:
-                yield sig
 
 
 class WorkflowSig(object):
@@ -104,7 +100,8 @@ class WorkflowSig(object):
 
     def steps(self):
         try:
-            return {id: eval(res[0]) for id, res in self.data['step'].items()}
+            all_steps = sum(self.data['step'].values(), [])
+            return [eval(x) for x in all_steps]
         except:
             return {}
 

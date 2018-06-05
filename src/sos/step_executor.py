@@ -1720,6 +1720,7 @@ class Base_Step_Executor:
             with workflow_report() as rep:
                 step_info = {
                     'stepname': self.step.step_name(True),
+                    'workflow': env.sos_dict['workflow_id'],
                     'substeps': len(self._substeps),
                     'input': short_repr(env.sos_dict['step_input']) if env.sos_dict['step_input'] else '',
                     'output': short_repr(env.sos_dict['step_output']) if env.sos_dict['step_output'] else '',
