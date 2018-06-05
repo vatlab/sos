@@ -221,7 +221,7 @@ class WorkflowDict(object):
         '''Set value to key, trigger logging and warning messages if needed'''
         if env.verbosity > 2:
             self._log(key, value)
-        if env.config['run_mode'] == 'prepare':
+        if env.run_options['run_mode'] == 'prepare':
             self._warn(key, value)
         if key in ('input', 'output', 'depends', '_input', '_output', '_depends', '_runtime'):
             raise ValueError(f'Variable {key} can only be set by SoS')
@@ -315,8 +315,8 @@ class RuntimeEnvironments(object):
         #
         # run mode, this mode controls how SoS actions behave
         #
-        self.config = defaultdict(str)
-        self.config.update({
+        self.run_options = defaultdict(str)
+        self.run_options.update({
             'config_file': None,
             'output_dag': None,
             'output_report': None,
@@ -1003,7 +1003,8 @@ class SlotManager(object):
     #
     def __init__(self, reset=False, name=None):
         # if a name is not given, the slot will be workflow dependent
-        self.name = name if name else env.config.get('master_id', 'general')
+        self.name = name if name else env.run_options.get(
+            'master_id', 'general')
         tempdir = os.path.join(tempfile.gettempdir(),
                                getpass.getuser(), 'sos_slots')
         self.lock_file = os.path.join(tempdir, f'{self.name}.lck')
@@ -1205,18 +1206,19 @@ def format_duration(seconds: int):
     res = []
     day = seconds // 86400
     if day > 0:
-       res.append(f'{day} day')
-    hh = (seconds % 86400) // 3600;
+        res.append(f'{day} day')
+    hh = (seconds % 86400) // 3600
     if hh > 0:
-      res.append(f'{hh} hr')
-    mm = (seconds % 3600) // 60;
+        res.append(f'{hh} hr')
+    mm = (seconds % 3600) // 60
     if mm > 0:
-      res.append(f'{mm} min')
-    ss = seconds % 60;
+        res.append(f'{mm} min')
+    ss = seconds % 60
     if ss > 0:
-      res.append(f'{ss} sec')
-    res = ' '.join(res);
+        res.append(f'{ss} sec')
+    res = ' '.join(res)
     return res if res else "0 sec"
+
 
 def format_HHMMSS(v):
     if isinstance(v, int):
@@ -1488,12 +1490,14 @@ def format_par(name, par):
     except:
         return f'--{name} {par}'
 
+
 def b64_of(filename: str):
     with open(filename, 'rb') as content:
         data = content.read()
     return base64.b64encode(data).decode('ascii')
 
-def dot_to_gif(filename: str, warn = None):
+
+def dot_to_gif(filename: str, warn=None):
     import glob
     import tempfile
     from graphviz import Source
@@ -1508,7 +1512,8 @@ def dot_to_gif(filename: str, warn = None):
         else:
             import imageio
             # create a gif files from multiple png files
-            pngFiles.sort(key=lambda x: int(os.path.basename(x)[:-3].split('.')[1] or 0))
+            pngFiles.sort(key=lambda x: int(
+                os.path.basename(x)[:-3].split('.')[1] or 0))
             # getting the maximum size
             try:
                 images = [imageio.imread(x) for x in pngFiles]
@@ -1538,4 +1543,3 @@ def dot_to_gif(filename: str, warn = None):
                     warn(f'Failed to generate gif animation: {e}')
                 return b64_of(pngFiles[-1])
             return b64_of(gifFile)
-

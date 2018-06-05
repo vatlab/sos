@@ -68,7 +68,7 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',), default_args={}):
                         raise ValueError(
                             f'Unrecognized option "{key}" for action {func}')
             # docker files will be downloaded in run or prepare mode
-            if 'docker_file' in kwargs and env.config['run_mode'] in ['run', 'interactive']:
+            if 'docker_file' in kwargs and env.run_options['run_mode'] in ['run', 'interactive']:
                 from .docker.client import SoS_DockerClient
                 docker = SoS_DockerClient()
                 docker.load_image(kwargs['docker_file'])
@@ -77,7 +77,7 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',), default_args={}):
                 from .docker.client import SoS_DockerClient
                 docker = SoS_DockerClient()
                 docker.pull(kwargs['docker_image'])
-            if env.config['run_mode'] == 'interactive':
+            if env.run_options['run_mode'] == 'interactive':
                 for k, v in kwargs.items():
                     if k in SOS_RUNTIME_OPTIONS and k not in SOS_ACTION_OPTIONS:
                         env.logger.warning(
@@ -162,7 +162,7 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',), default_args={}):
                 sig = RuntimeInfo(func.__name__, script,
                                   [], tfiles, [], kwargs)
                 sig.lock()
-                if env.config['sig_mode'] == 'default':
+                if env.run_options['sig_mode'] == 'default':
                     matched = sig.validate()
                     if isinstance(matched, dict):
                         env.logger.info(
@@ -170,7 +170,7 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',), default_args={}):
                         return None
                     else:
                         env.logger.debug(f'Signature mismatch: {matched}')
-                elif env.config['sig_mode'] == 'assert':
+                elif env.run_options['sig_mode'] == 'assert':
                     matched = sig.validate()
                     if isinstance(matched, str):
                         raise RuntimeError(f'Signature mismatch: {matched}')
@@ -178,7 +178,7 @@ def SoS_Action(run_mode='deprecated', acceptable_args=('*',), default_args={}):
                         env.logger.info(
                             f"Action ``{func.__name__}`` is ``ignored`` with matching signature")
                         return None
-                elif env.config['sig_mode'] == 'build':
+                elif env.run_options['sig_mode'] == 'build':
                     # build signature require existence of files
                     if sig.write(rebuild=True):
                         env.logger.info(
@@ -269,7 +269,7 @@ class SoS_ExecuteScript:
             self.script = content + self.script
 
         if 'docker_image' in kwargs:
-            if env.config['run_mode'] == 'dryrun':
+            if env.run_options['run_mode'] == 'dryrun':
                 print(
                     f'In docker image {kwargs["docker_image"]}\n{self.interpreter}:\n{self.script}\n')
                 return None
@@ -317,13 +317,13 @@ class SoS_ExecuteScript:
                     # make the script executable
                     os.chmod(script_file, 0o775)
                 #
-                if env.config['run_mode'] == 'dryrun':
+                if env.run_options['run_mode'] == 'dryrun':
                     print(f'{self.interpreter}:\n{self.script}\n')
                     return None
                 cmd = interpolate(f'{self.interpreter} {self.args}',
                                   {'filename': sos_targets(script_file), 'script': self.script})
                 #
-                if env.config['run_mode'] == 'interactive':
+                if env.run_options['run_mode'] == 'interactive':
                     if 'stdout' in kwargs or 'stderr' in kwargs:
                         child = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
                                                  stderr=subprocess.PIPE, bufsize=0)
@@ -485,10 +485,10 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
             #         # tell the master process to receive a workflow
             shared = {
                 x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
-            if env.config['run_mode'] == 'run':
+            if env.run_options['run_mode'] == 'run':
                 from .workflow_executor import Base_Executor
                 executor = Base_Executor(
-                    wf, args=args, shared=shared, config=env.config)
+                    wf, args=args, shared=shared, config=env.run_options)
                 if shared:
                     q = mp.Pipe()
                 else:
@@ -510,7 +510,7 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
             else:
                 from sos_notebook.workflow_executor import Interactive_Executor
                 executor = Interactive_Executor(
-                    wf, args=args, shared=shared, config=env.config)
+                    wf, args=args, shared=shared, config=env.run_options)
                 res = executor.run(targets=targets)
             return res
 
@@ -520,7 +520,7 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
             # really send the workflow
             shared = {
                 x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
-            env.__pipe__.send((wf, targets, args, shared, env.config))
+            env.__pipe__.send((wf, targets, args, shared, env.run_options))
             res = env.__pipe__.recv()
             if res is None:
                 sys.exit(0)
@@ -595,7 +595,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
         if os.path.isfile(dest):
             prog = ProgressBar(desc=message + ': \033[32m validating\033[0m', disable=env.verbosity <= 1,
                                position=index, leave=True, bar_format='{desc}', total=10000000)
-            if env.config['sig_mode'] == 'build':
+            if env.run_options['sig_mode'] == 'build':
                 if decompress:
                     prog.set_description(
                         message + ': \033[32m scanning decompressed files\033[0m')
@@ -646,13 +646,13 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                 prog.update()
                 prog.close()
                 return True, slot
-            elif env.config['sig_mode'] == 'ignore':
+            elif env.run_options['sig_mode'] == 'ignore':
                 prog.set_description(
                     message + ': \033[32m use existing\033[0m')
                 prog.update()
                 prog.close()
                 return True, slot
-            elif env.config['sig_mode'] == 'default':
+            elif env.run_options['sig_mode'] == 'default':
                 prog.update()
                 if sig.validate():
                     prog.set_description(
@@ -826,7 +826,7 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
     applies to domain names and will be applied to multiple download
     instances.
     '''
-    if env.config['run_mode'] == 'dryrun':
+    if env.run_options['run_mode'] == 'dryrun':
         print(f'download\n{URLs}\n')
         return None
     if isinstance(URLs, str):
@@ -962,7 +962,7 @@ def report(script=None, input=None, output=None, **kwargs):
     function will be called with the content. If output is unspecified, the content
     will be written to standard output or appended to a file specified with command
     line option `-r`. '''
-    if env.config['run_mode'] == 'dryrun':
+    if env.run_options['run_mode'] == 'dryrun':
         print(f'report:\n{"" if script is None else script}')
         if input is not None:
             for ifile in input:
@@ -1089,7 +1089,7 @@ def pandoc(script=None, input=None, output=None, args='{input:q} --output {outpu
         p = None
         cmd = interpolate(f'pandoc {args}', {'input': input, 'output': output})
         env.logger.trace(f'Running command "{cmd}"')
-        if env.config['run_mode'] == 'interactive':
+        if env.run_options['run_mode'] == 'interactive':
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
             from .utils import pexpect_run
             ret = pexpect_run(cmd)

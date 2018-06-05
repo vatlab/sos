@@ -115,7 +115,7 @@ class SoS_Worker(mp.Process):
     def reset_dict(self):
         env.sos_dict = WorkflowDict()
         env.parameter_vars.clear()
-        env.config.update(self.config)
+        env.run_options.update(self.config)
 
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('__args__', self.args)
@@ -183,8 +183,8 @@ class SoS_Worker(mp.Process):
     def run_step(self, section, context, shared, args, run_mode, sig_mode, verbosity):
         env.logger.debug(
             f'Worker {self.name} working on {section.step_name()} with args {args}')
-        env.config['run_mode'] = run_mode
-        env.config['sig_mode'] = sig_mode
+        env.run_options['run_mode'] = run_mode
+        env.run_options['sig_mode'] = sig_mode
         env.verbosity = verbosity
         #
         self.args = args
@@ -216,7 +216,7 @@ class SoS_Worker(mp.Process):
         env.sos_dict.quick_update(context)
 
         executor = Step_Executor(
-            section, self.pipe, mode=env.config['run_mode'])
+            section, self.pipe, mode=env.run_options['run_mode'])
         executor.run()
 
 
@@ -358,7 +358,7 @@ class Base_Executor:
 
         self.shared = {} if shared is None else shared
         self.config = {} if config is None else config
-        env.config.update(self.config)
+        env.run_options.update(self.config)
         for key in ('config_file', 'output_dag'):
             if key not in self.config:
                 self.config[key] = None
@@ -367,8 +367,8 @@ class Base_Executor:
                 os.path.expanduser(self.config['config_file']))
         #
         # if the executor is not called from command line, without sigmode setting
-        if env.config['sig_mode'] is None:
-            env.config['sig_mode'] = 'default'
+        if env.run_options['sig_mode'] is None:
+            env.run_options['sig_mode'] = 'default'
         # interactive mode does not pass workflow
         self.md5 = self.calculate_md5()
         env.sos_dict.set('workflow_id', self.md5)
@@ -384,16 +384,16 @@ workflow_command_line\t{self.md5}\t{subprocess.list2cmdline([os.path.basename(sy
 workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
 ''')
         #
-        env.config['resumed_tasks'] = set()
+        env.run_options['resumed_tasks'] = set()
         wf_status = os.path.join(os.path.expanduser(
             '~'), '.sos', self.md5 + '.status')
-        if env.config['resume_mode']:
+        if env.run_options['resume_mode']:
             if os.path.isfile(wf_status):
                 with open(wf_status) as status:
                     for line in status:
                         if line.startswith('pending_task'):
                             _, v = load_var(line)
-                            env.config['resumed_tasks'].add(v[1])
+                            env.run_options['resumed_tasks'].add(v[1])
             else:
                 env.logger.info(f'Workflow {self.md5} has been completed.')
                 sys.exit(0)
@@ -425,7 +425,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
     def reset_dict(self) -> None:
         env.sos_dict = WorkflowDict()
         env.parameter_vars.clear()
-        env.config.update(self.config)
+        env.run_options.update(self.config)
 
         # inject a few things
         if self.md5:
@@ -835,15 +835,15 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
         #
         # if the exexcutor is started from sos_run, these should also be passed
         if 'sig_mode' in self.config:
-            env.config['sig_mode'] = self.config['sig_mode']
+            env.run_options['sig_mode'] = self.config['sig_mode']
         if 'verbosity' in self.config:
             env.verbosity = self.config['verbosity']
 
         self.reset_dict()
-        env.config['run_mode'] = mode
+        env.run_options['run_mode'] = mode
         # passing run_mode to SoS dict so that users can execute blocks of
         # python statements in different run modes.
-        env.sos_dict.set('run_mode', env.config['run_mode'])
+        env.sos_dict.set('run_mode', env.run_options['run_mode'])
 
         wf_result = {'__workflow_id__': my_workflow_id, 'shared': {}}
         # if targets are specified and there are only signatures for them, we need
@@ -851,7 +851,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
         if targets:
             for t in targets:
                 if file_target(t).target_exists('target'):
-                    if env.config['sig_mode'] == 'force':
+                    if env.run_options['sig_mode'] == 'force':
                         env.logger.info(f'Re-generating {t}')
                         file_target(t).remove('both')
                     else:
@@ -860,7 +860,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                     env.logger.info(f'Re-generating {t}')
                     file_target(t).remove('signature')
             targets = [x for x in targets if not file_target(
-                x).target_exists('target') or env.config['sig_mode'] == 'force']
+                x).target_exists('target') or env.run_options['sig_mode'] == 'force']
             if not targets:
                 if parent_pipe:
                     parent_pipe.send(wf_result)
@@ -881,7 +881,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
         #   node: node that is being executed, which is a dummy node
         #       created on the fly for steps passed from nested workflow
         #
-        manager = ExecutionManager(env.config['max_procs'], master=not nested)
+        manager = ExecutionManager(env.run_options['max_procs'], master=not nested)
         #
         # steps sent and queued from the nested workflow
         # they will be executed in random but at a higher priority than the steps
@@ -915,8 +915,8 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                                 f'{i_am()} receives task request {res}')
                             host = res.split(' ')[1]
                             if host == '__default__':
-                                if 'default_queue' in env.config:
-                                    host = env.config['default_queue']
+                                if 'default_queue' in env.run_options:
+                                    host = env.run_options['default_queue']
                                 else:
                                     host = 'localhost'
                             runnable._host = Host(host)
@@ -1216,7 +1216,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                             f'{i_am()} execute {section.md5} from DAG')
                         manager.execute(runnable, config=self.config, args=self.args,
                                         spec=('step', section, runnable._context, shared, self.args,
-                                              env.config['run_mode'], env.config['sig_mode'], env.verbosity))
+                                              env.run_options['run_mode'], env.run_options['sig_mode'], env.verbosity))
                     else:
                         # send the step to the parent
                         step_id = uuid.uuid4()
@@ -1225,7 +1225,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                         parent_pipe.send(f'step {step_id}')
                         q = mp.Pipe()
                         parent_pipe.send((section, runnable._context, shared, self.args,
-                                          env.config['run_mode'], env.config['sig_mode'], env.verbosity, q[1]))
+                                          env.run_options['run_mode'], env.run_options['sig_mode'], env.verbosity, q[1]))
                         # this is a real step
                         manager.add_placeholder_worker(runnable, q[0])
 
@@ -1234,8 +1234,8 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
 
                 # if -W is specified, or all task queues are not wait
                 elif all(x.in_status('task_pending') for x in manager.procs) and \
-                        (env.config['wait_for_task'] is False or
-                         (env.config['wait_for_task'] is None and Host.not_wait_for_tasks())):
+                        (env.run_options['wait_for_task'] is False or
+                         (env.run_options['wait_for_task'] is None and Host.not_wait_for_tasks())):
                     # if all jobs are pending, let us check if all jbos have been submitted.
                     pending_tasks = []
                     running_tasks = []
@@ -1307,7 +1307,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                     f'Failed to clear workflow status file: {e}')
             if self.completed["__step_completed__"] == 0:
                 sts = 'ignored'
-            elif env.config["run_mode"] == 'dryrun':
+            elif env.run_options["run_mode"] == 'dryrun':
                 sts = 'tested successfully'
             else:
                 sts = 'executed successfully'
@@ -1323,9 +1323,9 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                 if self.config['output_dag']:
                     sig.write(
                         f"workflow_dag\t{self.md5}\t{self.config['output_dag']}\n")
-            if env.config["run_mode"] != 'dryrun' and not parent_pipe and env.config['output_report'] and env.sos_dict.get('workflow_id'):
+            if env.run_options["run_mode"] != 'dryrun' and not parent_pipe and env.run_options['output_report'] and env.sos_dict.get('workflow_id'):
                 # if this is the outter most workflow
-                render_report(env.config['output_report'],
+                render_report(env.run_options['output_report'],
                               env.sos_dict.get('workflow_id'))
         else:
             # exit with pending tasks
