@@ -28,6 +28,40 @@
     <tr>
     <th> Worklow Duration</th><td>{{workflow_duration[master_id]}}</td>
     </tr>
+
+    {% if workflow_stat[master_id].__step_completed__  %}
+    <tr>
+    <th>Completed steps</th><td>{{ workflow_stat[master_id].__step_completed__ }}</td>
+    </tr>
+    {% endif %}
+    {% if workflow_stat[master_id].__step_skipped__  %}
+    <tr>
+    <th>Ignored steps</th><td>{{ workflow_stat[master_id].__step_skipped__ }}</td>
+    </tr>
+    {% endif %}
+
+    {% if workflow_stat[master_id].__substep_completed__  %}
+    <tr>
+    <th>Completed substeps</th><td>{{ workflow_stat[master_id].__substep_completed__ }}</td>
+    </tr>
+    {% endif %}
+    {% if workflow_stat[master_id].__substep_skipped__  %}
+    <tr>
+    <th>Ignored substeps</th><td>{{ workflow_stat[master_id].__substep_skipped__ }}</td>
+    </tr>
+    {% endif %}
+
+    {% if workflow_stat[master_id].__task_completed__  %}
+    <tr>
+    <th>Completed tasks</th><td>{{ workflow_stat[master_id].__task_completed__ }}</td>
+    </tr>
+    {% endif %}
+    {% if workflow_stat[master_id].__task_skipped__  %}
+    <tr>
+    <th>Ignored tasks</th><td>{{ workflow_stat[master_id].__task_skipped__ }}</td>
+    </tr>
+    {% endif %}
+
     </table>
 
     {% if subworkflows %}
@@ -137,41 +171,5 @@
 
     {% endif %}
 
-    <h2> Summary </h2>
-    <table class='summary_table'>
-    <tr>
-    {% if workflow_stat.__step_completed__  %}
-    <tr>
-    <th>Completed steps</th><td>{{ workflow_stat.__step_completed__ }}</td>
-    </tr>
-    {% endif %}
-    {% if workflow_stat.__step_skipped__  %}
-    <tr>
-    <th>Ignored steps</th><td>{{ workflow_stat.__step_skipped__ }}</td>
-    </tr>
-    {% endif %}
-
-    {% if workflow_stat.__substep_completed__  %}
-    <tr>
-    <th>Completed substeps</th><td>{{ workflow_stat.__substep_completed__ }}</td>
-    </tr>
-    {% endif %}
-    {% if workflow_stat.__substep_skipped__  %}
-    <tr>
-    <th>Ignored substeps</th><td>{{ workflow_stat.__substep_skipped__ }}</td>
-    </tr>
-    {% endif %}
-
-    {% if workflow_stat.__task_completed__  %}
-    <tr>
-    <th>Completed tasks</th><td>{{ workflow_stat.__task_completed__ }}</td>
-    </tr>
-    {% endif %}
-    {% if workflow_stat.__task_skipped__  %}
-    <tr>
-    <th>Ignored tasks</th><td>{{ workflow_stat.__task_skipped__ }}</td>
-    </tr>
-    {% endif %}
-    </table>
 </body>
 </html>
