@@ -1355,10 +1355,10 @@ class AnswerMachine:
 
 def get_tracked_files(sig_file):
     from .report import WorkflowSig
-    from .target import file_target
+    from .targets import file_target
     sig = WorkflowSig(sig_file)
     tracked_files = set([x['filename'] for x in sig.tracked_files()])
-    runtime_files = set(x.sig_file() for x in tracked_files if file_target(x).target_exists('signature'))
+    runtime_files = set(file_target(x).sig_file() for x in tracked_files if file_target(x).target_exists('signature'))
     return set(), tracked_files, runtime_files
 
 
