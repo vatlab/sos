@@ -183,8 +183,8 @@ class WorkflowDict(object):
 
     def __init__(self, *args, **kwargs):
         self._dict = dict(*args, **kwargs)
-        #self._readonly_vars = {}
-        #self._change_all_cap_vars = None
+        # self._readonly_vars = {}
+        # self._change_all_cap_vars = None
 
     def set(self, key, value):
         '''A short cut to set value to key without triggering any logging
@@ -302,6 +302,8 @@ class RuntimeEnvironments(object):
         return cls._instance
 
     def __init__(self):
+        # this function is used by tests to reset environments
+        # after finishing an test
         self.reset()
 
     _exec_dir = None
@@ -327,6 +329,9 @@ class RuntimeEnvironments(object):
             'max_running_jobs': None,
             'sig_mode': 'default',
             'run_mode': 'run',
+            'verbosity': 1,
+            # determined later
+            'master_id': ''
         })
 
         #
@@ -559,7 +564,7 @@ def get_traceback():
     # print "*** print_exc:"
     # traceback.print_exc()
     # print "*** format_exc, first and last line:"
-    #formatted_lines = traceback.format_exc().splitlines()
+    # formatted_lines = traceback.format_exc().splitlines()
     # print formatted_lines[0]
     # print formatted_lines[-1]
     # print "*** format_exception:"
@@ -1003,8 +1008,7 @@ class SlotManager(object):
     #
     def __init__(self, reset=False, name=None):
         # if a name is not given, the slot will be workflow dependent
-        self.name = name if name else env.run_options.get(
-            'master_id', 'general')
+        self.name = name if name else env.run_options['master_id']
         tempdir = os.path.join(tempfile.gettempdir(),
                                getpass.getuser(), 'sos_slots')
         self.lock_file = os.path.join(tempdir, f'{self.name}.lck')

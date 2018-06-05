@@ -1036,7 +1036,8 @@ class Base_Step_Executor:
     def wait_for_results(self):
         if self.concurrent_substep:
             sm = SlotManager()
-            nMax = env.run_options.get('max_procs', max(int(os.cpu_count() / 2), 1))
+            nMax = env.run_options.get(
+                'max_procs', max(int(os.cpu_count() / 2), 1))
             if nMax > self.worker_pool._processes - 1 and len(self._substeps) > nMax:
                 # use billiard pool, can expand pool if more slots are available
                 while True:
@@ -1263,11 +1264,12 @@ class Base_Step_Executor:
         #               actions dynamically.
         env.sos_dict.set('step_name', self.step.step_name())
         env.sos_dict.set('step_id', self.step.md5)
-        env.sos_dict.set('master_id', env.run_options.get('master_id', ''))
+        env.sos_dict.set('master_id', env.run_options['master_id'])
         if 'workflow_id' not in env.sos_dict:
-            env.logger.debug(
+            env.logger.warning(
                 f'Failed to set workflow_id for step {self.step.step_name()}')
-            env.sos_dict.set('workflow_id', env.run_options.get('master_id', ''))
+            env.sos_dict.set(
+                'workflow_id', env.run_options['master_id'])
         # used by nested workflow
         env.sos_dict.set('__step_context__', self.step.context)
 

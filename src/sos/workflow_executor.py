@@ -109,13 +109,12 @@ class SoS_Worker(mp.Process):
         super(SoS_Worker, self).__init__(**kwargs)
         #
         self.pipe = pipe
-        self.config = {} if config is None else config
+        env.run_options.update(config)
         self.args = [] if args is None else args
 
     def reset_dict(self):
         env.sos_dict = WorkflowDict()
         env.parameter_vars.clear()
-        env.run_options.update(self.config)
 
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('__args__', self.args)
@@ -124,7 +123,7 @@ class SoS_Worker(mp.Process):
         env.sos_dict.set('__step_output__', [])
 
         # load configuration files
-        load_config_files(self.config['config_file'])
+        load_config_files(env.run_options['config_file'])
 
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
@@ -337,7 +336,7 @@ class Base_Executor:
     set up and tear functions for all executors.'''
 
     def __init__(self, workflow: Optional[SoS_Workflow] = None, args: Optional[Any] = None, shared: None = None,
-                 config: Optional[Dict[str, Any]] = None) -> None:
+                 config: Optional[Dict[str, Any]] = {}) -> None:
         self.workflow = workflow
         self.args = [] if args is None else args
         if '__args__' not in self.args:
@@ -357,14 +356,10 @@ class Base_Executor:
                             f'Undefined parameter {arg[2:]} for command line argument "{" ".join(args[idx:])}". Acceptable parameters are: {", ".join(wf_pars)}')
 
         self.shared = {} if shared is None else shared
-        self.config = {} if config is None else config
-        env.run_options.update(self.config)
-        for key in ('config_file', 'output_dag'):
-            if key not in self.config:
-                self.config[key] = None
-        if self.config['config_file'] is not None:
-            self.config['config_file'] = os.path.abspath(
-                os.path.expanduser(self.config['config_file']))
+        env.run_options.update(config)
+        if env.run_options['config_file'] is not None:
+            env.run_options['config_file'] = os.path.abspath(
+                os.path.expanduser(env.run_options['config_file']))
         #
         # if the executor is not called from command line, without sigmode setting
         if env.run_options['sig_mode'] is None:
@@ -373,15 +368,16 @@ class Base_Executor:
         self.md5 = self.calculate_md5()
         env.sos_dict.set('workflow_id', self.md5)
         #
-        # the md5 of the master workflow would be passed from master workflow...
-        if 'master_id' not in self.config:
-            self.config['master_id'] = self.md5
+        # if this is the outter most workflow, master)id should have =
+        # not been set so we set it for all other workflows
+        if not env.run_options['master_id']:
+            env.run_options['master_id'] = self.md5
         with workflow_report(mode='w') as sig:
-            sig.write(f'''
+            sig.write(f'''\
 workflow_name\t{self.md5}\t{self.workflow.name}
 workflow_start_time\t{self.md5}\t{time.time()}
 workflow_command_line\t{self.md5}\t{subprocess.list2cmdline([os.path.basename(sys.argv[0])] + sys.argv[1:])}
-workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
+workflow_subworkflows\t{env.run_options['master_id']}\t{self.md5}
 ''')
         #
         env.run_options['resumed_tasks'] = set()
@@ -398,10 +394,10 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                 env.logger.info(f'Workflow {self.md5} has been completed.')
                 sys.exit(0)
         # wait is None or True, and there is task
-        elif self.config.get('wait_for_task', None) is not True and self.workflow.has_external_task():
+        elif env.run_options['wait_for_task'] is not True and self.workflow.has_external_task():
             with open(wf_status, 'w') as wf:
                 # overwrite previous file
-                for key, val in self.config.items():
+                for key, val in env.run_options.items():
                     wf.write(save_var(key, val))
 
         # if this is a resumed task?
@@ -425,7 +421,6 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
     def reset_dict(self) -> None:
         env.sos_dict = WorkflowDict()
         env.parameter_vars.clear()
-        env.run_options.update(self.config)
 
         # inject a few things
         if self.md5:
@@ -437,7 +432,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
         env.sos_dict.set('__step_output__', [])
 
         # load configuration files
-        load_config_files(self.config['config_file'])
+        load_config_files(env.run_options['config_file'])
         # if check_readonly is set to True, allow checking readonly vars
         # if cfg.get('sos', {}).get('change_all_cap_vars', None) is not None:
         #    if cfg['sos']['change_all_cap_vars'] not in ('warning', 'error'):
@@ -780,7 +775,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
             raise RuntimeError(
                 f'Circular dependency detected {cycle}. It is likely a later step produces input of a previous step.')
 
-        dag.save(self.config['output_dag'], init=not nested)
+        dag.save(env.run_options['output_dag'], init=not nested)
         return dag
 
     def describe_completed(self):
@@ -832,13 +827,6 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
         def i_am():
             return 'Nested' if nested else 'Master'
 
-        #
-        # if the exexcutor is started from sos_run, these should also be passed
-        if 'sig_mode' in self.config:
-            env.run_options['sig_mode'] = self.config['sig_mode']
-        if 'verbosity' in self.config:
-            env.verbosity = self.config['verbosity']
-
         self.reset_dict()
         env.run_options['run_mode'] = mode
         # passing run_mode to SoS dict so that users can execute blocks of
@@ -881,7 +869,8 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
         #   node: node that is being executed, which is a dummy node
         #       created on the fly for steps passed from nested workflow
         #
-        manager = ExecutionManager(env.run_options['max_procs'], master=not nested)
+        manager = ExecutionManager(
+            env.run_options['max_procs'], master=not nested)
         #
         # steps sent and queued from the nested workflow
         # they will be executed in random but at a higher priority than the steps
@@ -928,7 +917,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                             for task in new_tasks:
                                 runnable._host.submit_task(task)
                             runnable._status = 'task_pending'
-                            dag.save(self.config['output_dag'])
+                            dag.save(env.run_options['output_dag'])
                             env.logger.trace('Step becomes task_pending')
                             continue
                         elif res.startswith('step'):
@@ -953,12 +942,12 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                             # now we would like to find a worker and
                             runnable._pending_workflow = workflow_id
                             runnable._status = 'workflow_pending'
-                            dag.save(self.config['output_dag'])
+                            dag.save(env.run_options['output_dag'])
 
                             wfrunnable = dummy_node()
                             wfrunnable._node_id = workflow_id
                             wfrunnable._status = 'workflow_running_pending'
-                            dag.save(self.config['output_dag'])
+                            dag.save(env.run_options['output_dag'])
                             wfrunnable._pending_workflow = workflow_id
                             #
                             manager.execute(wfrunnable, config=config, args=args,
@@ -978,11 +967,11 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                         # if the runnable is from nested, we will need to send the result back to the workflow
                         env.logger.debug(f'{i_am()} send res to nested')
                         runnable._status = 'completed'
-                        dag.save(self.config['output_dag'])
+                        dag.save(env.run_options['output_dag'])
                         runnable._child_pipe.send(res)
                     elif isinstance(res, (UnknownTarget, RemovedTarget)):
                         runnable._status = None
-                        dag.save(self.config['output_dag'])
+                        dag.save(env.run_options['output_dag'])
                         target = res.target
                         # we can resolve all sorts of target but the DAG only accept string format of file_targe
                         if isinstance(target, path):
@@ -1012,10 +1001,10 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                             if cycle:
                                 raise RuntimeError(
                                     f'Circular dependency detected {cycle}. It is likely a later step produces input of a previous step.')
-                        dag.save(self.config['output_dag'])
+                        dag.save(env.run_options['output_dag'])
                     elif isinstance(res, UnavailableLock):
                         runnable._status = 'signature_pending'
-                        dag.save(self.config['output_dag'])
+                        dag.save(env.run_options['output_dag'])
                         runnable._signature = (res.output, res.sig_file)
                         section = self.workflow.section_by_id(
                             runnable._step_uuid)
@@ -1025,7 +1014,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                     elif isinstance(res, Exception):
                         env.logger.debug(f'{i_am()} received an exception')
                         runnable._status = 'failed'
-                        dag.save(self.config['output_dag'])
+                        dag.save(env.run_options['output_dag'])
                         exec_error.append(runnable._node_id, res)
                         # if this is a node for a running workflow, need to mark it as failed as well
                         #                        for proc in procs:
@@ -1036,7 +1025,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                                 if proc.is_pending() and hasattr(proc.step, '_pending_workflow') \
                                         and proc.step._pending_workflow == runnable._pending_workflow:
                                     proc.set_status('failed')
-                            dag.save(self.config['output_dag'])
+                            dag.save(env.run_options['output_dag'])
                         prog.update(1)
                     elif '__step_name__' in res:
                         env.logger.debug(f'{i_am()} receive step result ')
@@ -1073,7 +1062,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                         ),
                             env.sos_dict['__step_depends__'].targets())
                         runnable._status = 'completed'
-                        dag.save(self.config['output_dag'])
+                        dag.save(env.run_options['output_dag'])
                         prog.update(1)
                     elif '__workflow_id__' in res:
                         # result from a workflow
@@ -1094,7 +1083,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                                 proc.pipe.send(res)
                                 proc.set_status('running')
                                 break
-                        dag.save(self.config['output_dag'])
+                        dag.save(env.run_options['output_dag'])
                     else:
                         raise RuntimeError(
                             f'Unrecognized response from a step: {res}')
@@ -1112,7 +1101,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                         if any(x in ('aborted', 'failed', 'signature-mismatch') for x in res):
                             for t, s in zip(proc.step._pending_tasks, res):
                                 if s in ('aborted', 'failed', 'signature-mismatch') and not (hasattr(proc.step, '_killed_tasks') and t in proc.step._killed_tasks):
-                                    #env.logger.warning(f'{t} ``{s}``')
+                                    # env.logger.warning(f'{t} ``{s}``')
                                     if not hasattr(proc.step, '_killed_tasks'):
                                         proc.step._killed_tasks = {t}
                                     else:
@@ -1147,7 +1136,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
 
                 # step 3: check if there is room and need for another job
                 while True:
-                    #env.logger.error('{} {}'.format(i_am(), [x.status() for x in procs]))
+                    # env.logger.error('{} {}'.format(i_am(), [x.status() for x in procs]))
                     if manager.all_busy():
                         break
                     #
@@ -1159,14 +1148,14 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                         runnable = dummy_node()
                         runnable._node_id = step_id
                         runnable._status = 'running'
-                        dag.save(self.config['output_dag'])
+                        dag.save(env.run_options['output_dag'])
                         runnable._from_nested = True
                         runnable._child_pipe = pipe
 
                         env.logger.debug(
                             f'{i_am()} sends {section.step_name()} from step queue with args {args} and context {context}')
 
-                        manager.execute(runnable, config=self.config, args=self.args,
+                        manager.execute(runnable, config=env.run_options, args=self.args,
                                         spec=('step', section, context, shared, args, run_mode, sig_mode, verbosity))
                         continue
 
@@ -1182,7 +1171,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                     section = self.workflow.section_by_id(runnable._step_uuid)
                     # execute section with specified input
                     runnable._status = 'running'
-                    dag.save(self.config['output_dag'])
+                    dag.save(env.run_options['output_dag'])
 
                     # workflow shared variables
                     shared = {x: env.sos_dict[x] for x in self.shared.keys(
@@ -1214,7 +1203,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                     if not nested:
                         env.logger.debug(
                             f'{i_am()} execute {section.md5} from DAG')
-                        manager.execute(runnable, config=self.config, args=self.args,
+                        manager.execute(runnable, config=env.run_options, args=self.args,
                                         spec=('step', section, runnable._context, shared, self.args,
                                               env.run_options['run_mode'], env.run_options['sig_mode'], env.verbosity))
                     else:
@@ -1280,7 +1269,7 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
             # if failed_steps:
-            #sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in failed_steps]
+            # sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in failed_steps]
             # exec_error.append(self.workflow.name,
             #    RuntimeError('{} failed step{}: {}'.format(len(sections),
             #        's' if len(sections) > 1 else '', ', '.join(sections))))
@@ -1313,16 +1302,16 @@ workflow_subworkflows\t{self.config['master_id']}\t{self.md5}
                 sts = 'executed successfully'
             env.logger.info(
                 f'Workflow {self.workflow.name} (ID={self.md5}) is {sts} with {self.describe_completed()}.')
-            if self.config['output_dag']:
+            if env.run_options['output_dag']:
                 env.logger.info(
-                    f"Workflow DAG saved to {self.config['output_dag']}")
+                    f"Workflow DAG saved to {env.run_options['output_dag']}")
             with workflow_report() as sig:
                 sig.write(f'workflow_end_time\t{self.md5}\t{time.time()}\n')
                 sig.write(
                     f'workflow_stat\t{self.md5}\t{dict(self.completed)}\n')
-                if self.config['output_dag']:
+                if env.run_options['output_dag']:
                     sig.write(
-                        f"workflow_dag\t{self.md5}\t{self.config['output_dag']}\n")
+                        f"workflow_dag\t{self.md5}\t{env.run_options['output_dag']}\n")
             if env.run_options["run_mode"] != 'dryrun' and not parent_pipe and env.run_options['output_report'] and env.sos_dict.get('workflow_id'):
                 # if this is the outter most workflow
                 render_report(env.run_options['output_report'],
