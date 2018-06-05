@@ -23,6 +23,7 @@ if you have helped fixing bugs or making improvements to the source code.
 
 SoS 0.9.14.3:
 * [sos#975](https://github.com/vatlab/SoS/issues/975): Add option `-p` to generate a summary report after the completion of workflow.
+* [sos#976](https://github.com/vatlab/SoS/issues/976): Much improved workflow help message (`sos run script -h`).
 
 SoS Notebook 0.9.14.4:
 * [sos-notebook#79](https://github.com/vatlab/sos-notebook/issues/79): Allow auto-completion and inspection in subkernel cells.
