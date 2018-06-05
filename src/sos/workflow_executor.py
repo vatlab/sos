@@ -381,7 +381,7 @@ class Base_Executor:
             sig.write(f'''
 workflow_name\t{self.md5}\t{self.workflow.name}
 workflow_start_time\t{self.md5}\t{time.time()}
-workflow_command_line\t{self.md5}\t{subprocess.list2cmdline(sys.argv)}
+workflow_command_line\t{self.md5}\t{subprocess.list2cmdline([os.path.basename(sys.argv[0])] + sys.argv[1:])}
 workflow_subworkflows\t{self.config['master_md5']}\t{self.md5}
 ''')
         #
