@@ -627,7 +627,7 @@ _output = ['b.txt']
 
 """)
         wf = script.workflow()
-        env.config['run_mode'] = 'dryrun'
+        env.run_options['run_mode'] = 'dryrun'
         # I would like to disallow setting _output directly, but this is
         # not the case now.
         self.assertRaises(Exception, Base_Executor(wf).run, mode="dryrun")
@@ -776,7 +776,7 @@ touch {_input}.bak
             shutil.rmtree('temp')
         os.mkdir('temp')
         #
-        env.config['sig_mode'] = 'ignore'
+        env.run_options['sig_mode'] = 'ignore'
         script = SoS_Script('''
 [1]
 rep = range(5)
@@ -800,7 +800,7 @@ touch temp/{ff}
         if os.path.isdir('temp'):
             shutil.rmtree('temp')
         os.mkdir('temp')
-        env.config['sig_mode'] = 'ignore'
+        env.run_options['sig_mode'] = 'ignore'
         script = SoS_Script('''
 [1: shared={'res': '_output'}]
 import random
@@ -872,7 +872,7 @@ run: expand=True
         if os.path.isdir('temp'):
             shutil.rmtree('temp')
         os.mkdir('temp')
-        env.config['sig_mode'] = 'ignore'
+        env.run_options['sig_mode'] = 'ignore'
         script = SoS_Script('''
 [default]
 s = [x for x in range(5)]
@@ -907,7 +907,7 @@ echo {step_output} >> temp/out.log
 touch {step_output}
         ''')
         wf = script.workflow()
-        env.config['sig_mode'] = 'ignore'
+        env.run_options['sig_mode'] = 'ignore'
         Base_Executor(wf).run()
         with open('temp/out.log') as out:
             self.assertEqual(len(out.read().split()), 15)

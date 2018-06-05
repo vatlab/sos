@@ -422,9 +422,8 @@ workflow_subworkflows\t{env.run_options['master_id']}\t{self.md5}
         env.sos_dict = WorkflowDict()
         env.parameter_vars.clear()
 
-        # inject a few things
-        if self.md5:
-            env.sos_dict.set('workflow_id', self.md5)
+        env.sos_dict.set('workflow_id', self.md5)
+        env.sos_dict.set('master_id', env.config['master_id'])
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('__args__', self.args)
         # initial values

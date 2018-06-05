@@ -68,8 +68,8 @@ with open(os.path.join({1!r}, 'result.txt'), 'w') as res:
        res.write(file + '\n')
 """.format(os.path.split(tdir)[0], os.path.split(tdir)[1])
         wf = SoS_Script(script).workflow()
-        env.config['sig_mode'] = 'force'
-        env.config['wait_for_task'] = True
+        env.run_options['sig_mode'] = 'force'
+        env.run_options['wait_for_task'] = True
         Base_Executor(wf).run()
         with open(os.path.join(tdir, 'result.txt')) as res:
             content = [x.strip() for x in res.readlines()]
@@ -78,8 +78,8 @@ with open(os.path.join({1!r}, 'result.txt'), 'w') as res:
     def testSequential(self):
         '''Test concurrency option for runtime environment'''
         env.max_jobs = 5
-        env.config['sig_mode'] = 'force'
-        env.config['wait_for_task'] = True
+        env.run_options['sig_mode'] = 'force'
+        env.run_options['wait_for_task'] = True
         script = SoS_Script(r"""
 import time
 [0]
@@ -93,7 +93,7 @@ print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
 time.sleep(_repeat + 1)
 print('I am {}, done'.format(_index))
 """)
-        env.config['wait_for_task'] = True
+        env.run_options['wait_for_task'] = True
         wf = script.workflow()
         start = time.time()
         Base_Executor(wf).run()
@@ -102,7 +102,7 @@ print('I am {}, done'.format(_index))
     def testConcurrency(self):
         '''Test concurrency option for runtime environment'''
         env.max_jobs = 5
-        env.config['sig_mode'] = 'force'
+        env.run_options['sig_mode'] = 'force'
         script = SoS_Script(r"""
 [0]
 
@@ -139,7 +139,7 @@ run:
     temp_cmd
 """)
         wf = script.workflow()
-        env.config['sig_mode'] = 'force'
+        env.run_options['sig_mode'] = 'force'
         #self.assertRaises(Exception, Base_Executor(wf).run)
         #
         # the following is supposed to create its own task file but
@@ -153,7 +153,7 @@ run:
     temp_cmd
 """)
         wf = script.workflow()
-        env.config['sig_mode'] = 'force'
+        env.run_options['sig_mode'] = 'force'
         Base_Executor(wf).run()
         #
         #
@@ -207,8 +207,8 @@ echo {ff}
 touch temp/{ff}
 ''' % active).replace('/', os.sep))
             wf = script.workflow()
-            env.config['sig_mode'] = 'force'
-            env.config['wait_for_task'] = True
+            env.run_options['sig_mode'] = 'force'
+            env.run_options['wait_for_task'] = True
             Host.reset()
             Base_Executor(wf).run()
             files = list(glob.glob(os.path.join('temp', '*.txt')))
@@ -223,7 +223,7 @@ touch temp/{ff}
         for i in range(10, 13):
             file_target('myfile_{}.txt'.format(i)).remove('both')
         #
-        env.config['sig_mode'] = 'force'
+        env.run_options['sig_mode'] = 'force'
         script = SoS_Script(r'''
 parameter: gvar = 10
 
@@ -242,7 +242,7 @@ run: expand=True
 ''')
         wf = script.workflow()
         env.max_jobs = 4
-        env.config['wait_for_task'] = True
+        env.run_options['wait_for_task'] = True
         Base_Executor(wf).run()
         for t in range(10, 13):
             with open('myfile_{}.txt'.format(t)) as tmp:
@@ -260,8 +260,8 @@ task:
 run: expand=True
     echo "a = {a}, b = {b}"
 ''')
-        env.config['wait_for_task'] = True
-        env.config['max_running_jobs'] = 2
+        env.run_options['wait_for_task'] = True
+        env.run_options['max_running_jobs'] = 2
         wf = script.workflow()
         Base_Executor(wf).run()
 
@@ -278,9 +278,9 @@ run: expand=True
     sleep 20
 ''')
         wf = script.workflow()
-        env.config['sig_mode'] = 'force'
-        env.config['max_running_jobs'] = 4
-        env.config['wait_for_task'] = False
+        env.run_options['sig_mode'] = 'force'
+        env.run_options['max_running_jobs'] = 4
+        env.run_options['wait_for_task'] = False
         ret = Base_Executor(wf).run()
         # sos should quit
         self.assertGreater(len(ret['pending_tasks']), 1)
@@ -332,18 +332,18 @@ run: expand=True
 ''')
         wf = script.workflow()
         #st = time.time()
-        env.config['sig_mode'] = 'force'
-        env.config['max_procs'] = 4
-        env.config['wait_for_task'] = False
+        env.run_options['sig_mode'] = 'force'
+        env.run_options['max_procs'] = 4
+        env.run_options['wait_for_task'] = False
         ret = Base_Executor(wf).run()
         # sos should quit
         self.assertGreater(len(ret['pending_tasks']), 0)
         #
         time.sleep(38)
         print('RESTART')
-        env.config['sig_mode'] = 'default'
-        env.config['wait_for_task'] = True
-        env.config['resume_mode'] = True
+        env.run_options['sig_mode'] = 'default'
+        env.run_options['wait_for_task'] = True
+        env.run_options['resume_mode'] = True
         #st = time.time()
         try:
             Base_Executor(wf).run()
@@ -355,12 +355,12 @@ run: expand=True
             pass
         #
         # rerun task in different mode
-        env.config['resume_mode'] = False
-        env.config['wait_for_task'] = True
+        env.run_options['resume_mode'] = False
+        env.run_options['wait_for_task'] = True
         Base_Executor(wf).run()
-        env.config['sig_mode'] = 'assert'
+        env.run_options['sig_mode'] = 'assert'
         Base_Executor(wf).run()
-        env.config['sig_mode'] = 'build'
+        env.run_options['sig_mode'] = 'build'
         Base_Executor(wf).run()
 
     def testSharedOption(self):

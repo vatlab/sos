@@ -945,8 +945,7 @@ class Base_Step_Executor:
                                                         '__signature_vars__', '__step_context__'
                                                         })
 
-        task_tags = [env.sos_dict.get(
-            'step_name', ''), env.sos_dict.get('workflow_id', '')]
+        task_tags = [env.sos_dict['step_name'], env.sos_dict['workflow_id']]
         if 'tags' in env.sos_dict['_runtime']:
             if isinstance(env.sos_dict['_runtime']['tags'], str):
                 tags = [env.sos_dict['_runtime']['tags']]
@@ -988,8 +987,7 @@ class Base_Step_Executor:
 
         # workflow ID should be included but not part of the signature, this is why it is included
         # after task_id is created.
-        if 'workflow_id' in env.sos_dict and env.sos_dict['workflow_id']:
-            task_vars['workflow_id'] = env.sos_dict['workflow_id']
+        task_vars['workflow_id'] = env.sos_dict['workflow_id']
 
         if self.task_manager is None:
             if 'trunk_size' in env.sos_dict['_runtime']:
@@ -1264,12 +1262,6 @@ class Base_Step_Executor:
         #               actions dynamically.
         env.sos_dict.set('step_name', self.step.step_name())
         env.sos_dict.set('step_id', self.step.md5)
-        env.sos_dict.set('master_id', env.run_options['master_id'])
-        if 'workflow_id' not in env.sos_dict:
-            env.logger.warning(
-                f'Failed to set workflow_id for step {self.step.step_name()}')
-            env.sos_dict.set(
-                'workflow_id', env.run_options['master_id'])
         # used by nested workflow
         env.sos_dict.set('__step_context__', self.step.context)
 
