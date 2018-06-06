@@ -163,6 +163,7 @@ class SoS_Worker(mp.Process):
         #
         # get workflow, args, shared, and config
         self.args = args
+        env.config.update(config)
         self.reset_dict()
         # we are in a separate process and need to set verbosity from workflow config
         # but some tests do not provide verbosity
@@ -179,11 +180,10 @@ class SoS_Worker(mp.Process):
         except Exception as e:
             self.pipe.send(e)
 
-    def run_step(self, section, context, shared, args, run_mode, sig_mode, verbosity):
+    def run_step(self, section, context, shared, args, config, verbosity):
         env.logger.debug(
             f'Worker {self.name} working on {section.step_name()} with args {args}')
-        env.config['run_mode'] = run_mode
-        env.config['sig_mode'] = sig_mode
+        env.config.update(config)
         env.verbosity = verbosity
         #
         self.args = args
@@ -435,6 +435,7 @@ workflow\t{self.md5}\t{workflow_info}
 
         # load configuration files
         load_config_files(env.config['config_file'])
+
         # if check_readonly is set to True, allow checking readonly vars
         # if cfg.get('sos', {}).get('change_all_cap_vars', None) is not None:
         #    if cfg['sos']['change_all_cap_vars'] not in ('warning', 'error'):
@@ -1145,7 +1146,7 @@ workflow\t{self.md5}\t{workflow_info}
                     # if steps from child nested workflow?
                     if self.step_queue:
                         step_id, step_param = self.step_queue.popitem()
-                        section, context, shared, args, run_mode, sig_mode, verbosity, pipe = step_param
+                        section, context, shared, args, config, verbosity, pipe = step_param
                         # run it!
                         runnable = dummy_node()
                         runnable._node_id = step_id
@@ -1158,7 +1159,7 @@ workflow\t{self.md5}\t{workflow_info}
                             f'{i_am()} sends {section.step_name()} from step queue with args {args} and context {context}')
 
                         manager.execute(runnable, config=env.config, args=self.args,
-                                        spec=('step', section, context, shared, args, run_mode, sig_mode, verbosity))
+                                        spec=('step', section, context, shared, args, config, verbosity))
                         continue
 
                     # find any step that can be executed and run it, and update the DAT
@@ -1207,7 +1208,7 @@ workflow\t{self.md5}\t{workflow_info}
                             f'{i_am()} execute {section.md5} from DAG')
                         manager.execute(runnable, config=env.config, args=self.args,
                                         spec=('step', section, runnable._context, shared, self.args,
-                                              env.config['run_mode'], env.config['sig_mode'], env.verbosity))
+                                              env.config, env.verbosity))
                     else:
                         # send the step to the parent
                         step_id = uuid.uuid4()
@@ -1216,7 +1217,7 @@ workflow\t{self.md5}\t{workflow_info}
                         parent_pipe.send(f'step {step_id}')
                         q = mp.Pipe()
                         parent_pipe.send((section, runnable._context, shared, self.args,
-                                          env.config['run_mode'], env.config['sig_mode'], env.verbosity, q[1]))
+                                          env.config, env.verbosity, q[1]))
                         # this is a real step
                         manager.add_placeholder_worker(runnable, q[0])
 
