@@ -1713,17 +1713,27 @@ class Base_Step_Executor:
             #
             self.verify_output()
             with workflow_report() as rep:
+                substeps = self.completed['__substep_completed__'] + \
+                    self.completed['__substep_skipped__']
+                self.completed['__step_completed__'] = self.completed['__substep_completed__'] / substeps
+                self.completed['__step_skipped__'] = self.completed['__substep_skipped__'] / substeps
+                if self.completed['__step_completed__'].is_integer():
+                    self.completed['__step_completed__'] = int(
+                        self.completed['__step_completed__'])
+                if self.completed['__step_skipped__'].is_integer():
+                    self.completed['__step_skipped__'] = int(
+                        self.completed['__step_skipped__'])
                 step_info = {
                     'start_time': self.start_time,
                     'stepname': self.step.step_name(True),
-                    'workflow': env.sos_dict['workflow_id'],
                     'substeps': len(self._substeps),
                     'input': short_repr(env.sos_dict['step_input']) if env.sos_dict['step_input'] else '',
                     'output': short_repr(env.sos_dict['step_output']) if env.sos_dict['step_output'] else '',
                     'completed': dict(self.completed),
                     'end_time': time.time()
                 }
-                rep.write(f'step\t{self.step.md5}\t{step_info}\n')
+                rep.write(
+                    f'step\t{env.sos_dict["workflow_id"]}\t{step_info}\n')
             return self.collect_result()
         except KeyboardInterrupt:
             # if the worker_pool is not properly shutdown (e.g. interrupted by KeyboardInterrupt #871)

@@ -34,19 +34,22 @@ class WorkflowSig(object):
 
     def convert_time(self, info):
         if 'start_time' in info:
-            info['start_time_str'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(info['start_time']))
+            info['start_time_str'] = time.strftime(
+                '%Y-%m-%d %H:%M:%S', time.localtime(info['start_time']))
         if 'end_time' in info:
-            info['end_time_str'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(info['end_time']))
+            info['end_time_str'] = time.strftime(
+                '%Y-%m-%d %H:%M:%S', time.localtime(info['end_time']))
         if 'start_time' in info and 'end_time' in info:
             info['duration'] = int(info['end_time'] - info['start_time'])
             info['duration_str'] = format_duration(info['duration'])
+        return info
 
     def workflows(self):
         try:
             # workflows has format
-            #workflow  workflow_id dict1
-            #workflow  workflow_id dict2
-            #workflow  workflow_id2 dict1
+            # workflow  workflow_id dict1
+            # workflow  workflow_id dict2
+            # workflow  workflow_id2 dict1
             workflows = defaultdict(dict)
             for id, values in self.data['workflow'].items():
                 for val in values:
@@ -55,9 +58,11 @@ class WorkflowSig(object):
                 self.convert_time(v)
                 if 'dag' in v:
                     try:
-                        v['dag_img'] = dot_to_gif(v['dag'], warn=env.logger.warning)
+                        v['dag_img'] = dot_to_gif(
+                            v['dag'], warn=env.logger.warning)
                     except Exception as e:
-                        env.logger.warning(f'Failed to obtain convert dag to image: {e}')
+                        env.logger.warning(
+                            f'Failed to obtain convert dag to image: {e}')
             return workflows
         except Exception as e:
             env.logger.warning(f'Failed to obtain workflow information: {e}')
@@ -79,10 +84,7 @@ class WorkflowSig(object):
 
     def steps(self):
         try:
-            all_steps = [eval(x) for x in sum(self.data['step'].values(), [])]
-            for step in all_steps:
-                self.convert_time(step)
-            return all_steps
+            return {wf: [self.convert_time(eval(x)) for x in steps] for wf, steps in self.data['step'].items()}
         except:
             return {}
 
@@ -94,15 +96,20 @@ class WorkflowSig(object):
         except:
             return []
 
+
 def calc_timeline(info, start_time, total_duration):
     if total_duration == 0 or 'start_time' not in info or 'end_time' not in info:
         info['before_percent'] = 0
         info['during_percent'] = 100
         info['after_precent'] = 0
         return
-    info['before_percent'] = int((info['start_time'] - start_time) * 100 / total_duration)
-    info['during_percent'] = max(1, int(info['duration'] * 100 / total_duration))
-    info['after_percent'] = 100 - info['before_percent'] - info['during_percent']
+    info['before_percent'] = int(
+        (info['start_time'] - start_time) * 100 / total_duration)
+    info['during_percent'] = max(
+        1, int(info['duration'] * 100 / total_duration))
+    info['after_percent'] = 100 - \
+        info['before_percent'] - info['during_percent']
+
 
 def render_report(output_file, workflow_id):
     data = WorkflowSig(os.path.join(
@@ -120,15 +127,17 @@ def render_report(output_file, workflow_id):
         'steps': data.steps(),
     }
     # derived context
-    context['master_id'] = next(iter(context['workflows'].values()))['master_id']
-    context['subworkflows'] = [x for x in context['workflows'].keys() if x != context['master_id']]
+    context['master_id'] = next(
+        iter(context['workflows'].values()))['master_id']
     # calculate percentage
     start_time = context['workflows'][context['master_id']]['start_time']
-    total_duration = context['workflows'][context['master_id']]['end_time'] - start_time
+    total_duration = context['workflows'][context['master_id']
+                                          ]['end_time'] - start_time
     for wf, info in context['workflows'].items():
         calc_timeline(info, start_time, total_duration)
-    for step in context['steps']:
-        calc_timeline(step, start_time, total_duration)
+    for steps in context['steps'].values():
+        for step in steps:
+            calc_timeline(step, start_time, total_duration)
     for task, info in context['tasks'].items():
         calc_timeline(info, start_time, total_duration)
     with open(output_file, 'w') as wo:

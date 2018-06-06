@@ -376,7 +376,8 @@ class Base_Executor:
         }
         if not env.config['master_id']:
             env.config['master_id'] = self.md5
-            workflow_info['command_line'] = subprocess.list2cmdline([os.path.basename(sys.argv[0])] + sys.argv[1:]),
+            workflow_info['command_line'] = subprocess.list2cmdline(
+                [os.path.basename(sys.argv[0])] + sys.argv[1:]),
         workflow_info['master_id'] = env.config['master_id']
         with workflow_report(mode='w' if env.config['master_id'] == self.md5 else 'a') as sig:
             sig.write(f'''\
@@ -1034,10 +1035,6 @@ workflow\t{self.md5}\t{workflow_info}
                         env.logger.debug(f'{i_am()} receive step result ')
                         for k, v in res['__completed__'].items():
                             self.completed[k] += v
-                        if res['__completed__']['__substep_completed__'] == 0:
-                            self.completed['__step_skipped__'] += 1
-                        else:
-                            self.completed['__step_completed__'] += 1
 
                         # if the result of the result of a step
                         svar = {}

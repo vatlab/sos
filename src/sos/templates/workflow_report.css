@@ -125,3 +125,11 @@ tbody tr:hover {
   height: 1em;
   margin: 0px;
 }
+
+.master_workflow th {
+  font-weight: bold;
+}
+
+.subworkflow th {
+  font-style: normal;
+}

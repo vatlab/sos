@@ -68,77 +68,82 @@
          </tr>
          {% endif %}
       </table>
-      {% if subworkflows %}
-      <h2>
-      Subworkflows </h1>
-      <table class='workflow_table'>
+      <h2> Steps </h2>
+      <table class='Steps'>
          <tr>
-            <th>Workflow Name</th>
-            <th>Start Time</th>
-            <th>Duration</th>
-            <th class="timeline-col">Timeline</th>
-            <th>Steps</th>
-            <th>Tasks</th>
-         </tr>
-         {% for name in subworkflows %}
-         <tr>
-            <td>{{ workflows[name].name }}</td>
-            <td>{{ workflows[name].start_time_str }}</td>
-            <td>{{ workflows[name].duration_str }}</td>
-            <td>
-              <div class="timeline-cell">
-                <div class="timeline-before" style="width:{{ workflows[name].before_percent }}%"></div>
-                <div class="timeline-during" style="width:{{ workflows[name].during_percent }}%"></div>
-                <div class="timeline-after" style="width:{{ workflows[name].after_percent }}%"></div>
-              </div>
-            </td>
-            <td>
-               {% if workflows[name].stat.__step_completed__ %}
-               {{ workflows[name].stat.__step_completed__  }} completed &nbsp;
-               {% endif %}
-               {% if workflows[name].stat.__step_skipped__  %}
-               {{ workflows[name].stat.__step_skipped__ }} ignored
-               {% endif %}
-            </td>
-            <td>
-               {% if workflows[name].stat.__task_completed__ %}
-               {{ workflows[name].stat.__task_completed__  }} completed &nbsp;
-               {% endif %}
-               {% if workflows[name].stat.__task_skipped__  %}
-               {{ workflows[name].stat.__task_skipped__ }} ignored
-               {% endif %}
-            </td>
-         </tr>
-         {% endfor %}
-      </table>
-      {% endif %}
-      {% if steps %}
-      <h2>
-      Steps </h1>
-      <table class='task_table'>
-         <tr>
-            <th>Step Name</th>
+            <th>Workflow</th>
+            <th>Step</th>
             <th>Input</th>
             <th>Output</th>
             <th>Start Time</th>
             <th>Duration</th>
             <th class="timeline-col">Timeline</th>
+            <th>Steps</th>
             <th>Substeps</th>
             <th>Tasks</th>
          </tr>
-         {% for step in steps %}
+         {% for name in workflows.keys() %}
+         <tr class="{{ "master_workflow" if name == master_id else "subworkflow" }}">
+         <th>{{ workflows[name].name }}</th>
+         <td></td>
+         <td></td>
+         <td></td>
+         <td>{{ workflows[name].start_time_str }}</td>
+         <td>{{ workflows[name].duration_str }}</td>
+         <td>
+            <div class="timeline-cell">
+               <div class="timeline-before" style="width:{{ workflows[name].before_percent }}%"></div>
+               <div class="timeline-during" style="width:{{ workflows[name].during_percent }}%"></div>
+               <div class="timeline-after" style="width:{{ workflows[name].after_percent }}%"></div>
+            </div>
+         </td>
+         <td>
+            {% if workflows[name].stat.__step_completed__ %}
+            {{ workflows[name].stat.__step_completed__  }} completed &nbsp;
+            {% endif %}
+            {% if workflows[name].stat.__step_skipped__  %}
+            {{ workflows[name].stat.__step_skipped__ }} ignored
+            {% endif %}
+         </td>
+         <td>
+            {% if workflows[name].stat.__substep_completed__ %}
+            {{ workflows[name].stat.__substep_completed__  }} completed &nbsp;
+            {% endif %}
+            {% if workflows[name].stat.__substep_skipped__  %}
+            {{ workflows[name].stat.__substep_skipped__ }} ignored
+            {% endif %}
+         </td>
+         <td>
+            {% if workflows[name].stat.__task_completed__ %}
+            {{ workflows[name].stat.__task_completed__  }} completed &nbsp;
+            {% endif %}
+            {% if workflows[name].stat.__task_skipped__  %}
+            {{ workflows[name].stat.__task_skipped__ }} ignored
+            {% endif %}
+         </td>
+         </tr>
+         {% for step in steps[name] %}
          <tr>
+            <td></td>
             <td>{{ step.stepname }}</td>
             <td>{{ step.input }}</td>
             <td>{{ step.output }}</td>
             <td>{{ step.start_time_str }}</td>
             <td>{{ step.duration_str }}</td>
             <td>
-              <div class="timeline-cell">
-                <div class="timeline-before" style="width:{{ step.before_percent }}%"></div>
-                <div class="timeline-during" style="width:{{ step.during_percent }}%"></div>
-                <div class="timeline-after" style="width:{{ step.after_percent }}%"></div>
-              </div>
+               <div class="timeline-cell">
+                  <div class="timeline-before" style="width:{{ step.before_percent }}%"></div>
+                  <div class="timeline-during" style="width:{{ step.during_percent }}%"></div>
+                  <div class="timeline-after" style="width:{{ step.after_percent }}%"></div>
+               </div>
+            </td>
+            <td>
+               {% if step.completed.__step_completed__ %}
+               {{ step.completed.__step_completed__ }} completed &nbsp;
+               {% endif %}
+               {% if step.completed.__step_skipped__ %}
+               {{ step.completed.__step_skipped__ }} ignored
+               {% endif %}
             </td>
             <td>
                {% if step.completed.__substep_completed__ %}
@@ -158,8 +163,8 @@
             </td>
          </tr>
          {% endfor %}
+         {% endfor %}
       </table>
-      {% endif %}
       {% if tasks %}
       <h2> Tasks </h2>
       <table class='task_table'>
@@ -183,11 +188,11 @@
             <td>{{ info.start_time_str }}</td>
             <td>{{ info.duration_str }}</td>
             <td>
-              <div class="timeline-cell">
-                <div class="timeline-before" style="width:{{ info.before_percent }}%"></div>
-                <div class="timeline-during" style="width:{{ info.during_percent }}%"></div>
-                <div class="timeline-after" style="width:{{ info.after_percent }}%"></div>
-              </div>
+               <div class="timeline-cell">
+                  <div class="timeline-before" style="width:{{ info.before_percent }}%"></div>
+                  <div class="timeline-during" style="width:{{ info.during_percent }}%"></div>
+                  <div class="timeline-after" style="width:{{ info.after_percent }}%"></div>
+               </div>
             </td>
             <td>{{ info.peak_cpu_str }}</td>
             <td>{{ info.peak_mem_str }}</td>
