@@ -1055,8 +1055,8 @@ def cmd_execute(args, workflow_args):
     # if needed.
     cfg = load_config_files(args.config)
     env.verbosity = args.verbosity
-    env.run_options['sig_mode'] = args.__sig_mode__
-    env.run_options['run_mode'] = 'dryrun' if args.dryrun else 'run'
+    env.config['sig_mode'] = args.__sig_mode__
+    env.config['run_mode'] = 'dryrun' if args.dryrun else 'run'
     host = Host(args.queue)
     for task in args.tasks:
         host.submit_task(task)

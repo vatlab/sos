@@ -199,10 +199,10 @@ run:
 ''')
         wf = script.workflow()
         file_target('lls').remove('both')
-        env.run_options['sig_mode'] = 'force'
+        env.config['sig_mode'] = 'force'
         Base_Executor(wf).run()
         # test validation
-        env.run_options['sig_mode'] = 'default'
+        env.config['sig_mode'] = 'default'
         Base_Executor(wf).run()
         file_target('lls').remove('both')
 
@@ -352,7 +352,7 @@ run:
     touch 20.txt
 ''')
         wf = script.workflow()
-        env.run_options['sig_mode'] = 'force'
+        env.config['sig_mode'] = 'force'
         # this should be ok.
         Base_Executor(wf).run()
         for file in ['t1.txt', 't2.txt', '5.txt', '10.txt', '20.txt']:
@@ -409,13 +409,13 @@ run:
 _input.zap()
 ''')
         wf = script.workflow()
-        env.run_options['sig_mode'] = 'force'
+        env.config['sig_mode'] = 'force'
         Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('zap1.txt.zapped'))
         self.assertFalse(os.path.isfile('zap1.txt'))
         self.assertTrue(os.path.isfile('zap2.txt'))
         # can run again
-        env.run_options['sig_mode'] = 'default'
+        env.config['sig_mode'] = 'default'
         Base_Executor(wf).run()
         # now if we remove target
         os.remove('zap2.txt')

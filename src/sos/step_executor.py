@@ -526,7 +526,7 @@ class Base_Step_Executor:
         lead to the invalidation of the signature, which will then cause the
         re-execution of the step for any result from the step. '''
         #
-        if env.run_options['sig_mode'] == 'ignore' or env.run_options['run_mode'] == 'dryrun':
+        if env.config['sig_mode'] == 'ignore' or env.config['run_mode'] == 'dryrun':
             return None
         env_vars = []
         for var in sorted(env.sos_dict['__signature_vars__']):
@@ -923,9 +923,9 @@ class Base_Step_Executor:
         # they might be changed while the task is in the queue waiting to be
         # submitted (this happens when tasks are submitted from Jupyter)
         env.sos_dict['_runtime']['verbosity'] = env.verbosity
-        env.sos_dict['_runtime']['sig_mode'] = env.run_options.get(
+        env.sos_dict['_runtime']['sig_mode'] = env.config.get(
             'sig_mode', 'default')
-        env.sos_dict['_runtime']['run_mode'] = env.run_options.get(
+        env.sos_dict['_runtime']['run_mode'] = env.config.get(
             'run_mode', 'run')
         env.sos_dict['_runtime']['home_dir'] = os.path.expanduser('~')
         if 'workdir' in env.sos_dict['_runtime'] and not os.path.isdir(os.path.expanduser(env.sos_dict['_runtime']['workdir'])):
@@ -1034,7 +1034,7 @@ class Base_Step_Executor:
     def wait_for_results(self):
         if self.concurrent_substep:
             sm = SlotManager()
-            nMax = env.run_options.get(
+            nMax = env.config.get(
                 'max_procs', max(int(os.cpu_count() / 2), 1))
             if nMax > self.worker_pool._processes - 1 and len(self._substeps) > nMax:
                 # use billiard pool, can expand pool if more slots are available
@@ -1076,8 +1076,8 @@ class Base_Step_Executor:
             # because it can be different (e.g. not localhost
             if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
                 queue = env.sos_dict['_runtime']['queue']
-            elif env.run_options['default_queue']:
-                queue = env.run_options['default_queue']
+            elif env.config['default_queue']:
+                queue = env.config['default_queue']
             else:
                 queue = 'localhost'
 
@@ -1416,7 +1416,7 @@ class Base_Step_Executor:
                     sm = SlotManager()
                     # because the master process pool will count one worker in (step)
                     gotten = sm.acquire(len(self._substeps) - 1,
-                                        env.run_options.get('max_procs', max(int(os.cpu_count() / 2), 1)))
+                                        env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
                     env.logger.debug(
                         f'Using process pool with size {gotten+1}')
                     self.worker_pool = Pool(gotten + 1)
@@ -1471,7 +1471,7 @@ class Base_Step_Executor:
                                     ), env.sos_dict['_depends'].targets(),
                                         env.sos_dict['__signature_vars__'])
                                     signatures[idx].lock()
-                                    if env.run_options['sig_mode'] == 'default':
+                                    if env.config['sig_mode'] == 'default':
                                         # if users use sos_run, the "scope" of the step goes beyong names in this step
                                         # so we cannot save signatures for it.
                                         if 'sos_run' in env.sos_dict['__signature_vars__']:
@@ -1496,7 +1496,7 @@ class Base_Step_Executor:
                                             else:
                                                 env.logger.debug(
                                                     f'Signature mismatch: {matched}')
-                                    elif env.run_options['sig_mode'] == 'assert':
+                                    elif env.config['sig_mode'] == 'assert':
                                         matched = signatures[idx].validate()
                                         if isinstance(matched, str):
                                             raise RuntimeError(
@@ -1513,7 +1513,7 @@ class Base_Step_Executor:
                                             env.logger.info(
                                                 f'Step ``{self.step.step_name(True)}`` (index={idx}) is ``ignored`` with matching signature')
                                             skip_index = True
-                                    elif env.run_options['sig_mode'] == 'build':
+                                    elif env.config['sig_mode'] == 'build':
                                         # build signature require existence of files
                                         if 'sos_run' in env.sos_dict['__signature_vars__']:
                                             skip_index = False
@@ -1521,11 +1521,11 @@ class Base_Step_Executor:
                                             env.logger.info(
                                                 f'Step ``{self.step.step_name(True)}`` (index={idx}) is ``ignored`` with signature constructed')
                                             skip_index = True
-                                    elif env.run_options['sig_mode'] == 'force':
+                                    elif env.config['sig_mode'] == 'force':
                                         skip_index = False
                                     else:
                                         raise RuntimeError(
-                                            f'Unrecognized signature mode {env.run_options["sig_mode"]}')
+                                            f'Unrecognized signature mode {env.config["sig_mode"]}')
                                 if skip_index:
                                     break
                             elif key == 'depends':
@@ -1681,7 +1681,7 @@ class Base_Step_Executor:
             # NOTE: dynamic output is evaluated at last, so it sets output,
             # not _output. For the same reason, signatures can be wrong if it has
             # Undetermined output.
-            if env.run_options['run_mode'] in ('run', 'interactive'):
+            if env.config['run_mode'] in ('run', 'interactive'):
                 if isinstance(env.sos_dict['step_output'], Undetermined) or \
                         env.sos_dict['step_output'].has_undetermined():
                     self.reevaluate_output()
@@ -1831,7 +1831,7 @@ class Step_Executor(Base_Step_Executor):
 
     def __init__(self, step, pipe, mode='run'):
         self.run_mode = mode
-        env.run_options['run_mode'] = mode
+        env.config['run_mode'] = mode
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
         super(Step_Executor, self).__init__(step)

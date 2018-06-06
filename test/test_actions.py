@@ -624,8 +624,8 @@ echo {ff}
 touch temp/{ff}
 ''' % active).replace('/', os.sep))
             wf = script.workflow()
-            env.run_options['sig_mode'] = 'force'
-            env.run_options['wait_for_task'] = True
+            env.config['sig_mode'] = 'force'
+            env.config['wait_for_task'] = True
             Base_Executor(wf).run()
             files = list(glob.glob(os.path.join('temp', '*.txt')))
             self.assertEqual(sorted(files), sorted([x.replace('/', os.sep) for x in result]))

@@ -15,7 +15,7 @@ from .utils import TimeoutInterProcessLock, env, format_duration, dot_to_gif
 @contextmanager
 def workflow_report(mode='a'):
     workflow_sig = os.path.join(
-        env.exec_dir, '.sos', f'{env.run_options["master_id"]}.sig')
+        env.exec_dir, '.sos', f'{env.config["master_id"]}.sig')
     with TimeoutInterProcessLock(workflow_sig + '_'):
         with open(workflow_sig, mode) as sig:
             yield sig

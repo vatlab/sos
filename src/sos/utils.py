@@ -221,7 +221,7 @@ class WorkflowDict(object):
         '''Set value to key, trigger logging and warning messages if needed'''
         if env.verbosity > 2:
             self._log(key, value)
-        if env.run_options['run_mode'] == 'prepare':
+        if env.config['run_mode'] == 'prepare':
             self._warn(key, value)
         if key in ('input', 'output', 'depends', '_input', '_output', '_depends', '_runtime'):
             raise ValueError(f'Variable {key} can only be set by SoS')
@@ -317,8 +317,8 @@ class RuntimeEnvironments(object):
         #
         # run mode, this mode controls how SoS actions behave
         #
-        self.run_options = defaultdict(str)
-        self.run_options.update({
+        self.config = defaultdict(str)
+        self.config.update({
             'config_file': None,
             'output_dag': None,
             'output_report': None,
@@ -1008,7 +1008,7 @@ class SlotManager(object):
     #
     def __init__(self, reset=False, name=None):
         # if a name is not given, the slot will be workflow dependent
-        self.name = name if name else env.run_options['master_id']
+        self.name = name if name else env.config['master_id']
         tempdir = os.path.join(tempfile.gettempdir(),
                                getpass.getuser(), 'sos_slots')
         self.lock_file = os.path.join(tempdir, f'{self.name}.lck')

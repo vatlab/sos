@@ -470,8 +470,8 @@ del sos_handle_parameter_
 
     m.start()
     if sigmode is not None:
-        env.run_options['sig_mode'] = sigmode
-    env.run_options['run_mode'] = runmode
+        env.config['sig_mode'] = sigmode
+    env.config['run_mode'] = runmode
     #
     if subtask:
         env.logger.debug(f'{task_id} ``started``')
@@ -495,7 +495,7 @@ del sos_handle_parameter_
                                               for x in sos_dict[key] if not isinstance(x, sos_step)))
 
     skipped = False
-    if env.run_options['sig_mode'] == 'ignore':
+    if env.config['sig_mode'] == 'ignore':
         sig = None
     else:
         tokens = [x[1] for x in generate_tokens(StringIO(task).readline)]
@@ -508,7 +508,7 @@ del sos_handle_parameter_
         sig.lock()
 
         idx = env.sos_dict['_index']
-        if env.run_options['sig_mode'] == 'default':
+        if env.config['sig_mode'] == 'default':
             matched = sig.validate()
             if isinstance(matched, dict):
                 # in this case, an Undetermined output can get real output files
@@ -520,7 +520,7 @@ del sos_handle_parameter_
                 env.logger.info(
                     f'Task ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` due to saved signature')
                 skipped = True
-        elif env.run_options['sig_mode'] == 'assert':
+        elif env.config['sig_mode'] == 'assert':
             matched = sig.validate()
             if isinstance(matched, str):
                 raise RuntimeError(f'Signature mismatch: {matched}')
@@ -532,7 +532,7 @@ del sos_handle_parameter_
                 env.logger.info(
                     f'Step ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with matching signature')
                 skipped = True
-        elif env.run_options['sig_mode'] == 'build':
+        elif env.config['sig_mode'] == 'build':
             # build signature require existence of files
             if sig.write(rebuild=True):
                 env.logger.info(
@@ -541,11 +541,11 @@ del sos_handle_parameter_
             else:
                 env.logger.info(
                     f'Task ``{env.sos_dict["step_name"]}`` (index={idx}) is ``executed`` with failed signature constructed')
-        elif env.run_options['sig_mode'] == 'force':
+        elif env.config['sig_mode'] == 'force':
             skipped = False
         else:
             raise RuntimeError(
-                f'Unrecognized signature mode {env.run_options["sig_mode"]}')
+                f'Unrecognized signature mode {env.config["sig_mode"]}')
 
     if skipped:
         env.logger.info(f'{task_id} ``skipped``')
@@ -1316,9 +1316,9 @@ class TaskEngine(threading.Thread):
         else:
             self.status_check_interval = self.config['status_check_interval']
         #
-        if env.run_options['max_running_jobs'] is not None:
+        if env.config['max_running_jobs'] is not None:
             # override from command line
-            self.max_running_jobs = env.run_options['max_running_jobs']
+            self.max_running_jobs = env.config['max_running_jobs']
         elif 'max_running_jobs' in self.config:
             # queue setting
             self.max_running_jobs = self.config['max_running_jobs']
@@ -1336,8 +1336,8 @@ class TaskEngine(threading.Thread):
             max_workers=1)
         self._status_checker = None
         #
-        if env.run_options['wait_for_task'] is not None:
-            self.wait_for_task = env.run_options['wait_for_task']
+        if env.config['wait_for_task'] is not None:
+            self.wait_for_task = env.config['wait_for_task']
         elif 'wait_for_task' in self.config:
             self.wait_for_task = self.config['wait_for_task']
         else:
@@ -1525,10 +1525,10 @@ class TaskEngine(threading.Thread):
                 # resubmit the job. In the case of not-rerun, the task would be marked
                 # completed very soon.
                 elif self.task_status[task_id] == 'completed':
-                    if env.run_options['sig_mode'] != 'force':
+                    if env.config['sig_mode'] != 'force':
                         self.notify(f'{task_id} ``already completed``')
                         return 'completed'
-                    elif task_id in env.run_options.get('resumed_tasks', []):
+                    elif task_id in env.config.get('resumed_tasks', []):
                         # force re-execution, but it is possible that this task has been
                         # executed but quit in no-wait mode (or canceled by user). More
                         # importantly, the Jupyter notebook would re-run complted workflow
@@ -1743,7 +1743,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
 
     def _submit_task(self, task_ids):
         # if no template, use a default command
-        cmd = f"sos execute {' '.join(task_ids)} -v {env.verbosity} -s {env.run_options['sig_mode']} {'--dryrun' if env.run_options['run_mode'] == 'dryrun' else ''}"
+        cmd = f"sos execute {' '.join(task_ids)} -v {env.verbosity} -s {env.config['sig_mode']} {'--dryrun' if env.config['run_mode'] == 'dryrun' else ''}"
         env.logger.trace(f'Execute "{cmd}" (waiting={self.wait_for_task})')
         self.agent.run_command(cmd, wait_for_task=self.wait_for_task)
         return True
@@ -1754,8 +1754,8 @@ class BackgroundProcess_TaskEngine(TaskEngine):
         runtime.update({
             'cur_dir': os.getcwd(),
             'verbosity': env.verbosity,
-            'sig_mode': env.run_options.get('sig_mode', 'default'),
-            'run_mode': env.run_options.get('run_mode', 'run'),
+            'sig_mode': env.config.get('sig_mode', 'default'),
+            'run_mode': env.config.get('run_mode', 'run'),
             'home_dir': os.path.expanduser('~')})
         if '_runtime' in env.sos_dict:
             runtime.update({x: env.sos_dict['_runtime'][x] for x in (

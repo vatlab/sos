@@ -363,10 +363,10 @@ input: 'a.txt'
         self.assertDAG(dag,
                        '''
 strict digraph "" {
-"K ['b.txt']";
+"K 'b.txt'";
 C_3;
 C_2;
-"K ['b.txt']" -> C_2;
+"K 'b.txt'" -> C_2;
 }
 ''')
 
@@ -461,25 +461,25 @@ run:
         self.assertDAG(dag,
                        '''
 strict digraph "" {
-"C4 ['C4.txt']";
-"B1 ['B1.txt']";
-"C1 ['C1.txt']";
-"C2 ['C2.txt']";
-"C3 ['C3.txt']";
+"C4 'C4.txt'";
+"B1 'B1.txt'";
+"C1 'C1.txt'";
+"C2 'C2.txt'";
+"C3 'C3.txt'";
 A_1;
-"B2 ['B2.txt']";
-"B3 ['B3.txt']";
+"B2 'B2.txt'";
+"B3 'B3.txt'";
 A_2;
-"C4 ['C4.txt']" -> "C2 ['C2.txt']";
-"C4 ['C4.txt']" -> "C3 ['C3.txt']";
-"B1 ['B1.txt']" -> A_1;
-"C1 ['C1.txt']" -> "B2 ['B2.txt']";
-"C2 ['C2.txt']" -> "C1 ['C1.txt']";
-"C3 ['C3.txt']" -> "C1 ['C1.txt']";
+"C4 'C4.txt'" -> "C2 'C2.txt'";
+"C4 'C4.txt'" -> "C3 'C3.txt'";
+"B1 'B1.txt'" -> A_1;
+"C1 'C1.txt'" -> "B2 'B2.txt'";
+"C2 'C2.txt'" -> "C1 'C1.txt'";
+"C3 'C3.txt'" -> "C1 'C1.txt'";
 A_1 -> A_2;
-"B2 ['B2.txt']" -> "B1 ['B1.txt']";
-"B2 ['B2.txt']" -> A_2;
-"B3 ['B3.txt']" -> "B2 ['B2.txt']";
+"B2 'B2.txt'" -> "B1 'B1.txt'";
+"B2 'B2.txt'" -> A_2;
+"B3 'B3.txt'" -> "B2 'B2.txt'";
 }
 ''')
         Base_Executor(wf).run()
@@ -556,20 +556,20 @@ run:
         self.assertDAG(dag,
                        '''
 strict digraph "" {
-"B3 ['B3.txt']";
-"C4 ['C4.txt']";
-"C2 ['C2.txt']";
-"C1 ['C1.txt']";
-"B1 ['B1.txt']";
-"B2 ['B2.txt']";
-"C3 ['C3.txt']";
-"B3 ['B3.txt']" -> "B2 ['B2.txt']";
-"C4 ['C4.txt']" -> "C3 ['C3.txt']";
-"C4 ['C4.txt']" -> "C2 ['C2.txt']";
-"C2 ['C2.txt']" -> "C1 ['C1.txt']";
-"C1 ['C1.txt']" -> "B2 ['B2.txt']";
-"B2 ['B2.txt']" -> "B1 ['B1.txt']";
-"C3 ['C3.txt']" -> "C1 ['C1.txt']";
+"B3 'B3.txt'";
+"C4 'C4.txt'";
+"C2 'C2.txt'";
+"C1 'C1.txt'";
+"B1 'B1.txt'";
+"B2 'B2.txt'";
+"C3 'C3.txt'";
+"B3 'B3.txt'" -> "B2 'B2.txt'";
+"C4 'C4.txt'" -> "C3 'C3.txt'";
+"C4 'C4.txt'" -> "C2 'C2.txt'";
+"C2 'C2.txt'" -> "C1 'C1.txt'";
+"C1 'C1.txt'" -> "B2 'B2.txt'";
+"B2 'B2.txt'" -> "B1 'B1.txt'";
+"C3 'C3.txt'" -> "C1 'C1.txt'";
 }
 ''')
         Base_Executor(wf).run(targets=['B1.txt'])
@@ -586,18 +586,18 @@ strict digraph "" {
         self.assertDAG(dag,
                        '''
 strict digraph "" {
-"C4 ['C4.txt']";
-"B2 ['B2.txt']";
-"C3 ['C3.txt']";
-"B3 ['B3.txt']";
-"C2 ['C2.txt']";
-"C1 ['C1.txt']";
-"C4 ['C4.txt']" -> "C2 ['C2.txt']";
-"C4 ['C4.txt']" -> "C3 ['C3.txt']";
-"C3 ['C3.txt']" -> "C1 ['C1.txt']";
-"B3 ['B3.txt']" -> "B2 ['B2.txt']";
-"C2 ['C2.txt']" -> "C1 ['C1.txt']";
-"C1 ['C1.txt']" -> "B2 ['B2.txt']";
+"C4 'C4.txt'";
+"B2 'B2.txt'";
+"C3 'C3.txt'";
+"B3 'B3.txt'";
+"C2 'C2.txt'";
+"C1 'C1.txt'";
+"C4 'C4.txt'" -> "C2 'C2.txt'";
+"C4 'C4.txt'" -> "C3 'C3.txt'";
+"C3 'C3.txt'" -> "C1 'C1.txt'";
+"B3 'B3.txt'" -> "B2 'B2.txt'";
+"C2 'C2.txt'" -> "C1 'C1.txt'";
+"C1 'C1.txt'" -> "B2 'B2.txt'";
 }
 ''')
         Base_Executor(wf).run(targets=['B2.txt', 'C2.txt'])
@@ -615,10 +615,10 @@ strict digraph "" {
         self.assertDAG(dag,
                        '''
 strict digraph "" {
-"B3 ['B3.txt']";
-"C2 ['C2.txt']";
-"C4 ['C4.txt']";
-"C4 ['C4.txt']" -> "C2 ['C2.txt']";
+"B3 'B3.txt'";
+"C2 'C2.txt'";
+"C4 'C4.txt'";
+"C4 'C4.txt'" -> "C2 'C2.txt'";
 }
 ''')
         Base_Executor(wf).run(targets=['B3.txt', 'C2.txt'])
@@ -670,17 +670,17 @@ run: expand=True
         self.assertDAG(dag,
                        '''
 strict digraph "" {
-"P ['B2.txt.p']";
-"B1 ['B1.txt']";
-"B2 ['B2.txt']";
+"P 'B2.txt.p'";
+"B1 'B1.txt'";
+"B2 'B2.txt'";
 A_2;
 A_1;
-"P ['B1.txt.p']";
-"P ['B2.txt.p']" -> A_1;
-"B1 ['B1.txt']" -> "P ['B1.txt.p']";
-"B2 ['B2.txt']" -> "P ['B2.txt.p']";
+"P 'B1.txt.p'";
+"P 'B2.txt.p'" -> A_1;
+"B1 'B1.txt'" -> "P 'B1.txt.p'";
+"B2 'B2.txt'" -> "P 'B2.txt.p'";
 A_1 -> A_2;
-"P ['B1.txt.p']" -> A_1;
+"P 'B1.txt.p'" -> A_1;
 }
 ''')
         Base_Executor(wf).run()
@@ -725,8 +725,8 @@ run:
 strict digraph "" {
 A_1;
 A_2;
-"B ['B2.txt']";
-"B ['B2.txt']" -> A_2;
+"B 'B2.txt'";
+"B 'B2.txt'" -> A_2;
 }
 ''')
         env.max_jobs = 4
@@ -967,20 +967,20 @@ run:
         self.assertDAG('test.dot',
                        '''
 strict digraph "" {
-"B3 ['B3.txt']";
-"C4 ['C4.txt']";
-"C2 ['C2.txt']";
-"C1 ['C1.txt']";
-"B1 ['B1.txt']";
-"B2 ['B2.txt']";
-"C3 ['C3.txt']";
-"B3 ['B3.txt']" -> "B2 ['B2.txt']";
-"C4 ['C4.txt']" -> "C3 ['C3.txt']";
-"C4 ['C4.txt']" -> "C2 ['C2.txt']";
-"C2 ['C2.txt']" -> "C1 ['C1.txt']";
-"C1 ['C1.txt']" -> "B2 ['B2.txt']";
-"B2 ['B2.txt']" -> "B1 ['B1.txt']";
-"C3 ['C3.txt']" -> "C1 ['C1.txt']";
+"B3 'B3.txt'";
+"C4 'C4.txt'";
+"C2 'C2.txt'";
+"C1 'C1.txt'";
+"B1 'B1.txt'";
+"B2 'B2.txt'";
+"C3 'C3.txt'";
+"B3 'B3.txt'" -> "B2 'B2.txt'";
+"C4 'C4.txt'" -> "C3 'C3.txt'";
+"C4 'C4.txt'" -> "C2 'C2.txt'";
+"C2 'C2.txt'" -> "C1 'C1.txt'";
+"C1 'C1.txt'" -> "B2 'B2.txt'";
+"B2 'B2.txt'" -> "B1 'B1.txt'";
+"C3 'C3.txt'" -> "C1 'C1.txt'";
 }
 ''')
         # test 2, we would like to generate two files
@@ -990,18 +990,18 @@ strict digraph "" {
         self.assertDAG('test.dot',
                        '''
 strict digraph "" {
-"C4 ['C4.txt']";
-"B2 ['B2.txt']";
-"C3 ['C3.txt']";
-"B3 ['B3.txt']";
-"C2 ['C2.txt']";
-"C1 ['C1.txt']";
-"C4 ['C4.txt']" -> "C2 ['C2.txt']";
-"C4 ['C4.txt']" -> "C3 ['C3.txt']";
-"C3 ['C3.txt']" -> "C1 ['C1.txt']";
-"B3 ['B3.txt']" -> "B2 ['B2.txt']";
-"C2 ['C2.txt']" -> "C1 ['C1.txt']";
-"C1 ['C1.txt']" -> "B2 ['B2.txt']";
+"C4 'C4.txt'";
+"B2 'B2.txt'";
+"C3 'C3.txt'";
+"B3 'B3.txt'";
+"C2 'C2.txt'";
+"C1 'C1.txt'";
+"C4 'C4.txt'" -> "C2 'C2.txt'";
+"C4 'C4.txt'" -> "C3 'C3.txt'";
+"C3 'C3.txt'" -> "C1 'C1.txt'";
+"B3 'B3.txt'" -> "B2 'B2.txt'";
+"C2 'C2.txt'" -> "C1 'C1.txt'";
+"C1 'C1.txt'" -> "B2 'B2.txt'";
 }
 ''')
         # test 3, generate two separate trees
@@ -1012,10 +1012,10 @@ strict digraph "" {
         self.assertDAG('test.dot',
                        '''
 strict digraph "" {
-"B3 ['B3.txt']";
-"C2 ['C2.txt']";
-"C4 ['C4.txt']";
-"C4 ['C4.txt']" -> "C2 ['C2.txt']";
+"B3 'B3.txt'";
+"C2 'C2.txt'";
+"C4 'C4.txt'";
+"C4 'C4.txt'" -> "C2 'C2.txt'";
 }
 ''')
         for f in ['C2.txt', 'B3.txt', 'C4.txt', 'test.dot', 'test_2.dot']:
@@ -1048,7 +1048,7 @@ depends: ['{}.txt'.format(i) for i in range(10, 20)]
         '''Testing the use of sos_step with auxiliary step. #736'''
         script = SoS_Script('''
 [default]
-depends: ['1.txt']
+depends: '1.txt'
 
 [A_1]
 print("Hi")
