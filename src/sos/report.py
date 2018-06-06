@@ -94,6 +94,15 @@ class WorkflowSig(object):
         except:
             return []
 
+def calc_timeline(info, start_time, total_duration):
+    if total_duration == 0 or 'start_time' not in info or 'end_time' not in info:
+        info['before_percent'] = 0
+        info['during_percent'] = 100
+        info['after_precent'] = 0
+        return
+    info['before_percent'] = int((info['start_time'] - start_time) * 100 / total_duration)
+    info['during_percent'] = max(1, int(info['duration'] * 100 / total_duration))
+    info['after_percent'] = 100 - info['before_percent'] - info['during_percent']
 
 def render_report(output_file, workflow_id):
     data = WorkflowSig(os.path.join(
@@ -113,6 +122,15 @@ def render_report(output_file, workflow_id):
     # derived context
     context['master_id'] = next(iter(context['workflows'].values()))['master_id']
     context['subworkflows'] = [x for x in context['workflows'].keys() if x != context['master_id']]
+    # calculate percentage
+    start_time = context['workflows'][context['master_id']]['start_time']
+    total_duration = context['workflows'][context['master_id']]['end_time'] - start_time
+    for wf, info in context['workflows'].items():
+        calc_timeline(info, start_time, total_duration)
+    for step in context['steps']:
+        calc_timeline(step, start_time, total_duration)
+    for task, info in context['tasks'].items():
+        calc_timeline(info, start_time, total_duration)
     with open(output_file, 'w') as wo:
         wo.write(template.render(context))
     env.logger.info(f'Summary of workflow saved to {output_file}')

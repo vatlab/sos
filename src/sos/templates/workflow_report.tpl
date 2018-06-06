@@ -76,6 +76,7 @@
             <th>Workflow Name</th>
             <th>Start Time</th>
             <th>Duration</th>
+            <th class="timeline-col">Timeline</th>
             <th>Steps</th>
             <th>Tasks</th>
          </tr>
@@ -84,6 +85,13 @@
             <td>{{ workflows[name].name }}</td>
             <td>{{ workflows[name].start_time_str }}</td>
             <td>{{ workflows[name].duration_str }}</td>
+            <td>
+              <div class="timeline-cell">
+                <div class="timeline-before" style="width:{{ workflows[name].before_percent }}%"></div>
+                <div class="timeline-during" style="width:{{ workflows[name].during_percent }}%"></div>
+                <div class="timeline-after" style="width:{{ workflows[name].after_percent }}%"></div>
+              </div>
+            </td>
             <td>
                {% if workflows[name].stat.__step_completed__ %}
                {{ workflows[name].stat.__step_completed__  }} completed &nbsp;
@@ -114,6 +122,7 @@
             <th>Output</th>
             <th>Start Time</th>
             <th>Duration</th>
+            <th class="timeline-col">Timeline</th>
             <th>Substeps</th>
             <th>Tasks</th>
          </tr>
@@ -124,6 +133,13 @@
             <td>{{ step.output }}</td>
             <td>{{ step.start_time_str }}</td>
             <td>{{ step.duration_str }}</td>
+            <td>
+              <div class="timeline-cell">
+                <div class="timeline-before" style="width:{{ step.before_percent }}%"></div>
+                <div class="timeline-during" style="width:{{ step.during_percent }}%"></div>
+                <div class="timeline-after" style="width:{{ step.after_percent }}%"></div>
+              </div>
+            </td>
             <td>
                {% if step.completed.__substep_completed__ %}
                {{ step.completed.__substep_completed__ }} completed &nbsp;
@@ -154,6 +170,7 @@
             <th>Tags</th>
             <th>Start Time</th>
             <th>Duration</th>
+            <th class="timeline-col">Timeline</th>
             <th>Peak CPU</th>
             <th>Peak RAM</th>
          </tr>
@@ -165,6 +182,13 @@
             <td><code>{{ info.tags }}</code></td>
             <td>{{ info.start_time_str }}</td>
             <td>{{ info.duration_str }}</td>
+            <td>
+              <div class="timeline-cell">
+                <div class="timeline-before" style="width:{{ info.before_percent }}%"></div>
+                <div class="timeline-during" style="width:{{ info.during_percent }}%"></div>
+                <div class="timeline-after" style="width:{{ info.after_percent }}%"></div>
+              </div>
+            </td>
             <td>{{ info.peak_cpu_str }}</td>
             <td>{{ info.peak_mem_str }}</td>
          </tr>

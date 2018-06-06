@@ -94,3 +94,34 @@ tbody tr:hover {
 .dag-image img {
   max-width: 80%;
 }
+.timeline-col {
+  width : 300px;
+  text-align: center;
+}
+
+.timeline-cell {
+  display: flex;
+  width: 100%;
+  height: 1em;
+  margin: 0px;
+	overflow: hidden;
+}
+.timeline-before {
+  float: left;
+	background-color: #FEF9E7;
+  height: 1em;
+  margin: 0px;
+}
+.timeline-during {
+  float: left;
+	background-color: green;
+	min-width: 1px;
+  height: 1em;
+  margin: 0px;
+}
+.timeline-after {
+  float: left;
+	background-color: #FEF9E7;
+  height: 1em;
+  margin: 0px;
+}
