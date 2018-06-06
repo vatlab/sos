@@ -370,21 +370,17 @@ class Base_Executor:
         #
         # if this is the outter most workflow, master)id should have =
         # not been set so we set it for all other workflows
+        workflow_info = {
+            'name': self.workflow.name,
+            'start_time': time.time(),
+        }
         if not env.config['master_id']:
             env.config['master_id'] = self.md5
-            with workflow_report(mode='w') as sig:
-                sig.write(f'''\
-workflow_name\t{self.md5}\t{self.workflow.name}
-workflow_start_time\t{self.md5}\t{time.time()}
-workflow_command_line\t{self.md5}\t{subprocess.list2cmdline([os.path.basename(sys.argv[0])] + sys.argv[1:])}
-workflow_subworkflows\t{env.config['master_id']}\t{self.md5}
-''')
-        else:
-            with workflow_report() as sig:
-                sig.write(f'''\
-workflow_name\t{self.md5}\t{self.workflow.name}
-workflow_start_time\t{self.md5}\t{time.time()}
-workflow_subworkflows\t{env.config['master_id']}\t{self.md5}
+            workflow_info['command_line'] = subprocess.list2cmdline([os.path.basename(sys.argv[0])] + sys.argv[1:]),
+        workflow_info['master_id'] = env.config['master_id']
+        with workflow_report(mode='w' if env.config['master_id'] == self.md5 else 'a') as sig:
+            sig.write(f'''\
+workflow\t{self.md5}\t{workflow_info}
 ''')
         #
         env.config['resumed_tasks'] = set()
@@ -1312,12 +1308,13 @@ workflow_subworkflows\t{env.config['master_id']}\t{self.md5}
                 env.logger.info(
                     f"Workflow DAG saved to {env.config['output_dag']}")
             with workflow_report() as sig:
-                sig.write(f'workflow_end_time\t{self.md5}\t{time.time()}\n')
-                sig.write(
-                    f'workflow_stat\t{self.md5}\t{dict(self.completed)}\n')
-                if env.config['output_dag']:
-                    sig.write(
-                        f"workflow_dag\t{self.md5}\t{env.config['output_dag']}\n")
+                workflow_info = {
+                    'end_time': time.time(),
+                    'stat': dict(self.completed),
+                }
+                if env.config['output_dag'] and env.config['master_id'] == self.md5:
+                    workflow_info['dag'] = env.config['output_dag']
+                sig.write(f'workflow\t{self.md5}\t{workflow_info}\n')
             if env.config["run_mode"] != 'dryrun' and not parent_pipe and env.config['output_report'] and env.sos_dict.get('workflow_id'):
                 # if this is the outter most workflow
                 render_report(env.config['output_report'],

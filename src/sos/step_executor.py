@@ -1087,22 +1087,6 @@ class Base_Step_Executor:
                     y)) for x, y in result.items()}
                 rep_result['tags'] = ' '.join(self.task_manager.tags(id))
                 rep_result['queue'] = queue
-                try:
-                    if 'start_time' in rep_result and rep_result['start_time']:
-                        if 'end_time' in rep_result:
-                            rep_result['duration'] = format_duration(int(rep_result['end_time']
-                                                                         - rep_result['start_time']))
-                            rep_result['end_time'] = time.strftime('%Y-%m-%d %H:%M:%S',
-                                                                   time.localtime(rep_result['end_time']))
-                        rep_result['start_time'] = time.strftime('%Y-%m-%d %H:%M:%S',
-                                                                 time.localtime(rep_result['start_time']))
-                        if 'peak_cpu' in rep_result:
-                            rep_result['peak_cpu'] = f'{rep_result["peak_cpu"]:.1f}%'
-                    if 'peak_mem' in rep_result:
-                        rep_result['peak_mem'] = f'{rep_result["peak_mem"] / 1024 / 1024 :.1f}Mb'
-                except Exception as e:
-                    env.logger.warning(
-                        f'Failed to get time stamps for task {id}: {e}')
                 rep.write(f'task\t{id}\t{rep_result}\n')
         self.task_manager.clear_submitted()
         for idx, task in enumerate(self.proc_results):
@@ -1262,6 +1246,7 @@ class Base_Step_Executor:
         of the last expression. '''
         # return value of the last executed statement
         self.last_res = None
+        self.start_time = time.time()
         self.completed = defaultdict(int)
         #
         self.log('start')
@@ -1729,12 +1714,14 @@ class Base_Step_Executor:
             self.verify_output()
             with workflow_report() as rep:
                 step_info = {
+                    'start_time': self.start_time,
                     'stepname': self.step.step_name(True),
                     'workflow': env.sos_dict['workflow_id'],
                     'substeps': len(self._substeps),
                     'input': short_repr(env.sos_dict['step_input']) if env.sos_dict['step_input'] else '',
                     'output': short_repr(env.sos_dict['step_output']) if env.sos_dict['step_output'] else '',
-                    'completed': dict(self.completed)
+                    'completed': dict(self.completed),
+                    'end_time': time.time()
                 }
                 rep.write(f'step\t{self.step.md5}\t{step_info}\n')
             return self.collect_result()
