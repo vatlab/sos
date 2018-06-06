@@ -9,10 +9,14 @@
    <body>
       <h1>SoS Workflow Report</h1>
       <table class='info_table'>
-         {% if workflows[master_id].workflow_cmd %}
+         {% if workflows[master_id].command_line %}
          <tr>
             <th> Command Line</th>
             <td><code>{{workflows[master_id].command_line}}</code></td>
+         </tr>
+         <tr>
+            <th> Project directory</th>
+            <td><code>{{workflows[master_id].project_dir}}</code></td>
          </tr>
          {% endif %}
          <tr>
@@ -204,5 +208,9 @@
       <h2> Execution DAG </h2>
       <img class="dag-image" src="data:image/png;base64,{{ workflows[master_id].dag_img }}">
       {% endif %}
+
+   <footer>
+     <a href="https://vatlab.github.io/sos-docs/">SoS Workflow Engine</a>
+   </footer>
    </body>
 </html>
