@@ -1539,7 +1539,7 @@ def dot_to_gif(filename: str, warn=None):
                     if warn:
                         warn(f'Failed to resize gif file: {e}')
             # create a gif file from images
-            gifFile = os.path.join('sosDot.gif')
+            gifFile = os.path.join(tempDirectory, 'sosDot.gif')
             try:
                 imageio.mimsave(gifFile, images, duration=0.5)
             except Exception as e:

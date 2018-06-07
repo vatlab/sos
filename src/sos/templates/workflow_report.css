@@ -112,9 +112,10 @@ tbody tr:hover {
   background: rgba(66, 165, 245, 0.2);
 }
 
-.dag-image img {
+img.dag-image {
   max-width: 80%;
 }
+
 .timeline-col {
   width : 300px;
   text-align: center;

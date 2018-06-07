@@ -618,7 +618,7 @@ workflow\t{self.md5}\t{workflow_info}
                 # NOTE: If a step is called multiple times with different targets, it is much better
                 # to use different names because pydotplus can be very slow in handling graphs with nodes
                 # with identical names.
-                dag.add_step(section.uuid, f'{section.step_name()} {short_repr(env.sos_dict["__default_output__"])}', None, res['step_input'].targets(),
+                dag.add_step(section.uuid, f'{section.step_name()}{(" " + short_repr(env.sos_dict["__default_output__"])) if env.sos_dict["__default_output__"] else ""}', None, res['step_input'].targets(),
                              res['step_depends'].targets(), res['step_output'].targets(), context=context)
                 added_node += 1
                 resolved += 1
