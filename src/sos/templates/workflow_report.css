@@ -166,3 +166,7 @@ a:link, a:visited {
 a:hover {
   color: red;
 }
+
+tr.subworkflow.step-row {
+  display: none;
+}
