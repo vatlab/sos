@@ -25,7 +25,11 @@
          {% endif %}
          <tr>
             <th> Worklow Name</th>
-            <td>{{ workflows[master_id].name }}</td>
+            <td><samp>{{ workflows[master_id].name }}</samp></td>
+         </tr>
+         <tr>
+            <th> Worklow ID</th>
+            <td><samp>{{ master_id }}</samp></td>
          </tr>
          <tr>
             <th> Worklow Start Time</th>
