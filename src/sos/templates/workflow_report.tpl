@@ -3,8 +3,8 @@
    <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+      <link type="text/css" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-dropdown/2.0.3/jquery.dropdown.css" />
       <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
-
       <title>{{workflow_name}}</title>
       <style type="text/css">
          {% include "workflow_report.css" %}
@@ -132,45 +132,71 @@
          </tr>
          {% for step in steps[name] %}
          <tr class="{{ "master_workflow" if name == master_id else "subworkflow"}} step-row">
-            <td></td>
-            <td>{{ step.stepname }}</td>
-            <td>
-              {{ step.input_str }}
-            </td>
-            <td>{{ step.output_str }}</td>
-            <td>{{ step.start_time_str }}</td>
-            <td>{{ step.duration_str }}</td>
-            <td>
-               <div class="timeline-cell">
-                  <div class="timeline-before" style="width:{{ step.before_percent }}%"></div>
-                  <div class="timeline-during" style="width:{{ step.during_percent }}%"></div>
-                  <div class="timeline-after" style="width:{{ step.after_percent }}%"></div>
-               </div>
-            </td>
-            <td>
-               {% if step.completed.__step_completed__ %}
-               {{ step.completed.__step_completed__ }} completed &nbsp;
-               {% endif %}
-               {% if step.completed.__step_skipped__ %}
-               {{ step.completed.__step_skipped__ }} ignored
-               {% endif %}
-            </td>
-            <td>
-               {% if step.completed.__substep_completed__ %}
-               {{ step.completed.__substep_completed__ }} completed &nbsp;
-               {% endif %}
-               {% if step.completed.__substep_skipped__ %}
-               {{ step.completed.__substep_skipped__ }} ignored
-               {% endif %}
-            </td>
-            <td>
-               {% if step.completed.__task_completed__ %}
-               {{ step.completed.__task_completed__ }} completed &nbsp;
-               {% endif %}
-               {% if step.completed.__task_skipped__ %}
-               {{ step.completed.__task_skipped__ }} ignored
-               {% endif %}
-            </td>
+         <td></td>
+         <td>{{ step.stepname }}</td>
+         <td>
+            {% if step.input %}
+            <div class="dropdown">
+               <span data-toggle="dropdown" class="filelist">
+               {{ step.input_str}}
+               </span>
+               <ul class="dropdown-menu">
+                  {% for file in step.input %}
+                  <li> {{file}}
+                  <li>
+                     {% endfor %}
+               </ul>
+            </div>
+            {% endif %}
+         </td>
+         <td>
+            {% if step.output %}
+            <div class="dropdown">
+               <span data-toggle="dropdown" class="filelist">
+               {{ step.output_str}}
+               </span>
+               <ul class="dropdown-menu">
+                  {% for file in step.output %}
+                  <li> {{file}}
+                  <li>
+                     {% endfor %}
+               </ul>
+            </div>
+            {% endif %}
+         </td>
+         <td>{{ step.start_time_str }}</td>
+         <td>{{ step.duration_str }}</td>
+         <td>
+            <div class="timeline-cell">
+               <div class="timeline-before" style="width:{{ step.before_percent }}%"></div>
+               <div class="timeline-during" style="width:{{ step.during_percent }}%"></div>
+               <div class="timeline-after" style="width:{{ step.after_percent }}%"></div>
+            </div>
+         </td>
+         <td>
+            {% if step.completed.__step_completed__ %}
+            {{ step.completed.__step_completed__ }} completed &nbsp;
+            {% endif %}
+            {% if step.completed.__step_skipped__ %}
+            {{ step.completed.__step_skipped__ }} ignored
+            {% endif %}
+         </td>
+         <td>
+            {% if step.completed.__substep_completed__ %}
+            {{ step.completed.__substep_completed__ }} completed &nbsp;
+            {% endif %}
+            {% if step.completed.__substep_skipped__ %}
+            {{ step.completed.__substep_skipped__ }} ignored
+            {% endif %}
+         </td>
+         <td>
+            {% if step.completed.__task_completed__ %}
+            {{ step.completed.__task_completed__ }} completed &nbsp;
+            {% endif %}
+            {% if step.completed.__task_skipped__ %}
+            {{ step.completed.__task_skipped__ }} ignored
+            {% endif %}
+         </td>
          </tr>
          {% endfor %}
          {% endfor %}
@@ -214,21 +240,21 @@
       <h2> Execution DAG </h2>
       <img class="dag-image" src="data:image/png;base64,{{ workflows[master_id].dag_img }}">
       {% endif %}
-
-    <footer>
-     Report generated by <a href="https://vatlab.github.io/sos-docs/">SoS Workflow Engine</a> version {{sos_version}}, by {{ user }} on {{ time_now_str }}
-    </footer>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js" integrity="sha384-smHYKdLADwkXOn1EmN1qk/HfnUcbVRZyYmZ4qpPea6sjB/pTJ0euyQp0Mk8ck+5T" crossorigin="anonymous"></script>
-    <script>
-    $(document).ready(function(){
-      $('[data-toggle="tooltip"]').tooltip();
-      $(".workflow-row").click(function(){
-        $(this).nextUntil('tr.workflow-row').slideToggle(100, function(){
-       });
-     });
-   });
-   </script>
- </body>
+      <footer>
+         Report generated by <a href="https://vatlab.github.io/sos-docs/">SoS Workflow Engine</a> version {{sos_version}}, by {{ user }} on {{ time_now_str }}
+      </footer>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-dropdown/2.0.3/jquery.dropdown.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+      <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js" integrity="sha384-smHYKdLADwkXOn1EmN1qk/HfnUcbVRZyYmZ4qpPea6sjB/pTJ0euyQp0Mk8ck+5T" crossorigin="anonymous"></script>
+      <script>
+         $(document).ready(function(){
+           $('[data-toggle="tooltip"]').tooltip();
+           $(".workflow-row").click(function(){
+             $(this).nextUntil('tr.workflow-row').slideToggle(100, function(){
+            });
+          });
+         });
+      </script>
+   </body>
 </html>

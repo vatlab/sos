@@ -46,26 +46,18 @@ class WorkflowSig(object):
         return info
 
     def convert_filelist(self, info):
-        def get_label(files):
+        def shorten_filelist(files):
             label = os.path.basename(files[0])
             if len(label) > 20:
                 label = label[:10] + '..' + label[-4:]
             if len(files) > 1:
                 label += f', ... ({len(files)})'
             return label
-        def get_tooltip(files):
-            if len(files) == 1:
-                return f'<small><code>{files[0]}</code></small>'
-            else:
-                #return f'<ul>{"".join(f"<li>{x}</li>" for x in files)}</ul>'
-                return f'<small><code>{"<br>".join(x for x in files)}</code></small>'
 
         if 'input' in info and info['input']:
-            info['input_str'] = f'''<a href="#" data-toggle="tooltip" data-html="true"
-                title="{get_tooltip(info['input'])}">{get_label(info['input'])}</a>'''
+            info['input_str'] = shorten_filelist(info['input'])
         if 'output' in info and info['output']:
-            info['output_str'] = f'''<a href="#" data-toggle="tooltip" data-html="true"
-                title="{get_tooltip(info['output'])}">{get_label(info['output'])}</a>'''
+            info['output_str'] = shorten_filelist(info['output'])
         return info
 
     def workflows(self):

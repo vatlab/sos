@@ -170,3 +170,7 @@ a:hover {
 tr.subworkflow.step-row {
   display: none;
 }
+
+.filelist {
+  cursor: pointer;
+}
