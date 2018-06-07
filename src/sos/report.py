@@ -3,6 +3,7 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
+import getpass
 import os
 import time
 import base64
@@ -10,7 +11,7 @@ from collections import defaultdict
 from contextlib import contextmanager
 
 from .utils import TimeoutInterProcessLock, env, format_duration, dot_to_gif
-
+from ._version import __version__
 
 @contextmanager
 def workflow_report(mode='a'):
@@ -125,6 +126,10 @@ def render_report(output_file, workflow_id):
         'workflows': data.workflows(),
         'tasks': data.tasks(),
         'steps': data.steps(),
+        'sos_version': __version__,
+        'user': getpass.getuser(),
+        'time_now_str': time.strftime(
+            '%Y-%m-%d %H:%M:%S', time.localtime()),
     }
     # derived context
     context['master_id'] = next(

@@ -377,7 +377,7 @@ class Base_Executor:
         if not env.config['master_id']:
             env.config['master_id'] = self.md5
             workflow_info['command_line'] = subprocess.list2cmdline(
-                [os.path.basename(sys.argv[0])] + sys.argv[1:]),
+                [os.path.basename(sys.argv[0])] + sys.argv[1:])
             workflow_info['project_dir'] = os.getcwd()
         workflow_info['master_id'] = env.config['master_id']
         with workflow_report(mode='w' if env.config['master_id'] == self.md5 else 'a') as sig:
