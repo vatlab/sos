@@ -155,14 +155,14 @@ tbody tr:hover {
   font-style: normal;
 }
 
-footer a {
+a {
   text-decoration: none;
 }
 
-footer a:link, a:visited {
-    color: black;
+a:link, a:visited {
+  color: black;
 }
 
-footer a:hover {
-    color: red;
+a:hover {
+  color: red;
 }

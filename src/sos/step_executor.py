@@ -1723,12 +1723,18 @@ class Base_Step_Executor:
                 if self.completed['__step_skipped__'].is_integer():
                     self.completed['__step_skipped__'] = int(
                         self.completed['__step_skipped__'])
+                def file_only(targets):
+                    if not isinstance(targets, sos_targets):
+                        env.logger.warning(f"Unexpected input or output target for reporting. Empty list returned: {targets}")
+                        return []
+                    else:
+                        return [str(x) for x in targets._targets if isinstance(x, file_target)]
                 step_info = {
                     'start_time': self.start_time,
                     'stepname': self.step.step_name(True),
                     'substeps': len(self._substeps),
-                    'input': short_repr(env.sos_dict['step_input']) if env.sos_dict['step_input'] else '',
-                    'output': short_repr(env.sos_dict['step_output']) if env.sos_dict['step_output'] else '',
+                    'input': file_only(env.sos_dict['step_input']),
+                    'output': file_only(env.sos_dict['step_output']),
                     'completed': dict(self.completed),
                     'end_time': time.time()
                 }

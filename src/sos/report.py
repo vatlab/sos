@@ -45,6 +45,29 @@ class WorkflowSig(object):
             info['duration_str'] = format_duration(info['duration'])
         return info
 
+    def convert_filelist(self, info):
+        def get_label(files):
+            label = os.path.basename(files[0])
+            if len(label) > 20:
+                label = label[:10] + '..' + label[-4:]
+            if len(files) > 1:
+                label += f', ... ({len(files)})'
+            return label
+        def get_tooltip(files):
+            if len(files) == 1:
+                return f'<small><code>{files[0]}</code></small>'
+            else:
+                #return f'<ul>{"".join(f"<li>{x}</li>" for x in files)}</ul>'
+                return f'<small><code>{"<br>".join(x for x in files)}</code></small>'
+
+        if 'input' in info and info['input']:
+            info['input_str'] = f'''<a href="#" data-toggle="tooltip" data-html="true"
+                title="{get_tooltip(info['input'])}">{get_label(info['input'])}</a>'''
+        if 'output' in info and info['output']:
+            info['output_str'] = f'''<a href="#" data-toggle="tooltip" data-html="true"
+                title="{get_tooltip(info['output'])}">{get_label(info['output'])}</a>'''
+        return info
+
     def workflows(self):
         try:
             # workflows has format
@@ -85,8 +108,9 @@ class WorkflowSig(object):
 
     def steps(self):
         try:
-            return {wf: [self.convert_time(eval(x)) for x in steps] for wf, steps in self.data['step'].items()}
-        except:
+            return {wf: [self.convert_filelist(self.convert_time(eval(x))) for x in steps] for wf, steps in self.data['step'].items()}
+        except Exception as e:
+            env.logger.warning(e)
             return {}
 
     def tracked_files(self):
@@ -110,6 +134,7 @@ def calc_timeline(info, start_time, total_duration):
         1, int(info['duration'] * 100 / total_duration))
     info['after_percent'] = 100 - \
         info['before_percent'] - info['during_percent']
+    return info
 
 
 def render_report(output_file, workflow_id):
