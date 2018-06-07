@@ -1730,6 +1730,7 @@ class Base_Step_Executor:
                     else:
                         return [str(x) for x in targets._targets if isinstance(x, file_target)]
                 step_info = {
+                    'step_id': self.step.md5,
                     'start_time': self.start_time,
                     'stepname': self.step.step_name(True),
                     'substeps': len(self._substeps),
