@@ -33,7 +33,9 @@
          </tr>
          <tr>
             <th> Worklow Start Time</th>
-            <td>{{ workflows[master_id].start_time_str }}</td>
+            <td>{{ workflows[master_id].start_time_str }}
+                (<span id="workflow-start-time">{{ workflows[master_id].start_time }}</span>)
+            </td>
          </tr>
          <tr>
             <th> Worklow End Time</th>
@@ -252,12 +254,36 @@
       <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
       <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js" integrity="sha384-smHYKdLADwkXOn1EmN1qk/HfnUcbVRZyYmZ4qpPea6sjB/pTJ0euyQp0Mk8ck+5T" crossorigin="anonymous"></script>
       <script>
+         function timeElapsed(start_date)
+         {
+           let now = new Date()
+           let seconds = parseInt(now / 1000 - start_date);
+
+           let year = now.getUTCFullYear() - new Date(start_date * 1000).getUTCFullYear();
+           if (year > 0) {
+             return year + " year" + (year > 1 ? "s" : "") + " ago";
+           }
+           var day = Math.floor(seconds / 86400);
+           if (day > 0) {
+             return day + " day" + (day > 1 ? "s" : "") + " ago";
+           }
+           var hh = Math.floor((seconds % 86400) / 3600);
+           if (hh > 0) {
+             return hh + " hour" + (hh > 1 ? "s" : "") + " ago";
+           }
+           var mm = Math.floor((seconds % 3600) / 60);
+           if (mm > 0) {
+             return mm + " minute" + (mm > 1 ? "s" : "") + " ago";
+           }
+           return "less than 1 minute ago"
+         };
          $(document).ready(function(){
            $('[data-toggle="tooltip"]').tooltip();
            $(".workflow-row").click(function(){
              $(this).nextUntil('tr.workflow-row').slideToggle(100, function(){
             });
           });
+          $("#workflow-start-time").text(timeElapsed($("#workflow-start-time")[0].innerText));
          });
       </script>
    </body>
