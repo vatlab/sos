@@ -158,7 +158,15 @@ tbody tr:hover {
 .dropdown-menu li
 {
   padding-left: 5px;
-  padding-right: 5px;
+  padding-right: 100px;
+  white-space: nowrap;
+  font-size: small;
+  font-family: monospace;
+}
+
+.dropdown-menu > li > .filesize {
+  position: absolute;
+  right: 5px;
 }
 
 a {

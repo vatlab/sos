@@ -142,11 +142,11 @@
             {% if step.input %}
             <div class="dropdown">
                <span data-toggle="dropdown" class="filelist">
-               {{ step.input_str}}
+               {{ step.input[0][0] | basename | truncate(20) }}{% if step.input|length > 1 %} ({{ step.input|length }}) {% endif %}
                </span>
                <ul class="dropdown-menu">
                   {% for file in step.input %}
-                  <li> {{file}}
+                  <li> {{file[0]}} <span class="text-muted filesize">{{file[1]|filesizeformat}}</span>
                   <li>
                      {% endfor %}
                </ul>
@@ -157,11 +157,11 @@
             {% if step.output %}
             <div class="dropdown">
                <span data-toggle="dropdown" class="filelist">
-               {{ step.output_str}}
+               {{ step.output[0][0] | basename | truncate(20) }}{% if step.output|length > 1 %} ({{ step.output|length }}) {% endif %}
                </span>
                <ul class="dropdown-menu">
                   {% for file in step.output %}
-                  <li> {{file}}
+                  <li> {{file[0]}} <span class="text-muted filesize">{{file[1] | filesizeformat}}</span>
                   <li>
                      {% endfor %}
                </ul>

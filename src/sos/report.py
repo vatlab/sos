@@ -45,21 +45,6 @@ class WorkflowSig(object):
             info['duration_str'] = format_duration(info['duration'])
         return info
 
-    def convert_filelist(self, info):
-        def shorten_filelist(files):
-            label = os.path.basename(files[0])
-            if len(label) > 20:
-                label = label[:10] + '..' + label[-4:]
-            if len(files) > 1:
-                label += f', ... ({len(files)})'
-            return label
-
-        if 'input' in info and info['input']:
-            info['input_str'] = shorten_filelist(info['input'])
-        if 'output' in info and info['output']:
-            info['output_str'] = shorten_filelist(info['output'])
-        return info
-
     def workflows(self):
         try:
             # workflows has format
@@ -100,7 +85,7 @@ class WorkflowSig(object):
 
     def steps(self):
         try:
-            return {wf: [self.convert_filelist(self.convert_time(eval(x))) for x in steps] for wf, steps in self.data['step'].items()}
+            return {wf: [self.convert_time(eval(x)) for x in steps] for wf, steps in self.data['step'].items()}
         except Exception as e:
             env.logger.warning(e)
             return {}
@@ -134,10 +119,12 @@ def render_report(output_file, workflow_id):
         env.exec_dir, '.sos', f'{workflow_id}.sig'))
 
     from jinja2 import Environment, PackageLoader, select_autoescape
-    template = Environment(
+    environment = Environment(
         loader=PackageLoader('sos', 'templates'),
         autoescape=select_autoescape(['html', 'xml'])
-    ).get_template('workflow_report.tpl')
+    )
+    environment.filters['basename'] = os.path.basename
+    template = environment.get_template('workflow_report.tpl')
 
     context = {
         'workflows': data.workflows(),

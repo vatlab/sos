@@ -1728,7 +1728,7 @@ class Base_Step_Executor:
                         env.logger.warning(f"Unexpected input or output target for reporting. Empty list returned: {targets}")
                         return []
                     else:
-                        return [str(x) for x in targets._targets if isinstance(x, file_target)]
+                        return [(str(x), x.size()) for x in targets._targets if isinstance(x, file_target)]
                 step_info = {
                     'step_id': self.step.md5,
                     'start_time': self.start_time,
