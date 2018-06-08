@@ -534,9 +534,11 @@ class file_target(path, BaseTarget):
         name_md5 = textMD5(fullname)
 
         if self.is_external():
-            self._sigfile = path('~') / '.sos' / '.runtime' / name_md5 + '.file_info'
+            self._sigfile = path('~') / '.sos' / \
+                '.runtime' / name_md5 + '.file_info'
         else:
-            self._sigfile = path(env.exec_dir) / '.sos' / '.runtime' / name_md5 + '.file_info'
+            self._sigfile = path(env.exec_dir) / '.sos' / \
+                '.runtime' / name_md5 + '.file_info'
         return self._sigfile
 
     def target_signature(self, mode='any'):
@@ -619,7 +621,8 @@ class file_target(path, BaseTarget):
             md5.write(
                 f'{self.fullname()}\t{os.path.getmtime(self)}\t{os.path.getsize(self)}\t{self.target_signature()}\n')
             for f in self._attachments:
-                md5.write(f'{f}\t{os.path.getmtime(f)}\t{os.path.getsize(f)}\t{fileMD5(f)}\n')
+                md5.write(
+                    f'{f}\t{os.path.getmtime(f)}\t{os.path.getsize(f)}\t{fileMD5(f)}\n')
 
     def validate(self):
         '''Check if file matches its signature'''
@@ -649,7 +652,8 @@ class paths(Sequence, os.PathLike):
 
         for t in self._paths:
             if isinstance(t, paths):
-                raise RuntimeError(f"Nested paths {t} were introduced by {args}")
+                raise RuntimeError(
+                    f"Nested paths {t} were introduced by {args}")
             if not isinstance(t, path):
                 raise RuntimeError(f"Unrecognized path {t}")
 
@@ -713,7 +717,8 @@ class paths(Sequence, os.PathLike):
         if len(self._paths) == 1:
             return getattr(self._paths[0], key)
         elif len(self._paths) == 0:
-            raise AttributeError(f"Cannot get attribute {key} from empty target list")
+            raise AttributeError(
+                f"Cannot get attribute {key} from empty target list")
         else:
             raise AttributeError(
                 f'Cannot get attribute {key} from group of {len(self)} targets {self!r}')
@@ -734,16 +739,24 @@ class paths(Sequence, os.PathLike):
 class sos_targets(BaseTarget, Sequence, os.PathLike):
     '''A collection of targets'''
 
-    def __init__(self, *args):
+    def __init__(self, *args, undetermined=None):
         super(BaseTarget, self).__init__()
         self._targets = []
+        if undetermined is True or isinstance(undetermined, str):
+            self._undetermined = undetermined
+        else:
+            self._undetermined = bool(args)
         for arg in args:
             self.__append__(arg)
         for t in self._targets:
             if isinstance(t, sos_targets):
-                raise RuntimeError(f"Nested sos_targets {t} were introduced by {args}")
+                raise RuntimeError(
+                    f"Nested sos_targets {t} were introduced by {args}")
             if not isinstance(t, BaseTarget):
                 raise RuntimeError(f"Unrecognized target {t}")
+
+    def determined(self):
+        return self._targets or not self._undetermined
 
     def __append__(self, arg):
         if isinstance(arg, Undetermined):
@@ -753,6 +766,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         elif isinstance(arg, (str, path)):
             self._targets.append(file_target(arg))
         elif isinstance(arg, sos_targets):
+            if arg.determined() and not self.determined():
+                self._undetermined = False
             self._targets.extend(arg._targets)
         elif isinstance(arg, BaseTarget):
             self._targets.append(arg)
@@ -761,7 +776,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             for t in list(arg):
                 self.__append__(t)
         elif arg is not None:
-            raise RuntimeError(f'Unrecognized targets {arg} of type {arg.__class__.__name__}')
+            raise RuntimeError(
+                f'Unrecognized targets {arg} of type {arg.__class__.__name__}')
 
     def targets(self):
         return [x.target_name() if isinstance(x, file_target) else x for x in self._targets]
@@ -785,8 +801,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def __getstate__(self):
         return self._targets
 
-    def __setstate__(self, targets):
+    def __setstate__(self, targets) -> None:
         self._targets = targets
+        self._undetermined = True
 
     def __len__(self):
         return len(self._targets)
@@ -811,7 +828,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         if len(self._targets) == 1:
             return self._targets[0].target_exists(mode)
         else:
-            raise ValueError(f'Cannot test existense for group of {len(self)} targets {self!r}')
+            raise ValueError(
+                f'Cannot test existense for group of {len(self)} targets {self!r}')
 
     def __deepcopy__(self, memo):
         return sos_targets(deepcopy(self._targets))
@@ -820,7 +838,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         if len(self._targets) == 1:
             return getattr(self._targets[0], key)
         elif len(self._targets) == 0:
-            raise AttributeError(f"Cannot get attribute {key} from empty target list")
+            raise AttributeError(
+                f"Cannot get attribute {key} from empty target list")
         else:
             raise AttributeError(
                 f'Cannot get attribute {key} from group of {len(self)} targets {self!r}')
@@ -841,7 +860,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         if len(self._targets) == 1:
             return self._targets[0].sig_file()
         else:
-            raise ValueError(f'Cannot get sig_file for group of targets {self}')
+            raise ValueError(
+                f'Cannot get sig_file for group of targets {self}')
 
     def __add__(self, part):
         if len(self._targets) == 1:
@@ -849,22 +869,24 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         elif len(self._targets) == 0:
             raise ValueError(f"Cannot add {part} to empty target list")
         else:
-            raise ValueError(f'Cannot add {part} to group of {len(self)} targets {self!r}')
+            raise ValueError(
+                f'Cannot add {part} to group of {len(self)} targets {self!r}')
 
     def __fspath__(self):
         if len(self._targets) == 1:
             return self._targets[0].__fspath__()
         elif len(self._targets) == 0:
-            raise ValueError(f"Cannot treat an empty sos_targets as single target")
+            raise ValueError(
+                f"Cannot treat an empty sos_targets as single target")
         else:
             raise ValueError(
                 f'Cannot treat an sos_targets object {self} with more than one targets as a single target')
 
     def __repr__(self):
-        return '[' + ', '.join(repr(x) for x in self._targets) + ']'
+        return ('[' + ', '.join(repr(x) for x in self._targets) + ']') if not self._undetermined else 'TBD'
 
     def __str__(self):
-        return self.__format__('')
+        return self.__format__('') if not self._undetermined else 'TBD'
 
 
 class RuntimeInfo:
@@ -892,7 +914,8 @@ class RuntimeInfo:
                 raise RuntimeError(
                     'Input files must be a list of filenames for runtime signature.')
         else:
-            self.input_files = [file_target(x) if isinstance(x, str) else x for x in input_files]
+            self.input_files = [file_target(x) if isinstance(
+                x, str) else x for x in input_files]
 
         if dependent_files is None:
             self.dependent_files = []
@@ -909,7 +932,8 @@ class RuntimeInfo:
         if output_files is None:
             self.output_files = []
         elif isinstance(output_files, list):
-            self.output_files = [file_target(x) if isinstance(x, str) else x for x in output_files]
+            self.output_files = [file_target(x) if isinstance(
+                x, str) else x for x in output_files]
             self.external_output = self.output_files and isinstance(
                 self.output_files[0], file_target) and self.output_files[0].is_external()
         elif isinstance(output_files, Undetermined):
@@ -928,7 +952,8 @@ class RuntimeInfo:
 
         if self.external_output:
             # global signature
-            self.proc_info = str(path('~') / '.sos' / '.runtime' / f'{self.sig_id}.exe_info')
+            self.proc_info = str(path('~') / '.sos' /
+                                 '.runtime' / f'{self.sig_id}.exe_info')
         else:
             self.proc_info = str(path(env.exec_dir) / '.sos' /
                                  '.runtime' / f'{self.sig_id}.exe_info')
@@ -955,7 +980,8 @@ class RuntimeInfo:
         #
         # the signature might be on a remote machine and has changed location
         if self.external_output:
-            self.proc_info = str(path('~') / '.sos' / '.runtime' / f'{self.sig_id}.exe_info')
+            self.proc_info = str(path('~') / '.sos' /
+                                 '.runtime' / f'{self.sig_id}.exe_info')
         else:
             self.proc_info = str(path(env.exec_dir) / '.sos' /
                                  '.runtime' / f'{self.sig_id}.exe_info')
@@ -966,15 +992,18 @@ class RuntimeInfo:
         self._lock = fasteners.InterProcessLock(self.proc_info + '_')
         if not self._lock.acquire(blocking=False):
             self._lock = None
-            raise UnavailableLock((self.input_files, self.output_files, self.proc_info))
+            raise UnavailableLock(
+                (self.input_files, self.output_files, self.proc_info))
         else:
-            env.logger.trace(f'Lock acquired for output files {short_repr(self.output_files)}')
+            env.logger.trace(
+                f'Lock acquired for output files {short_repr(self.output_files)}')
 
     def release(self, quiet=False):
         if self._lock:
             try:
                 self._lock.release()
-                env.logger.trace(f'Lock released for output files {short_repr(self.output_files)}')
+                env.logger.trace(
+                    f'Lock released for output files {short_repr(self.output_files)}')
             except Exception as e:
                 if not quiet:
                     env.logger.warning(
@@ -998,7 +1027,8 @@ class RuntimeInfo:
         of workflow. They are not part of the construction.
         '''
         if isinstance(self.output_files, Undetermined) or isinstance(self.dependent_files, Undetermined):
-            env.logger.trace('Write signature failed due to undetermined files')
+            env.logger.trace(
+                'Write signature failed due to undetermined files')
             return False
         env.logger.trace(f'Write signature {self.proc_info}')
         with open(self.proc_info, 'w') as md5:
@@ -1072,15 +1102,15 @@ class RuntimeInfo:
             for f in self.input_files:
                 if isinstance(f, file_target):
                     wf.write(
-                            f'input_file\t{self.step_md5}\t{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}\n')
+                        f'input_file\t{self.step_md5}\t{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}\n')
             for f in self.dependent_files:
                 if isinstance(f, file_target):
                     wf.write(
-                            f'dependent_file\t{self.step_md5}\t{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}\n')
+                        f'dependent_file\t{self.step_md5}\t{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}\n')
             for f in self.output_files:
                 if isinstance(f, file_target):
                     wf.write(
-                            f'output_file\t{self.step_md5}\t{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}\n')
+                        f'output_file\t{self.step_md5}\t{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}\n')
         return True
 
     def validate(self):
@@ -1122,7 +1152,8 @@ class RuntimeInfo:
                     elif line == '# step process\n':
                         break
                     else:
-                        env.logger.trace(f'Unrecognized line in sig file {line}')
+                        env.logger.trace(
+                            f'Unrecognized line in sig file {line}')
                     continue
                 # for validation
                 if cur_type == 'init context':
@@ -1137,7 +1168,8 @@ class RuntimeInfo:
                             env.logger.debug(
                                 f"Variable {key} of type {type(value).__name__} cannot be compared: {e}")
                     except Exception as e:
-                        env.logger.warning(f'Failed to restore variable {key} from signature: {e}')
+                        env.logger.warning(
+                            f'Failed to restore variable {key} from signature: {e}')
                     continue
                 # for return context
                 elif cur_type == 'end context':
@@ -1145,7 +1177,8 @@ class RuntimeInfo:
                         key, value = load_var(line)
                         res['vars'][key] = value
                     except Exception as e:
-                        env.logger.warning(f'Failed to restore variable from signature: {e}')
+                        env.logger.warning(
+                            f'Failed to restore variable from signature: {e}')
                     continue
                 try:
                     f, m = line.rsplit('\t', 1)
@@ -1162,7 +1195,8 @@ class RuntimeInfo:
                                     target_class = entrypoint.load()
                                     break
                         if target_class is None:
-                            raise ValueError(f'Failed to identify target class {target_type}')
+                            raise ValueError(
+                                f'Failed to identify target class {target_type}')
                         # parameter of class?
                         freal = eval(f, {target_type: target_class})
                     else:
@@ -1179,7 +1213,8 @@ class RuntimeInfo:
                         return f'File has changed {f}'
                     files_checked[freal.target_name()] = True
                 except Exception as e:
-                    env.logger.debug(f'Wrong md5 line {line} in {self.proc_info}: {e}')
+                    env.logger.debug(
+                        f'Wrong md5 line {line} in {self.proc_info}: {e}')
                     continue
         #
         if not all(files_checked.values()):
