@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Union
 import psutil
 from billiard import Pool
 
-from .eval import SoS_eval, SoS_exec, Undetermined, stmtHash
+from .eval import SoS_eval, SoS_exec, stmtHash
 from .parser import SoS_Step
 from .pattern import extract_pattern
 from .report import workflow_report
@@ -44,7 +44,7 @@ class PendingTasks(Exception):
         self.tasks = tasks
 
 
-def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets, Undetermined]] = None) -> Dict[str, Any]:
+def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = None) -> Dict[str, Any]:
     '''Analyze a section for how it uses input and output, what variables
     it uses, and input, output, etc.'''
     from .workflow_executor import __null_func__
@@ -57,9 +57,9 @@ def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets
     # step input and output can be true "Undetermined", namely unspecified,
     # can be dynamic and has to be determined at run time, or undetermined
     # at this stage because something cannot be determined now.
-    step_input = Undetermined()
-    step_output = Undetermined()
-    step_depends = []
+    step_input: sos_targets = sos_targets()
+    step_output: sos_targets = sos_targets()
+    step_depends: sos_targets = sos_targets([])
     environ_vars = set()
     signature_vars = set()
     changed_vars = set()
@@ -141,7 +141,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets
                     try:
                         args, kwargs = SoS_eval(f'__null_func__({value})')
                         if any(isinstance(x, (dynamic, remote)) for x in args):
-                            step_depends = Undetermined()
+                            step_depends = sos_targets()
                         else:
                             step_depends = _expand_file_list(True, *args)
                     except Exception as e:
@@ -161,13 +161,12 @@ def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets
 
             if not args:
                 if default_input is None:
-                    step_input = Undetermined()
+                    step_input = sos_targets()
                 else:
                     step_input = default_input
             elif not any(isinstance(x, (dynamic, remote)) for x in args):
                 step_input = _expand_file_list(True, *args)
-            env.sos_dict.set('input', Undetermined() if isinstance(
-                step_input, Undetermined) else sos_targets(step_input))
+            env.sos_dict.set('input', step_input)
 
             if 'paired_with' in kwargs:
                 pw = kwargs['paired_with']
@@ -215,7 +214,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets
             env.logger.debug(
                 f'Input of step {section.name if section.index is None else f"{section.name}_{section.index}"} is set to Undertermined: {e}')
             # expression ...
-            step_input = Undetermined(stmt)
+            step_input = sos_targets(undetermined=stmt)
         input_statement_idx += 1
     else:
         # assuming everything starts from 0 is after input
@@ -245,7 +244,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets
     # finally, tasks..
     if section.task:
         signature_vars |= accessed_vars(section.task)
-    if '__default_output__' in env.sos_dict and not isinstance(step_output, Undetermined):
+    if '__default_output__' in env.sos_dict and step_output.determined():
         for out in env.sos_dict['__default_output__']:
             if out not in step_output:
                 raise ValueError(
@@ -253,9 +252,9 @@ def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets
 
     return {
         'step_name': f'{section.name}_{section.index}' if isinstance(section.index, int) else section.name,
-        'step_input': step_input if isinstance(step_input, Undetermined) else sos_targets(step_input),
-        'step_output': step_output if isinstance(step_output, Undetermined) else sos_targets(step_output),
-        'step_depends': step_depends if isinstance(step_depends, Undetermined) else sos_targets(step_depends),
+        'step_input': step_input,
+        'step_output': step_output,
+        'step_depends': step_depends,
         # variables starting with __ are internals...
         'environ_vars': {x for x in environ_vars if not x.startswith('__')},
         'signature_vars': {x for x in signature_vars if not x.startswith('__')},
@@ -459,7 +458,7 @@ class Base_Step_Executor:
 
     def expand_input_files(self, value, *args):
         if self.run_mode == 'dryrun' and any(isinstance(x, dynamic) for x in args):
-            return Undetermined(value)
+            return sos_targets(undetermined=value)
 
         # if unspecified, use __step_output__ as input (default)
         # resolve dynamic input.
@@ -475,7 +474,7 @@ class Base_Step_Executor:
             for k in args:
                 if isinstance(k, dynamic):
                     env.logger.warning(f'Dependent target {k} is dynamic')
-            return Undetermined()
+            return sos_targets()
 
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
         return _expand_file_list(False, *args)
@@ -484,7 +483,7 @@ class Base_Step_Executor:
         '''Process output files (perhaps a pattern) to determine input files.
         '''
         if any(isinstance(x, dynamic) for x in args):
-            return Undetermined(value)
+            return sos_targets(undetermined=value)
         else:
             return _expand_file_list(True, *args)
 
@@ -504,7 +503,7 @@ class Base_Step_Executor:
             return
         if env.sos_dict['step_output'] is None:
             return
-        if isinstance(env.sos_dict['step_output'], Undetermined):
+        if not env.sos_dict['step_output'].determined():
             raise RuntimeError(
                 'Output of a completed step cannot be undetermined.')
         for target in env.sos_dict['step_output']:
@@ -538,24 +537,24 @@ class Base_Step_Executor:
 
     # Nested functions to handle different parameters of input directive
     @staticmethod
-    def handle_group_by(ifiles, group_by):
+    def handle_group_by(ifiles: sos_targets, group_by: Union[int, str]):
         '''Handle input option group_by'''
         if group_by == 'single':
-            return [[x] for x in ifiles]
+            return [sos_targets(x) for x in ifiles]
         elif group_by == 'all':
             # default option
-            return [ifiles]
+            return [sos_targets(ifiles)]
         elif group_by == 'pairs':
             if len(ifiles) % 2 != 0:
                 raise ValueError(
                     f'Paired group_by has to have even number of input files: {len(ifiles)} provided')
-            return list(list(x) for x in zip(ifiles[:len(ifiles) // 2], ifiles[len(ifiles) // 2:]))
+            return list(sos_targets(x) for x in zip(ifiles[:len(ifiles) // 2], ifiles[len(ifiles) // 2:]))
         elif group_by == 'pairwise':
             f1, f2 = tee(ifiles)
             next(f2, None)
-            return [list(x) for x in zip(f1, f2)]
+            return [sos_targets(x) for x in zip(f1, f2)]
         elif group_by == 'combinations':
-            return [list(x) for x in combinations(ifiles, 2)]
+            return [sos_targets(x) for x in combinations(ifiles, 2)]
         elif isinstance(group_by, int) or group_by.isdigit():
             group_by = int(group_by)
             if len(ifiles) % group_by != 0 and len(ifiles) > group_by:
@@ -564,12 +563,12 @@ class Base_Step_Executor:
             if group_by < 1:
                 raise ValueError(
                     'Value of paramter group_by should be a positive number.')
-            return [ifiles[i:i + group_by] for i in range(0, len(ifiles), group_by)]
+            return [sos_targets(ifiles[i:i + group_by]) for i in range(0, len(ifiles), group_by)]
         else:
             raise ValueError(f'Unsupported group_by option ``{group_by}``!')
 
     @staticmethod
-    def handle_paired_with(paired_with, ifiles, _groups, _vars):
+    def handle_paired_with(paired_with, ifiles: sos_targets, _groups: List[sos_targets], _vars: List[dict]):
         '''Handle input option paired_with'''
         if paired_with is None or not paired_with:
             var_name = []
@@ -615,7 +614,7 @@ class Base_Step_Executor:
                 _vars[idx][vn] = type(vv)(mapped_vars)
 
     @staticmethod
-    def handle_group_with(group_with, ifiles, _groups, _vars):
+    def handle_group_with(group_with, ifiles: sos_targets, _groups: List[sos_targets], _vars: List[dict]):
         '''Handle input option group_with'''
         if group_with is None or not group_with:
             var_name = []
@@ -657,7 +656,7 @@ class Base_Step_Executor:
                 _vars[idx][vn] = vv[idx]
 
     @staticmethod
-    def handle_extract_pattern(pattern, ifiles, _groups, _vars):
+    def handle_extract_pattern(pattern, ifiles: sos_targets, _groups: List[sos_targets], _vars: List[dict]):
         '''Handle input option pattern'''
         if pattern is None or not pattern:
             patterns = []
@@ -682,7 +681,7 @@ class Base_Step_Executor:
                 res.keys(), ifiles, _groups, _vars)
 
     @staticmethod
-    def handle_for_each(for_each, _groups, _vars):
+    def handle_for_each(for_each, _groups: List[sos_targets], _vars: List[dict]):
         if for_each is None or not for_each:
             for_each = []
         elif isinstance(for_each, (str, dict)):
@@ -773,7 +772,7 @@ class Base_Step_Executor:
                 _vars.extend(copy.deepcopy(_tmp_vars))
 
     # directive input
-    def process_input_args(self, ifiles, **kwargs):
+    def process_input_args(self, ifiles: sos_targets, **kwargs):
         """This function handles directive input and all its parameters.
         It
             determines and set __step_input__
@@ -783,13 +782,13 @@ class Base_Step_Executor:
             _vars
         which are groups of _input and related _vars
         """
-        if isinstance(ifiles, Undetermined):
-            env.sos_dict.set('step_input', Undetermined())
-            env.sos_dict.set('_input', Undetermined())
+        if not ifiles.determined():
+            env.sos_dict.set('step_input', sos_targets())
+            env.sos_dict.set('_input', sos_targets())
             # temporarily set depends and output to Undetermined because we cannot
             # go far with such input
-            env.sos_dict.set('step_output', Undetermined())
-            return [Undetermined()], [{}]
+            env.sos_dict.set('step_output', sos_targets())
+            return [sos_targets()], [{}]
 
         for k in kwargs.keys():
             if k not in SOS_INPUT_OPTIONS:
@@ -811,9 +810,9 @@ class Base_Step_Executor:
         # handle group_by
         if 'group_by' in kwargs:
             _groups = Base_Step_Executor.handle_group_by(
-                ifiles, kwargs['group_by'])
+                sos_targets(ifiles), kwargs['group_by'])
         else:
-            _groups = [ifiles]
+            _groups = [sos_targets(ifiles)]
         #
         _vars = [{} for x in _groups]
         # handle paired_with
@@ -834,25 +833,20 @@ class Base_Step_Executor:
                 kwargs['for_each'], _groups, _vars)
         return _groups, _vars
 
-    def process_depends_args(self, dfiles, **kwargs):
+    def process_depends_args(self, dfiles: sos_targets, **kwargs):
         for k in kwargs.keys():
             if k not in SOS_DEPENDS_OPTIONS:
                 raise RuntimeError(f'Unrecognized depends option {k}')
-        if isinstance(dfiles, Undetermined):
-            raise ValueError(r"FIXME depends needs to handle undetermined")
-        if isinstance(dfiles, sos_targets):
-            raise ValueError(r"FIXME depends should not be targets type")
+        if not dfiles.determined():
+            raise ValueError(r"Depends needs to handle undetermined")
 
-        env.sos_dict.set('_depends', sos_targets(dfiles))
+        env.sos_dict.set('_depends', dfiles)
         if env.sos_dict['step_depends'] is None:
-            env.sos_dict.set('step_depends', sos_targets(dfiles))
+            env.sos_dict.set('step_depends', dfiles)
         elif env.sos_dict['step_depends'].targets() != dfiles:
             env.sos_dict['step_depends'].extend(dfiles)
 
-    def process_output_args(self, ofiles, **kwargs):
-        if isinstance(ofiles, sos_targets):
-            raise ValueError(r"Output should not be targets type")
-
+    def process_output_args(self, ofiles: sos_targets, **kwargs):
         for k in kwargs.keys():
             if k not in SOS_OUTPUT_OPTIONS:
                 raise RuntimeError(f'Unrecognized output option {k}')
@@ -866,24 +860,20 @@ class Base_Step_Executor:
             ofiles = _ogroups[env.sos_dict['_index']]
 
         # create directory
-        if not isinstance(ofiles, Undetermined):
+        if ofiles.determined():
             for ofile in ofiles:
-                if isinstance(ofile, str):
-                    parent_dir = os.path.split(os.path.expanduser(ofile))[0]
-                    if parent_dir and not os.path.isdir(parent_dir):
-                        os.makedirs(parent_dir)
-
-        if isinstance(ofiles, sos_targets):
-            raise ValueError(r"Output should not be targets type")
+                if isinstance(ofile, file_target):
+                    parent_dir = ofile.parent
+                    if parent_dir and not parent_dir.is_dir():
+                        parent_dir.mkdir(parents=True, exist_ok=True)
 
         # set variables
-        env.sos_dict.set('_output', ofiles if isinstance(
-            ofiles, Undetermined) else sos_targets(ofiles))
+        env.sos_dict.set('_output', ofiles)
         #
-        if isinstance(env.sos_dict['step_output'], (type(None), Undetermined)):
-            env.sos_dict.set('step_output', copy.deepcopy(ofiles))
-        elif not isinstance(env.sos_dict['step_output'], Undetermined) and \
-                env.sos_dict['step_output'].targets() != ofiles:
+        env.logger.warning(f"SET OUPUT {ofiles} of {type(ofiles)}")
+        if not env.sos_dict['step_output'].determined():
+            env.sos_dict.set('step_output', ofiles)
+        elif env.sos_dict['step_output'].determined() and env.sos_dict['step_output'] != ofiles:
             env.sos_dict['step_output'].extend(ofiles)
 
     def process_task_args(self, **kwargs):
@@ -900,23 +890,13 @@ class Base_Step_Executor:
 
     def reevaluate_output(self):
         # re-process the output statement to determine output files
-        if isinstance(env.sos_dict['step_output'], Undetermined):
-            args, _ = SoS_eval(f'__null_func__({env.sos_dict["output"].expr})')
+        if not env.sos_dict['step_output'].determined():
+            args, _ = SoS_eval(
+                f'__null_func__({env.sos_dict["output"]._undetermined})')
             # handle dynamic args
             args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-            env.sos_dict.set('step_output', sos_targets(
-                self.expand_output_files('', *args)))
-        else:
-            # this needs to be re-visited
-            for target in env.sos_dict['step_output'].targets():
-                if not isinstance(target, Undetermined):
-                    continue
-                args, _ = SoS_eval(f'__null_func__({target.expr})')
-                # handle dynamic args
-                args = [x.resolve() if isinstance(
-                    x, dynamic) else x for x in args]
-                env.sos_dict.set('step_output', sos_targets(
-                    self.expand_output_files('', *args)))
+            env.sos_dict.set(
+                'step_output', self.expand_output_files('', *args))
 
     def prepare_task(self):
         env.sos_dict['_runtime']['cur_dir'] = os.getcwd()
@@ -981,10 +961,9 @@ class Base_Step_Executor:
         )
         # if no output (thus no signature)
         # temporarily create task signature to obtain sig_id
-        task_id = RuntimeInfo(self.step.md5, self.step.task, task_vars['_input'].targets(),
-                              task_vars['_output'].targets(
-        ), task_vars['_depends'].targets(),
-            task_vars['__signature_vars__'], task_vars).sig_id
+        task_id = RuntimeInfo(self.step.md5, self.step.task, task_vars['_input'],
+                              task_vars['_output'], task_vars['_depends'],
+                              task_vars['__signature_vars__'], task_vars).sig_id
 
         # workflow ID should be included but not part of the signature, this is why it is included
         # after task_id is created.
@@ -1276,16 +1255,7 @@ class Base_Step_Executor:
             env.sos_dict.set('step_input', sos_targets())
         else:
             if env.sos_dict['__step_output__'] is not None:
-                if isinstance(env.sos_dict['__step_output__'], (Undetermined, sos_targets)):
-                    env.sos_dict.set('step_input', copy.deepcopy(
-                        env.sos_dict['__step_output__']))
-                elif isinstance(env.sos_dict['__step_output__'], list):
-                    # env.logger.warning(f"__step_output__ should not be list")
-                    env.sos_dict.set('step_input', sos_targets(
-                        env.sos_dict['__step_output__']))
-                else:
-                    raise RuntimeError(
-                        '__step_output__ can only be None, Undetermined, or a list of files.')
+                env.sos_dict.set('step_input', env.sos_dict['__step_output__'])
             else:
                 env.sos_dict.set('step_input', sos_targets())
 
@@ -1350,7 +1320,7 @@ class Base_Step_Executor:
             try:
                 args, kwargs = SoS_eval(f"__null_func__({stmt})")
                 # Files will be expanded differently with different running modes
-                input_files = self.expand_input_files(stmt, *args)
+                input_files: sos_targets = self.expand_input_files(stmt, *args)
                 self._substeps, self._vars = self.process_input_args(
                     input_files, **kwargs)
                 self.concurrent_substep = 'concurrent' in kwargs and kwargs['concurrent'] and len(
@@ -1364,7 +1334,7 @@ class Base_Step_Executor:
             input_statement_idx += 1
         else:
             # default case
-            self._substeps = [env.sos_dict['step_input'].targets()]
+            self._substeps = [env.sos_dict['step_input']]
             self._vars = [{}]
             # assuming everything starts from 0 is after input
             input_statement_idx = 0
@@ -1427,7 +1397,7 @@ class Base_Step_Executor:
 
                 for statement in pre_statement + self.step.statements[input_statement_idx:]:
                     # if input is undertermined, we can only process output:
-                    if isinstance(g, Undetermined) and statement[0] != ':':
+                    if not g.determined() and statement[0] != ':':
                         return self.collect_result()
                     if statement[0] == ':':
                         key, value = statement[1:3]
@@ -1440,9 +1410,10 @@ class Base_Step_Executor:
                                 if idx == 0:
                                     env.sos_dict.set(
                                         'step_output', sos_targets())
-                                ofiles = self.expand_output_files(value, *args)
-                                if not isinstance(g, (type(None), Undetermined)) and not isinstance(ofiles, (type(None), Undetermined)):
-                                    if any(x in g for x in ofiles):
+                                ofiles: sos_targets = self.expand_output_files(
+                                    value, *args)
+                                if g.determined() and ofiles.determined():
+                                    if any(x in g._targets for x in ofiles):
                                         raise RuntimeError(
                                             f'Overlapping input and output files: {", ".join(repr(x) for x in ofiles if x in g)}')
                                 # set variable _output and output
@@ -1452,11 +1423,12 @@ class Base_Step_Executor:
 
                                 # ofiles can be Undetermined
                                 sg = self.step_signature(idx)
-                                if sg is not None and not isinstance(g, Undetermined):
-                                    signatures[idx] = RuntimeInfo(self.step.md5, sg, env.sos_dict['_input'].targets(),
-                                                                  env.sos_dict['_output'].targets(
-                                    ), env.sos_dict['_depends'].targets(),
-                                        env.sos_dict['__signature_vars__'])
+                                if sg is not None and g.determined():
+                                    signatures[idx] = RuntimeInfo(self.step.md5, sg,
+                                                                  env.sos_dict['_input'],
+                                                                  env.sos_dict['_output'],
+                                                                  env.sos_dict['_depends'],
+                                                                  env.sos_dict['__signature_vars__'])
                                     signatures[idx].lock()
                                     if env.config['sig_mode'] == 'default':
                                         # if users use sos_run, the "scope" of the step goes beyong names in this step
@@ -1534,7 +1506,7 @@ class Base_Step_Executor:
                         except Exception as e:
                             # if input is Undertermined, it is possible that output cannot be processed
                             # due to that, and we just return
-                            if isinstance(g, Undetermined):
+                            if not g.determined():
                                 return self.collect_result()
                             raise RuntimeError(
                                 f'Failed to process step {key}: {value.strip()} ({e})')
@@ -1669,7 +1641,7 @@ class Base_Step_Executor:
             # not _output. For the same reason, signatures can be wrong if it has
             # Undetermined output.
             if env.config['run_mode'] in ('run', 'interactive'):
-                if isinstance(env.sos_dict['step_output'], Undetermined) or \
+                if not env.sos_dict['step_output'].determined() or \
                         env.sos_dict['step_output'].has_undetermined():
                     self.reevaluate_output()
                     # if output is no longer Undetermined, set it to output
@@ -1773,7 +1745,7 @@ class Base_Step_Executor:
                         pass
 
 
-def _expand_file_list(ignore_unknown: bool, *args) -> Any:
+def _expand_file_list(ignore_unknown: bool, *args) -> sos_targets:
     ifiles = []
 
     for arg in args:
@@ -1801,7 +1773,7 @@ def _expand_file_list(ignore_unknown: bool, *args) -> Any:
         # we are exclusind a case with
         #    output: *.txt, group_by
         # here but that case is conceptually wrong anyway
-        return ifiles
+        return sos_targets(ifiles)
     # expand files with wildcard characters and check if files exist
     tmp = []
     for ifile in ifiles:
@@ -1833,7 +1805,7 @@ def _expand_file_list(ignore_unknown: bool, *args) -> Any:
                     raise UnknownTarget(ifile)
             else:
                 tmp.extend(expanded)
-    return tmp
+    return sos_targets(tmp)
 
 
 class Step_Executor(Base_Step_Executor):

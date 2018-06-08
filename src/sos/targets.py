@@ -894,60 +894,32 @@ class RuntimeInfo:
     .exe_info files are used.
     '''
 
-    def __init__(self, step_md5, script, input_files=None, output_files=None, dependent_files=None,
-                 signature_vars=None, sdict=None):
+    def __init__(self, step_md5, script, input_files: sos_targets, output_files: sos_targets,
+                 dependent_files: sos_targets, signature_vars: dict={}, sdict: dict={}):
         '''Runtime information for specified output files
-
-        output_files:
-            intended output file
-
         '''
-        if sdict is None:
+        if not sdict:
             sdict = env.sos_dict
         self.step_md5 = step_md5
         self.script = script
+
+        #assert input_files.determined(), 'Undetermined input files for runtime signature'
+        #assert dependent_files.determined(), 'Undetermined dependent files for runtime signature'
+        #assert output_files.determined(), 'Undetermined output files for runtime signature'
+
         # input can only be a list of files
-        if not isinstance(input_files, list):
-            if input_files is None:
-                self.input_files = []
-            else:
-                raise RuntimeError(
-                    'Input files must be a list of filenames for runtime signature.')
-        else:
-            self.input_files = [file_target(x) if isinstance(
-                x, str) else x for x in input_files]
-
-        if dependent_files is None:
-            self.dependent_files = []
-        elif isinstance(dependent_files, list):
-            self.dependent_files = [file_target(x) if isinstance(
-                x, str) else x for x in dependent_files]
-        elif isinstance(dependent_files, Undetermined):
-            self.dependent_files = dependent_files
-        else:
-            raise RuntimeError(
-                'Dependent files must be a list of filenames or Undetermined for runtime signature.')
-
-        self.external_output = False
-        if output_files is None:
-            self.output_files = []
-        elif isinstance(output_files, list):
-            self.output_files = [file_target(x) if isinstance(
-                x, str) else x for x in output_files]
-            self.external_output = self.output_files and isinstance(
-                self.output_files[0], file_target) and self.output_files[0].is_external()
-        elif isinstance(output_files, Undetermined):
-            self.output_files = output_files
-        else:
-            raise RuntimeError(
-                'Output files must be a list of filenames or Undetermined for runtime signature.')
-
+        self.input_files = input_files
+        self.dependent_files = dependent_files
+        self.output_files = output_files
+        self.external_output = self.output_files and isinstance(
+            self.output_files[0], file_target) and self.output_files[0].is_external()
         self.signature_vars = {} if signature_vars is None else {
             x: sdict[x] if x in sdict else Undetermined() for x in signature_vars}
 
         sig_vars = [] if signature_vars is None else sorted(
             [x for x in signature_vars if x in sdict and isPrimitive(sdict[x])])
-        self.sig_id = textMD5('{} {} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files,
+        self.sig_id = textMD5('{} {} {} {} {}'.format(self.script, self.input_files,
+                                                      self.output_files, self.dependent_files,
                                                       '\n'.join(f'{x}:{stable_repr(sdict[x])}' for x in sig_vars)))
 
         if self.external_output:
@@ -1122,7 +1094,8 @@ class RuntimeInfo:
         # file not exist?
         if isinstance(self.output_files, Undetermined):
             return "Undetermined output files"
-        sig_files = self.input_files + self.output_files + self.dependent_files
+        sig_files = self.input_files._targets + self.output_files._targets + \
+            self.dependent_files._targets
         for x in sig_files:
             if not x.target_exists('any'):
                 return f'Missing target {x}'

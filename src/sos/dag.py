@@ -11,10 +11,11 @@ from collections import defaultdict
 import fasteners
 import networkx as nx
 
-from .eval import Undetermined
+
 from .targets import file_target, sos_step, sos_targets, sos_variable, textMD5
 from .utils import ActivityNotifier, env, short_repr
 
+from typing import Union
 
 #
 # DAG design:
@@ -76,15 +77,17 @@ from .utils import ActivityNotifier, env, short_repr
 #    c. Addition of node is currently not considered, but should
 #       be allowed.
 #
+
+
 class SoS_Node(object):
-    def __init__(self, step_uuid, node_name, node_index, input_targets=None, depends_targets=None,
-                 output_targets=None, context=None):
+    def __init__(self, step_uuid: str, node_name: str, node_index: Union[str, None], input_targets: sos_targets, depends_targets: sos_targets,
+                 output_targets: sos_targets, context: dict) -> None:
         self._step_uuid = step_uuid
         self._node_id = node_name
         self._node_index = node_index
-        self._input_targets = Undetermined() if input_targets is None else copy.deepcopy(input_targets)
-        self._depends_targets = [] if depends_targets is None else copy.deepcopy(depends_targets)
-        self._output_targets = Undetermined() if output_targets is None else copy.deepcopy(output_targets)
+        self._input_targets = input_targets
+        self._depends_targets = depends_targets
+        self._output_targets = output_targets
         # env.logger.error('Note {}: Input: {} Depends: {} Output: {}'.format(self._node_id, self._input_targets,
         #      self._depends_targets,  self._output_targets))
         self._context = {} if context is None else copy.deepcopy(context)
@@ -115,8 +118,8 @@ class SoS_DAG(nx.DiGraph):
     def num_nodes(self):
         return nx.number_of_nodes(self)
 
-    def add_step(self, step_uuid, node_name, node_index, input_targets, depends_targets,
-                 output_targets, context=None):
+    def add_step(self, step_uuid, node_name, node_index, input_targets: sos_targets, depends_targets: sos_targets,
+                 output_targets: sos_targets, context: dict={}):
         node = SoS_Node(step_uuid, node_name, node_index, input_targets, depends_targets,
                         output_targets, context)
         if node._node_uuid in [x._node_uuid for x in self.nodes()]:
@@ -124,49 +127,32 @@ class SoS_DAG(nx.DiGraph):
         # adding a step would add a sos_step target to met the depends on sos_step
         # requirement of some steps.
         self._all_output_files[sos_step(node_name.split(' ')[0])].append(node)
-        if isinstance(input_targets, sos_targets) or (not isinstance(input_targets, Undetermined) and any(isinstance(x, sos_targets) for x in input_targets)):
-            raise RuntimeError(f"input_targets should not be sos_targets {input_targets}")
-        if isinstance(depends_targets, sos_targets) or (not isinstance(depends_targets, Undetermined) and any(isinstance(x, sos_targets) for x in depends_targets)):
-            raise RuntimeError(f"depends_targets should not be sos_targets {depends_targets}")
-        if isinstance(output_targets, sos_targets) or (not isinstance(output_targets, Undetermined) and any(isinstance(x, sos_targets) for x in output_targets)):
-            raise RuntimeError(f"output_targets should not be sos_targets {output_targets}")
-        if not isinstance(input_targets, (type(None), Undetermined)):
-            for x in input_targets:
-                if node not in self._all_dependent_files[x]:
-                    self._all_dependent_files[x].append(node)
-        if not isinstance(depends_targets, (type(None), Undetermined)):
-            for x in depends_targets:
-                if node not in self._all_dependent_files[x]:
-                    self._all_dependent_files[x].append(node)
-        if not isinstance(output_targets, (type(None), Undetermined)):
-            for x in output_targets:
-                if node not in self._all_output_files[x]:
-                    self._all_output_files[x].append(node)
+
+        for x in input_targets:
+            if node not in self._all_dependent_files[x]:
+                self._all_dependent_files[x].append(node)
+        for x in depends_targets:
+            if node not in self._all_dependent_files[x]:
+                self._all_dependent_files[x].append(node)
+        for x in output_targets:
+            if node not in self._all_output_files[x]:
+                self._all_output_files[x].append(node)
         if context is not None:
             for x in context['__changed_vars__']:
                 if node not in self._all_output_files[sos_variable(x)]:
                     self._all_output_files[sos_variable(x)].append(node)
         self.add_node(node)
 
-    def update_step(self, node, input_targets, depends_targets, output_targets):
-        if isinstance(input_targets, sos_targets):
-            raise RuntimeError(f"input_targets should not be sos_targets {input_targets}")
-        if isinstance(depends_targets, sos_targets):
-            raise RuntimeError(f"depends_targets should not be sos_targets {depends_targets}")
-        if isinstance(output_targets, sos_targets):
-            raise RuntimeError(f"output_targets should not be sos_targets {output_targets}")
-        if not isinstance(input_targets, (type(None), Undetermined)):
-            for x in input_targets:
-                if node not in self._all_dependent_files[x]:
-                    self._all_dependent_files[x].append(node)
-        if not isinstance(depends_targets, (type(None), Undetermined)):
-            for x in depends_targets:
-                if node not in self._all_dependent_files[x]:
-                    self._all_dependent_files[x].append(node)
-        if not isinstance(output_targets, (type(None), Undetermined)):
-            for x in output_targets:
-                if node not in self._all_output_files[x]:
-                    self._all_output_files[x].append(node)
+    def update_step(self, node, input_targets: sos_targets, depends_targets: sos_targets, output_targets: sos_targets):
+        for x in input_targets:
+            if node not in self._all_dependent_files[x]:
+                self._all_dependent_files[x].append(node)
+        for x in depends_targets:
+            if node not in self._all_dependent_files[x]:
+                self._all_dependent_files[x].append(node)
+        for x in output_targets:
+            if node not in self._all_output_files[x]:
+                self._all_output_files[x].append(node)
 
     def find_executable(self):
         '''Find an executable node, which means nodes that has not been completed
@@ -182,7 +168,8 @@ class SoS_DAG(nx.DiGraph):
                 if not with_dependency:
                     return node
         # if no node could be found, let use try pending ones
-        pending_jobs = [x for x in self.nodes() if x._status == 'signature_pending']
+        pending_jobs = [x for x in self.nodes() if x._status ==
+                        'signature_pending']
         if pending_jobs:
             try:
                 notifier = ActivityNotifier(
@@ -190,7 +177,8 @@ class SoS_DAG(nx.DiGraph):
                 while True:
                     for node in pending_jobs:
                         # if it has not been executed
-                        lock = fasteners.InterProcessLock(node._signature[1] + '_')
+                        lock = fasteners.InterProcessLock(
+                            node._signature[1] + '_')
                         if lock.acquire(blocking=False):
                             lock.release()
                             node._status = None
@@ -234,10 +222,6 @@ class SoS_DAG(nx.DiGraph):
         missing = []
         existing = []
         for x in list(self._all_dependent_files.keys()) + ([] if targets is None else targets):
-            if isinstance(x, file_target):
-                raise RuntimeError(f'DAG should not contain file_target instance {x}')
-            if isinstance(x, sos_targets):
-                raise RuntimeError(f'DAG should not contain sos_targets instance {x}')
             if file_target(x).target_exists() if isinstance(x, str) else x.target_exists():
                 if x not in self._all_output_files:
                     existing.append(x)
@@ -253,7 +237,8 @@ class SoS_DAG(nx.DiGraph):
                         raise RuntimeError(
                             f'Completed target {target} is being re-executed. Please report this bug to SoS developers.')
                     else:
-                        env.logger.info(f'Re-running {node._node_id} to generate {target}')
+                        env.logger.info(
+                            f'Re-running {node._node_id} to generate {target}')
                         node._status = None
             return True
         else:
@@ -272,7 +257,7 @@ class SoS_DAG(nx.DiGraph):
         # first, find all nodes with targets
         subnodes = []
         for node in self.nodes():
-            if not isinstance(node._output_targets, Undetermined) and any(x in node._output_targets for x in targets):
+            if node._output_targets.determined() and any(x in node._output_targets for x in targets):
                 subnodes.append(node)
         #
         ancestors = set()
@@ -304,10 +289,10 @@ class SoS_DAG(nx.DiGraph):
 
             # 2. if the input of a step is undetermined, it has to be executed
             # after all its previous steps.
-            if isinstance(node._input_targets, Undetermined) and idx > 0:
+            if not node._input_targets.determined() and idx > 0:
                 # if there is some input specified, it does not use default
                 # input, so the relationship can be further looked before
-                if node._input_targets.expr:
+                if node._input_targets._undetermined:
                     # if the input is dynamic, has to rely on previous step...
                     if 'dynamic' in node._context['__environ_vars__']:
                         self.add_edge(indexed[idx - 1], node)

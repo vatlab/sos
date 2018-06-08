@@ -26,7 +26,7 @@ from .parser import SoS_Step, SoS_Workflow
 from .pattern import extract_pattern
 from .report import render_report, workflow_report
 from .step_executor import PendingTasks, Step_Executor, analyze_section
-from .targets import (BaseTarget, RemovedTarget, UnavailableLock, Undetermined,
+from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
                       UnknownTarget, executable, file_target, path, paths,
                       sos_step, sos_targets, sos_variable, textMD5)
 from .utils import (Error, SlotManager, WorkflowDict, env, get_traceback,
@@ -120,7 +120,7 @@ class SoS_Worker(mp.Process):
         env.sos_dict.set('__args__', self.args)
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
-        env.sos_dict.set('__step_output__', [])
+        env.sos_dict.set('__step_output__', sos_targets([]))
 
         # load configuration files
         load_config_files(env.config['config_file'])
@@ -434,7 +434,7 @@ class Base_Executor:
         env.sos_dict.set('__args__', self.args)
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
-        env.sos_dict.set('__step_output__', [])
+        env.sos_dict.set('__step_output__', sos_targets([]))
 
         # load configuration files
         load_config_files(env.config['config_file'])
@@ -550,7 +550,7 @@ class Base_Executor:
                         # if this is an index step... simply let it depends on previous steps
                         if node._node_index is not None:
                             indexed = [x for x in dag.nodes() if x._node_index is not None and x._node_index <
-                                       node._node_index and isinstance(x._output_targets, Undetermined)]
+                                       node._node_index and x._output_targets.determined()]
                             indexed.sort(key=lambda x: x._node_index)
                             if not indexed:
                                 raise RuntimeError(
@@ -564,10 +564,10 @@ class Base_Executor:
                                 # all previous status has been failed or completed...
                                 raise RuntimeError(
                                     f'Previous step{" has" if len(indexed) == 1 else "s have"} not generated target {target}{dag.steps_depending_on(target, self.workflow)}')
-                            if not isinstance(node._input_targets, Undetermined):
-                                node._input_targets = Undetermined('')
-                            if not isinstance(node._depends_targets, Undetermined):
-                                node._depends_targets = Undetermined('')
+                            if node._input_targets.determined():
+                                node._input_targets = sos_targets()
+                            if node._depends_targets.detetermined():
+                                node._depends_targets = sos_targets()
                         else:
                             raise RuntimeError(
                                 f'No step to generate target {target}{dag.steps_depending_on(target, self.workflow)}')
@@ -619,8 +619,12 @@ class Base_Executor:
                 # NOTE: If a step is called multiple times with different targets, it is much better
                 # to use different names because pydotplus can be very slow in handling graphs with nodes
                 # with identical names.
-                dag.add_step(section.uuid, f'{section.step_name()}{(" " + short_repr(env.sos_dict["__default_output__"])) if env.sos_dict["__default_output__"] else ""}', None, res['step_input'].targets(),
-                             res['step_depends'].targets(), res['step_output'].targets(), context=context)
+                dag.add_step(section.uuid,
+                             f'{section.step_name()}{(" " + short_repr(env.sos_dict["__default_output__"])) if env.sos_dict["__default_output__"] else ""}', None,
+                             res['step_input'],
+                             res['step_depends'],
+                             res['step_output'],
+                             context=context)
                 added_node += 1
                 resolved += 1
 
@@ -738,9 +742,9 @@ class Base_Executor:
             dag.add_step(section.uuid,
                          section.step_name(),
                          idx,
-                         res['step_input'].targets(),
-                         res['step_depends'].targets(),
-                         res['step_output'].targets(),
+                         res['step_input'],
+                         res['step_depends'],
+                         res['step_output'],
                          context=context)
             default_input = res['step_output']
         #
@@ -998,7 +1002,7 @@ class Base_Executor:
                             if self.resolve_dangling_targets(dag, [target]) == 0:
                                 raise RuntimeError(
                                     f'Failed to regenerate or resolve {target}{dag.steps_depending_on(target, self.workflow)}.')
-                            if not isinstance(runnable._depends_targets, Undetermined):
+                            if runnable._depends_targets.determined():
                                 runnable._depends_targets.append(target)
                             if runnable not in dag._all_dependent_files[target]:
                                 dag._all_dependent_files[target].append(
@@ -1061,10 +1065,10 @@ class Base_Executor:
                             node._context.update(svar)
                             node._context['__completed__'].append(
                                 res['__step_name__'])
-                        dag.update_step(runnable, env.sos_dict['__step_input__'].targets(),
-                                        env.sos_dict['__step_output__'].targets(
-                        ),
-                            env.sos_dict['__step_depends__'].targets())
+                        dag.update_step(runnable,
+                                        env.sos_dict['__step_input__'],
+                                        env.sos_dict['__step_output__'],
+                                        env.sos_dict['__step_depends__'])
                         runnable._status = 'completed'
                         dag.save(env.config['output_dag'])
                         prog.update(1)
