@@ -1030,7 +1030,7 @@ executed.append(step_name)
         #
         wf = script.workflow('a+c+d')
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['executed'], ['a_1', 'a_2', 'a_3', 'a_4', 'c_0', 'd_0'])
+        self.assertEqual(env.sos_dict['executed'], ['a_1', 'a_2', 'a_3', 'a_4', 'c', 'd'])
 
     def testIncludeWithNamespace(self):
         '''Test include a workflow that uses variables from its own global module'''

@@ -128,7 +128,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets
         input_statement_idx = input_statement_idx[0]
     else:
         raise RuntimeError(
-            f'More than one step input are specified in step {section.name}_{section.index}')
+            f'More than one step input are specified in step {section.name if section.index is None else f"{section.name}_{section.index}"}')
 
     # if there is an input statement, analyze the statements before it, and then the input statement
     if input_statement_idx is not None:
@@ -213,7 +213,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[Union[sos_targets
         except Exception as e:
             # if anything is not evalutable, keep Undetermined
             env.logger.debug(
-                f'Input of step {section.name}_{section.index} is set to Undertermined: {e}')
+                f'Input of step {section.name if section.index is None else f"{section.name}_{section.index}"} is set to Undertermined: {e}')
             # expression ...
             step_input = Undetermined(stmt)
         input_statement_idx += 1

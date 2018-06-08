@@ -564,13 +564,13 @@ class SoS_Workflow:
                 if fnmatch.fnmatch(workflow_name, name):
                     self.sections.append(copy.deepcopy(section))
                     self.sections[-1].name = workflow_name
-                    self.sections[-1].index = 0 if index is None else int(
+                    self.sections[-1].index = None if index is None else int(
                         index)
                     self.sections[-1].alias = alias
                     self.sections[-1].uuid = uuid4()
         #
         # sort sections by index
-        self.sections.sort(key=lambda x: x.index)
+        self.sections.sort(key=lambda x: 0 if x.index is None else x.index)
         #
         # disable some disallowed steps
         if allowed_steps:

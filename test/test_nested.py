@@ -103,7 +103,7 @@ sos_run('a+b', shared=['executed', 'inputs'])
         wf = script.workflow('c')
         Base_Executor(wf).run()
         # order of execution is not guaranteed
-        self.assertEqual(sorted(env.sos_dict['executed']), sorted(['c_0', 'a_1', 'a_2', 'a_3', 'a_4',
+        self.assertEqual(sorted(env.sos_dict['executed']), sorted(['c', 'a_1', 'a_2', 'a_3', 'a_4',
                                                                    'b_1', 'b_2', 'b_3', 'b_4']))
         # step will be looped
         self.touch(['a.txt', 'b.txt'])
@@ -133,7 +133,7 @@ sos_run('a', shared=['executed', 'inputs'])
 ''')
         wf = script.workflow('c')
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['executed'], ['c_0', 'a_1', 'a_2', 'a_1', 'a_2'])
+        self.assertEqual(env.sos_dict['executed'], ['c', 'a_1', 'a_2', 'a_1', 'a_2'])
         #self.assertEqual(env.sos_dict['inputs'], [['a.txt'], ['a.txt'], ['a.txt.a1'], ['b.txt'], ['b.txt'], ['b.txt.a1']])
         for file in ('a.txt.a1', 'a.txt.a1.a2', 'b.txt.a1', 'b.txt.a1.a2'):
             file_target(file).remove('both')
@@ -247,10 +247,10 @@ input: 'a.txt', 'b.txt', group_by='single'
 ''')
         wf = script.workflow('b')
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['executed'], ['b_0', 'a_3', 'a_1', 'a_3', 'a_1'])
+        self.assertEqual(env.sos_dict['executed'], ['b', 'a_3', 'a_1', 'a_3', 'a_1'])
         wf = script.workflow('d')
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['executed'], ['d_0', 'a_2', 'a_2'])
+        self.assertEqual(env.sos_dict['executed'], ['d', 'a_2', 'a_2'])
         wf = script.workflow('e2')
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['e2_2'])
@@ -284,10 +284,10 @@ sos_run(wf, shared='executed')
 ''')
         wf = script.workflow()
         Base_Executor(wf, args=['--wf', 'b']).run()
-        self.assertEqual(env.sos_dict['executed'], ['default_0', 'b_1', 'b_2', 'b_3'])
+        self.assertEqual(env.sos_dict['executed'], ['default', 'b_1', 'b_2', 'b_3'])
         #
         Base_Executor(wf, args=['--wf', 'a']).run()
-        self.assertEqual(env.sos_dict['executed'], ['default_0', 'a_1', 'a_2', 'a_3'])
+        self.assertEqual(env.sos_dict['executed'], ['default', 'a_1', 'a_2', 'a_3'])
 
     def testIncludedNestedWorkFlow(self):
         '''Test the source option of sos_run'''
