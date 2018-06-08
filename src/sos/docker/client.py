@@ -85,7 +85,8 @@ class SoS_DockerClient:
             raise RuntimeError(
                 'Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
         env.logger.info('docker load {}'.format(image))
-        self.client.images.load(image, **kwargs)
+        with open(image, 'rb') as img:
+            self.client.images.load(img, **kwargs)
 
     def pull(self, image):
         if not self.client:
