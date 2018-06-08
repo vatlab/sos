@@ -1321,7 +1321,7 @@ class Base_Executor:
                 if not parent_pipe and env.config['output_report'] and env.sos_dict.get('workflow_id'):
                     # if this is the outter most workflow
                     render_report(env.config['output_report'],
-                              env.sos_dict.get('workflow_id'))
+                                  env.sos_dict.get('workflow_id'))
         else:
             # exit with pending tasks
             pass

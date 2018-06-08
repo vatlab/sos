@@ -1447,7 +1447,8 @@ class Base_Step_Executor:
                                             f'Overlapping input and output files: {", ".join(repr(x) for x in ofiles if x in g)}')
                                 # set variable _output and output
                                 self.process_output_args(ofiles, **kwargs)
-                                self.output_groups[idx] = env.sos_dict['_output'].targets()
+                                self.output_groups[idx] = env.sos_dict['_output'].targets(
+                                )
 
                                 # ofiles can be Undetermined
                                 sg = self.step_signature(idx)
@@ -1725,9 +1726,11 @@ class Base_Step_Executor:
                     if self.completed['__step_skipped__'].is_integer():
                         self.completed['__step_skipped__'] = int(
                             self.completed['__step_skipped__'])
+
                     def file_only(targets):
                         if not isinstance(targets, sos_targets):
-                            env.logger.warning(f"Unexpected input or output target for reporting. Empty list returned: {targets}")
+                            env.logger.warning(
+                                f"Unexpected input or output target for reporting. Empty list returned: {targets}")
                             return []
                         else:
                             return [(str(x), x.size()) for x in targets._targets if isinstance(x, file_target)]
@@ -1794,7 +1797,7 @@ def _expand_file_list(ignore_unknown: bool, *args) -> Any:
             raise RuntimeError(
                 f'Unrecognized file: {arg} of type {type(arg).__name__}')
 
-    if ignore_unknown:
+    if ignore_unknown and all(isinstance(x, str) and '*' not in x for x in ifiles):
         # we are exclusind a case with
         #    output: *.txt, group_by
         # here but that case is conceptually wrong anyway
