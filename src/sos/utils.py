@@ -24,7 +24,7 @@ import urllib.request
 from collections import Sequence, Mapping, Set, defaultdict
 from html.parser import HTMLParser
 from io import FileIO, StringIO
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union, DefaultDict
 
 import fasteners
 import yaml
@@ -311,13 +311,14 @@ class RuntimeEnvironments(object):
     def reset(self):
         # logger
         self._logger = None
-        self._verbosity = 2
+        self._verbosity: int = 2
         self._logfile = None
         self._set_logger()
         #
         # run mode, this mode controls how SoS actions behave
         #
-        self.config = defaultdict(str)
+        self.config: DefaultDict[str,
+                                 Union[None, bool, str]] = defaultdict(str)
         self.config.update({
             'config_file': None,
             'output_dag': None,
@@ -339,10 +340,10 @@ class RuntimeEnvironments(object):
         # execution of SoS workflows
         self.sos_dict = WorkflowDict()
         # parameters of the workflow, which will be handled differently
-        self.parameter_vars = set()
+        self.parameter_vars: Set = set()
         #
         # maximum number of concurrent jobs
-        self.running_jobs = 0
+        self.running_jobs: int = 0
         # this directory will be used by a lot of processes
         self.exec_dir = os.getcwd()
         #
@@ -506,12 +507,12 @@ def dehtml(text):
 class Error(Exception):
     '''Base class for SoS_ScriptParser exceptions.'''
 
-    def _get_message(self):
+    def _get_message(self) -> str:
         '''Getter for 'message'; needed only to override deprecation in
         BaseException.'''
         return self.__message
 
-    def _set_message(self, value):
+    def _set_message(self, value: str) -> None:
         '''Setter for 'message'; needed only to override deprecation in
         BaseException.'''
         self.__message = value
@@ -521,11 +522,11 @@ class Error(Exception):
     # a new property that takes lookup precedence.
     message = property(_get_message, _set_message)
 
-    def __init__(self, msg=''):
-        self.message = msg
+    def __init__(self, msg: str='') -> None:
+        self.message: str = msg
         Exception.__init__(self, msg)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.message
 
     __str__ = __repr__

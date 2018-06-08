@@ -36,7 +36,7 @@ class ParsingError(Error):
         Error.__init__(
             self, f'File contains parsing errors: {filename if filename != "<string>" else ""}')
         self.filename = filename
-        self.errors = []
+        self.errors: List[Tuple[int, str]] = []
         self.args = (filename, )
 
     def append(self, lineno: int, line: str, msg: str) -> None:
