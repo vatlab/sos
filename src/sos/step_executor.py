@@ -1802,7 +1802,6 @@ def _expand_file_list(ignore_unknown: bool, *args) -> Any:
         #    output: *.txt, group_by
         # here but that case is conceptually wrong anyway
         return ifiles
-
     # expand files with wildcard characters and check if files exist
     tmp = []
     for ifile in ifiles:
@@ -1828,7 +1827,10 @@ def _expand_file_list(ignore_unknown: bool, *args) -> Any:
             # a previous step..
             #
             if not expanded:
-                raise UnknownTarget(ifile)
+                if ignore_unknown:
+                    tmp.append(ifile)
+                else:
+                    raise UnknownTarget(ifile)
             else:
                 tmp.extend(expanded)
     return tmp
