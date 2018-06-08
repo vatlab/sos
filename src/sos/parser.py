@@ -564,7 +564,7 @@ class SoS_Workflow:
                 if fnmatch.fnmatch(workflow_name, name):
                     self.sections.append(copy.deepcopy(section))
                     self.sections[-1].name = workflow_name
-                    self.sections[-1].index = None if index is None else int(
+                    self.sections[-1].index = 0 if index is None else int(
                         index)
                     self.sections[-1].alias = alias
                     self.sections[-1].uuid = uuid4()
@@ -744,7 +744,7 @@ class SoS_Script:
         # workflows in this script, from sections that are not skipped.
         all_section_steps = sum([x.names for x in self.sections], [])
         forward_section_steps = sum([x.names for x in self.sections if
-                                     not any(opt in x.options for opt in ('provides', 'shared'))], [])
+                                     not 'provides' in x.options], [])
         # (name, None) is auxiliary steps
         self.workflows = list(
             dict.fromkeys([x[0] for x in all_section_steps if '*' not in x[0]]))

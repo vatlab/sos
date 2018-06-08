@@ -380,10 +380,11 @@ class Base_Executor:
                 [os.path.basename(sys.argv[0])] + sys.argv[1:])
             workflow_info['project_dir'] = os.getcwd()
         workflow_info['master_id'] = env.config['master_id']
-        with workflow_report(mode='w' if env.config['master_id'] == self.md5 else 'a') as sig:
-            sig.write(f'''\
-workflow\t{self.md5}\t{workflow_info}
-''')
+        if env.config['run_mode'] != 'dryrun':
+            with workflow_report(mode='w' if env.config['master_id'] == self.md5 else 'a') as sig:
+                sig.write(f'''\
+    workflow\t{self.md5}\t{workflow_info}
+    ''')
         #
         env.config['resumed_tasks'] = set()
         wf_status = os.path.join(os.path.expanduser(
@@ -810,8 +811,10 @@ workflow\t{self.md5}\t{workflow_info}
                 f"{self.completed['__task_skipped__']} ignored task{'s' if self.completed['__task_skipped__'] > 1 else ''}")
         if len(res) > 1:
             return ', '.join(res[:-1]) + ' and ' + res[-1]
-        else:
+        elif len(res) == 1:
             return res[0]
+        else:
+            return 'no step executed'
 
     def run(self, targets: Optional[List[str]] = None, parent_pipe: None = None, my_workflow_id: None = None, mode: str = 'run') -> Dict[str, Any]:
         '''Execute a workflow with specified command line args. If sub is True, this
@@ -1306,17 +1309,18 @@ workflow\t{self.md5}\t{workflow_info}
             if env.config['output_dag']:
                 env.logger.info(
                     f"Workflow DAG saved to {env.config['output_dag']}")
-            with workflow_report() as sig:
-                workflow_info = {
-                    'end_time': time.time(),
-                    'stat': dict(self.completed),
-                }
-                if env.config['output_dag'] and env.config['master_id'] == self.md5:
-                    workflow_info['dag'] = env.config['output_dag']
-                sig.write(f'workflow\t{self.md5}\t{workflow_info}\n')
-            if env.config["run_mode"] != 'dryrun' and not parent_pipe and env.config['output_report'] and env.sos_dict.get('workflow_id'):
-                # if this is the outter most workflow
-                render_report(env.config['output_report'],
+            if env.config['run_mode'] != 'dryrun':
+                with workflow_report() as sig:
+                    workflow_info = {
+                        'end_time': time.time(),
+                        'stat': dict(self.completed),
+                    }
+                    if env.config['output_dag'] and env.config['master_id'] == self.md5:
+                        workflow_info['dag'] = env.config['output_dag']
+                    sig.write(f'workflow\t{self.md5}\t{workflow_info}\n')
+                if not parent_pipe and env.config['output_report'] and env.sos_dict.get('workflow_id'):
+                    # if this is the outter most workflow
+                    render_report(env.config['output_report'],
                               env.sos_dict.get('workflow_id'))
         else:
             # exit with pending tasks
