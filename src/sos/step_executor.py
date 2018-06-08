@@ -1071,7 +1071,7 @@ class Base_Step_Executor:
         results = self.wait_for_tasks(self.task_manager._submitted_tasks)
         #
         # report task
-        if env.config['run_mode'] == 'run':
+        if env.config['run_mode'] != 'dryrun':
             with workflow_report() as rep:
                 # what we should do here is to get the alias of the Host
                 # because it can be different (e.g. not localhost
@@ -1713,7 +1713,7 @@ class Base_Step_Executor:
                                         f'Failed to evaluate shared variable {var} from expression {val}: {e}')
             #
             self.verify_output()
-            if env.config['run_mode'] == 'run':
+            if env.config['run_mode'] != 'dryrun':
                 with workflow_report() as rep:
                     substeps = self.completed['__substep_completed__'] + \
                         self.completed['__substep_skipped__']
