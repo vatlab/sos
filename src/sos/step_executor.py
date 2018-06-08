@@ -851,18 +851,11 @@ class Base_Step_Executor:
 
     def process_output_args(self, ofiles, **kwargs):
         if isinstance(ofiles, sos_targets):
-            raise ValueError(r"FIXME output should not be targets type")
+            raise ValueError(r"Output should not be targets type")
 
         for k in kwargs.keys():
             if k not in SOS_OUTPUT_OPTIONS:
                 raise RuntimeError(f'Unrecognized output option {k}')
-        # create directory
-        if not isinstance(ofiles, Undetermined):
-            for ofile in ofiles:
-                if isinstance(ofile, str):
-                    parent_dir = os.path.split(os.path.expanduser(ofile))[0]
-                    if parent_dir and not os.path.isdir(parent_dir):
-                        os.makedirs(parent_dir)
 
         if 'group_by' in kwargs:
             _ogroups = Base_Step_Executor.handle_group_by(
@@ -872,8 +865,16 @@ class Base_Step_Executor:
                     f'Output option group_by produces {len(_ogroups)} output groups which is different from the number of input groups ({len(self._substeps)}).')
             ofiles = _ogroups[env.sos_dict['_index']]
 
+        # create directory
+        if not isinstance(ofiles, Undetermined):
+            for ofile in ofiles:
+                if isinstance(ofile, str):
+                    parent_dir = os.path.split(os.path.expanduser(ofile))[0]
+                    if parent_dir and not os.path.isdir(parent_dir):
+                        os.makedirs(parent_dir)
+
         if isinstance(ofiles, sos_targets):
-            raise ValueError(r"FIXME output should not be targets type")
+            raise ValueError(r"Output should not be targets type")
 
         # set variables
         env.sos_dict.set('_output', ofiles if isinstance(
@@ -1446,8 +1447,7 @@ class Base_Step_Executor:
                                             f'Overlapping input and output files: {", ".join(repr(x) for x in ofiles if x in g)}')
                                 # set variable _output and output
                                 self.process_output_args(ofiles, **kwargs)
-                                self.output_groups[idx] = env.sos_dict['_output'].targets(
-                                )
+                                self.output_groups[idx] = env.sos_dict['_output'].targets()
 
                                 # ofiles can be Undetermined
                                 sg = self.step_signature(idx)
@@ -1771,10 +1771,6 @@ class Base_Step_Executor:
 
 
 def _expand_file_list(ignore_unknown: bool, *args) -> Any:
-
-    if ignore_unknown and all(isinstance(x, str) and '*' not in x and '?' not in x for x in args):
-        return args
-
     ifiles = []
 
     for arg in args:
@@ -1797,6 +1793,12 @@ def _expand_file_list(ignore_unknown: bool, *args) -> Any:
         else:
             raise RuntimeError(
                 f'Unrecognized file: {arg} of type {type(arg).__name__}')
+
+    if ignore_unknown:
+        # we are exclusind a case with
+        #    output: *.txt, group_by
+        # here but that case is conceptually wrong anyway
+        return ifiles
 
     # expand files with wildcard characters and check if files exist
     tmp = []
@@ -1823,10 +1825,7 @@ def _expand_file_list(ignore_unknown: bool, *args) -> Any:
             # a previous step..
             #
             if not expanded:
-                if not ignore_unknown:
-                    raise UnknownTarget(ifile)
-                else:
-                    tmp.append(ifile)
+                raise UnknownTarget(ifile)
             else:
                 tmp.extend(expanded)
     return tmp
