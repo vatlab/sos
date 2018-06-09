@@ -363,10 +363,10 @@ input: 'a.txt'
         self.assertDAG(dag,
                        '''
 strict digraph "" {
-"K 'b.txt'";
+"K b.txt";
 C_3;
 C_2;
-"K 'b.txt'" -> C_2;
+"K b.txt" -> C_2;
 }
 ''')
 
@@ -962,7 +962,8 @@ run:
         wf = script.workflow()
         #
         # test 1, we only need to generate target 'B1.txt'
-        Base_Executor(wf, config={'output_dag': 'test.dot'}).initialize_dag(targets=['B1.txt'])
+        Base_Executor(wf, config={'output_dag': 'test.dot'}
+                      ).initialize_dag(targets=['B1.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG('test.dot',
                        '''
