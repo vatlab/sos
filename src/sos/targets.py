@@ -742,10 +742,10 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def __init__(self, *args, undetermined=None):
         super(BaseTarget, self).__init__()
         self._targets = []
-        if undetermined is True or isinstance(undetermined, str):
+        if isinstance(undetermined, (bool, str)):
             self._undetermined = undetermined
         else:
-            self._undetermined = bool(args)
+            self._undetermined = not bool(args)
         for arg in args:
             self.__append__(arg)
         for t in self._targets:
@@ -811,13 +811,6 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def __getitem__(self, i):
         return self._targets[i]
 
-    def __format__(self, format_spec):
-        if ',' in format_spec:
-            fmt_spec = format_spec.replace(',', '')
-            return ','.join(x.__format__(fmt_spec) for x in self._targets)
-        else:
-            return ' '.join(x.__format__(format_spec) for x in self._targets)
-
     def target_signature(self, mode='any'):
         if len(self._targets) == 1:
             return self._targets[0].target_signature()
@@ -832,7 +825,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 f'Cannot test existense for group of {len(self)} targets {self!r}')
 
     def __deepcopy__(self, memo):
-        return sos_targets(deepcopy(self._targets))
+        return sos_targets(deepcopy(self._targets), undetermined=self._undetermined)
 
     def __getattr__(self, key):
         if len(self._targets) == 1:
@@ -883,10 +876,19 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 f'Cannot treat an sos_targets object {self} with more than one targets as a single target')
 
     def __repr__(self):
-        return ('[' + ', '.join(repr(x) for x in self._targets) + ']') if not self._undetermined else 'TBD'
+        return ('[' + ', '.join(repr(x) for x in self._targets) + ']') if self.determined() else 'TBD'
 
     def __str__(self):
-        return self.__format__('') if not self._undetermined else 'TBD'
+        return self.__format__('') if self.determined() else 'TBD'
+
+    def __format__(self, format_spec):
+        if not self.determined():
+            return 'TBD'
+        if ',' in format_spec:
+            fmt_spec = format_spec.replace(',', '')
+            return ','.join(x.__format__(fmt_spec) for x in self._targets)
+        else:
+            return ' '.join(x.__format__(format_spec) for x in self._targets)
 
 
 class RuntimeInfo:

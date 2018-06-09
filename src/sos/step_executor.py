@@ -850,7 +850,6 @@ class Base_Step_Executor:
         for k in kwargs.keys():
             if k not in SOS_OUTPUT_OPTIONS:
                 raise RuntimeError(f'Unrecognized output option {k}')
-
         if 'group_by' in kwargs:
             _ogroups = Base_Step_Executor.handle_group_by(
                 ofiles, kwargs['group_by'])
@@ -870,7 +869,6 @@ class Base_Step_Executor:
         # set variables
         env.sos_dict.set('_output', ofiles)
         #
-        env.logger.warning(f"SET OUPUT {ofiles} of {type(ofiles)}")
         if not env.sos_dict['step_output'].determined():
             env.sos_dict.set('step_output', ofiles)
         elif env.sos_dict['step_output'].determined() and env.sos_dict['step_output'] != ofiles:
@@ -892,7 +890,7 @@ class Base_Step_Executor:
         # re-process the output statement to determine output files
         if not env.sos_dict['step_output'].determined():
             args, _ = SoS_eval(
-                f'__null_func__({env.sos_dict["output"]._undetermined})')
+                f'__null_func__({env.sos_dict["_output"]._undetermined})')
             # handle dynamic args
             args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
             env.sos_dict.set(
@@ -1251,13 +1249,10 @@ class Base_Step_Executor:
         # * depends:    None at first, can be redefined by depends statement
         # * _depends:   None at first, can be redefined by depends statement
         #
-        if '__step_output__' not in env.sos_dict:
-            env.sos_dict.set('step_input', sos_targets())
+        if '__step_output__' not in env.sos_dict or not env.sos_dict['__step_output__'].determined():
+            env.sos_dict.set('step_input', sos_targets([]))
         else:
-            if env.sos_dict['__step_output__'] is not None:
-                env.sos_dict.set('step_input', env.sos_dict['__step_output__'])
-            else:
-                env.sos_dict.set('step_input', sos_targets())
+            env.sos_dict.set('step_input', env.sos_dict['__step_output__'])
 
         # input can be Undetermined from undetermined output from last step
         env.sos_dict.set('_input', copy.deepcopy(env.sos_dict['step_input']))
@@ -1269,10 +1264,10 @@ class Base_Step_Executor:
             env.sos_dict.set('_output', sos_targets(
                 env.sos_dict['__default_output__']))
         else:
-            env.sos_dict.set('step_output', sos_targets())
-            env.sos_dict.set('_output', sos_targets())
-        env.sos_dict.set('step_depends', sos_targets())
-        env.sos_dict.set('_depends', sos_targets())
+            env.sos_dict.set('step_output', sos_targets([]))
+            env.sos_dict.set('_output', sos_targets([]))
+        env.sos_dict.set('step_depends', sos_targets([]))
+        env.sos_dict.set('_depends', sos_targets([]))
         # _index is needed for pre-input action's active option and for debug output of scripts
         env.sos_dict.set('_index', 0)
 
@@ -1339,8 +1334,6 @@ class Base_Step_Executor:
             # assuming everything starts from 0 is after input
             input_statement_idx = 0
 
-        self.log('input')
-
         self.proc_results = []
         # run steps after input statement, which will be run multiple times for each input
         # group.
@@ -1386,7 +1379,7 @@ class Base_Step_Executor:
                 # other variables
                 #
                 env.sos_dict.update(v)
-                env.sos_dict.set('_input', sos_targets(g))
+                env.sos_dict.set('_input', copy.deepcopy(g))
                 self.log('_input')
                 env.sos_dict.set('_index', idx)
                 #

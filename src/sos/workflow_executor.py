@@ -120,7 +120,7 @@ class SoS_Worker(mp.Process):
         env.sos_dict.set('__args__', self.args)
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
-        env.sos_dict.set('__step_output__', sos_targets([]))
+        env.sos_dict.set('__step_output__', sos_targets())
 
         # load configuration files
         load_config_files(env.config['config_file'])
@@ -491,7 +491,7 @@ class Base_Executor:
                     f'The value of section option skip can only be None, True or False, {val_skip} provided')
         return False
 
-    def match(self, target: Union[BaseTarget, sos_step, str, path, paths, sos_targets], step: SoS_Step) -> Union[Dict[str, str], bool]:
+    def match(self, target: BaseTarget, step: SoS_Step) -> Union[Dict[str, str], bool]:
         # for sos_step, we need to match step name
         if isinstance(target, sos_step):
             return step.match(target.target_name())
@@ -506,21 +506,24 @@ class Base_Executor:
         #
         for p in patterns:
             # other targets has to match exactly
-            if isinstance(target, BaseTarget) or isinstance(p, BaseTarget):
+            if not isinstance(target, file_target):
                 if target == p:
                     return {}
                 else:
                     continue
+            # target is file, has to be match string
+            if not isinstance(p, str):
+                continue
             # if this is a regular string
-            res = extract_pattern(p, [target])
+            res = extract_pattern(p, [str(target)])
             if res and not any(None in x for x in res.values()):
                 return {x: y[0] for x, y in res.items()}
             # string match
-            elif file_target(p) == file_target(target):
+            elif file_target(p) == target:
                 return True
         return False
 
-    def resolve_dangling_targets(self, dag: SoS_DAG, targets: Optional[List[str]] = None) -> int:
+    def resolve_dangling_targets(self, dag: SoS_DAG, targets: Optional[List[str]]=None) -> int:
         '''Feed dangling targets with their dependncies from auxiliary steps,
         optionally add other targets'''
         resolved = 0
@@ -601,7 +604,7 @@ class Base_Executor:
                     env.sos_dict['__default_output__'] = [
                         section.options['provides']]
                 # will become input, set to None
-                env.sos_dict['__step_output__'] = None
+                env.sos_dict['__step_output__'] = sos_targets()
                 #
                 res = analyze_section(section)
                 #
@@ -666,7 +669,7 @@ class Base_Executor:
                     env.sos_dict['__default_output__'] = [
                         section.options['provides']]
                 # will become input, set to None
-                env.sos_dict['__step_output__'] = None
+                env.sos_dict['__step_output__'] = sos_targets()
                 #
                 res = analyze_section(section)
                 #
@@ -696,7 +699,7 @@ class Base_Executor:
         # dag.show_nodes()
         return resolved
 
-    def initialize_dag(self, targets: Optional[List[str]] = None, nested: bool = False) -> SoS_DAG:
+    def initialize_dag(self, targets: Optional[List[str]]=None, nested: bool=False) -> SoS_DAG:
         '''Create a DAG by analyzing sections statically.'''
         # this is for testing only and allows tester to call initialize_dag
         # directly to get a DAG
@@ -820,7 +823,7 @@ class Base_Executor:
         else:
             return 'no step executed'
 
-    def run(self, targets: Optional[List[str]] = None, parent_pipe: None = None, my_workflow_id: None = None, mode: str = 'run') -> Dict[str, Any]:
+    def run(self, targets: Optional[List[str]]=None, parent_pipe: None=None, my_workflow_id: None=None, mode: str='run') -> Dict[str, Any]:
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''

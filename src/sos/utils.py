@@ -189,6 +189,7 @@ class WorkflowDict(object):
     def set(self, key, value):
         '''A short cut to set value to key without triggering any logging
         or warning message.'''
+        env.logger.trace(f"Set {key} to {value} of type {type(value)}")
         self._dict[key] = value
         # if self._change_all_cap_vars is not None and key.isupper():
         #    self._check_readonly(key, value)
