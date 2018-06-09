@@ -206,8 +206,10 @@ output: [x + '.res' for x in _input]
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertTrue('test_input.txt.res' in env.sos_dict['res'])
-        self.assertTrue('test_input1.txt.res' in env.sos_dict['res'])
+        self.assertTrue(file_target('test_input.txt.res').resolve()
+                        in env.sos_dict['res'])
+        self.assertTrue(file_target('test_input1.txt.res').resolve()
+                        in env.sos_dict['res'])
 
     def testForEach(self):
         '''Test for_each option of input'''
