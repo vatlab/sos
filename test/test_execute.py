@@ -243,7 +243,7 @@ res = ['p1.txt', 'p2.txt', 'p3.txt']
 processed = []
 
 input: files, for_each='par,res'
-output: res
+output: res, group_by=1
 
 processed.append((_par, _res))
 """)
@@ -263,7 +263,8 @@ output: f"{_data['A']}_{_data['B']}_{_data['C']}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['res'], ['1_2_Hello.txt', '2_4_World.txt'])
+        self.assertEqual(env.sos_dict['res'], [
+                         '1_2_Hello.txt', '2_4_World.txt'])
 
         # test dictionary format of for_each
         self.touch(['a.txt', 'b.txt', 'a.pdf'])
@@ -309,7 +310,8 @@ counter = counter + 1
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['counter'], 4)
         self.assertEqual(env.sos_dict['all_names'], "1 2 3 4 ")
-        self.assertEqual(env.sos_dict['all_loop'], "300 50 300 200 300 100 100 50 ")
+        self.assertEqual(env.sos_dict['all_loop'],
+                         "300 50 300 200 300 100 100 50 ")
         #
         # test same-level for loop and parameter with nested list
         script = SoS_Script(r"""
@@ -336,7 +338,8 @@ output: f"{data['A']}_{data['B']}_{data['C']}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['res'], ['1_2_Hello.txt', '2_4_World.txt'])
+        self.assertEqual(env.sos_dict['res'], [
+                         '1_2_Hello.txt', '2_4_World.txt'])
         #
         # support for pands Series and Index types
         script = SoS_Script(r"""
@@ -521,7 +524,8 @@ output: ['{}-{}-{}.txt'.format(x,y,z) for x,y,z in zip(_base, _name, _par)]
         self.assertEqual(env.sos_dict['base'], ["a-20", 'b-10'])
         self.assertEqual(env.sos_dict['name'], ["a", 'b'])
         self.assertEqual(env.sos_dict['par'], ["20", '10'])
-        self.assertEqual(env.sos_dict['_output'], ["a-20-a-20.txt", 'b-10-b-10.txt'])
+        self.assertEqual(env.sos_dict['_output'], [
+                         "a-20-a-20.txt", 'b-10-b-10.txt'])
 
     def testOutputPattern(self):
         '''Test option pattern of step output'''
@@ -996,9 +1000,11 @@ assert(len(_input) == 5)
         Base_Executor(wf).run()
         for idx in range(10):
             if idx % 2 == 0:
-                self.assertFalse(file_target("{}.txt".format(idx)).target_exists())
+                self.assertFalse(file_target(
+                    "{}.txt".format(idx)).target_exists())
             else:
-                self.assertTrue(file_target("{}.txt".format(idx)).target_exists())
+                self.assertTrue(file_target(
+                    "{}.txt".format(idx)).target_exists())
                 file_target(f"{idx}.txt").remove('both')
 
     def testAllowError(self):
