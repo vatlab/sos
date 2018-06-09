@@ -29,7 +29,7 @@ from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
                      SOS_OUTPUT_OPTIONS, SOS_RUNTIME_OPTIONS, SOS_TAG)
 from .targets import (BaseTarget, RemovedTarget, RuntimeInfo, UnavailableLock,
                       UnknownTarget, dynamic, file_target, path, paths, remote,
-                      sos_targets)
+                      sos_targets, sos_step)
 from .tasks import MasterTaskParams, TaskParams
 from .utils import (SlotManager, StopInputGroup, TerminateExecution, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr,
@@ -507,6 +507,8 @@ class Base_Step_Executor:
             raise RuntimeError(
                 'Output of a completed step cannot be undetermined.')
         for target in env.sos_dict['step_output']:
+            if isinstance(target, sos_step):
+                continue
             if isinstance(target, str):
                 if not file_target(target).target_exists('any'):
                     # latency wait for 5 seconds because the file system might be slow

@@ -593,13 +593,10 @@ class Base_Executor:
                 # from patten), we should specify all output as output of step. Otherwise the
                 # step will be created for multiple outputs. issue #243
                 if mo[0][1]:
-                    env.sos_dict['__default_output__'] = [] if isinstance(target, sos_step) else [
-                        target]
-                elif isinstance(section.options['provides'], Sequence):
-                    env.sos_dict['__default_output__'] = section.options['provides']
+                    env.sos_dict['__default_output__'] = sos_targets(target)
                 else:
-                    env.sos_dict['__default_output__'] = [
-                        section.options['provides']]
+                    env.sos_dict['__default_output__'] = sos_targets(
+                        section.options['provides'])
                 # will become input, set to None
                 env.sos_dict['__step_output__'] = sos_targets()
                 #
@@ -659,12 +656,10 @@ class Base_Executor:
                 # from patten), we should specify all output as output of step. Otherwise the
                 # step will be created for multiple outputs. issue #243
                 if mo[0][1]:
-                    env.sos_dict['__default_output__'] = [target]
-                elif isinstance(section.options['provides'], Sequence):
-                    env.sos_dict['__default_output__'] = section.options['provides']
+                    env.sos_dict['__default_output__'] = sos_targets(target)
                 else:
-                    env.sos_dict['__default_output__'] = [
-                        section.options['provides']]
+                    env.sos_dict['__default_output__'] = sos_targets(
+                        section.options['provides'])
                 # will become input, set to None
                 env.sos_dict['__step_output__'] = sos_targets()
                 #

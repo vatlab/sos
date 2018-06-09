@@ -640,6 +640,9 @@ class file_target(path, BaseTarget):
     def __hash__(self):
         return hash(repr(self))
 
+    def __eq__(self, obj):
+        return isinstance(obj, file_target) and str(self) == str(obj)
+
 
 class paths(Sequence, os.PathLike):
     '''A collection of targets'''
