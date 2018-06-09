@@ -707,7 +707,7 @@ class Base_Executor:
             self.reset_dict()
 
         dag = SoS_DAG(name=self.md5)
-        default_input = []
+        default_input: sos_targets = sos_targets([])
         for idx, section in enumerate(self.workflow.sections):
             if self.skip(section):
                 continue

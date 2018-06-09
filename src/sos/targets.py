@@ -16,7 +16,6 @@ from shlex import quote
 import fasteners
 import pkg_resources
 
-from .eval import Undetermined
 from .report import workflow_report
 from .utils import (Error, TimeoutInterProcessLock, env, isPrimitive, load_var,
                     pickleable, save_var, short_repr, stable_repr)
@@ -759,9 +758,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         return self._targets or not self._undetermined
 
     def __append__(self, arg):
-        if isinstance(arg, Undetermined):
-            raise RuntimeError("Undetermined cannot be inserted as a target")
-        elif isinstance(arg, paths):
+        if isinstance(arg, paths):
             self._targets.extend([file_target(x) for x in arg._paths])
         elif isinstance(arg, (str, path)):
             self._targets.append(file_target(arg))
@@ -779,14 +776,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             raise RuntimeError(
                 f'Unrecognized targets {arg} of type {arg.__class__.__name__}')
 
-    def targets(self):
-        return [x.target_name() if isinstance(x, file_target) else x for x in self._targets]
+    def targets(self, file_only=False):
+        if file_only:
+            return [x.target_name() for x in self._targets if isinstance(x, file_target)]
+        else:
+            return [x.target_name() if isinstance(x, file_target) else x for x in self._targets]
 
     def extend(self, another):
-        if isinstance(another, Undetermined):
-            self._targets.append(another)
-        else:
-            self._targets.extend(sos_targets(another)._targets)
+        self._targets.extend(sos_targets(another)._targets)
 
     def zap(self):
         for target in self._targets:
@@ -794,9 +791,6 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 target.zap()
             else:
                 env.logger.debug(f'Ignore non-file target {target}')
-
-    def has_undetermined(self):
-        return any(isinstance(x, Undetermined) for x in self._targets)
 
     def __getstate__(self):
         return self._targets
@@ -916,7 +910,7 @@ class RuntimeInfo:
         self.external_output = self.output_files and isinstance(
             self.output_files[0], file_target) and self.output_files[0].is_external()
         self.signature_vars = {} if signature_vars is None else {
-            x: sdict[x] if x in sdict else Undetermined() for x in signature_vars}
+            x: sdict[x] if x in sdict else None for x in signature_vars}
 
         sig_vars = [] if signature_vars is None else sorted(
             [x for x in signature_vars if x in sdict and isPrimitive(sdict[x])])
@@ -1000,7 +994,7 @@ class RuntimeInfo:
         Because local input and output files can only be determined after the execution
         of workflow. They are not part of the construction.
         '''
-        if isinstance(self.output_files, Undetermined) or isinstance(self.dependent_files, Undetermined):
+        if not self.output_files.determined() or not self.dependent_files.determined():
             env.logger.trace(
                 'Write signature failed due to undetermined files')
             return False
@@ -1048,14 +1042,13 @@ class RuntimeInfo:
             for var in sorted(self.signature_vars.keys()):
                 # var can be local and not passed as outside environment
                 value = self.signature_vars[var]
-                if not isinstance(value, Undetermined):
-                    try:
-                        var_expr = save_var(var, value)
-                        if var_expr:
-                            md5.write(var_expr)
-                    except Exception:
-                        env.logger.debug(
-                            f'Variable {var} of value {short_repr(value)} is ignored from step signature')
+                try:
+                    var_expr = save_var(var, value)
+                    if var_expr:
+                        md5.write(var_expr)
+                except Exception:
+                    env.logger.debug(
+                        f'Variable {var} of value {short_repr(value)} is ignored from step signature')
             # context used to return context
             md5.write('# end context\n')
             for var in sorted(self.signature_vars.keys()):
@@ -1094,7 +1087,7 @@ class RuntimeInfo:
         env.logger.trace(f'Validating {self.proc_info}')
         #
         # file not exist?
-        if isinstance(self.output_files, Undetermined):
+        if not self.output_files.determined():
             return "Undetermined output files"
         sig_files = self.input_files._targets + self.output_files._targets + \
             self.dependent_files._targets
@@ -1102,8 +1095,7 @@ class RuntimeInfo:
             if not x.target_exists('any'):
                 return f'Missing target {x}'
         #
-        files_checked = {
-            x.target_name(): False for x in sig_files if not isinstance(x, Undetermined)}
+        files_checked = {x.target_name(): False for x in sig_files}
         res = {'input': [], 'output': [], 'depends': [], 'vars': {}}
         cur_type = 'input'
         with open(self.proc_info) as md5:

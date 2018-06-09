@@ -21,7 +21,7 @@ from tokenize import generate_tokens
 
 from .eval import SoS_eval, SoS_exec, cfg_interpolate, interpolate, stmtHash
 from .monitor import ProcessMonitor
-from .targets import (RuntimeInfo, Undetermined, UnknownTarget, file_target,
+from .targets import (RuntimeInfo, UnknownTarget, file_target,
                       remote, sos_step, sos_targets, textMD5)
 from .utils import (StopInputGroup, env, expand_size, expand_time,
                     format_HHMMSS, linecount_of_file, sample_of_file,
@@ -29,6 +29,7 @@ from .utils import (StopInputGroup, env, expand_size, expand_time,
 
 monitor_interval = 5
 resource_monitor_interval = 60
+
 
 class TaskParams(object):
     '''A parameter object that encaptulates parameters sending to
@@ -273,13 +274,14 @@ def collect_task_result(task_id, sos_dict, skipped=False):
     # which should not be reported.
     if env.sos_dict['_output'] is None:
         output = {}
-    elif isinstance(env.sos_dict['_output'], Undetermined):
+    elif not env.sos_dict['_output'].determined():
         from .workflow_executor import __null_func__
         from .targets import dynamic
         from .step_executor import _expand_file_list
         env.sos_dict.set('__null_func__', __null_func__)
         # re-process the output statement to determine output files
-        args, _ = SoS_eval(f'__null_func__({env.sos_dict["_output"].expr})')
+        args, _ = SoS_eval(
+            f'__null_func__({env.sos_dict["_output"]._undetermined})')
         # handle dynamic args
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
         output = {x: file_target(x).target_signature()
@@ -344,8 +346,9 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                                'max_walltime', None),
                            max_mem=params.sos_dict['_runtime'].get(
                                'max_mem', None),
-                           max_procs=params.sos_dict['_runtime'].get('max_procs', None),
-                           sos_dict = params.sos_dict)
+                           max_procs=params.sos_dict['_runtime'].get(
+                               'max_procs', None),
+                           sos_dict=params.sos_dict)
         m.start()
 
         master_out = os.path.join(os.path.expanduser(
@@ -466,7 +469,7 @@ del sos_handle_parameter_
                            'max_walltime', None),
                        max_mem=sos_dict['_runtime'].get('max_mem', None),
                        max_procs=sos_dict['_runtime'].get('max_procs', None),
-                       sos_dict = sos_dict)
+                       sos_dict=sos_dict)
 
     m.start()
     if sigmode is not None:
@@ -598,20 +601,13 @@ del sos_handle_parameter_
         # create directory. This usually has been done at the step level but the task can be executed
         # on a remote host where the directory does not yet exist.
         ofiles = env.sos_dict['_output']
-        if not isinstance(ofiles, (type(None), Undetermined)):
+        if ofiles.determined():
             for ofile in ofiles:
-                if isinstance(ofile, str):
-                    parent_dir = os.path.split(os.path.expanduser(ofile))[0]
-                    if parent_dir and not os.path.isdir(parent_dir):
-                        try:
-                            os.makedirs(parent_dir)
-                        except Exception as e:
-                            # this can fail but we do not really care because the task itself might
-                            # create this directory, or if the directory has already been created by other tasks
-                            env.logger.warning(
-                                f'Failed to create directory {parent_dir}: {e}')
+                parent_dir = ofile.parent
+                if not parent_dir.is_dir():
+                    parent_dir.mkdir(parents=True, exist_ok=True)
 
-        # go to user specified workdir
+                    # go to user specified workdir
         if '_runtime' in sos_dict and 'workdir' in sos_dict['_runtime']:
             if not os.path.isdir(os.path.expanduser(sos_dict['_runtime']['workdir'])):
                 try:

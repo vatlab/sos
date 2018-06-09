@@ -796,12 +796,14 @@ class Base_Step_Executor:
         #
         if 'filetype' in kwargs:
             if isinstance(kwargs['filetype'], str):
-                ifiles = fnmatch.filter(ifiles, kwargs['filetype'])
+                ifiles = fnmatch.filter(ifiles.targets(
+                    file_only=True), kwargs['filetype'])
             elif isinstance(kwargs['filetype'], Iterable):
-                ifiles = [x for x in ifiles if any(fnmatch.fnmatch(x, y)
-                                                   for y in kwargs['filetype'])]
+                ifiles = [x for x in ifiles.targets(file_only=True) if any(fnmatch.fnmatch(x, y)
+                                                                           for y in kwargs['filetype'])]
             elif callable(kwargs['filetype']):
-                ifiles = [x for x in ifiles if kwargs['filetype'](x)]
+                ifiles = [x for x in ifiles.targets(
+                    file_only=True) if kwargs['filetype'](x)]
         #
         # input file is the filtered files
         env.sos_dict.set('step_input', sos_targets(ifiles))
@@ -843,6 +845,7 @@ class Base_Step_Executor:
         env.sos_dict.set('_depends', dfiles)
         if env.sos_dict['step_depends'] is None:
             env.sos_dict.set('step_depends', dfiles)
+        # dependent files can overlap
         elif env.sos_dict['step_depends'].targets() != dfiles:
             env.sos_dict['step_depends'].extend(dfiles)
 
@@ -870,8 +873,12 @@ class Base_Step_Executor:
         env.sos_dict.set('_output', ofiles)
         #
         if not env.sos_dict['step_output'].determined():
-            env.sos_dict.set('step_output', ofiles)
-        elif env.sos_dict['step_output'].determined() and env.sos_dict['step_output'] != ofiles:
+            env.sos_dict.set('step_output', copy.deepcopy(ofiles))
+        else:
+            for ofile in ofiles:
+                if ofile in env.sos_dict['step_output']._targets:
+                    raise ValueError(
+                        f'Output {ofile} from substep {env.sos_dict["_index"]} overlaps with output from a previous substep')
             env.sos_dict['step_output'].extend(ofiles)
 
     def process_task_args(self, **kwargs):
@@ -1440,6 +1447,8 @@ class Base_Step_Executor:
                                                     '_depends', sos_targets(matched['depends']))
                                                 env.sos_dict.set(
                                                     '_output', sos_targets(matched['output']))
+                                                env.sos_dict['step_output'].extend(
+                                                    env.sos_dict['_output'])
                                                 env.sos_dict.update(
                                                     matched['vars'])
                                                 env.logger.info(
@@ -1634,8 +1643,7 @@ class Base_Step_Executor:
             # not _output. For the same reason, signatures can be wrong if it has
             # Undetermined output.
             if env.config['run_mode'] in ('run', 'interactive'):
-                if not env.sos_dict['step_output'].determined() or \
-                        env.sos_dict['step_output'].has_undetermined():
+                if not env.sos_dict['step_output'].determined():
                     self.reevaluate_output()
                     # if output is no longer Undetermined, set it to output
                     # of each signature
