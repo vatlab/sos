@@ -292,9 +292,9 @@ run: expand=True
 
 [work_2]
 input: "1.txt", "2.txt", group_by = 'single', for_each = 'data, data',  pattern = '{name}.{ext}'
-output: expand_pattern('{_name}.out2')
+output: expand_pattern('{_data}_{_name}.out2')
 run: expand=True
-  touch {_data} {_output}
+  touch {_output}
 
 ''')
         wf = script.workflow()

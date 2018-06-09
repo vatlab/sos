@@ -503,10 +503,10 @@ class Base_Executor:
         elif not isinstance(patterns, (sos_targets, Sequence, paths)):
             raise RuntimeError(
                 f'Unknown target to match: {patterns} of type {patterns.__class__.__name__}')
-
         for p in patterns:
             # other targets has to match exactly
-            if not isinstance(target, (str, file_target)):
+            if not isinstance(target, (str, file_target)) or \
+                    not isinstance(p, (str, file_target)):
                 if target == p:
                     return {}
                 else:
