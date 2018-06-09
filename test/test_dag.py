@@ -461,25 +461,25 @@ run:
         self.assertDAG(dag,
                        '''
 strict digraph "" {
-"C4 'C4.txt'";
-"B1 'B1.txt'";
-"C1 'C1.txt'";
-"C2 'C2.txt'";
-"C3 'C3.txt'";
+"C4 C4.txt";
+"B1 B1.txt";
+"C1 C1.txt";
+"C2 C2.txt";
+"C3 C3.txt";
 A_1;
-"B2 'B2.txt'";
-"B3 'B3.txt'";
+"B2 B2.txt";
+"B3 B3.txt";
 A_2;
-"C4 'C4.txt'" -> "C2 'C2.txt'";
-"C4 'C4.txt'" -> "C3 'C3.txt'";
-"B1 'B1.txt'" -> A_1;
-"C1 'C1.txt'" -> "B2 'B2.txt'";
-"C2 'C2.txt'" -> "C1 'C1.txt'";
-"C3 'C3.txt'" -> "C1 'C1.txt'";
+"C4 C4.txt" -> "C2 C2.txt";
+"C4 C4.txt" -> "C3 C3.txt";
+"B1 B1.txt" -> A_1;
+"C1 C1.txt" -> "B2 B2.txt";
+"C2 C2.txt" -> "C1 C1.txt";
+"C3 C3.txt" -> "C1 C1.txt";
 A_1 -> A_2;
-"B2 'B2.txt'" -> "B1 'B1.txt'";
-"B2 'B2.txt'" -> A_2;
-"B3 'B3.txt'" -> "B2 'B2.txt'";
+"B2 B2.txt" -> "B1 B1.txt";
+"B2 B2.txt" -> A_2;
+"B3 B3.txt" -> "B2 B2.txt";
 }
 ''')
         Base_Executor(wf).run()
