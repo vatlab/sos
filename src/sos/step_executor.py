@@ -1307,7 +1307,7 @@ class Base_Step_Executor:
                         raise
                     except Exception as e:
                         raise RuntimeError(
-                            f'Failed to process step {key}: {value.strip()} ({e})')
+                            f'Failed to process step {key} ({value.strip()}): {e}')
                 else:
                     try:
                         self.execute(statement[1])
@@ -1510,7 +1510,7 @@ class Base_Step_Executor:
                             if not g.determined():
                                 return self.collect_result()
                             raise RuntimeError(
-                                f'Failed to process step {key}: {value.strip()} ({e})')
+                                f'Failed to process step {key} ({value.strip()}): {e}')
                     else:
                         try:
                             self.verify_input()
