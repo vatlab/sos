@@ -503,14 +503,15 @@ class Base_Executor:
         elif not isinstance(patterns, (sos_targets, Sequence, paths)):
             raise RuntimeError(
                 f'Unknown target to match: {patterns} of type {patterns.__class__.__name__}')
-        #
+
         for p in patterns:
             # other targets has to match exactly
-            if not isinstance(target, file_target):
+            if not isinstance(target, (str, file_target)):
                 if target == p:
                     return {}
                 else:
                     continue
+
             # if this is a regular string
             res = extract_pattern(str(p), [str(target)])
             if res and not any(None in x for x in res.values()):
@@ -520,7 +521,7 @@ class Base_Executor:
                 return True
         return False
 
-    def resolve_dangling_targets(self, dag: SoS_DAG, targets: Optional[List[str]]=None) -> int:
+    def resolve_dangling_targets(self, dag: SoS_DAG, targets: Optional[sos_targets]=None) -> int:
         '''Feed dangling targets with their dependncies from auxiliary steps,
         optionally add other targets'''
         resolved = 0
@@ -550,7 +551,7 @@ class Base_Executor:
                         # if this is an index step... simply let it depends on previous steps
                         if node._node_index is not None:
                             indexed = [x for x in dag.nodes() if x._node_index is not None and x._node_index <
-                                       node._node_index and x._output_targets.determined()]
+                                       node._node_index and not x._output_targets.determined()]
                             indexed.sort(key=lambda x: x._node_index)
                             if not indexed:
                                 raise RuntimeError(
@@ -566,7 +567,7 @@ class Base_Executor:
                                     f'Previous step{" has" if len(indexed) == 1 else "s have"} not generated target {target}{dag.steps_depending_on(target, self.workflow)}')
                             if node._input_targets.determined():
                                 node._input_targets = sos_targets()
-                            if node._depends_targets.detetermined():
+                            if node._depends_targets.determined():
                                 node._depends_targets = sos_targets()
                         else:
                             raise RuntimeError(
@@ -616,8 +617,11 @@ class Base_Executor:
                 # NOTE: If a step is called multiple times with different targets, it is much better
                 # to use different names because pydotplus can be very slow in handling graphs with nodes
                 # with identical names.
+                node_name = section.step_name()
+                if env.sos_dict["__default_output__"]:
+                    node_name += f' ({short_repr(env.sos_dict["__default_output__"])})'
                 dag.add_step(section.uuid,
-                             f'{section.step_name()}{(" " + short_repr(env.sos_dict["__default_output__"])) if env.sos_dict["__default_output__"] else ""}', None,
+                             node_name, None,
                              res['step_input'],
                              res['step_depends'],
                              res['step_output'],
@@ -679,7 +683,10 @@ class Base_Executor:
                 # NOTE: If a step is called multiple times with different targets, it is much better
                 # to use different names because pydotplus can be very slow in handling graphs with nodes
                 # with identical names.
-                dag.add_step(section.uuid, f'{section.step_name()} {short_repr(env.sos_dict["__default_output__"])}',
+                node_name = section.step_name()
+                if env.sos_dict["__default_output__"]:
+                    node_name += f' {short_repr(env.sos_dict["__default_output__"])})'
+                dag.add_step(section.uuid, node_name,
                              None, res['step_input'],
                              res['step_depends'], res['step_output'], context=context)
                 #
@@ -688,10 +695,9 @@ class Base_Executor:
                 # resolved += 1
             if added_node == 0:
                 break
-        # dag.show_nodes()
         return resolved
 
-    def initialize_dag(self, targets: Optional[List[str]]=None, nested: bool=False) -> SoS_DAG:
+    def initialize_dag(self, targets: Optional[List[str]] = [], nested: bool = False) -> SoS_DAG:
         '''Create a DAG by analyzing sections statically.'''
         # this is for testing only and allows tester to call initialize_dag
         # directly to get a DAG
@@ -700,6 +706,7 @@ class Base_Executor:
 
         dag = SoS_DAG(name=self.md5)
         default_input: sos_targets = sos_targets([])
+        targets = sos_targets(targets)
         for idx, section in enumerate(self.workflow.sections):
             if self.skip(section):
                 continue
@@ -980,9 +987,7 @@ class Base_Executor:
                         runnable._status = None
                         dag.save(env.config['output_dag'])
                         target = res.target
-                        # we can resolve all sorts of target but the DAG only accept string format of file_targe
-                        if isinstance(target, path):
-                            target = str(target)
+
                         if dag.regenerate_target(target):
                             # runnable._depends_targets.append(target)
                             # dag._all_dependent_files[target].append(runnable)
@@ -994,11 +999,11 @@ class Base_Executor:
                                     f'Circular dependency detected {cycle} after regeneration. It is likely a later step produces input of a previous step.')
 
                         else:
-                            if self.resolve_dangling_targets(dag, [target]) == 0:
+                            if self.resolve_dangling_targets(dag, sos_targets(target)) == 0:
                                 raise RuntimeError(
                                     f'Failed to regenerate or resolve {target}{dag.steps_depending_on(target, self.workflow)}.')
                             if runnable._depends_targets.determined():
-                                runnable._depends_targets.append(target)
+                                runnable._depends_targets.extend(target)
                             if runnable not in dag._all_dependent_files[target]:
                                 dag._all_dependent_files[target].append(
                                     runnable)

@@ -1802,7 +1802,7 @@ def _expand_file_list(ignore_unknown: bool, *args) -> sos_targets:
                 if ignore_unknown:
                     tmp.append(ifile)
                 else:
-                    raise UnknownTarget(ifile)
+                    raise UnknownTarget(file_target(ifile))
             else:
                 tmp.extend(expanded)
     return sos_targets(tmp)

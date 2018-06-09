@@ -12,10 +12,11 @@ import fasteners
 import networkx as nx
 
 
-from .targets import file_target, sos_step, sos_targets, sos_variable, textMD5
+from .targets import (file_target, sos_step, sos_targets, sos_variable, textMD5,
+                      BaseTarget)
 from .utils import ActivityNotifier, env, short_repr
 
-from typing import Union
+from typing import Union, DefaultDict
 
 #
 # DAG design:
@@ -112,7 +113,8 @@ class SoS_DAG(nx.DiGraph):
     def __init__(self, *args, **kwargs):
         nx.DiGraph.__init__(self, *args, **kwargs)
         # all_dependent files includes input and depends files
-        self._all_dependent_files = defaultdict(list)
+        self._all_dependent_files: DefaultDict[BaseTarget, List] = defaultdict(
+            list)
         self._all_output_files = defaultdict(list)
 
     def num_nodes(self):
@@ -209,7 +211,7 @@ class SoS_DAG(nx.DiGraph):
             # if there is no cycle, an exception is given
             return []
 
-    def steps_depending_on(self, target, workflow):
+    def steps_depending_on(self, target: BaseTarget, workflow):
         if target in self._all_dependent_files:
             return ' requested by ' + ', '.join(set([workflow.section_by_id(x._step_uuid).step_name() for x in self._all_dependent_files[target]]))
         else:
@@ -218,18 +220,24 @@ class SoS_DAG(nx.DiGraph):
     def pending(self):
         return [x for x in self.nodes() if x._status == 'failed'], [x for x in self.nodes() if x._status is None]
 
-    def dangling(self, targets):
+    def dangling(self, targets: sos_targets):
         missing = []
         existing = []
-        for x in list(self._all_dependent_files.keys()) + ([] if targets is None else targets):
-            if file_target(x).target_exists() if isinstance(x, str) else x.target_exists():
+        for x in self._all_dependent_files.keys():
+            if x.target_exists():
+                if x not in self._all_output_files:
+                    existing.append(x)
+            elif x not in self._all_output_files:
+                missing.append(x)
+        for x in targets:
+            if x.target_exists():
                 if x not in self._all_output_files:
                     existing.append(x)
             elif x not in self._all_output_files:
                 missing.append(x)
         return missing, existing
 
-    def regenerate_target(self, target):
+    def regenerate_target(self, target: BaseTarget):
         if target in self._all_output_files:
             for node in self._all_output_files[target]:
                 if node._status == 'completed':
@@ -252,7 +260,7 @@ class SoS_DAG(nx.DiGraph):
                 target.remove_sig()
             return False
 
-    def subgraph_from(self, targets):
+    def subgraph_from(self, targets: sos_targets):
         '''Trim DAG to keep only nodes that produce targets'''
         # first, find all nodes with targets
         subnodes = []
