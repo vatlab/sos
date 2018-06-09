@@ -902,11 +902,6 @@ class RuntimeInfo:
         self.step_md5 = step_md5
         self.script = script
 
-        #assert input_files.determined(), 'Undetermined input files for runtime signature'
-        #assert dependent_files.determined(), 'Undetermined dependent files for runtime signature'
-        #assert output_files.determined(), 'Undetermined output files for runtime signature'
-
-        # input can only be a list of files
         self.input_files = input_files
         self.dependent_files = dependent_files
         self.output_files = output_files
@@ -982,13 +977,13 @@ class RuntimeInfo:
             finally:
                 self._lock = None
 
-    def set(self, files, file_type):
+    def set(self, files: sos_targets, file_type: str):
         # add signature file if input and output files are dynamic
         env.logger.trace(f'Set {file_type} of signature to {files}')
         if file_type == 'output':
-            self.output_files = [file_target(x) for x in files]
+            self.output_files = files
         elif file_type == 'depends':
-            self.depends_files = [file_target(x) for x in files]
+            self.depends_files = files
         else:
             raise RuntimeError(f'Invalid signature file type {file_type}')
 

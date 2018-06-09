@@ -505,9 +505,8 @@ del sos_handle_parameter_
         # try to add #task so that the signature can be different from the step
         # if everything else is the same
         sig = RuntimeInfo(textMD5('#task\n' + ' '.join(tokens)), task,
-                          env.sos_dict['_input'].targets(
-        ), env.sos_dict['_output'].targets(),
-            env.sos_dict['_depends'].targets(), env.sos_dict['__signature_vars__'])
+                          env.sos_dict['_input'], env.sos_dict['_output'],
+                          env.sos_dict['_depends'], env.sos_dict['__signature_vars__'])
         sig.lock()
 
         idx = env.sos_dict['_index']

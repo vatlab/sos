@@ -114,15 +114,20 @@ class TestParser(unittest.TestCase):
         script = SoS_Script('''[0]\n[*_1]\n[human_1]''')
         self.assertEqual(sorted(script.workflows), ['default', 'human'])
         script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse_2]''')
-        self.assertEqual(sorted(script.workflows), ['default', 'human', 'mouse'])
+        self.assertEqual(sorted(script.workflows), [
+                         'default', 'human', 'mouse'])
         script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse_2]\n[s*_2]''')
-        self.assertEqual(sorted(script.workflows), ['default', 'human', 'mouse'])
+        self.assertEqual(sorted(script.workflows), [
+                         'default', 'human', 'mouse'])
         # skip option is not effective at parsing time
-        script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse_2:skip]\n[s*_2]''')
-        self.assertEqual(sorted(script.workflows), ['default', 'human', 'mouse'])
+        script = SoS_Script(
+            '''[0]\n[*_1]\n[human_1]\n[mouse_2:skip]\n[s*_2]''')
+        self.assertEqual(sorted(script.workflows), [
+                         'default', 'human', 'mouse'])
         # unnamed
         script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse]\n[s*_2]''')
-        self.assertEqual(sorted(script.workflows), ['default', 'human', 'mouse'])
+        self.assertEqual(sorted(script.workflows), [
+                         'default', 'human', 'mouse'])
         #
         # workflow name with -
         script = SoS_Script('''[proc-1]\n[test-case_2]''')
@@ -166,7 +171,8 @@ var = 1
             self.assertRaises(ParsingError, SoS_Script, '[{}]'.format(badname))
         # bad options
         for badoption in ['ss', 'skip a', 'skip:_', 'skip, skip']:
-            self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
+            self.assertRaises(ParsingError, SoS_Script,
+                              '[0:{}]'.format(badoption))
         # allowed names
         for name in ['a5', 'a_5', '*_0', 'a*1_100']:
             SoS_Script('[{}]'.format(name))
@@ -404,7 +410,8 @@ parameter: a = 5
 [0]
 ''')
         wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf, args=['--a', 7]).run, mode='dryrun')
+        self.assertRaises(Exception, Base_Executor(
+            wf, args=['--a', 7]).run, mode='dryrun')
         #self.assertEqual(env.sos_dict['a'], 4)
         #
         # test parameters with dash
@@ -794,8 +801,10 @@ output: (f"a{x}" for x in _input)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(sorted(env.sos_dict['i']), ['a.txt', 'a0', 'a1', 'b.txt'])
-        self.assertEqual(sorted(env.sos_dict['o']), ['aa.txt', 'aa0', 'aa1', 'ab.txt'])
+        self.assertEqual(sorted(env.sos_dict['i']), sos_targets(
+            ['a.txt', 'a0', 'a1', 'b.txt']))
+        self.assertEqual(sorted(env.sos_dict['o']), sos_targets([
+                         'aa.txt', 'aa0', 'aa1', 'ab.txt']))
 
     def testGroupBy(self):
         '''Test group_by parameter of step input'''
@@ -1030,7 +1039,8 @@ executed.append(step_name)
         #
         wf = script.workflow('a+c+d')
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['executed'], ['a_1', 'a_2', 'a_3', 'a_4', 'c', 'd'])
+        self.assertEqual(env.sos_dict['executed'], [
+                         'a_1', 'a_2', 'a_3', 'a_4', 'c', 'd'])
 
     def testIncludeWithNamespace(self):
         '''Test include a workflow that uses variables from its own global module'''
@@ -1086,7 +1096,8 @@ print(CONFIG.get('StoreOwnerSpouse', 'someone else'))
         Base_Executor(wf, config={'config_file': 'myconfig.yml'}).run()
         self.assertEqual(env.sos_dict['CONFIG']['Price'], 1.05)
         self.assertEqual(env.sos_dict['CONFIG']['StoreOwner'], 'John Doe')
-        self.assertEqual(env.sos_dict['CONFIG']['Fruits'], ['apple', 'banana', 'pear'])
+        self.assertEqual(env.sos_dict['CONFIG']['Fruits'], [
+                         'apple', 'banana', 'pear'])
 
     def testVarOutput(self):
         '''Test early appearance of variable output'''

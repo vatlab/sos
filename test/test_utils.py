@@ -103,7 +103,8 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(res['path'], [None])
         self.assertEqual(res['to'], [None])
         self.assertEqual(res['file'], [None])
-        res = extract_pattern('{path}/{to}/{file}.txt', ['/tmp/test/1.txt.txt'])
+        res = extract_pattern('{path}/{to}/{file}.txt',
+                              ['/tmp/test/1.txt.txt'])
         self.assertEqual(res['path'], ['/tmp'])
         self.assertEqual(res['to'], ['test'])
         self.assertEqual(res['file'], ['1.txt'])
@@ -116,7 +117,8 @@ class TestUtils(unittest.TestCase):
             'd': {'a': 'file1', 'b': 'file2'},
         })
         self.assertEqual(expand_pattern('{b}.txt'), ['file name.txt'])
-        self.assertEqual(expand_pattern('{c}.txt'), ['file1.txt', 'file2.txt', 'file 3.txt'])
+        self.assertEqual(expand_pattern('{c}.txt'), [
+                         'file1.txt', 'file2.txt', 'file 3.txt'])
         self.assertEqual(expand_pattern('{a}_{c}.txt'), [
                          '100_file1.txt', '100_file2.txt', '100_file 3.txt'])
 
@@ -126,7 +128,8 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(accessed_vars('''a = b + 2.0'''), {'a', 'b'})
         self.assertEqual(accessed_vars('''a = "C"'''), {'a'})
         self.assertEqual(accessed_vars('''a = "C" + f"{D}"'''), {'a', 'D'})
-        self.assertEqual(accessed_vars('''a = 1 + f"{D + 20:f}" '''), {'a', 'D'})
+        self.assertEqual(accessed_vars(
+            '''a = 1 + f"{D + 20:f}" '''), {'a', 'D'})
         self.assertEqual(accessed_vars('''k, "a.txt", "b.txt", skip=True, par=f(something) '''), {
                          'k', 'f', 'something', '__NULLFUNC__'})
         # this is a complicated case because the actual variable depends on the
@@ -219,7 +222,7 @@ task:
         for section in wf.sections:
             res = analyze_section(section)
             if section.names[0][1] == '1':
-                self.assertTrue(isinstance(res['step_input'], Undetermined))
+                self.assertFalse(res['step_input'].determined())
                 self.assertEqual(res['step_depends'], sos_targets())
                 self.assertEqual(res['step_output'], sos_targets())
                 self.assertEqual(res['environ_vars'], {'b', 'p1', 'infiles'})
@@ -227,11 +230,14 @@ task:
                 self.assertEqual(res['changed_vars'], {'b'})
             elif section.names[0][1] == '2':
                 self.assertEqual(res['step_input'], sos_targets())
-                self.assertEqual(res['step_depends'], sos_targets('some.txt', executable('ls')))
-                self.assertTrue(isinstance(res['step_output'], Undetermined))
+                self.assertEqual(res['step_depends'], sos_targets(
+                    'some.txt', executable('ls')))
+                self.assertFalse(res['step_output'].determined())
                 # for_each will not be used for DAG
-                self.assertEqual(res['environ_vars'], {'b', 'for_each', 'executable'})
-                self.assertEqual(res['signature_vars'], {'r', 'time', 'random'})
+                self.assertEqual(res['environ_vars'], {
+                                 'b', 'for_each', 'executable'})
+                self.assertEqual(res['signature_vars'], {
+                                 'r', 'time', 'random'})
                 self.assertEqual(res['changed_vars'], set())
             elif section.names[0][1] == '4':
                 self.assertTrue('output' in res['signature_vars'])
