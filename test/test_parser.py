@@ -1105,7 +1105,7 @@ print(CONFIG.get('StoreOwnerSpouse', 'someone else'))
 [0]
 seq = range(3)
 input: for_each='seq'
-output: "test${_seq}.txt"
+output: f"test{_seq}.txt"
 print(_output)
 ''')
         wf = script.workflow()
