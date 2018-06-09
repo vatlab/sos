@@ -1412,7 +1412,7 @@ class Base_Step_Executor:
                                 ofiles: sos_targets = self.expand_output_files(
                                     value, *args)
                                 if g.determined() and ofiles.determined():
-                                    if any(x in g._targets for x in ofiles):
+                                    if any(x in g._targets for x in ofiles if not isinstance(x, sos_step)):
                                         raise RuntimeError(
                                             f'Overlapping input and output files: {", ".join(repr(x) for x in ofiles if x in g)}')
                                 # set variable _output and output
