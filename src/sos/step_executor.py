@@ -1235,8 +1235,6 @@ class Base_Step_Executor:
         self.start_time = time.time()
         self.completed = defaultdict(int)
         #
-        self.log('start')
-        #
         # prepare environments, namely variables that can be used by the step
         #
         # * step_name:  name of the step, can be used by step process to determine
@@ -1247,7 +1245,6 @@ class Base_Step_Executor:
         env.sos_dict.set('__step_context__', self.step.context)
 
         env.sos_dict.set('_runtime', {})
-
         # * input:      input files, which should be __step_output__ if it is defined, or
         #               None otherwise.
         # * _input:     first batch of input, which should be input if no input statement is used

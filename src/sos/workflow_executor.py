@@ -511,11 +511,8 @@ class Base_Executor:
                     return {}
                 else:
                     continue
-            # target is file, has to be match string
-            if not isinstance(p, str):
-                continue
             # if this is a regular string
-            res = extract_pattern(p, [str(target)])
+            res = extract_pattern(str(p), [str(target)])
             if res and not any(None in x for x in res.values()):
                 return {x: y[0] for x, y in res.items()}
             # string match

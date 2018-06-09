@@ -292,7 +292,7 @@ class SoS_DAG(nx.DiGraph):
             if not node._input_targets.determined() and idx > 0:
                 # if there is some input specified, it does not use default
                 # input, so the relationship can be further looked before
-                if node._input_targets._undetermined:
+                if isinstance(node._input_targets._undetermined, str):
                     # if the input is dynamic, has to rely on previous step...
                     if 'dynamic' in node._context['__environ_vars__']:
                         self.add_edge(indexed[idx - 1], node)
