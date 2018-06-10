@@ -197,3 +197,7 @@ tr.subworkflow.step-row {
 #sourcecode {
   display:none;
 }
+
+.sos-logo img  {
+  height: 2em;
+}
