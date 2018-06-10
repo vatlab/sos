@@ -1106,5 +1106,63 @@ depends: 'non-existent.txt'
         Base_Executor(wf).run()
 
 
+    def testOutputReport(self):
+        '''Test generation of report'''
+        if os.path.isfile('report.html'):
+            os.remove('report.html')
+        script = SoS_Script(r"""
+[1: shared = {'dfile':'_output'}]
+output: '1.txt'
+run:
+	echo 1 > 1.txt
+
+[2: shared = {'ifile':'_output'}]
+output: '2.txt'
+run: expand=True
+	echo {_input} > 2.txt
+
+[3]
+depends: ifile
+input: dfile
+output: '3.txt'
+run: expand=True
+	cat {_input} > {_output}
+""")
+        env.config['output_report'] = 'report.html'
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertTrue(os.path.isfile('report.html'))
+
+    def testOutputReportWithDAG(self):
+        # test dag
+        if os.path.isfile('report.html'):
+            os.remove('report.html')
+        script = SoS_Script(r"""
+[1: shared = {'dfile':'_output'}]
+output: '1.txt'
+run:
+	echo 1 > 1.txt
+
+[2: shared = {'ifile':'_output'}]
+output: '2.txt'
+run: expand=True
+	echo {_input} > 2.txt
+
+[3]
+depends: ifile
+input: dfile
+output: '4.txt'
+run: expand=True
+	cat {_input} > {_output}
+""")
+        env.config['output_report'] = 'report.html'
+        env.config['output_dag'] = 'report.dag'
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        with open('report.html') as rep:
+            content = rep.read()
+        self.assertTrue('Execution DAG' in content)
+
+
 if __name__ == '__main__':
     unittest.main()
