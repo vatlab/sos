@@ -4,6 +4,7 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import keyword
+import base64
 import multiprocessing as mp
 import os
 import subprocess
@@ -379,12 +380,12 @@ class Base_Executor:
             workflow_info['command_line'] = subprocess.list2cmdline(
                 [os.path.basename(sys.argv[0])] + sys.argv[1:])
             workflow_info['project_dir'] = os.getcwd()
+            workflow_info['script'] = base64.b64encode(
+                self.workflow.content.text().encode()).decode('ascii')
         workflow_info['master_id'] = env.config['master_id']
         if env.config['run_mode'] != 'dryrun':
             with workflow_report(mode='w' if env.config['master_id'] == self.md5 else 'a') as sig:
-                sig.write(f'''\
-    workflow\t{self.md5}\t{workflow_info}
-    ''')
+                sig.write(f'workflow\t{self.md5}\t{workflow_info}\n')
         #
         env.config['resumed_tasks'] = set()
         wf_status = os.path.join(os.path.expanduser(

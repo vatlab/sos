@@ -193,3 +193,7 @@ tr.subworkflow.step-row {
 .code {
   color: black!important;
 }
+
+#sourcecode {
+  display:none;
+}

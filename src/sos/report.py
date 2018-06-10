@@ -15,6 +15,8 @@ from ._version import __version__
 
 from io import TextIOWrapper
 from typing import Iterator
+
+
 @contextmanager
 def workflow_report(mode: str = 'a') -> Iterator[TextIOWrapper]:
     workflow_sig = os.path.join(
@@ -126,6 +128,7 @@ def render_report(output_file, workflow_id):
         autoescape=select_autoescape(['html', 'xml'])
     )
     environment.filters['basename'] = os.path.basename
+    environment.filters['b64decode'] = lambda x: base64.b64decode(x).decode()
     template = environment.get_template('workflow_report.tpl')
 
     context = {

@@ -655,6 +655,13 @@ class SoS_ScriptContent:
         #
         return textMD5(cnt)
 
+    def text(self) -> str:
+        if self.content:
+            return self.content
+        else:
+            with open(self.filename) as script:
+                return script.read()
+
     def add(self, content: str = '', filename: Optional[str] = None) -> None:
         if filename and not content:
             with open(filename) as script:

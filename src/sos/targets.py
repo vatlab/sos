@@ -12,7 +12,7 @@ from collections.abc import Iterable, Sequence
 from copy import deepcopy
 from pathlib import Path
 from shlex import quote
-
+from typing import Union, Dict, Any
 import fasteners
 import pkg_resources
 
@@ -741,7 +741,7 @@ class paths(Sequence, os.PathLike):
 class sos_targets(BaseTarget, Sequence, os.PathLike):
     '''A collection of targets'''
 
-    def __init__(self, *args, undetermined: Union[bool , str]=None):
+    def __init__(self, *args, undetermined: Union[bool, str]=None):
         super(BaseTarget, self).__init__()
         self._targets = []
         if isinstance(undetermined, (bool, str)):
@@ -934,7 +934,7 @@ class RuntimeInfo:
                 'sig_id': self.sig_id,
                 'external': self.external_output}
 
-        def __setstate__(self, sdict: Dict[str, Any]):
+    def __setstate__(self, sdict: Dict[str, Any]):
         self.step_md5 = sdict['step_md5']
         self.input_files = sdict['input_files']
         self.output_files = sdict['output_files']
