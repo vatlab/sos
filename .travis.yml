@@ -11,6 +11,7 @@ before_install:
     - sudo apt-get update
     - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
     - sudo apt-get install
+    - sudo apt-get install libmagickwand-dev libmagickcore5-extra graphviz
     # install anaconda Python 3
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then  wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh; fi
     #- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then wget  https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh; fi
@@ -36,7 +37,7 @@ before_install:
     - pip install docker
     # packages required by SoS
     - pip install pyyaml psutil tqdm
-    - pip install fasteners pygments networkx pydot pydotplus 
+    - pip install fasteners pygments networkx pydot pydotplus graphviz imageio pillow
     # https://github.com/jupyter/jupyter/issues/150
     - pip install entrypoints jupyter coverage codacy-coverage pytest pytest-cov python-coveralls
     - conda install pandas numpy gxx_linux-64

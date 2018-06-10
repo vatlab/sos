@@ -1133,6 +1133,7 @@ run: expand=True
         Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('report.html'))
 
+    @unittest.skipIf(sys.platform == 'win32', 'Graphviz not available under windows')
     def testOutputReportWithDAG(self):
         # test dag
         if os.path.isfile('report.html'):
