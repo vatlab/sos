@@ -33,6 +33,7 @@ from .utils import (SlotManager, StopInputGroup, TerminateExecution,
                     TimeoutInterProcessLock, env, get_traceback, short_repr,
                     transcribe)
 
+from typing import Any, Callable, Dict, List, Tuple, Union
 __all__ = ['SoS_Action', 'script', 'sos_run',
            'fail_if', 'warn_if', 'stop_if',
            'download',
@@ -41,7 +42,7 @@ __all__ = ['SoS_Action', 'script', 'sos_run',
            ]
 
 
-def get_actions():
+def get_actions() -> List[Any]:
     # get the name of all actions, which are identified by an attribute
     # run_mode of the function
     return [k for k, v in globals().items() if hasattr(v, 'run_mode')]
@@ -53,7 +54,7 @@ def get_actions():
 #
 
 
-def SoS_Action(run_mode='deprecated', acceptable_args=('*',), default_args={}):
+def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated', acceptable_args: Union[Tuple[str], List[str]] = ('*',), default_args: Dict[str, Dict[str, str]] = {}) -> Callable:
     def runtime_decorator(func):
         @wraps(func)
         def action_wrapper(*args, **kwargs):

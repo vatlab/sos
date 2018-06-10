@@ -741,7 +741,7 @@ class paths(Sequence, os.PathLike):
 class sos_targets(BaseTarget, Sequence, os.PathLike):
     '''A collection of targets'''
 
-    def __init__(self, *args, undetermined=None):
+    def __init__(self, *args, undetermined: Union[bool , str]=None):
         super(BaseTarget, self).__init__()
         self._targets = []
         if isinstance(undetermined, (bool, str)):
@@ -893,7 +893,7 @@ class RuntimeInfo:
     .exe_info files are used.
     '''
 
-    def __init__(self, step_md5, script, input_files: sos_targets, output_files: sos_targets,
+    def __init__(self, step_md5: str, script: str, input_files: sos_targets, output_files: sos_targets,
                  dependent_files: sos_targets, signature_vars: dict={}, sdict: dict={}):
         '''Runtime information for specified output files
         '''
@@ -934,7 +934,7 @@ class RuntimeInfo:
                 'sig_id': self.sig_id,
                 'external': self.external_output}
 
-    def __setstate__(self, sdict):
+        def __setstate__(self, sdict: Dict[str, Any]):
         self.step_md5 = sdict['step_md5']
         self.input_files = sdict['input_files']
         self.output_files = sdict['output_files']

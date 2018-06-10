@@ -22,7 +22,7 @@ sos_symbols_ = {
 }
 
 
-def _load_group(group):
+def _load_group(group: str) -> None:
     global sos_symbols_
     for _entrypoint in pkg_resources.iter_entry_points(group=group):
         # import all targets and actions from entry_points

@@ -13,8 +13,10 @@ from contextlib import contextmanager
 from .utils import TimeoutInterProcessLock, env, format_duration, dot_to_gif
 from ._version import __version__
 
+from io import TextIOWrapper
+from typing import Iterator
 @contextmanager
-def workflow_report(mode='a'):
+def workflow_report(mode: str = 'a') -> Iterator[TextIOWrapper]:
     workflow_sig = os.path.join(
         env.exec_dir, '.sos', f'{env.config["master_id"]}.sig')
     with TimeoutInterProcessLock(workflow_sig + '_'):

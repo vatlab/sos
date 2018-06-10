@@ -57,6 +57,8 @@ from .utils import (DelayedAction, env, expand_size, expand_time,
 #
 
 
+from sos.targets import file_target
+from typing import Any, Dict, List, Optional, Union
 class DaemonizedProcess(mp.Process):
     def __init__(self, cmd, *args, **kwargs):
         super(DaemonizedProcess, self).__init__(*args, **kwargs)
@@ -103,7 +105,7 @@ class DaemonizedProcess(mp.Process):
         return
 
 
-def _show_err_and_out(task_id):
+def _show_err_and_out(task_id: str) -> None:
     sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
     out_file = os.path.join(sys_task_dir, task_id + '.out')
     err_file = os.path.join(sys_task_dir, task_id + '.err')
@@ -132,7 +134,7 @@ def _show_err_and_out(task_id):
 class LocalHost:
     '''For local host, no path map, send and receive ...'''
 
-    def __init__(self, config):
+    def __init__(self, config: Dict[str, Union[str, int, List[str]]]) -> None:
         # even if the config has an alias, we use localhost to make it clear that the host is localhost
         self.alias = config.get('alias', 'localhost')
         self.address = 'localhost'
@@ -235,7 +237,7 @@ class LocalHost:
             p.start()
             p.join()
 
-    def receive_result(self, task_id):
+    def receive_result(self, task_id: str) -> Dict[str, Any]:
         sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
 
         res_file = os.path.join(os.path.expanduser(
@@ -264,7 +266,7 @@ class LocalHost:
 class RemoteHost:
     '''A remote host class that manages how to communicate with remote host'''
 
-    def __init__(self, config):
+    def __init__(self, config: Dict[str, Union[str, int, List[str]]]) -> None:
         self.config = config
         self.alias = self.config['alias']
         #
@@ -279,7 +281,7 @@ class RemoteHost:
         if not os.path.isdir(self.task_dir):
             os.mkdir(self.task_dir)
 
-    def _get_shared_dirs(self):
+    def _get_shared_dirs(self) -> List[Any]:
         value = self.config.get('shared', [])
         if isinstance(value, str):
             return [value]
@@ -289,7 +291,7 @@ class RemoteHost:
             raise ValueError(
                 'Option shared can only be a string or a list of strings')
 
-    def _get_path_map(self):
+    def _get_path_map(self) -> Dict[str, str]:
         res = {}
         # if user-specified path_map, it overrides CONFIG
         path_map = self.config.get('path_map', [])
@@ -330,7 +332,7 @@ class RemoteHost:
         else:
             return '''rsync -a --no-g -e 'ssh -p {port}' {host}:{source:e} "{dest:adep}"'''
 
-    def _get_execute_cmd(self):
+    def _get_execute_cmd(self) -> str:
         return self.config.get('execute_cmd',
                                '''ssh -q {host} -p {port} "bash --login -c '[ -d {cur_dir} ] || mkdir -p {cur_dir}; cd {cur_dir} && {cmd}'" ''')
 
@@ -680,7 +682,7 @@ class RemoteHost:
             p.start()
             p.join()
 
-    def receive_result(self, task_id):
+    def receive_result(self, task_id: str) -> Dict[str, int]:
         # for filetype in ('res', 'status', 'out', 'err'):
         sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
         # use -p to preserve modification times so that we can keep the job status locally.
@@ -761,7 +763,7 @@ class RemoteHost:
 class Host:
     host_instances = {}
 
-    def __init__(self, alias='', start_engine=True):
+    def __init__(self, alias: Optional[str] = '', start_engine: bool = True) -> None:
         # a host started from Jupyter notebook might not have proper stdout
         # (a StringIO) and cannot be used for DaemonizedFork).
         self._get_config(alias)
@@ -769,16 +771,16 @@ class Host:
 
     # for test purpose
     @classmethod
-    def reset(cls):
+    def reset(cls) -> None:
         for host in cls.host_instances.values():
             del host._task_engine
         cls.host_instances = {}
 
     @classmethod
-    def not_wait_for_tasks(cls):
+    def not_wait_for_tasks(cls) -> bool:
         return all(host._task_engine.wait_for_task is False for host in cls.host_instances.values())
 
-    def _get_local_host(self):
+    def _get_local_host(self) -> str:
         if 'CONFIG' not in env.sos_dict:
             from .utils import load_config_files
             load_config_files()
@@ -824,7 +826,7 @@ class Host:
         raise ValueError(
             "No localhost could be identified from hostname, ip address, or a localhost key in config file")
 
-    def _get_remote_host(self, alias):
+    def _get_remote_host(self, alias: Optional[str]) -> str:
         # get a remote host specified by Alias
         if 'CONFIG' not in env.sos_dict:
             from .utils import load_config_files
@@ -837,7 +839,7 @@ class Host:
             raise ValueError(f'Undefined remote host {alias}')
         return alias
 
-    def _get_config(self, alias):
+    def _get_config(self, alias: Optional[str]) -> None:
         LOCAL = self._get_local_host()
         REMOTE = self._get_remote_host(alias)
         self.alias = REMOTE
@@ -918,7 +920,7 @@ class Host:
         if 'max_mem' in self.config:
             self.config['max_mem'] = expand_size(self.config['max_mem'])
 
-    def _get_host_agent(self, start_engine):
+    def _get_host_agent(self, start_engine: bool) -> None:
         if 'queue_type' not in self.config:
             self._task_engine_type = 'process'
         else:
@@ -973,14 +975,14 @@ class Host:
     def map_var(self, rvars):
         return self._host_agent._map_var(rvars)
 
-    def submit_task(self, task_id):
+    def submit_task(self, task_id: str) -> str:
         return self._task_engine.submit_task(task_id)
 
-    def check_status(self, tasks):
+    def check_status(self, tasks: List[str]) -> List[str]:
         # find the task engine
         return [self._task_engine.check_task_status(task) for task in tasks]
 
-    def retrieve_results(self, tasks):
+    def retrieve_results(self, tasks: List[str]) -> Dict[str, Union[Dict[str, Union[int, str, Dict[int, Dict[Any, Any]], float]], Dict[str, int], Dict[str, Union[int, str, Dict[file_target, str], Dict[int, Dict[Any, Any]], float]], Dict[str, Union[int, str, Dict[int, Dict[str, int]], float]]]]:
         return {task: self._host_agent.receive_result(task) for task in tasks}
 
 
