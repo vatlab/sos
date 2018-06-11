@@ -201,3 +201,53 @@ tr.subworkflow.step-row {
 .sos-logo img  {
   height: 2em;
 }
+
+.fa-external-link-alt {
+  color: gray;
+  font-size: 0.5em;
+}
+
+
+.file {
+  position: relative;
+  margin-top: 16px;
+  margin-bottom: 16px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+}
+
+.file .fileheader {
+  padding: 5px 10px;
+  background-color: #fafbfc;
+  border-bottom: 1px solid #e1e4e8;
+  border-top-left-radius: 2px;
+  border-top-right-radius: 2px;
+}
+
+.file .fileinfo {
+  font-family: "SFMono-Regular",Consolas,"Liberation Mono",Menlo,Courier,monospace;
+  font-size: 12px;
+  line-height: 32px;
+}
+
+.file .file-info-divider {
+  display: inline-block;
+  width: 1px;
+  height: 18px;
+  margin-right: 3px;
+  margin-left: 3px;
+  vertical-align: middle;
+  background-color: #ddd;
+}
+
+.file .filecontent {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom-right-radius: 3px;
+  border-bottom-left-radius: 3px;
+}
+
+.file .CodeMirror {
+  border: 1px solid #eee;
+  height: auto;
+}

@@ -30,6 +30,63 @@ from .utils import env, pretty_size
 # Converter to HTML
 #
 #
+codemirror_themes = [
+    'default',
+    '3024-day',
+    '3024-night',
+    'abcdef',
+    'ambiance',
+    'base16-dark',
+    'base16-light',
+    'bespin',
+    'blackboard',
+    'cobalt',
+    'colorforth',
+    'darcula',
+    'dracula',
+    'duotone-dark',
+    'duotone-light',
+    'eclipse',
+    'elegant',
+    'erlang-dark',
+    'gruvbox-dark',
+    'hopscotch',
+    'icecoder',
+    'idea',
+    'isotope',
+    'lesser-dark',
+    'liquibyte',
+    'lucario',
+    'material',
+    'mbo',
+    'mdn-like',
+    'midnight',
+    'monokai',
+    'neat',
+    'neo',
+    'night',
+    'oceanic-next',
+    'panda-syntax',
+    'paraiso-dark',
+    'paraiso-light',
+    'pastel-on-dark',
+    'railscasts',
+    'rubyblue',
+    'seti',
+    'shadowfox',
+    'solarized dark',
+    'solarized light',
+    'the-matrix',
+    'tomorrow-night-bright',
+    'tomorrow-night-eighties',
+    'ttcn',
+    'twilight',
+    'vibrant-ink',
+    'xq-dark',
+    'xq-light',
+    'yeti',
+    'zenburn'
+]
 
 
 def get_script_to_html_parser():
@@ -38,10 +95,10 @@ def get_script_to_html_parser():
         and save the output either to a HTML file or view it in a broaser.''')
     parser.add_argument('--raw', help='''URL to the raw sos file, which will be linked
         to filenames in the HTML output''')
-    parser.add_argument('--style', help='''deprecated option''',
-                        default='default')
+    parser.add_argument('--style', choices=codemirror_themes,
+                        help="Code mirror themes for the output",  default='default')
     parser.add_argument('--linenos', action='store_true',
-                        help='''Display lineno to the left of the source code''')
+                        help=argparse.SUPPRESS)
     parser.add_argument('-v', '--view', action='store_true',
                         help='''Open the output file in a broswer. In case no html file is specified,
         this option will display the HTML file in a browser, instead of writing its
@@ -72,6 +129,7 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
         'sos_version': __version__,
         'linenos': args.linenos,
         'raw': args.raw,
+        'theme': args.style,
     }
     html_content = template.render(context)
     if html_file is None:
@@ -83,7 +141,7 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
         #
     if args and args.view:
         import webbrowser
-        url = f'file://{html_file}'
+        url = f'file://{os.path.abspath(html_file)}'
         env.logger.info(f'Viewing {url} in a browser')
         webbrowser.open(url, new=2)
 #

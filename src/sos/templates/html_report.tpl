@@ -4,25 +4,39 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
       <link type="text/css" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-dropdown/2.0.3/jquery.dropdown.css" />
-      <link rel="stylesheet" href="https://codemirror.net/lib/codemirror.css">
+      <link type="text/css" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.38.0/codemirror.css">
+      <link type="text/css" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.38.0/theme/{{theme}}.css">
       <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
+      <link href="https://use.fontawesome.com/releases/v5.0.6/css/all.css" rel="stylesheet" type="text/css">
       <title>{{workflow_name}}</title>
       <style type="text/css">
          {% include "workflow_report.css" %}
       </style>
    </head>
    <body>
-      <h1 class='mt-0'>{{filename}}</h1>
-
-
-
-      <textarea id="source-code" name="code">{{ script }}</textarea>
+      <h2 class='mt-0'>{{filename}}
+         {% if raw %}
+         <a href="{{raw}}"><i class="fas fa-external-link-alt"></i></a>
+         {% endif %}
+      </h2>
+      <div class="file">
+         <div class="fileheader">
+            <div class="fileinfo">
+               {{ script.splitlines() | length }} lines
+               <span class="file-info-divider"></span>
+               {{ script | length | filesizeformat}}
+            </div>
+         </div>
+         <div class="filecontent">
+            <textarea id="source-code" name="code">{{ script }}</textarea>
+         </div>
+        </div>
       <footer>
-        <a class="sos-logo" href="https://vatlab.github.io/sos-docs">
-        <img src="http://vatlab.github.io/sos-docs/img/sos_icon.svg" alt="sos_icon">
-        </a>
-        &nbsp;
-        <a href="https://vatlab.github.io/sos-docs/">SoS Workflow Engine</a> version <samp>{{sos_version}}</samp>
+         <a class="sos-logo" href="https://vatlab.github.io/sos-docs">
+         <img src="http://vatlab.github.io/sos-docs/img/sos_icon.svg" alt="sos_icon">
+         </a>
+         &nbsp;
+         <a href="https://vatlab.github.io/sos-docs/">SoS Workflow Engine</a> version <samp>{{sos_version}}</samp>
       </footer>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-dropdown/2.0.3/jquery.dropdown.js"></script>
@@ -39,15 +53,15 @@
       <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.38.0/mode/julia/julia.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.38.0/mode/markdown/markdown.js"></script>
       <script>
-      {% include 'sos-mode.js' %}
+         {% include 'sos-mode.js' %}
       </script>
-
       <script>
          var editor = CodeMirror.fromTextArea(document.getElementById("source-code"), {
-           lineNumbers: {{ "true" if linenos else "false "}},
+           lineNumbers: true,
            styleActiveLine: true,
            matchBrackets: true,
            readOnly: true,
+           theme: '{{theme}}',
            mode: 'sos'
          });
       </script>
