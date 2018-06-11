@@ -68,6 +68,8 @@ class WorkflowSig(object):
                     except Exception as e:
                         env.logger.warning(
                             f'Failed to obtain convert dag to image: {e}')
+                if 'script' in v:
+                    v['script'] = base64.b64decode(v['script']).decode()
             return workflows
         except Exception as e:
             env.logger.warning(f'Failed to obtain workflow information: {e}')
@@ -128,7 +130,6 @@ def render_report(output_file, workflow_id):
         autoescape=select_autoescape(['html', 'xml'])
     )
     environment.filters['basename'] = os.path.basename
-    environment.filters['b64decode'] = lambda x: base64.b64decode(x).decode()
     template = environment.get_template('workflow_report.tpl')
 
     context = {

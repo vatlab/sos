@@ -248,7 +248,18 @@
       <img class="dag-image" src="data:image/png;base64,{{ workflows[master_id].dag_img }}">
       {% endif %}
       <h2 class='mt-3'> Script </h2>
-      <textarea id="source-code" name="code">{{ workflows[master_id].script | b64decode }}</textarea>
+      <div class="file">
+         <div class="fileheader">
+            <div class="fileinfo">
+               {{ workflows[master_id].script.splitlines() | length }} lines
+               <span class="file-info-divider"></span>
+               {{ workflows[master_id].script | length | filesizeformat}}
+            </div>
+         </div>
+         <div class="filecontent">
+            <textarea id="source-code" name="code">{{ workflows[master_id].script }}</textarea>
+         </div>
+      </div>
       <footer>
          <a class="sos-logo" href="https://vatlab.github.io/sos-docs">
          <img src="http://vatlab.github.io/sos-docs/img/sos_icon.svg" alt="sos_icon">
