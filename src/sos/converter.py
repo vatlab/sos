@@ -127,9 +127,9 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
         'filename': script_file,
         'script': content,
         'sos_version': __version__,
-        'linenos': args.linenos,
-        'raw': args.raw,
-        'theme': args.style,
+        'linenos': args.linenos if args and hasattr(args, 'linenos') else True,
+        'raw': args.raw if args and hasattr(args, 'raw') else '',
+        'theme': args.style if args and hasattr(args, 'style') else 'default',
     }
     html_content = template.render(context)
     if html_file is None:
