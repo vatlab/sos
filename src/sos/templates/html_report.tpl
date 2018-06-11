@@ -30,7 +30,7 @@
          <div class="filecontent">
             <textarea id="source-code" name="code">{{ script }}</textarea>
          </div>
-        </div>
+      </div>
       <footer>
          <a class="sos-logo" href="https://vatlab.github.io/sos-docs">
          <img src="http://vatlab.github.io/sos-docs/img/sos_icon.svg" alt="sos_icon">

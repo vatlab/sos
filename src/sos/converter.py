@@ -26,6 +26,39 @@ from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
                      SOS_SECTION_HEADER, SOS_SECTION_OPTIONS)
 from .utils import env, pretty_size
 
+
+class SoS_Lexer(PythonLexer):
+    """
+    A Python lexer with SOS keywords, it is not used by sos right now but
+    needs to be kept for compatibility with older notebooks.
+    """
+    name = 'Sript of Scripts'
+    aliases = ['sos']
+
+    # override the mimetypes to not inherit them from python
+    mimetypes = []
+    filenames = ['*.sos']
+    mimetypes = ['text/x-sos', 'application/x-sos']
+
+    PythonLexer.tokens['root'].insert(0, (r'(^\w+)\s*:', Keyword.Namespace))
+
+    EXTRA_KEYWORDS = set(SOS_INPUT_OPTIONS + SOS_OUTPUT_OPTIONS +
+                         SOS_DEPENDS_OPTIONS + SOS_RUNTIME_OPTIONS + SOS_SECTION_OPTIONS +
+                         get_actions())
+
+    def get_tokens_unprocessed(self, text):
+        for index, token, value in \
+                PythonLexer.get_tokens_unprocessed(self, text):
+            if token is Name and value in self.EXTRA_KEYWORDS:
+                yield index, Keyword.Pseudo, value
+            else:
+                yield index, token, value
+
+    def analyse_text(text):
+        return (shebang_matches(text, r'sos-runner') or
+                '#fileformat=SOS' in text[:1000])
+
+
 #
 # Converter to HTML
 #
