@@ -9,8 +9,7 @@ import subprocess
 import unittest
 from argparse import Namespace
 
-from sos.converter import (extract_workflow, script_to_html,
-                           script_to_markdown, script_to_term)
+from sos.converter import (extract_workflow, script_to_html)
 from sos.utils import env
 
 
@@ -55,18 +54,8 @@ report('this is action report')
             args.view = False
             script_to_html(script_file, script_file + '.html', args=args)
             #
-            self.assertEqual(subprocess.call(['sos', 'convert', script_file, '--to', 'html']), 0)
-
-    def testScriptToMarkdown(self):
-        '''Test sos show script --markdown'''
-        for script_file in self.scripts:
-            script_to_markdown(script_file, script_file + '.md', [])
-
-    def testScriptToTerm(self):
-        '''Test sos show script --html'''
-        args = Namespace()
-        for script_file in self.scripts:
-            script_to_term(script_file, None, args=args)
+            self.assertEqual(subprocess.call(
+                ['sos', 'convert', script_file, '--to', 'html']), 0)
 
     def testExtractWorkflow(self):
         '''Test extract workflow from ipynb file'''

@@ -63,7 +63,8 @@ class bdist_egg_disabled(bdist_egg):
         sys.exit("Aborting implicit building of eggs. Use `pip install -U --upgrade-strategy only-if-needed .` to install from source.")
 
 
-cmdclass = {'bdist_egg':  bdist_egg if 'bdist_egg' in sys.argv else bdist_egg_disabled}
+cmdclass = {
+    'bdist_egg':  bdist_egg if 'bdist_egg' in sys.argv else bdist_egg_disabled}
 
 
 setup(name="sos",
@@ -199,11 +200,6 @@ tarfile:is_tarfile,1 = sos.preview:preview_tar
 sos-html.parser = sos.converter:get_script_to_html_parser
 sos-html.func = sos.converter:script_to_html
 
-sos-term.parser = sos.converter:get_script_to_term_parser
-sos-term.func = sos.converter:script_to_term
-
-sos-md.parser = sos.converter:get_script_to_markdown_parser
-sos-md.func = sos.converter:script_to_markdown
 ''',
       # [sos_installers]
       # vim-syntax.parser = sos.install:get_install_vim_syntax_parser

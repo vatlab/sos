@@ -644,11 +644,7 @@ class SoS_ScriptContent:
         self.md5 = self.calc_md5()
 
     def calc_md5(self) -> str:
-        if self.content:
-            cnt = self.content
-        else:
-            with open(self.filename) as script:
-                cnt = script.read()
+        cnt = self.text()
         # additional files
         for script in self.included:
             cnt += script[0]
@@ -681,7 +677,7 @@ class SoS_ScriptContent:
 
 
 class SoS_Script:
-    def __init__(self, content: Optional[str] = '', filename: Optional[str] = None, transcript: Optional[StringIO] = None) -> None:
+    def __init__(self, content: Optional[str] = '', filename: Optional[str] = None) -> None:
         '''Parse a sectioned SoS script file. Please refer to the SoS manual
         for detailed specification of this format.
 
@@ -735,7 +731,6 @@ class SoS_Script:
             self.sos_script = '<string>'
             self.content = SoS_ScriptContent(content, None)
         # save a parsed version of the script for displaying purpose only
-        self.transcript = transcript
         self.global_def = ''
 
         self.description = []
@@ -869,17 +864,9 @@ for __n, __v in {repr(name_map)}.items():
             #
             # for structural lines
             if SOS_MAGIC.match(line):
-                # ignore cell directive in batch mode
-                if self.transcript:
-                    self.transcript.write(f'COMMENT\t{lineno}\t{line}')
-
                 continue
 
             if SOS_STRU.match(line):
-                # ignore cell directive in batch mode
-                if self.transcript:
-                    self.transcript.write(f'COMMENT\t{lineno}\t{line}')
-
                 if SOS_INCLUDE.match(line) or SOS_FROM_INCLUDE.match(line):
                     if cursect is not None:
                         parsing_errors.append(
@@ -978,9 +965,6 @@ for __n, __v in {repr(name_map)}.items():
                     continue
 
             if condition_ignore:
-                # ignore cell directive in batch mode
-                if self.transcript:
-                    self.transcript.write(f'COMMENT\t{lineno}\t{line}')
                 continue
 
             # comments in SoS scripts are mostly informative
@@ -1008,13 +992,10 @@ for __n, __v in {repr(name_map)}.items():
                         # description.
                         if cursect is None:
                             self.description.append(line)
-                    if self.transcript:
-                        self.transcript.write(f'COMMENT\t{lineno}\t{line}')
                 else:
                     # this is description of the section
                     if cursect.empty():
-                        if self.transcript:
-                            self.transcript.write(f'COMMENT\t{lineno}\t{line}')
+                        pass
                     # this is comment in scripts (and perhaps not even comment)
                     elif cursect.category() == 'script':
                         if cursect.indented_script():
@@ -1024,30 +1005,12 @@ for __n, __v in {repr(name_map)}.items():
                                 cursect.wrap_script()
                             except Exception as e:
                                 parsing_errors.append(lineno, line, str(e))
-                            if self.transcript:
-                                self.transcript.write(
-                                    f'COMMENT\t{lineno}\t{line}')
                         else:
                             cursect.extend(line)
-                            if self.transcript:
-                                self.transcript.write(
-                                    f'FOLLOW\t{lineno}\t{line}')
                     # this can be comment or back comment
                     elif cursect.category() == 'statements':
-                        if cursect.isValid():
-                             # this can be comment or back comment
-                            if self.transcript:
-                                self.transcript.write(
-                                    f'COMMENT\t{lineno}\t{line}')
-                        else:
+                        if not cursect.isValid():
                             cursect.extend(line)
-                            if self.transcript:
-                                self.transcript.write(
-                                    f'FOLLOW\t{lineno}\t{line}')
-                    else:
-                        # ignored.
-                        if self.transcript:
-                            self.transcript.write(f'FOLLOW\t{lineno}\t{line}')
                 continue
             elif not line.strip():
                 # a blank line start a new comment block if we are still
@@ -1058,23 +1021,17 @@ for __n, __v in {repr(name_map)}.items():
                 else:
                     if cursect.category() in ('statements', 'script'):
                         cursect.extend(line)
-                if self.transcript:
-                    self.transcript.write(f'FOLLOW\t{lineno}\t{line}')
                 continue
 
             #
             # a continuation of previous item?
             if line[0].isspace() and cursect is not None and not cursect.empty():
                 cursect.extend(line)
-                if self.transcript:
-                    self.transcript.write(f'FOLLOW\t{lineno}\t{line}')
                 continue
             #
             # is it a continuation of uncompleted directive?
             if cursect and not cursect.isValid():
                 cursect.extend(line)
-                if self.transcript:
-                    self.transcript.write(f'FOLLOW\t{lineno}\t{line}')
                 continue
             #
             # a new line (start from first column)
@@ -1178,8 +1135,6 @@ for __n, __v in {repr(name_map)}.items():
                     self.sections.append(
                         SoS_Step(self.content, step_names, step_options, comment=self._last_comment))
                 cursect = self.sections[-1]
-                if self.transcript:
-                    self.transcript.write(f'SECTION\t{lineno}\t{line}')
                 continue
             #
             # directive?
@@ -1213,25 +1168,17 @@ for __n, __v in {repr(name_map)}.items():
                     cursect.add_directive(
                         directive_name, directive_value, lineno)
                     self.clear_comment()
-                    if self.transcript:
-                        self.transcript.write(f'DIRECTIVE\t{lineno}\t{line}')
                 else:
                     if directive_name == 'parameter':
                         if comment_block == 2:
                             self.description = ''
                         cursect.add_directive(
                             directive_name, directive_value, lineno, comment=self._last_comment)
-                        if self.transcript:
-                            self.transcript.write(
-                                f'DIRECTIVE\t{lineno}\t{line}')
                     else:
                         # let us check if this is an acture action, or a type hint
                         cursect.add_script(
                             directive_name, directive_value, lineno)
                         self.clear_comment()
-                        if self.transcript:
-                            self.transcript.write(
-                                f'SCRIPT_{directive_name}\t{lineno}\t{line}')
                 continue
             # if section is in script mode?
             if cursect and cursect.isValid() and cursect.category() == 'script':
@@ -1245,8 +1192,6 @@ for __n, __v in {repr(name_map)}.items():
                         parsing_errors.append(lineno, line, str(e))
                 else:
                     cursect.extend(line)
-                    if self.transcript:
-                        self.transcript.write(f'FOLLOW\t{lineno}\t{line}')
                     continue
 
             # all others?
@@ -1255,23 +1200,14 @@ for __n, __v in {repr(name_map)}.items():
                 cursect = self.sections[-1]
                 cursect.add_statement(line, lineno)
                 self.clear_comment()
-                if self.transcript:
-                    self.transcript.write(f'STATEMENT\t{lineno}\t{line}')
                 continue
             #
             if cursect.empty() or cursect.category() != 'statements':
                 # new statement
                 cursect.add_statement(line, lineno)
-                if self.transcript:
-                    self.transcript.write(f'STATEMENT\t{lineno}\t{line}')
             else:
                 # existing one
                 cursect.extend(line)
-                if self.transcript:
-                    # it is possible that we are switching from SCRIPT mode to regular
-                    # statement, in which case the new mode should be STATEMENT, not FOLLOW
-                    self.transcript.write(
-                        f'{"STATEMENT" if cursect.category() == "statements" else "FOLLOW"}\t{lineno}\t{line}')
         #
         # check the last expression before a new directive
         if cursect:
