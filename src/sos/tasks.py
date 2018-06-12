@@ -711,24 +711,23 @@ del sos_handle_parameter_
 # otherwise return a dictionary of with keys 'status' and 'files'
 def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
     #
+    # for pending status, a new file might have been created to change its status
+    # so we cannot use cached signature.
+    #
+    # for running status, static pulse file actually means something wrong.
+    #
+    # when testing. if the timestamp is 0, the file does not exist originally, it should
+    # still does not exist. Otherwise the file should exist and has the same timestamp
+    if hint and hint['status'] not in ('pending', 'running') and \
+        all((os.path.isfile(f) and os.stat(f).st_mtime == v) if v else (not os.path.isfile(f)) for f, v in hint['files'].items()):
+        return {}
     # status of the job, please refer to https://github.com/vatlab/SOS/issues/529
     # for details.
-    if hint:
-        if hint['status'] == 'missing':
-            # continue to be missing
-            if not os.path.exist(list(hint['files'].keys())[0]):
-                return {}
-        # for pending status, a new file might have been created to change its status
-        # so we cannot use cached signature.
-        #
-        # for running status, static pulse file actually means something wrong.
-        elif hint['status'] not in ('pending', 'running') and all(os.path.isfile(f) and os.stat(f).st_mtime == v for f, v in hint['files'].items()):
-            return {}
     #
     task_file = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', task + '.task')
     if not os.path.isfile(task_file):
-        return dict(status='missing', files={task_file: 0.0})
+        return dict(status='missing', files={task_file: 0})
     pulse_file = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', task + '.pulse')
     if not os.path.isfile(pulse_file):
@@ -760,8 +759,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                 res = pickle.load(result)
             status_files = {task_file: os.stat(task_file).st_mtime,
                             res_file: os.stat(res_file).st_mtime}
-            if has_pulse():
-                status_files[pulse_file] = os.stat(pulse_file).st_mtime
+            status_files[pulse_file] = os.stat(pulse_file).st_mtime if has_pulse() else 0
 
             if ('ret_code' in res and res['ret_code'] == 0) or ('succ' in res and res['succ'] == 0):
                 for var in ('input', 'output', 'depends'):
@@ -798,7 +796,12 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                 f'{pulse_file} is created in the future. Your system time might be problematic')
         # if the file is within 5 seconds
         if elapsed < monitor_interval:
-            return dict(status='running', files=status_files)
+            # if running, we return old hint files even if the timestamp has been changed
+            # because we will check the status of running jobs anyway.
+            if hint and hint['status'] == 'running':
+                return {}
+            else:
+                return dict(status='running', files=status_files)
         elif elapsed > 2 * monitor_interval:
             if has_res():
                 # result file appears during sos tatus run
@@ -812,7 +815,10 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         if has_res():
             return check_task(task)
         elif start_stamp != end_stamp:
-            return dict(status='running', files=status_files)
+            if hint and hint['status'] == 'running':
+                return {}
+            else:
+                return dict(status='running', files=status_files)
         else:
             return dict(status='aborted', files=status_files)
     # if there is no status file
