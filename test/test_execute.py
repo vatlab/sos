@@ -1166,5 +1166,21 @@ run: expand=True
         self.assertTrue('Execution DAG' in content)
 
 
+    def testSoSStepWithOutput(self):
+        '''Test checking output of sos_step #981'''
+        script = SoS_Script('''
+[step]
+output: 'a'
+sh:
+touch a
+
+[default]
+depends: sos_step('step')
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
+        
+
 if __name__ == '__main__':
     unittest.main()

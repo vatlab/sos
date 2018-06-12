@@ -246,7 +246,8 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
         signature_vars |= accessed_vars(section.task)
     if '__default_output__' in env.sos_dict and step_output.determined():
         for out in env.sos_dict['__default_output__']:
-            if out not in step_output:
+            # 981
+            if not isinstance(out, sos_step) and out not in step_output:
                 raise ValueError(
                     f'Defined output fail to produce expected output: {step_output} generated, {env.sos_dict["__default_output__"]} expected.')
 
@@ -1262,12 +1263,16 @@ class Base_Step_Executor:
 
         # input can be Undetermined from undetermined output from last step
         env.sos_dict.set('_input', copy.deepcopy(env.sos_dict['step_input']))
+
         if '__default_output__' in env.sos_dict:
-            # if not isinstance(env.sos_dict['__default_output__'], sos_targets):
-            #    env.logger.warning("__default_output__ should be sos_targets")
-            env.sos_dict.set('step_output', sos_targets(
+            # if step is triggered by sos_step, it should not be considered as
+            # output of the step. #981
+            env.sos_dict.set('__default_output__', sos_targets(
+                [x for x in env.sos_dict['__default_output__']._targets
+                 if not isinstance(x, sos_step)]))
+            env.sos_dict.set('step_output', copy.deepcopy(
                 env.sos_dict['__default_output__']))
-            env.sos_dict.set('_output', sos_targets(
+            env.sos_dict.set('_output', copy.deepcopy(
                 env.sos_dict['__default_output__']))
         else:
             env.sos_dict.set('step_output', sos_targets([]))
