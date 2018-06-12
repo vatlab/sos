@@ -713,7 +713,7 @@ def check_task(task):
     task_file = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', task + '.task')
     if not os.path.isfile(task_file):
-        return 'missing'
+        return dict(status='missing', files={})
     pulse_file = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', task + '.pulse')
     if not os.path.isfile(pulse_file):
@@ -729,9 +729,10 @@ def check_task(task):
     def has_res():
         return os.path.isfile(res_file) and os.stat(res_file).st_mtime >= os.stat(task_file).st_mtime
 
+    job_file = os.path.join(os.path.expanduser(
+        '~'), '.sos', 'tasks', task + '.sh')
+
     def has_job():
-        job_file = os.path.join(os.path.expanduser(
-            '~'), '.sos', 'tasks', task + '.sh')
         job_id_file = os.path.join(os.path.expanduser(
             '~'), '.sos', 'tasks', task + '.job_id')
         return os.path.isfile(job_file) and os.stat(job_file).st_mtime >= os.stat(task_file).st_mtime \
@@ -750,10 +751,14 @@ def check_task(task):
                         if not file_target(x).target_exists() or file_target(x).target_signature() != y:
                             env.logger.debug(
                                 f'{x} not found or signature mismatch')
-                            return 'signature-mismatch'
-                return 'completed'
+                            return dict(status='signature-mismatch',
+                                        files={task_file: os.stat(task_file).st_mtime,
+                                               res_file: os.stat(res_file).st_mtime})
+                return dict(status='completed', files={task_file: os.stat(task_file).st_mtime,
+                                                       res_file: os.stat(res_file).st_mtime})
             else:
-                return 'failed'
+                return dict(status='failed', files={task_file: os.stat(task_file).st_mtime,
+                                                    res_file: os.stat(res_file).st_mtime})
         except Exception as e:
             # sometimes the resfile is changed while we are reading it
             # so we wait a bit and try again.
@@ -765,7 +770,8 @@ def check_task(task):
         # dead?
         # if the status file is readonly
         if not os.access(pulse_file, os.W_OK):
-            return 'aborted'
+            return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
+                                                 pulse_file: os.stat(pulse_file).st_mtime})
         start_stamp = os.stat(pulse_file).st_mtime
         elapsed = time.time() - start_stamp
         if elapsed < 0:
@@ -773,13 +779,15 @@ def check_task(task):
                 f'{pulse_file} is created in the future. Your system time might be problematic')
         # if the file is within 5 seconds
         if elapsed < monitor_interval:
-            return 'running'
+            return dict(status='running', files={task_file: os.stat(task_file).st_mtime,
+                                                 pulse_file: os.stat(pulse_file).st_mtime})
         elif elapsed > 2 * monitor_interval:
             if has_res():
                 # result file appears during sos tatus run
                 return check_task(task)
             else:
-                return 'aborted'
+                return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
+                                                     pulse_file: os.stat(pulse_file).st_mtime})
         # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
         time.sleep(2 * monitor_interval)
         end_stamp = os.stat(pulse_file).st_mtime
@@ -787,14 +795,18 @@ def check_task(task):
         if has_res():
             return check_task(task)
         elif start_stamp != end_stamp:
-            return 'running'
+            return dict(status='running', files={task_file: os.stat(task_file).st_mtime,
+                                                 pulse_file: os.stat(pulse_file).st_mtime})
         else:
-            return 'aborted'
+            return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
+                                                 pulse_file: os.stat(pulse_file).st_mtime})
     # if there is no status file
     if has_job():
-        return 'submitted'
+        return dict(status='submitted', files={task_file: os.stat(task_file).st_mtime,
+                                               job_file: os.stat(job_file).st_mtime})
     else:
-        return 'pending'
+        return dict(status='pending', files={task_file: os.stat(task_file).st_mtime,
+                                             job_file: os.stat(job_file).st_mtime})
 
 
 def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags=None, status=None):
@@ -839,6 +851,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
     # at most 20 threads
     p = Pool(min(20, len(all_tasks)))
     obtained_status = p.map(check_task, [x[0] for x in all_tasks])
+    obtained_status = [x['status'] for x in obtained_status]
     if status:
         all_tasks = [x for x, s in zip(
             all_tasks, obtained_status) if s in status]
@@ -1074,7 +1087,8 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
 function plotResourcePlot_''' + t + '''() {
     // get the item
     // parent element is a table cell, needs enlarge
-    document.getElementById("res_''' + t + '''").parentElement.setAttribute("height", "300px;");
+    document.getElementById(
+        "res_''' + t + '''").parentElement.setAttribute("height", "300px;");
     $("#res_''' + t + '''").css("height", "300px");
     $("#res_''' + t + '''").css("width", "100%");
     $("#res_''' + t + '''").css("min-height", "300px");
@@ -1528,7 +1542,7 @@ class TaskEngine(threading.Thread):
                         # executed but quit in no-wait mode (or canceled by user). More
                         # importantly, the Jupyter notebook would re-run complted workflow
                         # even if it has "-s force" signature.
-                        #self.notify(['new-status', task_id, 'completed'])
+                        # self.notify(['new-status', task_id, 'completed'])
                         self.notify(f'{task_id} ``resume with completed``')
                         return 'completed'
                     else:
@@ -1537,7 +1551,7 @@ class TaskEngine(threading.Thread):
                     self.notify(
                         f'{task_id} ``restart`` from status ``{self.task_status[task_id]}``')
 
-            #self.notify('{} ``queued``'.format(task_id))
+            # self.notify('{} ``queued``'.format(task_id))
             self.pending_tasks.append(task_id)
             if task_id in self.canceled_tasks:
                 self.canceled_tasks.remove(task_id)
