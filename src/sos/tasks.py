@@ -718,7 +718,11 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             # continue to be missing
             if not os.path.exist(list(hint['files'].keys())[0]):
                 return {}
-        elif all(os.path.isfile(f) and os.stat(f).st_mtime == v for f, v in hint['files'].items()):
+        # for pending status, a new file might have been created to change its status
+        # so we cannot use cached signature.
+        #
+        # for running status, static pulse file actually means something wrong.
+        elif hint['status'] not in ('pending', 'running') and all(os.path.isfile(f) and os.stat(f).st_mtime == v for f, v in hint['files'].items()):
             return {}
     #
     task_file = os.path.join(os.path.expanduser(
@@ -816,7 +820,11 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         return dict(status='submitted', files={task_file: os.stat(task_file).st_mtime,
                                                job_file: os.stat(job_file).st_mtime})
     else:
-        return dict(status='pending', files={task_file: os.stat(task_file).st_mtime})
+        # status not changed
+        if hint and hint['status'] == 'pending' and hint['files'][task_file] == os.stat(task_file).st_mtime:
+            return {}
+        else:
+            return dict(status='pending', files={task_file: os.stat(task_file).st_mtime})
 
 
 def check_tasks(tasks, verbosity: int=1, html: bool=False, start_time=False, age=None, tags=None, status=None):
