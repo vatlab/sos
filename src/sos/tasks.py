@@ -721,6 +721,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
     if hint and hint['status'] not in ('pending', 'running') and \
         all((os.path.isfile(f) and os.stat(f).st_mtime == v) if v else (not os.path.isfile(f)) for f, v in hint['files'].items()):
         return {}
+
     # status of the job, please refer to https://github.com/vatlab/SOS/issues/529
     # for details.
     #
@@ -758,8 +759,9 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
             status_files = {task_file: os.stat(task_file).st_mtime,
-                            res_file: os.stat(res_file).st_mtime}
-            status_files[pulse_file] = os.stat(pulse_file).st_mtime if has_pulse() else 0
+                            res_file: os.stat(res_file).st_mtime,
+                            pulse_file: os.stat(pulse_file).st_mtime if os.path.isfile(pulse_file) else 0
+                        }
 
             if ('ret_code' in res and res['ret_code'] == 0) or ('succ' in res and res['succ'] == 0):
                 for var in ('input', 'output', 'depends'):
