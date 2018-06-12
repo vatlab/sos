@@ -6,6 +6,7 @@ import concurrent.futures
 import copy
 import lzma
 import os
+import fasteners
 import pickle
 import random
 import subprocess
@@ -705,10 +706,13 @@ del sos_handle_parameter_
     return collect_task_result(task_id, sos_dict)
 
 
-def check_task(task):
+def check_task(task, hint={}):
     #
     # status of the job, please refer to https://github.com/vatlab/SOS/issues/529
     # for details.
+    if hint and hint['status'] != 'missing':
+        if all(os.stat(f).st_mtime == v for f, v in hint['files'].items()):
+            return hint
     #
     task_file = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', task + '.task')
@@ -809,11 +813,12 @@ def check_task(task):
                                              job_file: os.stat(job_file).st_mtime})
 
 
-def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags=None, status=None):
+def check_tasks(tasks, verbosity: int=1, html: bool=False, start_time=False, age=None, tags=None, status=None):
     # verbose is ignored for now
     import glob
     from multiprocessing.pool import ThreadPool as Pool
-    if not tasks:
+    check_all: bool = not tasks
+    if check_all:
         tasks = glob.glob(os.path.join(
             os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
         all_tasks = [(os.path.basename(x)[:-5], os.path.getmtime(x))
@@ -848,9 +853,25 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None, tags
     if not all_tasks:
         env.logger.info('No matching tasks')
         return
+    cache_file: str = os.path.join(
+        os.path.expanduser('~'), '.sos', 'tasks', 'status_cache.pickle')
+    #
+    status_cache = {}
+    if os.path.isfile(cache_file):
+        with fasteners.InterProcessLock(cache_file + '_'):
+            with open(cache_file, 'rb') as cache:
+                status_cache = pickle.load(cache)
+    #
     # at most 20 threads
     p = Pool(min(20, len(all_tasks)))
-    obtained_status = p.map(check_task, [x[0] for x in all_tasks])
+    obtained_status = p.starmap(
+        check_task, [(x[0], status_cache.get(x[0], {})) for x in all_tasks])
+    # if check all, we clear the cache and record all existing tasks
+    if check_all:
+        status_cache = {k[0]: v for k, v in zip(all_tasks, obtained_status)}
+    else:
+        status_cache.update(
+            {k[0]: v for k, v in zip(all_tasks, obtained_status)})
     obtained_status = [x['status'] for x in obtained_status]
     if status:
         all_tasks = [x for x, s in zip(
@@ -1141,6 +1162,9 @@ showResourceFigure_''' + t + '''()
 </script>
 ''')
     # remove jobs that are older than 1 month
+    with fasteners.InterProcessLock(cache_file + '_'):
+        with open(cache_file, 'wb') as cache:
+            pickle.dump(status_cache, cache)
     if to_be_removed:
         purge_tasks(to_be_removed, verbosity=0)
 
@@ -1253,6 +1277,15 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
                 if ID in all_tasks:
                     to_be_removed[ID].append(os.path.join(dirname, f))
         #
+        cache_file: str = os.path.join(
+            os.path.expanduser('~'), '.sos', 'tasks', 'status_cache.pickle')
+
+        if os.path.isfile(cache_file):
+            with fasteners.InterProcessLock(cache_file + '_'):
+                with open(cache_file, 'rb') as cache:
+                    status_cache = pickle.load(cache)
+        else:
+            status_cache = {}
         for task in all_tasks:
             removed = True
             for f in to_be_removed[task]:
@@ -1264,8 +1297,12 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
                     removed = False
                     if verbosity > 0:
                         env.logger.warning(f'Failed to purge task {task[0]}')
+            status_cache.pop(task, None)
             if removed and verbosity > 1:
                 env.logger.info(f'Task ``{task}`` removed.')
+        with fasteners.InterProcessLock(cache_file + '_'):
+            with open(cache_file, 'wb') as cache:
+                pickle.dump(status_cache, cache)
     elif verbosity > 1:
         env.logger.info('No matching tasks')
     if purge_all:
