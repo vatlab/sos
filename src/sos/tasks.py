@@ -19,6 +19,7 @@ from collections.abc import Mapping, Sequence
 from io import StringIO
 from stat import S_IREAD, S_IRGRP, S_IROTH
 from tokenize import generate_tokens
+from typing import Union, Dict
 
 from .eval import SoS_eval, SoS_exec, cfg_interpolate, interpolate, stmtHash
 from .monitor import ProcessMonitor
@@ -706,18 +707,24 @@ del sos_handle_parameter_
     return collect_task_result(task_id, sos_dict)
 
 
-def check_task(task, hint={}):
+# return {} if result is unchanged
+# otherwise return a dictionary of with keys 'status' and 'files'
+def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
     #
     # status of the job, please refer to https://github.com/vatlab/SOS/issues/529
     # for details.
-    if hint and hint['status'] != 'missing':
-        if all(os.stat(f).st_mtime == v for f, v in hint['files'].items()):
-            return hint
+    if hint:
+        if hint['status'] == 'missing':
+            # continue to be missing
+            if not os.path.exist(list(hint['files'].keys())[0]):
+                return {}
+        elif all(os.path.isfile(f) and os.stat(f).st_mtime == v for f, v in hint['files'].items()):
+            return {}
     #
     task_file = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', task + '.task')
     if not os.path.isfile(task_file):
-        return dict(status='missing', files={})
+        return dict(status='missing', files={task_file: 0.0})
     pulse_file = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', task + '.pulse')
     if not os.path.isfile(pulse_file):
@@ -809,8 +816,7 @@ def check_task(task, hint={}):
         return dict(status='submitted', files={task_file: os.stat(task_file).st_mtime,
                                                job_file: os.stat(job_file).st_mtime})
     else:
-        return dict(status='pending', files={task_file: os.stat(task_file).st_mtime,
-                                             job_file: os.stat(job_file).st_mtime})
+        return dict(status='pending', files={task_file: os.stat(task_file).st_mtime})
 
 
 def check_tasks(tasks, verbosity: int=1, html: bool=False, start_time=False, age=None, tags=None, status=None):
@@ -864,15 +870,18 @@ def check_tasks(tasks, verbosity: int=1, html: bool=False, start_time=False, age
     #
     # at most 20 threads
     p = Pool(min(20, len(all_tasks)))
-    obtained_status = p.starmap(
+    # the result can be {} for unchanged, or real results
+    raw_status = p.starmap(
         check_task, [(x[0], status_cache.get(x[0], {})) for x in all_tasks])
     # if check all, we clear the cache and record all existing tasks
-    if check_all:
-        status_cache = {k[0]: v for k, v in zip(all_tasks, obtained_status)}
-    else:
-        status_cache.update(
-            {k[0]: v for k, v in zip(all_tasks, obtained_status)})
-    obtained_status = [x['status'] for x in obtained_status]
+    has_changes: bool = any(x for x in raw_status)
+    if has_changes:
+        if check_all:
+            status_cache = {k[0]: v if v else status_cache[k[0]] for k, v in zip(all_tasks, raw_status)}
+        else:
+            status_cache.update(
+                {k[0]: v for k, v in zip(all_tasks, raw_status) if v})
+    obtained_status = [status_cache[x[0]]['status'] for x in all_tasks]
     if status:
         all_tasks = [x for x, s in zip(
             all_tasks, obtained_status) if s in status]
@@ -1161,10 +1170,13 @@ function showResourceFigure_''' + t + '''() {
 showResourceFigure_''' + t + '''()
 </script>
 ''')
+    if has_changes:
+        with fasteners.InterProcessLock(cache_file + '_'):
+            with open(cache_file, 'wb') as cache:
+                pickle.dump(status_cache, cache)
+    else:
+        env.logger.debug('No new status detected')
     # remove jobs that are older than 1 month
-    with fasteners.InterProcessLock(cache_file + '_'):
-        with open(cache_file, 'wb') as cache:
-            pickle.dump(status_cache, cache)
     if to_be_removed:
         purge_tasks(to_be_removed, verbosity=0)
 
