@@ -758,6 +758,11 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             from .targets import file_target
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
+            status_files = {task_file: os.stat(task_file).st_mtime,
+                            res_file: os.stat(res_file).st_mtime}
+            if has_pulse():
+                status_files[pulse_file] = os.stat(pulse_file).st_mtime
+
             if ('ret_code' in res and res['ret_code'] == 0) or ('succ' in res and res['succ'] == 0):
                 for var in ('input', 'output', 'depends'):
                     if var not in res or not isinstance(res[var], dict):
@@ -767,13 +772,10 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                             env.logger.debug(
                                 f'{x} not found or signature mismatch')
                             return dict(status='signature-mismatch',
-                                        files={task_file: os.stat(task_file).st_mtime,
-                                               res_file: os.stat(res_file).st_mtime})
-                return dict(status='completed', files={task_file: os.stat(task_file).st_mtime,
-                                                       res_file: os.stat(res_file).st_mtime})
+                                        files=status_files)
+                return dict(status='completed', files=status_files)
             else:
-                return dict(status='failed', files={task_file: os.stat(task_file).st_mtime,
-                                                    res_file: os.stat(res_file).st_mtime})
+                return dict(status='failed', files=status_file)
         except Exception as e:
             # sometimes the resfile is changed while we are reading it
             # so we wait a bit and try again.
@@ -782,6 +784,8 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             return check_task(task)
     #
     if has_pulse():
+        status_files = {task_file: os.stat(task_file).st_mtime,
+                        pulse_file: os.stat(pulse_file).st_mtime}
         # dead?
         # if the status file is readonly
         if not os.access(pulse_file, os.W_OK):
@@ -794,15 +798,13 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                 f'{pulse_file} is created in the future. Your system time might be problematic')
         # if the file is within 5 seconds
         if elapsed < monitor_interval:
-            return dict(status='running', files={task_file: os.stat(task_file).st_mtime,
-                                                 pulse_file: os.stat(pulse_file).st_mtime})
+            return dict(status='running', files=status_files)
         elif elapsed > 2 * monitor_interval:
             if has_res():
                 # result file appears during sos tatus run
                 return check_task(task)
             else:
-                return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
-                                                     pulse_file: os.stat(pulse_file).st_mtime})
+                return dict(status='aborted', files=status_files)
         # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
         time.sleep(2 * monitor_interval)
         end_stamp = os.stat(pulse_file).st_mtime
@@ -810,11 +812,9 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         if has_res():
             return check_task(task)
         elif start_stamp != end_stamp:
-            return dict(status='running', files={task_file: os.stat(task_file).st_mtime,
-                                                 pulse_file: os.stat(pulse_file).st_mtime})
+            return dict(status='running', files=status_files)
         else:
-            return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
-                                                 pulse_file: os.stat(pulse_file).st_mtime})
+            return dict(status='aborted', files=status_files)
     # if there is no status file
     if has_job():
         return dict(status='submitted', files={task_file: os.stat(task_file).st_mtime,
