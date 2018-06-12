@@ -319,12 +319,12 @@ def cmd_run(args, workflow_args):
     # '' means no -d
     dt = datetime.datetime.now().strftime('%m%d%y_%H%M')
     if args.__dag__ is None:
-        args.__dag__ = f'{args.script.rsplit(".", 1)[-1]}_{dt}.dot'
+        args.__dag__ = f'{os.path.splitext(args.script)[0]}_{dt}.dot'
     elif args.__dag__ == '':
         args.__dag__ = None
 
     if args.__report__ is None:
-        args.__report__ = f'{args.script.rsplit(".", 1)[-1]}_{dt}.html'
+        args.__report__ = f'{os.path.splitext(args.script)[0]}_{dt}.html'
     elif args.__report__ == '':
         args.__report__ = None
     env.verbosity = args.verbosity
