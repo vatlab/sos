@@ -56,7 +56,7 @@
          {% include 'sos-mode.js' %}
       </script>
       <script>
-         var editor = CodeMirror.fromTextArea(document.getElementsByClassName("source-code"), {
+         var editor = CodeMirror.fromTextArea(document.getElementById("source-code"), {
            lineNumbers: true,
            styleActiveLine: true,
            matchBrackets: true,
