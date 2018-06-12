@@ -61,6 +61,7 @@
            styleActiveLine: true,
            matchBrackets: true,
            readOnly: true,
+           theme: '{{ theme }}',
            mode: 'sos'
          });
       </script>
