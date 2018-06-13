@@ -800,13 +800,13 @@ class Base_Executor:
         #    res.append(f"{self.completed['__subworkflow_skipped__']} skipped subworkflow{'s' if self.completed['__subworkflow_skipped__'] > 1 else ''}")
         if '__step_completed__' in self.completed and self.completed['__step_completed__']:
             res.append(
-                f"{int(self.completed['__step_completed__'])} completed step{'s' if self.completed['__step_completed__'] > 1 else ''}")
+                f"{round(self.completed['__step_completed__'], 1)} completed step{'s' if self.completed['__step_completed__'] > 1 else ''}")
             if '__substep_completed__' in self.completed and self.completed['__substep_completed__'] and self.completed['__substep_completed__'] != self.completed['__step_completed__']:
                 res.append(
                     f"{self.completed['__substep_completed__']} completed substep{'s' if self.completed['__substep_completed__'] > 1 else ''}")
-        if '__step_skipped__' in self.completed and int(self.completed['__step_skipped__']):
+        if '__step_skipped__' in self.completed and self.completed['__step_skipped__']:
             res.append(
-                f"{int(self.completed['__step_skipped__'])} ignored step{'s' if self.completed['__step_skipped__'] > 1 else ''}")
+                f"{round(self.completed['__step_skipped__'], 1)} ignored step{'s' if self.completed['__step_skipped__'] > 1 else ''}")
             if '__substep_skipped__' in self.completed and self.completed['__substep_skipped__'] and self.completed['__substep_skipped__'] != self.completed['__step_skipped__']:
                 res.append(
                     f"{self.completed['__substep_skipped__']} ignored substep{'s' if self.completed['__substep_skipped__'] > 1 else ''}")
