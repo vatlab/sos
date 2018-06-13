@@ -253,8 +253,7 @@ tr.subworkflow.step-row {
 }
 
 pre.section-header.CodeMirror-line {
-  border-top-color: rgb(221, 221, 221);
-  border-top-style: solid;
-  border-top-width: 2px;
+  background-color: #f7f7f7;
+  border-top: 1px solid #ddd;
   margin-top: 1em;
 }
