@@ -19,6 +19,34 @@ We welcome and value community contributions: please [post issues](https://githu
 to provide us feedback or get our support; please [send pull requests](https://github.com/vatlab/SoS/pulls) 
 if you have helped fixing bugs or making improvements to the source code.  
 
+# Installing SoS 
+
+With Python 3.6 and above intalled ([anaconda python](https://www.continuum.io/downloads) is recommended), you can install the SoS Workflow System and its extensions with command
+
+```
+% pip install sos
+```
+
+You can install the latest git version of SoS with commands
+
+```
+% git clone https://github.com/vatlab/SoS.git
+% cd SoS
+% pip install . -U
+```
+although the development version can be less stable than the released
+version.
+
+You can install SoS Notebook and all language moduels, and register the sos kernel with Jupyter using the following commands
+
+```
+% pip install sos-notebook
+% python -m sos_notebook.install
+```
+
+although different modules might be needed for SoS Notebook to work with
+other kernels. Please refer to [the installation page of sos website](https://vatlab.github.io/sos-docs/#runningsos) for details.
+
 ### Change Log of SoS and SoS Notebook
 
 SoS 0.9.14.3:
