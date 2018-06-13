@@ -251,3 +251,8 @@ tr.subworkflow.step-row {
   border: 1px solid #eee;
   height: auto;
 }
+
+pre.section-header.CodeMirror-line {
+  background-color: lightgray;
+  margin-top: 1em;
+}
