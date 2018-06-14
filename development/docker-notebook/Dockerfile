@@ -73,7 +73,9 @@ RUN     pip install markdown wand graphviz
 
 RUN     conda install -y feather-format -c conda-forge
 RUN     pip install nbformat --upgrade
-RUN     pip install sos sos-notebook sos-r sos-julia sos-python sos-matlab sos-javascript sos-bash sos-bioinfo --upgrade
+## trigger rerun for sos updates
+ARG	DUMMY=unknown
+RUN     DUMMY=${DUMMY} pip install sos sos-notebook sos-r sos-julia sos-python sos-matlab sos-javascript sos-bash sos-bioinfo --upgrade
 RUN     python -m sos_notebook.install
 
 COPY    examples /home/jovyan/examples
@@ -86,5 +88,3 @@ RUN     chown -R jovyan /home/jovyan/.local
 USER    jovyan
 
 #EXPOSE	8888
-
-
