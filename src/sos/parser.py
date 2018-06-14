@@ -1167,7 +1167,6 @@ for __n, __v in {repr(name_map)}.items():
                         continue
                     cursect.add_directive(
                         directive_name, directive_value, lineno)
-                    self.clear_comment()
                 else:
                     if directive_name == 'parameter':
                         if comment_block == 2:
@@ -1178,7 +1177,7 @@ for __n, __v in {repr(name_map)}.items():
                         # let us check if this is an acture action, or a type hint
                         cursect.add_script(
                             directive_name, directive_value, lineno)
-                        self.clear_comment()
+                self.clear_comment()
                 continue
             # if section is in script mode?
             if cursect and cursect.isValid() and cursect.category() == 'script':
