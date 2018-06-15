@@ -523,21 +523,6 @@ class Base_Step_Executor:
                     raise RuntimeError(
                         f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]}')
 
-    def substep_signature(self, index):
-        '''returns a signature of the substep. Change of the step content will
-        lead to the invalidation of the signature, which will then cause the
-        re-execution of the step for any result from the step. '''
-        #
-        if env.config['sig_mode'] == 'ignore' or env.config['run_mode'] == 'dryrun':
-            return None
-        env_vars = []
-        for var in sorted(env.sos_dict['__signature_vars__']):
-            if var in env.sos_dict and isinstance(env.sos_dict[var], (str, bool, int, float, complex, bytes, list, tuple, set, dict)):
-                env_vars.append(f'{var} = {stable_repr(env.sos_dict[var])}\n')
-
-        # env.logger.warning(''.join(env_vars) + '\n' + self.step.tokens)
-        return ''.join(env_vars) + '\n' + self.step.tokens
-
     # Nested functions to handle different parameters of input directive
     @staticmethod
     def handle_group_by(ifiles: sos_targets, group_by: Union[int, str]):
@@ -1006,7 +991,7 @@ class Base_Step_Executor:
         # we should either give a warning or produce different ids...
         if self.task_manager.has_task(task_id):
             raise RuntimeError(
-                f'Identical task generated from _index={env.sos_dict["_index"]}.')
+                f'Identical task {task_id} generated from _index={env.sos_dict["_index"]}.')
         elif self.task_manager.has_output(task_vars['_output']):
             raise RuntimeError(
                 f'Task produces output files {", ".join(task_vars["_output"])} that are output of other tasks.')
@@ -1426,9 +1411,8 @@ class Base_Step_Executor:
                                 )
 
                                 # signature for the substep, including step content and signature vars
-                                sg = self.substep_signature(idx)
-                                if sg is not None and g.determined():
-                                    signatures[idx] = RuntimeInfo(self.step.md5, sg,
+                                if env.config['sig_mode'] != 'ignore' and env.config['run_mode'] != 'dryrun' and g.determined():
+                                    signatures[idx] = RuntimeInfo(self.step.md5, self.step.tokens,
                                                                   env.sos_dict['_input'],
                                                                   env.sos_dict['_output'],
                                                                   env.sos_dict['_depends'],
