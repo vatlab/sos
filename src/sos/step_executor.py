@@ -1571,7 +1571,8 @@ class Base_Step_Executor:
                     signatures[idx].release()
 
                 if not self.step.task:
-                    if signatures[idx] is not None:
+                    # if output is undetermined, wait till everyone finishes and re-evaluate
+                    if signatures[idx] is not None and env.sos_dict['step_output'].determined():
                         if 'sos_run' not in env.sos_dict['__signature_vars__']:
                             signatures[idx].write()
                         signatures[idx] = None
