@@ -59,7 +59,7 @@ input: group_by='single', paired_with='dest'
 output: _dest
 
 run(f" cp {_input} {_dest[0]} ")
-""")
+""", 2)
 
     def testSignature1(self):
         self._testSignature(r"""
@@ -76,7 +76,7 @@ input: group_by='single', paired_with='dest'
 output: _dest
 
 run(f" cp {_input} {_dest[0]} ")
-""")
+""", 2)
         # script format
 
     def testSignature2(self):
@@ -101,7 +101,7 @@ task:
 run: expand=True
 echo cp {_input} {_dest[0]}
 cp {_input} {_dest[0]}
-""")
+""", 2)
 
     def testSignatureWithSharedVariable(self):
         '''Test restoration of signature from variables.'''
@@ -122,9 +122,11 @@ print(a)
 """)
         # alias should also be recovered.
         wf = script.workflow('default')
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 2)
         # rerun
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 1)
         file_target('a.txt').remove('both')
 
     def testSignatureWithoutOutput(self):
@@ -150,12 +152,12 @@ output: _dest
 run: expand=True
 sleep 0.5
 cp {_input} {_dest[0]}
-""")
+""", 2)
         # reset env mode
         env.config['sig_mode'] = 'default'
         shutil.rmtree('temp')
 
-    def _testSignature(self, text):
+    def _testSignature(self, text, steps):
         '''Test recognizing the format of SoS script'''
         env.config['wait_for_task'] = True
         script = SoS_Script(text)
@@ -165,15 +167,17 @@ cp {_input} {_dest[0]}
         # only the first step
         wf = script.workflow('default:0')
         env.config['sig_mode'] = 'force'
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('temp/a.txt'))
         self.assertTrue(os.path.isfile('temp/b.txt'))
+        self.assertTrue(res['__completed__']['__step_completed__'], steps)
         with open('temp/a.txt') as ta:
             self.assertTrue(ta.read(), 'a.txt')
         with open('temp/b.txt') as tb:
             self.assertTrue(tb.read(), 'b.txt')
         env.config['sig_mode'] = 'assert'
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 0)
         # all of them
         wf = script.workflow()
         env.config['sig_mode'] = 'default'
@@ -181,7 +185,8 @@ cp {_input} {_dest[0]}
         Base_Executor(wf).run()
         # now, rerun in build mode
         env.config['sig_mode'] = 'build'
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 0)
         #
         self.assertTrue(os.path.isfile('temp/c.txt'))
         self.assertTrue(os.path.isfile('temp/d.txt'))
@@ -193,18 +198,21 @@ cp {_input} {_dest[0]}
         #
         # now in assert mode, the signature should be there
         env.config['sig_mode'] = 'assert'
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 0)
 
         #
         env.config['sig_mode'] = 'default'
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 0)
 
         #
         # change script a little bit
         script = SoS_Script('# comment\n' + text)
         wf = script.workflow()
         env.config['sig_mode'] = 'assert'
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 0)
 
         # add some other variable?
         #script = SoS_Script('comment = 1\n' + text)
@@ -226,14 +234,17 @@ run(f"touch {_output}")
             file_target('a.txt').remove('both')
         except Exception:
             pass
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 1)
         # now, rerun should be much faster
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 0)
         # rerun takes less than 1 second
         #
         # force rerun mode
         env.config['sig_mode'] = 'ignore'
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 1)
         # regularly take more than 5 seconds to execute
         try:
             # remove existing output if exists
@@ -260,24 +271,28 @@ run: expand='${ }'
 
 ''')
         wf = script.workflow()
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 1)
         # sleep 3
         # rerun, because this is the final target, it has to be
         # re-generated
         os.remove('largefile.txt')
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('largefile.txt'))
+        self.assertEqual(res['__completed__']['__step_completed__'], 1)
         #
         # we discard the signature, the step would still be
         # skipped because file signature will be calculated
         # during verification
         file_target('largefile.txt').remove('signature')
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 0)
         #
         # now if we touch the file, it needs to be regenerated
         with open('largefile.txt', 'a') as lf:
             lf.write('something')
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 1)
         file_target('largefile.txt').remove('both')
 
     @unittest.skipIf(sys.platform == 'win32', 'Windows executable cannot be created with chmod.')
@@ -306,28 +321,33 @@ run: expand=True
     echo "MORE" >> {_output}
 ''')
         wf = script.workflow()
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 2)
         # sleep 3
         #
         # remove middle file, rerun
         os.remove('midfile.txt')
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 1)
         self.assertTrue(os.path.isfile('midfile.txt'))
         #
         # we discard the signature, and change midfile rerun
         file_target('midfile.txt').remove('signature')
         with open('midfile.txt', 'a') as mf:
             mf.write('extra')
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 2)
         #
         # now if we touch the mid file, it needs to be regenerated
         with open('midfile.txt', 'a') as lf:
             lf.write('something')
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 2)
         #
         # if we zap the mid file, it does not need to be rerun
         subprocess.call('sos remove midfile.txt --zap -y', shell=True)
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 0)
         file_target('midfile.txt').remove('both')
         file_target('midfile.txt.zapped').remove('both')
         file_target('final.txt').remove('both')
@@ -348,19 +368,22 @@ run: expand=True
 
 ''')
         wf = script.workflow()
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 1)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read().strip(), '10')
         #
         # now if we change parameter, the step should be rerun
         wf = script.workflow()
-        Base_Executor(wf, args=['--gvar', '20']).run()
+        res = Base_Executor(wf, args=['--gvar', '20']).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 1)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read().strip(), '20')
         #
         # do it again, signature should be effective
         wf = script.workflow()
-        Base_Executor(wf, args=['--gvar', '20']).run()
+        res = Base_Executor(wf, args=['--gvar', '20']).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 0)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read().strip(), '20')
 
@@ -376,19 +399,22 @@ run: expand=True
     echo {gvar} > {_output:q}
 ''')
         wf = script.workflow()
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read().strip(), '10')
+        self.assertEqual(res['__completed__']['__step_completed__'], 1)
         #
         # now if we change parameter, the step should be rerun
         wf = script.workflow()
-        Base_Executor(wf, args=['--gvar', '20']).run()
+        res = Base_Executor(wf, args=['--gvar', '20']).run()
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read().strip(), '20')
+        self.assertEqual(res['__completed__']['__step_completed__'], 1)
         #
         # do it again, signature should be effective
         wf = script.workflow()
-        Base_Executor(wf, args=['--gvar', '20']).run()
+        res = Base_Executor(wf, args=['--gvar', '20']).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 0)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read().strip(), '20')
         file_target('myfile.txt').remove('both')
@@ -410,7 +436,8 @@ run: expand=True
     echo {_tt} > {_output:q}
 ''')
         wf = script.workflow()
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 1)
         ts = os.path.getmtime('myfile_10.txt')
         #
         # now we modify the script
@@ -426,13 +453,15 @@ run: expand=True
     echo {_tt} > {_output:q}
 ''')
         wf = script.workflow()
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 0.5)
         # this file is not regenerated
         self.assertEqual(ts, os.path.getmtime('myfile_10.txt'))
         ts1 = os.path.getmtime('myfile_11.txt')
         #
         # run it again, neither needs to be rerun
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 0)
         self.assertEqual(ts, os.path.getmtime('myfile_10.txt'))
         self.assertEqual(ts1, os.path.getmtime('myfile_11.txt'))
         #
@@ -449,7 +478,8 @@ run: expand=True
     echo {_tt} > {_output:q}
 ''')
         wf = script.workflow()
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 0)
         self.assertEqual(ts1, os.path.getmtime('myfile_11.txt'))
         #
         for t in range(10, 12):
@@ -477,17 +507,21 @@ run: expand=True
   touch {_output}
     ''')
         wf = script.workflow()
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 2)
         # for the second run, output should be correctly constructed
-        Base_Executor(wf).run()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 0)
         for file in ['1.out', '2.out', '1.2.out', '2.3.out']:
             file_target(file).remove('both')
 
     def testSignatureWithVars(self):
         '''Test revaluation with variable change'''
         self.touch(('a1.out', 'a2.out'))
+        file_target('b1.out').remove('both')
+        file_target('b2.out').remove('both')
         script = SoS_Script('''
-parameter: DB = {'input': ['a1.out'], 'output': ['b2.out']}
+parameter: DB = {'input': ['a1.out'], 'output': ['b1.out']}
 parameter: input_file = DB['input']
 parameter: output_file =  DB['output']
 
@@ -499,8 +533,9 @@ run: expand=True
   touch {_output}
   ''')
         wf = script.workflow()
-        Base_Executor(wf).run()
-        ts = os.path.getmtime('b2.out')
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 1)
+        ts = os.path.getmtime('b1.out')
         #
         script = SoS_Script('''
 parameter: DB = {'input': ['a1.out', 'a2.out'], 'output': ['b2.out', 'b1.out']}
@@ -515,8 +550,9 @@ run: expand=True
   touch {_output}
   ''')
         wf = script.workflow()
-        Base_Executor(wf).run()
-        self.assertEqual(ts,  os.path.getmtime('b2.out'))
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 0.5)
+        self.assertEqual(ts,  os.path.getmtime('b1.out'))
 
     def testActionSignature(self):
         '''Test action signature'''

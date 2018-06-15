@@ -894,7 +894,7 @@ class RuntimeInfo:
     '''
 
     def __init__(self, step_md5: str, script: str, input_files: sos_targets, output_files: sos_targets,
-                 dependent_files: sos_targets, signature_vars: dict={}, sdict: dict={}):
+                 dependent_files: sos_targets, signature_vars: set=set(), sdict: dict={}):
         '''Runtime information for specified output files
         '''
         if not sdict:
@@ -907,14 +907,15 @@ class RuntimeInfo:
         self.output_files = sos_targets([x for x in output_files._targets if not isinstance(x, sos_step)])
         self.external_output = self.output_files and isinstance(
             self.output_files[0], file_target) and self.output_files[0].is_external()
-        self.signature_vars = {} if signature_vars is None else {
-            x: sdict[x] if x in sdict else None for x in signature_vars}
+        self.signature_vars = signature_vars
+        # signatures that exist before execution and might change during execution
+        self.init_signature = {x: deepcopy(sdict[x]) for x in sorted(signature_vars) if x in sdict and not callable(sdict[x]) and pickleable(sdict[x], x)}
 
         sig_vars = [] if signature_vars is None else sorted(
             [x for x in signature_vars if x in sdict and isPrimitive(sdict[x])])
         self.sig_id = textMD5('{} {} {} {} {}'.format(self.script, self.input_files,
                                                       self.output_files, self.dependent_files,
-                                                      '\n'.join(f'{x}:{stable_repr(sdict[x])}' for x in sig_vars)))
+                                                      '\n'.join(f'{x}:{stable_repr(y)}' for x,y in self.init_signature.items())))
 
         if self.external_output:
             # global signature
@@ -929,7 +930,8 @@ class RuntimeInfo:
                 'input_files': self.input_files,
                 'output_files': self.output_files,
                 'dependent_files': self.dependent_files,
-                'signature_vars': {x: y for x, y in self.signature_vars.items() if pickleable(y, x)},
+                'signature_vars': self.signature_vars,
+                'init_signature': self.init_signature,
                 'script': self.script,
                 'sig_id': self.sig_id,
                 'external': self.external_output}
@@ -940,6 +942,7 @@ class RuntimeInfo:
         self.output_files = sdict['output_files']
         self.dependent_files = sdict['dependent_files']
         self.signature_vars = sdict['signature_vars']
+        self.init_signature = sdict['init_signature']
         self.script = sdict['script']
         self.sig_id = sdict['sig_id']
         self.external_output = sdict['external']
@@ -1037,9 +1040,9 @@ class RuntimeInfo:
                     return False
             # context that will be needed for validation
             md5.write('# init context\n')
-            for var in sorted(self.signature_vars.keys()):
+            for var in sorted(self.init_signature.keys()):
                 # var can be local and not passed as outside environment
-                value = self.signature_vars[var]
+                value = self.init_signature[var]
                 try:
                     var_expr = save_var(var, value)
                     if var_expr:
@@ -1049,7 +1052,7 @@ class RuntimeInfo:
                         f'Variable {var} of value {short_repr(value)} is ignored from step signature')
             # context used to return context
             md5.write('# end context\n')
-            for var in sorted(self.signature_vars.keys()):
+            for var in sorted(self.signature_vars):
                 # var can be local and not passed as outside environment
                 if var in env.sos_dict:
                     value = env.sos_dict[var]
@@ -1173,6 +1176,7 @@ class RuntimeInfo:
                     res[cur_type].append(freal.target_name() if isinstance(
                         freal, file_target) else freal)
                     if fmd5 != m.strip():
+                        env.logger.error(f'File changed {f} {fmd5} {m.strip()}')
                         return f'File has changed {f}'
                     files_checked[freal.target_name()] = True
                 except Exception as e:
