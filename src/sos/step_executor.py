@@ -523,8 +523,8 @@ class Base_Step_Executor:
                     raise RuntimeError(
                         f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]}')
 
-    def step_signature(self, index):
-        '''returns a signature of the step. Change of the step content will
+    def substep_signature(self, index):
+        '''returns a signature of the substep. Change of the step content will
         lead to the invalidation of the signature, which will then cause the
         re-execution of the step for any result from the step. '''
         #
@@ -1425,8 +1425,8 @@ class Base_Step_Executor:
                                 self.output_groups[idx] = env.sos_dict['_output'].targets(
                                 )
 
-                                # ofiles can be Undetermined
-                                sg = self.step_signature(idx)
+                                # signature for the substep, including step content and signature vars
+                                sg = self.substep_signature(idx)
                                 if sg is not None and g.determined():
                                     signatures[idx] = RuntimeInfo(self.step.md5, sg,
                                                                   env.sos_dict['_input'],
