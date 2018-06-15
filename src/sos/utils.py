@@ -1334,9 +1334,9 @@ def isPrimitive(obj):
 
 
 def save_var(name, var):
-    if isinstance(var, (bool, int, float, complex, str, bytes)):
+    if isinstance(var, (bool, int, float, complex, str, bytes)) or var is None:
         return f'{name}={repr(var)}\n'
-    if isinstance(var, (types.ModuleType, WorkflowDict)):
+    if isinstance(var, (type, types.ModuleType, WorkflowDict, Exception)):
         return ''
     try:
         # for more complex type, we use pickle + base64
