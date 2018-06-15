@@ -217,7 +217,7 @@ class SoS_Step:
     def match(self, step_name: str) -> bool:
         # if this step provides name...
         for name, index, _ in self.names:
-            if step_name == name or step_name == f'{name}_{0 if index is None else int(index)}':
+            if (step_name == name and self.index is None) or step_name == f'{name}_{0 if index is None else int(index)}':
                 return True
         return False
 
