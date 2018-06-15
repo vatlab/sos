@@ -580,7 +580,11 @@ sh:
 
         script = SoS_Script(r'''[1]
 output: 'aa'
+
 task:
+ 
+
+
 sh:
   echo aa > aa
 ''')
