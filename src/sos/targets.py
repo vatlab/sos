@@ -1176,7 +1176,6 @@ class RuntimeInfo:
                     res[cur_type].append(freal.target_name() if isinstance(
                         freal, file_target) else freal)
                     if fmd5 != m.strip():
-                        env.logger.error(f'File changed {f} {fmd5} {m.strip()}')
                         return f'File has changed {f}'
                     files_checked[freal.target_name()] = True
                 except Exception as e:
