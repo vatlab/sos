@@ -394,7 +394,7 @@ class SoS_Step:
     def get_tokens(self) -> str:
         '''Get tokens after input statement'''
         def _get_tokens(statement):
-            return [x[1] for x in generate_tokens(StringIO(statement).readline)]
+            return [x[1] for x in generate_tokens(StringIO(statement).readline) if x[1] not in ('', '\n')]
 
         tokens = []
         for statement in self.statements:

@@ -913,8 +913,7 @@ class RuntimeInfo:
 
         sig_vars = [] if signature_vars is None else sorted(
             [x for x in signature_vars if x in sdict and isPrimitive(sdict[x])])
-        self.sig_id = textMD5('{} {} {} {} {}'.format(self.step_md5, self.script, self.input_files,
-                                                      self.output_files, self.dependent_files))
+        self.sig_id = textMD5(f'{self.step_md5} {self.script} {self.input_files} {self.output_files} {self.dependent_files}')
 
         if self.external_output:
             # global signature
