@@ -85,7 +85,6 @@ run(f" cp {_input} {_dest[0]} ")
 output: 'temp/a.txt', 'temp/b.txt'
 
 run:
-sleep 1
 echo "a.txt" > temp/a.txt
 
 run:
@@ -111,7 +110,6 @@ cp {_input} {_dest[0]}
 [0: shared='a']
 output: 'a.txt'
 run:
-   sleep 3
    touch a.txt
 
 a= 5
@@ -136,7 +134,6 @@ print(a)
 output: []
 
 run:
-sleep 1
 [ -d temp ] || mkdir temp
 echo "a.txt" > temp/a.txt
 
@@ -150,7 +147,6 @@ input: 'temp/a.txt', 'temp/b.txt', group_by='single', paired_with='dest'
 output: _dest
 
 run: expand=True
-sleep 0.5
 cp {_input} {_dest[0]}
 """, 2)
         # reset env mode
@@ -273,7 +269,6 @@ run: expand='${ }'
         wf = script.workflow()
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 1)
-        # sleep 3
         # rerun, because this is the final target, it has to be
         # re-generated
         os.remove('largefile.txt')
@@ -323,7 +318,6 @@ run: expand=True
         wf = script.workflow()
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 2)
-        # sleep 3
         #
         # remove middle file, rerun
         os.remove('midfile.txt')
@@ -529,7 +523,6 @@ parameter: output_file =  DB['output']
 input: input_file, group_by = 1
 output: output_file[_index]
 run: expand=True
-  sleep 2
   touch {_output}
   ''')
         wf = script.workflow()
@@ -538,7 +531,7 @@ run: expand=True
         ts = os.path.getmtime('b1.out')
         #
         script = SoS_Script('''
-parameter: DB = {'input': ['a1.out', 'a2.out'], 'output': ['b2.out', 'b1.out']}
+parameter: DB = {'input': ['a1.out', 'a2.out'], 'output': ['b1.out', 'b2.out']}
 parameter: input_file = DB['input']
 parameter: output_file =  DB['output']
 
@@ -546,7 +539,6 @@ parameter: output_file =  DB['output']
 input: input_file, group_by = 1
 output: output_file[_index]
 run: expand=True
-  sleep 2
   touch {_output}
   ''')
         wf = script.workflow()
