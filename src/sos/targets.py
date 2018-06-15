@@ -1060,8 +1060,6 @@ class RuntimeInfo:
                             f'Variable {var} of value {short_repr(value)} is ignored from step signature')
             md5.write('# step process\n')
             md5.write(self.script)
-            md5.write('# step process\n')
-            md5.write(self.script)
         # successfully write signature, write in workflow runtime info
         with workflow_report() as wf:
             for f in self.input_files:
