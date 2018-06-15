@@ -565,5 +565,28 @@ run: input='test_action.txt', output='lc.txt', expand=True
         Base_Executor(wf).run()
 
 
+    def testSignatureWithWithoutTask(self):
+        '''Test the inclusion of task would not trigger rerun'''
+        script = SoS_Script(r'''[1]
+output: 'aa'
+
+sh:
+  echo aa > aa
+''')
+        file_target('aa').remove('both')
+        wf = script.workflow()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 1)
+
+        script = SoS_Script(r'''[1]
+output: 'aa'
+task:
+sh:
+  echo aa > aa
+''')
+        wf = script.workflow()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 0)
+
 if __name__ == '__main__':
     unittest.main()
