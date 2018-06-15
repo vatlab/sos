@@ -902,9 +902,9 @@ class RuntimeInfo:
         self.step_md5 = step_md5
         self.script = script
 
-        self.input_files = input_files
-        self.dependent_files = dependent_files
-        self.output_files = output_files
+        self.input_files = sos_targets([x for x in input_files._targets if not isinstance(x, sos_step)])
+        self.dependent_files = sos_targets([x for x in dependent_files._targets if not isinstance(x, sos_step)])
+        self.output_files = sos_targets([x for x in output_files._targets if not isinstance(x, sos_step)])
         self.external_output = self.output_files and isinstance(
             self.output_files[0], file_target) and self.output_files[0].is_external()
         self.signature_vars = {} if signature_vars is None else {
