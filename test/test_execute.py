@@ -1181,6 +1181,27 @@ depends: sos_step('step')
         Base_Executor(wf).run()
 
         
+    def testMultiSoSStep(self):
+        '''Test matching 'a_1', 'a_2' etc with sos_step('a')'''
+        file_target('a_1').remove('all')
+        file_target('a_2').remove('all')
+        script = SoS_Script('''
+[a_1]
+sh:
+touch a_1
+
+[a_2]
+sh:
+touch a_2
+
+[default]
+depends: sos_step('a')
+''')
+        wf = script.workflow()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 3)
+        self.assertTrue(os.path.is_file('a_1')
+        self.assertTrue(os.path.is_file('a_2')
 
 if __name__ == '__main__':
     unittest.main()
