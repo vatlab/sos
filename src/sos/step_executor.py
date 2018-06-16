@@ -78,6 +78,9 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
 
+    env.logger.trace(
+        f'Analyzing {section.step_name()} with step_output {step_output}')
+
     #
     # Here we need to get "contant" values from the global section
     # Because parameters are considered variable, they has to be
@@ -244,7 +247,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     # finally, tasks..
     if section.task:
         signature_vars |= accessed_vars(section.task)
-    if '__default_output__' in env.sos_dict and step_output.determined():
+    if 'provides' in section.options and '__default_output__' in env.sos_dict and step_output.determined():
         for out in env.sos_dict['__default_output__']:
             # 981
             if not isinstance(out, sos_step) and out not in step_output:
@@ -1266,6 +1269,9 @@ class Base_Step_Executor:
         env.sos_dict.set('_depends', sos_targets([]))
         # _index is needed for pre-input action's active option and for debug output of scripts
         env.sos_dict.set('_index', 0)
+
+        env.logger.trace(
+            f'Executing {env.sos_dict["step_name"]} with step_input {env.sos_dict["step_input"]} and step_output {env.sos_dict["step_output"]}')
 
         # look for input statement.
         input_statement_idx = [idx for idx, x in enumerate(

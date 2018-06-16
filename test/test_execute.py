@@ -1204,6 +1204,36 @@ depends: sos_step('a_b')
         with open('a_1') as a1, open('a_2') as a2:
             self.assertEqual(a1.read(), a2.read())
 
+    def testDependsAuxiAndForward(self):
+        '''Test depends on auxiliary, which then depends on a forward-workflow #983'''
+        file_target('a_1').remove('both')
+        file_target('a_2').remove('both')
+        script = SoS_Script('''
 
+[hg_1]
+output: 'a_1'
+sh:
+  echo "something" > a_1
+
+[hg_2]
+    
+[star: provides = "a_2"]
+depends: sos_step('hg')
+sh:
+  cp  a_1 a_2
+
+[default]
+depends: "a_2"
+        ''')
+        wf = script.workflow()
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 4)
+        self.assertTrue(os.path.isfile('a_1'))
+        self.assertTrue(os.path.isfile('a_2'))
+        with open('a_1') as a1, open('a_2') as a2:
+            self.assertEqual(a1.read(), a2.read())
+
+
+        
 if __name__ == '__main__':
     unittest.main()

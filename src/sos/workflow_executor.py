@@ -584,6 +584,9 @@ class Base_Executor:
                         # get the step names
                         sections = sorted([x[0] for x in mo],
                                           key=lambda x: x.step_name())
+                        # this is only useful for executing auxiliary steps and
+                        # might interfere with the step analysis
+                        env.sos_dict.pop('__default_output__')
                         #  no default input
                         default_input: sos_targets = sos_targets()
                         #
