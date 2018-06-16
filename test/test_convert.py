@@ -64,9 +64,17 @@ report('this is action report')
 #!/usr/bin/env sos-runner
 #fileformat=SOS1.0
 
+# this comment will be included but not shown in help message
+# because it is for the global
 [global]
 a = 1
+# this comment will become the comment for parameter b
+parameter: b=2
+parameter: c=3 
+# this comment will become the comment for parameter d
+parameter: d='d'
 
+# this is a section comment, will be displayed
 [default]
 print(f'Hello {a}')
 
