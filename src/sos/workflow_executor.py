@@ -579,8 +579,11 @@ class Base_Executor:
                 if len(mo) > 1:
                     # sos_step('a') could match to step a_1, a_2, etc, in this case we are adding a subworkflow
                     if isinstance(target, sos_step):
+                        # create a new forward_workflow that is different from the master one
+                        dag.new_forward_workflow()
                         # get the step names
-                        sections = sorted([x[0] for x in mo], key=lambda x: x.step_name())
+                        sections = sorted([x[0] for x in mo],
+                                          key=lambda x: x.step_name())
                         #  no default input
                         default_input: sos_targets = sos_targets()
                         #
@@ -589,8 +592,10 @@ class Base_Executor:
                                 continue
                             res = analyze_section(section, default_input)
 
-                            environ_vars = res['environ_vars'] - self._base_symbols
-                            signature_vars = res['signature_vars'] - self._base_symbols
+                            environ_vars = res['environ_vars'] - \
+                                self._base_symbols
+                            signature_vars = res['signature_vars'] - \
+                                self._base_symbols
                             changed_vars = res['changed_vars']
                             # parameters, if used in the step, should be considered environmental
                             environ_vars |= env.parameter_vars & signature_vars
@@ -617,16 +622,14 @@ class Base_Executor:
                             }
                             if idx == 0:
                                 context['__step_output__'] = env.sos_dict['__step_output__']
-                            else:
-                                res['step_depends'].extend(sos_step(sections[idx-1].step_name()))
-                                if idx == len(sections) - 1:
-                                    # for the last step, we say the mini-subworkflow satisfies sos_step('a')
-                                    # we have to do it this way because by default the DAG only sees sos_step('a_1') etc
-                                    res['step_output'].extend(target)
+                            elif idx == len(sections) - 1:
+                                # for the last step, we say the mini-subworkflow satisfies sos_step('a')
+                                # we have to do it this way because by default the DAG only sees sos_step('a_1') etc
+                                res['step_output'].extend(target)
 
                             node_name = section.step_name()
                             dag.add_step(section.uuid,
-                                         node_name, None,
+                                         node_name, idx,
                                          res['step_input'],
                                          res['step_depends'],
                                          res['step_output'],
@@ -634,7 +637,7 @@ class Base_Executor:
                             default_input = res['step_output']
                         added_node += len(sections)
                         resolved += 1
-                        #dag.show_nodes()
+                        # dag.show_nodes()
                         continue
                     else:
                         raise RuntimeError(

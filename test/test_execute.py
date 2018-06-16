@@ -1106,7 +1106,6 @@ depends: 'non-existent.txt'
         wf = script.workflow()
         Base_Executor(wf).run()
 
-
     def testOutputReport(self):
         '''Test generation of report'''
         if os.path.isfile('report.html'):
@@ -1165,7 +1164,6 @@ run: expand=True
             content = rep.read()
         self.assertTrue('Execution DAG' in content)
 
-
     def testSoSStepWithOutput(self):
         '''Test checking output of sos_step #981'''
         script = SoS_Script('''
@@ -1180,19 +1178,20 @@ depends: sos_step('step')
         wf = script.workflow()
         Base_Executor(wf).run()
 
-        
     def testMultiSoSStep(self):
         '''Test matching 'a_1', 'a_2' etc with sos_step('a')'''
         file_target('a_1').remove('all')
         file_target('a_2').remove('all')
         script = SoS_Script('''
 [a_1]
+output: "a_1"
 sh:
-touch a_1
+  echo whatever > a_1
 
 [a_2]
-sh:
-touch a_2
+output: "a_2"
+sh: expand=True
+  cp {_input} {_output}
 
 [default]
 depends: sos_step('a')
@@ -1202,6 +1201,9 @@ depends: sos_step('a')
         self.assertEqual(res['__completed__']['__step_completed__'], 3)
         self.assertTrue(os.path.isfile('a_1'))
         self.assertTrue(os.path.isfile('a_2'))
+        with open('a_1') as a1, open('a_2') as a2:
+            self.assertEqual(a1.read(), a2.read())
+
 
 if __name__ == '__main__':
     unittest.main()

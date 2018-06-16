@@ -81,10 +81,11 @@ from typing import Union, DefaultDict
 
 
 class SoS_Node(object):
-    def __init__(self, step_uuid: str, node_name: str, node_index: Union[str, None], input_targets: sos_targets, depends_targets: sos_targets,
+    def __init__(self, step_uuid: str, node_name: str, wf_index: Union[int, None], node_index: Union[int, None], input_targets: sos_targets, depends_targets: sos_targets,
                  output_targets: sos_targets, context: dict) -> None:
         self._step_uuid = step_uuid
         self._node_id = node_name
+        self._wf_index = wf_index
         self._node_index = node_index
         self._input_targets = input_targets
         self._depends_targets = depends_targets
@@ -116,13 +117,18 @@ class SoS_DAG(nx.DiGraph):
         self._all_dependent_files: DefaultDict[BaseTarget, List] = defaultdict(
             list)
         self._all_output_files = defaultdict(list)
+        # index of mini
+        self._forward_workflow_id = 0
+
+    def new_forward_workflow(self):
+        self._forward_workflow_id += 1
 
     def num_nodes(self):
         return nx.number_of_nodes(self)
 
     def add_step(self, step_uuid, node_name, node_index, input_targets: sos_targets, depends_targets: sos_targets,
                  output_targets: sos_targets, context: dict={}):
-        node = SoS_Node(step_uuid, node_name, node_index, input_targets, depends_targets,
+        node = SoS_Node(step_uuid, node_name, None if node_index is None else self._forward_workflow_id, node_index, input_targets, depends_targets,
                         output_targets, context)
         if node._node_uuid in [x._node_uuid for x in self.nodes()]:
             return
@@ -284,33 +290,34 @@ class SoS_DAG(nx.DiGraph):
         # refer to http://stackoverflow.com/questions/33494376/networkx-add-edges-to-graph-from-node-attributes
         #
         # several cases triggers dependency.
-        indexed = [x for x in self.nodes() if x._node_index is not None]
-        indexed.sort(key=lambda x: x._node_index)
+        for wf in range(self._forward_workflow_id + 1):
+            indexed = [x for x in self.nodes() if x._wf_index == wf]
+            indexed.sort(key=lambda x: x._node_index)
 
-        for idx, node in enumerate(indexed):
-            # 1. if a node changes context (using option alias), all later steps
-            # has to rely on it.
-            if node._context['__changed_vars__']:
-                for later_node in indexed[idx + 1:]:
-                    if node._context['__changed_vars__'] & (later_node._context['__signature_vars__'] | later_node._context['__environ_vars__']):
-                        self.add_edge(node, later_node)
+            for idx, node in enumerate(indexed):
+                # 1. if a node changes context (using option alias), all later steps
+                # has to rely on it.
+                if node._context['__changed_vars__']:
+                    for later_node in indexed[idx + 1:]:
+                        if node._context['__changed_vars__'] & (later_node._context['__signature_vars__'] | later_node._context['__environ_vars__']):
+                            self.add_edge(node, later_node)
 
-            # 2. if the input of a step is undetermined, it has to be executed
-            # after all its previous steps.
-            if not node._input_targets.determined() and idx > 0:
-                # if there is some input specified, it does not use default
-                # input, so the relationship can be further looked before
-                if isinstance(node._input_targets._undetermined, str):
-                    # if the input is dynamic, has to rely on previous step...
-                    if 'dynamic' in node._context['__environ_vars__']:
-                        self.add_edge(indexed[idx - 1], node)
+                # 2. if the input of a step is undetermined, it has to be executed
+                # after all its previous steps.
+                if not node._input_targets.determined() and idx > 0:
+                    # if there is some input specified, it does not use default
+                    # input, so the relationship can be further looked before
+                    if isinstance(node._input_targets._undetermined, str):
+                        # if the input is dynamic, has to rely on previous step...
+                        if 'dynamic' in node._context['__environ_vars__']:
+                            self.add_edge(indexed[idx - 1], node)
+                        else:
+                            # otherwise let us look back.
+                            for prev_node in indexed[idx - 1::-1]:
+                                if node._context['__environ_vars__'] & prev_node._context['__changed_vars__']:
+                                    self.add_edge(prev_node, node)
                     else:
-                        # otherwise let us look back.
-                        for prev_node in indexed[idx - 1::-1]:
-                            if node._context['__environ_vars__'] & prev_node._context['__changed_vars__']:
-                                self.add_edge(prev_node, node)
-                else:
-                    self.add_edge(indexed[idx - 1], node)
+                        self.add_edge(indexed[idx - 1], node)
         #
         # 3. if the input of a step depends on the output of another step
         for target, in_node in self._all_dependent_files.items():
