@@ -586,7 +586,7 @@ class Base_Executor:
                                           key=lambda x: x.step_name())
                         # this is only useful for executing auxiliary steps and
                         # might interfere with the step analysis
-                        env.sos_dict.pop('__default_output__')
+                        env.sos_dict.pop('__default_output__', None)
                         #  no default input
                         default_input: sos_targets = sos_targets()
                         #
