@@ -1254,7 +1254,7 @@ depends: "a_2"
         ''')
         wf = script.workflow()
         res = Base_Executor(wf).run()
-        self.assertEqual(res['__completed__']['__step_completed__'], 4)
+        self.assertEqual(res['__completed__']['__step_completed__'], 3)
         self.assertTrue(os.path.isfile('a_1'))
         self.assertTrue(os.path.isfile('a_2'))
         with open('a_1') as a1, open('a_2') as a2:

@@ -669,6 +669,12 @@ class Base_Executor:
                 env.sos_dict['__step_output__'] = sos_targets()
                 #
                 res = analyze_section(section)
+                if isinstance(target, sos_step) and target.target_name() != section.step_name():
+                    # sos_step target "name" can be matched to "name_10" etc so we will have to
+                    # ensure that the target is outputted from the "name_10" step.
+                    # This has been done in a more advanced case when an entire workflow is
+                    # added
+                    res['step_output'].extend(target)
                 #
                 # build DAG with input and output files of step
                 env.logger.debug(
