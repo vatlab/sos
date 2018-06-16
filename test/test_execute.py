@@ -1180,21 +1180,21 @@ depends: sos_step('step')
 
     def testMultiSoSStep(self):
         '''Test matching 'a_1', 'a_2' etc with sos_step('a')'''
-        file_target('a_1').remove('all')
-        file_target('a_2').remove('all')
+        file_target('a_1').remove('both')
+        file_target('a_2').remove('both')
         script = SoS_Script('''
-[a_1]
+[a_b_1]
 output: "a_1"
 sh:
   echo whatever > a_1
 
-[a_2]
+[a_b_2]
 output: "a_2"
 sh: expand=True
   cp {_input} {_output}
 
 [default]
-depends: sos_step('a')
+depends: sos_step('a_b')
 ''')
         wf = script.workflow()
         res = Base_Executor(wf).run()

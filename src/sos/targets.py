@@ -233,7 +233,7 @@ class sos_step(BaseTarget):
         # the target exists only if it has been executed?
         # which is indicated by a variable
         return '__completed__' in env.sos_dict and (self._step_name in env.sos_dict['__completed__'] or
-                self._step_name in [x.rsplit('_')[0] for x in env.sos_dict['__completed__']])
+                                                    self._step_name in [x.rsplit('_', 1)[0] for x in env.sos_dict['__completed__']])
 
     def target_name(self):
         return self._step_name
@@ -903,18 +903,23 @@ class RuntimeInfo:
         self.step_md5 = step_md5
         self.script = script
 
-        self.input_files = sos_targets([x for x in input_files._targets if not isinstance(x, sos_step)])
-        self.dependent_files = sos_targets([x for x in dependent_files._targets if not isinstance(x, sos_step)])
-        self.output_files = sos_targets([x for x in output_files._targets if not isinstance(x, sos_step)])
+        self.input_files = sos_targets(
+            [x for x in input_files._targets if not isinstance(x, sos_step)])
+        self.dependent_files = sos_targets(
+            [x for x in dependent_files._targets if not isinstance(x, sos_step)])
+        self.output_files = sos_targets(
+            [x for x in output_files._targets if not isinstance(x, sos_step)])
         self.external_output = self.output_files and isinstance(
             self.output_files[0], file_target) and self.output_files[0].is_external()
         self.signature_vars = signature_vars
         # signatures that exist before execution and might change during execution
-        self.init_signature = {x: deepcopy(sdict[x]) for x in sorted(signature_vars) if x in sdict and not callable(sdict[x]) and pickleable(sdict[x], x)}
+        self.init_signature = {x: deepcopy(sdict[x]) for x in sorted(
+            signature_vars) if x in sdict and not callable(sdict[x]) and pickleable(sdict[x], x)}
 
         sig_vars = [] if signature_vars is None else sorted(
             [x for x in signature_vars if x in sdict and isPrimitive(sdict[x])])
-        self.sig_id = textMD5(f'{self.script} {self.input_files} {self.output_files} {self.dependent_files} {stable_repr(self.init_signature)}')
+        self.sig_id = textMD5(
+            f'{self.script} {self.input_files} {self.output_files} {self.dependent_files} {stable_repr(self.init_signature)}')
 
         if self.external_output:
             # global signature
