@@ -1135,6 +1135,7 @@ for __n, __v in {repr(name_map)}.items():
                     self.sections.append(
                         SoS_Step(self.content, step_names, step_options, comment=self._last_comment))
                 cursect = self.sections[-1]
+                self.clear_comment()
                 continue
             #
             # directive?

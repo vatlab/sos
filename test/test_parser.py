@@ -11,6 +11,7 @@ from sos.parser import ParsingError, SoS_Script
 from sos.targets import file_target, sos_targets
 from sos.utils import ArgumentError, env
 from sos.workflow_executor import Base_Executor
+from sos.converter import extract_workflow
 
 
 section1_sos = '''
@@ -1249,6 +1250,28 @@ run:
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
 
+    def testComments(self):
+        '''Test the use of comments in sos script'''
+        # extract workflow from ipynb
+        wf = extract_workflow('sample_workflow.ipynb')
+        self.assertFalse('this is a test workflow' in wf)
+        self.assertEqual(wf.count('this comment will be included but not shown in help'), 1)
+        self.assertTrue(wf.count('this comment will become the comment for parameter b'), 1)
+        self.assertTrue(wf.count('this comment will become the comment for parameter d'), 1)
+        self.assertFalse('this is a cell with another kernel' in wf)
+        self.assertFalse('this comment will not be included in exported workflow' in wf)
+
+    def testHelpMessage(self):
+        '''Test help message from ipynb notebook'''
+        msg = subprocess.check_output('sos run sample_workflow.ipynb -h', shell=True).decode()
+        self.assertFalse('this comment will be included but not shown in help' in msg)
+        self.assertTrue(msg.count('this comment will become the comment for parameter b'), 1)
+        self.assertTrue(msg.count('this comment will become the comment for parameter d'), 1)
+        self.assertTrue(msg.count('--c 3 (as int)'), 1)
+        self.assertTrue(msg.count('this is a section comment, will be displayed'), 1)
+        self.assertFalse('this is a test workflow' in msg)
+        self.assertFalse('this is a cell with another kernel' in msg)
+        self.assertFalse('this comment will not be included in exported workflow' in msg)
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)

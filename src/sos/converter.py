@@ -191,12 +191,18 @@ def extract_workflow(notebook_file):
             continue
         lines = cell.source.split('\n')
         valid_cell = False
-        for line in lines:
+        for idx,line in enumerate(lines):
             if valid_cell or (line.startswith('%include') or line.startswith('%from')):
                 content += line + '\n'
             elif SOS_SECTION_HEADER.match(line):
                 valid_cell = True
-                content += line + '\n'
+                # look retrospectively for comments
+                c = idx - 1
+                comment = ''
+                while c >= 0 and lines[c].startswith('#'):
+                    comment = lines[c] + '\n' + comment
+                    c -= 1
+                content += comment + line + '\n'
         if valid_cell:
             content += '\n'
     return content
