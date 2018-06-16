@@ -1083,6 +1083,70 @@ run: expand=True
         Base_Executor(wf).run()
         self.assertTrue(file_target('a.txt.bak').target_exists())
 
+    def testSoSStepMiniworkflow(self):
+        '''Test the addition of mini forward workflows introduced by sos_step'''
+        script = SoS_Script('''
+[a_1]
+print(step_name)
+
+[a_2]
+print(step_name)
+[a_20]
+print(step_name)
+
+[b_1]
+print(step_name)
+
+[b_2]
+print(step_name)
+
+[b_20]
+depends: sos_step('c')
+print(step_name)
+
+[c_1]
+print(step_name)
+
+[c_2]
+print(step_name)
+
+[c_20]
+print(step_name)
+
+
+
+[default]
+depends: sos_step('a'), sos_step('b')
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={'output_dag': 'test.dot'}
+                      ).initialize_dag()
+        # note that A2 is no longer mentioned
+        self.assertDAG('test.dot',
+                       '''
+strict digraph "" {
+default;
+a_1;
+a_2;
+a_20;
+b_1;
+b_2;
+b_20;
+c_1;
+c_2;
+c_20;
+a_1 -> a_2;
+a_2 -> a_20;
+a_20 -> default;
+b_1 -> b_2;
+b_2 -> b_20;
+b_20 -> default;
+c_1 -> c_2;
+c_2 -> c_20;
+c_20 -> b_20;
+}
+''')
+
 
 if __name__ == '__main__':
     unittest.main()

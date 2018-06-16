@@ -1200,8 +1200,8 @@ depends: sos_step('a')
         wf = script.workflow()
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 3)
-        self.assertTrue(os.path.is_file('a_1')
-        self.assertTrue(os.path.is_file('a_2')
+        self.assertTrue(os.path.isfile('a_1'))
+        self.assertTrue(os.path.isfile('a_2'))
 
 if __name__ == '__main__':
     unittest.main()
