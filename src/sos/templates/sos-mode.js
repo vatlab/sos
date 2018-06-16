@@ -369,6 +369,9 @@
             } else if (sl == '!') {
               stream.eatWhile(/\S/);
               return "meta";
+            } else if (sl == '#') {
+              stream.skipToEnd();
+              return "comment";
             } else if (sl == '%') {
               stream.eatWhile(/\S/);
               return "meta";
