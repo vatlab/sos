@@ -200,13 +200,15 @@ class SoS_Step:
         return self.task != ''
 
     def step_name(self, alias: bool = False) -> str:
+        # if the step is not part of any workflow and is not given a name
         if not self.name:
-            n, i, a = self.names[0]
-            if alias and a:
-                return a
-            else:
-                return n + \
-                    (f'_{int(i)}' if isinstance(i, str) and i.isdigit() else '')
+            names = []
+            for n, i, a in self.names:
+                if alias and a:
+                    names.append(a)
+                else:
+                    names.append(f'{n}_{int(i)}' if isinstance(i, str) and i.isdigit() else n)
+            return ', '.join(names)
         else:
             if alias and self.alias:
                 return self.alias
