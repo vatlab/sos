@@ -1273,6 +1273,19 @@ run:
         self.assertFalse('this is a cell with another kernel' in msg)
         self.assertFalse('this comment will not be included in exported workflow' in msg)
 
+    def testHelpOnMultiWorkflow(self):
+        '''Test help message of sos file'''
+        with open('test_msg.sos', 'w') as script:
+            script.write('''\
+[workflow_a_10, workflow_b]
+[workflow_a_20]
+[default]
+''')
+        msg = subprocess.check_output('sos run test_msg.sos -h', shell=True).decode()
+        self.assertTrue('workflow_a' in msg)
+        self.assertTrue('workflow_b' in msg)
+        self.assertTrue('default' in msg)
+
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
     # unittest.TextTestRunner(, suite).run()
