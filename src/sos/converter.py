@@ -158,6 +158,7 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
         content = script.read()
     context = {
         'filename': script_file,
+        'basename': os.path.basename(script_file),
         'script': content,
         'sos_version': __version__,
         'linenos': args.linenos if args and hasattr(args, 'linenos') else True,

@@ -14,7 +14,7 @@
       </style>
    </head>
    <body>
-      <h2 class='mt-0'>{{filename}}
+      <h2 class='mt-0'>{{basename}}
          {% if raw %}
          <a href="{{raw}}"><i class="fas fa-external-link-alt"></i></a>
          {% endif %}
@@ -32,11 +32,10 @@
          </div>
       </div>
       <footer>
-         <a class="sos-logo" href="https://vatlab.github.io/sos-docs">
+         <div class="float-left"><a class="sos-logo" href="https://vatlab.github.io/sos-docs">
          <img src="http://vatlab.github.io/sos-docs/img/sos_icon.svg" alt="sos_icon">
-         </a>
-         &nbsp;
-         <a href="https://vatlab.github.io/sos-docs/">SoS Workflow Engine</a> version <samp>{{sos_version}}</samp>
+         </a> &nbsp;See the output of command <samp>sos run {{basename}} -h</samp> for usage information</div>
+         <div class="float-right"><a href="https://vatlab.github.io/sos-docs/">SoS</a> version <samp>{{sos_version}}</samp></div>
       </footer>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-dropdown/2.0.3/jquery.dropdown.js"></script>
