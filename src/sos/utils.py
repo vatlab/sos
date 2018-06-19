@@ -4,12 +4,15 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import argparse
+import builtins
 import base64
 import copy
 import getpass
+import keyword
 import logging
 import math
 import os
+import pkg_resources
 import pickle
 import re
 import sys
@@ -348,6 +351,16 @@ class RuntimeEnvironments(object):
         # this directory will be used by a lot of processes
         self.exec_dir = os.getcwd()
         #
+        self.symbols = set(dir(builtins)) | set(keyword.kwlist) | {
+            'logger', 'get_output', 'sos_handle_parameter_'
+            'interpolate', 'sos_namespace_',
+            'expand_pattern', 'runfile'
+        }
+        for grp in ('sos_targets', 'sos_actions', 'sos_functions'):
+            self.symbols |= {
+                x.name for x in pkg_resources.iter_entry_points(group=grp)}
+        self.symbols -= {'dynamic', 'sos_run'}
+
         os.makedirs(os.path.join(os.path.expanduser(
             '~'), '.sos', 'tasks'), exist_ok=True)
         os.makedirs(os.path.join(os.path.expanduser(
@@ -882,8 +895,9 @@ def sos_handle_parameter_(key, defvalue):
     NOTE: parmeters will not be handled if it is already defined in
     the environment. This makes the parameters variable.
     '''
-    if key in env.sos_dict['sos_symbols_']:
-        env.logger.warning(f'Parameter {key} overrides a SoS function.')
+    if key in env.symbols:
+        env.logger.warning(
+            f'Parameter {key} overrides a Python or SoS keyword.')
 
     env.parameter_vars.add(key)
     if not env.sos_dict['__args__']:

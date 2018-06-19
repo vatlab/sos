@@ -3,7 +3,6 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
-import keyword
 import base64
 import multiprocessing as mp
 import os
@@ -115,6 +114,9 @@ class SoS_Worker(mp.Process):
 
     def reset_dict(self):
         env.sos_dict = WorkflowDict()
+        self.init_dict()
+
+    def init_dict(self):
         env.parameter_vars.clear()
 
         env.sos_dict.set('__null_func__', __null_func__)
@@ -128,11 +130,6 @@ class SoS_Worker(mp.Process):
 
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
-        self._base_symbols = set(dir(__builtins__)) | set(
-            env.sos_dict['sos_symbols_']) | set(keyword.kwlist)
-        # if users use sos_run, the "scope" of the step goes beyong names in this step
-        # so we cannot save signatures for it.
-        self._base_symbols -= {'dynamic', 'sos_run'}
 
         if isinstance(self.args, dict):
             for key, value in self.args.items():
@@ -367,6 +364,7 @@ class Base_Executor:
             env.config['sig_mode'] = 'default'
         # interactive mode does not pass workflow
         self.md5 = self.calculate_md5()
+        env.config['workflow_id'] = self.md5
         env.sos_dict.set('workflow_id', self.md5)
         #
         # if this is the outter most workflow, master)id should have =
@@ -440,19 +438,8 @@ class Base_Executor:
         # load configuration files
         load_config_files(env.config['config_file'])
 
-        # if check_readonly is set to True, allow checking readonly vars
-        # if cfg.get('sos', {}).get('change_all_cap_vars', None) is not None:
-        #    if cfg['sos']['change_all_cap_vars'] not in ('warning', 'error'):
-        #        env.logger.error(
-        #            f'Configuration sos.change_all_cap_vars can only be warning or error: {cfg["sos"]["change_all_cap_vars"]} provided')
-        #    else:
-        #        env.sos_dict._change_all_cap_vars = cfg['sos']['change_all_cap_vars']
-
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
-        self._base_symbols = set(dir(__builtins__)) | set(
-            env.sos_dict['sos_symbols_']) | set(keyword.kwlist)
-        self._base_symbols -= {'dynamic'}
 
         # excute global definition to get some basic setup
         try:
@@ -595,10 +582,9 @@ class Base_Executor:
                                 continue
                             res = analyze_section(section, default_input)
 
-                            environ_vars = res['environ_vars'] - \
-                                self._base_symbols
+                            environ_vars = res['environ_vars'] - env.symbols
                             signature_vars = res['signature_vars'] - \
-                                self._base_symbols
+                                env.symbols
                             changed_vars = res['changed_vars']
                             # parameters, if used in the step, should be considered environmental
                             environ_vars |= env.parameter_vars & signature_vars
@@ -772,10 +758,7 @@ class Base_Executor:
 
     def initialize_dag(self, targets: Optional[List[str]] = [], nested: bool = False) -> SoS_DAG:
         '''Create a DAG by analyzing sections statically.'''
-        # this is for testing only and allows tester to call initialize_dag
-        # directly to get a DAG
-        if not hasattr(self, '_base_symbols'):
-            self.reset_dict()
+        self.reset_dict()
 
         dag = SoS_DAG(name=self.md5)
         default_input: sos_targets = sos_targets([])
@@ -786,8 +769,8 @@ class Base_Executor:
             #
             res = analyze_section(section, default_input)
 
-            environ_vars = res['environ_vars'] - self._base_symbols
-            signature_vars = res['signature_vars'] - self._base_symbols
+            environ_vars = res['environ_vars'] - env.symbols
+            signature_vars = res['signature_vars'] - env.symbols
             changed_vars = res['changed_vars']
             # parameters, if used in the step, should be considered environmental
             environ_vars |= env.parameter_vars & signature_vars
@@ -826,8 +809,8 @@ class Base_Executor:
         # analyze auxiliary steps
         for idx, section in enumerate(self.workflow.auxiliary_sections):
             res = analyze_section(section, default_input)
-            environ_vars = res['environ_vars'] - self._base_symbols
-            signature_vars = res['signature_vars'] - self._base_symbols
+            environ_vars = res['environ_vars'] - env.symbols
+            signature_vars = res['signature_vars'] - env.symbols
             changed_vars = res['changed_vars']
             # parameters, if used in the step, should be considered environmental
             environ_vars |= env.parameter_vars & signature_vars
@@ -895,6 +878,126 @@ class Base_Executor:
         else:
             return 'no step executed'
 
+    def check_targets(self, targets: sos_targets):
+        for target in sos_targets(targets):
+            if target.target_exists('target'):
+                if env.config['sig_mode'] == 'force':
+                    env.logger.info(f'Re-generating {target}')
+                    target.remove('both')
+                else:
+                    env.logger.info(f'Target {target} already exists')
+            elif target.target_exists('signature'):
+                env.logger.info(f'Re-generating {target}')
+                t.remove('signature')
+        return sos_targets([x for x in targets if not file_target(x).target_exists('target') or env.config['sig_mode'] == 'force'])
+
+    def step_completed(self, res, dag, runnable):
+        for k, v in res['__completed__'].items():
+            self.completed[k] += v
+        # if the result of the result of a step
+        svar = {}
+        for k, v in res.items():
+            if k == '__shared__':
+                svar = v
+                env.sos_dict.update(v)
+            else:
+                env.sos_dict.set(k, v)
+        #
+        # set context to the next logic step.
+        for edge in dag.out_edges(runnable):
+            node = edge[1]
+            # if node is the logical next step...
+            if node._node_index is not None and runnable._node_index is not None:
+                # and node._node_index == runnable._node_index + 1:
+                node._context.update(env.sos_dict.clone_selected_vars(
+                    node._context['__signature_vars__'] | node._context['__environ_vars__']
+                    | {'_input', '__step_output__', '__default_output__', '__args__'}))
+            node._context.update(svar)
+            node._context['__completed__'].append(
+                res['__step_name__'])
+        dag.update_step(runnable,
+                        env.sos_dict['__step_input__'],
+                        env.sos_dict['__step_output__'],
+                        env.sos_dict['__step_depends__'])
+        runnable._status = 'completed'
+        dag.save(env.config['output_dag'])
+
+    def handle_unknown_target(self, res, dag, runnable):
+        runnable._status = None
+        dag.save(env.config['output_dag'])
+        target = res.target
+
+        if dag.regenerate_target(target):
+            # runnable._depends_targets.append(target)
+            # dag._all_dependent_files[target].append(runnable)
+            dag.build(self.workflow.auxiliary_sections)
+            #
+            cycle = dag.circular_dependencies()
+            if cycle:
+                raise RuntimeError(
+                    f'Circular dependency detected {cycle} after regeneration. It is likely a later step produces input of a previous step.')
+
+        else:
+            if self.resolve_dangling_targets(dag, sos_targets(target)) == 0:
+                raise RuntimeError(
+                    f'Failed to regenerate or resolve {target}{dag.steps_depending_on(target, self.workflow)}.')
+            if runnable._depends_targets.determined():
+                runnable._depends_targets.extend(target)
+            if runnable not in dag._all_dependent_files[target]:
+                dag._all_dependent_files[target].append(
+                    runnable)
+            dag.build(self.workflow.auxiliary_sections)
+            #
+            cycle = dag.circular_dependencies()
+            if cycle:
+                raise RuntimeError(
+                    f'Circular dependency detected {cycle}. It is likely a later step produces input of a previous step.')
+        dag.save(env.config['output_dag'])
+
+    def handle_unavailable_lock(self, res, dag, runnable):
+        runnable._status = 'signature_pending'
+        dag.save(env.config['output_dag'])
+        runnable._signature = (res.output, res.sig_file)
+        section = self.workflow.section_by_id(
+            runnable._step_uuid)
+        env.logger.info(
+            f'Waiting on another process for step {section.step_name(True)}')
+
+    def finalize_and_report(self):
+        # remove task pending status if the workflow is completed normally
+        try:
+            wf_status = os.path.join(os.path.expanduser(
+                '~'), '.sos', self.md5 + '.status')
+            if os.path.isfile(wf_status):
+                os.remove(wf_status)
+        except Exception as e:
+            env.logger.warning(
+                f'Failed to clear workflow status file: {e}')
+        if self.completed["__step_completed__"] == 0:
+            sts = 'ignored'
+        elif env.config["run_mode"] == 'dryrun':
+            sts = 'tested successfully'
+        else:
+            sts = 'executed successfully'
+        env.logger.info(
+            f'Workflow {self.workflow.name} (ID={self.md5}) is {sts} with {self.describe_completed()}.')
+        if env.config['output_dag']:
+            env.logger.info(
+                f"Workflow DAG saved to {env.config['output_dag']}")
+        if env.config['run_mode'] != 'dryrun':
+            with workflow_report() as sig:
+                workflow_info = {
+                    'end_time': time.time(),
+                    'stat': dict(self.completed),
+                }
+                if env.config['output_dag'] and env.config['master_id'] == self.md5:
+                    workflow_info['dag'] = env.config['output_dag']
+                sig.write(f'workflow\t{self.md5}\t{workflow_info}\n')
+            if env.config['master_id'] == env.config['workflow_id'] and env.config['output_report']:
+                # if this is the outter most workflow
+                render_report(env.config['output_report'],
+                              env.sos_dict['workflow_id'])
+
     def run(self, targets: Optional[List[str]]=None, parent_pipe: None=None, my_workflow_id: None=None, mode: str='run') -> Dict[str, Any]:
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
@@ -924,19 +1027,8 @@ class Base_Executor:
         # if targets are specified and there are only signatures for them, we need
         # to remove the signature and really generate them
         if targets:
-            for t in targets:
-                if file_target(t).target_exists('target'):
-                    if env.config['sig_mode'] == 'force':
-                        env.logger.info(f'Re-generating {t}')
-                        file_target(t).remove('both')
-                    else:
-                        env.logger.info(f'Target {t} already exists')
-                elif file_target(t).target_exists('signature'):
-                    env.logger.info(f'Re-generating {t}')
-                    file_target(t).remove('signature')
-            targets = [x for x in targets if not file_target(
-                x).target_exists('target') or env.config['sig_mode'] == 'force']
-            if not targets:
+            targets = self.check_targets(targets)
+            if len(targets) == 0:
                 if parent_pipe:
                     parent_pipe.send(wf_result)
                 else:
@@ -1057,44 +1149,10 @@ class Base_Executor:
                         dag.save(env.config['output_dag'])
                         runnable._child_pipe.send(res)
                     elif isinstance(res, (UnknownTarget, RemovedTarget)):
-                        runnable._status = None
-                        dag.save(env.config['output_dag'])
-                        target = res.target
-
-                        if dag.regenerate_target(target):
-                            # runnable._depends_targets.append(target)
-                            # dag._all_dependent_files[target].append(runnable)
-                            dag.build(self.workflow.auxiliary_sections)
-                            #
-                            cycle = dag.circular_dependencies()
-                            if cycle:
-                                raise RuntimeError(
-                                    f'Circular dependency detected {cycle} after regeneration. It is likely a later step produces input of a previous step.')
-
-                        else:
-                            if self.resolve_dangling_targets(dag, sos_targets(target)) == 0:
-                                raise RuntimeError(
-                                    f'Failed to regenerate or resolve {target}{dag.steps_depending_on(target, self.workflow)}.')
-                            if runnable._depends_targets.determined():
-                                runnable._depends_targets.extend(target)
-                            if runnable not in dag._all_dependent_files[target]:
-                                dag._all_dependent_files[target].append(
-                                    runnable)
-                            dag.build(self.workflow.auxiliary_sections)
-                            #
-                            cycle = dag.circular_dependencies()
-                            if cycle:
-                                raise RuntimeError(
-                                    f'Circular dependency detected {cycle}. It is likely a later step produces input of a previous step.')
-                        dag.save(env.config['output_dag'])
+                        self.handle_unknown_target(res, dag, runnable)
                     elif isinstance(res, UnavailableLock):
-                        runnable._status = 'signature_pending'
-                        dag.save(env.config['output_dag'])
-                        runnable._signature = (res.output, res.sig_file)
-                        section = self.workflow.section_by_id(
-                            runnable._step_uuid)
-                        env.logger.info(
-                            f'Waiting on another process for step {section.step_name(True)}')
+                        self.handle_unavailable_lock(res, dag, runnable)
+
                     # if the job is failed
                     elif isinstance(res, Exception):
                         env.logger.debug(f'{i_am()} received an exception')
@@ -1114,36 +1172,7 @@ class Base_Executor:
                         prog.update(1)
                     elif '__step_name__' in res:
                         env.logger.debug(f'{i_am()} receive step result ')
-                        for k, v in res['__completed__'].items():
-                            self.completed[k] += v
-
-                        # if the result of the result of a step
-                        svar = {}
-                        for k, v in res.items():
-                            if k == '__shared__':
-                                svar = v
-                                env.sos_dict.update(v)
-                            else:
-                                env.sos_dict.set(k, v)
-                        #
-                        # set context to the next logic step.
-                        for edge in dag.out_edges(runnable):
-                            node = edge[1]
-                            # if node is the logical next step...
-                            if node._node_index is not None and runnable._node_index is not None:
-                                # and node._node_index == runnable._node_index + 1:
-                                node._context.update(env.sos_dict.clone_selected_vars(
-                                    node._context['__signature_vars__'] | node._context['__environ_vars__']
-                                    | {'_input', '__step_output__', '__default_output__', '__args__'}))
-                            node._context.update(svar)
-                            node._context['__completed__'].append(
-                                res['__step_name__'])
-                        dag.update_step(runnable,
-                                        env.sos_dict['__step_input__'],
-                                        env.sos_dict['__step_output__'],
-                                        env.sos_dict['__step_depends__'])
-                        runnable._status = 'completed'
-                        dag.save(env.config['output_dag'])
+                        self.step_completed(res, dag, runnable)
                         prog.update(1)
                     elif '__workflow_id__' in res:
                         # result from a workflow
@@ -1366,39 +1395,7 @@ class Base_Executor:
             else:
                 raise exec_error
         elif 'pending_tasks' not in wf_result or not wf_result['pending_tasks']:
-            # remove task pending status if the workflow is completed normally
-            try:
-                wf_status = os.path.join(os.path.expanduser(
-                    '~'), '.sos', self.md5 + '.status')
-                if os.path.isfile(wf_status):
-                    os.remove(wf_status)
-            except Exception as e:
-                env.logger.warning(
-                    f'Failed to clear workflow status file: {e}')
-            if self.completed["__step_completed__"] == 0:
-                sts = 'ignored'
-            elif env.config["run_mode"] == 'dryrun':
-                sts = 'tested successfully'
-            else:
-                sts = 'executed successfully'
-            env.logger.info(
-                f'Workflow {self.workflow.name} (ID={self.md5}) is {sts} with {self.describe_completed()}.')
-            if env.config['output_dag']:
-                env.logger.info(
-                    f"Workflow DAG saved to {env.config['output_dag']}")
-            if env.config['run_mode'] != 'dryrun':
-                with workflow_report() as sig:
-                    workflow_info = {
-                        'end_time': time.time(),
-                        'stat': dict(self.completed),
-                    }
-                    if env.config['output_dag'] and env.config['master_id'] == self.md5:
-                        workflow_info['dag'] = env.config['output_dag']
-                    sig.write(f'workflow\t{self.md5}\t{workflow_info}\n')
-                if not parent_pipe and env.config['output_report'] and env.sos_dict.get('workflow_id'):
-                    # if this is the outter most workflow
-                    render_report(env.config['output_report'],
-                                  env.sos_dict.get('workflow_id'))
+            self.finalize_and_report()
         else:
             # exit with pending tasks
             pass

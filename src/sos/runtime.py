@@ -15,20 +15,11 @@ interpolate, sos_namespace_
 expand_pattern, path, paths
 
 
-sos_symbols_ = {
-    'logger', 'get_output', 'sos_handle_parameter_'
-    'interpolate', 'sos_namespace_',
-    'expand_pattern', 'runfile'
-}
-
-
 def _load_group(group: str) -> None:
-    global sos_symbols_
     for _entrypoint in pkg_resources.iter_entry_points(group=group):
         # import all targets and actions from entry_points
         # Grab the function that is the actual plugin.
         _name = _entrypoint.name
-        sos_symbols_.add(_name)
         try:
             _plugin = _entrypoint.load()
             globals()[_name] = _plugin
@@ -46,7 +37,8 @@ def _load_group(group: str) -> None:
                         continue
             if _name == 'run':
                 # this is critical so we print the warning
-                logger.warning(f'Failed to load target {_entrypoint.name}: {e}')
+                logger.warning(
+                    f'Failed to load target {_entrypoint.name}: {e}')
             else:
                 logger.trace(f'Failed to load target {_entrypoint.name}: {e}')
 
