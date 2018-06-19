@@ -27,6 +27,22 @@ footer {
   overflow: hidden;
 }
 
+textarea.sos-source {
+  line-height: 1.21429em;
+  font-size: 14px;
+  background: none;
+  width: 100%;
+  border: none;
+  font-family: monospace;
+  height: auto;
+  padding: 0.4em;
+  outline: none;
+  position: relative;
+  resize: none;
+  overflow: hidden;
+  vertical-align: text-top;
+}
+
 .code {
   font-family: monotone;
 }

@@ -257,7 +257,8 @@
             </div>
          </div>
          <div class="filecontent">
-            <textarea id="source-code" name="code">{{ workflows[master_id].script }}</textarea>
+            <textarea rows="{{ workflows[master_id].script.splitlines() | count }}"
+			id="source-code" class="sos-source" name="code">{{ workflows[master_id].script }}</textarea>
          </div>
       </div>
       <footer>
