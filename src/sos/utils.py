@@ -1507,8 +1507,16 @@ def dot_to_gif(filename: str, warn=None):
     import glob
     import tempfile
     from graphviz import Source
+    from PIL import Image, ImageDraw, ImageFont
     with open(filename) as dot, tempfile.TemporaryDirectory() as tempDirectory:
-        src = Source(dot.read())
+        content = dot.read()
+        # find out subworkflows
+        subworkflows = [line.split()[2].strip(
+            '"') for line in content.splitlines() if line.startswith('strict digraph')]
+        # find out unique subgraphs
+        unique_subworkflows = list(dict.fromkeys(subworkflows))
+        #
+        src = Source(content)
         src.format = 'png'
         outfile = src.render(filename='sosDot', directory=tempDirectory)
         # dot command can generate more than outfiles returned by the render function
@@ -1520,26 +1528,72 @@ def dot_to_gif(filename: str, warn=None):
             # create a gif files from multiple png files
             pngFiles.sort(key=lambda x: int(
                 os.path.basename(x)[:-3].split('.')[1] or 0))
-            # getting the maximum size
+            # find maximum size for all graphs corresponding to their subgraphs
+            maxWidth = 0
+            wf_maxHeight = {}
+            images = {}
+            for subworkflow in unique_subworkflows:
+                wf_images = {png: Image.open(png) for png, wf in zip(
+                    pngFiles, subworkflows) if wf == subworkflow}
+                maxWidth = max(maxWidth, max(
+                    [x.size[0] for x in wf_images.values()]))
+                wf_maxHeight[subworkflow] = max(
+                    [x.size[1] for x in wf_images.values()]) + 20
+                images.update(wf_images)
+            # now, we stack workflows as follows
+            #    G1
+            #    G2
+            #    G3
+            # and allow G1, G2, G3 to expand...
+            maxWidth += 150
+            totalHeight = sum(wf_maxHeight.values())
+            lastGraph = {}
+            newImages = {}
             try:
+                font = ImageFont.truetype('/Library/Fonts/Arial.ttf', 8)
+            except:
+                try:
+                    font = ImageFont.truetype('arial.ttf', 8)
+                except:
+                    font = None
+
+            for idx, (subworkflow, pngFile) in enumerate(zip(subworkflows, pngFiles)):
+                image = images[pngFile]
+                lastGraph[subworkflow] = image
+                # we need to stitch figures together
+                try:
+                    newImg = Image.new("RGB", (maxWidth, totalHeight),
+                                       color=0xFFFFFF)
+                    y_loc = 0
+                    for wf in unique_subworkflows:
+                        # if current, use the new one
+                        if wf == subworkflow:
+                            img = image
+                        elif wf in lastGraph:
+                            img = lastGraph[wf]
+                        else:
+                            continue
+                        newImg.paste(
+                            img, ((maxWidth - img.size[0]) // 2, y_loc + 20))
+                        draw = ImageDraw.Draw(newImg)
+                        # font = ImageFont.truetype("sans-serif.ttf", 8)
+                        # , font=font)
+                        draw.text((5, y_loc + 5), wf,
+                                  (0, 0, 0), font=font)
+                        y_loc += wf_maxHeight[wf]
+                except Exception as e:
+                    if warn:
+                        warn(f'Failed to resize gif file: {e}')
+                    return b64_of(pngFiles[-1])
+                newImages[pngFile] = newImg
+            try:
+                for pngFile, image in newImages.items():
+                    image.save(pngFile, directory=tempDirectory)
                 images = [imageio.imread(x) for x in pngFiles]
             except Exception as e:
                 if warn:
                     warn(f'Failed to read gng file: {e}')
                 return b64_of(pngFiles[-1])
-            maxWidth = max([x.shape[0] for x in images])
-            maxHeight = max([x.shape[1] for x in images])
-            if images[0].shape[0] < maxWidth or images[0].shape[1] < maxHeight:
-                try:
-                    from PIL import Image, ImageOps
-                    newFirstImg = ImageOps.expand(Image.open(pngFiles[0]), border=(
-                        0, 0, (maxHeight - images[0].shape[1]), (maxWidth - images[0].shape[0])), fill=0xFFFFFF)
-                    newFirstImg.save(pngFiles[0], directory=tempDirectory)
-                    # replace the original small one to the expanded one
-                    images[0] = imageio.imread(pngFiles[0])
-                except Exception as e:
-                    if warn:
-                        warn(f'Failed to resize gif file: {e}')
             # create a gif file from images
             gifFile = os.path.join(tempDirectory, 'sosDot.gif')
             try:
