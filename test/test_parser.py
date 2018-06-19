@@ -1274,16 +1274,18 @@ run:
         self.assertFalse('this comment will not be included in exported workflow' in msg)
 
     def testHelpOnMultiWorkflow(self):
-        '''Test help message of sos file'''
+        '''Test help message of sos file (#985)'''
         with open('test_msg.sos', 'w') as script:
             script.write('''\
-[workflow_a_10, workflow_b]
+[workflow_a_10,workflow_b]
 [workflow_a_20]
 [default]
 ''')
         msg = subprocess.check_output('sos run test_msg.sos -h', shell=True).decode()
         self.assertTrue('workflow_a' in msg)
         self.assertTrue('workflow_b' in msg)
+        # when introducing sections
+        self.assertTrue('workflow_a_10, workflow_b' in msg)
         self.assertTrue('default' in msg)
 
 if __name__ == '__main__':
