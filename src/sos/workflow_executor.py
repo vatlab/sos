@@ -425,6 +425,9 @@ class Base_Executor:
 
     def reset_dict(self) -> None:
         env.sos_dict = WorkflowDict()
+        self.init_dict()
+
+    def init_dict(self) -> None:
         env.parameter_vars.clear()
 
         env.sos_dict.set('workflow_id', self.md5)
