@@ -15,16 +15,23 @@ from sos.hosts import Host
 from sos.parser import ParsingError, SoS_Script
 from sos.targets import file_target
 from sos.utils import env
-from sos.workflow_executor import Base_Executor
+
+# if the test is imported under sos/test, test interacive executor
+if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
+    from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
+else:
+    from sos.workflow_executor import Base_Executor
 
 has_docker = sys.platform != 'win32'
 try:
     if sys.platform != 'win32':
-        subprocess.check_output('docker ps | grep test_sos', shell=True).decode()
+        subprocess.check_output(
+            'docker ps | grep test_sos', shell=True).decode()
 except subprocess.CalledProcessError:
     subprocess.call('sh build_test_docker.sh', shell=True)
     try:
-        subprocess.check_output('docker ps | grep test_sos', shell=True).decode()
+        subprocess.check_output(
+            'docker ps | grep test_sos', shell=True).decode()
     except subprocess.CalledProcessError:
         print('Failed to set up a docker machine with sos')
         has_docker = False
@@ -130,7 +137,8 @@ print('I am {}, done'.format(_index))
         else:
             with open('temp/temp_cmd', 'w') as tc:
                 tc.write('echo "a"')
-            os.chmod('temp/temp_cmd', stat.S_IXUSR | stat.S_IWUSR | stat.S_IRUSR)
+            os.chmod('temp/temp_cmd', stat.S_IXUSR |
+                     stat.S_IWUSR | stat.S_IRUSR)
         #
         script = SoS_Script(r"""
 [1]
@@ -186,10 +194,12 @@ touch temp/{ff}
             ('(1,2)', ['temp/1.txt', 'temp/2.txt']),
             ('[2,3]', ['temp/2.txt', 'temp/3.txt']),
             ('(0,2,4)', ['temp/0.txt', 'temp/2.txt', 'temp/4.txt']),
-            ('slice(1,None)', ['temp/1.txt', 'temp/2.txt', 'temp/3.txt', 'temp/4.txt']),
+            ('slice(1,None)', ['temp/1.txt',
+                               'temp/2.txt', 'temp/3.txt', 'temp/4.txt']),
             ('slice(1,-2)', ['temp/1.txt', 'temp/2.txt']),
             ('slice(None,None,2)', ['temp/0.txt', 'temp/2.txt', 'temp/4.txt']),
-            ('True', ['temp/0.txt', 'temp/1.txt', 'temp/2.txt', 'temp/3.txt', 'temp/4.txt']),
+            ('True', ['temp/0.txt', 'temp/1.txt',
+                      'temp/2.txt', 'temp/3.txt', 'temp/4.txt']),
             ('False', []),
         ]:
             if os.path.isdir('temp'):
@@ -246,7 +256,8 @@ run: expand=True
         Base_Executor(wf).run()
         for t in range(10, 13):
             with open('myfile_{}.txt'.format(t)) as tmp:
-                self.assertEqual(tmp.read().strip(), str(t) + '_' + str(t - 10))
+                self.assertEqual(tmp.read().strip(),
+                                 str(t) + '_' + str(t - 10))
             file_target('myfile_{}.txt'.format(t)).remove('both')
 
     def testMaxJobs(self):
@@ -494,7 +505,8 @@ sh: expand=True
             'workflow': 'default',
             'workdir': '.',
         }).run()
-        ret = subprocess.check_output('sos status -t {}'.format(tag), shell=True).decode()
+        ret = subprocess.check_output(
+            'sos status -t {}'.format(tag), shell=True).decode()
         self.assertEqual(len(ret.splitlines()), 5, "Obtained {}".format(ret))
         # test multiple tags
         tag1 = "tag{}".format(random.randint(1, 100000))
@@ -523,7 +535,8 @@ sh: expand=True
             'workflow': 'default',
             'workdir': '.',
         }).run()
-        ret = subprocess.check_output('sos status -t {}'.format(tag2), shell=True).decode()
+        ret = subprocess.check_output(
+            'sos status -t {}'.format(tag2), shell=True).decode()
         self.assertEqual(len(ret.splitlines()), 2, "Obtained {}".format(ret))
 
     @unittest.skipIf(not has_docker, "Docker container not usable")

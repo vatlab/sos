@@ -14,7 +14,12 @@ from sos.eval import Undetermined
 from sos.parser import SoS_Script
 from sos.targets import file_target
 from sos.utils import env
-from sos.workflow_executor import Base_Executor, ExecuteError
+from sos.workflow_executor import ExecuteError
+# if the test is imported under sos/test, test interacive executor
+if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
+    from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
+else:
+    from sos.workflow_executor import Base_Executor
 
 
 def internet_on(host='8.8.8.8', port=80, timeout=3):
@@ -169,7 +174,8 @@ result.append(_rep)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['result'], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        self.assertEqual(env.sos_dict['result'], [
+                         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
     def testRun(self):
         '''Test action run'''
@@ -528,7 +534,8 @@ run: workdir='temp_wdr'
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(file_target(os.path.join('temp_wdr', 'a2.txt')).target_exists())
+        self.assertTrue(file_target(os.path.join(
+            'temp_wdr', 'a2.txt')).target_exists())
         with open(os.path.join('temp_wdr', 'a.txt')) as tmp:
             self.assertEqual('hello', tmp.read())
 
@@ -603,10 +610,12 @@ touch temp/{ff}
             ('(1,2)', ['temp/1.txt', 'temp/2.txt']),
             ('[2,3]', ['temp/2.txt', 'temp/3.txt']),
             ('(0,2,4)', ['temp/0.txt', 'temp/2.txt', 'temp/4.txt']),
-            ('slice(1,None)', ['temp/1.txt', 'temp/2.txt', 'temp/3.txt', 'temp/4.txt']),
+            ('slice(1,None)', ['temp/1.txt',
+                               'temp/2.txt', 'temp/3.txt', 'temp/4.txt']),
             ('slice(1,-2)', ['temp/1.txt', 'temp/2.txt']),
             ('slice(None,None,2)', ['temp/0.txt', 'temp/2.txt', 'temp/4.txt']),
-            ('True', ['temp/0.txt', 'temp/1.txt', 'temp/2.txt', 'temp/3.txt', 'temp/4.txt']),
+            ('True', ['temp/0.txt', 'temp/1.txt',
+                      'temp/2.txt', 'temp/3.txt', 'temp/4.txt']),
             ('False', []),
         ]:
             if os.path.isdir('temp'):
@@ -628,7 +637,8 @@ touch temp/{ff}
             env.config['wait_for_task'] = True
             Base_Executor(wf).run()
             files = list(glob.glob(os.path.join('temp', '*.txt')))
-            self.assertEqual(sorted(files), sorted([x.replace('/', os.sep) for x in result]))
+            self.assertEqual(sorted(files), sorted(
+                [x.replace('/', os.sep) for x in result]))
             #
             # test last iteration
             shutil.rmtree('temp')

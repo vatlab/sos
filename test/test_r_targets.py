@@ -3,6 +3,7 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
+import os
 import shutil
 import subprocess
 import unittest
@@ -10,7 +11,11 @@ import unittest
 from sos.parser import SoS_Script
 from sos.targets import file_target
 from sos.utils import env
-from sos.workflow_executor import Base_Executor
+# if the test is imported under sos/test, test interacive executor
+if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
+    from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
+else:
+    from sos.workflow_executor import Base_Executor
 
 
 class TestTarget(unittest.TestCase):

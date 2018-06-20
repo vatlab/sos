@@ -13,7 +13,11 @@ from sos.eval import interpolate
 from sos.parser import SoS_Script
 from sos.targets import file_target, path, paths, sos_targets
 from sos.utils import env
-from sos.workflow_executor import Base_Executor
+# if the test is imported under sos/test, test interacive executor
+if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
+    from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
+else:
+    from sos.workflow_executor import Base_Executor
 
 
 class TestTarget(unittest.TestCase):
@@ -50,11 +54,13 @@ class TestTarget(unittest.TestCase):
         ]:
             if isinstance(res, str):
                 self.assertEqual(
-                    interpolate('{{target:{}}}'.format(fmt), globals(), locals()), res,
+                    interpolate('{{target:{}}}'.format(
+                        fmt), globals(), locals()), res,
                     "Interpolation of {}:{} should be {}".format(target, fmt, res))
             else:
                 self.assertTrue(
-                    interpolate('{{target:{}}}'.format(fmt), globals(), locals()) in res,
+                    interpolate('{{target:{}}}'.format(fmt),
+                                globals(), locals()) in res,
                     "Interpolation of {}:{} should be one of {}".format(target, fmt, res))
 
     def testIterTargets(self):
@@ -356,7 +362,8 @@ run:
         # this should be ok.
         Base_Executor(wf).run()
         for file in ['t1.txt', 't2.txt', '5.txt', '10.txt', '20.txt']:
-            self.assertTrue(file_target(file).target_exists(), file + ' should exist')
+            self.assertTrue(file_target(file).target_exists(),
+                            file + ' should exist')
             file_target(file).remove('both')
 
     def testZap(self):

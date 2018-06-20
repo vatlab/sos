@@ -13,7 +13,11 @@ from sos.hosts import Host
 from sos.parser import SoS_Script
 from sos.targets import file_target, sos_targets
 from sos.utils import env
-from sos.workflow_executor import Base_Executor
+# if the test is imported under sos/test, test interacive executor
+if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
+    from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
+else:
+    from sos.workflow_executor import Base_Executor
 
 
 class TestSignature(unittest.TestCase):
@@ -190,7 +194,8 @@ cp {_input} {_dest[0]}
             self.assertTrue(tc.read(), 'a.txt')
         with open('temp/d.txt') as td:
             self.assertTrue(td.read(), 'b.txt')
-        self.assertEqual(env.sos_dict['oa'], sos_targets('temp/c.txt', 'temp/d.txt'))
+        self.assertEqual(env.sos_dict['oa'], sos_targets(
+            'temp/c.txt', 'temp/d.txt'))
         #
         # now in assert mode, the signature should be there
         env.config['sig_mode'] = 'assert'
@@ -564,7 +569,6 @@ run: input='test_action.txt', output='lc.txt', expand=True
         env.config['sig_mode'] = 'build'
         Base_Executor(wf).run()
 
-
     def testSignatureWithWithoutTask(self):
         '''Test the inclusion of task would not trigger rerun'''
         script = SoS_Script(r'''[1]
@@ -582,7 +586,7 @@ sh:
 output: 'aa'
 
 task:
- 
+
 
 
 sh:
@@ -591,6 +595,7 @@ sh:
         wf = script.workflow()
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 0)
+
 
 if __name__ == '__main__':
     unittest.main()
