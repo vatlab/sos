@@ -9,7 +9,6 @@ import unittest
 from sos.parser import SoS_Script
 from sos.targets import file_target
 from sos.utils import env
-from sos.workflow_executor import ExecuteError
 # if the test is imported under sos/test, test interacive executor
 if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
     from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
@@ -52,7 +51,7 @@ bash:
 echo 'Echo
 ''')
         wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf).run)
 
     def testSh(self):
         '''Test action run'''
@@ -69,7 +68,7 @@ sh:
 echo 'Echo
 ''')
         wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf).run)
 
     def testCsh(self):
         '''Test action csh'''

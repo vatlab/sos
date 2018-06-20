@@ -219,7 +219,7 @@ cp {_input} {_dest[0]}
         #script = SoS_Script('comment = 1\n' + text)
         #wf = script.workflow()
         #env.config['sig_mode'] = 'assert'
-        #self.assertRaises(ExecuteError, Base_Executor(wf).run)
+        #self.assertRaises(Exception, Base_Executor(wf).run)
 
     def testReexecution(self):
         '''Test -f option of sos run'''

@@ -15,7 +15,6 @@ from sos.eval import Undetermined
 from sos.parser import SoS_Script
 from sos.targets import file_target, sos_targets
 from sos.utils import env
-from sos.workflow_executor import ExecuteError
 # if the test is imported under sos/test, test interacive executor
 if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
     from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
@@ -648,7 +647,7 @@ print(a)
 
 """)
         wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf).run)
         # however, alias should be sent back
         script = SoS_Script(r"""
 [1: shared={'shared': 'step_output'}]

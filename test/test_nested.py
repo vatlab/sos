@@ -10,7 +10,6 @@ import unittest
 from sos.parser import SoS_Script
 from sos.targets import file_target
 from sos.utils import env
-from sos.workflow_executor import ExecuteError
 # if the test is imported under sos/test, test interacive executor
 if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
     from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
@@ -201,7 +200,7 @@ input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a_2+c', shared='executed')
 ''')
         wf = script.workflow('c')
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf).run)
         #
         # nested subworkflow is allowed
         script = SoS_Script('''
