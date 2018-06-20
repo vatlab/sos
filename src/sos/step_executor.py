@@ -1187,24 +1187,36 @@ class Base_Step_Executor:
             rvars = self.step.options['shared']
             if isinstance(rvars, str):
                 result['__changed_vars__'].add(rvars)
-                result['__shared__'][rvars] = copy.deepcopy(
-                    env.sos_dict[rvars])
+                if rvars not in env.sos_dict:
+                    env.logger.warning(f'Shared variable {rvars} does not exist.')
+                else:
+                    result['__shared__'][rvars] = copy.deepcopy(
+                        env.sos_dict[rvars])
             elif isinstance(rvars, Mapping):
                 result['__changed_vars__'] |= rvars.keys()
                 for var in rvars.keys():
-                    result['__shared__'][var] = copy.deepcopy(
-                        env.sos_dict[var])
+                    if var not in env.sos_dict:
+                        env.logger.warning(f'Shared variable {var} does not exist.')
+                    else:
+                        result['__shared__'][var] = copy.deepcopy(
+                            env.sos_dict[var])
             elif isinstance(rvars, Sequence):
                 for item in rvars:
                     if isinstance(item, str):
                         result['__changed_vars__'].add(item)
-                        result['__shared__'][item] = copy.deepcopy(
-                            env.sos_dict[item])
+                        if item not in env.sos_dict:
+                            env.logger.warning(f'Shared variable {item} does not exist.')
+                        else:
+                            result['__shared__'][item] = copy.deepcopy(
+                                env.sos_dict[item])
                     elif isinstance(item, Mapping):
                         result['__changed_vars__'] |= item.keys()
                         for var in item.keys():
-                            result['__shared__'][var] = copy.deepcopy(
-                                env.sos_dict[var])
+                            if item not in env.sos_dict:
+                                env.logger.warning(f'Shared variable {item} does not exist.')
+                            else:
+                                result['__shared__'][var] = copy.deepcopy(
+                                    env.sos_dict[var])
                     else:
                         raise ValueError(
                             f'Option shared should be a string, a mapping of expression, or a list of string or mappings. {rvars} provided')
