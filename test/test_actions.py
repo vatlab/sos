@@ -294,13 +294,13 @@ download: dest_dir='tmp', decompress=True
 ''')
         #start = time.time()
         wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf).run)
         self.assertTrue(os.path.isfile('tmp/pcre-8.41/pcre_get.c'))
         #self.assertGreater(time.time() - start, 3)
         # this will be fast
         #start = time.time()
         wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf).run)
         #self.assertLess(time.time() - start, 3)
         #
         # test decompress tar.gz, .zip and .gz files
