@@ -603,6 +603,7 @@ time.sleep(15)
             'sig_mode': 'force',
         }).run)
 
+    @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')
     def testLocalRuntimeMaxWalltime(self):
         '''Test server max_walltime option'''
         script = SoS_Script('''
