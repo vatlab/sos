@@ -16,8 +16,10 @@ from sos.utils import env
 # if the test is imported under sos/test, test interacive executor
 if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
     from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
+    test_interactive = True
 else:
     from sos.workflow_executor import Base_Executor
+    test_interactive = False
 
 
 class TestTarget(unittest.TestCase):
@@ -88,8 +90,9 @@ res = 3
 """)
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['res'], 1)
+        self.assertEqual(env.sos_dict['res'], 3 if test_interactive else 1)
         #
+        env.sos_dict.pop('res', None)
         script = SoS_Script(r"""
 parameter: res = 1
 
@@ -101,8 +104,9 @@ res = 3
 """)
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['res'], 2)
+        self.assertEqual(env.sos_dict['res'], 3 if test_interactive else 2)
         #
+        env.sos_dict.pop('res', None)
         script = SoS_Script(r"""
 parameter: res = 1
 parameter: a = 30
@@ -118,8 +122,9 @@ a = 5
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'], 3)
-        self.assertEqual(env.sos_dict['a'], 30)
+        self.assertEqual(env.sos_dict['a'], 5 if test_interactive else 30)
         # test multiple vars
+        env.sos_dict.pop('res', None)
         script = SoS_Script(r"""
 parameter: res = 1
 parameter: a = 30
@@ -135,6 +140,7 @@ a = 5
         self.assertEqual(env.sos_dict['a'], 5)
         #
         # test expression
+        env.sos_dict.pop('res', None)
         script = SoS_Script(r"""
 parameter: res = 1
 parameter: a = 30
@@ -149,6 +155,7 @@ a = 5
         self.assertEqual(env.sos_dict['res'], 9)
         self.assertEqual(env.sos_dict['c'], 5)
         # test mixed vars and mapping
+        env.sos_dict.pop('res', None)
         script = SoS_Script(r"""
 parameter: res = 1
 parameter: a = 30
@@ -353,7 +360,6 @@ run:
 
 [20]
 depends: sos_step('t1')
-task:
 run:
     touch 20.txt
 ''')
