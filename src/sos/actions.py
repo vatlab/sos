@@ -78,11 +78,11 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated', acceptable_args: 
                 from .docker.client import SoS_DockerClient
                 docker = SoS_DockerClient()
                 docker.pull(kwargs['docker_image'])
-            if env.config['run_mode'] == 'interactive':
-                for k, v in kwargs.items():
-                    if k in SOS_RUNTIME_OPTIONS and k not in SOS_ACTION_OPTIONS:
-                        env.logger.warning(
-                            f'Passing runtime option "{k}" to action is deprecated. Please use "task: {k}={v}" before action instead.')
+            #if env.config['run_mode'] == 'interactive':
+            #    for k, v in kwargs.items():
+            #        if k in SOS_RUNTIME_OPTIONS and k not in SOS_ACTION_OPTIONS:
+            #            env.logger.warning(
+            #                f'Passing runtime option "{k}" to action is deprecated. Please use "task: {k}={v}" before action instead.')
             if 'active' in kwargs:
                 if kwargs['active'] is False:
                     return None
@@ -513,6 +513,8 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
                 executor = Interactive_Executor(
                     wf, args=args, shared=shared, config=env.config)
                 res = executor.run(targets=targets)
+                if shared and 'shared' in res:
+                    env.sos_dict.quick_update(res['shared'])
             return res
 
         else:
