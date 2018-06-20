@@ -10,7 +10,12 @@ import unittest
 from sos.parser import SoS_Script
 from sos.targets import file_target
 from sos.utils import env
-from sos.workflow_executor import Base_Executor, ExecuteError
+from sos.workflow_executor import ExecuteError
+# if the test is imported under sos/test, test interacive executor
+if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
+    from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
+else:
+    from sos.workflow_executor import Base_Executor
 
 
 class TestNested(unittest.TestCase):
@@ -133,7 +138,8 @@ sos_run('a', shared=['executed', 'inputs'])
 ''')
         wf = script.workflow('c')
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['executed'], ['c', 'a_1', 'a_2', 'a_1', 'a_2'])
+        self.assertEqual(env.sos_dict['executed'], [
+                         'c', 'a_1', 'a_2', 'a_1', 'a_2'])
         #self.assertEqual(env.sos_dict['inputs'], [['a.txt'], ['a.txt'], ['a.txt.a1'], ['b.txt'], ['b.txt'], ['b.txt.a1']])
         for file in ('a.txt.a1', 'a.txt.a1.a2', 'b.txt.a1', 'b.txt.a1.a2'):
             file_target(file).remove('both')
@@ -156,7 +162,8 @@ sos_run('a:2', shared='executed')
 ''')
         wf = script.workflow('c')
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['executed'], ['c_0', 'c_1', 'a_2',  'a_2'])
+        self.assertEqual(env.sos_dict['executed'], [
+                         'c_0', 'c_1', 'a_2',  'a_2'])
         # allow specifying a single step
         # step will be looped
         script = SoS_Script('''
@@ -175,7 +182,8 @@ sos_run('a:2', shared='executed')
 ''')
         wf = script.workflow('c')
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['executed'], ['c_0', 'c_1', 'a_2', 'a_2'])
+        self.assertEqual(env.sos_dict['executed'], [
+                         'c_0', 'c_1', 'a_2', 'a_2'])
         #
         # recursive subworkflow not allowed
         script = SoS_Script('''
@@ -247,7 +255,8 @@ input: 'a.txt', 'b.txt', group_by='single'
 ''')
         wf = script.workflow('b')
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['executed'], ['b', 'a_3', 'a_1', 'a_3', 'a_1'])
+        self.assertEqual(env.sos_dict['executed'], [
+                         'b', 'a_3', 'a_1', 'a_3', 'a_1'])
         wf = script.workflow('d')
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['d', 'a_2', 'a_2'])
@@ -284,10 +293,12 @@ sos_run(wf, shared='executed')
 ''')
         wf = script.workflow()
         Base_Executor(wf, args=['--wf', 'b']).run()
-        self.assertEqual(env.sos_dict['executed'], ['default', 'b_1', 'b_2', 'b_3'])
+        self.assertEqual(env.sos_dict['executed'], [
+                         'default', 'b_1', 'b_2', 'b_3'])
         #
         Base_Executor(wf, args=['--wf', 'a']).run()
-        self.assertEqual(env.sos_dict['executed'], ['default', 'a_1', 'a_2', 'a_3'])
+        self.assertEqual(env.sos_dict['executed'], [
+                         'default', 'a_1', 'a_2', 'a_3'])
 
     def testIncludedNestedWorkFlow(self):
         '''Test the source option of sos_run'''
@@ -329,7 +340,8 @@ sos_run('A', shared='executed')
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['GLB'], 5)
         self.assertEqual(env.sos_dict['parB'], 10)
-        self.assertEqual(env.sos_dict['executed'], ['b_1', 't.A_1', 't.A_2', 't.A_1', 't.A_2'])
+        self.assertEqual(env.sos_dict['executed'], [
+                         'b_1', 't.A_1', 't.A_2', 't.A_1', 't.A_2'])
         #
         subprocess.call('sos remove -s', shell=True)
         for file in ('a.txt.a1', 'a.txt.a1.a2', 'b.txt.a1', 'b.txt.a1.a2'):
@@ -562,7 +574,8 @@ sos_run('mse')
 
     def testSearchPath(self):
         '''Test if any action should exit in five seconds in dryrun mode'''
-        sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
+        sos_config_file = os.path.join(
+            os.path.expanduser('~'), '.sos', 'config.yml')
         shutil.copy(sos_config_file, 'test.yml')
         #
         subprocess.call(

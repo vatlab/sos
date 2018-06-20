@@ -17,7 +17,8 @@ try:
 except subprocess.CalledProcessError:
     subprocess.call('sh build_test_docker.sh', shell=True)
     try:
-        subprocess.check_output('docker ps | grep test_sos', shell=True).decode()
+        subprocess.check_output(
+            'docker ps | grep test_sos', shell=True).decode()
     except subprocess.CalledProcessError:
         print('Failed to set up a docker machine with sos')
         has_docker = False
