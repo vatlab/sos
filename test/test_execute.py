@@ -19,8 +19,10 @@ from sos.workflow_executor import ExecuteError
 # if the test is imported under sos/test, test interacive executor
 if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
     from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
+    test_interactive = True
 else:
     from sos.workflow_executor import Base_Executor
+    test_interactive = False
 
 
 def multi_attempts(fn):
@@ -616,20 +618,6 @@ counter += 1
         self.assertEqual(env.sos_dict['counter'], 2)
         self.assertEqual(env.sos_dict['step'], ['a.txt.bak', 'b.txt.bak'])
 
-    def testReadOnlyStepVars(self):
-        '''Test if the step variables can be changed.'''
-        #
-        script = SoS_Script(r"""
-[1: shared={'test':'step_output'}]
-output: 'a.txt'
-
-[2]
-test.output=['ab.txt']
-
-""")
-        wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
-
     def testReadOnlyInputOutputVars(self):
         '''Test readonly input output vars'''
         script = SoS_Script(r"""
@@ -646,6 +634,9 @@ _output = ['b.txt']
 
     def testLocalNamespace(self):
         '''Test if steps are well separated.'''
+        # interctive mode behave differently
+        if test_interactive:
+            return
         self.touch('a.txt')
         script = SoS_Script(r"""
 [1]
@@ -1221,7 +1212,7 @@ sh:
   echo "something" > a_1
 
 [hg_2]
-    
+
 [star: provides = "a_2"]
 depends: sos_step('hg')
 sh:
@@ -1264,6 +1255,7 @@ depends: "a_2"
         self.assertTrue(os.path.isfile('a_2'))
         with open('a_1') as a1, open('a_2') as a2:
             self.assertEqual(a1.read(), a2.read())
-        
+
+
 if __name__ == '__main__':
     unittest.main()
