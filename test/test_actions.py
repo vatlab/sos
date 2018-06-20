@@ -14,7 +14,6 @@ from sos.eval import Undetermined
 from sos.parser import SoS_Script
 from sos.targets import file_target
 from sos.utils import env
-from sos.workflow_executor import ExecuteError
 # if the test is imported under sos/test, test interacive executor
 if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
     from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
@@ -115,7 +114,7 @@ get_output('catmouse')
 """)
         wf = script.workflow()
         # should fail in dryrun mode
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf).run)
         #
         #
         script = SoS_Script(r"""
@@ -124,7 +123,7 @@ ret = get_output('cat -h')
 """)
         wf = script.workflow()
         # this should give a warning and return false
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf).run)
 
     def testFailIf(self):
         '''Test action fail if'''
@@ -136,7 +135,7 @@ fail_if(len(input) == 1)
 """)
         wf = script.workflow()
         # should fail in dryrun mode
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf).run)
         script = SoS_Script(r"""
 [0]
 input: 'a.txt', 'b.txt'
@@ -153,7 +152,7 @@ warn_if(input is None, 'Expect to see a warning message')
         wf = script.workflow()
         # should see a warning message.
         Base_Executor(wf).run(mode='dryrun')
-        #self.assertRaises(ExecuteError, Base_Executor(wf).run)
+        #self.assertRaises(Exception, Base_Executor(wf).run)
         script = SoS_Script(r"""
 [0]
 input: 'a.txt', 'b.txt'
@@ -196,7 +195,7 @@ run:
 echo 'Echo
 ''')
         wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf).run)
 
     def testRunWithShebang(self):
         script = SoS_Script(r'''

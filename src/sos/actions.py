@@ -346,7 +346,7 @@ class SoS_ExecuteScript:
                     else:
                         # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
                         from .utils import pexpect_run
-                        ret = pexpect_run(cmd)
+                        ret = pexpect_run(cmd.strip())
                 elif '__std_out__' in env.sos_dict and '__std_err__' in env.sos_dict:
                     if 'stdout' in kwargs or 'stderr' in kwargs:
                         if 'stdout' in kwargs:
@@ -887,8 +887,13 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
     # for su, url in zip(succ, urls):
     #    if not su:
     #        env.logger.warning('Failed to download {}'.format(url))
-    if False in [x[0] for x in succ]:
-        raise RuntimeError('Not all files have been downloaded')
+    failed = [y for x, y in zip(succ, urls) if not x[0]]
+    if failed:
+        if len(urls) == 1:
+            raise RuntimeError('Failed to download {urls[0]}')
+        else:
+            raise RuntimeError(
+                f'Failed to download {failed[0]} ({len(failed)} out of {len(urls)})')
     return 0
 
 
