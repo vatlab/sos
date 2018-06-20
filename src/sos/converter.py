@@ -5,6 +5,7 @@
 
 import argparse
 import os
+import time
 import sys
 from io import StringIO
 from textwrap import dedent
@@ -167,7 +168,14 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
     }
     html_content = template.render(context)
     if html_file is None:
-        sys.stdout.write(html_content)
+        if args and args.view:
+            # write to a temp file 
+            import tempfile
+            html_file = tempfile.NamedTemporaryFile(delete=False, suffix='.html').name
+            with open(html_file, 'w') as out:
+                out.write(html_content)
+        else:
+            sys.stdout.write(html_content)
     else:
         with open(html_file, 'w') as out:
             out.write(html_content)
@@ -178,6 +186,8 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
         url = f'file://{os.path.abspath(html_file)}'
         env.logger.info(f'Viewing {url} in a browser')
         webbrowser.open(url, new=2)
+        # in case the html file is temporary, give the browser sometime to load it
+        time.sleep(2)
 
 
 def extract_workflow(notebook_file):
