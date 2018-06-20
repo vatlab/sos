@@ -72,32 +72,40 @@ if 'inputs' not in locals():
 [a_1: shared=['executed', 'inputs']]
 executed.append(step_name)
 inputs.append(_input)
+
 [a_2: shared=['executed', 'inputs']]
 executed.append(step_name)
 inputs.append(_input)
+
 [a_3: shared=['executed', 'inputs']]
 executed.append(step_name)
 inputs.append(_input)
+
 [a_4: shared=['executed', 'inputs']]
 executed.append(step_name)
 output: 'a.done'
 inputs.append(_input)
 run: expand=True
-    touch {_output}
+  touch {_output}
+
 [b_1: shared=['executed', 'inputs']]
 executed.append(step_name)
 input: 'b.begin'
 inputs.append(_input)
+
 [b_2: shared=['executed', 'inputs']]
 executed.append(step_name)
 inputs.append(_input)
+
 [b_3: shared=['executed', 'inputs']]
 executed.append(step_name)
 inputs.append(_input)
+
 [b_4: shared=['executed', 'inputs']]
 executed.append(step_name)
 output: 'b.txt'
 inputs.append(_input)
+
 [c: shared=['executed', 'inputs']]
 executed.append(step_name)
 input: 'a.txt'
@@ -111,6 +119,7 @@ sos_run('a+b', shared=['executed', 'inputs'])
         # order of execution is not guaranteed
         self.assertEqual(sorted(env.sos_dict['executed']), sorted(['c', 'a_1', 'a_2', 'a_3', 'a_4',
                                                                    'b_1', 'b_2', 'b_3', 'b_4']))
+        env.sos_dict.pop('executed', None)
         # step will be looped
         self.touch(['a.txt', 'b.txt'])
         script = SoS_Script('''
@@ -125,12 +134,14 @@ output: _input[0] + '.a1'
 inputs.append(_input)
 run: expand=True
     touch {_output}
+
 [a_2:shared=['executed', 'inputs']]
 executed.append(step_name)
 output: _input[0] + '.a2'
 inputs.append(_input)
 run: expand=True
     touch {_output}
+
 [c:shared=['executed', 'inputs']]
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
@@ -145,6 +156,7 @@ sos_run('a', shared=['executed', 'inputs'])
         for file in ('a.txt.a1', 'a.txt.a1.a2', 'b.txt.a1', 'b.txt.a1.a2'):
             file_target(file).remove('both')
         #
+        env.sos_dict.pop('executed', None)
         # allow specifying a single step
         # step will be looped
         script = SoS_Script('''
@@ -165,6 +177,7 @@ sos_run('a:2', shared='executed')
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], [
                          'c_0', 'c_1', 'a_2',  'a_2'])
+        env.sos_dict.pop('executed', None)
         # allow specifying a single step
         # step will be looped
         script = SoS_Script('''
@@ -186,6 +199,7 @@ sos_run('a:2', shared='executed')
         self.assertEqual(env.sos_dict['executed'], [
                          'c_0', 'c_1', 'a_2', 'a_2'])
         #
+        env.sos_dict.pop('executed', None)
         # recursive subworkflow not allowed
         script = SoS_Script('''
 if 'executed' not in locals():
@@ -204,6 +218,7 @@ sos_run('a_2+c', shared='executed')
         wf = script.workflow('c')
         self.assertRaises(Exception, Base_Executor(wf).run)
         #
+        env.sos_dict.pop('executed', None)
         # nested subworkflow is allowed
         script = SoS_Script('''
 if 'executed' not in locals():
@@ -232,6 +247,7 @@ sos_run('a+b', shared='executed')
                                                     'b_1', 'b_2', 'a_1', 'a_2'])
         #
         #
+        env.sos_dict.pop('executed', None)
         # nested subworkflow with step option and others
         script = SoS_Script('''
 if 'executed' not in locals():
@@ -258,9 +274,11 @@ input: 'a.txt', 'b.txt', group_by='single'
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], [
                          'b', 'a_3', 'a_1', 'a_3', 'a_1'])
+        env.sos_dict.pop('executed', None)
         wf = script.workflow('d')
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['d', 'a_2', 'a_2'])
+        env.sos_dict.pop('executed', None)
         wf = script.workflow('e2')
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['e2_2'])
@@ -297,53 +315,53 @@ sos_run(wf, shared='executed')
         self.assertEqual(env.sos_dict['executed'], [
                          'default', 'b_1', 'b_2', 'b_3'])
         #
-        env.sos_dict.pop('executed')
+        env.sos_dict.pop('executed', None)
         Base_Executor(wf, args=['--wf', 'a']).run()
         self.assertEqual(env.sos_dict['executed'], [
                          'default', 'a_1', 'a_2', 'a_3'])
 
-#     def testIncludedNestedWorkFlow(self):
-#         '''Test the source option of sos_run'''
-#         # nested subworkflow with step option and others
-#         self.touch(['a.txt', 'b.txt'])
-#         #
-#         with open('inc.sos', 'w') as sos:
-#             sos.write('''
-# # test sos script
-# 
-# # global definition
-# GLB = 5
-# parameter: parB = 10
-# 
-# [A_1: shared='executed']
-# executed.append('t.' + step_name)
-# output: _input[0] + '.a1'
-# run: expand=True
-#     touch {_output}
-# 
-# [A_2: shared='executed']
-# executed.append('t.' + step_name)
-# output: _input[0] + '.a2'
-# run: expand=True
-#     touch {_output}
-# ''')
-#         script = SoS_Script('''
-# %from inc include *
-# 
-# if 'executed' not in locals():
-#     executed = []
-# 
-# [b_1: skip=False, shared='executed']
-# executed.append(step_name)
-# input: 'a.txt', 'b.txt', group_by='single'
-# sos_run('A', shared='executed')
-# ''')
-#         wf = script.workflow('b')
-#         Base_Executor(wf).run()
-#         self.assertEqual(env.sos_dict['GLB'], 5)
-#         self.assertEqual(env.sos_dict['parB'], 10)
-#         self.assertEqual(env.sos_dict['executed'], [
-#                          'b_1', 't.A_1', 't.A_2', 't.A_1', 't.A_2'])
+    def testIncludedNestedWorkFlow(self):
+        '''Test the source option of sos_run'''
+        # nested subworkflow with step option and others
+        self.touch(['a.txt', 'b.txt'])
+        #
+        with open('inc.sos', 'w') as sos:
+            sos.write('''
+# test sos script
+
+# global definition
+GLB = 5
+parameter: parB = 10
+
+[A_1: shared='executed']
+executed.append('t.' + step_name)
+output: _input[0] + '.a1'
+run: expand=True
+    touch {_output}
+
+[A_2: shared='executed']
+executed.append('t.' + step_name)
+output: _input[0] + '.a2'
+run: expand=True
+    touch {_output}
+''')
+        script = SoS_Script('''
+%from inc include *
+
+if 'executed' not in locals():
+    executed = []
+
+[b_1: skip=False, shared='executed']
+executed.append(step_name)
+input: 'a.txt', 'b.txt', group_by='single'
+sos_run('A', shared='executed')
+''')
+        wf = script.workflow('b')
+        Base_Executor(wf).run()
+        self.assertEqual(env.sos_dict['GLB'], 5)
+        self.assertEqual(env.sos_dict['parB'], 10)
+        self.assertEqual(env.sos_dict['executed'], [
+                         'b_1', 't.A_1', 't.A_2', 't.A_1', 't.A_2'])
 #         #
 #         subprocess.call('sos remove -s', shell=True)
 #         for file in ('a.txt.a1', 'a.txt.a1.a2', 'b.txt.a1', 'b.txt.a1.a2'):
@@ -612,6 +630,7 @@ print('hay, I am crazy')
         '''Test nested runtime option for work directory'''
         if os.path.isdir('tmp'):
             shutil.rmtree('tmp')
+        env.config['wait_for_task'] = True
         script = SoS_Script('''
 [step]
 task: workdir='tmp'

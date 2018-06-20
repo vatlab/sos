@@ -1037,11 +1037,13 @@ executed.append(step_name)
         self.assertEqual(env.sos_dict['a'], 1)
         self.assertEqual(env.sos_dict['input_b1'].targets(), ['out_a_4'])
         #
+        env.sos_dict.pop('executed', None)
         wf = script.workflow('a: 1-2 + a:4 + b:3-')
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['executed'], ['a_1', 'a_2', 'a_4',
                                                     'b_3', 'b_4'])
         #
+        env.sos_dict.pop('executed', None)
         wf = script.workflow('a+c+d')
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['executed'], [

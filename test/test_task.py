@@ -19,8 +19,10 @@ from sos.utils import env
 # if the test is imported under sos/test, test interacive executor
 if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
     from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
+    test_interactive = True
 else:
     from sos.workflow_executor import Base_Executor
+    test_interactive = False
 
 has_docker = sys.platform != 'win32'
 try:
@@ -110,6 +112,8 @@ print('I am {}, done'.format(_index))
         '''Test concurrency option for runtime environment'''
         env.max_jobs = 5
         env.config['sig_mode'] = 'force'
+        if test_interactive:
+            env.config['wait_for_task'] = True
         script = SoS_Script(r"""
 [0]
 
@@ -147,6 +151,8 @@ run:
     temp_cmd
 """)
         wf = script.workflow()
+        if test_interactive:
+            env.config['wait_for_task'] = True
         env.config['sig_mode'] = 'force'
         #self.assertRaises(Exception, Base_Executor(wf).run)
         #
@@ -276,6 +282,7 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')
     def testKillAndPurge(self):
         '''Test no wait'''
         subprocess.call(['sos', 'purge'])
@@ -329,7 +336,7 @@ run: expand=True
         subprocess.call(['sos', 'purge', '--age=-20s'])
         # purge by all is not tested because it is dangerous
 
-    @unittest.skipIf('TRAVIS' in os.environ, 'Skip test because of slow working environment in travis test')
+    @unittest.skipIf('TRAVIS' in os.environ or test_interactive, 'Skip test because of slow working environment in travis test')
     def testNoWait(self):
         '''Test no wait'''
         script = SoS_Script(r'''
@@ -389,6 +396,8 @@ run: expand=True
     touch a{a}.txt
 ''')
         wf = script.workflow()
+        if test_interactive:
+            env.config['wait_for_task'] = True
         Base_Executor(wf, config={'sig_mode': 'force'}).run()
         self.assertTrue(os.path.isfile("a100.txt"))
         # sequence of var or mapping
@@ -409,6 +418,7 @@ run: expand=True
         Base_Executor(wf, config={'sig_mode': 'force'}).run()
         self.assertTrue(os.path.isfile("a100_20.txt"))
 
+    @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')
     def testTrunkSizeOption(self):
         '''Test option trunk_size'''
         with open('test_trunksize.sos', 'w') as tt:
@@ -443,6 +453,7 @@ run: expand=True
             file_target(f'{i}.txt').remove('both')
         file_target('test_trunksize.sos').remove()
 
+    @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')
     def testTrunkWorkersOption(self):
         '''Test option trunk_workers'''
         with open('test_trunkworker.sos', 'w') as tt:
@@ -477,6 +488,7 @@ run: expand=True
             file_target('{}.txt'.format(i)).remove('both')
         file_target('test_trunkworker.sos').remove()
 
+    @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')
     def testTaskTags(self):
         '''Test option tags of tasks'''
         import random
@@ -556,6 +568,7 @@ print('a')
             'sig_mode': 'force',
         }).run)
 
+    @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')
     def testLocalMaxMem(self):
         '''Test server restriction max_mem'''
         script = SoS_Script('''
@@ -572,7 +585,7 @@ print('a')
             'sig_mode': 'force',
         }).run)
 
-    @unittest.skipIf(not has_docker, "Docker container not usable")
+    @unittest.skipIf(not has_docker or test_interactive, "Docker container not usable")
     def testRuntimeMaxWalltime(self):
         '''Test server max_walltime option'''
         script = SoS_Script('''
@@ -590,6 +603,7 @@ time.sleep(15)
             'sig_mode': 'force',
         }).run)
 
+    @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')
     def testLocalRuntimeMaxWalltime(self):
         '''Test server max_walltime option'''
         script = SoS_Script('''
@@ -624,6 +638,7 @@ print('a')
             'sig_mode': 'force',
         }).run)
 
+    @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')
     def testLocalMaxCores(self):
         '''Test server restriction max_cores'''
         script = SoS_Script('''
