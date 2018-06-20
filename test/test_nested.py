@@ -630,6 +630,7 @@ print('hay, I am crazy')
         '''Test nested runtime option for work directory'''
         if os.path.isdir('tmp'):
             shutil.rmtree('tmp')
+        env.config['wait_for_task'] = True
         script = SoS_Script('''
 [step]
 task: workdir='tmp'
