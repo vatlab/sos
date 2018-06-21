@@ -1396,6 +1396,19 @@ class Base_Step_Executor:
                 env.sos_dict.set('_input', copy.deepcopy(g))
                 self.log('_input')
                 env.sos_dict.set('_index', idx)
+
+                # in interactive mode, because sos_dict are always shared
+                # execution of a substep, especially when it calls a nested
+                # workflow, would change step_name, __step_context__ etc, and
+                # we will have to reset these variables to make sure the next
+                # substep would execute normally. Batch mode is immune to this
+                # problem because nested workflows are executed in their own
+                # process/context etc
+                if env.config['run_mode'] == 'interactive':
+                    env.sos_dict.set('step_name', self.step.step_name())
+                    env.sos_dict.set('step_id', self.step.md5)
+                    # used by nested workflow
+                    env.sos_dict.set('__step_context__', self.step.context)
                 #
                 pre_statement = []
                 if not any(st[0] == ':' and st[1] == 'output' for st in self.step.statements[input_statement_idx:]) and \
