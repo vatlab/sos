@@ -1212,8 +1212,8 @@ class Base_Step_Executor:
                     elif isinstance(item, Mapping):
                         result['__changed_vars__'] |= item.keys()
                         for var in item.keys():
-                            if item not in env.sos_dict:
-                                env.logger.warning(f'Shared variable {item} does not exist.')
+                            if var not in env.sos_dict:
+                                env.logger.warning(f'Shared variable {var} does not exist.')
                             else:
                                 result['__shared__'][var] = copy.deepcopy(
                                     env.sos_dict[var])
