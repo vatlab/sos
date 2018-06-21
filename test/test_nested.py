@@ -366,6 +366,8 @@ sos_run('A', shared='executed')
         subprocess.call('sos remove -s', shell=True)
         for file in ('a.txt.a1', 'a.txt.a1.a2', 'b.txt.a1', 'b.txt.a1.a2'):
             file_target(file).remove('both')
+        #
+        env.sos_dict.pop('executed', None)
         script = SoS_Script('''
 %include inc as k
 
