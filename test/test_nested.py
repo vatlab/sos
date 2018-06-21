@@ -362,29 +362,29 @@ sos_run('A', shared='executed')
         self.assertEqual(env.sos_dict['parB'], 10)
         self.assertEqual(env.sos_dict['executed'], [
                          'b_1', 't.A_1', 't.A_2', 't.A_1', 't.A_2'])
-#         #
-#         subprocess.call('sos remove -s', shell=True)
-#         for file in ('a.txt.a1', 'a.txt.a1.a2', 'b.txt.a1', 'b.txt.a1.a2'):
-#             file_target(file).remove('both')
-#         script = SoS_Script('''
-# %include inc as k
-# 
-# if 'executed' not in locals():
-#     executed = []
-# 
-# [b_1: skip=False, shared='executed']
-# executed.append('g.' + step_name)
-# input: 'a.txt', 'b.txt', group_by='single'
-# sos_run('k.A', shared='executed')
-# ''')
-#         wf = script.workflow('b')
-#         Base_Executor(wf).run()
-#         self.assertEqual(env.sos_dict['k'].GLB, 5)
-#         self.assertEqual(env.sos_dict['k'].parB, 10)
-#         self.assertEqual(env.sos_dict['executed'], [
-#                          'g.b_1', 't.k.A_1', 't.k.A_2', 't.k.A_1', 't.k.A_2'])
-#         #
-#         os.remove('inc.sos')
+        #
+        subprocess.call('sos remove -s', shell=True)
+        for file in ('a.txt.a1', 'a.txt.a1.a2', 'b.txt.a1', 'b.txt.a1.a2'):
+            file_target(file).remove('both')
+        script = SoS_Script('''
+%include inc as k
+
+if 'executed' not in locals():
+    executed = []
+
+[b_1: skip=False, shared='executed']
+executed.append('g.' + step_name)
+input: 'a.txt', 'b.txt', group_by='single'
+sos_run('k.A', shared='executed')
+''')
+        wf = script.workflow('b')
+        Base_Executor(wf).run()
+        self.assertEqual(env.sos_dict['k'].GLB, 5)
+        self.assertEqual(env.sos_dict['k'].parB, 10)
+        self.assertEqual(env.sos_dict['executed'], [
+                         'g.b_1', 't.k.A_1', 't.k.A_2', 't.k.A_1', 't.k.A_2'])
+        #
+        os.remove('inc.sos')
 
     def testSoSRun(self):
         '''Test action sos_run with keyword parameters'''
