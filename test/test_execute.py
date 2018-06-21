@@ -617,20 +617,6 @@ counter += 1
         self.assertEqual(env.sos_dict['counter'], 2)
         self.assertEqual(env.sos_dict['step'], ['a.txt.bak', 'b.txt.bak'])
 
-    def testReadOnlyInputOutputVars(self):
-        '''Test readonly input output vars'''
-        script = SoS_Script(r"""
-[1: shared='test']
-output: 'a.txt'
-_output = ['b.txt']
-
-""")
-        wf = script.workflow()
-        env.config['run_mode'] = 'dryrun'
-        # I would like to disallow setting _output directly, but this is
-        # not the case now.
-        self.assertRaises(Exception, Base_Executor(wf).run, mode="dryrun")
-
     def testLocalNamespace(self):
         '''Test if steps are well separated.'''
         # interctive mode behave differently
