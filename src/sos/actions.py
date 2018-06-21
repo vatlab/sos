@@ -508,6 +508,7 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
                 else:
                     res = None
                 p.join()
+                return res
             else:
                 from sos_notebook.workflow_executor import Interactive_Executor
                 executor = Interactive_Executor(
@@ -515,8 +516,8 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
                 res = executor.run(targets=targets)
                 if shared and 'shared' in res:
                     env.sos_dict.quick_update(res['shared'])
-            return res
-
+                # in interactive mode, we just return the __last_res__
+                return res.get('__last_res__', None)
         else:
             # tell the master process to receive a workflow
             env.__pipe__.send(f'workflow {uuid.uuid4()}')
