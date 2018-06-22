@@ -10,7 +10,7 @@
       <link href="https://use.fontawesome.com/releases/v5.0.6/css/all.css" rel="stylesheet" type="text/css">
       <title>{{workflow_name}}</title>
       <style type="text/css">
-         {% include "workflow_report.css" %}
+         {% include "sos_report.css" %}
       </style>
    </head>
    <body>
