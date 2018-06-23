@@ -120,16 +120,26 @@ def get_script_to_html_parser():
     parser = argparse.ArgumentParser('sos convert FILE.sos FILE.html (or --to html)',
                                      description='''Convert sos file to html format with syntax highlighting,
         and save the output either to a HTML file or view it in a broaser.''')
-    parser.add_argument('--raw', help='''URL to the raw sos file, which will be linked
+    parser.add_argument('--url', help='''URL to the raw sos file, which will be linked
         to filenames in the HTML output''')
+    parser.add_argument('--raw', help=argparse.SUPPRESS)
     parser.add_argument('--style', choices=codemirror_themes,
                         help="Code mirror themes for the output",  default='default')
     parser.add_argument('--linenos', action='store_true',
                         help=argparse.SUPPRESS)
-    parser.add_argument('-v', '--view', action='store_true',
-                        help='''Open the output file in a broswer. In case no html file is specified,
-        this option will display the HTML file in a browser, instead of writing its
-        content to standard output.''')
+    parser.add_argument('--template',
+                        help='''Name or path to an alternative template for
+            converting sos script to HTML.  The template can use variables
+            "filename" for full name of the script as provided, "basename"
+            as the name part of the filename, "script" for the content of
+            the script, "sov_version" for version of sos, "linenos" as a
+            flag to whether or not line numbers should be displayed, "url"
+            as an optional URL for the script, and "theme" as provided by
+            option --style.''')
+    parser.add_argument('--view', action='store_true',
+                        help='''Open the output file in a broswer. In case
+        no html file is specified, this option will display the HTML file in
+        a browser, instead of writing its content to standard output.''')
     return parser
 
 
@@ -146,17 +156,21 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
         loader=PackageLoader('sos', 'templates'),
         autoescape=select_autoescape(['html', 'xml'])
     )
-    template = environment.get_template('html_report.tpl')
+    template = environment.get_template(
+        args.template if args and hasattr(args, 'template') else 'sos_script.tpl')
 
     with open(script_file) as script:
         content = script.read()
+    # for backward compatibility
+    if args and hasattr(args, 'raw'):
+        args.url = args.raw
     context = {
         'filename': script_file,
         'basename': os.path.basename(script_file),
         'script': content,
         'sos_version': __version__,
         'linenos': args.linenos if args and hasattr(args, 'linenos') else True,
-        'raw': args.raw if args and hasattr(args, 'raw') else '',
+        'url': args.url if args and hasattr(args, 'url') else '',
         'theme': args.style if args and hasattr(args, 'style') else 'default',
     }
     html_content = template.render(context)

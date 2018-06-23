@@ -15,8 +15,8 @@
    </head>
    <body>
       <h2 class='mt-0'>{{basename}}
-         {% if raw %}
-         <a href="{{raw}}"><i class="fas fa-external-link-alt"></i></a>
+         {% if url %}
+         <a href="{{url}}"><i class="fas fa-external-link-alt"></i></a>
          {% endif %}
       </h2>
       <div class="file">
