@@ -49,9 +49,12 @@ other kernels. Please refer to [the installation page of sos website](https://va
 
 ### Change Log of SoS and SoS Notebook
 
+
+SoS 0.9.15.1
+* [sos-notebook#89](https://github.com/vatlab/sos-notebook/issues/89): Added templates to highlight source code using codemirror, with optional auto-generated table of contents.
+
 SoS 0.9.14.10
 * [sos#983](https://github.com/vatlab/SoS/issues/983): Allow depending on an entire process-oriented workflow using a `sos_step()` target that matches multiple steps.
-
 
 SoS 0.9.14.3:
 * [sos#975](https://github.com/vatlab/SoS/issues/975): Add option `-p` to generate a summary report after the completion of workflow.
