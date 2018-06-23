@@ -102,7 +102,7 @@ class TestParser(unittest.TestCase):
                           '#fileformat=SOS1.0beta')
         #
         # parse a larger script with gormat 1.1
-        script = SoS_Script(section1_sos)
+        SoS_Script(section1_sos)
         # not the default value of 1.0
         #self.assertEqual(script.format_version, '1.1')
 
@@ -143,12 +143,12 @@ class TestParser(unittest.TestCase):
     def testTypeHint(self):
         '''We should be able to differentiate type hint and sos action
         '''
-        script = SoS_Script('''a : list = 5''')
-        script = SoS_Script('''a : list''')
+        SoS_Script('''a : list = 5''')
+        SoS_Script('''a : list''')
         # action
-        script = SoS_Script('''a : input='filename' ''')
+        SoS_Script('''a : input='filename' ''')
         # action
-        script = SoS_Script('''a : expand='${ }' ''')
+        SoS_Script('''a : expand='${ }' ''')
 
     def testSkipStep(self):
         '''Test the skip option to skip certain steps'''
@@ -749,7 +749,7 @@ python3:
     if 1:
         logger.warning('Another warning')
 ''')
-        wf = script.workflow()
+        script.workflow()
         # with section head in the script,
         # this will not work even if the embedded
         # python script is perfectly valid.
@@ -770,7 +770,7 @@ with open('something') as e:
 R:
 some::function(param)
 ''')
-        wf = script.workflow()
+        script.workflow()
         #
         # script with first-line indent
         #
@@ -781,7 +781,7 @@ sh:
 
 sh('echo "b"')
 ''')
-        wf = script.workflow()
+        script.workflow()
 
     def testInput(self):
         '''Test input directive'''
@@ -1261,23 +1261,33 @@ run:
         # extract workflow from ipynb
         wf = extract_workflow('sample_workflow.ipynb')
         self.assertFalse('this is a test workflow' in wf)
-        self.assertEqual(wf.count('this comment will be included but not shown in help'), 1)
-        self.assertTrue(wf.count('this comment will become the comment for parameter b'), 1)
-        self.assertTrue(wf.count('this comment will become the comment for parameter d'), 1)
+        self.assertEqual(
+            wf.count('this comment will be included but not shown in help'), 1)
+        self.assertTrue(
+            wf.count('this comment will become the comment for parameter b'), 1)
+        self.assertTrue(
+            wf.count('this comment will become the comment for parameter d'), 1)
         self.assertFalse('this is a cell with another kernel' in wf)
-        self.assertFalse('this comment will not be included in exported workflow' in wf)
+        self.assertFalse(
+            'this comment will not be included in exported workflow' in wf)
 
     def testHelpMessage(self):
         '''Test help message from ipynb notebook'''
-        msg = subprocess.check_output('sos run sample_workflow.ipynb -h', shell=True).decode()
-        self.assertFalse('this comment will be included but not shown in help' in msg)
-        self.assertTrue(msg.count('this comment will become the comment for parameter b'), 1)
-        self.assertTrue(msg.count('this comment will become the comment for parameter d'), 1)
+        msg = subprocess.check_output(
+            'sos run sample_workflow.ipynb -h', shell=True).decode()
+        self.assertFalse(
+            'this comment will be included but not shown in help' in msg)
+        self.assertTrue(
+            msg.count('this comment will become the comment for parameter b'), 1)
+        self.assertTrue(
+            msg.count('this comment will become the comment for parameter d'), 1)
         self.assertTrue(msg.count('--c 3 (as int)'), 1)
-        self.assertTrue(msg.count('this is a section comment, will be displayed'), 1)
+        self.assertTrue(
+            msg.count('this is a section comment, will be displayed'), 1)
         self.assertFalse('this is a test workflow' in msg)
         self.assertFalse('this is a cell with another kernel' in msg)
-        self.assertFalse('this comment will not be included in exported workflow' in msg)
+        self.assertFalse(
+            'this comment will not be included in exported workflow' in msg)
 
     def testHelpOnMultiWorkflow(self):
         '''Test help message of sos file (#985)'''
@@ -1287,12 +1297,14 @@ run:
 [workflow_a_20]
 [default]
 ''')
-        msg = subprocess.check_output('sos run test_msg.sos -h', shell=True).decode()
+        msg = subprocess.check_output(
+            'sos run test_msg.sos -h', shell=True).decode()
         self.assertTrue('workflow_a' in msg)
         self.assertTrue('workflow_b' in msg)
         # when introducing sections
         self.assertTrue('workflow_a_10, workflow_b' in msg)
         self.assertTrue('default' in msg)
+
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)

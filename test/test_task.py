@@ -502,7 +502,7 @@ sh: expand=True
   echo {} {{i}}
 '''.format(tag, tag))
         wf = SoS_Script(filename='test_tags.sos').workflow()
-        res = Base_Executor(wf, config={
+        Base_Executor(wf, config={
             'wait_for_task': False,
             'sig_mode': 'force',
             'script': 'test_trunkworker.sos',
@@ -532,7 +532,7 @@ sh: expand=True
   echo {} {{i}}
 '''.format(tag1, tag2, tag1))
         wf = SoS_Script(filename='test_tags.sos').workflow()
-        res = Base_Executor(wf, config={
+        Base_Executor(wf, config={
             'wait_for_task': False,
             'sig_mode': 'force',
             'script': 'test_trunkworker.sos',

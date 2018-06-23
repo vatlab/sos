@@ -59,7 +59,7 @@ class WorkflowSig(object):
             for id, values in self.data['workflow'].items():
                 for val in values:
                     workflows[id].update(eval(val))
-            for k, v in workflows.items():
+            for v in workflows.values():
                 self.convert_time(v)
                 if 'dag' in v:
                     try:
@@ -79,7 +79,7 @@ class WorkflowSig(object):
         try:
             # there should be only one task for each id
             tasks = {id: eval(res[0]) for id, res in self.data['task'].items()}
-            for key, val in tasks.items():
+            for val in tasks.values():
                 self.convert_time(val)
                 if 'peak_cpu' in val:
                     val['peak_cpu_str'] = f'{val["peak_cpu"]:.1f}%'
@@ -148,12 +148,12 @@ def render_report(output_file, workflow_id):
     start_time = context['workflows'][context['master_id']]['start_time']
     total_duration = context['workflows'][context['master_id']
                                           ]['end_time'] - start_time
-    for wf, info in context['workflows'].items():
+    for info in context['workflows'].values():
         calc_timeline(info, start_time, total_duration)
     for steps in context['steps'].values():
         for step in steps:
             calc_timeline(step, start_time, total_duration)
-    for task, info in context['tasks'].items():
+    for info in context['tasks'].values():
         calc_timeline(info, start_time, total_duration)
     with open(output_file, 'w') as wo:
         wo.write(template.render(context))

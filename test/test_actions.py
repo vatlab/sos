@@ -10,7 +10,6 @@ import socket
 import sys
 import unittest
 
-from sos.eval import Undetermined
 from sos.parser import SoS_Script
 from sos.targets import file_target
 from sos.utils import env

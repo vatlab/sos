@@ -3,18 +3,15 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
-import cProfile
 import os
 import socket
 import sys
-import textwrap
-import timeit
 import unittest
 
-from sos.eval import SoS_eval, Undetermined, accessed_vars, on_demand_options
+from sos.eval import accessed_vars, on_demand_options
 from sos.parser import SoS_Script
 from sos.pattern import expand_pattern, extract_pattern
-from sos.targets import executable, remote, sos_targets
+from sos.targets import executable, sos_targets
 # these functions are normally not available but can be imported
 # using their names for testing purposes
 from sos.utils import WorkflowDict, env, logger, stable_repr

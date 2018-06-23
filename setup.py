@@ -3,10 +3,7 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
-import os
-import shutil
 import sys
-from distutils import log
 
 from setuptools import find_packages, setup
 from setuptools.command.bdist_egg import bdist_egg
