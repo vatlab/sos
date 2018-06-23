@@ -5,7 +5,7 @@
 
 import ast
 import sys
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, Optional, Set
 
 from .utils import env, text_repr
 

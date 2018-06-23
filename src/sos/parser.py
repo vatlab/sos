@@ -24,7 +24,7 @@ from .syntax import (INDENTED, SOS_AS, SOS_CELL, SOS_DIRECTIVE, SOS_DIRECTIVES,
                      SOS_MAGIC, SOS_SECTION_HEADER, SOS_SECTION_NAME,
                      SOS_SECTION_OPTION, SOS_STRU, SOS_SUBWORKFLOW)
 from .targets import file_target, path, paths, sos_targets, textMD5
-from .utils import Error, env, locate_script, text_repr, format_par, short_repr
+from .utils import Error, env, locate_script, text_repr, format_par
 
 __all__ = ['SoS_Script']
 
@@ -207,7 +207,8 @@ class SoS_Step:
                 if alias and a:
                     names.append(a)
                 else:
-                    names.append(f'{n}_{int(i)}' if isinstance(i, str) and i.isdigit() else n)
+                    names.append(f'{n}_{int(i)}' if isinstance(
+                        i, str) and i.isdigit() else n)
             return ', '.join(names)
         else:
             if alias and self.alias:

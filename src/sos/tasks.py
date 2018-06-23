@@ -719,7 +719,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
     # when testing. if the timestamp is 0, the file does not exist originally, it should
     # still does not exist. Otherwise the file should exist and has the same timestamp
     if hint and hint['status'] not in ('pending', 'running') and \
-        all((os.path.isfile(f) and os.stat(f).st_mtime == v) if v else (not os.path.isfile(f)) for f, v in hint['files'].items()):
+            all((os.path.isfile(f) and os.stat(f).st_mtime == v) if v else (not os.path.isfile(f)) for f, v in hint['files'].items()):
         return {}
 
     # status of the job, please refer to https://github.com/vatlab/SOS/issues/529
@@ -760,8 +760,9 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                 res = pickle.load(result)
             status_files = {task_file: os.stat(task_file).st_mtime,
                             res_file: os.stat(res_file).st_mtime,
-                            pulse_file: os.stat(pulse_file).st_mtime if os.path.isfile(pulse_file) else 0
-                        }
+                            pulse_file: os.stat(pulse_file).st_mtime if os.path.isfile(
+                                pulse_file) else 0
+                            }
 
             if ('ret_code' in res and res['ret_code'] == 0) or ('succ' in res and res['succ'] == 0):
                 for var in ('input', 'output', 'depends'):
@@ -775,7 +776,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                                         files=status_files)
                 return dict(status='completed', files=status_files)
             else:
-                return dict(status='failed', files=status_file)
+                return dict(status='failed', files=status_files)
         except Exception as e:
             # sometimes the resfile is changed while we are reading it
             # so we wait a bit and try again.
@@ -893,7 +894,8 @@ def check_tasks(tasks, verbosity: int=1, html: bool=False, start_time=False, age
     has_changes: bool = any(x for x in raw_status)
     if has_changes:
         if check_all:
-            status_cache = {k[0]: v if v else status_cache[k[0]] for k, v in zip(all_tasks, raw_status)}
+            status_cache = {k[0]: v if v else status_cache[k[0]]
+                            for k, v in zip(all_tasks, raw_status)}
         else:
             status_cache.update(
                 {k[0]: v for k, v in zip(all_tasks, raw_status) if v})

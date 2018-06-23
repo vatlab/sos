@@ -16,7 +16,7 @@ import traceback
 from collections import Iterable, Mapping, Sequence, defaultdict
 from io import StringIO
 from itertools import combinations, tee
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import psutil
 from billiard import Pool
@@ -32,8 +32,7 @@ from .targets import (BaseTarget, RemovedTarget, RuntimeInfo, UnavailableLock,
                       sos_targets, sos_step)
 from .tasks import MasterTaskParams, TaskParams
 from .utils import (SlotManager, StopInputGroup, TerminateExecution, env,
-                    expand_size, format_HHMMSS, get_traceback, short_repr,
-                    stable_repr, format_duration)
+                    expand_size, format_HHMMSS, get_traceback, short_repr)
 
 __all__ = []
 
@@ -1188,7 +1187,8 @@ class Base_Step_Executor:
             if isinstance(rvars, str):
                 result['__changed_vars__'].add(rvars)
                 if rvars not in env.sos_dict:
-                    env.logger.warning(f'Shared variable {rvars} does not exist.')
+                    env.logger.warning(
+                        f'Shared variable {rvars} does not exist.')
                 else:
                     result['__shared__'][rvars] = copy.deepcopy(
                         env.sos_dict[rvars])
@@ -1196,7 +1196,8 @@ class Base_Step_Executor:
                 result['__changed_vars__'] |= rvars.keys()
                 for var in rvars.keys():
                     if var not in env.sos_dict:
-                        env.logger.warning(f'Shared variable {var} does not exist.')
+                        env.logger.warning(
+                            f'Shared variable {var} does not exist.')
                     else:
                         result['__shared__'][var] = copy.deepcopy(
                             env.sos_dict[var])
@@ -1205,7 +1206,8 @@ class Base_Step_Executor:
                     if isinstance(item, str):
                         result['__changed_vars__'].add(item)
                         if item not in env.sos_dict:
-                            env.logger.warning(f'Shared variable {item} does not exist.')
+                            env.logger.warning(
+                                f'Shared variable {item} does not exist.')
                         else:
                             result['__shared__'][item] = copy.deepcopy(
                                 env.sos_dict[item])
@@ -1213,7 +1215,8 @@ class Base_Step_Executor:
                         result['__changed_vars__'] |= item.keys()
                         for var in item.keys():
                             if var not in env.sos_dict:
-                                env.logger.warning(f'Shared variable {var} does not exist.')
+                                env.logger.warning(
+                                    f'Shared variable {var} does not exist.')
                             else:
                                 result['__shared__'][var] = copy.deepcopy(
                                     env.sos_dict[var])

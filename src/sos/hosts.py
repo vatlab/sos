@@ -21,7 +21,7 @@ from .eval import Undetermined, cfg_interpolate
 from .syntax import SOS_LOGLINE
 from .targets import path, sos_targets
 from .tasks import BackgroundProcess_TaskEngine, loadTask
-from .utils import (DelayedAction, env, expand_size, expand_time,
+from .utils import (env, expand_size, expand_time,
                     format_HHMMSS, short_repr)
 
 #
@@ -59,6 +59,8 @@ from .utils import (DelayedAction, env, expand_size, expand_time,
 
 from sos.targets import file_target
 from typing import Any, Dict, List, Optional, Union
+
+
 class DaemonizedProcess(mp.Process):
     def __init__(self, cmd, *args, **kwargs):
         super(DaemonizedProcess, self).__init__(*args, **kwargs)
@@ -1190,7 +1192,7 @@ def test_paths(host):
             return f'Mapped directory {local} does not exist.'
         # remote?
         try:
-            remote_files = host.check_output(f'ls -a {path(remote):q}')
+            host.check_output(f'ls -a {path(remote):q}')
         except:
             return f'Failed to access shared directory {remote} on remote host.'
 

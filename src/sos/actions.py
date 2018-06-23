@@ -26,7 +26,7 @@ from tqdm import tqdm as ProgressBar
 
 from .eval import interpolate
 from .parser import SoS_Script
-from .syntax import SOS_ACTION_OPTIONS, SOS_RUNTIME_OPTIONS
+from .syntax import SOS_ACTION_OPTIONS
 from .targets import (UnknownTarget, executable, file_target, fileMD5, path,
                       paths, sos_targets, textMD5)
 from .utils import (SlotManager, StopInputGroup, TerminateExecution,
@@ -78,11 +78,6 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated', acceptable_args: 
                 from .docker.client import SoS_DockerClient
                 docker = SoS_DockerClient()
                 docker.pull(kwargs['docker_image'])
-            #if env.config['run_mode'] == 'interactive':
-            #    for k, v in kwargs.items():
-            #        if k in SOS_RUNTIME_OPTIONS and k not in SOS_ACTION_OPTIONS:
-            #            env.logger.warning(
-            #                f'Passing runtime option "{k}" to action is deprecated. Please use "task: {k}={v}" before action instead.')
             if 'active' in kwargs:
                 if kwargs['active'] is False:
                     return None

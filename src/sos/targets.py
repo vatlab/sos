@@ -17,7 +17,7 @@ import fasteners
 import pkg_resources
 
 from .report import workflow_report
-from .utils import (Error, TimeoutInterProcessLock, env, isPrimitive, load_var,
+from .utils import (Error, env, load_var,
                     pickleable, save_var, short_repr, stable_repr)
 
 try:
@@ -916,8 +916,6 @@ class RuntimeInfo:
         self.init_signature = {x: deepcopy(sdict[x]) for x in sorted(
             signature_vars) if x in sdict and not callable(sdict[x]) and pickleable(sdict[x], x)}
 
-        sig_vars = [] if signature_vars is None else sorted(
-            [x for x in signature_vars if x in sdict and isPrimitive(sdict[x])])
         self.sig_id = textMD5(
             f'{self.script} {self.input_files} {self.output_files} {self.dependent_files} {stable_repr(self.init_signature)}')
 

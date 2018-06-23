@@ -297,7 +297,7 @@ def cmd_run(args, workflow_args):
     if args.__remote__ is not None:
         # if executing on a remote host...
         from .hosts import Host
-        cfg = load_config_files(args.__config__)
+        load_config_files(args.__config__)
         host = Host(args.__remote__)
         from .utils import remove_arg
         #
@@ -672,7 +672,7 @@ def cmd_push(args, workflow_args):
     from .utils import env, load_config_files
     from .hosts import Host
     env.verbosity = args.verbosity
-    cfg = load_config_files(args.config)
+    load_config_files(args.config)
     try:
         host = Host(args.host)
         #
@@ -719,7 +719,7 @@ def cmd_pull(args, workflow_args):
     from .utils import env, load_config_files
     from .hosts import Host
     env.verbosity = args.verbosity
-    cfg = load_config_files(args.config)
+    load_config_files(args.config)
     try:
         host = Host(args.host)
         #
@@ -767,7 +767,6 @@ def get_remote_parser(desc_only=False):
 
 def cmd_remote(args, workflow_args):
     from .utils import env, load_config_files
-    from .hosts import Host
     cfg = load_config_files(args.config)
     try:
         if args.action == 'list':
@@ -902,7 +901,7 @@ def preview_file(previewers, filename, style=None):
 def cmd_preview(args, unknown_args):
     from .utils import env, load_config_files
     from .hosts import Host
-    cfg = load_config_files(args.config)
+    load_config_files(args.config)
     env.verbosity = args.verbosity
     if args.host:
         # remote host?
@@ -1053,7 +1052,7 @@ def cmd_execute(args, workflow_args):
     # this is for local execution using a task queue. The task queue
     # will prepare the task, sync files, and execute this command remotely
     # if needed.
-    cfg = load_config_files(args.config)
+    load_config_files(args.config)
     env.verbosity = args.verbosity
     env.config['sig_mode'] = args.__sig_mode__
     env.config['run_mode'] = 'dryrun' if args.dryrun else 'run'
@@ -1136,7 +1135,7 @@ def cmd_status(args, workflow_args):
     #from .monitor import summarizeExecution
     env.verbosity = args.verbosity
     try:
-        cfg = load_config_files(args.config)
+        load_config_files(args.config)
         if not args.queue:
             check_tasks(tasks=args.tasks, verbosity=args.verbosity, html=args.html, start_time=args.start_time,
                         age=args.age, tags=args.tags, status=args.status)
@@ -1205,7 +1204,7 @@ def cmd_purge(args, workflow_args):
                         args.status, args.tags, args.verbosity)
         else:
             # remote host?
-            cfg = load_config_files(args.config)
+            load_config_files(args.config)
             host = Host(args.queue)
             print(host._task_engine.purge_tasks(args.tasks, args.all,
                                                 args.age, args.status, args.tags, args.verbosity))
@@ -1269,7 +1268,7 @@ def cmd_kill(args, workflow_args):
                 kill_tasks(tasks=args.tasks, tags=args.tags)
     else:
         # remote host?
-        cfg = load_config_files(args.config)
+        load_config_files(args.config)
         host = Host(args.queue)
         print(host._task_engine.kill_tasks(
             tasks=args.tasks, tags=args.tags, all_tasks=args.all))
@@ -1358,7 +1357,8 @@ def get_tracked_files(sig_file):
     from .targets import file_target
     sig = WorkflowSig(sig_file)
     tracked_files = set([x['filename'] for x in sig.tracked_files()])
-    runtime_files = set(file_target(x).sig_file() for x in tracked_files if file_target(x).target_exists('signature'))
+    runtime_files = set(file_target(x).sig_file()
+                        for x in tracked_files if file_target(x).target_exists('signature'))
     return set(), tracked_files, runtime_files
 
 

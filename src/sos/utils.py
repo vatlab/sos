@@ -27,7 +27,7 @@ import urllib.request
 from collections import Sequence, Mapping, Set, defaultdict
 from html.parser import HTMLParser
 from io import FileIO, StringIO
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union, DefaultDict
+from typing import Optional, Union, DefaultDict
 
 import fasteners
 import yaml
@@ -344,7 +344,7 @@ class RuntimeEnvironments(object):
         # execution of SoS workflows
         self.sos_dict = WorkflowDict()
         # parameters of the workflow, which will be handled differently
-        self.parameter_vars: Set = set()
+        self.parameter_vars = set()
         #
         # maximum number of concurrent jobs
         self.running_jobs: int = 0
@@ -1484,7 +1484,7 @@ def pexpect_run(cmd, shell=False, win_width=None):
 
 
 def format_par(name, par):
-    from .targets import path, paths, sos_targets, file_target
+    from .targets import path, file_target
     try:
         name = name.replace("_", "-")
         val = eval(par)

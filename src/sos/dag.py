@@ -4,7 +4,6 @@
 # Distributed under the terms of the 3-clause BSD License.
 import copy
 import pickle
-import sys
 import time
 from collections import defaultdict
 
@@ -16,7 +15,7 @@ from .targets import (file_target, sos_step, sos_targets, sos_variable, textMD5,
                       BaseTarget)
 from .utils import ActivityNotifier, env, short_repr
 
-from typing import Union, DefaultDict
+from typing import Union, DefaultDict, List
 
 #
 # DAG design:

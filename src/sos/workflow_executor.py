@@ -27,7 +27,7 @@ from .pattern import extract_pattern
 from .report import render_report, workflow_report
 from .step_executor import PendingTasks, Step_Executor, analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
-                      UnknownTarget, executable, file_target, path, paths,
+                      UnknownTarget, file_target, path, paths,
                       sos_step, sos_targets, sos_variable, textMD5)
 from .utils import (Error, SlotManager, WorkflowDict, env, get_traceback,
                     load_config_files, load_var, pickleable, save_var,
@@ -891,7 +891,7 @@ class Base_Executor:
                     env.logger.info(f'Target {target} already exists')
             elif target.target_exists('signature'):
                 env.logger.info(f'Re-generating {target}')
-                t.remove('signature')
+                target.remove('signature')
         return sos_targets([x for x in targets if not file_target(x).target_exists('target') or env.config['sig_mode'] == 'force'])
 
     def step_completed(self, res, dag, runnable):

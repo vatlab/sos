@@ -7,25 +7,18 @@ import argparse
 import os
 import time
 import sys
-from io import StringIO
-from textwrap import dedent
 from ._version import __version__
 
 import nbformat
-from pygments import highlight
-from pygments.formatters import HtmlFormatter, TerminalFormatter
-from pygments.lexers import (PythonLexer, TextLexer, get_lexer_by_name,
-                             guess_lexer)
-from pygments.styles import get_all_styles
+from pygments.lexers import PythonLexer
 from pygments.token import Keyword, Name
 from pygments.util import shebang_matches
 
 from .actions import get_actions
-from .parser import SoS_Script
 from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
                      SOS_OUTPUT_OPTIONS, SOS_RUNTIME_OPTIONS,
                      SOS_SECTION_HEADER, SOS_SECTION_OPTIONS)
-from .utils import env, pretty_size
+from .utils import env
 
 
 class SoS_Lexer(PythonLexer):
@@ -169,9 +162,10 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
     html_content = template.render(context)
     if html_file is None:
         if args and args.view:
-            # write to a temp file 
+            # write to a temp file
             import tempfile
-            html_file = tempfile.NamedTemporaryFile(delete=False, suffix='.html').name
+            html_file = tempfile.NamedTemporaryFile(
+                delete=False, suffix='.html').name
             with open(html_file, 'w') as out:
                 out.write(html_content)
         else:
@@ -202,7 +196,7 @@ def extract_workflow(notebook_file):
             continue
         lines = cell.source.split('\n')
         valid_cell = False
-        for idx,line in enumerate(lines):
+        for idx, line in enumerate(lines):
             if valid_cell or (line.startswith('%include') or line.startswith('%from')):
                 content += line + '\n'
             elif SOS_SECTION_HEADER.match(line):
