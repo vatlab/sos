@@ -150,6 +150,20 @@ WORKDIR /home
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
+        # build with more options
+        script = SoS_Script(r'''
+[0]
+docker_build:  tag='test/docker_build1', label='label with space', compress=True, memory='2G'
+#
+# Super simple example of a Dockerfile
+#
+FROM ubuntu:latest
+MAINTAINER Andrew Odewahn "odewahn@oreilly.com"
+
+WORKDIR /home
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerImage(self):

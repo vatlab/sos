@@ -157,12 +157,12 @@ class SoS_DockerClient:
             if script:
                 with open(os.path.join(tempdir, 'Dockerfile'), 'w') as df:
                     df.write(script)
-                file_opt = tempdir
+                file_opt = [tempdir]
             else:
                 if 'file' not in kwargs:
                     raise RuntimeError(
                         'Docker file must be specified with option file if not directly included.')
-                file_opt = f'--file {kwargs["file"]}'
+                file_opt = ['--file', kwargs['file']]
 
             other_opts = []
             for arg, value in kwargs.items():
@@ -170,7 +170,7 @@ class SoS_DockerClient:
                 if arg in ('compress', 'disable_content_trust', 'force_rm', 'memory_swap',
                            'no_cache', 'pull', 'quiet', 'rm', 'squash', 'stream'):
                     if value is True:
-                        other_ops.append(f'--{arg.replace("_", "-")}')
+                        other_opts.append(f'--{arg.replace("_", "-")}')
                     else:
                         env.logger.warning(
                             f'Boolean {arg} is ignored (True should be provided)')
@@ -178,12 +178,11 @@ class SoS_DockerClient:
                              'cpu_period', 'cpu_quota', 'cpu-shares', 'cpuset_cpus', 'cpuset_mems',
                              'label', 'memory', 'network', 'platform', 'security_opt', 'shm_size',
                              'tag', 'target', 'ulimit'):
-                    other_opts.append(f'--{arg.replace("_", "-")} {value}')
+                    other_opts.extend([f'--{arg.replace("_", "-")}', value])
 
-            cmd = 'docker build {} {}'.format(
-                file_opt,      # file option, path
-                ' '.join(other_opts)
-            )
+            cmd = subprocess.list2cmdline(
+                ['docker', 'build'] + file_opt + other_opts)
+
             env.logger.debug(cmd)
 
             ret = self._run_cmd(cmd, **kwargs)
