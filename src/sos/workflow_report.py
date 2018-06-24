@@ -168,8 +168,14 @@ def render_report(output_file, workflow_id):
 
 def remove_placeholders(workflow_id):
     from .targets import file_target
-    data = WorkflowSig(os.path.join(
-        env.exec_dir, '.sos', f'{workflow_id}.sig'))
+    try:
+        data = WorkflowSig(os.path.join(
+            env.exec_dir, '.sos', f'{workflow_id}.sig'))
+    except Exception as e:
+        # if the workflow sig file does not exist. Just quit
+        env.logger.debug(
+            f'Failed to remove placeholder files for workflow {workflow_id}: {e}')
+        return
     for filename in data.placeholders():
         try:
             file_target(filename).remove('both')
