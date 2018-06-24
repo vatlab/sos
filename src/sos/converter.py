@@ -157,7 +157,7 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
         autoescape=select_autoescape(['html', 'xml'])
     )
     template = environment.get_template(
-        args.template if args and hasattr(args, 'template') else 'sos_script.tpl')
+        args.template if args and hasattr(args, 'template') and args.template else 'sos_script.tpl')
 
     with open(script_file) as script:
         content = script.read()
