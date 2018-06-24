@@ -1240,6 +1240,26 @@ depends: "a_2"
         with open('a_1') as a1, open('a_2') as a2:
             self.assertEqual(a1.read(), a2.read())
 
+    def testDryrunPlaceholder(self):
+        '''Test the creation and removal of placeholder files in dryrun mode'''
+        file_target('1.txt').remove('both')
+        script = SoS_Script('''
+a = '1.txt'
+
+[out: provides=a]
+output: a
+run: expand = True
+  touch {a}
+
+[1]
+depends: a
+''')
+        wf = script.workflow()
+        # should be ok
+        res = Base_Executor(wf).run(mode='dryrun')
+        # but the file would be removed afterwards
+        self.assertFalse(os.path.isfile('1.txt'))
+
 
 if __name__ == '__main__':
     unittest.main()

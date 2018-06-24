@@ -1024,7 +1024,7 @@ class RuntimeInfo:
                 elif not rebuild and f.target_exists('signature'):
                     md5.write(f'{f}\t{f.target_signature()}\n')
                 else:
-                    env.logger.warning(
+                    env.logger.debug(
                         f'Failed to create signature: input target {f} does not exist')
                     return False
             md5.write('# output\n')
@@ -1036,7 +1036,7 @@ class RuntimeInfo:
                 elif not rebuild and f.target_exists('signature'):
                     md5.write(f'{f}\t{f.target_signature()}\n')
                 else:
-                    env.logger.warning(
+                    env.logger.debug(
                         f'Failed to create signature: output target {f} does not exist')
                     return False
             md5.write('# dependent\n')

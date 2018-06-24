@@ -167,11 +167,12 @@ def render_report(output_file, workflow_id):
 
 
 def remove_placeholders(workflow_id):
+    from .targets import file_target
     data = WorkflowSig(os.path.join(
         env.exec_dir, '.sos', f'{workflow_id}.sig'))
-    for target in data.placeholders():
+    for filename in data.placeholders():
         try:
-            os.remove(target)
-            env.logger.debug(f'Remove placeholder {target}')
+            file_target(filename).remove('both')
+            env.logger.debug(f'Remove placeholder {filename}')
         except Exception as e:
-            env.logger.warning(f'Failed to remove placeholder {target}: {e}')
+            env.logger.warning(f'Failed to remove placeholder {filename}: {e}')
