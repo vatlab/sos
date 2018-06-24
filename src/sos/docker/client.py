@@ -184,6 +184,10 @@ class SoS_DockerClient:
                 ['docker', 'build'] + file_opt + other_opts)
 
             env.logger.debug(cmd)
+            if env.config['run_mode'] == 'dryrun':
+                print(f'sos:: {cmd}')
+                print(script)
+                return 0
 
             ret = self._run_cmd(cmd, **kwargs)
 
@@ -377,6 +381,10 @@ class SoS_DockerClient:
                 cmd_opt
             )
             env.logger.debug(cmd)
+            if env.config['run_mode'] == 'dryrun':
+                print(f'sos:: {cmd}')
+                print(script)
+                return 0
 
             ret = self._run_cmd(cmd, **kwargs)
 

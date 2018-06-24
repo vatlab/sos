@@ -265,10 +265,6 @@ class SoS_ExecuteScript:
             self.script = content + self.script
 
         if 'docker_image' in kwargs:
-            if env.config['run_mode'] == 'dryrun':
-                print(
-                    f'In docker image {kwargs["docker_image"]}\n{self.interpreter}:\n{self.script}\n')
-                return None
             from .docker.client import SoS_DockerClient
             docker = SoS_DockerClient()
             docker.run(kwargs['docker_image'], self.script, self.interpreter, self.args, self.suffix,
@@ -316,7 +312,7 @@ class SoS_ExecuteScript:
                 if env.config['run_mode'] == 'dryrun':
                     cmd = interpolate(f'{self.interpreter} {self.args}',
                                       {'filename': path('SCRIPT'), 'script': self.script})
-                    print(f'{cmd}:\n{self.script}\n')
+                    print(f'sos:: {cmd}\n{self.script}\n')
                     return None
                 cmd = interpolate(f'{self.interpreter} {self.args}',
                                   {'filename': sos_targets(script_file), 'script': self.script})
@@ -828,7 +824,7 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
     instances.
     '''
     if env.config['run_mode'] == 'dryrun':
-        print(f'download\n{URLs}\n')
+        print(f'sos:: download\n{URLs}\n')
         return None
     if isinstance(URLs, str):
         urls = [x.strip() for x in URLs.split() if x.strip()]
@@ -969,7 +965,7 @@ def report(script=None, input=None, output=None, **kwargs):
     will be written to standard output or appended to a file specified with command
     line option `-r`. '''
     if env.config['run_mode'] == 'dryrun':
-        print(f'report:\n{"" if script is None else script}')
+        print(f'sos:: report:\n{"" if script is None else script}')
         if input is not None:
             for ifile in input:
                 print(f'  from file: {ifile}')
