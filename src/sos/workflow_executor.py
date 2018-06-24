@@ -24,7 +24,7 @@ from .eval import SoS_exec
 from .hosts import Host
 from .parser import SoS_Step, SoS_Workflow
 from .pattern import extract_pattern
-from .workflow_report import render_report, workflow_report
+from .workflow_report import render_report, workflow_report, remove_placeholders
 from .step_executor import PendingTasks, Step_Executor, analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
                       UnknownTarget, file_target, path, paths,
@@ -381,9 +381,8 @@ class Base_Executor:
             workflow_info['script'] = base64.b64encode(
                 self.workflow.content.text().encode()).decode('ascii')
         workflow_info['master_id'] = env.config['master_id']
-        if env.config['run_mode'] != 'dryrun':
-            with workflow_report(mode='w' if env.config['master_id'] == self.md5 else 'a') as sig:
-                sig.write(f'workflow\t{self.md5}\t{workflow_info}\n')
+        with workflow_report(mode='w' if env.config['master_id'] == self.md5 else 'a') as sig:
+            sig.write(f'workflow\t{self.md5}\t{workflow_info}\n')
         #
         env.config['resumed_tasks'] = set()
         wf_status = os.path.join(os.path.expanduser(
@@ -987,19 +986,20 @@ class Base_Executor:
         if env.config['output_dag']:
             env.logger.info(
                 f"Workflow DAG saved to {env.config['output_dag']}")
-        if env.config['run_mode'] != 'dryrun':
-            with workflow_report() as sig:
-                workflow_info = {
-                    'end_time': time.time(),
-                    'stat': dict(self.completed),
-                }
-                if env.config['output_dag'] and env.config['master_id'] == self.md5:
-                    workflow_info['dag'] = env.config['output_dag']
-                sig.write(f'workflow\t{self.md5}\t{workflow_info}\n')
-            if env.config['master_id'] == env.config['workflow_id'] and env.config['output_report']:
-                # if this is the outter most workflow
-                render_report(env.config['output_report'],
-                              env.sos_dict['workflow_id'])
+        with workflow_report() as sig:
+            workflow_info = {
+                'end_time': time.time(),
+                'stat': dict(self.completed),
+            }
+            if env.config['output_dag'] and env.config['master_id'] == self.md5:
+                workflow_info['dag'] = env.config['output_dag']
+            sig.write(f'workflow\t{self.md5}\t{workflow_info}\n')
+        if env.config['master_id'] == env.config['workflow_id'] and env.config['output_report']:
+            # if this is the outter most workflow
+            render_report(env.config['output_report'],
+                          env.sos_dict['workflow_id'])
+        if env.config['run_mode'] == 'dryrun':
+            remove_placeholders(env.sos_dict['workflow_id'])
 
     def run(self, targets: Optional[List[str]]=None, parent_pipe: None=None, my_workflow_id: None=None, mode: str='run') -> Dict[str, Any]:
         '''Execute a workflow with specified command line args. If sub is True, this

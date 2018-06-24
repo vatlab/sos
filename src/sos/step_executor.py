@@ -460,9 +460,6 @@ class Base_Step_Executor:
         self.task_manager = None
 
     def expand_input_files(self, value, *args):
-        if self.run_mode == 'dryrun' and any(isinstance(x, dynamic) for x in args):
-            return sos_targets(undetermined=value)
-
         # if unspecified, use __step_output__ as input (default)
         # resolve dynamic input.
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
@@ -473,12 +470,6 @@ class Base_Step_Executor:
 
     def expand_depends_files(self, *args, **kwargs):
         '''handle directive depends'''
-        if self.run_mode == 'dryrun' and any(isinstance(x, dynamic) for x in args):
-            for k in args:
-                if isinstance(k, dynamic):
-                    env.logger.warning(f'Dependent target {k} is dynamic')
-            return sos_targets()
-
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
         return _expand_file_list(False, *args)
 
@@ -491,8 +482,6 @@ class Base_Step_Executor:
             return _expand_file_list(True, *args)
 
     def verify_input(self):
-        if self.run_mode == 'dryrun':
-            return
         # now, if we are actually going to run the script, we
         # need to check the input files actually exists, not just the signatures
         for key in ('_input', '_depends'):
@@ -502,8 +491,6 @@ class Base_Step_Executor:
                     raise RemovedTarget(target)
 
     def verify_output(self):
-        if self.run_mode == 'dryrun':
-            return
         if env.sos_dict['step_output'] is None:
             return
         if not env.sos_dict['step_output'].determined():
@@ -514,16 +501,23 @@ class Base_Step_Executor:
                 continue
             if isinstance(target, str):
                 if not file_target(target).target_exists('any'):
-                    # latency wait for 5 seconds because the file system might be slow
-                    time.sleep(5)
-                    if not file_target(target).target_exists('any'):
-                        raise RuntimeError(
-                            f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]} (curdir={os.getcwd()})')
+                    if env.config['run_mode'] == 'dryrun':
+                        # in dryrun mode, we just create these targets
+                        file_target(target).create_placeholder()
+                    else:
+                        # latency wait for 5 seconds because the file system might be slow
+                        time.sleep(5)
+                        if not file_target(target).target_exists('any'):
+                            raise RuntimeError(
+                                f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]} (curdir={os.getcwd()})')
             elif not target.target_exists('any'):
-                time.sleep(5)
-                if not target.target_exists('any'):
-                    raise RuntimeError(
-                        f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]}')
+                if env.config['run_mode'] == 'dryrun':
+                    target.create_placeholder()
+                else:
+                    time.sleep(5)
+                    if not target.target_exists('any'):
+                        raise RuntimeError(
+                            f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]}')
 
     # Nested functions to handle different parameters of input directive
     @staticmethod
@@ -1046,24 +1040,23 @@ class Base_Step_Executor:
         results = self.wait_for_tasks(self.task_manager._submitted_tasks)
         #
         # report task
-        if env.config['run_mode'] != 'dryrun':
-            with workflow_report() as rep:
-                # what we should do here is to get the alias of the Host
-                # because it can be different (e.g. not localhost
-                if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
-                    queue = env.sos_dict['_runtime']['queue']
-                elif env.config['default_queue']:
-                    queue = env.config['default_queue']
-                else:
-                    queue = 'localhost'
+        with workflow_report() as rep:
+            # what we should do here is to get the alias of the Host
+            # because it can be different (e.g. not localhost
+            if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
+                queue = env.sos_dict['_runtime']['queue']
+            elif env.config['default_queue']:
+                queue = env.config['default_queue']
+            else:
+                queue = 'localhost'
 
-                for id, result in results.items():
-                    # turn to string to avoid naming lookup issue
-                    rep_result = {x: (y if isinstance(y, (int, bool, float, str)) else short_repr(
-                        y)) for x, y in result.items()}
-                    rep_result['tags'] = ' '.join(self.task_manager.tags(id))
-                    rep_result['queue'] = queue
-                    rep.write(f'task\t{id}\t{rep_result}\n')
+            for id, result in results.items():
+                # turn to string to avoid naming lookup issue
+                rep_result = {x: (y if isinstance(y, (int, bool, float, str)) else short_repr(
+                    y)) for x, y in result.items()}
+                rep_result['tags'] = ' '.join(self.task_manager.tags(id))
+                rep_result['queue'] = queue
+                rep.write(f'task\t{id}\t{rep_result}\n')
         self.task_manager.clear_submitted()
         for idx, task in enumerate(self.proc_results):
             # if it is done
@@ -1107,7 +1100,7 @@ class Base_Step_Executor:
     def log(self, stage=None, msg=None):
         if stage == 'start':
             env.logger.info(
-                f'{"Checking" if self.run_mode == "dryrun" else "Executing"} ``{self.step.step_name(True)}``: {self.step.comment.strip()}')
+                f'"Executing" ``{self.step.step_name(True)}``: {self.step.comment.strip()}')
         elif stage == 'input statement':
             env.logger.trace(f'Handling input statement {msg}')
         elif stage == '_input':
@@ -1445,7 +1438,7 @@ class Base_Step_Executor:
                                 )
 
                                 # signature for the substep, including step content and signature vars
-                                if env.config['sig_mode'] != 'ignore' and env.config['run_mode'] != 'dryrun' and g.determined():
+                                if env.config['sig_mode'] != 'ignore' and g.determined():
                                     signatures[idx] = RuntimeInfo(self.step.md5, self.step.tokens,
                                                                   env.sos_dict['_input'],
                                                                   env.sos_dict['_output'],
@@ -1710,38 +1703,37 @@ class Base_Step_Executor:
                                         f'Failed to evaluate shared variable {var} from expression {val}: {e}')
             #
             self.verify_output()
-            if env.config['run_mode'] != 'dryrun':
-                with workflow_report() as rep:
-                    substeps = self.completed['__substep_completed__'] + \
-                        self.completed['__substep_skipped__']
-                    self.completed['__step_completed__'] = self.completed['__substep_completed__'] / substeps
-                    self.completed['__step_skipped__'] = self.completed['__substep_skipped__'] / substeps
-                    if self.completed['__step_completed__'].is_integer():
-                        self.completed['__step_completed__'] = int(
-                            self.completed['__step_completed__'])
-                    if self.completed['__step_skipped__'].is_integer():
-                        self.completed['__step_skipped__'] = int(
-                            self.completed['__step_skipped__'])
+            with workflow_report() as rep:
+                substeps = self.completed['__substep_completed__'] + \
+                    self.completed['__substep_skipped__']
+                self.completed['__step_completed__'] = self.completed['__substep_completed__'] / substeps
+                self.completed['__step_skipped__'] = self.completed['__substep_skipped__'] / substeps
+                if self.completed['__step_completed__'].is_integer():
+                    self.completed['__step_completed__'] = int(
+                        self.completed['__step_completed__'])
+                if self.completed['__step_skipped__'].is_integer():
+                    self.completed['__step_skipped__'] = int(
+                        self.completed['__step_skipped__'])
 
-                    def file_only(targets):
-                        if not isinstance(targets, sos_targets):
-                            env.logger.warning(
-                                f"Unexpected input or output target for reporting. Empty list returned: {targets}")
-                            return []
-                        else:
-                            return [(str(x), x.size()) for x in targets._targets if isinstance(x, file_target)]
-                    step_info = {
-                        'step_id': self.step.md5,
-                        'start_time': self.start_time,
-                        'stepname': self.step.step_name(True),
-                        'substeps': len(self._substeps),
-                        'input': file_only(env.sos_dict['step_input']),
-                        'output': file_only(env.sos_dict['step_output']),
-                        'completed': dict(self.completed),
-                        'end_time': time.time()
-                    }
-                    rep.write(
-                        f'step\t{env.sos_dict["workflow_id"]}\t{step_info}\n')
+                def file_only(targets):
+                    if not isinstance(targets, sos_targets):
+                        env.logger.warning(
+                            f"Unexpected input or output target for reporting. Empty list returned: {targets}")
+                        return []
+                    else:
+                        return [(str(x), x.size()) for x in targets._targets if isinstance(x, file_target)]
+                step_info = {
+                    'step_id': self.step.md5,
+                    'start_time': self.start_time,
+                    'stepname': self.step.step_name(True),
+                    'substeps': len(self._substeps),
+                    'input': file_only(env.sos_dict['step_input']),
+                    'output': file_only(env.sos_dict['step_output']),
+                    'completed': dict(self.completed),
+                    'end_time': time.time()
+                }
+                rep.write(
+                    f'step\t{env.sos_dict["workflow_id"]}\t{step_info}\n')
             return self.collect_result()
         except KeyboardInterrupt:
             # if the worker_pool is not properly shutdown (e.g. interrupted by KeyboardInterrupt #871)

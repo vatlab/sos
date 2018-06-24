@@ -104,6 +104,12 @@ class WorkflowSig(object):
         except:
             return []
 
+    def placeholders(self):
+        try:
+            return self.data['placeholder']['file_target']
+        except:
+            return []
+
 
 def calc_timeline(info, start_time, total_duration):
     if total_duration == 0 or 'start_time' not in info or 'end_time' not in info:
@@ -158,3 +164,14 @@ def render_report(output_file, workflow_id):
     with open(output_file, 'w') as wo:
         wo.write(template.render(context))
     env.logger.info(f'Summary of workflow saved to {output_file}')
+
+
+def remove_placeholders(workflow_id):
+    data = WorkflowSig(os.path.join(
+        env.exec_dir, '.sos', f'{workflow_id}.sig'))
+    for target in data.placeholders():
+        try:
+            os.remove(target)
+            env.logger.debug(f'Remove placeholder {target}')
+        except Exception as e:
+            env.logger.warning(f'Failed to remove placeholder {target}: {e}')

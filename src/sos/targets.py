@@ -127,9 +127,13 @@ class BaseTarget(object):
         # has to be calculated. Otherwise you can return cached signature
         raise RuntimeError('Undefined base function')
 
+    def create_placeholder(self):
+        pass
+
     # -----------------------------------------------------
     # derived functions that do not need to be redefined
     #
+
     def sig_file(self):
         if self._sigfile is None:
             self._sigfile = Path(env.exec_dir) / '.sos' / '.runtime' /  \
@@ -506,6 +510,13 @@ class file_target(path, BaseTarget):
         super(file_target, self)._init(template)
         self._md5 = None
         self._attachments = []
+
+    def create_placeholder(self):
+        # create an empty placeholder file
+        env.logger.debug(f'Create placeholder target {self}')
+        self.touch()
+        with workflow_report() as rep:
+            rep.write(f'placeholder\tfile_target\t{self}\n')
 
     def target_exists(self, mode='any'):
         try:

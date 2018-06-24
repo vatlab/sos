@@ -581,23 +581,22 @@ del sos_handle_parameter_
         #
         orig_dir = os.getcwd()
 
-        if runmode != 'dryrun':
-            # we will need to check existence of targets because the task might
-            # be executed on a remote host where the targets are not available.
-            for target in (sos_dict['_input'] if isinstance(sos_dict['_input'], list) else []) + \
-                    (sos_dict['_depends'] if isinstance(sos_dict['_depends'], list) else []):
-                # if the file does not exist (although the signature exists)
-                # request generation of files
-                if isinstance(target, str):
-                    if not file_target(target).target_exists('target'):
-                        # remove the signature and regenerate the file
-                        file_target(target).remove_sig()
-                        raise UnknownTarget(target)
-                # the sos_step target should not be checked in tasks because tasks are
-                # independently executable units.
-                elif not isinstance(target, sos_step) and not target.target_exists('target'):
-                    target.remove_sig()
+        # we will need to check existence of targets because the task might
+        # be executed on a remote host where the targets are not available.
+        for target in (sos_dict['_input'] if isinstance(sos_dict['_input'], list) else []) + \
+                (sos_dict['_depends'] if isinstance(sos_dict['_depends'], list) else []):
+            # if the file does not exist (although the signature exists)
+            # request generation of files
+            if isinstance(target, str):
+                if not file_target(target).target_exists('target'):
+                    # remove the signature and regenerate the file
+                    file_target(target).remove_sig()
                     raise UnknownTarget(target)
+            # the sos_step target should not be checked in tasks because tasks are
+            # independently executable units.
+            elif not isinstance(target, sos_step) and not target.target_exists('target'):
+                target.remove_sig()
+                raise UnknownTarget(target)
 
         # create directory. This usually has been done at the step level but the task can be executed
         # on a remote host where the directory does not yet exist.

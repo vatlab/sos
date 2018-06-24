@@ -623,6 +623,12 @@ def get_dryrun_parser(desc_only=False):
             outputed with names $FILE_1.dot, $FILE_2.dot. If this option is
             specified without a name, the DAG would be wrritten to the standard
             output.''')
+    output.add_argument('-p', nargs='?', default='', metavar='REPORT', dest='__report__',
+                        help='''Output a report that summarizes the execution of the
+            workflow after the completion of the execution. This includes command line,
+            steps executed, tasks executed, CPU/memory of tasks, and DAG if option -d
+            is also specified. The report will by be named {script_name}_{timestamp}.html
+            unless a separate filename is specified.''')
     output.add_argument('-v', dest='verbosity', type=int, choices=range(5),
                         default=2,
                         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
@@ -636,7 +642,6 @@ def cmd_dryrun(args, workflow_args):
     args.__max_procs__ = 1
     args.__max_running_jobs__ = 1
     args.dryrun = True
-    args.__report__ = None
     args.__wait__ = True
     args.__no_wait__ = False
     args.__bin_dirs__ = []
