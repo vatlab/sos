@@ -357,7 +357,7 @@ def cmd_run(args, workflow_args):
             'default_queue': '' if args.__queue__ is None else args.__queue__,
             'max_procs': args.__max_procs__,
             'max_running_jobs': args.__max_running_jobs__,
-            'sig_mode': args.__sig_mode__,
+            'sig_mode': 'force' if args.dryrun else args.__sig_mode__,
             'run_mode': 'dryrun' if args.dryrun else 'run',
             'resume_mode': getattr(args, '__resume__', False),
             'verbosity': args.verbosity,

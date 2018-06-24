@@ -1589,6 +1589,9 @@ class Base_Step_Executor:
                         signatures[idx] = None
                     continue
 
+                if env.config['run_mode'] == 'dryrun' and env.sos_dict['_index'] != 0:
+                    continue
+
                 # check if the task is active
                 if 'active' in env.sos_dict['_runtime']:
                     active = env.sos_dict['_runtime']['active']

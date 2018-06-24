@@ -314,7 +314,9 @@ class SoS_ExecuteScript:
                     os.chmod(script_file, 0o775)
                 #
                 if env.config['run_mode'] == 'dryrun':
-                    print(f'{self.interpreter}:\n{self.script}\n')
+                    cmd = interpolate(f'{self.interpreter} {self.args}',
+                                      {'filename': path('SCRIPT'), 'script': self.script})
+                    print(f'{cmd}:\n{self.script}\n')
                     return None
                 cmd = interpolate(f'{self.interpreter} {self.args}',
                                   {'filename': sos_targets(script_file), 'script': self.script})
