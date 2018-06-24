@@ -24,7 +24,7 @@ from .eval import SoS_exec
 from .hosts import Host
 from .parser import SoS_Step, SoS_Workflow
 from .pattern import extract_pattern
-from .report import render_report, workflow_report
+from .workflow_report import render_report, workflow_report
 from .step_executor import PendingTasks, Step_Executor, analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
                       UnknownTarget, file_target, path, paths,

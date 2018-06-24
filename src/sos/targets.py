@@ -16,7 +16,7 @@ from typing import Union, Dict, Any
 import fasteners
 import pkg_resources
 
-from .report import workflow_report
+from .workflow_report import workflow_report
 from .utils import (Error, env, load_var,
                     pickleable, save_var, short_repr, stable_repr)
 
