@@ -113,7 +113,6 @@ setup(name="sos",
           'jinja2',
           # to execute workflow embedded in .ipynb files
           'nbformat',
-          'docker;platform_system!="Windows"',
       ],
       entry_points='''
 [console_scripts]

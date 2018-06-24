@@ -12,7 +12,6 @@ import sys
 import tempfile
 from io import BytesIO
 
-import docker
 from sos.eval import interpolate
 from sos.targets import sos_targets
 from sos.utils import env, pexpect_run
@@ -32,19 +31,14 @@ class SoS_DockerClient:
         return cls._instance
 
     def __init__(self):
-        try:
-            self.client = docker.from_env()
-            self.client.info()
-        except Exception as e:
-            env.logger.debug('Docker client init fail: {}'.format(e))
-            self.client = None
+        # check if docker exists
+        self.client = shutil.which('docker')
 
     def total_memory(self, image='ubuntu'):
         '''Get the available ram fo the docker machine in Kb'''
         try:
             ret = subprocess.check_output(
-                '''docker run -t {} cat /proc/meminfo  | grep MemTotal'''.format(
-                    image),
+                f'''docker run -t {image} cat /proc/meminfo  | grep MemTotal''',
                 shell=True, stdin=subprocess.DEVNULL)
             # ret: MemTotal:       30208916 kB
             self.tot_mem = int(ret.split()[1])
@@ -54,27 +48,157 @@ class SoS_DockerClient:
         return self.tot_mem
 
     def _is_image_avail(self, image):
+        # the command will return ID of the image if it exists
         try:
-            images = sum([x.tags for x in self.client.images.list()], [])
-        except AttributeError:
-            raise RuntimeError(
-                'Incompatible version of docker module detected. If you are using "docker-py", please uninstall it and install module "docker".')
-        # some earlier version of docker-py returns docker.io/ for global repositories
-        images = [x[10:] if x.startswith('docker.io/') else x for x in images]
-        return (':' in image and image in images) or \
-            (':' not in image and '{}:latest'.format(image) in images)
+            return bool(subprocess.check_output(
+                f'''docker images {image} --no-trunc --format "{{{{.ID}}}}"''',
+                shell=True))
+        except Exception as e:
+            env.logger.warning(f'Failed to check image {image}: {e}')
+            return False
+
+    def _run_cmd(self, cmd, **kwargs):
+        if env.config['run_mode'] == 'interactive':
+            if 'stdout' in kwargs or 'stderr' in kwargs:
+                child = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE, bufsize=0)
+                out, err = child.communicate()
+                if 'stdout' in kwargs:
+                    if kwargs['stdout'] is not False:
+                        with open(kwargs['stdout'], 'ab') as so:
+                            so.write(out)
+                else:
+                    sys.stdout.write(out.decode())
+
+                if 'stderr' in kwargs:
+                    if kwargs['stderr'] is not False:
+                        with open(kwargs['stderr'], 'ab') as se:
+                            se.write(err)
+                else:
+                    sys.stderr.write(err.decode())
+                ret = child.returncode
+            else:
+                # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
+                ret = pexpect_run(cmd)
+        elif '__std_out__' in env.sos_dict and '__std_err__' in env.sos_dict:
+            if 'stdout' in kwargs or 'stderr' in kwargs:
+                if 'stdout' in kwargs:
+                    if kwargs['stdout'] is False:
+                        so = subprocess.DEVNULL
+                    else:
+                        so = open(kwargs['stdout'], 'ab')
+                elif env.verbosity > 0:
+                    so = open(env.sos_dict['__std_out__'], 'ab')
+                else:
+                    so = subprocess.DEVNULL
+
+                if 'stderr' in kwargs:
+                    if kwargs['stderr'] is False:
+                        se = subprocess.DEVNULL
+                    else:
+                        se = open(kwargs['stderr'], 'ab')
+                elif env.verbosity > 1:
+                    se = open(env.sos_dict['__std_err__'], 'ab')
+                else:
+                    se = subprocess.DEVNULL
+
+                p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
+                ret = p.wait()
+
+                if so != subprocess.DEVNULL:
+                    so.close()
+                if se != subprocess.DEVNULL:
+                    se.close()
+
+            elif env.verbosity >= 1:
+                with open(env.sos_dict['__std_out__'], 'ab') as so, open(env.sos_dict['__std_err__'], 'ab') as se:
+                    p = subprocess.Popen(
+                        cmd, shell=True, stderr=se, stdout=so)
+                    ret = p.wait()
+            else:
+                p = subprocess.Popen(
+                    cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                ret = p.wait()
+        else:
+            if 'stdout' in kwargs:
+                if kwargs['stdout'] is False:
+                    so = subprocess.DEVNULL
+                else:
+                    so = open(kwargs['stdout'], 'ab')
+            elif env.verbosity > 0:
+                so = None
+            else:
+                so = subprocess.DEVNULL
+
+            if 'stderr' in kwargs:
+                if kwargs['stderr'] is False:
+                    se = subprocess.DEVNULL
+                else:
+                    se = open(kwargs['stderr'], 'ab')
+            elif env.verbosity > 1:
+                se = None
+            else:
+                se = subprocess.DEVNULL
+
+            p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
+
+            ret = p.wait()
+            if so is not None and so != subprocess.DEVNULL:
+                so.close()
+            if se is not None and se != subprocess.DEVNULL:
+                se.close()
+        return ret
 
     def build(self, script, **kwargs):
         if not self.client:
             raise RuntimeError(
                 'Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
-        if script is not None:
-            f = BytesIO(script.encode('utf-8'))
-            self.client.images.build(fileobj=f, **kwargs)
-            # self.stream(line.decode())
-        else:
-            self.client.images.build(**kwargs)
-            # self.stream(line.decode())
+        with tempfile.TemporaryDirectory(dir=os.getcwd()) as tempdir:
+            if script:
+                with open(os.path.join(tempdir, 'Dockerfile'), 'w') as df:
+                    df.write(script)
+                file_opt = tempdir
+            else:
+                if 'file' not in kwargs:
+                    raise RuntimeError(
+                        'Docker file must be specified with option file if not directly included.')
+                file_opt = f'--file {kwargs["file"]}'
+
+            other_opts = []
+            for arg, value in kwargs.items():
+                # boolean args
+                if arg in ('compress', 'disable_content_trust', 'force_rm', 'memory_swap',
+                           'no_cache', 'pull', 'quiet', 'rm', 'squash', 'stream'):
+                    if value is True:
+                        other_ops.append(f'--{arg.replace("_", "-")}')
+                    else:
+                        env.logger.warning(
+                            f'Boolean {arg} is ignored (True should be provided)')
+                elif arg in ('add_host', 'build_arg', 'cache_from', 'cgroup_parent',
+                             'cpu_period', 'cpu_quota', 'cpu-shares', 'cpuset_cpus', 'cpuset_mems',
+                             'label', 'memory', 'network', 'platform', 'security_opt', 'shm_size',
+                             'tag', 'target', 'ulimit'):
+                    other_opts.append(f'--{arg.replace("_", "-")} {value}')
+
+            cmd = 'docker build {} {}'.format(
+                file_opt,      # file option, path
+                ' '.join(other_opts)
+            )
+            env.logger.debug(cmd)
+
+            ret = self._run_cmd(cmd, **kwargs)
+
+            if ret != 0:
+                if script:
+                    debug_script_dir = os.path.join(env.exec_dir, '.sos')
+                    msg = 'The Dockerfile has been saved to {}/Dockerfile. To reproduce the error please run:\n``{}``'.format(
+                        debug_script_dir, cmd.replace(tempdir, debug_script_dir))
+                    shutil.copy(os.path.join(
+                        tempdir, 'Dockerfile'), debug_script_dir)
+                else:
+                    msg = f'To reproduce this error please run {cmd}'
+                raise subprocess.CalledProcessError(
+                    returncode=ret, cmd=cmd, stderr=msg)
         # if a tag is given, check if the image is built
         if 'tag' in kwargs and not self._is_image_avail(kwargs['tag']):
             raise RuntimeError(
@@ -85,8 +209,10 @@ class SoS_DockerClient:
             raise RuntimeError(
                 'Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
         env.logger.info('docker load {}'.format(image))
-        with open(image, 'rb') as img:
-            self.client.images.load(img, **kwargs)
+        try:
+            subprocess.call(f'''docker load -i {image} --quiet''', shell=True)
+        except Exception as e:
+            raise RuntimeError(f'Failed to load image {image}: {e}')
 
     def pull(self, image):
         if not self.client:
@@ -96,21 +222,10 @@ class SoS_DockerClient:
         ret = 0
         if not self._is_image_avail(image):
             env.logger.info('docker pull {}'.format(image))
-            # using subprocess instead of docker-py's pull function because this would have
-            # much better progress bar display
             ret = subprocess.call('docker pull {}'.format(image), shell=True)
-            # for line in self.client.pull(image, stream=True):
-            #    self.stream(line)
         if not self._is_image_avail(image):
             raise RuntimeError('Failed to pull image {}'.format(image))
         return ret
-
-    # def commit(self, **kwargs):
-    #    if not self.client:
-    #        raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
-    #    for line in self.client.commit(**kwargs):
-    #        self.stream(line.decode())
-    #    return 0
 
     def run(self, image, script='', interpreter='', args='', suffix='.sh', **kwargs):
         if self.client is None:
@@ -264,95 +379,7 @@ class SoS_DockerClient:
             )
             env.logger.debug(cmd)
 
-            if env.config['run_mode'] == 'interactive':
-                if 'stdout' in kwargs or 'stderr' in kwargs:
-                    child = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                                             stderr=subprocess.PIPE, bufsize=0)
-                    out, err = child.communicate()
-                    if 'stdout' in kwargs:
-                        if kwargs['stdout'] is not False:
-                            with open(kwargs['stdout'], 'ab') as so:
-                                so.write(out)
-                    else:
-                        sys.stdout.write(out.decode())
-
-                    if 'stderr' in kwargs:
-                        if kwargs['stderr'] is not False:
-                            with open(kwargs['stderr'], 'ab') as se:
-                                se.write(err)
-                    else:
-                        sys.stderr.write(err.decode())
-                    ret = child.returncode
-                else:
-                    # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
-                    ret = pexpect_run(cmd)
-            elif '__std_out__' in env.sos_dict and '__std_err__' in env.sos_dict:
-                if 'stdout' in kwargs or 'stderr' in kwargs:
-                    if 'stdout' in kwargs:
-                        if kwargs['stdout'] is False:
-                            so = subprocess.DEVNULL
-                        else:
-                            so = open(kwargs['stdout'], 'ab')
-                    elif env.verbosity > 0:
-                        so = open(env.sos_dict['__std_out__'], 'ab')
-                    else:
-                        so = subprocess.DEVNULL
-
-                    if 'stderr' in kwargs:
-                        if kwargs['stderr'] is False:
-                            se = subprocess.DEVNULL
-                        else:
-                            se = open(kwargs['stderr'], 'ab')
-                    elif env.verbosity > 1:
-                        se = open(env.sos_dict['__std_err__'], 'ab')
-                    else:
-                        se = subprocess.DEVNULL
-
-                    p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
-                    ret = p.wait()
-
-                    if so != subprocess.DEVNULL:
-                        so.close()
-                    if se != subprocess.DEVNULL:
-                        se.close()
-
-                elif env.verbosity >= 1:
-                    with open(env.sos_dict['__std_out__'], 'ab') as so, open(env.sos_dict['__std_err__'], 'ab') as se:
-                        p = subprocess.Popen(
-                            cmd, shell=True, stderr=se, stdout=so)
-                        ret = p.wait()
-                else:
-                    p = subprocess.Popen(
-                        cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-                    ret = p.wait()
-            else:
-                if 'stdout' in kwargs:
-                    if kwargs['stdout'] is False:
-                        so = subprocess.DEVNULL
-                    else:
-                        so = open(kwargs['stdout'], 'ab')
-                elif env.verbosity > 0:
-                    so = None
-                else:
-                    so = subprocess.DEVNULL
-
-                if 'stderr' in kwargs:
-                    if kwargs['stderr'] is False:
-                        se = subprocess.DEVNULL
-                    else:
-                        se = open(kwargs['stderr'], 'ab')
-                elif env.verbosity > 1:
-                    se = None
-                else:
-                    se = subprocess.DEVNULL
-
-                p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
-
-                ret = p.wait()
-                if so is not None and so != subprocess.DEVNULL:
-                    so.close()
-                if se is not None and se != subprocess.DEVNULL:
-                    se.close()
+            ret = self._run_cmd(cmd, **kwargs)
 
             if ret != 0:
                 debug_script_dir = os.path.join(env.exec_dir, '.sos')
