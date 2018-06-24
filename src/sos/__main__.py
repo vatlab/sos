@@ -1308,6 +1308,9 @@ def get_remove_parser(desc_only=False):
         option is usually used to remove large intermediate files from
         completed workflows while allowing relevant steps to be skipped
         during re-execution of the workflow.''')
+    group.add_argument('-p', '--placeholders', action='store_true', default=False,
+                       help='''Remove placeholder files that might have been left
+        uncleaned after an interrupted dryrun.''')
     parser.add_argument('-e', '--external', action='store_true', default=False,
                         help='''By default the remove command will only remove files and
         signatures under the current project directory. This option allows
@@ -1364,7 +1367,8 @@ def get_tracked_files(sig_file):
     tracked_files = set([x['filename'] for x in sig.tracked_files()])
     runtime_files = set(file_target(x).sig_file()
                         for x in tracked_files if file_target(x).target_exists('signature'))
-    return set(), tracked_files, runtime_files
+    placeholder_files = set(sig.placeholders())
+    return set(), tracked_files, runtime_files, placeholder_files
 
 
 def cmd_remove(args, unknown_args):
@@ -1378,11 +1382,37 @@ def cmd_remove(args, unknown_args):
     sig_files = glob.glob('.sos/*.sig')
     tracked_files = set()
     runtime_files = set()
+    placeholder_files = set()
     for sig_file in sig_files:
-        s, t, r = get_tracked_files(sig_file)
+        s, t, r, p = get_tracked_files(sig_file)
         tracked_files |= t
         runtime_files |= r
-    #
+        placeholder_files |= p
+
+    if args.placeholders:
+        removed: int = 0
+        for ph in sorted(placeholder_files):
+            p = file_target(ph)
+            if not p.target_exists('any'):
+                continue
+            if p.size() == 0:
+                try:
+                    env.logger.debug(f'Remove placeholder file {ph}')
+                    p.remove('both')
+                    removed += 1
+                except Exception as e:
+                    env.logger.debug(
+                        f'Failed to remove placeholder file {ph}: {e}')
+            else:
+                env.logger.debug(
+                    f'Keep placeholder {ph} because it is non-empty.')
+        if removed:
+            env.logger.info(
+                f'{removed} placeholder file{"s are" if removed > 1 else "is"} removed')
+        else:
+            env.logger.info('No remaining placeholder file exists.')
+        return
+        #
     if args.signature and not args.targets:
         # a special case where all file and runtime signatures are removed.
         # no other options are allowed.
@@ -1904,7 +1934,7 @@ def locate_files(session, include, exclude, all_files):
                              'Available sessions are:\n' +
                              '\n'.join(os.path.basename(x)[:-4] for x in sig_files))
     #
-    script_files, tracked_files, runtime_files = get_tracked_files(sig_file)
+    script_files, tracked_files, runtime_files, _ = get_tracked_files(sig_file)
     # all
     if not all_files:
         external_files = []
