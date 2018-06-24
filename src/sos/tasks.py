@@ -474,9 +474,11 @@ del sos_handle_parameter_
                        sos_dict=sos_dict)
 
     m.start()
-    if sigmode is not None:
-        env.config['sig_mode'] = sigmode
     env.config['run_mode'] = runmode
+    if runmode == 'dryrun':
+        env.config['sig_mode'] = 'ignore'
+    elif sigmode is not None:
+        env.config['sig_mode'] = sigmode
     #
     if subtask:
         env.logger.debug(f'{task_id} ``started``')
@@ -735,7 +737,10 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             '~'), '.sos', 'tasks', task + '.status')
 
     def has_pulse():
-        return os.path.isfile(pulse_file) and os.stat(pulse_file).st_mtime >= os.stat(task_file).st_mtime
+        # for whatever reason, sometimes the pulse file might appear to be slightly
+        # before the task file, and if the task is very short so the pulse file is
+        # not updated, the task will appear to be in pending mode forever
+        return os.path.isfile(pulse_file) and os.stat(pulse_file).st_mtime >= os.stat(task_file).st_mtime - 1
 
     res_file = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', task + '.res')
