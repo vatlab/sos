@@ -831,13 +831,15 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
     # if there is no status file
     if has_job():
         return dict(status='submitted', files={task_file: os.stat(task_file).st_mtime,
-                                               job_file: os.stat(job_file).st_mtime})
+                                               job_file: os.stat(job_file).st_mtime,
+                                               pulse_file: 0})
     else:
         # status not changed
         if hint and hint['status'] == 'pending' and hint['files'][task_file] == os.stat(task_file).st_mtime:
             return {}
         else:
-            return dict(status='pending', files={task_file: os.stat(task_file).st_mtime})
+            return dict(status='pending', files={task_file: os.stat(task_file).st_mtime,
+                                                 job_file: 0})
 
 
 def check_tasks(tasks, verbosity: int=1, html: bool=False, start_time=False, age=None, tags=None, status=None):
