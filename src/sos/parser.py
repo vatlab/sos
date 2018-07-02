@@ -442,6 +442,10 @@ class SoS_Step:
                 if name in SOS_DIRECTIVES:
                     raise ValueError(
                         f'Invalid parameter name {name}: {name} is a SoS keyword')
+                #
+                if name in env.symbols:
+                    raise ValueError(
+                        f'Parameter {name} overrides a Python or SoS keyword.')
                 if not value.strip():
                     raise ValueError(
                         f'{self.step_name()}: Invalid parameter definition: {statement[2]}')

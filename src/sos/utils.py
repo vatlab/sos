@@ -906,10 +906,6 @@ def sos_handle_parameter_(key, defvalue):
         if key in env.sos_dict['__args__']:
             return env.sos_dict['__args__'][key]
     #
-    if key in env.symbols:
-        env.logger.warning(
-            f'Parameter {key} overrides a Python or SoS keyword.')
-    #
     parser = argparse.ArgumentParser()
     # thre is a possibility that users specify --cut-off instead of --cut_off for parameter
     # cut_off. It owuld be nice to allow both.
