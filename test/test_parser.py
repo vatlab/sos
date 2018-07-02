@@ -1246,15 +1246,14 @@ run:
         Base_Executor(wf).run()
         self.assertFalse(os.path.isfile('a.txt'))
         #
-        script = SoS_Script('''
+        script = '''
 parameter: run = 5
 
 [1]
 run:
     touch a.txt
-''')
-        wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf).run)
+'''
+        self.assertRaises(Exception, SoS_Script, script)
 
     def testComments(self):
         '''Test the use of comments in sos script'''
