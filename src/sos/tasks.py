@@ -1239,7 +1239,7 @@ def kill_tasks(tasks, tags=None):
 
 
 def kill_task(task):
-    status = check_task(task)
+    status = check_task(task)['status']
     if status == 'pending':
         # the task engine will remove it from lists if killed through a task engine
         # but it can also be killed through command line externally, so we will need
