@@ -895,10 +895,6 @@ def sos_handle_parameter_(key, defvalue):
     NOTE: parmeters will not be handled if it is already defined in
     the environment. This makes the parameters variable.
     '''
-    if key in env.symbols:
-        env.logger.warning(
-            f'Parameter {key} overrides a Python or SoS keyword.')
-
     env.parameter_vars.add(key)
     if not env.sos_dict['__args__']:
         if isinstance(defvalue, type):
