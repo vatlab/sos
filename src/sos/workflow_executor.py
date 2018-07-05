@@ -692,8 +692,13 @@ class Base_Executor:
 
             # for existing targets... we should check if it actually exists. If
             # not it would still need to be regenerated
+            node_added = False
+            existing_targets = set(dag.dangling(targets)[1])
             for target in existing_targets:
-                if target not in dag.dangling(targets)[1]:
+                if node_added:
+                    existing_targets = set(dag.dangling(targets)[1])
+                    node_added = False
+                if target not in existing_targets:
                     continue
                 if file_target(target).target_exists('target') if isinstance(target, str) else target.target_exists('target'):
                     continue
@@ -750,7 +755,7 @@ class Base_Executor:
                 dag.add_step(section.uuid, node_name,
                              None, res['step_input'],
                              res['step_depends'], res['step_output'], context=context)
-                #
+                node_added = true
                 added_node += 1
                 # this case do not count as resolved
                 # resolved += 1
