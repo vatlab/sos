@@ -937,8 +937,8 @@ def cmd_preview(args, unknown_args):
             elif msg[0] == 'display_data':
                 if 'text/plain' in msg[1]['data']:
                     print(msg[1]['data']['text/plain'])
-                elif 'text/HTML' in msg[1]['data']:
-                    print(dehtml(msg[1]['data']['text/html']))
+                elif 'text/html' in msg[1]['data']:
+                    print(msg[1]['data']['text/html'])
                 else:
                     print('BINARY DATA of type {}'.format(
                         ', '.join(msg[1]['data'].keys())))

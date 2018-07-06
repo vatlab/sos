@@ -21,7 +21,8 @@ def get_previewers():
             name, priority = entrypoint.name.split(',', 1)
             priority = int(priority)
         except Exception as e:
-            env.logger.warning(f'Ignore incorrect previewer entry point {entrypoint}: {e}')
+            env.logger.warning(
+                f'Ignore incorrect previewer entry point {entrypoint}: {e}')
             continue
         # If name points to a function in a module. Let us try to import the module
         if ':' in name:
@@ -82,10 +83,11 @@ def _preview_pdf_parser():
 
 def preview_pdf(filename, kernel=None, style=None):
     use_png = False
+    warn = kernel.warn if kernel is not None else env.logger.warning
     if style is not None and 'style' in style:
         if style['style'] != 'png':
-            if kernel is not None and style['style'] is not None:
-                kernel.warn(
+            if style['style'] is not None:
+                warn(
                     f'Option --style of PDF preview only accept parameter png: {style["style"]} provided')
         else:
             use_png = True
@@ -108,9 +110,8 @@ def preview_pdf(filename, kernel=None, style=None):
                     pages = [x - 1 for x in args.pages]
                     for p in pages:
                         if p >= nPages:
-                            if kernel is not None:
-                                kernel.warn(
-                                    f'Page {p} out of range of the pdf file ({nPages} pages)')
+                            warn(
+                                f'Page {p} out of range of the pdf file ({nPages} pages)')
                             pages = list(range(nPages))
                             break
             # single page PDF
@@ -132,8 +133,7 @@ def preview_pdf(filename, kernel=None, style=None):
                 return {
                     'image/png': base64.b64encode(image._repr_png_()).decode('ascii')}
         except Exception as e:
-            if kernel is not None:
-                kernel.warn(e)
+            warn(e)
             return {'text/html':
                     f'<iframe src={filename} width="100%"></iframe>'}
     else:
@@ -145,7 +145,7 @@ def preview_pdf(filename, kernel=None, style=None):
             return {'text/html':
                     f'<iframe src={filename} width="800px" height="{img.height/img.width * 800}px"></iframe>'}
         except Exception as e:
-            kernel.warn(e)
+            warn(e)
             return {'text/html':
                     f'<iframe src={filename} width="100%"></iframe>'}
 
@@ -239,7 +239,8 @@ def preview_md(filename, kernel=None, style=None):
 
 
 def preview_dot(filename, kernel=None, style=None):
-    data = dot_to_gif(filename, warn = kernel.warn if kernel else env.logger.warning)
+    data = dot_to_gif(
+        filename, warn=kernel.warn if kernel else env.logger.warning)
     # according to https://github.com/ipython/ipython/issues/10045
     # I have to use 'image/png' instead of 'image/gif' to get the gif displayed.
     return {'image/png': data}
