@@ -97,6 +97,9 @@ def preview_pdf(filename, kernel=None, style=None):
             # if imagemagick is not installed properly.
             from wand.image import Image
             img = Image(filename=filename)
+
+            if img.width == 0 or img.height == 0:
+                raise ValueError('Image appears to have zero width or height')
             nPages = len(img.sequence)
             pages = list(range(nPages))
 
@@ -142,6 +145,8 @@ def preview_pdf(filename, kernel=None, style=None):
         try:
             from wand.image import Image
             img = Image(filename=filename)
+            if img.width == 0 or img.height == 0:
+                raise ValueError('Image appears to have zero width or height')
             return {'text/html':
                     f'<iframe src={filename} width="800px" height="{img.height/img.width * 800}px"></iframe>'}
         except Exception as e:
