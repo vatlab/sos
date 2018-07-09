@@ -316,7 +316,7 @@ class Visualizer:
         code = """
 <div class='scatterplot_container'>
 <div class='""" + class_name + """' id='dataframe_scatterplot_""" + tid + """' width='""" + args.width + """' height='""" + args.height + """'></div>
-<script language="javascript" type="text/javascript" src="http://www.flotcharts.org/flot/jquery.flot.js"></script>
+<script language="javascript" type="text/javascript" src="https://www.flotcharts.org/flot/jquery.flot.js"></script>
 <script>
     var options = """ + json.dumps(options) + """;""" + optfunc + """
     function plotScatterPlot""" + tid + """() {
