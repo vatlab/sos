@@ -10,7 +10,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from io import BytesIO
 
 from sos.eval import interpolate
 from sos.targets import sos_targets
