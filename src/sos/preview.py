@@ -7,7 +7,7 @@ import argparse
 import base64
 
 import pkg_resources
-from sos.utils import dehtml, env, dot_to_gif
+from sos.utils import dehtml, env, dot_to_gif, linecount_of_file
 
 
 def get_previewers():
@@ -181,10 +181,13 @@ def preview_txt(filename, kernel=None, style=None):
     else:
         limit = 5
 
-    content = ''
+    nlines = linecount_of_file(filename)
+    content = 'sos:: {} lines{}\n'.format(nlines,
+            f' ({limit} displayed, see --limit)' if nlines > limit else '')
+
     with open(filename, 'r') as fin:
         if limit < 0:
-            content = fin.read()
+            content += fin.read()
         else:
             for _ in range(limit):
                 content += fin.readline()
