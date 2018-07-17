@@ -755,7 +755,7 @@ class Base_Executor:
                 dag.add_step(section.uuid, node_name,
                              None, res['step_input'],
                              res['step_depends'], res['step_output'], context=context)
-                node_added = true
+                node_added = True
                 added_node += 1
                 # this case do not count as resolved
                 # resolved += 1
