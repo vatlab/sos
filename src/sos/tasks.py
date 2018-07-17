@@ -352,7 +352,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                                                  job_file: 0})
 
 
-def check_tasks(tasks, is_all: boolean):
+def check_tasks(tasks, is_all: bool):
     cache_file: str = os.path.join(
         os.path.expanduser('~'), '.sos', 'tasks', 'status_cache.pickle')
     #
