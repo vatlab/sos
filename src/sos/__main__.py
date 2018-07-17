@@ -927,7 +927,7 @@ def cmd_preview(args, unknown_args):
     if args.html:
         print(msgs)
     else:
-        from .utils import colorstr, dehtml
+        from .utils import colorstr
         for msg in msgs:
             if msg[0] == 'stream':
                 if msg[1]['name'] == 'stdout':
