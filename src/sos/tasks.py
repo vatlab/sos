@@ -1294,7 +1294,7 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
         from multiprocessing.pool import ThreadPool as Pool
         p = Pool(min(20, len(all_tasks)))
         task_status = p.map(check_task, [x[0] for x in all_tasks])
-        all_tasks = [x for x, s in zip(all_tasks, task_status) if s in status]
+        all_tasks = [x for x, s in zip(all_tasks, task_status) if s['status'] in status]
 
     if tags:
         all_tasks = [x for x in all_tasks if any(
