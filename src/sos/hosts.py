@@ -20,7 +20,8 @@ import pkg_resources
 from .eval import Undetermined, cfg_interpolate
 from .syntax import SOS_LOGLINE
 from .targets import path, sos_targets
-from .tasks import BackgroundProcess_TaskEngine, loadTask
+from .task_engines import BackgroundProcess_TaskEngine
+from .tasks import loadTask
 from .utils import (env, expand_size, expand_time,
                     format_HHMMSS, short_repr)
 
