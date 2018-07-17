@@ -352,6 +352,33 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                                                  job_file: 0})
 
 
+def check_tasks(tasks, is_all: boolean):
+    cache_file: str = os.path.join(
+        os.path.expanduser('~'), '.sos', 'tasks', 'status_cache.pickle')
+    #
+    status_cache = {}
+    if os.path.isfile(cache_file):
+        with fasteners.InterProcessLock(cache_file + '_'):
+            with open(cache_file, 'rb') as cache:
+                status_cache = pickle.load(cache)
+    # at most 20 threads
+    p = Pool(min(20, len(tasks)))
+    # the result can be {} for unchanged, or real results
+    raw_status = p.starmap(
+        check_task, [(x, status_cache.get(x, {})) for x in tasks])
+
+    # if check all, we clear the cache and record all existing tasks
+    has_changes: bool = any(x for x in raw_status)
+    if has_changes:
+        if is_all:
+            status_cache = {k: v if v else status_cache[k]
+                            for k, v in zip(tasks, raw_status)}
+        else:
+            status_cache.update(
+                {k: v for k, v in zip(tasks, raw_status) if v})
+    return status_cache
+
+
 def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=False, age=None, tags=None, status=None):
     # verbose is ignored for now
     import glob
@@ -392,30 +419,9 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
     if not all_tasks:
         env.logger.info('No matching tasks')
         return
-    cache_file: str = os.path.join(
-        os.path.expanduser('~'), '.sos', 'tasks', 'status_cache.pickle')
-    #
-    status_cache = {}
-    if os.path.isfile(cache_file):
-        with fasteners.InterProcessLock(cache_file + '_'):
-            with open(cache_file, 'rb') as cache:
-                status_cache = pickle.load(cache)
-    #
-    # at most 20 threads
-    p = Pool(min(20, len(all_tasks)))
-    # the result can be {} for unchanged, or real results
-    raw_status = p.starmap(
-        check_task, [(x[0], status_cache.get(x[0], {})) for x in all_tasks])
-    # if check all, we clear the cache and record all existing tasks
-    has_changes: bool = any(x for x in raw_status)
-    if has_changes:
-        if check_all:
-            status_cache = {k[0]: v if v else status_cache[k[0]]
-                            for k, v in zip(all_tasks, raw_status)}
-        else:
-            status_cache.update(
-                {k[0]: v for k, v in zip(all_tasks, raw_status) if v})
-    obtained_status = [status_cache[x[0]]['status'] for x in all_tasks]
+
+    raw_status = check_tasks([x[0] for x in all_tasks])
+    obtained_status = [raw_status[x[0]]['status'] for x in all_tasks]
     if status:
         all_tasks = [x for x, s in zip(
             all_tasks, obtained_status) if s in status]
@@ -801,9 +807,7 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
 
     if status:
         # at most 20 threads
-        from multiprocessing.pool import ThreadPool as Pool
-        p = Pool(min(20, len(all_tasks)))
-        task_status = p.map(check_task, [x[0] for x in all_tasks])
+        task_status = check_tasks([x[0] for x in all_tasks])
         all_tasks = [x for x, s in zip(
             all_tasks, task_status) if s['status'] in status]
 
