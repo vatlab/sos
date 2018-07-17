@@ -842,7 +842,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                                                  job_file: 0})
 
 
-def check_tasks(tasks, verbosity: int=1, html: bool=False, start_time=False, age=None, tags=None, status=None):
+def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=False, age=None, tags=None, status=None):
     # verbose is ignored for now
     import glob
     from multiprocessing.pool import ThreadPool as Pool
@@ -1294,7 +1294,8 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
         from multiprocessing.pool import ThreadPool as Pool
         p = Pool(min(20, len(all_tasks)))
         task_status = p.map(check_task, [x[0] for x in all_tasks])
-        all_tasks = [x for x, s in zip(all_tasks, task_status) if s['status'] in status]
+        all_tasks = [x for x, s in zip(
+            all_tasks, task_status) if s['status'] in status]
 
     if tags:
         all_tasks = [x for x in all_tasks if any(

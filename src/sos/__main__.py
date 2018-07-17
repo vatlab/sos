@@ -423,7 +423,7 @@ def workflow_status(workflow):
     import time
     from .utils import env, load_var, load_config_files, PrettyRelativeTime
     from .hosts import Host
-    from .tasks import check_tasks
+    from .tasks import print_task_status
     from .eval import interpolate
     from io import StringIO
     from contextlib import redirect_stdout
@@ -472,7 +472,7 @@ def workflow_status(workflow):
     for k, v in pending_tasks.items():
         if k in ('', 'localhost'):
             with StringIO() as buf, redirect_stdout(buf):
-                check_tasks(v, 0, False, False, None)
+                print_task_status(v, 0, False, False, None)
                 status = buf.getvalue().strip().split('\n')
         else:
             # remote host?
@@ -996,7 +996,7 @@ def get_execute_parser(desc_only=False):
 
 
 def cmd_execute(args, workflow_args):
-    from .tasks import execute_task, check_task, monitor_interval, resource_monitor_interval
+    from .tasks import execute_task, print_task_status, monitor_interval, resource_monitor_interval
     from .monitor import summarizeExecution
     from .utils import env, load_config_files
     import glob
@@ -1022,7 +1022,7 @@ def cmd_execute(args, workflow_args):
             # this is for local execution, perhaps on a remote host, and
             # there is no daemon process etc. It also does not handle job
             # preparation.
-            status = check_task(task)
+            status = print_task_status(task)
             res_file = os.path.join(os.path.expanduser(
                 '~'), '.sos', 'tasks', task + '.res')
             if status == 'running':
@@ -1134,7 +1134,7 @@ def get_status_parser(desc_only=False):
 
 
 def cmd_status(args, workflow_args):
-    from .tasks import check_tasks
+    from .tasks import print_task_status
     from .utils import env, load_config_files, get_traceback
     from .hosts import Host
     #from .monitor import summarizeExecution
@@ -1142,8 +1142,8 @@ def cmd_status(args, workflow_args):
     try:
         load_config_files(args.config)
         if not args.queue:
-            check_tasks(tasks=args.tasks, verbosity=args.verbosity, html=args.html, start_time=args.start_time,
-                        age=args.age, tags=args.tags, status=args.status)
+            print_task_status(tasks=args.tasks, verbosity=args.verbosity, html=args.html, start_time=args.start_time,
+                              age=args.age, tags=args.tags, status=args.status)
         else:
             # remote host?
             host = Host(args.queue)
