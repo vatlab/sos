@@ -284,7 +284,12 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         '~'), '.sos', 'tasks', task + '.res')
 
     def has_res():
-        return os.path.isfile(res_file) and os.stat(res_file).st_mtime >= os.stat(task_file).st_mtime
+        # witht the removal of .def files, a taslk file would be touched when
+        # it is intended to be re-run, and the previous result file would become
+        # obsolete already
+        #
+        # and os.stat(res_file).st_mtime >= os.stat(task_file).st_mtime
+        return os.path.isfile(res_file)
 
     job_file = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', task + '.sh')
