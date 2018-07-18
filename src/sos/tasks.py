@@ -8,7 +8,7 @@ import pickle
 import time
 import lzma
 
-from stat import S_IREAD, S_IRGRP, S_IROTH
+from stat import S_IRUSR, S_IRGRP, S_IROTH, S_IWUSR, S_IWGRP, S_IWOTH
 from typing import Union, Dict
 from collections.abc import Sequence
 
@@ -267,17 +267,30 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         return os.path.isfile(job_file) and os.stat(job_file).st_mtime >= os.stat(task_file).st_mtime \
             and os.path.isfile(job_id_file) and os.stat(job_id_file).st_mtime >= os.stat(job_file).st_mtime
 
+    def remove_files(exts):
+        for ext in exts:
+            filename = os.path.join(os.path.expanduser(
+                '~'), '.sos', 'tasks', task + ext)
+            if os.path.isfile(filename):
+                if ext == '.pulse':
+                    os.chmod(filename, S_IRUSR | S_IRGRP |
+                             S_IROTH | S_IWUSR | S_IWGRP | S_IWOTH)
+                try:
+                    os.remove(filename)
+                except Exception as e:
+                    env.logger.warning(f'Failed to remove {filename}: {e}')
+
     if has_res():
         try:
             from .targets import file_target
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
+            # remove other files if exist
+            remove_files(['.pulse', '.sh', '.job_id', '.out', '.err'])
             status_files = {task_file: os.stat(task_file).st_mtime,
                             res_file: os.stat(res_file).st_mtime,
-                            pulse_file: os.stat(pulse_file).st_mtime if os.path.isfile(
-                                pulse_file) else 0
+                            pulse_file: 0
                             }
-
             if ('ret_code' in res and res['ret_code'] == 0) or ('succ' in res and res['succ'] == 0):
                 for var in ('input', 'output', 'depends'):
                     if var not in res or not isinstance(res[var], dict):
@@ -324,6 +337,8 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                 # result file appears during sos tatus run
                 return check_task(task)
             else:
+                # remove other files if exist
+                remove_files(['.sh', '.job_id', '.out', '.err'])
                 return dict(status='aborted', files=status_files)
         # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
         time.sleep(2 * monitor_interval)
@@ -337,6 +352,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             else:
                 return dict(status='running', files=status_files)
         else:
+            remove_files(['.sh', '.job_id', '.out', '.err'])
             return dict(status='aborted', files=status_files)
     # if there is no status file
     if has_job():
@@ -362,6 +378,7 @@ def check_tasks(tasks, is_all: bool):
             with open(cache_file, 'rb') as cache:
                 status_cache = pickle.load(cache)
     # at most 20 threads
+    from multiprocessing.pool import ThreadPool as Pool
     p = Pool(min(20, len(tasks)))
     # the result can be {} for unchanged, or real results
     raw_status = p.starmap(
@@ -376,6 +393,9 @@ def check_tasks(tasks, is_all: bool):
         else:
             status_cache.update(
                 {k: v for k, v in zip(tasks, raw_status) if v})
+        with fasteners.InterProcessLock(cache_file + '_'):
+            with open(cache_file, 'wb') as cache:
+                pickle.dump(status_cache, cache)
     return status_cache
 
 
@@ -420,7 +440,7 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
         env.logger.info('No matching tasks')
         return
 
-    raw_status = check_tasks([x[0] for x in all_tasks])
+    raw_status = check_tasks([x[0] for x in all_tasks], check_all)
     obtained_status = [raw_status[x[0]]['status'] for x in all_tasks]
     if status:
         all_tasks = [x for x, s in zip(
@@ -496,21 +516,23 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
                 print(
                     f'{k:22}{short_repr(v) if verbosity == 3 else pprint.pformat(v)}')
             print()
-            print('EXECUTION STATS:\n================')
-            print(summarizeExecution(t, status=s))
-            if verbosity == 4:
-                # if there are other files such as job file, print them.
-                files = glob.glob(os.path.join(
-                    os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
-                for f in sorted([x for x in files if os.path.splitext(x)[-1] not in ('.res',
-                                                                                     '.task', '.pulse', '.status', '.def')]):
-                    print(
-                        f'{os.path.basename(f)}:\n{"="*(len(os.path.basename(f))+1)}')
-                    try:
-                        with open(f) as fc:
-                            print(fc.read())
-                    except Exception:
-                        print('Binary file')
+
+            res_file = os.path.join(os.path.expanduser(
+                '~'), '.sos', 'tasks', t + '.res')
+            if os.path.isfile(res_file):
+                with open(res_file, 'rb') as result:
+                    res = pickle.load(result)
+                if 'pulse' in res:
+                    print('EXECUTION STATS:\n================')
+                    print(summarizeExecution(res['pulse'], status=s))
+                if verbosity == 4:
+                    # if there are other files such as job file, print them.
+                    if 'stdout' in res:
+                        print('standout output:\n================\n' +
+                              res['stdout'])
+                    if 'stderr' in res:
+                        print('standout output:\n================\n' +
+                              res['stderr'])
     else:
         # HTML output
         from .utils import PrettyRelativeTime, isPrimitive
@@ -568,28 +590,34 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
                     elif isPrimitive(v) and v not in (None, '', [], (), {}):
                         row(k,
                             f'<pre style="text-align:left">{pprint.pformat(v)}</pre>')
-            summary = summarizeExecution(t, status=s)
-            if summary:
-                # row('Execution')
-                for line in summary.split('\n'):
-                    fields = line.split(None, 1)
-                    if fields[0] == 'task':
-                        continue
-                    row(fields[0], '' if fields[1] is None else fields[1])
-                # this is a placeholder for the frontend to draw figure
-                row(td=f'<div id="res_{t}"></div>')
+            res_file = os.path.join(os.path.expanduser(
+                '~'), '.sos', 'tasks', t + '.res')
+            if os.path.isfile(res_file):
+                with open(res_file, 'rb') as result:
+                    res = pickle.load(result)
+                if 'pulse' in res:
+                    summary = summarizeExecution(res['pulse'], status=s)
+                    # row('Execution')
+                    for line in summary.split('\n'):
+                        fields = line.split(None, 1)
+                        if fields[0] == 'task':
+                            continue
+                        row(fields[0], '' if fields[1] is None else fields[1])
+            # this is a placeholder for the frontend to draw figure
+            row(td=f'<div id="res_{t}"></div>')
             #
-            files = glob.glob(os.path.join(
-                os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
-            for f in sorted([x for x in files if os.path.splitext(x)[-1] not in ('.def', '.res', '.task', '.pulse', '.status')]):
-                numLines = linecount_of_file(f)
-                row(os.path.splitext(f)[-1], '(empty)' if numLines ==
+            if 'stdout' in res:
+                numLines = res['stdout'].count('\n')
+                row('standard output', '(empty)' if numLines ==
                     0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}')
-                try:
-                    row(
-                        td=f'<small><pre style="text-align:left">{tail_of_file(f, 200, ansi2html=True)}</pre></small>')
-                except Exception:
-                    row(td='<small><pre style="text-align:left">ignored.</pre><small>')
+                row(
+                    td=f'<small><pre style="text-align:left">{res["stdout"].splitlines()[-200:]}</pre></small>')
+            if 'stderr' in res:
+                numLines = res['stderr'].count('\n')
+                row('standard error', '(empty)' if numLines ==
+                    0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}')
+                row(
+                    td=f'<small><pre style="text-align:left">{res["stderr"].splitlines()[-200:]}</pre></small>')
             print('</table>')
             #
             # supplement run time information
@@ -710,12 +738,6 @@ function showResourceFigure_''' + t + '''() {
 showResourceFigure_''' + t + '''()
 </script>
 ''')
-    if has_changes:
-        with fasteners.InterProcessLock(cache_file + '_'):
-            with open(cache_file, 'wb') as cache:
-                pickle.dump(status_cache, cache)
-    else:
-        env.logger.debug('No new status detected')
     # remove jobs that are older than 1 month
     if to_be_removed:
         purge_tasks(to_be_removed, verbosity=0)
@@ -792,11 +814,13 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
             matched = [(os.path.basename(x)[:-5], os.path.getmtime(x))
                        for x in matched]
             all_tasks.extend(matched)
+        is_all = False
     else:
         tasks = glob.glob(os.path.join(
             os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
         all_tasks = [(os.path.basename(x)[:-5], os.path.getmtime(x))
                      for x in tasks]
+        is_all = True
     #
     if age is not None:
         age = expand_time(age, default_unit='d')
@@ -807,7 +831,7 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
 
     if status:
         # at most 20 threads
-        task_status = check_tasks([x[0] for x in all_tasks])
+        task_status = check_tasks([x[0] for x in all_tasks], is_all)
         all_tasks = [x for x, s in zip(
             all_tasks, task_status) if s['status'] in status]
 

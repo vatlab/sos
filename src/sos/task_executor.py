@@ -105,8 +105,31 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     # write result file
     res_file = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', task_id + '.res')
+
+    # save .out .err and .pulse files into the .res file
+    for ext, key in (('.out', 'stdout'), ('.err', 'stderr'),
+                     ('.pulse', 'pulse'), ('.job_id', 'job_id'),
+                     ('.sh', 'job')):
+        filename = os.path.join(os.path.expanduser(
+            '~'), '.sos', 'tasks', task_id + ext)
+        if not os.path.isfile(filename):
+            continue
+        try:
+            if ext != '.job_id':
+                with open(filename) as fileobj:
+                    content = fileobj.read()
+                res[key] = content
+            if ext == '.pulse':
+                # the file could be readonly
+                os.chmod(filename, S_IRUSR | S_IRGRP |
+                         S_IROTH | S_IWUSR | S_IWGRP | S_IWOTH)
+            os.remove(filename)
+        except Exception as e:
+            env.logger.warning(f'Failed to load {filename}: {e}')
+
     with open(res_file, 'wb') as res_file:
         pickle.dump(res, res_file)
+
     if res['ret_code'] != 0 and 'exception' in res:
         with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'), 'a') as err:
             err.write(f'Task {task_id} exits with code {res["ret_code"]}')

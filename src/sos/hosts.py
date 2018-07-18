@@ -108,30 +108,25 @@ class DaemonizedProcess(mp.Process):
         return
 
 
-def _show_err_and_out(task_id: str) -> None:
-    sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
-    out_file = os.path.join(sys_task_dir, task_id + '.out')
-    err_file = os.path.join(sys_task_dir, task_id + '.err')
-    if os.path.isfile(out_file):
-        sys.stderr.write(f'\n~/.sos/tasks/{task_id}.out:\n')
-        with open(out_file) as out:
-            ends_with_newline = False
-            for line in out:
-                if not SOS_LOGLINE.match(line):
-                    sys.stderr.write(line)
-                    ends_with_newline = line.endswith('\n')
-            if not ends_with_newline:
-                sys.stderr.write('\n')
-    if os.path.isfile(err_file):
-        sys.stderr.write(f'\n~/.sos/tasks/{task_id}.err:\n')
-        with open(err_file) as err:
-            ends_with_newline = False
-            for line in err:
-                if not SOS_LOGLINE.match(line):
-                    sys.stderr.write(line)
-                    ends_with_newline = line.endswith('\n')
-            if not ends_with_newline:
-                sys.stderr.write('\n')
+def _show_err_and_out(res) -> None:
+    if 'stdout' in res:
+        sys.stderr.write(f'\n{task_id}.out:\n')
+        ends_with_newline = False
+        for line in res['stdout'].splitlines():
+            if not SOS_LOGLINE.match(line):
+                sys.stderr.write(line)
+                ends_with_newline = line.endswith('\n')
+        if not ends_with_newline:
+            sys.stderr.write('\n')
+    if 'stderr' in res:
+        sys.stderr.write(f'\n{task_id}.err:\n')
+        ends_with_newline = False
+        for line in res['stderr'].splitlines():
+            if not SOS_LOGLINE.match(line):
+                sys.stderr.write(line)
+                ends_with_newline = line.endswith('\n')
+        if not ends_with_newline:
+            sys.stderr.write('\n')
 
 
 class LocalHost:
@@ -252,9 +247,8 @@ class LocalHost:
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
             if res['ret_code'] != 0 or env.verbosity >= 3:
-                _show_err_and_out(task_id)
+                _show_err_and_out(res)
         except Exception:
-            _show_err_and_out(task_id)
             env.logger.warning(f'Result for {task_id} is not received')
             return {'ret_code': 1, 'output': {}}
 
@@ -717,7 +711,6 @@ class RemoteHost:
                     task_id, self.alias, receive_cmd))
         res_file = os.path.join(sys_task_dir, task_id + '.res')
         if not os.path.isfile(res_file):
-            _show_err_and_out(task_id)
             env.logger.debug(f'Result for {task_id} is not received')
             return {'ret_code': 1, 'output': {}}
 
@@ -725,11 +718,11 @@ class RemoteHost:
             res = pickle.load(result)
 
         if ('ret_code' in res and res['ret_code'] != 0) or ('succ' in res and res['succ'] != 0):
-            _show_err_and_out(task_id)
+            _show_err_and_out(res)
             env.logger.info(f'Ignore remote results for failed job {task_id}')
         else:
             if env.verbosity >= 3:
-                _show_err_and_out(task_id)
+                _show_err_and_out(res)
             # do we need to copy files? We need to consult original task file
             # not the converted one
             task_file = os.path.join(sys_task_dir, task_id + '.def')

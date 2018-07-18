@@ -15,13 +15,14 @@ from .utils import env, expand_time, format_HHMMSS
 
 class ProcessMonitor(threading.Thread):
     def __init__(self, task_id, monitor_interval,
-            resource_monitor_interval, max_walltime=None, max_mem=None,
-            max_procs=None, sos_dict={}):
+                 resource_monitor_interval, max_walltime=None, max_mem=None,
+                 max_procs=None, sos_dict={}):
         threading.Thread.__init__(self)
         self.task_id = task_id
         self.pid = os.getpid()
         self.monitor_interval = monitor_interval
-        self.resource_monitor_interval = max(resource_monitor_interval // monitor_interval, 1)
+        self.resource_monitor_interval = max(
+            resource_monitor_interval // monitor_interval, 1)
         self.daemon = True
         self.max_walltime = max_walltime
         if self.max_walltime is not None:
@@ -38,8 +39,10 @@ class ProcessMonitor(threading.Thread):
         self.sos_dict = sos_dict
         with open(self.pulse_file, 'w') as pd:
             pd.write(f'#task: {task_id}\n')
-            pd.write(f'#started at {datetime.now().strftime("%A, %d. %B %Y %I:%M%p")}\n#\n')
-            pd.write('#time\tproc_cpu\tproc_mem\tchildren\tchildren_cpu\tchildren_mem\n')
+            pd.write(
+                f'#started at {datetime.now().strftime("%A, %d. %B %Y %I:%M%p")}\n#\n')
+            pd.write(
+                '#time\tproc_cpu\tproc_mem\tchildren\tchildren_cpu\tchildren_mem\n')
 
     def _check(self):
         current_process = psutil.Process(self.pid)
@@ -55,7 +58,8 @@ class ProcessMonitor(threading.Thread):
         return par_cpu, par_mem, n_children, ch_cpu, ch_mem
 
     def _exceed_resource(self, msg):
-        err_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.task_id + '.err')
+        err_file = os.path.join(os.path.expanduser(
+            '~'), '.sos', 'tasks', self.task_id + '.err')
         with open(err_file, 'a') as err:
             err.write(msg + '\n')
         # kill the task
@@ -84,7 +88,8 @@ class ProcessMonitor(threading.Thread):
                         self.sos_dict['peak_mem'] = mem + ch_mem
 
                     with open(self.pulse_file, 'a') as pd:
-                        pd.write(f'{time.time()}\t{cpu:.2f}\t{mem}\t{nch}\t{ch_cpu}\t{ch_mem}\n')
+                        pd.write(
+                            f'{time.time()}\t{cpu:.2f}\t{mem}\t{nch}\t{ch_cpu}\t{ch_mem}\n')
                     if self.max_procs is not None and cpu + ch_cpu > self.max_procs:
                         self._exceed_resource(
                             f'Task {self.task_id} exits because of excessive use of procs (used {cpu + ch_cpu}, limit {self.max_procs})')
@@ -103,16 +108,12 @@ class ProcessMonitor(threading.Thread):
                 # the warning message is usually:
                 # WARNING: psutil.NoSuchProcess no process found with pid XXXXX
                 # env.logger.warning(e)
-                env.logger.debug(f'Monitor of {self.task_id} failed with message {e}')
+                env.logger.debug(
+                    f'Monitor of {self.task_id} failed with message {e}')
                 break
 
 
-def summarizeExecution(task_id, status='Unknown'):
-    pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.pulse')
-    if not os.path.isfile(pulse_file):
-        pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.status')
-        if not os.path.isfile(pulse_file):
-            return
+def summarizeExecution(pulses, status='Unknown'):
     peak_cpu = 0
     accu_cpu = 0
     peak_mem = 0
@@ -121,28 +122,28 @@ def summarizeExecution(task_id, status='Unknown'):
     start_time = None
     end_time = None
     count = 0
-    with open(pulse_file) as proc:
-        for line in proc:
-            if line.startswith('#'):
-                continue
-            try:
-                t, c, m, nch, cc, cm = line.split()
-            except Exception as e:
-                env.logger.warning(f'Unrecognized resource line "{line.strip()}": {e}')
-            if start_time is None:
-                start_time = float(t)
-                end_time = float(t)
-            else:
-                end_time = float(t)
-            accu_cpu += float(c) + float(cc)
-            accu_mem += float(m) + float(cm)
-            count += 1
-            if float(c) + float(cc) > peak_cpu:
-                peak_cpu = float(c) + float(cc)
-            if float(m) + float(cm) > peak_mem:
-                peak_mem = float(m) + float(cm)
-            if int(nch) > peak_nch:
-                peak_nch = int(nch)
+    for line in pulses.splitlines():
+        if line.startswith('#'):
+            continue
+        try:
+            t, c, m, nch, cc, cm = line.split()
+        except Exception as e:
+            env.logger.warning(
+                f'Unrecognized resource line "{line.strip()}": {e}')
+        if start_time is None:
+            start_time = float(t)
+            end_time = float(t)
+        else:
+            end_time = float(t)
+        accu_cpu += float(c) + float(cc)
+        accu_mem += float(m) + float(cm)
+        count += 1
+        if float(c) + float(cc) > peak_cpu:
+            peak_cpu = float(c) + float(cc)
+        if float(m) + float(cm) > peak_mem:
+            peak_mem = float(m) + float(cm)
+        if int(nch) > peak_nch:
+            peak_nch = int(nch)
     try:
         second_elapsed = end_time - start_time
     except Exception:

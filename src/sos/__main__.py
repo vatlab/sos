@@ -996,8 +996,8 @@ def get_execute_parser(desc_only=False):
 
 
 def cmd_execute(args, workflow_args):
-    from .tasks import execute_task, print_task_status
-    from .task_executor import monitor_interval, resource_monitor_interval
+    from .tasks import print_task_status, monitor_interval, resource_monitor_interval
+    from .task_executor import execute_task
     from .monitor import summarizeExecution
     from .utils import env, load_config_files
     import glob
