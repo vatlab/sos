@@ -185,6 +185,10 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                 if os.path.isfile(sub_out):
                     with open(sub_out, 'rb') as sout:
                         out.write(sout.read())
+                    try:
+                        os.remove(sub_out)
+                    except Exception as e:
+                        env.logger.warning(f'Failed to remove {sub_out}: {e}')
 
                 sub_err = os.path.join(os.path.expanduser(
                     '~'), '.sos', 'tasks', tid + '.err')
@@ -193,6 +197,10 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                 if os.path.isfile(sub_err):
                     with open(sub_err, 'rb') as serr:
                         err.write(serr.read())
+                    try:
+                        os.remove(sub_err)
+                    except Exception as e:
+                        env.logger.warning(f'Failed to remove {sub_err}: {e}')
 
             if params.num_workers > 1:
                 from multiprocessing.pool import Pool

@@ -1225,7 +1225,7 @@ class Base_Executor:
                                     else:
                                         proc.step._killed_tasks.add(t)
                             if all(x in ('completed', 'aborted', 'failed', 'signature-mismatch') for x in res):
-                                # we try to get .err .out etc even when jobs are failed.
+                                # we try to get results
                                 task_status = proc.step._host.retrieve_results(
                                     proc.step._pending_tasks)
                                 proc.pipe.send(task_status)
