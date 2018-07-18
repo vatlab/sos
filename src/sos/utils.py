@@ -1312,15 +1312,13 @@ def tail_of_file(filename, n, offset=None, ansi2html=False):
             avg_line_length *= 1.3
 
 
-def sample_of_file(filename, n):
+def sample_lines(lines, n):
     '''Draw a sample of n lines from filename, largely evenly.'''
-    with open(filename) as f:
-        lines = f.readlines()
-        if len(lines) <= n:
-            return ''.join(lines)
-        else:
-            m = len(lines)
-            return ''.join([lines[x * m // n + m // (2 * n)] for x in range(n)])
+    if len(lines) <= n:
+        return ''.join(lines)
+    else:
+        m = len(lines)
+        return ''.join([lines[x * m // n + m // (2 * n)] for x in range(n)])
 
 
 def linecount_of_file(filename):

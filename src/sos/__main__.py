@@ -996,7 +996,7 @@ def get_execute_parser(desc_only=False):
 
 
 def cmd_execute(args, workflow_args):
-    from .tasks import print_task_status, monitor_interval, resource_monitor_interval
+    from .tasks import check_task, monitor_interval, resource_monitor_interval
     from .task_executor import execute_task
     from .monitor import summarizeExecution
     from .utils import env, load_config_files
@@ -1023,14 +1023,11 @@ def cmd_execute(args, workflow_args):
             # this is for local execution, perhaps on a remote host, and
             # there is no daemon process etc. It also does not handle job
             # preparation.
-            status = print_task_status(task)
+            status = check_task(task)['status']
             res_file = os.path.join(os.path.expanduser(
                 '~'), '.sos', 'tasks', task + '.res')
             if status == 'running':
-                if args.verbosity <= 1:
-                    print(status)
-                else:
-                    print(summarizeExecution(task, status=status))
+                print(status)
                 exit_code.append(1)
                 continue
             if status == 'completed' and args.__sig_mode__ != 'force':

@@ -113,7 +113,7 @@ class ProcessMonitor(threading.Thread):
                 break
 
 
-def summarizeExecution(pulses, status='Unknown'):
+def summarizeExecution(task_id, pulses, status='Unknown'):
     peak_cpu = 0
     accu_cpu = 0
     peak_mem = 0

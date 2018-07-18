@@ -12,7 +12,7 @@ from stat import S_IRUSR, S_IRGRP, S_IROTH, S_IWUSR, S_IWGRP, S_IWOTH
 from typing import Union, Dict
 from collections.abc import Sequence
 
-from .utils import (env, expand_time, linecount_of_file, sample_of_file,
+from .utils import (env, expand_time, linecount_of_file, sample_lines,
                     short_repr, tail_of_file, expand_size, format_HHMMSS)
 from .targets import sos_targets
 
@@ -524,7 +524,7 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
                     res = pickle.load(result)
                 if 'pulse' in res:
                     print('EXECUTION STATS:\n================')
-                    print(summarizeExecution(res['pulse'], status=s))
+                    print(summarizeExecution(t, res['pulse'], status=s))
                 if verbosity == 4:
                     # if there are other files such as job file, print them.
                     if 'stdout' in res:
@@ -533,6 +533,28 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
                     if 'stderr' in res:
                         print('standout output:\n================\n' +
                               res['stderr'])
+            else:
+                # we have separate pulse, out and err files
+                print('EXECUTION STATS:\n================')
+                pulse_file = os.path.join(
+                    os.path.expanduser('~'), '.sos', 'tasks', t + '.pulse')
+                if os.path.isfile(pulse_file):
+                    with open(pulse_file) as pulse:
+                        print(summarizeExecution(t, pulse.read(), status=s))
+                if verbosity == 4:
+                    # if there are other files such as job file, print them.
+                    for ext in ('.out', '.err'):
+                        f = os.path.join(
+                            os.path.expanduser('~'), '.sos', 'tasks', t + ext)
+                        if not os.path.isfile(f):
+                            continue
+                        print(
+                            f'{os.path.basename(f)}:\n{"="*(len(os.path.basename(f))+1)}')
+                        try:
+                            with open(f) as fc:
+                                print(fc.read())
+                        except Exception:
+                            print('Binary file')
     else:
         # HTML output
         from .utils import PrettyRelativeTime, isPrimitive
@@ -592,44 +614,72 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
                             f'<pre style="text-align:left">{pprint.pformat(v)}</pre>')
             res_file = os.path.join(os.path.expanduser(
                 '~'), '.sos', 'tasks', t + '.res')
+            pulse_content = ''
             if os.path.isfile(res_file):
                 with open(res_file, 'rb') as result:
                     res = pickle.load(result)
                 if 'pulse' in res:
-                    summary = summarizeExecution(res['pulse'], status=s)
+                    pulse_content = res['pulse']
+                    summary = summarizeExecution(t, res['pulse'], status=s)
                     # row('Execution')
                     for line in summary.split('\n'):
                         fields = line.split(None, 1)
                         if fields[0] == 'task':
                             continue
                         row(fields[0], '' if fields[1] is None else fields[1])
-            # this is a placeholder for the frontend to draw figure
-            row(td=f'<div id="res_{t}"></div>')
-            #
-            if 'stdout' in res:
-                numLines = res['stdout'].count('\n')
-                row('standard output', '(empty)' if numLines ==
-                    0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}')
-                row(
-                    td=f'<small><pre style="text-align:left">{res["stdout"].splitlines()[-200:]}</pre></small>')
-            if 'stderr' in res:
-                numLines = res['stderr'].count('\n')
-                row('standard error', '(empty)' if numLines ==
-                    0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}')
-                row(
-                    td=f'<small><pre style="text-align:left">{res["stderr"].splitlines()[-200:]}</pre></small>')
+                # this is a placeholder for the frontend to draw figure
+                row(td=f'<div id="res_{t}"></div>')
+                #
+                if 'stdout' in res:
+                    numLines = res['stdout'].count('\n')
+                    row('standard output', '(empty)' if numLines ==
+                        0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}')
+                    row(
+                        td=f'<small><pre style="text-align:left">{res["stdout"].splitlines()[-200:]}</pre></small>')
+                if 'stderr' in res:
+                    numLines = res['stderr'].count('\n')
+                    row('standard error', '(empty)' if numLines ==
+                        0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}')
+                    row(
+                        td=f'<small><pre style="text-align:left">{res["stderr"].splitlines()[-200:]}</pre></small>')
+            else:
+                pulse_file = os.path.join(
+                    os.path.expanduser('~'), '.sos', 'tasks', t + '.pulse')
+                if os.path.isfile(pulse_file):
+                    with open(pulse_file) as pulse:
+                        pulse_content = pulse.read()
+                        summary = summarizeExecution(
+                            t, pulse_content, status=s)
+                        if summary:
+                            # row('Execution')
+                            for line in summary.split('\n'):
+                                fields = line.split(None, 1)
+                                if fields[0] == 'task':
+                                    continue
+                                row(fields[0], '' if fields[1]
+                                    is None else fields[1])
+                            # this is a placeholder for the frontend to draw figure
+                            row(td=f'<div id="res_{t}"></div>')
+                #
+                files = glob.glob(os.path.join(
+                    os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
+                for f in sorted([x for x in files if os.path.splitext(x)[-1] not in ('.def', '.res', '.task', '.pulse', '.status')]):
+                    numLines = linecount_of_file(f)
+                    row(os.path.splitext(f)[-1], '(empty)' if numLines ==
+                        0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}')
+                    try:
+                        row(
+                            td=f'<small><pre style="text-align:left">{tail_of_file(f, 200, ansi2html=True)}</pre></small>')
+                    except Exception:
+                        row(td='<small><pre style="text-align:left">ignored.</pre><small>')
             print('</table>')
             #
-            # supplement run time information
-            pulse_file = os.path.join(os.path.expanduser(
-                '~'), '.sos', 'tasks', t + '.pulse')
-            if not os.path.isfile(pulse_file):
+            if not pulse_content:
                 return
-            else:
-                # A sample of 400 point should be enough to show the change of resources
-                lines = sample_of_file(pulse_file, 400).splitlines()
-                if len(lines) <= 2:
-                    return
+            # A sample of 400 point should be enough to show the change of resources
+            lines = sample_lines(pulse_content, 400).splitlines()
+            if len(lines) <= 2:
+                return
             # read the pulse file and plot it
             # time   proc_cpu        proc_mem        children        children_cpu    children_mem
             try:
