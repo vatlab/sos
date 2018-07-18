@@ -63,8 +63,7 @@ class ProcessMonitor(threading.Thread):
         with open(err_file, 'a') as err:
             err.write(msg + '\n')
         # kill the task
-        from stat import S_IREAD, S_IRGRP, S_IROTH
-        os.chmod(self.pulse_file, S_IREAD | S_IRGRP | S_IROTH)
+        os.chmod(self.pulse_file, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
         p = psutil.Process(self.pid)
         p.kill()
 

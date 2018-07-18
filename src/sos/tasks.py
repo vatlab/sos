@@ -7,8 +7,8 @@ import fasteners
 import pickle
 import time
 import lzma
+import stat
 
-from stat import S_IRUSR, S_IRGRP, S_IROTH, S_IWUSR, S_IWGRP, S_IWOTH
 from typing import Union, Dict
 from collections.abc import Sequence
 
@@ -273,8 +273,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                 '~'), '.sos', 'tasks', task + ext)
             if os.path.isfile(filename):
                 if ext == '.pulse':
-                    os.chmod(filename, S_IRUSR | S_IRGRP |
-                             S_IROTH | S_IWUSR | S_IWGRP | S_IWOTH)
+                    os.chmod(filename, stat.S_IREAD | stat.S_IWRITE)
                 try:
                     os.remove(filename)
                 except Exception as e:
@@ -849,7 +848,7 @@ def kill_task(task):
     # job is running
     pulse_file = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', task + '.pulse')
-    os.chmod(pulse_file, S_IREAD | S_IRGRP | S_IROTH)
+    os.chmod(pulse_file, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
     return 'killed'
 
 
