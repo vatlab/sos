@@ -6,6 +6,7 @@ import copy
 import os
 import pickle
 import subprocess
+import stat
 import sys
 import time
 import traceback
@@ -100,7 +101,6 @@ def collect_task_result(task_id, sos_dict, skipped=False):
 
 def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_interval=5,
                  resource_monitor_interval=60):
-    from stat import S_IRUSR, S_IRGRP, S_IROTH, S_IWUSR, S_IWGRP, S_IWOTH
     res = _execute_task(task_id, verbosity, runmode, sigmode,
                         monitor_interval, resource_monitor_interval)
     # write result file
@@ -120,10 +120,9 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                 with open(filename) as fileobj:
                     content = fileobj.read()
                 res[key] = content
-            if ext == '.pulse':
+            if ext == '.pulse' not os.access(filename, os.W_OK):
                 # the file could be readonly
-                os.chmod(filename, S_IRUSR | S_IRGRP |
-                         S_IROTH | S_IWUSR | S_IWGRP | S_IWOTH)
+                os.chmod(filename, stat.S_IREAD | stat.S_IWRITE)
             os.remove(filename)
         except Exception as e:
             env.logger.warning(f'Failed to load {filename}: {e}')

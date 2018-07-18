@@ -272,7 +272,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             filename = os.path.join(os.path.expanduser(
                 '~'), '.sos', 'tasks', task + ext)
             if os.path.isfile(filename):
-                if ext == '.pulse':
+                if ext == '.pulse' and not os.access(filename, os.W_OK):
                     os.chmod(filename, stat.S_IREAD | stat.S_IWRITE)
                 try:
                     os.remove(filename)
