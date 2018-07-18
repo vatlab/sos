@@ -320,7 +320,8 @@ class TaskManager:
             for task_id, taskdef, _ in to_be_submitted:
                 job_file = os.path.join(os.path.expanduser(
                     '~'), '.sos', 'tasks', task_id + '.task')
-                taskdef.save(job_file)
+                # do not change time stamp as well as task status
+                taskdef.save(job_file, keep_time=True)
                 ids.append(task_id)
         else:
             master = None
@@ -329,7 +330,7 @@ class TaskManager:
                     job_file = os.path.join(os.path.expanduser(
                         '~'), '.sos', 'tasks', master.ID + '.task')
                     ids.append(master.ID)
-                    master.save(job_file)
+                    master.save(job_file, keep_time=True)
                     master = None
                 if master is None:
                     master = MasterTaskParams(self.trunk_workers)
@@ -338,7 +339,7 @@ class TaskManager:
             if master is not None:
                 job_file = os.path.join(os.path.expanduser(
                     '~'), '.sos', 'tasks', master.ID + '.task')
-                master.save(job_file)
+                master.save(job_file, keep_time=True)
                 ids.append(master.ID)
 
         if not ids:

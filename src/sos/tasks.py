@@ -33,7 +33,7 @@ class TaskParams(object):
         self.sos_dict = sos_dict
         self.tags = sorted(list(set(tags)))
 
-    def save(self, job_file):
+    def save(self, job_file, keep_time=False):
         # updating job_file will not change timestamp because it will be Only
         # the update of runtime info
         mtime = os.stat(job_file) if os.path.isfile(job_file) else None
@@ -47,7 +47,7 @@ class TaskParams(object):
             except Exception as e:
                 env.logger.warning(e)
                 raise
-        if mtime:
+        if mtime and keep_time:
             os.utime(job_file, (mtime.st_mtime, mtime.st_mtime))
 
     def __repr__(self):
@@ -346,7 +346,6 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             # dead?
             # if the status file is readonly
             if not os.access(pulse_file, os.W_OK):
-                env.logger.error('readonly')
                 return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
                                                      pulse_file: os.stat(pulse_file).st_mtime})
             start_stamp = os.stat(pulse_file).st_mtime
