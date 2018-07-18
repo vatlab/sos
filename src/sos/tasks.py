@@ -12,7 +12,7 @@ import stat
 from typing import Union, Dict
 from collections.abc import Sequence
 
-from .utils import (env, expand_time, linecount_of_file, sample_lines,
+from .utils import (env, expand_time, linecount_of_file, sample_lines, log_to_file,
                     short_repr, tail_of_file, expand_size, format_HHMMSS)
 from .targets import sos_targets
 
@@ -216,8 +216,36 @@ def taskTags(task):
     finally:
         os.utime(filename, (atime, os.path.getmtime(filename)))
 
-# return {} if result is unchanged
-# otherwise return a dictionary of with keys 'status' and 'files'
+
+def collect_task_info(task: str) -> dict:
+    # save .out .err and .pulse files into the .res file
+    result = {}
+    for ext, key in (('.out', 'stdout'), ('.err', 'stderr'),
+                     ('.pulse', 'pulse'), ('.sh', 'job')):
+        filename = os.path.join(os.path.expanduser(
+            '~'), '.sos', 'tasks', task + ext)
+        if not os.path.isfile(filename):
+            continue
+        try:
+            with open(filename) as fileobj:
+                content = fileobj.read()
+            result[key] = content
+        except Exception as e:
+            env.logger.warning(f'Failed to load {filename}: {e}')
+    return result
+
+
+def remove_task_files(task: str, exts: list):
+    for ext in exts:
+        filename = os.path.join(os.path.expanduser(
+            '~'), '.sos', 'tasks', task + ext)
+        if os.path.isfile(filename):
+            if ext == '.pulse' and not os.access(filename, os.W_OK):
+                os.chmod(filename, stat.S_IREAD | stat.S_IWRITE)
+            try:
+                os.remove(filename)
+            except Exception as e:
+                env.logger.warning(f'Failed to remove {filename}: {e}')
 
 
 def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
@@ -267,25 +295,14 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         return os.path.isfile(job_file) and os.stat(job_file).st_mtime >= os.stat(task_file).st_mtime \
             and os.path.isfile(job_id_file) and os.stat(job_id_file).st_mtime >= os.stat(job_file).st_mtime
 
-    def remove_files(exts):
-        for ext in exts:
-            filename = os.path.join(os.path.expanduser(
-                '~'), '.sos', 'tasks', task + ext)
-            if os.path.isfile(filename):
-                if ext == '.pulse' and not os.access(filename, os.W_OK):
-                    os.chmod(filename, stat.S_IREAD | stat.S_IWRITE)
-                try:
-                    os.remove(filename)
-                except Exception as e:
-                    env.logger.warning(f'Failed to remove {filename}: {e}')
-
     if has_res():
         try:
             from .targets import file_target
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
             # remove other files if exist
-            remove_files(['.pulse', '.sh', '.job_id', '.out', '.err'])
+            remove_task_files(
+                task, ['.pulse', '.sh', '.job_id', '.out', '.err'])
             status_files = {task_file: os.stat(task_file).st_mtime,
                             res_file: os.stat(res_file).st_mtime,
                             pulse_file: 0
@@ -311,60 +328,84 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             return check_task(task)
     #
     if has_pulse():
-        status_files = {task_file: os.stat(task_file).st_mtime,
-                        pulse_file: os.stat(pulse_file).st_mtime}
-        # dead?
-        # if the status file is readonly
-        if not os.access(pulse_file, os.W_OK):
-            return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
-                                                 pulse_file: os.stat(pulse_file).st_mtime})
-        start_stamp = os.stat(pulse_file).st_mtime
-        elapsed = time.time() - start_stamp
-        if elapsed < 0:
-            env.logger.debug(
-                f'{pulse_file} is created in the future. Your system time might be problematic')
-        # if the file is within 5 seconds
-        if elapsed < monitor_interval:
-            # if running, we return old hint files even if the timestamp has been changed
-            # because we will check the status of running jobs anyway.
-            if hint and hint['status'] == 'running':
-                return {}
-            else:
-                return dict(status='running', files=status_files)
-        elif elapsed > 2 * monitor_interval:
+        try:
+            status_files = {task_file: os.stat(task_file).st_mtime,
+                            pulse_file: os.stat(pulse_file).st_mtime}
+            # dead?
+            # if the status file is readonly
+            if not os.access(pulse_file, os.W_OK):
+                env.logger.error('readonly')
+                return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
+                                                     pulse_file: os.stat(pulse_file).st_mtime})
+            start_stamp = os.stat(pulse_file).st_mtime
+            elapsed = time.time() - start_stamp
+            if elapsed < 0:
+                env.logger.debug(
+                    f'{pulse_file} is created in the future. Your system time might be problematic')
+            # if the file is within 5 seconds
+            if elapsed < monitor_interval:
+                # if running, we return old hint files even if the timestamp has been changed
+                # because we will check the status of running jobs anyway.
+                if hint and hint['status'] == 'running':
+                    return {}
+                else:
+                    return dict(status='running', files=status_files)
+            elif elapsed > 2 * monitor_interval:
+                if has_res():
+                    # result file appears during sos tatus run
+                    return check_task(task)
+                else:
+                    # remove other files if exist
+                    env.logger.error('time stamp')
+
+                    remove_task_files(task, ['.sh', '.job_id', '.out', '.err'])
+                    return dict(status='aborted', files=status_files)
+            # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
+            time.sleep(2 * monitor_interval)
+            end_stamp = os.stat(pulse_file).st_mtime
+            # the process is still alive
             if has_res():
-                # result file appears during sos tatus run
+                return check_task(task)
+            elif start_stamp != end_stamp:
+                if hint and hint['status'] == 'running':
+                    return {}
+                else:
+                    return dict(status='running', files=status_files)
+            else:
+                remove_task_files(task, ['.sh', '.job_id', '.out', '.err'])
+                return dict(status='aborted', files=status_files)
+        except:
+            # the pulse file could disappear when the job is completed.
+            if has_res():
                 return check_task(task)
             else:
-                # remove other files if exist
-                remove_files(['.sh', '.job_id', '.out', '.err'])
-                return dict(status='aborted', files=status_files)
-        # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
-        time.sleep(2 * monitor_interval)
-        end_stamp = os.stat(pulse_file).st_mtime
-        # the process is still alive
-        if has_res():
-            return check_task(task)
-        elif start_stamp != end_stamp:
-            if hint and hint['status'] == 'running':
-                return {}
-            else:
-                return dict(status='running', files=status_files)
-        else:
-            remove_files(['.sh', '.job_id', '.out', '.err'])
-            return dict(status='aborted', files=status_files)
+                raise
     # if there is no status file
     if has_job():
-        return dict(status='submitted', files={task_file: os.stat(task_file).st_mtime,
-                                               job_file: os.stat(job_file).st_mtime,
-                                               pulse_file: 0})
+        try:
+            return dict(status='submitted', files={task_file: os.stat(task_file).st_mtime,
+                                                   job_file: os.stat(job_file).st_mtime,
+                                                   pulse_file: 0})
+        except:
+            # the pulse file could disappear when the job is completed.
+            if has_res():
+                return check_task(task)
+            else:
+                raise
     else:
         # status not changed
-        if hint and hint['status'] == 'pending' and hint['files'][task_file] == os.stat(task_file).st_mtime:
-            return {}
-        else:
-            return dict(status='pending', files={task_file: os.stat(task_file).st_mtime,
-                                                 job_file: 0})
+        try:
+            if hint and hint['status'] == 'pending' and hint['files'][task_file] == os.stat(task_file).st_mtime:
+                return {}
+            else:
+                return dict(status='pending', files={task_file: os.stat(task_file).st_mtime,
+                                                     job_file: 0})
+        except:
+            # the pulse file could disappear when the job is completed.
+            if has_res():
+                return check_task(task)
+            else:
+                raise
 
 
 def check_tasks(tasks, is_all: bool):

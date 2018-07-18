@@ -108,7 +108,7 @@ class DaemonizedProcess(mp.Process):
         return
 
 
-def _show_err_and_out(res) -> None:
+def _show_err_and_out(task_id, res) -> None:
     if 'stdout' in res:
         sys.stderr.write(f'\n{task_id}.out:\n')
         ends_with_newline = False
@@ -247,9 +247,9 @@ class LocalHost:
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
             if res['ret_code'] != 0 or env.verbosity >= 3:
-                _show_err_and_out(res)
-        except Exception:
-            env.logger.warning(f'Result for {task_id} is not received')
+                _show_err_and_out(task_id, res)
+        except Exception as e:
+            env.logger.warning(f'Result for {task_id} is not received: {e}')
             return {'ret_code': 1, 'output': {}}
 
         task_file = os.path.join(sys_task_dir, task_id + '.def')
@@ -711,18 +711,19 @@ class RemoteHost:
                     task_id, self.alias, receive_cmd))
         res_file = os.path.join(sys_task_dir, task_id + '.res')
         if not os.path.isfile(res_file):
-            env.logger.debug(f'Result for {task_id} is not received')
+            env.logger.debug(
+                f'Result for {task_id} is not received (no result file)')
             return {'ret_code': 1, 'output': {}}
 
         with open(res_file, 'rb') as result:
             res = pickle.load(result)
 
         if ('ret_code' in res and res['ret_code'] != 0) or ('succ' in res and res['succ'] != 0):
-            _show_err_and_out(res)
+            _show_err_and_out(task_id, res)
             env.logger.info(f'Ignore remote results for failed job {task_id}')
         else:
             if env.verbosity >= 3:
-                _show_err_and_out(res)
+                _show_err_and_out(task_id, res)
             # do we need to copy files? We need to consult original task file
             # not the converted one
             task_file = os.path.join(sys_task_dir, task_id + '.def')

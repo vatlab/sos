@@ -20,7 +20,7 @@ from .monitor import ProcessMonitor
 from .targets import (RuntimeInfo, UnknownTarget, file_target,
                       remote, sos_step, sos_targets, textMD5)
 from .utils import StopInputGroup, env, short_repr
-from .tasks import loadTask
+from .tasks import loadTask, remove_task_files, collect_task_info
 
 
 def collect_task_result(task_id, sos_dict, skipped=False):
@@ -103,32 +103,16 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                  resource_monitor_interval=60):
     res = _execute_task(task_id, verbosity, runmode, sigmode,
                         monitor_interval, resource_monitor_interval)
+    res.update(collect_task_info(task_id))
     # write result file
     res_file = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', task_id + '.res')
 
-    # save .out .err and .pulse files into the .res file
-    for ext, key in (('.out', 'stdout'), ('.err', 'stderr'),
-                     ('.pulse', 'pulse'), ('.job_id', 'job_id'),
-                     ('.sh', 'job')):
-        filename = os.path.join(os.path.expanduser(
-            '~'), '.sos', 'tasks', task_id + ext)
-        if not os.path.isfile(filename):
-            continue
-        try:
-            if ext != '.job_id':
-                with open(filename) as fileobj:
-                    content = fileobj.read()
-                res[key] = content
-            if ext == '.pulse' and not os.access(filename, os.W_OK):
-                # the file could be readonly
-                os.chmod(filename, stat.S_IREAD | stat.S_IWRITE)
-            os.remove(filename)
-        except Exception as e:
-            env.logger.warning(f'Failed to load {filename}: {e}')
-
     with open(res_file, 'wb') as res_file:
         pickle.dump(res, res_file)
+
+    # **after** result file is created, remove other files
+    remove_task_files(task_id, ['.pulse', '.out', '.err', '.job_id', '.sh'])
 
     if res['ret_code'] != 0 and 'exception' in res:
         with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'), 'a') as err:
@@ -202,6 +186,12 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                     except Exception as e:
                         env.logger.warning(f'Failed to remove {sub_err}: {e}')
 
+                # remove other files as well
+                try:
+                    remove_task_files(tid, ['.out', '.err'])
+                except Exception as e:
+                    env.logger.debug('Failed to remove files {tid}: {e}')
+
             if params.num_workers > 1:
                 from multiprocessing.pool import Pool
                 p = Pool(params.num_workers)
@@ -225,9 +215,9 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
             else:
                 results = []
                 for tid, tdef in params.task_stack:
+                    # no monitor process for subtasks
                     res = _execute_task((tid, tdef), verbosity=verbosity, runmode=runmode,
-                                        sigmode=sigmode, monitor_interval=monitor_interval,
-                                        resource_monitor_interval=resource_monitor_interval)
+                                        sigmode=sigmode, monitor_interval=None)
                     copy_out_and_err(res)
                     results.append(res)
                 for res in results:
@@ -288,15 +278,17 @@ del sos_handle_parameter_
         sos_dict['_runtime'] = {}
 
     # pulse thread
-    m = ProcessMonitor(task_id, monitor_interval=monitor_interval,
-                       resource_monitor_interval=resource_monitor_interval,
-                       max_walltime=sos_dict['_runtime'].get(
-                           'max_walltime', None),
-                       max_mem=sos_dict['_runtime'].get('max_mem', None),
-                       max_procs=sos_dict['_runtime'].get('max_procs', None),
-                       sos_dict=sos_dict)
+    if monitor_interval is not None:
+        m = ProcessMonitor(task_id, monitor_interval=monitor_interval,
+                           resource_monitor_interval=resource_monitor_interval,
+                           max_walltime=sos_dict['_runtime'].get(
+                               'max_walltime', None),
+                           max_mem=sos_dict['_runtime'].get('max_mem', None),
+                           max_procs=sos_dict['_runtime'].get(
+                               'max_procs', None),
+                           sos_dict=sos_dict)
 
-    m.start()
+        m.start()
     env.config['run_mode'] = runmode
     if runmode == 'dryrun':
         env.config['sig_mode'] = 'ignore'
