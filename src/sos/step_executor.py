@@ -319,7 +319,7 @@ class TaskManager:
         if self.trunk_size == 1 or (all_tasks and len(self._unsubmitted_tasks) == 1):
             for task_id, taskdef, _ in to_be_submitted:
                 job_file = os.path.join(os.path.expanduser(
-                    '~'), '.sos', 'tasks', task_id + '.def')
+                    '~'), '.sos', 'tasks', task_id + '.task')
                 taskdef.save(job_file)
                 ids.append(task_id)
         else:
@@ -327,7 +327,7 @@ class TaskManager:
             for task_id, taskdef, _ in to_be_submitted:
                 if master is not None and master.num_tasks() == self.trunk_size:
                     job_file = os.path.join(os.path.expanduser(
-                        '~'), '.sos', 'tasks', master.ID + '.def')
+                        '~'), '.sos', 'tasks', master.ID + '.task')
                     ids.append(master.ID)
                     master.save(job_file)
                     master = None
@@ -337,7 +337,7 @@ class TaskManager:
             # the last piece
             if master is not None:
                 job_file = os.path.join(os.path.expanduser(
-                    '~'), '.sos', 'tasks', master.ID + '.def')
+                    '~'), '.sos', 'tasks', master.ID + '.task')
                 master.save(job_file)
                 ids.append(master.ID)
 

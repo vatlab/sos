@@ -152,20 +152,17 @@ class LocalHost:
         return {x: x for x in items}
 
     def prepare_task(self, task_id):
-        def_file = os.path.join(os.path.expanduser(
-            '~'), '.sos', 'tasks', task_id + '.def')
         task_file = os.path.join(os.path.expanduser('~'), '.sos',
-                                 'tasks', self.alias, task_id + '.task')
+                                 'tasks', task_id + '.task')
         # add server restriction on task file
-        if not os.path.isfile(def_file):
-            raise ValueError(f'Missing task definition {def_file}')
+        if not os.path.isfile(task_file):
+            raise ValueError(f'Missing task definition {task_file}')
 
-        params = loadTask(def_file)
+        params = loadTask(task_file)
         task_vars = params.sos_dict
+        task_vars['_runtime'] = {}
 
-        if 'max_mem' not in self.config and 'max_cores' not in self.config and 'max_walltime' not in self.config:
-            shutil.copyfile(def_file, task_file)
-        else:
+        if 'max_mem' in self.config or 'max_cores' in self.config or 'max_walltime' in self.config:
             task_vars['_runtime']['max_mem'] = self.config.get('max_mem', None)
             task_vars['_runtime']['max_cores'] = self.config.get(
                 'max_cores', None)
@@ -191,7 +188,7 @@ class LocalHost:
                     f'Task {task_id} requested more walltime ({task_vars["_runtime"]["walltime"]}) than allowed max_walltime ({self.config["max_walltime"]})')
                 return False
 
-            params.save(task_file)
+        params.save(task_file)
         #
         if 'to_host' in task_vars['_runtime'] and isinstance(task_vars['_runtime']['to_host'], dict):
             for l, r in task_vars['_runtime']['to_host'].items():
@@ -252,7 +249,7 @@ class LocalHost:
             env.logger.warning(f'Result for {task_id} is not received: {e}')
             return {'ret_code': 1, 'output': {}}
 
-        task_file = os.path.join(sys_task_dir, task_id + '.def')
+        task_file = os.path.join(sys_task_dir, task_id + '.task')
         params = loadTask(task_file)
         job_dict = params.sos_dict
 
@@ -521,13 +518,14 @@ class RemoteHost:
             return False
 
     def _prepare_task(self, task_id):
-        def_file = os.path.join(os.path.expanduser(
-            '~'), '.sos', 'tasks', task_id + '.def')
-        if not os.path.isfile(def_file):
-            raise ValueError(f'Missing task definition {def_file}')
-        params = loadTask(def_file)
+        task_file = os.path.join(os.path.expanduser(
+            '~'), '.sos', 'tasks', task_id + '.task')
+        if not os.path.isfile(task_file_file):
+            raise ValueError(f'Missing task definition {task_file}')
+        params = loadTask(task_file)
 
         task_vars = params.sos_dict
+        task_vars['_runtime'] = {}
 
         if self.config.get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
                 and self.config['max_mem'] < task_vars['_runtime']['mem']:
@@ -617,7 +615,6 @@ class RemoteHost:
             task_vars['_runtime']['max_walltime'] = format_HHMMSS(
                 task_vars['_runtime']['max_walltime'])
 
-        task_file = os.path.join(self.task_dir, task_id + '.task')
         params.save(task_file)
         self.send_task_file(task_file)
 
@@ -695,8 +692,6 @@ class RemoteHost:
         # make sure the files are readable and remove them. Also, we do not want any file that is
         # obsolete to appear as new after copying
         for lfile in glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.*')):
-            if os.path.splitext(lfile)[-1] == '.def':
-                continue
             if not os.access(lfile, os.W_OK):
                 os.chmod(lfile, stat.S_IREAD | stat.S_IWRITE)
             os.remove(lfile)
@@ -726,7 +721,7 @@ class RemoteHost:
                 _show_err_and_out(task_id, res)
             # do we need to copy files? We need to consult original task file
             # not the converted one
-            task_file = os.path.join(sys_task_dir, task_id + '.def')
+            task_file = os.path.join(sys_task_dir, task_id + '.task')
             params = loadTask(task_file)
             job_dict = params.sos_dict
             #
