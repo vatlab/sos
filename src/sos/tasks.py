@@ -13,7 +13,8 @@ from typing import Union, Dict
 from collections.abc import Sequence
 
 from .utils import (env, expand_time, linecount_of_file, sample_lines, log_to_file,
-                    short_repr, tail_of_file, expand_size, format_HHMMSS)
+                    short_repr, tail_of_file, expand_size, format_HHMMSS,
+                    DelayedAction)
 from .targets import sos_targets
 
 monitor_interval = 5
@@ -245,7 +246,13 @@ def remove_task_files(task: str, exts: list):
             try:
                 os.remove(filename)
             except Exception as e:
-                env.logger.warning(f'Failed to remove {filename}: {e}')
+                # if the file cannot be removed now, we use a thread to wait a
+                # bit and try to remove it later. The function should not
+                # wiat for the thread thoug
+                try:
+                    s = DelayedAction(os.remove, filename)
+                except:
+                    pass
 
 
 def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
