@@ -34,6 +34,9 @@ class TaskParams(object):
         self.tags = sorted(list(set(tags)))
 
     def save(self, job_file):
+        # updating job_file will not change timestamp because it will be Only
+        # the update of runtime info
+        mtime = os.stat(job_file) if os.path.isfile(job_file) else None
         with open(job_file, 'wb') as jf:
             jf.write(f'SOSTASK1.2\n{" ".join(self.tags)}\n'.encode())
             # remove __builtins__ from sos_dict #835
@@ -44,6 +47,8 @@ class TaskParams(object):
             except Exception as e:
                 env.logger.warning(e)
                 raise
+        if mtime:
+            os.utime(job_file, (mtime.st_mtime, mtime.st_mtime))
 
     def __repr__(self):
         return self.name
@@ -291,12 +296,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         '~'), '.sos', 'tasks', task + '.res')
 
     def has_res():
-        # witht the removal of .def files, a taslk file would be touched when
-        # it is intended to be re-run, and the previous result file would become
-        # obsolete already
-        #
-        # and os.stat(res_file).st_mtime >= os.stat(task_file).st_mtime
-        return os.path.isfile(res_file)
+        return os.path.isfile(res_file) and os.stat(res_file).st_mtime >= os.stat(task_file).st_mtime
 
     job_file = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', task + '.sh')
@@ -367,9 +367,6 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                     # result file appears during sos tatus run
                     return check_task(task)
                 else:
-                    # remove other files if exist
-                    env.logger.error('time stamp')
-
                     remove_task_files(task, ['.sh', '.job_id', '.out', '.err'])
                     return dict(status='aborted', files=status_files)
             # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc

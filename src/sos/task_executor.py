@@ -101,12 +101,14 @@ def collect_task_result(task_id, sos_dict, skipped=False):
 
 def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_interval=5,
                  resource_monitor_interval=60):
-    res = _execute_task(task_id, verbosity, runmode, sigmode,
-                        monitor_interval, resource_monitor_interval)
-    res.update(collect_task_info(task_id))
     # write result file
     res_file = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', task_id + '.res')
+    if os.path.isfile(res_file):
+        os.remove(res_file)
+    res = _execute_task(task_id, verbosity, runmode, sigmode,
+                        monitor_interval, resource_monitor_interval)
+    res.update(collect_task_info(task_id))
 
     with open(res_file, 'wb') as res_file:
         pickle.dump(res, res_file)

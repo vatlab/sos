@@ -1042,9 +1042,6 @@ def cmd_execute(args, workflow_args):
                 #    print(summarizeExecution(task, status=status))
                 exit_code.append(0)
                 continue
-            #
-            if os.path.isfile(res_file):
-                os.remove(res_file)
             exit_code.append(execute_task(task, verbosity=args.verbosity, runmode='dryrun' if args.dryrun else 'run',
                                           sigmode=args.__sig_mode__,
                                           monitor_interval=monitor_interval, resource_monitor_interval=resource_monitor_interval))
