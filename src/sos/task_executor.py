@@ -120,7 +120,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                 with open(filename) as fileobj:
                     content = fileobj.read()
                 res[key] = content
-            if ext == '.pulse' not os.access(filename, os.W_OK):
+            if ext == '.pulse' and not os.access(filename, os.W_OK):
                 # the file could be readonly
                 os.chmod(filename, stat.S_IREAD | stat.S_IWRITE)
             os.remove(filename)
