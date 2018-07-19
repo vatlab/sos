@@ -348,10 +348,11 @@ class SoS_DockerClient:
             if 'tty' in kwargs and not kwargs['tty']:
                 tty_opt = ''
             #
+            user_opt = ''
             if 'user' in kwargs:
                 if kwargs['user'] is not None:
                     user_opt = f'-u {kwargs["user"]}'
-            else:
+            elif platform.system() != 'Windows':
                 # Tocket #922
                 user_opt = f'-u {os.getuid()}:{os.getgid()}'
             #
