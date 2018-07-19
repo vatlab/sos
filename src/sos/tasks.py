@@ -33,10 +33,10 @@ class TaskParams(object):
         self.sos_dict = sos_dict
         self.tags = sorted(list(set(tags)))
 
-    def save(self, job_file, keep_time=False):
+    def save(self, job_file, mark_new=False):
         # updating job_file will not change timestamp because it will be Only
         # the update of runtime info
-        mtime = os.stat(job_file) if os.path.isfile(job_file) else None
+        stat = os.stat(job_file) if os.path.isfile(job_file) else None
         with open(job_file, 'wb') as jf:
             jf.write(f'SOSTASK1.2\n{" ".join(self.tags)}\n'.encode())
             # remove __builtins__ from sos_dict #835
@@ -47,8 +47,9 @@ class TaskParams(object):
             except Exception as e:
                 env.logger.warning(e)
                 raise
-        if mtime and keep_time:
-            os.utime(job_file, (mtime.st_mtime, mtime.st_mtime))
+        if stat and mark_new:
+            # atime is also set to mtime to make this file as untouched.
+            os.utime(job_file, (stat.st_ctime, stat.st_ctime))
 
     def __repr__(self):
         return self.name
@@ -406,8 +407,13 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             if hint and hint['status'] == 'pending' and hint['files'][task_file] == os.stat(task_file).st_mtime:
                 return {}
             else:
-                return dict(status='pending', files={task_file: os.stat(task_file).st_mtime,
+                stat = os.stat(task_file)
+                if stat.st_ctime == stat.st_mtime:
+                    return dict(status='new', files={task_file: os.stat(task_file).st_mtime,
                                                      job_file: 0})
+                else:
+                    return dict(status='pending', files={task_file: os.stat(task_file).st_mtime,
+                                                         job_file: 0})
         except:
             # the pulse file could disappear when the job is completed.
             if has_res():

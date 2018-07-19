@@ -268,7 +268,7 @@ class TaskEngine(threading.Thread):
                         return 'completed'
                     else:
                         self.notify(f'{task_id} ``re-execute completed``')
-                else:
+                elif self.task_status[task_id] != 'new':
                     self.notify(
                         f'{task_id} ``restart`` from status ``{self.task_status[task_id]}``')
 
