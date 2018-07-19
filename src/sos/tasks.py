@@ -2,6 +2,7 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
+import copy
 import os
 import fasteners
 import pickle
@@ -65,6 +66,7 @@ class MasterTaskParams(TaskParams):
                          'step_input': sos_targets(), 'step_output': sos_targets(),
                          'step_depends': sos_targets(), 'step_name': '',
                          '_index': 0}
+        self.sos_dict['__task_vars__'] = copy.copy(self.sos_dict)
         self.num_workers = num_workers
         self.tags = []
         # a collection of tasks that will be executed by the master task
@@ -138,6 +140,8 @@ class MasterTaskParams(TaskParams):
         self.tags = sorted(list(set(self.tags)))
         #
         self.ID = f'M{len(self.task_stack)}_{self.task_stack[0][0]}'
+        self.sos_dict.pop('__task_vars__')
+        self.sos_dict['__task_vars__'] = copy.copy(self.sos_dict)
         self.name = self.ID
 
 
