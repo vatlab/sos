@@ -12,7 +12,7 @@ import sys
 import tempfile
 
 from sos.eval import interpolate
-from sos.targets import sos_targets
+from sos.targets import sos_targets, path
 from sos.utils import env, pexpect_run
 
 #
@@ -264,15 +264,15 @@ class SoS_DockerClient:
                         host_dir, mnt_dir = vol, vol
                     elif vol.count(':') == 1:
                         host_dir, mnt_dir = vol.split(':', 1)
-                    binds.append('{}:{}'.format(
-                        os.path.abspath(os.path.expanduser(host_dir)), mnt_dir))
+                    binds.append(
+                        f'{path(host_dir).resolve():p}:{path(mnt_dir):p}')
                     if wdir.startswith(os.path.abspath(os.path.expanduser(host_dir))):
                         has_wdir = True
                 volumes_opt = ' '.join('-v {}'.format(x) for x in binds)
                 if not has_wdir:
-                    volumes_opt += f' -v {wdir}:{wdir}'
+                    volumes_opt += f' -v {path(wdir):p}:{path(wdir):p}'
             else:
-                volumes_opt = f' -v {wdir}:{wdir}'
+                volumes_opt = f' -v {path(wdir):p}:{path(wdir):p}'
 
             #
             mem_limit_opt = ''
@@ -292,8 +292,7 @@ class SoS_DockerClient:
 
             # we also need to mount the script
             if script:
-                volumes_opt += ' -v {}:{}'.format(shlex.quote(os.path.join(
-                    tempdir, tempscript)), '/var/lib/sos/{}'.format(tempscript))
+                volumes_opt += f' -v {path(tempdir)/tempscript:p}:/var/lib/sos/{tempscript}'
             cmd_opt = interpolate(f'{interpreter if isinstance(interpreter, str) else interpreter[0]} {args}', {
                 'filename': sos_targets(f'/var/lib/sos/{tempscript}'),
                 'script': script})
@@ -303,13 +302,12 @@ class SoS_DockerClient:
                 if not os.path.isabs(kwargs['docker_workdir']):
                     env.logger.warning('An absolute path is needed for -w option of docker run command. "{}" provided, "{}" used.'
                                        .format(kwargs['docker_workdir'], os.path.abspath(os.path.expanduser(kwargs['docker_workdir']))))
-                    workdir_opt = '-w={}'.format(os.path.abspath(
-                        os.path.expanduser(kwargs['docker_workdir'])))
+                    workdir_opt = f'-w={path(kwargs["docker_workdir"]).resolve():p}'
                 else:
-                    workdir_opt = '-w={}'.format(kwargs['docker_workdir'])
+                    workdir_opt = f'-w={kwargs["docker_workdir"]:p}'
             elif 'docker_workdir' not in kwargs:
                 # by default, map current working directoryself.
-                workdir_opt = f'-w={wdir}'
+                workdir_opt = f'-w={path(wdir):p}'
 
             env_opt = ''
             if 'environment' in kwargs:
@@ -372,7 +370,7 @@ class SoS_DockerClient:
                 stdin_opt,          # stdin_optn
                 tty_opt,            # tty
                 port_opt,           # port
-                workdir_opt,    # working dir
+                workdir_opt,        # working dir
                 user_opt,           # user
                 env_opt,            # environment
                 mem_limit_opt,      # memory limit
