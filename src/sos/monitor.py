@@ -73,6 +73,10 @@ class ProcessMonitor(threading.Thread):
         while True:
             try:
                 if not os.access(self.pulse_file, os.W_OK):
+                    # the pulse_file is not available, it can be either killed (no res),
+                    # or absorbed by the res file (with .res)
+                    if os.path.isfile(self.pulse_file[:-6] + '.res'):
+                        break
                     # the job should be killed
                     p = psutil.Process(self.pid)
                     p.kill()
