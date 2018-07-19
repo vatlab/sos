@@ -946,7 +946,7 @@ class Base_Step_Executor:
                 self.step.step_name(), env.sos_dict['_index']),
             global_def=self.step.global_def,
             task=self.step.task,          # task
-            sos_dict=task_vars,
+            sos_dict={'__task_vars__': task_vars},
             tags=task_tags
         )
         # if no output (thus no signature)

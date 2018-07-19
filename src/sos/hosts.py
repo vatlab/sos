@@ -2,7 +2,7 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
-
+import copy
 import glob
 import multiprocessing as mp
 import os
@@ -160,7 +160,14 @@ class LocalHost:
 
         params = loadTask(task_file)
         task_vars = params.sos_dict
-        task_vars['_runtime'] = {}
+
+        # if this is the newer format, there is a __task_vars__ key in task_vars
+        # that saves the untouched original vars. We should keep it.
+        if '__task_vars__' in task_vars:
+            raw_vars = task_vars['__task_vars__']
+            task_vars.clear()
+            task_vars.update(copy.copy(raw_vars))
+            task_vars['__task_vars__'] = raw_vars
 
         if 'max_mem' in self.config or 'max_cores' in self.config or 'max_walltime' in self.config:
             task_vars['_runtime']['max_mem'] = self.config.get('max_mem', None)
@@ -246,7 +253,6 @@ class LocalHost:
             if res['ret_code'] != 0 or env.verbosity >= 3:
                 _show_err_and_out(task_id, res)
         except Exception as e:
-            env.logger.warning(f'Result for {task_id} is not received: {e}')
             return {'ret_code': 1, 'output': {}}
 
         task_file = os.path.join(sys_task_dir, task_id + '.task')
@@ -520,12 +526,18 @@ class RemoteHost:
     def _prepare_task(self, task_id):
         task_file = os.path.join(os.path.expanduser(
             '~'), '.sos', 'tasks', task_id + '.task')
-        if not os.path.isfile(task_file_file):
+        if not os.path.isfile(task_file):
             raise ValueError(f'Missing task definition {task_file}')
         params = loadTask(task_file)
 
         task_vars = params.sos_dict
-        task_vars['_runtime'] = {}
+        # if this is the newer format, there is a __task_vars__ key in task_vars
+        # that saves the untouched original vars. We should keep it.
+        if '__task_vars__' in task_vars:
+            raw_vars = task_vars['__task_vars__']
+            task_vars.clear()
+            task_vars.update(copy.copy(raw_vars))
+            task_vars['__task_vars__'] = raw_vars
 
         if self.config.get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
                 and self.config['max_mem'] < task_vars['_runtime']['mem']:
