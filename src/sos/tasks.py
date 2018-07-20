@@ -328,15 +328,6 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                             pulse_file: 0
                             }
             if ('ret_code' in res and res['ret_code'] == 0) or ('succ' in res and res['succ'] == 0):
-                for var in ('input', 'output', 'depends'):
-                    if var not in res or not isinstance(res[var], dict):
-                        continue
-                    for x, y in res[var].items():
-                        if not file_target(x).target_exists() or file_target(x).target_signature() != y:
-                            env.logger.debug(
-                                f'{x} not found or signature mismatch')
-                            return dict(status='signature-mismatch',
-                                        files=status_files)
                 return dict(status='completed', files=status_files)
             else:
                 return dict(status='failed', files=status_files)

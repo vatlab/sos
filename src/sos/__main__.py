@@ -1062,16 +1062,16 @@ def cmd_execute(args, workflow_args):
     failed_tasks = set()
     while True:
         res = host.check_status(args.tasks)
-        if any(x in ('failed', 'aborted', 'signature-mismatch') for x in res):
+        if any(x in ('failed', 'aborted') for x in res):
             for t, s in zip(args.tasks, res):
-                if s in ('failed', 'aborted', 'signature-mismatch') and t not in failed_tasks:
+                if s in ('failed', 'aborted') and t not in failed_tasks:
                     env.logger.warning('{} ``{}``'.format(t, s))
                     failed_tasks.add(t)
-            if all(x in ('completed', 'failed', 'aborted', 'signature-mismatch') for x in res):
-                raise RuntimeError('{} completed, {} failed, {} aborted, {} signature-mismatch)'.format(
+            if all(x in ('completed', 'failed', 'aborted') for x in res):
+                raise RuntimeError('{} completed, {} failed, {} aborted)'.format(
                     len([x for x in res if x == 'completed']), len(
                         [x for x in res if x == 'failed']),
-                    len([x for x in res if x.startswith('aborted')]), len([x for x in res if x == 'signature-mismatch'])))
+                    len([x for x in res if x.startswith('aborted')])))
         if all(x == 'completed' for x in res):
             env.logger.debug('Put results for {}'.format(args.tasks))
             res = host.retrieve_results(args.tasks)
@@ -1174,7 +1174,7 @@ def get_purge_parser(desc_only=False):
         specified age.''')
     parser.add_argument('-s', '--status', nargs='+', help='''Only remove tasks with
         specified status, which can be pending, submitted, running, completed, failed,
-        aborted, and signature-mismatch. One of more status can be specified.''')
+        and aborted. One of more status can be specified.''')
     parser.add_argument('-t', '--tags', nargs='*', help='''Only remove tasks with
         one of the specified tags.''')
     parser.add_argument('-q', '--queue',

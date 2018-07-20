@@ -1216,15 +1216,15 @@ class Base_Executor:
                         res = proc.step._host.check_status(
                             proc.step._pending_tasks)
                         # env.logger.warning(res)
-                        if any(x in ('aborted', 'failed', 'signature-mismatch') for x in res):
+                        if any(x in ('aborted', 'failed') for x in res):
                             for t, s in zip(proc.step._pending_tasks, res):
-                                if s in ('aborted', 'failed', 'signature-mismatch') and not (hasattr(proc.step, '_killed_tasks') and t in proc.step._killed_tasks):
+                                if s in ('aborted', 'failed') and not (hasattr(proc.step, '_killed_tasks') and t in proc.step._killed_tasks):
                                     # env.logger.warning(f'{t} ``{s}``')
                                     if not hasattr(proc.step, '_killed_tasks'):
                                         proc.step._killed_tasks = {t}
                                     else:
                                         proc.step._killed_tasks.add(t)
-                            if all(x in ('completed', 'aborted', 'failed', 'signature-mismatch') for x in res):
+                            if all(x in ('completed', 'aborted', 'failed') for x in res):
                                 # we try to get results
                                 task_status = proc.step._host.retrieve_results(
                                     proc.step._pending_tasks)
@@ -1234,8 +1234,8 @@ class Base_Executor:
                                           ('failed', len(
                                               [x for x in res if x == 'failed'])),
                                           ('aborted', len(
-                                              [x for x in res if x == 'aborted'])),
-                                          ('result mismatch', len([x for x in res if x == 'signature-mismatch']))]
+                                              [x for x in res if x == 'aborted']))
+                                          ]
                                 raise RuntimeError(
                                     ', '.join([f'{y} job{"s" if y > 1 else ""} {x}' for x, y in status if y > 0]))
                         if any(x in ('new', 'pending', 'submitted', 'running') for x in res):

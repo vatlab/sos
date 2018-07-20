@@ -319,7 +319,7 @@ class TaskEngine(threading.Thread):
             if status == 'running' and task_id not in self.running_tasks:
                 self.running_tasks.append(task_id)
             # terminal states, remove tasks from task list
-            if status in ('completed', 'failed', 'aborted', 'signature-mismatch') and task_id in self.running_tasks:
+            if status in ('completed', 'failed', 'aborted') and task_id in self.running_tasks:
                 self.running_tasks.remove(task_id)
 
     def remove_tasks(self, tasks):
@@ -398,7 +398,7 @@ class TaskEngine(threading.Thread):
         with threading.Lock():
             # it is possible that a task is aborted from an opened notebook with aborted status
             if task not in self.task_status or \
-                    self.task_status[task] not in ('completed', 'failed', 'signature-mismatch', 'aborted'):
+                    self.task_status[task] not in ('completed', 'failed', 'aborted'):
                 env.logger.warning(
                     f'Resume task called for non-canceled or non-completed/failed task {task}')
                 return
