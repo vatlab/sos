@@ -140,11 +140,6 @@ class LocalHost:
         self.config = {'alias': self.alias, 'status_check_interval': 2}
         self.config.update(config)
 
-        self.task_dir = os.path.join(
-            os.path.expanduser('~'), '.sos', 'tasks', self.alias)
-        if not os.path.isdir(self.task_dir):
-            os.mkdir(self.task_dir)
-
     def send_to_host(self, items):
         return {x: x for x in items}
 
@@ -159,6 +154,8 @@ class LocalHost:
             raise ValueError(f'Missing task definition {task_file}')
 
         params = loadTask(task_file)
+        # clear possible previous result
+        params.result = {}
         task_vars = params.sos_dict
 
         # if this is the newer format, there is a __task_vars__ key in task_vars
@@ -245,16 +242,6 @@ class LocalHost:
     def receive_result(self, task_id: str) -> Dict[str, Any]:
         sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
 
-        res_file = os.path.join(os.path.expanduser(
-            '~'), '.sos', 'tasks', task_id + '.res')
-        try:
-            with open(res_file, 'rb') as result:
-                res = pickle.load(result)
-            if res['ret_code'] != 0 or env.verbosity >= 3:
-                _show_err_and_out(task_id, res)
-        except Exception as e:
-            return {'ret_code': 1, 'output': {}}
-
         task_file = os.path.join(sys_task_dir, task_id + '.task')
         params = loadTask(task_file)
         job_dict = params.sos_dict
@@ -263,6 +250,14 @@ class LocalHost:
             for l, r in job_dict['_runtime']['from_host'].items():
                 if l != r:
                     shutil.copy(r, l)
+
+        res = params.result
+        try:
+            if res['ret_code'] != 0 or env.verbosity >= 3:
+                _show_err_and_out(task_id, res)
+        except Exception as e:
+            # if ret_code does not exist...
+            return {'ret_code': 1, 'output': {}}
         return res
 
 
@@ -278,11 +273,6 @@ class RemoteHost:
         self.shared_dirs = self._get_shared_dirs()
         self.path_map = self._get_path_map()
         self.execute_cmd = self._get_execute_cmd()
-
-        self.task_dir = os.path.join(
-            os.path.expanduser('~'), '.sos', 'tasks', self.alias)
-        if not os.path.isdir(self.task_dir):
-            os.mkdir(self.task_dir)
 
     def _get_shared_dirs(self) -> List[Any]:
         value = self.config.get('shared', [])
@@ -529,7 +519,7 @@ class RemoteHost:
         if not os.path.isfile(task_file):
             raise ValueError(f'Missing task definition {task_file}')
         params = loadTask(task_file)
-
+        params.result = {}
         task_vars = params.sos_dict
         # if this is the newer format, there is a __task_vars__ key in task_vars
         # that saves the untouched original vars. We should keep it.
@@ -716,14 +706,15 @@ class RemoteHost:
             if (ret != 0):
                 raise RuntimeError('Failed to retrieve result of job {} from {} with cmd\n{}'.format(
                     task_id, self.alias, receive_cmd))
-        res_file = os.path.join(sys_task_dir, task_id + '.res')
-        if not os.path.isfile(res_file):
-            env.logger.debug(
-                f'Result for {task_id} is not received (no result file)')
-            return {'ret_code': 1, 'output': {}}
 
-        with open(res_file, 'rb') as result:
-            res = pickle.load(result)
+        task_file = os.path.join(sys_task_dir, task_id + '.task')
+        params = loadTask(task_file)
+        res = params.result
+
+        if not res:
+            env.logger.debug(
+                f'Result for {task_id} is not received (no result)')
+            return {'ret_code': 1, 'output': {}}
 
         if ('ret_code' in res and res['ret_code'] != 0) or ('succ' in res and res['succ'] != 0):
             _show_err_and_out(task_id, res)
@@ -733,10 +724,8 @@ class RemoteHost:
                 _show_err_and_out(task_id, res)
             # do we need to copy files? We need to consult original task file
             # not the converted one
-            task_file = os.path.join(sys_task_dir, task_id + '.task')
-            params = loadTask(task_file)
             job_dict = params.sos_dict
-            #
+
             if job_dict['_output'] and not isinstance(job_dict['_output'], Undetermined) and env.config['run_mode'] != 'dryrun':
                 received = self.receive_from_host(
                     [x for x in job_dict['_output'] if isinstance(x, (str, path))])

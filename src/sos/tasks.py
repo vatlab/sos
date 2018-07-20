@@ -33,13 +33,14 @@ class TaskParams(object):
         self.task = task
         self.sos_dict = sos_dict
         self.tags = sorted(list(set(tags)))
+        self.result = {}
 
     def save(self, job_file, mark_new=False):
         # updating job_file will not change timestamp because it will be Only
         # the update of runtime info
         stat = os.stat(job_file) if os.path.isfile(job_file) else None
         with open(job_file, 'wb') as jf:
-            jf.write(f'SOSTASK1.2\n{" ".join(self.tags)}\n'.encode())
+            jf.write(f'SOSTASK1.3\n{" ".join(self.tags)}\n'.encode())
             # remove __builtins__ from sos_dict #835
             if 'CONFIG' in self.sos_dict and '__builtins__' in self.sos_dict['CONFIG']:
                 self.sos_dict['CONFIG'].pop('__builtins__')
@@ -71,6 +72,7 @@ class MasterTaskParams(TaskParams):
         self.tags = []
         # a collection of tasks that will be executed by the master task
         self.task_stack = []
+        self.result = {}
 
     def num_tasks(self):
         return len(self.task_stack)
@@ -146,22 +148,41 @@ class MasterTaskParams(TaskParams):
 
 
 def loadTask(filename):
+    def withResult(param, tags):
+        # for compatibility with older version of task file. The .res files could
+        # be saved in a separate .res file. In this case we should return the
+        # result as part of the .task file.
+        res_file = filename[:-5] + '.res'
+        if os.path.isfile(res_file):
+            with open(res_file, 'rb') as result:
+                res = pickle.load(result)
+        else:
+            res = {}
+        param.result = res
+        param.tags = tags
+        return param
     try:
         with open(filename, 'rb') as task:
             try:
                 header = task.readline().decode()
                 if header.startswith('SOSTASK1.1'):
                     # ignore the tags
-                    task.readline()
-                    return pickle.load(task)
+                    tags = task.readline().decode().strip().split()
+                    return withResult(pickle.load(task), tags)
                 elif header.startswith('SOSTASK1.2'):
-                    task.readline()
+                    tags = task.readline().decode().strip().split()
                     try:
-                        return pickle.loads(lzma.decompress(task.read()))
+                        return withResult(pickle.loads(lzma.decompress(task.read())), tags)
                     except:
                         # at some point, the task files were compressed with zlib
                         import zlib
-                        return pickle.loads(zlib.decompress(task.read()))
+                        return withResult(pickle.loads(zlib.decompress(task.read())), tags)
+                elif header.startswith('SOSTASK1.3'):
+                    # ignore the tags
+                    tags = task.readline().decode().strip().split()
+                    param = pickle.loads(lzma.decompress(task.read()))
+                    param.tags = tags
+                    return param
                 else:
                     raise ValueError('Try old format')
             except:
@@ -170,7 +191,7 @@ def loadTask(filename):
                 param = pickle.load(task)
                 # old format does not have tags
                 param.tags = []
-                return param
+                return withResult(param, [])
     except ImportError as e:
         raise RuntimeError(
             f'Failed to load task {os.path.basename(filename)}, which is likely caused by incompatible python modules between local and remote hosts: {e}')
@@ -229,7 +250,7 @@ def taskTags(task):
 
 
 def collect_task_info(task: str) -> dict:
-    # save .out .err and .pulse files into the .res file
+    # save .out .err and .pulse files into the .task file
     result = {}
     for ext, key in (('.out', 'stdout'), ('.err', 'stderr'),
                      ('.pulse', 'pulse'), ('.sh', 'job')):
@@ -266,18 +287,12 @@ def remove_task_files(task: str, exts: list):
 
 
 def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
-    #
-    # for pending status, a new file might have been created to change its status
-    # so we cannot use cached signature.
-    #
-    # for running status, static pulse file actually means something wrong.
-    #
+
     # when testing. if the timestamp is 0, the file does not exist originally, it should
     # still does not exist. Otherwise the file should exist and has the same timestamp
     if hint and hint['status'] not in ('pending', 'running') and \
             all((os.path.isfile(f) and os.stat(f).st_mtime == v) if v else (not os.path.isfile(f)) for f, v in hint['files'].items()):
         return {}
-
     # status of the job, please refer to https://github.com/vatlab/SOS/issues/529
     # for details.
     #
@@ -285,43 +300,31 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         '~'), '.sos', 'tasks', task + '.task')
     if not os.path.isfile(task_file):
         return dict(status='missing', files={task_file: 0})
+
+    mtime = os.stat(task_file).st_mtime
+
+    def task_changed():
+        return os.stat(task_file).st_mtime != mtime
+
     pulse_file = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', task + '.pulse')
-    if not os.path.isfile(pulse_file):
-        pulse_file = os.path.join(os.path.expanduser(
-            '~'), '.sos', 'tasks', task + '.status')
 
-    def has_pulse():
-        # for whatever reason, sometimes the pulse file might appear to be slightly
-        # before the task file, and if the task is very short so the pulse file is
-        # not updated, the task will appear to be in pending mode forever
-        return os.path.isfile(pulse_file) and os.stat(pulse_file).st_mtime >= os.stat(task_file).st_mtime - 1
+    try:
+        params = loadTask(task_file)
+    except Exception as e:
+        # it is possible that the file is being changed ...
+        time.sleep(0.5)
+        return check_task(task)
 
-    res_file = os.path.join(os.path.expanduser(
-        '~'), '.sos', 'tasks', task + '.res')
-
-    def has_res():
-        return os.path.isfile(res_file) and os.stat(res_file).st_mtime >= os.stat(task_file).st_mtime
-
-    job_file = os.path.join(os.path.expanduser(
-        '~'), '.sos', 'tasks', task + '.sh')
-
-    def has_job():
-        job_id_file = os.path.join(os.path.expanduser(
-            '~'), '.sos', 'tasks', task + '.job_id')
-        return os.path.isfile(job_file) and os.stat(job_file).st_mtime >= os.stat(task_file).st_mtime \
-            and os.path.isfile(job_id_file) and os.stat(job_id_file).st_mtime >= os.stat(job_file).st_mtime
-
-    if has_res():
+    res = params.result
+    # if the task has result section
+    if res:
         try:
             from .targets import file_target
-            with open(res_file, 'rb') as result:
-                res = pickle.load(result)
             # remove other files if exist
             remove_task_files(
                 task, ['.pulse', '.sh', '.job_id', '.out', '.err'])
             status_files = {task_file: os.stat(task_file).st_mtime,
-                            res_file: os.stat(res_file).st_mtime,
                             pulse_file: 0
                             }
             if ('ret_code' in res and res['ret_code'] == 0) or ('succ' in res and res['succ'] == 0):
@@ -338,13 +341,17 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             else:
                 return dict(status='failed', files=status_files)
         except Exception as e:
-            # sometimes the resfile is changed while we are reading it
+            # sometimes the task is changed while we are reading it
             # so we wait a bit and try again.
             env.logger.warning(e)
             time.sleep(.5)
             return check_task(task)
-    #
-    if has_pulse():
+
+    # check the existence and validity of .pulse file
+    # for whatever reason, sometimes the pulse file might appear to be slightly
+    # before the task file, and if the task is very short so the pulse file is
+    # not updated, the task will appear to be in pending mode forever
+    if os.path.isfile(pulse_file) and os.stat(pulse_file).st_mtime >= os.stat(task_file).st_mtime - 1:
         try:
             status_files = {task_file: os.stat(task_file).st_mtime,
                             pulse_file: os.stat(pulse_file).st_mtime}
@@ -367,7 +374,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                 else:
                     return dict(status='running', files=status_files)
             elif elapsed > 2 * monitor_interval:
-                if has_res():
+                if task_changed():
                     # result file appears during sos tatus run
                     return check_task(task)
                 else:
@@ -377,7 +384,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             time.sleep(2 * monitor_interval)
             end_stamp = os.stat(pulse_file).st_mtime
             # the process is still alive
-            if has_res():
+            if task_changed():
                 return check_task(task)
             elif start_stamp != end_stamp:
                 if hint and hint['status'] == 'running':
@@ -389,11 +396,20 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                 return dict(status='aborted', files=status_files)
         except:
             # the pulse file could disappear when the job is completed.
-            if has_res():
+            if task_changed():
                 return check_task(task)
             else:
                 raise
-    # if there is no status file
+    # if there is no pulse file
+    job_file = os.path.join(os.path.expanduser(
+        '~'), '.sos', 'tasks', task + '.sh')
+
+    def has_job():
+        job_id_file = os.path.join(os.path.expanduser(
+            '~'), '.sos', 'tasks', task + '.job_id')
+        return os.path.isfile(job_file) and os.stat(job_file).st_mtime >= os.stat(task_file).st_mtime \
+            and os.path.isfile(job_id_file) and os.stat(job_id_file).st_mtime >= os.stat(job_file).st_mtime
+
     if has_job():
         try:
             return dict(status='submitted', files={task_file: os.stat(task_file).st_mtime,
@@ -401,7 +417,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                                                    pulse_file: 0})
         except:
             # the pulse file could disappear when the job is completed.
-            if has_res():
+            if task_changed():
                 return check_task(task)
             else:
                 raise
@@ -420,13 +436,15 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                                                          job_file: 0})
         except:
             # the pulse file could disappear when the job is completed.
-            if has_res():
+            if task_changed():
                 return check_task(task)
             else:
                 raise
 
 
 def check_tasks(tasks, is_all: bool):
+    if not tasks:
+        return {}
     cache_file: str = os.path.join(
         os.path.expanduser('~'), '.sos', 'tasks', 'status_cache.pickle')
     #
@@ -575,9 +593,8 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
                     f'{k:22}{short_repr(v) if verbosity == 3 else pprint.pformat(v)}')
             print()
 
-            res_file = os.path.join(os.path.expanduser(
-                '~'), '.sos', 'tasks', t + '.res')
-            if os.path.isfile(res_file):
+            res = params.result
+            if res:
                 with open(res_file, 'rb') as result:
                     res = pickle.load(result)
                 if 'pulse' in res:
@@ -670,12 +687,9 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
                     elif isPrimitive(v) and v not in (None, '', [], (), {}):
                         row(k,
                             f'<pre style="text-align:left">{pprint.pformat(v)}</pre>')
-            res_file = os.path.join(os.path.expanduser(
-                '~'), '.sos', 'tasks', t + '.res')
+            res = params.result
             pulse_content = ''
-            if os.path.isfile(res_file):
-                with open(res_file, 'rb') as result:
-                    res = pickle.load(result)
+            if res:
                 if 'pulse' in res:
                     pulse_content = res['pulse']
                     summary = summarizeExecution(t, res['pulse'], status=s)
@@ -721,7 +735,7 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
                 #
                 files = glob.glob(os.path.join(
                     os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
-                for f in sorted([x for x in files if os.path.splitext(x)[-1] not in ('.def', '.res', '.task', '.pulse', '.status')]):
+                for f in sorted([x for x in files if os.path.splitext(x)[-1] not in ('.task', '.pulse')]):
                     numLines = linecount_of_file(f)
                     row(os.path.splitext(f)[-1], '(empty)' if numLines ==
                         0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}')
@@ -940,8 +954,8 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
     if status:
         # at most 20 threads
         task_status = check_tasks([x[0] for x in all_tasks], is_all)
-        all_tasks = [x for x, s in zip(
-            all_tasks, task_status) if s['status'] in status]
+        all_tasks = [x for x in all_tasks if task_status[x[0]]['status']
+                     in status]
 
     if tags:
         all_tasks = [x for x in all_tasks if any(

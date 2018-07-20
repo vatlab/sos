@@ -19,7 +19,7 @@ from .eval import SoS_eval, SoS_exec, interpolate, stmtHash
 from .monitor import ProcessMonitor
 from .targets import (RuntimeInfo, UnknownTarget, file_target,
                       remote, sos_step, sos_targets, textMD5)
-from .utils import StopInputGroup, env, short_repr
+from .utils import StopInputGroup, env, short_repr, pickleable
 from .tasks import loadTask, remove_task_files, collect_task_info
 
 
@@ -31,7 +31,11 @@ def collect_task_result(task_id, sos_dict, skipped=False):
             if vars not in env.sos_dict:
                 raise ValueError(
                     f'Unavailable shared variable {svars} after the completion of task {task_id}')
-            shared[svars] = copy.deepcopy(env.sos_dict[svars])
+            if not pickleable(env.sos_dict[svars], svars):
+                env.logger.warning(
+                    f'{svars} of type {type(env.sos_dict[svars])} is not sharable')
+            else:
+                shared[svars] = copy.deepcopy(env.sos_dict[svars])
         elif isinstance(svars, Mapping):
             for var, val in svars.items():
                 if var != val:
@@ -39,7 +43,11 @@ def collect_task_result(task_id, sos_dict, skipped=False):
                 if var not in env.sos_dict:
                     raise ValueError(
                         f'Unavailable shared variable {var} after the completion of task {task_id}')
-                shared[var] = copy.deepcopy(env.sos_dict[var])
+                if not pickleable(env.sos_dict[var], var):
+                    env.logger.warning(
+                        f'{var} of type {type(env.sos_dict[var])} is not sharable')
+                else:
+                    shared[var] = copy.deepcopy(env.sos_dict[var])
         elif isinstance(svars, Sequence):
             # if there are dictionaries in the sequence, e.g.
             # shared=['A', 'B', {'C':'D"}]
@@ -48,7 +56,11 @@ def collect_task_result(task_id, sos_dict, skipped=False):
                     if item not in env.sos_dict:
                         raise ValueError(
                             f'Unavailable shared variable {item} after the completion of task {task_id}')
-                    shared[item] = copy.deepcopy(env.sos_dict[item])
+                    if not pickleable(env.sos_dict[item], item):
+                        env.logger.warning(
+                            f'{item} of type {type(env.sos_dict[item])} is not sharable')
+                    else:
+                        shared[item] = copy.deepcopy(env.sos_dict[item])
                 elif isinstance(item, Mapping):
                     for var, val in item.items():
                         if var != val:
@@ -56,7 +68,11 @@ def collect_task_result(task_id, sos_dict, skipped=False):
                         if var not in env.sos_dict:
                             raise ValueError(
                                 f'Unavailable shared variable {var} after the completion of task {task_id}')
-                        shared[var] = copy.deepcopy(env.sos_dict[var])
+                        if not pickleable(env.sos_dict[var], var):
+                            env.logger.warning(
+                                f'{var} of type {type(env.sos_dict[var])} is not sharable')
+                        else:
+                            shared[var] = copy.deepcopy(env.sos_dict[var])
                 else:
                     raise ValueError(
                         f'Option shared should be a string, a mapping of expression, or a list of string or mappings. {svars} provided')
@@ -102,16 +118,14 @@ def collect_task_result(task_id, sos_dict, skipped=False):
 def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_interval=5,
                  resource_monitor_interval=60):
     # write result file
-    res_file = os.path.join(os.path.expanduser(
-        '~'), '.sos', 'tasks', task_id + '.res')
-    if os.path.isfile(res_file):
-        os.remove(res_file)
     res = _execute_task(task_id, verbosity, runmode, sigmode,
                         monitor_interval, resource_monitor_interval)
     res.update(collect_task_info(task_id))
-
-    with open(res_file, 'wb') as res_file:
-        pickle.dump(res, res_file)
+    task_file = os.path.join(os.path.expanduser(
+        '~'), '.sos', 'tasks', task_id + '.task')
+    params = loadTask(task_file)
+    params.result = res
+    params.save(task_file)
 
     # **after** result file is created, remove other files
     remove_task_files(task_id, ['.pulse', '.out', '.err', '.job_id', '.sh'])
