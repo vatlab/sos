@@ -50,6 +50,8 @@ class TestTarget(unittest.TestCase):
                 ('a.txt', '', 'a.txt'),
                 (sos_targets('a.txt'), '', 'a.txt'),
                 (sos_targets(['a.txt']), '', 'a.txt'),
+                (sos_targets([r'c:\path\a.txt']), 'p', '/c/path/a.txt'),
+                (sos_targets([r'c:path\a.txt']), 'p', '/c/path/a.txt'),
                 (sos_targets('/a/b/a.txt'), 'b', 'a.txt'),
                 (sos_targets('a b.txt'), 'q', ("'a b.txt'", '"a b.txt"')),
                 (sos_targets('a b.txt'), 'x', ".txt"),
