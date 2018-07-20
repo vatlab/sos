@@ -325,13 +325,16 @@ class SoS_DockerClient:
             #
             port_opt = ''
             if 'port' in kwargs:
-                if isinstance(kwargs['port'], (str, int)):
+                if kwargs['port'] is True:
+                    port_opt = '-P'
+                elif isinstance(kwargs['port'], (str, int)):
                     port_opt = '-p {}'.format(kwargs['port'])
                 elif isinstance(kwargs['port'], list):
                     port_opt = ' '.join('-p {}'.format(x)
                                         for x in kwargs['port'])
                 else:
-                    port_opt = '-P'
+                    raise RuntimeError(
+                        'Invalid value for option port (a list of intergers or True), {} provided'.format(kwargs['port']))
             #
             name_opt = ''
             if 'name' in kwargs:

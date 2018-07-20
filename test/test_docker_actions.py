@@ -216,6 +216,25 @@ echo 'Echo'
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
+    def testPortOption(self):
+        '''Test use of option port in action'''
+        script = SoS_Script(r'''
+[0]
+run:  docker_image='ubuntu', port=True
+echo 'Echo'
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        #
+        script = SoS_Script(r'''
+[0]
+run:  docker_image='ubuntu', port=2345
+echo 'Echo'
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
 
 if __name__ == '__main__':
     unittest.main()
