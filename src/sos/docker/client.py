@@ -323,7 +323,7 @@ class SoS_DockerClient:
                     raise RuntimeError('Invalid value for option environment (str, list, or dict is allowd, {} provided)'.format(
                         kwargs['environment']))
             #
-            port_opt = '-P'
+            port_opt = ''
             if 'port' in kwargs:
                 if isinstance(kwargs['port'], (str, int)):
                     port_opt = '-p {}'.format(kwargs['port'])
@@ -331,8 +331,7 @@ class SoS_DockerClient:
                     port_opt = ' '.join('-p {}'.format(x)
                                         for x in kwargs['port'])
                 else:
-                    raise RuntimeError(
-                        'Invalid value for option port (a list of intergers), {} provided'.format(kwargs['port']))
+                    port_opt = '-P'
             #
             name_opt = ''
             if 'name' in kwargs:
