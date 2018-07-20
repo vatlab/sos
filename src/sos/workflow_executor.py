@@ -1238,7 +1238,7 @@ class Base_Executor:
                                           ('result mismatch', len([x for x in res if x == 'signature-mismatch']))]
                                 raise RuntimeError(
                                     ', '.join([f'{y} job{"s" if y > 1 else ""} {x}' for x, y in status if y > 0]))
-                        if any(x in ('pending', 'submitted', 'running') for x in res):
+                        if any(x in ('new', 'pending', 'submitted', 'running') for x in res):
                             continue
                         elif all(x == 'completed' for x in res):
                             env.logger.debug(
