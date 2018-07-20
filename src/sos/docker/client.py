@@ -248,7 +248,7 @@ class SoS_DockerClient:
             #
             # if there is an interpreter and with args
             if not args:
-                args = '{filename:q}'
+                args = '{filename:pq}'
             #
             # under mac, we by default share /Users within docker
             wdir = os.path.abspath(os.getcwd())

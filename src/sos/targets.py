@@ -416,7 +416,7 @@ class path(type(Path())):
         'n': lambda x: os.path.splitext(x)[0],
         'x': lambda x: os.path.splitext(x)[1],
         'q': (lambda x: subprocess.list2cmdline([x])) if sys.platform == 'win32' else quote,
-        'p': lambda x: ('/' if len(x) > 1 and x[1] == ':' else '') + x.replace('\\', '/').replace(':', '/'),
+        'p': lambda x: ('/' if len(x) > 1 and x[1] == ':' else '') + x.replace('\\', '/').replace(':/', '/').replace(':', '/'),
         'r': repr,
         's': str,
         # these are handled elsewhere
