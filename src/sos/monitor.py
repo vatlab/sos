@@ -70,12 +70,13 @@ class ProcessMonitor(threading.Thread):
     def run(self):
         counter = 0
         start_time = time.time()
+        task_mtime = os.stat(self.pulse_file[:-6] + '.task').st_mtime
         while True:
             try:
                 if not os.access(self.pulse_file, os.W_OK):
                     # the pulse_file is not available, it can be either killed (no res),
-                    # or absorbed by the res file (with .res)
-                    if os.path.isfile(self.pulse_file[:-6] + '.res'):
+                    # or absorbed by the task file (with .task)
+                    if os.stat(self.pulse_file[:-6] + '.task').st_mtime != task_mtime:
                         break
                     # the job should be killed
                     p = psutil.Process(self.pid)
