@@ -23,76 +23,20 @@ from .targets import sos_targets
 monitor_interval = 5
 resource_monitor_interval = 60
 
-TaskHeader = namedtuple('TaskHeader',
-                        'version status tags creation_time pending_time submitted_time failed_time completed_time last_modified')
-
-task_header_fmt = '!i128s10s6d'
-task_header_size = struct.calcsize(task_header_fmt)
-
 
 class TaskParams(object):
     '''A parameter object that encaptulates parameters sending to
     task executors. This would makes the output of workers, especially
     in the web interface much cleaner (issue #259)'''
 
-    def __init__(self, name, global_def, task, sos_dict, tags=[]):
+    def __init__(self, name, global_def, task, sos_dict):
         self.name = name
         self.global_def = global_def
         self.task = task
         self.sos_dict = sos_dict
-        self.result = {}
-        self.tags = sorted(list(set(tags)))
-
-    def save(self, job_file, status='new'):
-        # updating job_file will not change timestamp because it will be Only
-        # the update of runtime info
-        now = time.time()
-        with open(job_file, 'wb+') as jf:
-            if status == 'new' or not os.path.isfile(job_file):
-                header = struct.pack_into(task_header_fmt,
-                                          jf,  # buffer,
-                                          0,   # offset
-                                          1,   # version number
-                                          ' '.join(self.tags).ljust(
-                                              128).encode(),
-                                          status.ljust(10).encode(),
-                                          now,   # creation time
-                                          0.0,  # pending time
-                                          0.0,  # submitted time
-                                          0.0,  # failed time, if available
-                                          0.0,  # completed time
-                                          now   # terminal time, regardless of status
-                                          )
-            else:
-                header = list(struct.unpack(
-                    task_header_fmt, jf.read(task_header_size)))
-                header[1] = ' '.join(self.tags).ljust(
-                    128).encode(),
-                header[2] = status
-                # creation time, pending time etc is untouched
-                if status == 'failed':
-                    header[6] = now
-                    header[7] = 0.0
-                elif status == 'completed':
-                    header[6] = 0.0
-                    header[7] = now
-                header[8] = now
-                # move to front
-                jf.seek(0)
-                struct.pack_into(task_header_fmt, jf, *header)
-            #
-            # reset local tags because they are saved to header
-            self.tags = []
-            # now save the entire content in pickle format
-            #
-            # remove __builtins__ from sos_dict #835
-            if 'CONFIG' in self.sos_dict and '__builtins__' in self.sos_dict['CONFIG']:
+        # remove builtins that could be saved in a dictionary
+        if 'CONFIG' in self.sos_dict and '__builtins__' in self.sos_dict['CONFIG']:
                 self.sos_dict['CONFIG'].pop('__builtins__')
-            try:
-                jf.write(lzma.compress(pickle.dumps(self)))
-            except Exception as e:
-                env.logger.warning(e)
-                raise
 
     def __repr__(self):
         return self.name
@@ -110,10 +54,8 @@ class MasterTaskParams(TaskParams):
                          '_index': 0}
         self.sos_dict['__task_vars__'] = copy.copy(self.sos_dict)
         self.num_workers = num_workers
-        self.tags = []
         # a collection of tasks that will be executed by the master task
         self.task_stack = []
-        self.result = {}
 
     def num_tasks(self):
         return len(self.task_stack)
@@ -175,6 +117,8 @@ class MasterTaskParams(TaskParams):
         # input, output, preserved vars etc
         for key in ['_input', '_output', '_depends']:
             if key in params.sos_dict and isinstance(params.sos_dict[key], list):
+                if key == '__builtins__':
+                    continue
                 # do not extend duplicated input etc
                 self.sos_dict[key].extend(
                     list(set(params.sos_dict[key]) - set(self.sos_dict[key])))
@@ -188,134 +132,123 @@ class MasterTaskParams(TaskParams):
         self.name = self.ID
 
 
-def loadTask(filename):
-    try:
-        with open(filename, 'rb') as task:
-            # read header
-            header = TaskHeader._make(struct.unpack(
-                task_header_fmt, task.read(task_header_size)))
-            params = pickle.loads(lzma.decompress(task.read()))
-            params.header = header
-            return params
-    except Exception as e:
-        env.logger.debug('Encounter older version of task: {e}')
+class TaskFile(object):
+    '''
+    The task file has the following format:
 
-        def withResult(param, tags):
-            # for compatibility with older version of task file. The .res files could
-            # be saved in a separate .res file. In this case we should return the
-            # result as part of the .task file.
-            res_file = filename[:-5] + '.res'
-            if os.path.isfile(res_file):
-                with open(res_file, 'rb') as result:
-                    res = pickle.load(result)
-            else:
-                res = {}
-            params.result = res
-            params.header = TaskHeader(tags=tags)
-            return param
+    1. A binary header with the information of the structure of the file
+    with field defined by TaskHeader
+    2. compressed pickled param of task
+    2. resource file appended by the worker
+    3. compressed picked result
+    4. compressed stdout
+    5. compressed stderr
+    '''
+    TaskHeader = namedtuple('TaskHeader',
+                            'version status tags '
+                            'creation_time pending_time submitted_time failed_time completed_time last_modified'
+                            'param_size pulse_size stdout_size stderr_size result_size'
+                            )
 
-        try:
-            task.seek(0)
-            header = task.readline().decode()
-            if header.startswith('SOSTASK1.1'):
-                # ignore the tags
-                tags = task.readline().decode().strip()
-                return withResult(pickle.load(task), tags)
-            elif header.startswith('SOSTASK1.2'):
-                tags = task.readline().decode().strip()
-                try:
-                    return withResult(pickle.loads(lzma.decompress(task.read())), tags)
-                except:
-                    # at some point, the task files were compressed with zlib
-                    import zlib
-                    return withResult(pickle.loads(zlib.decompress(task.read())), tags)
-            elif header.startswith('SOSTASK1.3'):
-                # ignore the tags
-                tags = task.readline().decode().strip()
-                param = pickle.loads(lzma.decompress(task.read()))
-                param.header = TaskHeader(tags=tags)
-                return param
-            else:
-                raise ValueError('Unrecognized format')
-        except Exception as e:
-            raise RuntimeError(
-                f'Failed to load task {os.path.basename(filename)}: {e}')
+    header_fmt = '!i 10s 128s 6d 5i'
+    header_size = struct.calcsize(task_header_fmt)
+
+    def __init__(self, task_id: str):
+        self.task_file = os.path.join(
+            os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task'
+        )
+
+    def save(self, param, tags=[]):
+        # updating job_file will not change timestamp because it will be Only
+        # the update of runtime info
+        now = time.time()
+        param_trunk = lzma.compress(pickle.dumps(self))
+        header = self.TaskHeader(tags=' '.join(tags).ljust(128).encode(),
+            start_time=now, last_modified=now, status='new'.ljust(10).encode(),
+            param_offset=self.header_size, param_size=len(param_trunk),
+            pulse_offset=self.header_size + len(param_trunk) )
+        with open(self.task_file, 'wb') as gh:
+            self.write_header(fh, header)
+            gh.write(param_trunk)
+
+    def _read_header(self, fh):
+        return self.TaskHeader._make(truct.unpack(
+                    self.header_fmt,
+                     jfh.read(self.header_size)))
+
+    def write_header(self, fh, header):
+        fh.seek(0)
+        struct.pack_into(self.header_fmt, fh, 0, *header)
+
+    def _get_content(self, ext:str):
+        filename = self.task_file[:-5] + '.pulse'
+        if not os.path.isfile(filename):
+            return b''
+        with open(filename, 'rb') as fh:
+            content = fh.read()
+        return lzma.compress(content)
+
+    def add_outputs(self):
+        # get header
+        pulse = self._get_content('.pulse')
+        stdout = self._get_content('.out')
+        stderr = self._get_content('.err')
+        with open(self.task_file, 'a+') as fh:
+            header = self._read_header()
+            header = header._replace(
+                pulse_size=len(pulse),
+                output_size = len(stdout,
+                stderr_size = len(stderr)
+            )
+            self._write_header(fh, header)
+            fh.seek(self.header_size + header.param_size)
+            if pulse:
+                fh.write(pulse)
+            if stdout:
+                fh.write(stdout)
+            if stderr:
+                fh.write(stderr)
+
+    def add_result(self, result:dict):
+        result_block = lzma.compress(pickle.dumps(result))
+        with open(self.task_file, 'a+') as fh:
+            header = self._read_header()
+            header = header._replace(
+                result_size=len(result_block)
+            )
+            self._write_header(fh, header)
+            fh.seek(self.header_size + header.param_size +
+                header.pulse_size + header.stdout_size + header.stderr_size)
+            fh.write(result_block)
+
+    def _get_status(self):
+        with open(self.task_file, 'rb') as fh:
+            return self._read_header(fh).status
+
+    def _set_status(self, status):
+        header = self._read_header()
+        header._replace(status=status, last_modified=time.time())
+        with open(self.task_file, 'a+') as fh:
+            self._write_status(gh, header)
+
+    def _get_result(self):
+        with open(self.task_file, 'rb') as fh:
+            header = self._read_header(fh)
+            fh.seek(self.header_size + header.param_size +
+                header.pulse_size + header.stdout_size + header.stderr_size)
+            return pickle.loads(lzma.decompress(fh.read(header.result_size)))
+
+    header = property(self._read_header)
+    status = property(self._get_status, self._set_status)
+    result = property(self._get_result)
 
 
-def getHeader(filename):
-    with open(filename, 'rb') as fh:
-        return TaskHeader._make(struct.unpack(
-            task_header_fmt, fh.read(task_header_size)))
-
-
-def setHeader(filename, tags=None, ):
-    with open(filename, 'w+')as task:
-        header = task.readline()
-        # read the tags
-        tags = task.readline().decode().strip().split(' ')
-        if isinstance(new_tags, str):
-            if new_tags in tags:
-                return
-            else:
-                tags.append(new_tags)
-        elif isinstance(new_tags, Sequence):
-            new_tags = [tag for tag in new_tags if tag not in tags]
-            if new_tags:
-                tags.extend(new_tags)
-            else:
-                return
-        else:
-            raise ValueError(f'Cannot add tags {new_tags} to task {filename}')
-        body = task.read()
-    with open(filename, 'wb') as task:
-        task.write(header)
-        task.write((' '.join(tags) + '\n').encode())
-        task.write(body)
 
 
 def taskDuration(task):
     filename = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', f'{task}.task')
     return os.path.getatime(filename) - os.path.getmtime(filename)
-
-
-def taskTags(task):
-    filename = os.path.join(os.path.expanduser(
-        '~'), '.sos', 'tasks', f'{task}.task')
-    atime = os.path.getatime(filename)
-    try:
-        with open(filename, 'rb') as task:
-            try:
-                header = task.readline().decode()
-                if header.startswith('SOSTASK'):
-                    return task.readline().decode().strip()
-                else:
-                    return ''
-            except:
-                return ''
-    except Exception as e:
-        env.logger.warning(f'Failed to get tags for task {task}: {e}')
-        return []
-    finally:
-        os.utime(filename, (atime, os.path.getmtime(filename)))
-
-
-def collect_task_info(task: str) -> dict:
-    # save .out .err and .pulse files into the .task file
-    result = {}
-    for ext, key in (('.out', 'stdout'), ('.err', 'stderr'),
-                     ('.pulse', 'pulse'), ('.sh', 'job')):
-        filename = os.path.join(os.path.expanduser(
-            '~'), '.sos', 'tasks', task + ext)
-        if not os.path.isfile(filename):
-            continue
-        try:
-            with open(filename) as fileobj:
-                content = fileobj.read()
-            result[key] = content
-        except Exception as e:
-            env.logger.warning(f'Failed to load {filename}: {e}')
-    return result
 
 
 def remove_task_files(task: str, exts: list):
