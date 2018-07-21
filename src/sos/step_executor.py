@@ -320,8 +320,9 @@ class TaskManager:
             for task_id, taskdef, _ in to_be_submitted:
                 job_file = os.path.join(os.path.expanduser(
                     '~'), '.sos', 'tasks', task_id + '.task')
-                # do not change time stamp as well as task status
-                if task_id not in env.config.get('resumed_tasks', []) or not os.path.isfile(job_file):
+                # if the task file, perhaps it is already running, we do not change
+                # the task file. Otherwise we are changing the status of the task
+                if not os.path.isfile(job_file):
                     taskdef.save(job_file, mark_new=True)
                 ids.append(task_id)
         else:
@@ -331,7 +332,7 @@ class TaskManager:
                     job_file = os.path.join(os.path.expanduser(
                         '~'), '.sos', 'tasks', master.ID + '.task')
                     ids.append(master.ID)
-                    if master.ID not in env.config.get('resumed_tasks', []) or not os.path.isfile(job_file):
+                    if not os.path.isfile(job_file):
                         master.save(job_file, mark_new=True)
                     master = None
                 if master is None:
@@ -341,7 +342,7 @@ class TaskManager:
             if master is not None:
                 job_file = os.path.join(os.path.expanduser(
                     '~'), '.sos', 'tasks', master.ID + '.task')
-                if master.ID not in env.config.get('resumed_tasks', []) or not os.path.isfile(job_file):
+                if not os.path.isfile(job_file):
                     master.save(job_file, mark_new=True)
                 ids.append(master.ID)
 
