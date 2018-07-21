@@ -65,7 +65,8 @@ class TestTask(unittest.TestCase):
 
     def testTaskFile(self):
         '''Test task file handling'''
-        params = TaskParams(name='ffffffffffffffff', global_def={}, task='b=a', sos_dict={'a': 1})
+        params = TaskParams(name='ffffffffffffffff',
+                            global_def={}, task='b=a', sos_dict={'a': 1})
         a = TaskFile('ffffffffffffffff')
         a.save(params, tags=['b', 'a'])
         self.assertEqual(a.tags, ['a', 'b'])
@@ -92,8 +93,22 @@ class TestTask(unittest.TestCase):
         self.assertEqual(a.stderr, '.err')
         self.assertEqual(a.pulse, '.pulse')
         #
+        a.add_signature({'file': 'md5'})
+        self.assertEqual(a.signature['file'], 'md5')
+        #
+        self.assertRaises(Exception, a.add_outputs)
+        #
+        a.reset()
+        self.assertEqual(a.status, 'new')
+        self.assertEqual(a.stdout, '')
+        self.assertEqual(a.stderr, '')
+        self.assertEqual(a.signature, {})
+        a.add_outputs()
+        a.add_result({'ret_code': 5})
+        self.assertEqual(a.result['ret_code'], 5)
         for ext in ('.pulse', '.out', '.err', '.task'):
-            os.remove(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', 'ffffffffffffffff' + ext))
+            os.remove(os.path.join(os.path.expanduser('~'),
+                                   '.sos', 'tasks', 'ffffffffffffffff' + ext))
 
     def testWorkdir(self):
         '''Test workdir option for runtime environment'''

@@ -153,9 +153,9 @@ class LocalHost:
         if not os.path.isfile(task_file):
             raise ValueError(f'Missing task definition {task_file}')
 
-        params = loadTask(task_file)
+        tf = TaskFile(task_id)
+        params = tf.params
         # clear possible previous result
-        params.result = {}
         task_vars = params.sos_dict
 
         # if this is the newer format, there is a __task_vars__ key in task_vars
@@ -192,7 +192,7 @@ class LocalHost:
                     f'Task {task_id} requested more walltime ({task_vars["_runtime"]["walltime"]}) than allowed max_walltime ({self.config["max_walltime"]})')
                 return False
 
-        params.save(task_file)
+        tf.save(params)
         #
         if 'to_host' in task_vars['_runtime'] and isinstance(task_vars['_runtime']['to_host'], dict):
             for l, r in task_vars['_runtime']['to_host'].items():
@@ -243,7 +243,8 @@ class LocalHost:
         sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
 
         task_file = os.path.join(sys_task_dir, task_id + '.task')
-        params = loadTask(task_file)
+        tf = TaskFile(task_id)
+        params = tf.params
         job_dict = params.sos_dict
 
         if 'from_host' in job_dict['_runtime'] and isinstance(job_dict['_runtime']['from_host'], dict):
@@ -251,7 +252,7 @@ class LocalHost:
                 if l != r:
                     shutil.copy(r, l)
 
-        res = params.result
+        res = tf.result
         try:
             if res['ret_code'] != 0 or env.verbosity >= 3:
                 _show_err_and_out(task_id, res)
@@ -518,8 +519,8 @@ class RemoteHost:
             '~'), '.sos', 'tasks', task_id + '.task')
         if not os.path.isfile(task_file):
             raise ValueError(f'Missing task definition {task_file}')
-        params = loadTask(task_file)
-        params.result = {}
+        tf = TaskFile(task_id)
+        params = tf.params
         task_vars = params.sos_dict
         # if this is the newer format, there is a __task_vars__ key in task_vars
         # that saves the untouched original vars. We should keep it.
@@ -617,7 +618,7 @@ class RemoteHost:
             task_vars['_runtime']['max_walltime'] = format_HHMMSS(
                 task_vars['_runtime']['max_walltime'])
 
-        params.save(task_file)
+        tf.save(params)
         self.send_task_file(task_file)
 
     def send_task_file(self, task_file):
@@ -709,8 +710,9 @@ class RemoteHost:
                     task_id, self.alias, receive_cmd))
 
         task_file = os.path.join(sys_task_dir, task_id + '.task')
-        params = loadTask(task_file)
-        res = params.result
+        tf = TaskFile(task_id)
+        params = tf.params
+        res = tf.result
 
         if not res:
             env.logger.debug(

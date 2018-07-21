@@ -143,14 +143,16 @@ class TaskFile(object):
     3. compressed picked result
     4. compressed stdout
     5. compressed stderr
+    7. pickled result
+    8. signatures
     '''
     TaskHeader = namedtuple('TaskHeader',
                             'version status tags '
                             'creation_time pending_time submitted_time failed_time completed_time last_modified '
-                            'params_size pulse_size stdout_size stderr_size result_size'
+                            'params_size pulse_size stdout_size stderr_size result_size signature_size'
                             )
 
-    header_fmt = '!i 10s 128s 6d 5i'
+    header_fmt = '!i 10s 128s 6d 6i'
     header_size = struct.calcsize(header_fmt)
 
     def __init__(self, task_id: str):
@@ -180,11 +182,34 @@ class TaskFile(object):
             pulse_size=0,
             stdout_size=0,
             stderr_size=0,
-            result_size=0
+            result_size=0,
+            signature_size=0
         )
         with open(self.task_file, 'wb+') as fh:
             self._write_header(fh, header)
             fh.write(params_block)
+
+    def reset(self):
+        # remove result, input, output etc and set the status of the task to new
+        with open(self.task_file, 'r+b') as fh:
+            header = self._read_header(fh)
+            now = time.time()
+            header = header._replace(
+                status=b'new       ',
+                creation_time=now,
+                pending_time=0,
+                submitted_time=0,
+                failed_time=0,
+                completed_time=0,
+                last_modified=now,
+                pulse_size=0,
+                stdout_size=0,
+                stderr_size=0,
+                result_size=0,
+                signature_size=0
+            )
+            self._write_header(fh, header)
+            fh.truncate(self.header_size + header.params_size)
 
     def _read_header(self, fh):
         fh.seek(0, 0)
@@ -239,11 +264,36 @@ class TaskFile(object):
                     header.pulse_size + header.stdout_size + header.stderr_size)
             fh.write(result_block)
 
+    def add_signature(self, signature: dict):
+        signature_block = lzma.compress(pickle.dumps(signature))
+        with open(self.task_file, 'r+b') as fh:
+            header = self._read_header(fh)
+            header = header._replace(
+                signature_size=len(signature_block)
+            )
+            self._write_header(fh, header)
+            fh.seek(self.header_size + header.params_size +
+                    header.pulse_size + header.stdout_size + header.stderr_size +
+                    header.result_size)
+            fh.write(signature_block)
+
     def _get_info(self):
         with open(self.task_file, 'rb') as fh:
             return self._read_header(fh)
 
     info = property(_get_info)
+
+    def has_result(self):
+        return self.info.result_size > 0
+
+    def has_stdout(self):
+        return self.info.stdout_size > 0
+
+    def has_stderr(self):
+        return self.info.stderr_size > 0
+
+    def has_signature(self):
+        return self.info.signature_size > 0
 
     def _get_params(self):
         with open(self.task_file, 'rb') as fh:
@@ -266,19 +316,19 @@ class TaskFile(object):
             if status == 'pending':
                 header = header._replace(
                     status=status.ljust(10).encode(),
-                    pending_time = now, last_modified=now)
+                    pending_time=now, last_modified=now)
             elif status == 'submitted':
                 header = header._replace(
                     status=status.ljust(10).encode(),
-                    submitted_time = now, last_modified=now)
+                    submitted_time=now, last_modified=now)
             elif status == 'failed':
                 header = header._replace(
                     status=status.ljust(10).encode(),
-                    failed_time = now, last_modified=now)
+                    failed_time=now, last_modified=now)
             elif status == 'completed':
                 header = header._replace(
                     status=status.ljust(10).encode(),
-                    completed_time = now, last_modified=now)
+                    completed_time=now, last_modified=now)
             else:
                 raise RuntimeError(f'Unrecognized task status: {status}')
             self._write_header(fh, header)
@@ -289,13 +339,14 @@ class TaskFile(object):
         with open(self.task_file, 'rb') as fh:
             return self._read_header(fh).tags.decode().strip().split()
 
-    def _set_tags(self, tags:list):
+    def _set_tags(self, tags: list):
         with open(self.task_file, 'r+b') as fh:
             header = self._read_header(fh)
-            header = header._replace(tags=' '.join(sorted(tags)).ljust(128).encode())
+            header = header._replace(tags=' '.join(
+                sorted(tags)).ljust(128).encode())
             self._write_header(fh, header)
 
-    def add_tags(self, tags:list):
+    def add_tags(self, tags: list):
         with open(self.task_file, 'r+b') as fh:
             header = self._read_header(fh)
             header = header._replace(tags=' '.join(
@@ -361,6 +412,22 @@ class TaskFile(object):
 
     result = property(_get_result)
 
+    def _get_signature(self):
+        with open(self.task_file, 'rb') as fh:
+            header = self._read_header(fh)
+            if header.signature_size == 0:
+                return {}
+            fh.seek(self.header_size + header.params_size +
+                    header.pulse_size + header.stdout_size +
+                    header.stderr_size + header.result_size, 0)
+            try:
+                return pickle.loads(lzma.decompress(fh.read(header.signature_size)))
+            except Exception as e:
+                env.logger.warning(f'Failed to decode signature: {e}')
+                return {'ret_code': 1}
+
+    signature = property(_get_signature)
+
 
 def taskDuration(task):
     filename = os.path.join(os.path.expanduser(
@@ -407,37 +474,17 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
     def task_changed():
         return os.stat(task_file).st_mtime != mtime
 
+    tf = TaskFile(task)
+    status = tf.status
+
+    if status in ['failed', 'completed']:
+        # thse are terminal states. We simply return them
+        # only change of the task file will trigger recheck of status
+        status_files = {task_file: os.stat(task_file).st_mtime}
+        return dict(status=status, files=status_files)
+
     pulse_file = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', task + '.pulse')
-
-    try:
-        params = loadTask(task_file)
-    except Exception as e:
-        # it is possible that the file is being changed ...
-        time.sleep(0.5)
-        return check_task(task)
-
-    res = params.result
-    # if the task has result section
-    if res:
-        try:
-            from .targets import file_target
-            # remove other files if exist
-            remove_task_files(
-                task, ['.pulse', '.sh', '.job_id', '.out', '.err'])
-            status_files = {task_file: os.stat(task_file).st_mtime,
-                            pulse_file: 0
-                            }
-            if ('ret_code' in res and res['ret_code'] == 0) or ('succ' in res and res['succ'] == 0):
-                return dict(status='completed', files=status_files)
-            else:
-                return dict(status='failed', files=status_files)
-        except Exception as e:
-            # sometimes the task is changed while we are reading it
-            # so we wait a bit and try again.
-            env.logger.warning(e)
-            time.sleep(.5)
-            return check_task(task)
 
     # check the existence and validity of .pulse file
     # for whatever reason, sometimes the pulse file might appear to be slightly
@@ -450,8 +497,12 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             # dead?
             # if the status file is readonly
             if not os.access(pulse_file, os.W_OK):
+                if status != 'aborted':
+                    tf.status = 'aborted'
+                remove_task_files(
+                    task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
                 return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
-                                                     pulse_file: os.stat(pulse_file).st_mtime})
+                                                     pulse_file: 0})
             start_stamp = os.stat(pulse_file).st_mtime
             elapsed = time.time() - start_stamp
             if elapsed < 0:
@@ -461,6 +512,9 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             if elapsed < monitor_interval:
                 # if running, we return old hint files even if the timestamp has been changed
                 # because we will check the status of running jobs anyway.
+                if status != 'running':
+                    # the first obserged running status
+                    tf.status = 'running'
                 if hint and hint['status'] == 'running':
                     return {}
                 else:
@@ -470,7 +524,10 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                     # result file appears during sos tatus run
                     return check_task(task)
                 else:
-                    remove_task_files(task, ['.sh', '.job_id', '.out', '.err'])
+                    remove_task_files(
+                        task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
+                    if status != 'aborted':
+                        tf.status = 'aborted'
                     return dict(status='aborted', files=status_files)
             # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
             time.sleep(2 * monitor_interval)
@@ -482,9 +539,15 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                 if hint and hint['status'] == 'running':
                     return {}
                 else:
+                    if status != 'running':
+                        # the first obserged running status
+                        tf.status = 'running'
                     return dict(status='running', files=status_files)
             else:
-                remove_task_files(task, ['.sh', '.job_id', '.out', '.err'])
+                remove_task_files(
+                    task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
+                if status != 'aborted':
+                    tf.status = 'aborted'
                 return dict(status='aborted', files=status_files)
         except:
             # the pulse file could disappear when the job is completed.
@@ -504,6 +567,8 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
 
     if has_job():
         try:
+            if status != 'submitted':
+                tf.status = 'submitted'
             return dict(status='submitted', files={task_file: os.stat(task_file).st_mtime,
                                                    job_file: os.stat(job_file).st_mtime,
                                                    pulse_file: 0})
@@ -524,6 +589,8 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                     return dict(status='new', files={task_file: os.stat(task_file).st_mtime,
                                                      job_file: 0})
                 else:
+                    if status != 'pending':
+                        tf.status = 'pending'
                     return dict(status='pending', files={task_file: os.stat(task_file).st_mtime,
                                                          job_file: 0})
         except:
@@ -667,7 +734,7 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
                 print(f'Started {PrettyRelativeTime(time.time() - d)} ago')
             if s not in ('pending', 'submitted', 'running'):
                 print(f'Duration {PrettyRelativeTime(taskDuration(t))}')
-            params = loadTask(task_file)
+            tf = TaskFile(t)
             print('TASK:\n=====')
             print(params.task)
             print('TAGS:\n=====')
@@ -685,21 +752,18 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
                     f'{k:22}{short_repr(v) if verbosity == 3 else pprint.pformat(v)}')
             print()
 
-            res = params.result
-            if res:
-                with open(res_file, 'rb') as result:
-                    res = pickle.load(result)
+            if tf.has_result():
                 if 'pulse' in res:
                     print('EXECUTION STATS:\n================')
                     print(summarizeExecution(t, res['pulse'], status=s))
                 if verbosity == 4:
                     # if there are other files such as job file, print them.
-                    if 'stdout' in res:
+                    if tf.has_stdout():
                         print('standout output:\n================\n' +
-                              res['stdout'])
-                    if 'stderr' in res:
+                              tf.stdout)
+                    if tf.has_stderr():
                         print('standout output:\n================\n' +
-                              res['stderr'])
+                              tf.stderr)
             else:
                 # we have separate pulse, out and err files
                 print('EXECUTION STATS:\n================')
@@ -758,7 +822,8 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
                 '~'), '.sos', 'tasks', t + '.task')
             if not os.path.isfile(task_file):
                 continue
-            params = loadTask(task_file)
+            tf = TaskFile(t)
+            params = tf.params
             row('Task')
             row(td=f'<pre style="text-align:left">{params.task}</pre>')
             row('Tags')
@@ -779,9 +844,9 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
                     elif isPrimitive(v) and v not in (None, '', [], (), {}):
                         row(k,
                             f'<pre style="text-align:left">{pprint.pformat(v)}</pre>')
-            res = params.result
             pulse_content = ''
-            if res:
+            if tf.has_result():
+                res = tf.result
                 if 'pulse' in res:
                     pulse_content = res['pulse']
                     summary = summarizeExecution(t, res['pulse'], status=s)
