@@ -36,7 +36,7 @@ class TaskParams(object):
         self.sos_dict = sos_dict
         # remove builtins that could be saved in a dictionary
         if 'CONFIG' in self.sos_dict and '__builtins__' in self.sos_dict['CONFIG']:
-                self.sos_dict['CONFIG'].pop('__builtins__')
+            self.sos_dict['CONFIG'].pop('__builtins__')
 
     def __repr__(self):
         return self.name
@@ -146,42 +146,55 @@ class TaskFile(object):
     '''
     TaskHeader = namedtuple('TaskHeader',
                             'version status tags '
-                            'creation_time pending_time submitted_time failed_time completed_time last_modified'
-                            'param_size pulse_size stdout_size stderr_size result_size'
+                            'creation_time pending_time submitted_time failed_time completed_time last_modified '
+                            'params_size pulse_size stdout_size stderr_size result_size'
                             )
 
     header_fmt = '!i 10s 128s 6d 5i'
-    header_size = struct.calcsize(task_header_fmt)
+    header_size = struct.calcsize(header_fmt)
 
     def __init__(self, task_id: str):
         self.task_file = os.path.join(
             os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task'
         )
 
-    def save(self, param, tags=[]):
+    def save(self, params, tags=[]):
         # updating job_file will not change timestamp because it will be Only
         # the update of runtime info
         now = time.time()
-        param_trunk = lzma.compress(pickle.dumps(self))
-        header = self.TaskHeader(tags=' '.join(tags).ljust(128).encode(),
-            start_time=now, last_modified=now, status='new'.ljust(10).encode(),
-            param_offset=self.header_size, param_size=len(param_trunk),
-            pulse_offset=self.header_size + len(param_trunk) )
-        with open(self.task_file, 'wb') as gh:
-            self.write_header(fh, header)
-            gh.write(param_trunk)
+        params_block = lzma.compress(pickle.dumps(params))
+        header = self.TaskHeader(
+            version=1,
+            status=b'new       ',
+            tags=' '.join(sorted(tags)).ljust(128).encode(),
+            creation_time=now,
+            pending_time=0,
+            submitted_time=0,
+            failed_time=0,
+            completed_time=0,
+            last_modified=now,
+            params_size=len(params_block),
+            pulse_size=0,
+            stdout_size=0,
+            stderr_size=0,
+            result_size=0
+        )
+        with open(self.task_file, 'wb+') as fh:
+            self._write_header(fh, header)
+            fh.write(params_block)
 
     def _read_header(self, fh):
-        return self.TaskHeader._make(truct.unpack(
-                    self.header_fmt,
-                     jfh.read(self.header_size)))
+        fh.seek(0, 0)
+        return self.TaskHeader._make(struct.unpack(
+            self.header_fmt,
+            fh.read(self.header_size)))
 
-    def write_header(self, fh, header):
-        fh.seek(0)
-        struct.pack_into(self.header_fmt, fh, 0, *header)
+    def _write_header(self, fh, header):
+        fh.seek(0, 0)
+        fh.write(struct.pack(self.header_fmt, *header))
 
-    def _get_content(self, ext:str):
-        filename = self.task_file[:-5] + '.pulse'
+    def _get_content(self, ext: str):
+        filename = self.task_file[:-5] + ext
         if not os.path.isfile(filename):
             return b''
         with open(filename, 'rb') as fh:
@@ -193,15 +206,17 @@ class TaskFile(object):
         pulse = self._get_content('.pulse')
         stdout = self._get_content('.out')
         stderr = self._get_content('.err')
-        with open(self.task_file, 'a+') as fh:
-            header = self._read_header()
+        with open(self.task_file, 'r+b') as fh:
+            header = self._read_header(fh)
+            if header.result_size != 0:
+                raise ValueError('Cannot output to task with result')
             header = header._replace(
                 pulse_size=len(pulse),
-                output_size = len(stdout,
-                stderr_size = len(stderr)
+                stdout_size=len(stdout),
+                stderr_size=len(stderr)
             )
             self._write_header(fh, header)
-            fh.seek(self.header_size + header.param_size)
+            fh.seek(self.header_size + header.params_size, 0)
             if pulse:
                 fh.write(pulse)
             if stdout:
@@ -209,40 +224,122 @@ class TaskFile(object):
             if stderr:
                 fh.write(stderr)
 
-    def add_result(self, result:dict):
+    def add_result(self, result: dict):
         result_block = lzma.compress(pickle.dumps(result))
-        with open(self.task_file, 'a+') as fh:
-            header = self._read_header()
+        with open(self.task_file, 'r+b') as fh:
+            header = self._read_header(fh)
             header = header._replace(
                 result_size=len(result_block)
             )
             self._write_header(fh, header)
-            fh.seek(self.header_size + header.param_size +
-                header.pulse_size + header.stdout_size + header.stderr_size)
+            fh.seek(self.header_size + header.params_size +
+                    header.pulse_size + header.stdout_size + header.stderr_size)
             fh.write(result_block)
+
+    def _get_info(self):
+        with open(self.task_file, 'rb') as fh:
+            return self._read_header(fh)
+
+    info = property(_get_info)
+
+    def _get_params(self):
+        with open(self.task_file, 'rb') as fh:
+            header = self._read_header(fh)
+            if header.params_size == 0:
+                return {}
+            fh.seek(self.header_size, 0)
+            return pickle.loads(lzma.decompress(fh.read(header.params_size)))
+
+    params = property(_get_params)
 
     def _get_status(self):
         with open(self.task_file, 'rb') as fh:
-            return self._read_header(fh).status
+            return self._read_header(fh).status.decode().strip()
 
     def _set_status(self, status):
-        header = self._read_header()
-        header._replace(status=status, last_modified=time.time())
-        with open(self.task_file, 'a+') as fh:
-            self._write_status(gh, header)
+        with open(self.task_file, 'r+b') as fh:
+            header = self._read_header(fh)
+            header = header._replace(status=status.ljust(
+                10).encode(), last_modified=time.time())
+            self._write_header(fh, header)
+
+    status = property(_get_status, _set_status)
+
+    def _get_tags(self):
+        with open(self.task_file, 'rb') as fh:
+            return self._read_header(fh).tags.decode().strip().split()
+
+    def _set_tags(self, tags:list):
+        with open(self.task_file, 'r+b') as fh:
+            header = self._read_header(fh)
+            header = header._replace(tags=' '.join(sorted(tags)).ljust(128).encode())
+            self._write_header(fh, header)
+
+    def add_tags(self, tags:list):
+        with open(self.task_file, 'r+b') as fh:
+            header = self._read_header(fh)
+            header = header._replace(tags=' '.join(
+                sorted(tags + header.tags.decode().strip().split())).ljust(128).encode())
+            self._write_header(fh, header)
+
+    tags = property(_get_tags, _set_tags)
+
+    def _get_pulse(self):
+        with open(self.task_file, 'rb') as fh:
+            header = self._read_header(fh)
+            if header.pulse_size == 0:
+                return ''
+            fh.seek(self.header_size + header.params_size, 0)
+            try:
+                return lzma.decompress(fh.read(header.pulse_size)).decode()
+            except Exception as e:
+                env.logger.warning(f'Failed to decode pulse: {e}')
+                return ''
+
+    pulse = property(_get_pulse)
+
+    def _get_stdout(self):
+        with open(self.task_file, 'rb') as fh:
+            header = self._read_header(fh)
+            if header.stdout_size == 0:
+                return ''
+            fh.seek(self.header_size + header.params_size + header.pulse_size, 0)
+            try:
+                return lzma.decompress(fh.read(header.stdout_size)).decode()
+            except Exception as e:
+                env.logger.warning(f'Failed to decode stdout: {e}')
+                return ''
+    stdout = property(_get_stdout)
+
+    def _get_stderr(self):
+        with open(self.task_file, 'rb') as fh:
+            header = self._read_header(fh)
+            if header.stderr_size == 0:
+                return ''
+            fh.seek(self.header_size + header.params_size + header.pulse_size
+                    + header.stdout_size, 0)
+            try:
+                return lzma.decompress(fh.read(header.stderr_size)).decode()
+            except Exception as e:
+                env.logger.warning(f'Failed to decode stderr: {e}')
+                return ''
+
+    stderr = property(_get_stderr)
 
     def _get_result(self):
         with open(self.task_file, 'rb') as fh:
             header = self._read_header(fh)
-            fh.seek(self.header_size + header.param_size +
-                header.pulse_size + header.stdout_size + header.stderr_size)
-            return pickle.loads(lzma.decompress(fh.read(header.result_size)))
+            if header.result_size == 0:
+                return {}
+            fh.seek(self.header_size + header.params_size +
+                    header.pulse_size + header.stdout_size + header.stderr_size, 0)
+            try:
+                return pickle.loads(lzma.decompress(fh.read(header.result_size)))
+            except Exception as e:
+                env.logger.warning(f'Failed to decode result: {e}')
+                return {'ret_code': 1}
 
-    header = property(self._read_header)
-    status = property(self._get_status, self._set_status)
-    result = property(self._get_result)
-
-
+    result = property(_get_result)
 
 
 def taskDuration(task):

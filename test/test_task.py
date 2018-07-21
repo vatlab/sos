@@ -15,6 +15,7 @@ from sos.hosts import Host
 from sos.parser import ParsingError, SoS_Script
 from sos.targets import file_target
 from sos.utils import env
+from sos.tasks import TaskParams, TaskFile
 
 # if the test is imported under sos/test, test interacive executor
 if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
@@ -61,6 +62,38 @@ class TestTask(unittest.TestCase):
                 tmp.write('test')
         #
         self.temp_files.extend(files)
+
+    def testTaskFile(self):
+        '''Test task file handling'''
+        params = TaskParams(name='ffffffffffffffff', global_def={}, task='b=a', sos_dict={'a': 1})
+        a = TaskFile('ffffffffffffffff')
+        a.save(params, tags=['b', 'a'])
+        self.assertEqual(a.tags, ['a', 'b'])
+        for ext in ('.pulse', '.out', '.err'):
+            with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', 'ffffffffffffffff' + ext), 'w') as fh:
+                fh.write(ext)
+        a.add_outputs()
+        #
+        self.assertEqual(a.status, 'new')
+        a.status = 'completed'
+        self.assertEqual(a.status, 'completed')
+        #
+        a.add_result({'ret_code': 5})
+        #
+        a.tags = ['ee', 'd']
+        self.assertEqual(a.tags, ['d', 'ee'])
+        a.add_tags(['kk'])
+        self.assertEqual(a.tags, ['d', 'ee', 'kk'])
+        #
+        self.assertEqual(a.params.sos_dict['a'], 1)
+        self.assertEqual(a.params.task, 'b=a')
+        #
+        self.assertEqual(a.stdout, '.out')
+        self.assertEqual(a.stderr, '.err')
+        self.assertEqual(a.pulse, '.pulse')
+        #
+        for ext in ('.pulse', '.out', '.err', '.task'):
+            os.remove(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', 'ffffffffffffffff' + ext))
 
     def testWorkdir(self):
         '''Test workdir option for runtime environment'''

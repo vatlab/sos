@@ -21,7 +21,7 @@ from .eval import Undetermined, cfg_interpolate
 from .syntax import SOS_LOGLINE
 from .targets import path, sos_targets
 from .task_engines import BackgroundProcess_TaskEngine
-from .tasks import loadTask
+from .tasks import TaskFile
 from .utils import (env, expand_size, expand_time,
                     format_HHMMSS, short_repr)
 
