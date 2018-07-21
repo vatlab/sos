@@ -30,7 +30,7 @@ from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
 from .targets import (BaseTarget, RemovedTarget, RuntimeInfo, UnavailableLock,
                       UnknownTarget, dynamic, file_target, path, paths, remote,
                       sos_targets, sos_step)
-from .tasks import MasterTaskParams, TaskParams
+from .tasks import MasterTaskParams, TaskParams, TaskFile
 from .utils import (SlotManager, StopInputGroup, TerminateExecution, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr)
 
@@ -318,32 +318,23 @@ class TaskManager:
         ids = []
         if self.trunk_size == 1 or (all_tasks and len(self._unsubmitted_tasks) == 1):
             for task_id, taskdef, _ in to_be_submitted:
-                job_file = os.path.join(os.path.expanduser(
-                    '~'), '.sos', 'tasks', task_id + '.task')
                 # if the task file, perhaps it is already running, we do not change
                 # the task file. Otherwise we are changing the status of the task
-                if not os.path.isfile(job_file):
-                    taskdef.save(job_file, mark_new=True)
+                TaskFile(task_id).save(taskdef)
                 ids.append(task_id)
         else:
             master = None
             for task_id, taskdef, _ in to_be_submitted:
                 if master is not None and master.num_tasks() == self.trunk_size:
-                    job_file = os.path.join(os.path.expanduser(
-                        '~'), '.sos', 'tasks', master.ID + '.task')
                     ids.append(master.ID)
-                    if not os.path.isfile(job_file):
-                        master.save(job_file, mark_new=True)
+                    TaskFile(master.ID).save(master)
                     master = None
                 if master is None:
                     master = MasterTaskParams(self.trunk_workers)
                 master.push(task_id, taskdef)
             # the last piece
             if master is not None:
-                job_file = os.path.join(os.path.expanduser(
-                    '~'), '.sos', 'tasks', master.ID + '.task')
-                if not os.path.isfile(job_file):
-                    master.save(job_file, mark_new=True)
+                TaskFile(master.ID).save(master)
                 ids.append(master.ID)
 
         if not ids:

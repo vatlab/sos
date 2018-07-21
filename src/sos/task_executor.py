@@ -20,7 +20,7 @@ from .monitor import ProcessMonitor
 from .targets import (RuntimeInfo, UnknownTarget, file_target,
                       remote, sos_step, sos_targets, textMD5)
 from .utils import StopInputGroup, env, short_repr, pickleable
-from .tasks import loadTask, remove_task_files, collect_task_info
+from .tasks import TaskFile, remove_task_files
 
 
 def collect_task_result(task_id, sos_dict, skipped=False):
@@ -120,19 +120,20 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     # write result file
     res = _execute_task(task_id, verbosity, runmode, sigmode,
                         monitor_interval, resource_monitor_interval)
-    res.update(collect_task_info(task_id))
-    task_file = os.path.join(os.path.expanduser(
-        '~'), '.sos', 'tasks', task_id + '.task')
-    params = loadTask(task_file)
-    params.result = res
-    params.save(task_file)
 
-    # **after** result file is created, remove other files
-    remove_task_files(task_id, ['.pulse', '.out', '.err', '.job_id', '.sh'])
+    tf = TaskFile(task_id)
 
     if res['ret_code'] != 0 and 'exception' in res:
         with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'), 'a') as err:
             err.write(f'Task {task_id} exits with code {res["ret_code"]}')
+
+    tf.status = 'completed' if res['ret_code'] == 0 else 'failed'
+    tf.add_outputs()
+    tf.add_result(res)
+
+    # **after** result file is created, remove other files
+    remove_task_files(task_id, ['.pulse', '.out', '.err', '.job_id', '.sh'])
+
     return res['ret_code']
 
 
@@ -145,9 +146,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
     # start a monitoring file, which would be killed after the job
     # is done (killed etc)
     if isinstance(task_id, str):
-        task_file = os.path.join(os.path.expanduser(
-            '~'), '.sos', 'tasks', task_id + '.task')
-        params = loadTask(task_file)
+        params = TaskFile(task_id).params
         subtask = False
     else:
         # subtask
@@ -524,12 +523,6 @@ del sos_handle_parameter_
     finally:
         env.sos_dict.set('__step_sig__', None)
         os.chdir(orig_dir)
-        if not subtask:
-            # after the task is completed, we change the access time
-            # but keep the modify time of the task file, which serves
-            # as the "starting" time of the task.
-            os.utime(task_file, (time.time(), os.path.getmtime(task_file)))
-
     if sig:
         sig.write()
         sig.release()

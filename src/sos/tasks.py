@@ -159,6 +159,9 @@ class TaskFile(object):
         )
 
     def save(self, params, tags=[]):
+        if os.path.isfile(self.task_file):
+            env.logger.debug('Do not override existing task file')
+            return
         # updating job_file will not change timestamp because it will be Only
         # the update of runtime info
         now = time.time()
@@ -259,8 +262,25 @@ class TaskFile(object):
     def _set_status(self, status):
         with open(self.task_file, 'r+b') as fh:
             header = self._read_header(fh)
-            header = header._replace(status=status.ljust(
-                10).encode(), last_modified=time.time())
+            now = time.time()
+            if status == 'pending':
+                header = header._replace(
+                    status=status.ljust(10).encode(),
+                    pending_time = now, last_modified=now)
+            elif status == 'submitted':
+                header = header._replace(
+                    status=status.ljust(10).encode(),
+                    submitted_time = now, last_modified=now)
+            elif status == 'failed':
+                header = header._replace(
+                    status=status.ljust(10).encode(),
+                    failed_time = now, last_modified=now)
+            elif status == 'completed':
+                header = header._replace(
+                    status=status.ljust(10).encode(),
+                    completed_time = now, last_modified=now)
+            else:
+                raise RuntimeError(f'Unrecognized task status: {status}')
             self._write_header(fh, header)
 
     status = property(_get_status, _set_status)
