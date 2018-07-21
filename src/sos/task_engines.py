@@ -129,7 +129,8 @@ class TaskEngine(threading.Thread):
                     continue
                 try:
                     tid, _, ttm, tst = line.split('\t')
-                    self.task_status[tid] = tst
+                    # for some reason on windows there can be a \r at the end
+                    self.task_status[tid] = tst.strip()
                     self.task_date[tid] = float(ttm)
                 except Exception as e:
                     env.logger.warning(
