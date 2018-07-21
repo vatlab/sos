@@ -65,6 +65,11 @@ class TestTask(unittest.TestCase):
 
     def testTaskFile(self):
         '''Test task file handling'''
+        for ext in ('.pulse', '.out', '.err', '.task'):
+            filename = os.path.join(os.path.expanduser('~'),
+                                    '.sos', 'tasks', 'ffffffffffffffff' + ext)
+            if os.path.isfile(filename):
+                os.remove(filename)
         params = TaskParams(name='ffffffffffffffff',
                             global_def={}, task='b=a', sos_dict={'a': 1})
         a = TaskFile('ffffffffffffffff')
@@ -73,6 +78,8 @@ class TestTask(unittest.TestCase):
         for ext in ('.pulse', '.out', '.err'):
             with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', 'ffffffffffffffff' + ext), 'w') as fh:
                 fh.write(ext)
+        self.assertFalse(a.has_stdout())
+        self.assertFalse(a.has_stderr())
         a.add_outputs()
         #
         self.assertEqual(a.status, 'new')
@@ -89,11 +96,16 @@ class TestTask(unittest.TestCase):
         self.assertEqual(a.params.sos_dict['a'], 1)
         self.assertEqual(a.params.task, 'b=a')
         #
+
         self.assertEqual(a.stdout, '.out')
         self.assertEqual(a.stderr, '.err')
         self.assertEqual(a.pulse, '.pulse')
+        self.assertTrue(a.has_stdout())
+        self.assertTrue(a.has_stderr())
         #
+        self.assertFalse(a.has_signature())
         a.add_signature({'file': 'md5'})
+        self.assertTrue(a.has_signature())
         self.assertEqual(a.signature['file'], 'md5')
         #
         self.assertRaises(Exception, a.add_outputs)
