@@ -9,6 +9,8 @@ import pickle
 import time
 import lzma
 import stat
+import struct
+from collections import namedtuple
 
 from typing import Union, Dict
 from collections.abc import Sequence
@@ -21,6 +23,12 @@ from .targets import sos_targets
 monitor_interval = 5
 resource_monitor_interval = 60
 
+TaskHeader = namedtuple('TaskHeader',
+                        'version status tags creation_time pending_time submitted_time failed_time completed_time last_modified')
+
+task_header_fmt = '!i128s10s6d'
+task_header_size = struct.calcsize(task_header_fmt)
+
 
 class TaskParams(object):
     '''A parameter object that encaptulates parameters sending to
@@ -32,15 +40,51 @@ class TaskParams(object):
         self.global_def = global_def
         self.task = task
         self.sos_dict = sos_dict
-        self.tags = sorted(list(set(tags)))
         self.result = {}
+        self.tags = sorted(list(set(tags)))
 
-    def save(self, job_file, mark_new=False):
+    def save(self, job_file, status='new'):
         # updating job_file will not change timestamp because it will be Only
         # the update of runtime info
-        stat = os.stat(job_file) if os.path.isfile(job_file) else None
-        with open(job_file, 'wb') as jf:
-            jf.write(f'SOSTASK1.3\n{" ".join(self.tags)}\n'.encode())
+        now = time.time()
+        with open(job_file, 'wb+') as jf:
+            if status == 'new' or not os.path.isfile(job_file):
+                header = struct.pack_into(task_header_fmt,
+                                          jf,  # buffer,
+                                          0,   # offset
+                                          1,   # version number
+                                          ' '.join(self.tags).ljust(
+                                              128).encode(),
+                                          status.ljust(10).encode(),
+                                          now,   # creation time
+                                          0.0,  # pending time
+                                          0.0,  # submitted time
+                                          0.0,  # failed time, if available
+                                          0.0,  # completed time
+                                          now   # terminal time, regardless of status
+                                          )
+            else:
+                header = list(struct.unpack(
+                    task_header_fmt, jf.read(task_header_size)))
+                header[1] = ' '.join(self.tags).ljust(
+                    128).encode(),
+                header[2] = status
+                # creation time, pending time etc is untouched
+                if status == 'failed':
+                    header[6] = now
+                    header[7] = 0.0
+                elif status == 'completed':
+                    header[6] = 0.0
+                    header[7] = now
+                header[8] = now
+                # move to front
+                jf.seek(0)
+                struct.pack_into(task_header_fmt, jf, *header)
+            #
+            # reset local tags because they are saved to header
+            self.tags = []
+            # now save the entire content in pickle format
+            #
             # remove __builtins__ from sos_dict #835
             if 'CONFIG' in self.sos_dict and '__builtins__' in self.sos_dict['CONFIG']:
                 self.sos_dict['CONFIG'].pop('__builtins__')
@@ -49,9 +93,6 @@ class TaskParams(object):
             except Exception as e:
                 env.logger.warning(e)
                 raise
-        if stat and mark_new:
-            # atime is also set to mtime to make this file as untouched.
-            os.utime(job_file, (stat.st_ctime, stat.st_ctime))
 
     def __repr__(self):
         return self.name
@@ -148,57 +189,67 @@ class MasterTaskParams(TaskParams):
 
 
 def loadTask(filename):
-    def withResult(param, tags):
-        # for compatibility with older version of task file. The .res files could
-        # be saved in a separate .res file. In this case we should return the
-        # result as part of the .task file.
-        res_file = filename[:-5] + '.res'
-        if os.path.isfile(res_file):
-            with open(res_file, 'rb') as result:
-                res = pickle.load(result)
-        else:
-            res = {}
-        param.result = res
-        param.tags = tags
-        return param
     try:
         with open(filename, 'rb') as task:
-            try:
-                header = task.readline().decode()
-                if header.startswith('SOSTASK1.1'):
-                    # ignore the tags
-                    tags = task.readline().decode().strip().split()
-                    return withResult(pickle.load(task), tags)
-                elif header.startswith('SOSTASK1.2'):
-                    tags = task.readline().decode().strip().split()
-                    try:
-                        return withResult(pickle.loads(lzma.decompress(task.read())), tags)
-                    except:
-                        # at some point, the task files were compressed with zlib
-                        import zlib
-                        return withResult(pickle.loads(zlib.decompress(task.read())), tags)
-                elif header.startswith('SOSTASK1.3'):
-                    # ignore the tags
-                    tags = task.readline().decode().strip().split()
-                    param = pickle.loads(lzma.decompress(task.read()))
-                    param.tags = tags
-                    return param
-                else:
-                    raise ValueError('Try old format')
-            except:
-                # old format
-                task.seek(0)
-                param = pickle.load(task)
-                # old format does not have tags
-                param.tags = []
-                return withResult(param, [])
-    except ImportError as e:
-        raise RuntimeError(
-            f'Failed to load task {os.path.basename(filename)}, which is likely caused by incompatible python modules between local and remote hosts: {e}')
+            # read header
+            header = TaskHeader._make(struct.unpack(
+                task_header_fmt, task.read(task_header_size)))
+            params = pickle.loads(lzma.decompress(task.read()))
+            params.header = header
+            return params
+    except Exception as e:
+        env.logger.debug('Encounter older version of task: {e}')
+
+        def withResult(param, tags):
+            # for compatibility with older version of task file. The .res files could
+            # be saved in a separate .res file. In this case we should return the
+            # result as part of the .task file.
+            res_file = filename[:-5] + '.res'
+            if os.path.isfile(res_file):
+                with open(res_file, 'rb') as result:
+                    res = pickle.load(result)
+            else:
+                res = {}
+            params.result = res
+            params.header = TaskHeader(tags=tags)
+            return param
+
+        try:
+            task.seek(0)
+            header = task.readline().decode()
+            if header.startswith('SOSTASK1.1'):
+                # ignore the tags
+                tags = task.readline().decode().strip()
+                return withResult(pickle.load(task), tags)
+            elif header.startswith('SOSTASK1.2'):
+                tags = task.readline().decode().strip()
+                try:
+                    return withResult(pickle.loads(lzma.decompress(task.read())), tags)
+                except:
+                    # at some point, the task files were compressed with zlib
+                    import zlib
+                    return withResult(pickle.loads(zlib.decompress(task.read())), tags)
+            elif header.startswith('SOSTASK1.3'):
+                # ignore the tags
+                tags = task.readline().decode().strip()
+                param = pickle.loads(lzma.decompress(task.read()))
+                param.header = TaskHeader(tags=tags)
+                return param
+            else:
+                raise ValueError('Unrecognized format')
+        except Exception as e:
+            raise RuntimeError(
+                f'Failed to load task {os.path.basename(filename)}: {e}')
 
 
-def addTags(filename, new_tags):
-    with open(filename, 'rb') as task:
+def getHeader(filename):
+    with open(filename, 'rb') as fh:
+        return TaskHeader._make(struct.unpack(
+            task_header_fmt, fh.read(task_header_size)))
+
+
+def setHeader(filename, tags=None, ):
+    with open(filename, 'w+')as task:
         header = task.readline()
         # read the tags
         tags = task.readline().decode().strip().split(' ')
