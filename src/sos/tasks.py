@@ -277,8 +277,7 @@ class TaskFile(object):
         with open(self.task_file, 'r+b') as fh:
             header = self._read_header(fh)
             if header.result_size != 0:
-                raise ValueError(
-                    'Cannot add result to task with existing output')
+                self._reset(fh)
             header = header._replace(
                 pulse_size=len(pulse),
                 stdout_size=len(stdout),

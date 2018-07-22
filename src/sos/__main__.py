@@ -1024,16 +1024,11 @@ def cmd_execute(args, workflow_args):
             # there is no daemon process etc. It also does not handle job
             # preparation.
             status = check_task(task)['status']
-            res_file = os.path.join(os.path.expanduser(
-                '~'), '.sos', 'tasks', task + '.res')
             if status == 'running':
                 print(status)
                 exit_code.append(1)
                 continue
             if status == 'completed' and args.__sig_mode__ != 'force':
-                # touch the result file, this will effective change task
-                # status from completed-old to completed
-                os.utime(res_file, None)
                 # if args.verbosity <= 1:
                 env.logger.info('{} ``already completed``'.format(task))
                 with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.err'), 'a') as err:

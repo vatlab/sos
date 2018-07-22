@@ -158,7 +158,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
     else:
         # subtask
         subtask = True
-        (task_id, params), sig_content = task_id
+        task_id, params, sig_content = task_id
         env.logger.trace(f'Executing subtask {task_id}')
 
     if hasattr(params, 'task_stack'):
@@ -219,7 +219,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                 p = Pool(params.num_workers)
                 results = []
                 for t in params.task_stack:
-                    results.append(p.apply_async(_execute_task, ((t, sig_content.get(t[0], {})), verbosity, runmode,
+                    results.append(p.apply_async(_execute_task, ((*t, {t[0]: sig_content.get(t[0], {})}), verbosity, runmode,
                                                                  sigmode, monitor_interval, resource_monitor_interval), callback=copy_out_and_err))
                 for idx, r in enumerate(results):
                     results[idx] = r.get()
@@ -233,12 +233,12 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                                   for x in results if "exception" in x]
                         env.logger.error(
                             f'{task_id} ``failed`` due to failure of subtask{"s" if len(failed) > 1 else ""} {", ".join(failed)}')
-                        return {'ret_code': 1, 'exception': res['exception'], 'task': task_id}, None
+                        return {'ret_code': 1, 'exception': res['exception'], 'task': task_id}
             else:
                 results = []
                 for tid, tdef in params.task_stack:
                     # no monitor process for subtasks
-                    res = _execute_task((tid, tdef), verbosity=verbosity, runmode=runmode,
+                    res = _execute_task((tid, tdef, {tid: sig_content.get(tid, {})}), verbosity=verbosity, runmode=runmode,
                                         sigmode=sigmode, monitor_interval=None)
                     copy_out_and_err(res)
                     results.append(res)
@@ -248,7 +248,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                                   for x in results if "exception" in x]
                         env.logger.error(
                             f'{task_id} ``failed`` due to failure of subtask{"s" if len(failed) > 1 else ""} {", ".join(failed)}')
-                        return {'ret_code': 1, 'exception': res['exception'], 'task': task_id}, None
+                        return {'ret_code': 1, 'exception': res['exception'], 'task': task_id}
         #
         # now we collect result
         all_res = {'ret_code': 0, 'output': {},
@@ -262,7 +262,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
             all_res['skipped'] = x['skipped']
             all_res['signature'].update(x['signature'])
 
-        return all_res, None
+        return all_res
 
     global_def, task, sos_dict = params.global_def, params.task, params.sos_dict
 
@@ -352,7 +352,7 @@ del sos_handle_parameter_
 
         idx = env.sos_dict['_index']
         if env.config['sig_mode'] == 'default':
-            matched = sig.validate(sig_content)
+            matched = sig.validate(sig_content.get(task_id, {}))
             if isinstance(matched, dict):
                 # in this case, an Undetermined output can get real output files
                 # from a signature
@@ -364,7 +364,7 @@ del sos_handle_parameter_
                     f'Task ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` due to saved signature')
                 skipped = True
         elif env.config['sig_mode'] == 'assert':
-            matched = sig.validate(sig_content)
+            matched = sig.validate(sig_content.get(task_id, {}))
             if isinstance(matched, str):
                 raise RuntimeError(f'Signature mismatch: {matched}')
             else:
@@ -376,7 +376,7 @@ del sos_handle_parameter_
                     f'Step ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with matching signature')
                 skipped = True
         elif env.config['sig_mode'] == 'build':
-            # build signature require existence of files
+            # The signature will be write twice
             if sig.write(rebuild=True):
                 env.logger.info(
                     f'Task ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with signature constructed')
@@ -493,13 +493,13 @@ del sos_handle_parameter_
         if e.message:
             env.logger.warning(f'{task_id} ``stopped``: {e.message}')
         return {'ret_code': 0, 'task': task_id, 'input': [],
-                'output': [], 'depends': [], 'shared': {}}, sig
+                'output': [], 'depends': [], 'shared': {}}
     except KeyboardInterrupt:
         env.logger.error(f'{task_id} ``interrupted``')
         raise
     except subprocess.CalledProcessError as e:
         return {'ret_code': e.returncode, 'task': task_id, 'shared': {},
-                'exception': RuntimeError(e.stderr)}, sig
+                'exception': RuntimeError(e.stderr)}
     except Exception as e:
 
         error_class = e.__class__.__name__
@@ -525,11 +525,12 @@ del sos_handle_parameter_
             env.logger.debug(f'{error_class}: {detail}')
 
         env.logger.error(f'{task_id} ``failed``: {error_class} {detail}')
-        return {'ret_code': 1, 'exception': e, 'task': task_id, 'shared': {}}, None
+        return {'ret_code': 1, 'exception': e, 'task': task_id, 'shared': {}}
     finally:
         env.sos_dict.set('__step_sig__', None)
         os.chdir(orig_dir)
 
     # the final result should be relative to cur_dir, not workdir
-    # because output is defined outside of task
+    # because output is defined outside of task. This is the only place
+    # when signature matters (worth saving)
     return collect_task_result(task_id, sos_dict, signature=sig)
