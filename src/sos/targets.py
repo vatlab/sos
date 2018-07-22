@@ -1245,29 +1245,11 @@ class TaskInfo:
                 env.logger.debug(
                     f'Failed to create signature: dependent target {f} does not exist')
                 return False
-        init_context = []
-        for var in sorted(self.init_signature.keys()):
-            # var can be local and not passed as outside environment
-            value = self.init_signature[var]
-            try:
-                var_expr = save_var(var, value)
-                if var_expr:
-                    init_context.append(var_expr)
-            except Exception:
-                env.logger.debug(
-                    f'Variable {var} of value {short_repr(value)} is ignored from step signature')
-        end_context = []
-        for var in sorted(self.signature_vars):
-            # var can be local and not passed as outside environment
-            if var in env.sos_dict:
-                value = env.sos_dict[var]
-                try:
-                    var_expr = save_var(var, value)
-                    if var_expr:
-                        end_context.append(var_expr)
-                except Exception:
-                    env.logger.debug(
-                        f'Variable {var} of value {short_repr(value)} is ignored from step signature')
+        init_context = {var: self.init_signature[var] for var in self.init_signature if pickleable(
+            self.init_signature[var], var)}
+        end_context = {var: env.sos_dict[var] for var in self.signature_vars if var in env.sos_dict and pickleable(
+            env.sos_dict[var], var)}
+
         return {
             'input': input_sig,
             'output': output_sig,
@@ -1292,27 +1274,18 @@ class TaskInfo:
         files_checked = {x.target_name(): False for x in sig_files}
         res = {'input': [], 'output': [], 'depends': [], 'vars': {}}
         cur_type = 'input'
-        for line in signature['init_context']:
-            key, value = load_var(line)
+        for key, value in signature['init_context'].items():
             if key not in env.sos_dict:
                 return f'Variable {key} not in running environment'
             try:
-                try:
-                    if env.sos_dict[key] != value:
-                        return f'Context variable {key} value mismatch: {short_repr(value)} saved, {short_repr(env.sos_dict[key])} current'
-                except Exception as e:
-                    env.logger.debug(
-                        f"Variable {key} of type {type(value).__name__} cannot be compared: {e}")
+                if env.sos_dict[key] != value:
+                    return f'Context variable {key} value mismatch: {short_repr(value)} saved, {short_repr(env.sos_dict[key])} current'
             except Exception as e:
-                env.logger.warning(
-                    f'Failed to restore variable {key} from signature: {e}')
-        for line in signature['end_context']:
-            try:
-                key, value = load_var(line)
-                res['vars'][key] = value
-            except Exception as e:
-                env.logger.warning(
-                    f'Failed to restore variable from signature: {e}')
+                env.logger.debug(
+                    f"Variable {key} of type {type(value).__name__} cannot be compared: {e}")
+
+        res['vars'].update(signature['end_context'])
+        #
         for cur_type in ['input', 'output', 'depends']:
             for f, m in signature[cur_type].items():
                 try:
