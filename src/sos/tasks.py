@@ -524,8 +524,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
 
     tf = TaskFile(task)
     status = tf.status
-
-    if status in ['failed', 'completed']:
+    if status in ['failed', 'completed', 'aborted']:
         # thse are terminal states. We simply return them
         # only change of the task file will trigger recheck of status
         status_files = {task_file: os.stat(task_file).st_mtime}
@@ -542,7 +541,6 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         try:
             status_files = {task_file: os.stat(task_file).st_mtime,
                             pulse_file: os.stat(pulse_file).st_mtime}
-            # dead?
             # if the status file is readonly
             if not os.access(pulse_file, os.W_OK):
                 if status != 'aborted':
@@ -780,7 +778,7 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
             print('TASK:\n=====')
             print(params.task)
             print('TAGS:\n=====')
-            print(' '.join(params.tags))
+            print(tf.tags)
             print()
             if params.global_def:
                 print('GLOBAL:\n=======')
@@ -795,6 +793,7 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
             print()
 
             if tf.has_result():
+                res = tf.result
                 if 'pulse' in res:
                     print('EXECUTION STATS:\n================')
                     print(summarizeExecution(t, res['pulse'], status=s))
@@ -869,7 +868,7 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
             row('Task')
             row(td=f'<pre style="text-align:left">{params.task}</pre>')
             row('Tags')
-            row(td=f'<pre style="text-align:left">{" ".join(params.tags)}</pre>')
+            row(td=f'<pre style="text-align:left">{" ".join(tf.tags)}</pre>')
             if params.global_def:
                 row('Global')
                 row(
@@ -1084,7 +1083,7 @@ def kill_tasks(tasks, tags=None):
                 all_tasks.extend(matched)
     if tags:
         all_tasks = [x for x in all_tasks if any(
-            x in tags for x in TaskFile(x).tags)]
+            x in tags for x in TaskFile(x).tags.split())]
 
     if not all_tasks:
         env.logger.warning('No task to kill')
@@ -1098,30 +1097,17 @@ def kill_tasks(tasks, tags=None):
 
 
 def kill_task(task):
-    status = check_task(task)['status']
-    if status == 'pending':
-        # the task engine will remove it from lists if killed through a task engine
-        # but it can also be killed through command line externally, so we will need
-        # to mark the task as killed
-        pulse_file = os.path.join(os.path.expanduser(
-            '~'), '.sos', 'tasks', task + '.pulse')
-        os.open(pulse_file, flags=os.O_CREAT | os.O_RDONLY)
-        return 'aborted'
-    # remove job file as well
-    job_file = os.path.join(os.path.expanduser(
-        '~'), '.sos', 'tasks', task + '.sh')
-    if os.path.isfile(job_file):
-        try:
-            os.remove(job_file)
-        except Exception:
-            pass
-    if status != 'running':
-        return status
-    # job is running
+    status = TaskFile(task).status
+    if status == 'completed':
+        return 'completed'
+    remove_task_files(
+        task, ['.sh', '.job_id', '.out', '.err'])
     pulse_file = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', task + '.pulse')
-    os.chmod(pulse_file, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
-    return 'killed'
+    if os.path.isfile(pulse_file):
+        os.chmod(pulse_file, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
+    TaskFile(task).status = 'aborted'
+    return 'aborted'
 
 
 def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbosity=2):
