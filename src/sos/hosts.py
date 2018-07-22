@@ -156,15 +156,8 @@ class LocalHost:
         tf = TaskFile(task_id)
         params = tf.params
         # clear possible previous result
+        params.sos_dict = copy.copy(params.raw_dict)
         task_vars = params.sos_dict
-
-        # if this is the newer format, there is a __task_vars__ key in task_vars
-        # that saves the untouched original vars. We should keep it.
-        if '__task_vars__' in task_vars:
-            raw_vars = task_vars['__task_vars__']
-            task_vars.clear()
-            task_vars.update(copy.copy(raw_vars))
-            task_vars['__task_vars__'] = raw_vars
 
         if 'max_mem' in self.config or 'max_cores' in self.config or 'max_walltime' in self.config:
             task_vars['_runtime']['max_mem'] = self.config.get('max_mem', None)
@@ -521,14 +514,8 @@ class RemoteHost:
             raise ValueError(f'Missing task definition {task_file}')
         tf = TaskFile(task_id)
         params = tf.params
+        params.sos_dict = copy.copy(params.raw_dict)
         task_vars = params.sos_dict
-        # if this is the newer format, there is a __task_vars__ key in task_vars
-        # that saves the untouched original vars. We should keep it.
-        if '__task_vars__' in task_vars:
-            raw_vars = task_vars['__task_vars__']
-            task_vars.clear()
-            task_vars.update(copy.copy(raw_vars))
-            task_vars['__task_vars__'] = raw_vars
 
         if self.config.get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
                 and self.config['max_mem'] < task_vars['_runtime']['mem']:

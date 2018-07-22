@@ -71,10 +71,11 @@ class TestTask(unittest.TestCase):
             if os.path.isfile(filename):
                 os.remove(filename)
         params = TaskParams(name='ffffffffffffffff',
-                            global_def={}, task='b=a', sos_dict={'a': 1})
+                            global_def={}, task='b=a', sos_dict={'a': 1},
+                            tags=['b', 'a'])
         a = TaskFile('ffffffffffffffff')
-        a.save(params, tags=['b', 'a'])
-        self.assertEqual(a.tags, ['a', 'b'])
+        a.save(params)
+        self.assertEqual(a.tags, 'a b')
         for ext in ('.pulse', '.out', '.err'):
             with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', 'ffffffffffffffff' + ext), 'w') as fh:
                 fh.write(ext)
@@ -82,6 +83,7 @@ class TestTask(unittest.TestCase):
         self.assertFalse(a.has_stderr())
         a.add_outputs()
         #
+        self.assertEqual(a.params.sos_dict['a'], 1)
         self.assertEqual(a.status, 'new')
         a.status = 'completed'
         self.assertEqual(a.status, 'completed')
@@ -89,9 +91,9 @@ class TestTask(unittest.TestCase):
         a.add_result({'ret_code': 5})
         #
         a.tags = ['ee', 'd']
-        self.assertEqual(a.tags, ['d', 'ee'])
+        self.assertEqual(a.tags, 'd ee')
         a.add_tags(['kk'])
-        self.assertEqual(a.tags, ['d', 'ee', 'kk'])
+        self.assertEqual(a.tags.split(), ['d', 'ee', 'kk'])
         #
         self.assertEqual(a.params.sos_dict['a'], 1)
         self.assertEqual(a.params.task, 'b=a')

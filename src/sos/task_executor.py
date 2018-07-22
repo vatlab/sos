@@ -390,7 +390,6 @@ del sos_handle_parameter_
     # if we are to really execute the task, touch the task file so that sos status shows correct
     # execution duration.
     if not subtask:
-        os.utime(task_file, None)
         sos_dict['start_time'] = time.time()
 
     try:

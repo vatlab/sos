@@ -29,11 +29,13 @@ class TaskParams(object):
     task executors. This would makes the output of workers, especially
     in the web interface much cleaner (issue #259)'''
 
-    def __init__(self, name, global_def, task, sos_dict):
+    def __init__(self, name, global_def, task, sos_dict, tags):
         self.name = name
         self.global_def = global_def
         self.task = task
-        self.sos_dict = sos_dict
+        self.raw_dict = sos_dict
+        self.sos_dict = copy.deepcopy(sos_dict)
+        self.tags = tags
         # remove builtins that could be saved in a dictionary
         if 'CONFIG' in self.sos_dict and '__builtins__' in self.sos_dict['CONFIG']:
             self.sos_dict['CONFIG'].pop('__builtins__')
@@ -48,12 +50,13 @@ class MasterTaskParams(TaskParams):
         self.name = self.ID
         self.global_def = ''
         self.task = ''
-        self.sos_dict = {'_runtime': {}, '_input': sos_targets(), '_output': sos_targets(), '_depends': sos_targets(),
+        self.raw_dict = {'_runtime': {}, '_input': sos_targets(), '_output': sos_targets(), '_depends': sos_targets(),
                          'step_input': sos_targets(), 'step_output': sos_targets(),
                          'step_depends': sos_targets(), 'step_name': '',
                          '_index': 0}
-        self.sos_dict['__task_vars__'] = copy.copy(self.sos_dict)
+        self.sos_dict = copy.deepcopy(self.raw_dict)
         self.num_workers = num_workers
+        self.tags = []
         # a collection of tasks that will be executed by the master task
         self.task_stack = []
 
@@ -127,8 +130,7 @@ class MasterTaskParams(TaskParams):
         self.tags = sorted(list(set(self.tags)))
         #
         self.ID = f'M{len(self.task_stack)}_{self.task_stack[0][0]}'
-        self.sos_dict.pop('__task_vars__')
-        self.sos_dict['__task_vars__'] = copy.copy(self.sos_dict)
+        self.raw_dict = copy.deepcopy(self.sos_dict)
         self.name = self.ID
 
 
@@ -148,11 +150,11 @@ class TaskFile(object):
     '''
     TaskHeader = namedtuple('TaskHeader',
                             'version status tags '
-                            'creation_time pending_time submitted_time failed_time completed_time last_modified '
+                            'creation_time pending_time submitted_time aborted_time failed_time completed_time last_modified '
                             'params_size pulse_size stdout_size stderr_size result_size signature_size'
                             )
 
-    header_fmt = '!i 10s 128s 6d 6i'
+    header_fmt = '!i 10s 128s 7d 6i'
     header_size = struct.calcsize(header_fmt)
 
     def __init__(self, task_id: str):
@@ -160,13 +162,16 @@ class TaskFile(object):
             os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task'
         )
 
-    def save(self, params, tags=[]):
+    def save(self, params):
         if os.path.isfile(self.task_file):
             env.logger.debug('Do not override existing task file')
             return
         # updating job_file will not change timestamp because it will be Only
         # the update of runtime info
         now = time.time()
+        tags = params.tags
+        # tags is not saved in params
+        del params.tags
         params_block = lzma.compress(pickle.dumps(params))
         header = self.TaskHeader(
             version=1,
@@ -175,6 +180,7 @@ class TaskFile(object):
             creation_time=now,
             pending_time=0,
             submitted_time=0,
+            aborted_time=0,
             failed_time=0,
             completed_time=0,
             last_modified=now,
@@ -189,27 +195,33 @@ class TaskFile(object):
             self._write_header(fh, header)
             fh.write(params_block)
 
+    def _reset(self, fh):
+        # remove result, input, output etc and set the status of the task to new
+        header = self._read_header(fh)
+        now = time.time()
+        header = header._replace(
+            status=b'new       ',
+            creation_time=now,
+            pending_time=0,
+            submitted_time=0,
+            aborted_time=0,
+            failed_time=0,
+            completed_time=0,
+            last_modified=now,
+            pulse_size=0,
+            stdout_size=0,
+            stderr_size=0,
+            result_size=0,
+            signature_size=0
+        )
+        self._write_header(fh, header)
+        fh.truncate(self.header_size + header.params_size)
+        return header
+
     def reset(self):
         # remove result, input, output etc and set the status of the task to new
         with open(self.task_file, 'r+b') as fh:
-            header = self._read_header(fh)
-            now = time.time()
-            header = header._replace(
-                status=b'new       ',
-                creation_time=now,
-                pending_time=0,
-                submitted_time=0,
-                failed_time=0,
-                completed_time=0,
-                last_modified=now,
-                pulse_size=0,
-                stdout_size=0,
-                stderr_size=0,
-                result_size=0,
-                signature_size=0
-            )
-            self._write_header(fh, header)
-            fh.truncate(self.header_size + header.params_size)
+            self._reset(fh)
 
     def _read_header(self, fh):
         fh.seek(0, 0)
@@ -237,7 +249,7 @@ class TaskFile(object):
         with open(self.task_file, 'r+b') as fh:
             header = self._read_header(fh)
             if header.result_size != 0:
-                raise ValueError('Cannot output to task with result')
+                header = self._reset(fh)
             header = header._replace(
                 pulse_size=len(pulse),
                 stdout_size=len(stdout),
@@ -325,6 +337,10 @@ class TaskFile(object):
                 header = header._replace(
                     status=status.ljust(10).encode(),
                     failed_time=now, last_modified=now)
+            elif status == 'aborted':
+                header = header._replace(
+                    status=status.ljust(10).encode(),
+                    aborted_time=now, last_modified=now)
             elif status == 'completed':
                 header = header._replace(
                     status=status.ljust(10).encode(),
@@ -337,7 +353,7 @@ class TaskFile(object):
 
     def _get_tags(self):
         with open(self.task_file, 'rb') as fh:
-            return self._read_header(fh).tags.decode().strip().split()
+            return self._read_header(fh).tags.decode().strip()
 
     def _set_tags(self, tags: list):
         with open(self.task_file, 'r+b') as fh:
@@ -669,7 +685,7 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
 
     if tags:
         all_tasks = [x for x in all_tasks if any(
-            x in tags for x in taskTags(x[0]).split(' '))]
+            x in tags for x in TaskFile(x[0]).tags.split())]
 
     if not all_tasks:
         env.logger.info('No matching tasks')
@@ -703,19 +719,19 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
                 continue
             if start_time:
                 if d is None:
-                    print(f'{t}\t{taskTags(t)}\t{time.time()}\t{s}')
+                    print(f'{t}\t{TaskFile(t).tags}\t{time.time()}\t{s}')
                 else:
-                    print(f'{t}\t{taskTags(t)}\t{d}\t{s}')
+                    print(f'{t}\t{TaskFile(t).tags}\t{d}\t{s}')
             else:
                 if d is None:
-                    print(f'{t}\t{taskTags(t)}\t{"":>15}\t{s}')
+                    print(f'{t}\t{TaskFile(t).tags}\t{"":>15}\t{s}')
                 elif s in ('pending', 'submitted', 'running'):
                     print(
-                        f'{t}\t{taskTags(t)}\t{PrettyRelativeTime(time.time() - d):>15}\t{s}')
+                        f'{t}\t{TaskFile(t).tags}\t{PrettyRelativeTime(time.time() - d):>15}\t{s}')
                 else:
                     # completed or failed
                     print(
-                        f'{t}\t{taskTags(t)}\t{PrettyRelativeTime(taskDuration(t)):>15}\t{s}')
+                        f'{t}\t{TaskFile(t).tags}\t{PrettyRelativeTime(taskDuration(t)):>15}\t{s}')
     elif verbosity > 2:
         from .utils import PrettyRelativeTime
         import pprint
@@ -1042,7 +1058,7 @@ def kill_tasks(tasks, tags=None):
                 all_tasks.extend(matched)
     if tags:
         all_tasks = [x for x in all_tasks if any(
-            x in tags for x in taskTags(x).split(' '))]
+            x in tags for x in TaskFile(x).tags)]
 
     if not all_tasks:
         env.logger.warning('No task to kill')
@@ -1116,7 +1132,7 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
 
     if tags:
         all_tasks = [x for x in all_tasks if any(
-            x in tags for x in taskTags(x[0]).split(' '))]
+            x in tags for x in TaskFile(x[0]).tags.split())]
     #
     # remoe all task files
     all_tasks = set([x[0] for x in all_tasks])
