@@ -17,7 +17,7 @@ from tokenize import generate_tokens
 
 from .eval import SoS_eval, SoS_exec, interpolate, stmtHash
 from .monitor import ProcessMonitor
-from .targets import (TaskInfo, UnknownTarget, file_target,
+from .targets import (InMemorySignature, UnknownTarget, file_target,
                       remote, sos_step, sos_targets, textMD5)
 from .utils import StopInputGroup, env, short_repr, pickleable
 from .tasks import TaskFile, remove_task_files
@@ -347,8 +347,8 @@ del sos_handle_parameter_
         tokens = [x[1] for x in generate_tokens(StringIO(task).readline)]
         # try to add #task so that the signature can be different from the step
         # if everything else is the same
-        sig = TaskInfo(env.sos_dict['_input'], env.sos_dict['_output'],
-                       env.sos_dict['_depends'], env.sos_dict['__signature_vars__'])
+        sig = InMemorySignature(env.sos_dict['_input'], env.sos_dict['_output'],
+                                env.sos_dict['_depends'], env.sos_dict['__signature_vars__'])
 
         idx = env.sos_dict['_index']
         if env.config['sig_mode'] == 'default':
