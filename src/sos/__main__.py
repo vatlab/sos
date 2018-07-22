@@ -1028,15 +1028,15 @@ def cmd_execute(args, workflow_args):
                 print(status)
                 exit_code.append(1)
                 continue
-            if status == 'completed' and args.__sig_mode__ != 'force':
-                # if args.verbosity <= 1:
-                env.logger.info('{} ``already completed``'.format(task))
-                with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.err'), 'a') as err:
-                    err.write('{} already completed'.format(task))
-                # else:
-                #    print(summarizeExecution(task, status=status))
-                exit_code.append(0)
-                continue
+            # if status == 'completed' and args.__sig_mode__ != 'force':
+            #     # if args.verbosity <= 1:
+            #     env.logger.info('{} ``already completed``'.format(task))
+            #     with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.err'), 'a') as err:
+            #         err.write('{} already completed'.format(task))
+            #     # else:
+            #     #    print(summarizeExecution(task, status=status))
+            #     exit_code.append(0)
+            #     continue
             exit_code.append(execute_task(task, verbosity=args.verbosity, runmode='dryrun' if args.dryrun else 'run',
                                           sigmode=args.__sig_mode__,
                                           monitor_interval=monitor_interval, resource_monitor_interval=resource_monitor_interval))

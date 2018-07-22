@@ -1262,14 +1262,16 @@ class TaskInfo:
             if var in env.sos_dict:
                 value = env.sos_dict[var]
                 try:
-                    end_context.append(save_var(var, value))
+                    var_expr = save_var(var, value)
+                    if var_expr:
+                        end_context.append(var_expr)
                 except Exception:
                     env.logger.debug(
                         f'Variable {var} of value {short_repr(value)} is ignored from step signature')
         return {
             'input': input_sig,
             'output': output_sig,
-            'dependent': dependent_sig,
+            'depends': dependent_sig,
             'init_context': init_context,
             'end_context': end_context
         }
