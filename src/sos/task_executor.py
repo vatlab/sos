@@ -17,13 +17,13 @@ from tokenize import generate_tokens
 
 from .eval import SoS_eval, SoS_exec, interpolate, stmtHash
 from .monitor import ProcessMonitor
-from .targets import (RuntimeInfo, UnknownTarget, file_target,
+from .targets import (TaskInfo, UnknownTarget, file_target,
                       remote, sos_step, sos_targets, textMD5)
 from .utils import StopInputGroup, env, short_repr, pickleable
 from .tasks import TaskFile, remove_task_files
 
 
-def collect_task_result(task_id, sos_dict, skipped=False):
+def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
     shared = {}
     if 'shared' in env.sos_dict['_runtime']:
         svars = env.sos_dict['_runtime']['shared']
@@ -112,7 +112,9 @@ def collect_task_result(task_id, sos_dict, skipped=False):
             'start_time': sos_dict.get('start_time', ''),
             'peak_cpu': sos_dict.get('peak_cpu', 0),
             'peak_mem': sos_dict.get('peak_mem', 0),
-            'end_time': time.time()}
+            'end_time': time.time(),
+            'signature': {task_id: signature.write()} if signature else {}
+            }
 
 
 def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_interval=5,
@@ -129,7 +131,11 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
 
     tf.status = 'completed' if res['ret_code'] == 0 else 'failed'
     tf.add_outputs()
+    sig = res.get('signature', {})
+    res.pop('signature', None)
     tf.add_result(res)
+    if sig:
+        tf.add_signature(sig)
 
     # **after** result file is created, remove other files
     remove_task_files(task_id, ['.pulse', '.out', '.err', '.job_id', '.sh'])
@@ -147,11 +153,12 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
     # is done (killed etc)
     if isinstance(task_id, str):
         params = TaskFile(task_id).params
+        sig_content = TaskFile(task_id).signature
         subtask = False
     else:
         # subtask
         subtask = True
-        task_id, params = task_id
+        (task_id, params), sig_content = task_id
         env.logger.trace(f'Executing subtask {task_id}')
 
     if hasattr(params, 'task_stack'):
@@ -212,7 +219,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                 p = Pool(params.num_workers)
                 results = []
                 for t in params.task_stack:
-                    results.append(p.apply_async(_execute_task, (t, verbosity, runmode,
+                    results.append(p.apply_async(_execute_task, ((t, sig_content.get(t[0], {})), verbosity, runmode,
                                                                  sigmode, monitor_interval, resource_monitor_interval), callback=copy_out_and_err))
                 for idx, r in enumerate(results):
                     results[idx] = r.get()
@@ -226,7 +233,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                                   for x in results if "exception" in x]
                         env.logger.error(
                             f'{task_id} ``failed`` due to failure of subtask{"s" if len(failed) > 1 else ""} {", ".join(failed)}')
-                        return {'ret_code': 1, 'exception': res['exception'], 'task': task_id}
+                        return {'ret_code': 1, 'exception': res['exception'], 'task': task_id}, None
             else:
                 results = []
                 for tid, tdef in params.task_stack:
@@ -241,11 +248,11 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                                   for x in results if "exception" in x]
                         env.logger.error(
                             f'{task_id} ``failed`` due to failure of subtask{"s" if len(failed) > 1 else ""} {", ".join(failed)}')
-                        return {'ret_code': 1, 'exception': res['exception'], 'task': task_id}
+                        return {'ret_code': 1, 'exception': res['exception'], 'task': task_id}, None
         #
         # now we collect result
         all_res = {'ret_code': 0, 'output': {},
-                   'subtasks': {}, 'shared': {}, 'skipped': False}
+                   'subtasks': {}, 'shared': {}, 'skipped': False, 'signature': {}}
         for tid, x in zip(params.task_stack, results):
             all_res['ret_code'] += x['ret_code']
             all_res['output'].update(x['output'])
@@ -253,7 +260,9 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
             all_res['shared'].update(x['shared'])
             # does not care if one or all subtasks are executed or skipped.
             all_res['skipped'] = x['skipped']
-        return all_res
+            all_res['signature'].update(x['signature'])
+
+        return all_res, None
 
     global_def, task, sos_dict = params.global_def, params.task, params.sos_dict
 
@@ -338,14 +347,12 @@ del sos_handle_parameter_
         tokens = [x[1] for x in generate_tokens(StringIO(task).readline)]
         # try to add #task so that the signature can be different from the step
         # if everything else is the same
-        sig = RuntimeInfo(textMD5('#task\n' + ' '.join(tokens)), task,
-                          env.sos_dict['_input'], env.sos_dict['_output'],
-                          env.sos_dict['_depends'], env.sos_dict['__signature_vars__'])
-        sig.lock()
+        sig = TaskInfo(env.sos_dict['_input'], env.sos_dict['_output'],
+                       env.sos_dict['_depends'], env.sos_dict['__signature_vars__'])
 
         idx = env.sos_dict['_index']
         if env.config['sig_mode'] == 'default':
-            matched = sig.validate()
+            matched = sig.validate(sig_content)
             if isinstance(matched, dict):
                 # in this case, an Undetermined output can get real output files
                 # from a signature
@@ -357,7 +364,7 @@ del sos_handle_parameter_
                     f'Task ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` due to saved signature')
                 skipped = True
         elif env.config['sig_mode'] == 'assert':
-            matched = sig.validate()
+            matched = sig.validate(sig_content)
             if isinstance(matched, str):
                 raise RuntimeError(f'Signature mismatch: {matched}')
             else:
@@ -486,13 +493,13 @@ del sos_handle_parameter_
         if e.message:
             env.logger.warning(f'{task_id} ``stopped``: {e.message}')
         return {'ret_code': 0, 'task': task_id, 'input': [],
-                'output': [], 'depends': [], 'shared': {}}
+                'output': [], 'depends': [], 'shared': {}}, sig
     except KeyboardInterrupt:
         env.logger.error(f'{task_id} ``interrupted``')
         raise
     except subprocess.CalledProcessError as e:
         return {'ret_code': e.returncode, 'task': task_id, 'shared': {},
-                'exception': RuntimeError(e.stderr)}
+                'exception': RuntimeError(e.stderr)}, sig
     except Exception as e:
 
         error_class = e.__class__.__name__
@@ -518,14 +525,11 @@ del sos_handle_parameter_
             env.logger.debug(f'{error_class}: {detail}')
 
         env.logger.error(f'{task_id} ``failed``: {error_class} {detail}')
-        return {'ret_code': 1, 'exception': e, 'task': task_id, 'shared': {}}
+        return {'ret_code': 1, 'exception': e, 'task': task_id, 'shared': {}}, None
     finally:
         env.sos_dict.set('__step_sig__', None)
         os.chdir(orig_dir)
-    if sig:
-        sig.write()
-        sig.release()
 
     # the final result should be relative to cur_dir, not workdir
     # because output is defined outside of task
-    return collect_task_result(task_id, sos_dict)
+    return collect_task_result(task_id, sos_dict, signature=sig)

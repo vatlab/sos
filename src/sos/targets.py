@@ -1200,3 +1200,155 @@ class RuntimeInfo:
             return f'No MD5 signature for {", ".join(x for x,y in files_checked.items() if not y)}'
         env.logger.trace(f'Signature matches and returns {res}')
         return res
+
+
+class TaskInfo:
+    def __init__(self, input_files: sos_targets, output_files: sos_targets,
+                 dependent_files: sos_targets, signature_vars: set=set()):
+        '''Runtime information for specified output files
+        '''
+        self.input_files = sos_targets(
+            [x for x in input_files._targets if not isinstance(x, sos_step)])
+        self.dependent_files = sos_targets(
+            [x for x in dependent_files._targets if not isinstance(x, sos_step)])
+        self.output_files = sos_targets(
+            [x for x in output_files._targets if not isinstance(x, sos_step)])
+        self.signature_vars = signature_vars
+        # signatures that exist before execution and might change during execution
+        self.init_signature = {x: deepcopy(env.sos_dict[x]) for x in sorted(
+            signature_vars) if x in env.sos_dict and not callable(env.sos_dict[x]) and pickleable(env.sos_dict[x], x)}
+
+    def write(self, rebuild=False):
+        if not self.output_files.determined() or not self.dependent_files.determined():
+            return {}
+        input_sig = []
+        for f in self.input_files:
+            try:
+                input_sig.append(f'{f}\t{f.target_signature()}')
+            except Exception as e:
+                env.logger.debug(
+                    f'Failed to create signature: input target {f} does not exist')
+                return False
+        output_sig = []
+        for f in self.output_files:
+            try:
+                output_sig.append(f'{f}\t{f.target_signature()}')
+            except Exception as e:
+                env.logger.debug(
+                    f'Failed to create signature: output target {f} does not exist')
+                return False
+        dependent_sig = []
+        for f in self.dependent_files:
+            try:
+                dependent_sig.append(f'{f}\t{f.target_signature()}')
+            except Exception as e:
+                env.logger.debug(
+                    f'Failed to create signature: dependent target {f} does not exist')
+                return False
+        init_context = []
+        for var in sorted(self.init_signature.keys()):
+            # var can be local and not passed as outside environment
+            value = self.init_signature[var]
+            try:
+                var_expr = save_var(var, value)
+                if var_expr:
+                    init_context.append(var_expr)
+            except Exception:
+                env.logger.debug(
+                    f'Variable {var} of value {short_repr(value)} is ignored from step signature')
+        end_context = []
+        for var in sorted(self.signature_vars):
+            # var can be local and not passed as outside environment
+            if var in env.sos_dict:
+                value = env.sos_dict[var]
+                try:
+                    end_context.append(save_var(var, value))
+                except Exception:
+                    env.logger.debug(
+                        f'Variable {var} of value {short_repr(value)} is ignored from step signature')
+        return {
+            'input': input_sig,
+            'output': output_sig,
+            'dependent': dependent_sig,
+            'init_context': init_context,
+            'end_context': end_context
+        }
+
+    def validate(self, signature):
+        '''Check if ofiles and ifiles match signatures recorded in md5file'''
+        if not signature:
+            return 'Empty signature'
+        # file not exist?
+        if not self.output_files.determined():
+            return "Undetermined output files"
+        sig_files = self.input_files._targets + self.output_files._targets + \
+            self.dependent_files._targets
+        for x in sig_files:
+            if not x.target_exists('any'):
+                return f'Missing target {x}'
+        #
+        files_checked = {x.target_name(): False for x in sig_files}
+        res = {'input': [], 'output': [], 'depends': [], 'vars': {}}
+        cur_type = 'input'
+        for line in signature['init_context']:
+            key, value = load_var(line)
+            if key not in env.sos_dict:
+                return f'Variable {key} not in running environment'
+            try:
+                try:
+                    if env.sos_dict[key] != value:
+                        return f'Context variable {key} value mismatch: {short_repr(value)} saved, {short_repr(env.sos_dict[key])} current'
+                except Exception as e:
+                    env.logger.debug(
+                        f"Variable {key} of type {type(value).__name__} cannot be compared: {e}")
+            except Exception as e:
+                env.logger.warning(
+                    f'Failed to restore variable {key} from signature: {e}')
+        for line in signature['end_context']:
+            try:
+                key, value = load_var(line)
+                res['vars'][key] = value
+            except Exception as e:
+                env.logger.warning(
+                    f'Failed to restore variable from signature: {e}')
+        for cur_type in ['input', 'output', 'depends']:
+            for line in signature[cur_type]:
+                try:
+                    f, m = line.rsplit('\t', 1)
+                    if '(' in f and ')' in f:
+                        # this part is hard, because this can be a customized target.
+                        target_type = f.split('(')[0]
+                        target_class = None
+                        if target_type in globals():
+                            target_class = eval(target_type)
+                        else:
+                            # check registry
+                            for entrypoint in pkg_resources.iter_entry_points(group='sos_targets'):
+                                if entrypoint.name.strip() == target_type:
+                                    target_class = entrypoint.load()
+                                    break
+                        if target_class is None:
+                            raise ValueError(
+                                f'Failed to identify target class {target_type}')
+                        # parameter of class?
+                        freal = eval(f, {target_type: target_class})
+                    else:
+                        freal = file_target(f)
+                    if freal.target_exists('target'):
+                        fmd5 = freal.target_signature('target')
+                    elif freal.target_exists('signature'):
+                        fmd5 = freal.target_signature()
+                    else:
+                        return f'File {f} not exist'
+                    res[cur_type].append(freal.target_name() if isinstance(
+                        freal, file_target) else freal)
+                    if fmd5 != m.strip():
+                        return f'File has changed {f}'
+                    files_checked[freal.target_name()] = True
+                except Exception as e:
+                    env.logger.debug(
+                        f'Wrong md5 line {line} in {self.proc_info}: {e}')
+        #
+        if not all(files_checked.values()):
+            return f'No MD5 signature for {", ".join(x for x,y in files_checked.items() if not y)}'
+        return res
