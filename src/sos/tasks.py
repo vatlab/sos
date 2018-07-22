@@ -150,11 +150,11 @@ class TaskFile(object):
     '''
     TaskHeader = namedtuple('TaskHeader',
                             'version status tags '
-                            'creation_time pending_time submitted_time aborted_time failed_time completed_time last_modified '
+                            'creation_time pending_time submitted_time running_time aborted_time failed_time completed_time last_modified '
                             'params_size pulse_size stdout_size stderr_size result_size signature_size'
                             )
 
-    header_fmt = '!i 10s 128s 7d 6i'
+    header_fmt = '!i 10s 128s 8d 6i'
     header_size = struct.calcsize(header_fmt)
 
     def __init__(self, task_id: str):
@@ -179,6 +179,7 @@ class TaskFile(object):
             tags=' '.join(sorted(tags)).ljust(128).encode(),
             creation_time=now,
             pending_time=0,
+            running_time=0,
             submitted_time=0,
             aborted_time=0,
             failed_time=0,
@@ -195,6 +196,32 @@ class TaskFile(object):
             self._write_header(fh, header)
             fh.write(params_block)
 
+    def update(self, params):
+        params_block = lzma.compress(pickle.dumps(params))
+        with open(self.task_file, 'r+b') as fh:
+            header = self._read_header(fh)
+            now = time.time()
+            header = header._replace(
+                status=b'pending   ',
+                creation_time=now,
+                pending_time=0,
+                submitted_time=0,
+                running_time=0,
+                aborted_time=0,
+                failed_time=0,
+                completed_time=0,
+                last_modified=now,
+                params_size=len(params_block),
+                pulse_size=0,
+                stdout_size=0,
+                stderr_size=0,
+                result_size=0,
+                signature_size=0
+            )
+            self._write_header(fh, header)
+            fh.write(params_block)
+            fh.truncate(self.header_size + header.params_size)
+
     def _reset(self, fh):
         # remove result, input, output etc and set the status of the task to new
         header = self._read_header(fh)
@@ -204,6 +231,7 @@ class TaskFile(object):
             creation_time=now,
             pending_time=0,
             submitted_time=0,
+            running_time=0,
             aborted_time=0,
             failed_time=0,
             completed_time=0,
@@ -249,7 +277,8 @@ class TaskFile(object):
         with open(self.task_file, 'r+b') as fh:
             header = self._read_header(fh)
             if header.result_size != 0:
-                header = self._reset(fh)
+                raise ValueError(
+                    'Cannot add result to task with existing output')
             header = header._replace(
                 pulse_size=len(pulse),
                 stdout_size=len(stdout),
@@ -333,6 +362,10 @@ class TaskFile(object):
                 header = header._replace(
                     status=status.ljust(10).encode(),
                     submitted_time=now, last_modified=now)
+            elif status == 'running':
+                header = header._replace(
+                    status=status.ljust(10).encode(),
+                    running_time=now, last_modified=now)
             elif status == 'failed':
                 header = header._replace(
                     status=status.ljust(10).encode(),
@@ -471,7 +504,6 @@ def remove_task_files(task: str, exts: list):
 
 
 def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
-
     # when testing. if the timestamp is 0, the file does not exist originally, it should
     # still does not exist. Otherwise the file should exist and has the same timestamp
     if hint and hint['status'] not in ('pending', 'running') and \
@@ -597,18 +629,11 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
     else:
         # status not changed
         try:
-            if hint and hint['status'] == 'pending' and hint['files'][task_file] == os.stat(task_file).st_mtime:
+            if hint and hint['status'] in ('new', 'pending') and hint['files'][task_file] == os.stat(task_file).st_mtime:
                 return {}
             else:
-                stat = os.stat(task_file)
-                if stat.st_ctime == stat.st_mtime:
-                    return dict(status='new', files={task_file: os.stat(task_file).st_mtime,
-                                                     job_file: 0})
-                else:
-                    if status != 'pending':
-                        tf.status = 'pending'
-                    return dict(status='pending', files={task_file: os.stat(task_file).st_mtime,
-                                                         job_file: 0})
+                return dict(status=status, files={task_file: os.stat(task_file).st_mtime,
+                                                  job_file: 0})
         except:
             # the pulse file could disappear when the job is completed.
             if task_changed():
@@ -751,6 +776,7 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
             if s not in ('pending', 'submitted', 'running'):
                 print(f'Duration {PrettyRelativeTime(taskDuration(t))}')
             tf = TaskFile(t)
+            params = tf.params
             print('TASK:\n=====')
             print(params.task)
             print('TAGS:\n=====')

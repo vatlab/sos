@@ -156,7 +156,8 @@ class LocalHost:
         tf = TaskFile(task_id)
         params = tf.params
         # clear possible previous result
-        params.sos_dict = copy.copy(params.raw_dict)
+        params.sos_dict = copy.deepcopy(params.raw_dict)
+
         task_vars = params.sos_dict
 
         if 'max_mem' in self.config or 'max_cores' in self.config or 'max_walltime' in self.config:
@@ -185,7 +186,7 @@ class LocalHost:
                     f'Task {task_id} requested more walltime ({task_vars["_runtime"]["walltime"]}) than allowed max_walltime ({self.config["max_walltime"]})')
                 return False
 
-        tf.save(params)
+        tf.update(params)
         #
         if 'to_host' in task_vars['_runtime'] and isinstance(task_vars['_runtime']['to_host'], dict):
             for l, r in task_vars['_runtime']['to_host'].items():
@@ -514,7 +515,8 @@ class RemoteHost:
             raise ValueError(f'Missing task definition {task_file}')
         tf = TaskFile(task_id)
         params = tf.params
-        params.sos_dict = copy.copy(params.raw_dict)
+        params.sos_dict = copy.deepcopy(params.raw_dict)
+
         task_vars = params.sos_dict
 
         if self.config.get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
@@ -605,7 +607,7 @@ class RemoteHost:
             task_vars['_runtime']['max_walltime'] = format_HHMMSS(
                 task_vars['_runtime']['max_walltime'])
 
-        tf.save(params)
+        tf.update(params)
         self.send_task_file(task_file)
 
     def send_task_file(self, task_file):
