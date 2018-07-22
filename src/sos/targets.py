@@ -1221,26 +1221,26 @@ class TaskInfo:
     def write(self, rebuild=False):
         if not self.output_files.determined() or not self.dependent_files.determined():
             return {}
-        input_sig = []
+        input_sig = {}
         for f in self.input_files:
             try:
-                input_sig.append(f'{f}\t{f.target_signature()}')
+                input_sig[str(f)] = f.target_signature()
             except Exception as e:
                 env.logger.debug(
                     f'Failed to create signature: input target {f} does not exist')
                 return False
-        output_sig = []
+        output_sig = {}
         for f in self.output_files:
             try:
-                output_sig.append(f'{f}\t{f.target_signature()}')
+                output_sig[str(f)] = f.target_signature()
             except Exception as e:
                 env.logger.debug(
                     f'Failed to create signature: output target {f} does not exist')
                 return False
-        dependent_sig = []
+        dependent_sig = {}
         for f in self.dependent_files:
             try:
-                dependent_sig.append(f'{f}\t{f.target_signature()}')
+                dependent_sig[str(f)] = f.target_signature()
             except Exception as e:
                 env.logger.debug(
                     f'Failed to create signature: dependent target {f} does not exist')
@@ -1314,9 +1314,8 @@ class TaskInfo:
                 env.logger.warning(
                     f'Failed to restore variable from signature: {e}')
         for cur_type in ['input', 'output', 'depends']:
-            for line in signature[cur_type]:
+            for f, m in signature[cur_type].items():
                 try:
-                    f, m = line.rsplit('\t', 1)
                     if '(' in f and ')' in f:
                         # this part is hard, because this can be a customized target.
                         target_type = f.split('(')[0]
