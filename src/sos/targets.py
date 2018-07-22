@@ -928,6 +928,9 @@ class InMemorySignature:
         input_sig = {}
         for f in self.input_files:
             try:
+                if f.target_exists('any'):
+                    # this calculates file MD5
+                    f.write_sig()
                 input_sig[str(f)] = f.target_signature()
             except Exception as e:
                 env.logger.debug(
@@ -936,6 +939,9 @@ class InMemorySignature:
         output_sig = {}
         for f in self.output_files:
             try:
+                if f.target_exists('any'):
+                    # this calculates file MD5
+                    f.write_sig()
                 output_sig[str(f)] = f.target_signature()
             except Exception as e:
                 env.logger.debug(
@@ -944,6 +950,9 @@ class InMemorySignature:
         dependent_sig = {}
         for f in self.dependent_files:
             try:
+                if f.target_exists('any'):
+                    # this calculates file MD5
+                    f.write_sig()
                 dependent_sig[str(f)] = f.target_signature()
             except Exception as e:
                 env.logger.debug(
