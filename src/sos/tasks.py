@@ -17,7 +17,7 @@ from collections.abc import Sequence
 
 from .utils import (env, expand_time, linecount_of_file, sample_lines, log_to_file,
                     short_repr, tail_of_file, expand_size, format_HHMMSS,
-                    DelayedAction)
+                    DelayedAction, format_relative_time, format_duration)
 from .targets import sos_targets
 
 monitor_interval = 5
@@ -479,6 +479,24 @@ class TaskFile(object):
 
     signature = property(_get_signature)
 
+    def tags_created_start_and_duration(self, formatted=False):
+        with open(self.task_file, 'rb') as fh:
+            header = self._read_header(fh)
+        tags = header.tags.decode().strip()
+        ct = header.creation_time
+        if header.running_time != 0:
+            st = header.running_time
+            dr = header.last_modified - st
+        else:
+            return tags, ('Created ' + format_relative_time(time.time() - ct)) \
+                if formatted else ct, '', ''
+        if not formatted:
+            return tags, ct, st, dr
+        #
+        return tags, 'Created ' + format_relative_time(time.time() - ct), \
+            'Started ' + format_relative_time(time.time() - st), \
+            'Ran for ' + format_duration(int(dr))
+
 
 def taskDuration(task):
     filename = os.path.join(os.path.expanduser(
@@ -697,6 +715,7 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
                 all_tasks.append((t, None))
             else:
                 all_tasks.extend(matched)
+
     if age is not None:
         age = expand_time(age, default_unit='d')
         if age > 0:
@@ -717,120 +736,19 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
 
     raw_status = check_tasks([x[0] for x in all_tasks], check_all)
     obtained_status = [raw_status[x[0]]['status'] for x in all_tasks]
+    #
+    # automatically remove non-running tasks that are more than 30 days old
+    to_be_removed = [t for s, (t, d) in zip(obtained_status, all_tasks)
+                     if d is not None and time.time() - d > 30 * 24 * 60 * 60 and s != 'running']
+
     if status:
         all_tasks = [x for x, s in zip(
             all_tasks, obtained_status) if s in status]
         obtained_status = [x for x in obtained_status if x in status]
     #
-    # automatically remove non-running tasks that are more than 30 days old
-    to_be_removed = []
-    #
     if html:
-        verbosity = -1
-    if verbosity == 0:
-        print('\n'.join(obtained_status))
-    elif verbosity == 1:
-        for s, (t, d) in zip(obtained_status, all_tasks):
-            if d is not None and time.time() - d > 30 * 24 * 60 * 60 and s != 'running':
-                to_be_removed.append(t)
-                continue
-            print(f'{t}\t{s}')
-    elif verbosity == 2:
-        from .utils import PrettyRelativeTime
-        for s, (t, d) in zip(obtained_status, all_tasks):
-            if d is not None and time.time() - d > 30 * 24 * 60 * 60 and s != 'running':
-                to_be_removed.append(t)
-                continue
-            if start_time:
-                if d is None:
-                    print(f'{t}\t{TaskFile(t).tags}\t{time.time()}\t{s}')
-                else:
-                    print(f'{t}\t{TaskFile(t).tags}\t{d}\t{s}')
-            else:
-                if d is None:
-                    print(f'{t}\t{TaskFile(t).tags}\t{"":>15}\t{s}')
-                elif s in ('pending', 'submitted', 'running'):
-                    print(
-                        f'{t}\t{TaskFile(t).tags}\t{PrettyRelativeTime(time.time() - d):>15}\t{s}')
-                else:
-                    # completed or failed
-                    print(
-                        f'{t}\t{TaskFile(t).tags}\t{PrettyRelativeTime(taskDuration(t)):>15}\t{s}')
-    elif verbosity > 2:
-        from .utils import PrettyRelativeTime
-        import pprint
-        from .monitor import summarizeExecution
-
-        for s, (t, d) in zip(obtained_status, all_tasks):
-            if d is not None and time.time() - d > 30 * 24 * 60 * 60 and s != 'running':
-                to_be_removed.append(t)
-                continue
-            print(f'{t}\t{s}\n')
-            task_file = os.path.join(os.path.expanduser(
-                '~'), '.sos', 'tasks', t + '.task')
-            if not os.path.isfile(task_file):
-                continue
-            if d is not None:
-                print(f'Started {PrettyRelativeTime(time.time() - d)} ago')
-            if s not in ('pending', 'submitted', 'running'):
-                print(f'Duration {PrettyRelativeTime(taskDuration(t))}')
-            tf = TaskFile(t)
-            params = tf.params
-            print('TASK:\n=====')
-            print(params.task)
-            print('TAGS:\n=====')
-            print(tf.tags)
-            print()
-            if params.global_def:
-                print('GLOBAL:\n=======')
-                print(params.global_def)
-                print()
-            print('ENVIRONMENT:\n============')
-            job_vars = params.sos_dict
-            for k in sorted(job_vars.keys()):
-                v = job_vars[k]
-                print(
-                    f'{k:22}{short_repr(v) if verbosity == 3 else pprint.pformat(v)}')
-            print()
-
-            if tf.has_result():
-                res = tf.result
-                if 'pulse' in res:
-                    print('EXECUTION STATS:\n================')
-                    print(summarizeExecution(t, res['pulse'], status=s))
-                if verbosity == 4:
-                    # if there are other files such as job file, print them.
-                    if tf.has_stdout():
-                        print('standout output:\n================\n' +
-                              tf.stdout)
-                    if tf.has_stderr():
-                        print('standout output:\n================\n' +
-                              tf.stderr)
-            else:
-                # we have separate pulse, out and err files
-                print('EXECUTION STATS:\n================')
-                pulse_file = os.path.join(
-                    os.path.expanduser('~'), '.sos', 'tasks', t + '.pulse')
-                if os.path.isfile(pulse_file):
-                    with open(pulse_file) as pulse:
-                        print(summarizeExecution(t, pulse.read(), status=s))
-                if verbosity == 4:
-                    # if there are other files such as job file, print them.
-                    for ext in ('.out', '.err'):
-                        f = os.path.join(
-                            os.path.expanduser('~'), '.sos', 'tasks', t + ext)
-                        if not os.path.isfile(f):
-                            continue
-                        print(
-                            f'{os.path.basename(f)}:\n{"="*(len(os.path.basename(f))+1)}')
-                        try:
-                            with open(f) as fc:
-                                print(fc.read())
-                        except Exception:
-                            print('Binary file')
-    else:
         # HTML output
-        from .utils import PrettyRelativeTime, isPrimitive
+        from .utils import format_relative_time, isPrimitive
         from .monitor import summarizeExecution
         import pprint
         print('<table width="100%" class="resource_table">')
@@ -846,25 +764,17 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=Fals
                 print(
                     f'<tr><th align="right"  width="30%">{th}</th><td align="left"><div class="one_liner">{td}</div></td></tr>')
         for s, (t, d) in zip(obtained_status, all_tasks):
-            if d is not None and time.time() - d > 30 * 24 * 60 * 60:
-                to_be_removed.append(t)
-                continue
+            tf = TaskFile(t)
+            ts, ct, st, dr = tf.tags_created_start_and_duration(
+                formatted=True)
             row('ID', t)
             row('Status', s)
-            task_file = os.path.join(os.path.expanduser(
-                '~'), '.sos', 'tasks', t + '.task')
-            if not os.path.isfile(task_file):
-                print('</table>')
-                continue
-            if d is not None:
-                row('Start', f'{PrettyRelativeTime(time.time() - d):>15} ago')
-            if s not in ('pending', 'submitted', 'running'):
-                row('Duration', f'{PrettyRelativeTime(taskDuration(t)):>15}')
-            task_file = os.path.join(os.path.expanduser(
-                '~'), '.sos', 'tasks', t + '.task')
-            if not os.path.isfile(task_file):
-                continue
-            tf = TaskFile(t)
+            row('Created', ct)
+            if st:
+                row('Started', st)
+            if dr:
+                row('Duration', dr)
+
             params = tf.params
             row('Task')
             row(td=f'<pre style="text-align:left">{params.task}</pre>')
@@ -1059,6 +969,85 @@ function showResourceFigure_''' + t + '''() {
 showResourceFigure_''' + t + '''()
 </script>
 ''')
+    elif verbosity == 0:
+        print('\n'.join(obtained_status))
+    elif verbosity == 1:
+        for s, (t, d) in zip(obtained_status, all_tasks):
+            print(f'{t}\t{s}')
+    elif verbosity == 2:
+        for s, (t, d) in zip(obtained_status, all_tasks):
+            ts, _, _, dr = TaskFile(t).tags_created_start_and_duration(
+                formatted=not start_time)
+            print(f'{t}\t{ts}\t{dr}\t{s}')
+    elif verbosity == 3:
+        for s, (t, d) in zip(obtained_status, all_tasks):
+            ts, ct, st, dr = TaskFile(t).tags_created_start_and_duration(
+                formatted=not start_time)
+            print(f'{t}\t{ts}\t{ct}\t{st}\t{dr}\t{s}')
+    elif verbosity == 4:
+        import pprint
+        from .monitor import summarizeExecution
+        for s, (t, d) in zip(obtained_status, all_tasks):
+            tf = TaskFile(t)
+            ts, ct, st, dr = tf.tags_created_start_and_duration(
+                formatted=True)
+            print(f'{t}\t{s}\n')
+            print(f'Created {ct}')
+            if st:
+                print(f'Started {st}')
+            if dr:
+                print(f'Ran {dr}')
+            params = tf.params
+            print('TASK:\n=====')
+            print(params.task)
+            print('TAGS:\n=====')
+            print(tf.tags)
+            print()
+            if params.global_def:
+                print('GLOBAL:\n=======')
+                print(params.global_def)
+                print()
+            print('ENVIRONMENT:\n============')
+            job_vars = params.sos_dict
+            for k in sorted(job_vars.keys()):
+                v = job_vars[k]
+                print(
+                    f'{k:22}{short_repr(v) if verbosity == 3 else pprint.pformat(v)}')
+            print()
+
+            if tf.has_result():
+                res = tf.result
+                if 'pulse' in res:
+                    print('EXECUTION STATS:\n================')
+                    print(summarizeExecution(t, res['pulse'], status=s))
+                # if there are other files such as job file, print them.
+                if tf.has_stdout():
+                    print('standout output:\n================\n' +
+                          tf.stdout)
+                if tf.has_stderr():
+                    print('standout output:\n================\n' +
+                          tf.stderr)
+            else:
+                # we have separate pulse, out and err files
+                print('EXECUTION STATS:\n================')
+                pulse_file = os.path.join(
+                    os.path.expanduser('~'), '.sos', 'tasks', t + '.pulse')
+                if os.path.isfile(pulse_file):
+                    with open(pulse_file) as pulse:
+                        print(summarizeExecution(t, pulse.read(), status=s))
+                # if there are other files such as job file, print them.
+                for ext in ('.out', '.err'):
+                    f = os.path.join(
+                        os.path.expanduser('~'), '.sos', 'tasks', t + ext)
+                    if not os.path.isfile(f):
+                        continue
+                    print(
+                        f'{os.path.basename(f)}:\n{"="*(len(os.path.basename(f))+1)}')
+                    try:
+                        with open(f) as fc:
+                            print(fc.read())
+                    except Exception:
+                        print('Binary file')
     # remove jobs that are older than 1 month
     if to_be_removed:
         purge_tasks(to_be_removed, verbosity=0)

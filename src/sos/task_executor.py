@@ -119,11 +119,11 @@ def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
 
 def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_interval=5,
                  resource_monitor_interval=60):
+    tf = TaskFile(task_id)
+    tf.status = 'running'
     # write result file
     res = _execute_task(task_id, verbosity, runmode, sigmode,
                         monitor_interval, resource_monitor_interval)
-
-    tf = TaskFile(task_id)
 
     if res['ret_code'] != 0 and 'exception' in res:
         with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'), 'a') as err:

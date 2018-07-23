@@ -421,7 +421,7 @@ def get_resume_parser(interactive=False, with_workflow=True, desc_only=False):
 
 def workflow_status(workflow):
     import time
-    from .utils import env, load_var, load_config_files, PrettyRelativeTime
+    from .utils import env, load_var, load_config_files, format_relative_time
     from .hosts import Host
     from .tasks import print_task_status
     from .eval import interpolate
@@ -466,7 +466,7 @@ def workflow_status(workflow):
         '{("-t " + " ".join(targets)) if targets else ""} '
         '{" ".join(workflow_args)} ', res))))
     env.logger.info('{:15s} \t{} ago'.format('Started:',
-                                             PrettyRelativeTime(time.time() - os.path.getmtime(workflow))))
+                                             format_relative_time(time.time() - os.path.getmtime(workflow))))
     env.logger.info('{:15s} \t{}'.format('Working dir:', res['workdir']))
     #
     for k, v in pending_tasks.items():
@@ -519,7 +519,7 @@ def cmd_resume(args, workflow_args):
 
     import glob
     import time
-    from .utils import env, PrettyRelativeTime
+    from .utils import env, format_relative_time
     env.verbosity = args.verbosity
 
     workflows = glob.glob(os.path.join(os.path.expanduser('~'), '.sos',
@@ -536,7 +536,7 @@ def cmd_resume(args, workflow_args):
         workflows = sorted(workflows, key=os.path.getmtime)
         for wf in workflows:
             env.logger.info('{}\tstarted {} ago'.format(os.path.basename(wf)[:-7],
-                                                        PrettyRelativeTime(time.time() - os.path.getmtime(wf))))
+                                                        format_relative_time(time.time() - os.path.getmtime(wf))))
     #
     # resume execution...
     if args.workflow_id and len(workflows) > 1:

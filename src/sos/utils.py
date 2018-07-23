@@ -770,15 +770,15 @@ def dict_merge(dct, merge_dct):
             dct[k] = v
 
 
-def PrettyRelativeTime(time_diff_secs):
+def format_relative_time(time_diff_secs):
     secs = int(time_diff_secs)
     rec = [
         (secs // (3600 * 24), 'day'),
         (secs % (3600 * 24) // 3600, 'hr'),
         (secs % 3600 // 60, 'min'),
         (secs % 60, 'sec')]
-    txt = ' '.join([f'{x} {y}' for x, y in rec if x > 0])
-    return txt if txt else '0 sec'
+    txt = [f'{x} {y}' for x, y in rec if x > 0]
+    return txt[0] + ' ago' if txt else 'just now'
 
 # display file size in K, M, G etc automatically. Code copied from
 # http://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
