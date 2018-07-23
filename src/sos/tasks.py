@@ -164,7 +164,7 @@ class TaskFile(object):
                             'params_size pulse_size stdout_size stderr_size result_size signature_size'
                             )
 
-    header_fmt = '!2i 128s 8d 6i'
+    header_fmt = '!2h 128s 8d 6i'
     header_size = struct.calcsize(header_fmt)
 
     def __init__(self, task_id: str):
@@ -357,14 +357,18 @@ class TaskFile(object):
 
     def _get_status(self):
         with open(self.task_file, 'rb') as fh:
-            fh.seek(4, 0)
-            return TaskStatus(struct.unpack('i', fh.read(4))[0]).name
+            fh.seek(2, 0)
+            return TaskStatus(struct.unpack('!h', fh.read(2))[0]).name
 
     def _set_status(self, status):
         with open(self.task_file, 'r+b') as fh:
             header = self._read_header(fh)
             now = time.time()
-            if status == 'pending':
+            if status == 'new':
+                header = header._replace(
+                    status=TaskStatus[status].value,
+                    new_time=now, last_modified=now)
+            elif status == 'pending':
                 header = header._replace(
                     status=TaskStatus[status].value,
                     pending_time=now, last_modified=now)
@@ -396,20 +400,20 @@ class TaskFile(object):
 
     def _get_tags(self):
         with open(self.task_file, 'rb') as fh:
-            fh.seek(8, 0)
+            fh.seek(4, 0)
             return fh.read(128).decode().strip()
 
     def _set_tags(self, tags: list):
         with open(self.task_file, 'r+b') as fh:
-            fh.seek(8, 0)
+            fh.seek(4, 0)
             fh.write(' '.join(
                 sorted(tags)).ljust(128).encode())
 
     def add_tags(self, tags: list):
         with open(self.task_file, 'r+b') as fh:
-            fh.seek(8, 0)
+            fh.seek(4, 0)
             existing_tags = fh.read(128).decode().strip()
-            fh.seek(8, 0)
+            fh.seek(4, 0)
             fh.write(' '.join(
                 sorted(tags + existing_tags.split())).ljust(128).encode())
 
