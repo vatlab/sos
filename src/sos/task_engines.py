@@ -106,10 +106,11 @@ class TaskEngine(threading.Thread):
         #
         if age is not None:
             age = expand_time(age, default_unit='d')
-        return sorted([(x, self.task_status[x], self.task_date.get(x, time.time())) for x in tasks
-                       if (status is None or self.task_status[x] in status) and (age is None or
-                                                                                 ((age > 0 and time.time() - self.task_date.get(x, time.time()) > age)
-                                                                                  or (age < 0 and time.time() - self.task_date.get(x, time.time()) < -age)))],
+        return sorted([(x, self.task_status[x], self.task_date.get(x, (time.time(), None, None))) for x in tasks
+                       if (status is None or self.task_status[x] in status) and
+                       (age is None or
+                        ((age > 0 and time.time() - self.task_date.get(x, (time.time(), 0, 0))[0] > age)
+                         or (age < 0 and time.time() - self.task_date.get(x, (time.time(), 0, 0))[0] < -age)))],
                       key=lambda x: -x[2])
 
     def get_tasks(self):
@@ -122,16 +123,17 @@ class TaskEngine(threading.Thread):
     def run(self):
         # get all system tasks that might have been running ...
         # this will be run only once when the task engine starts
-        status_output = self.query_tasks([], verbosity=2, start_time=True)
+        status_output = self.query_tasks([], verbosity=3, numeric_times=True)
         with threading.Lock():
             for line in status_output.split('\n'):
                 if not line.strip():
                     continue
                 try:
-                    tid, _, ttm, tst = line.split('\t')
+                    # return creation time, start time, and duration
+                    tid, _, ct, st, dr, tst = line.split('\t')
                     # for some reason on windows there can be a \r at the end
                     self.task_status[tid] = tst.strip()
-                    self.task_date[tid] = float(ttm)
+                    self.task_date[tid] = (float(ct), float(st), float(dr))
                 except Exception as e:
                     env.logger.warning(
                         f'Unrecognized response "{line}" ({e.__class__.__name__}): {e}')
@@ -249,7 +251,7 @@ class TaskEngine(threading.Thread):
                     self.running_tasks.append(task_id)
                     self.notify(f'{task_id} ``already runnng``')
                     self.notify(['new-status', self.agent.alias, task_id, 'running',
-                                 self.task_date.get(task_id, time.time())])
+                                 self.task_date.get(task_id, (time.time(), time.time(), None))])
                     return 'running'
                 # there is a case when the job is already completed (complete-old), but
                 # because we do not know if the user asks to rerun (-s force), we have to
@@ -279,7 +281,7 @@ class TaskEngine(threading.Thread):
                 self.canceled_tasks.remove(task_id)
             self.task_status[task_id] = 'pending'
             self.notify(['new-status', self.agent.alias, task_id, 'pending',
-                         self.task_date.get(task_id, time.time())])
+                         self.task_date.get(task_id, (time.time(), None, None))])
             return 'pending'
 
     def summarize_status(self):
@@ -332,12 +334,12 @@ class TaskEngine(threading.Thread):
                 # if task in self.running_tasks:
                 #    self.running_tasks.remove(task)
 
-    def query_tasks(self, tasks=None, verbosity=1, html=False, start_time=False, age=None, tags=None, status=None):
+    def query_tasks(self, tasks=None, verbosity=1, html=False, numeric_times=False, age=None, tags=None, status=None):
         try:
             return self.agent.check_output("sos status {} -v {} {} {} {} {} {}".format(
                 '' if tasks is None else ' '.join(tasks), verbosity,
                 '--html' if html else '',
-                '--start-time' if start_time else '',
+                '--numeric-times' if numeric_times else '',
                 f'--age {age}' if age else '',
                 f'--tags {" ".join(tags)}' if tags else '',
                 f'--status {" ".join(status)}' if status else '',

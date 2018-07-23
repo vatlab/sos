@@ -1117,7 +1117,7 @@ def get_status_parser(desc_only=False):
                         help='''Output results in HTML format. This option will override option
             verbosity and output detailed status information in HTML tables and
             figures.''')
-    parser.add_argument('--start-time', action='store_true',
+    parser.add_argument('--numeric-times', action='store_true',
                         help=argparse.SUPPRESS)
     parser.set_defaults(func=cmd_status)
     return parser
@@ -1132,13 +1132,13 @@ def cmd_status(args, workflow_args):
     try:
         load_config_files(args.config)
         if not args.queue:
-            print_task_status(tasks=args.tasks, verbosity=args.verbosity, html=args.html, start_time=args.start_time,
+            print_task_status(tasks=args.tasks, verbosity=args.verbosity, html=args.html, numeric_times=args.numeric_times,
                               age=args.age, tags=args.tags, status=args.status)
         else:
             # remote host?
             host = Host(args.queue)
             print(host._task_engine.query_tasks(tasks=args.tasks, verbosity=args.verbosity, html=args.html,
-                                                start_time=args.start_time, age=args.age, tags=args.tags, status=args.status))
+                                                numeric_times=args.numeric_times, age=args.age, tags=args.tags, status=args.status))
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())

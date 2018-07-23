@@ -693,7 +693,7 @@ def check_tasks(tasks, is_all: bool):
     return status_cache
 
 
-def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=False, age=None, tags=None, status=None):
+def print_task_status(tasks, verbosity: int=1, html: bool=False, numeric_times=False, age=None, tags=None, status=None):
     # verbose is ignored for now
     import glob
     check_all: bool = not tasks
@@ -977,12 +977,12 @@ showResourceFigure_''' + t + '''()
     elif verbosity == 2:
         for s, (t, d) in zip(obtained_status, all_tasks):
             ts, _, _, dr = TaskFile(t).tags_created_start_and_duration(
-                formatted=not start_time)
+                formatted=not numeric_times)
             print(f'{t}\t{ts}\t{dr}\t{s}')
     elif verbosity == 3:
         for s, (t, d) in zip(obtained_status, all_tasks):
             ts, ct, st, dr = TaskFile(t).tags_created_start_and_duration(
-                formatted=not start_time)
+                formatted=not numeric_times)
             print(f'{t}\t{ts}\t{ct}\t{st}\t{dr}\t{s}')
     elif verbosity == 4:
         import pprint
