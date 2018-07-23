@@ -347,7 +347,8 @@ class TaskFile(object):
 
     def _get_status(self):
         with open(self.task_file, 'rb') as fh:
-            return self._read_header(fh).status.decode().strip()
+            fh.seek(4, 0)
+            return fh.read(10).decode().strip()
 
     def _set_status(self, status):
         with open(self.task_file, 'r+b') as fh:
@@ -385,21 +386,22 @@ class TaskFile(object):
 
     def _get_tags(self):
         with open(self.task_file, 'rb') as fh:
-            return self._read_header(fh).tags.decode().strip()
+            fh.seek(14, 0)
+            return fh.read(128).decode().strip()
 
     def _set_tags(self, tags: list):
         with open(self.task_file, 'r+b') as fh:
-            header = self._read_header(fh)
-            header = header._replace(tags=' '.join(
+            fh.seek(14, 0)
+            fh.write(' '.join(
                 sorted(tags)).ljust(128).encode())
-            self._write_header(fh, header)
 
     def add_tags(self, tags: list):
         with open(self.task_file, 'r+b') as fh:
-            header = self._read_header(fh)
-            header = header._replace(tags=' '.join(
-                sorted(tags + header.tags.decode().strip().split())).ljust(128).encode())
-            self._write_header(fh, header)
+            fh.seek(14, 0)
+            existing_tags = fh.read(128).decode().strip()
+            fh.seek(14, 0)
+            fh.write(' '.join(
+                sorted(tags + existing_tags.split())).ljust(128).encode())
 
     tags = property(_get_tags, _set_tags)
 
@@ -428,6 +430,7 @@ class TaskFile(object):
             except Exception as e:
                 env.logger.warning(f'Failed to decode stdout: {e}')
                 return ''
+
     stdout = property(_get_stdout)
 
     def _get_stderr(self):
@@ -675,7 +678,6 @@ def check_tasks(tasks, is_all: bool):
 def print_task_status(tasks, verbosity: int=1, html: bool=False, start_time=False, age=None, tags=None, status=None):
     # verbose is ignored for now
     import glob
-    from multiprocessing.pool import ThreadPool as Pool
     check_all: bool = not tasks
     if check_all:
         tasks = glob.glob(os.path.join(
