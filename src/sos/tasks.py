@@ -10,6 +10,7 @@ import time
 import lzma
 import stat
 import struct
+from enum import Enum
 from collections import namedtuple
 
 from typing import Union, Dict
@@ -134,6 +135,16 @@ class MasterTaskParams(TaskParams):
         self.name = self.ID
 
 
+class TaskStatus(Enum):
+    new = 0
+    pending = 1
+    submitted = 2
+    running = 3
+    aborted = 4
+    failed = 5
+    completed = 6
+
+
 class TaskFile(object):
     '''
     The task file has the following format:
@@ -141,20 +152,19 @@ class TaskFile(object):
     1. A binary header with the information of the structure of the file
     with field defined by TaskHeader
     2. compressed pickled param of task
-    2. resource file appended by the worker
-    3. compressed picked result
-    4. compressed stdout
-    5. compressed stderr
-    7. pickled result
-    8. signatures
+    3. compressed pulse file
+    4. compressed pickled result
+    5. compressed stdout
+    6. compressed stderr
+    7. compressed pickled signatures
     '''
     TaskHeader = namedtuple('TaskHeader',
                             'version status tags '
-                            'creation_time pending_time submitted_time running_time aborted_time failed_time completed_time last_modified '
+                            'new_time pending_time submitted_time running_time aborted_time failed_time completed_time last_modified '
                             'params_size pulse_size stdout_size stderr_size result_size signature_size'
                             )
 
-    header_fmt = '!i 10s 128s 8d 6i'
+    header_fmt = '!2i 128s 8d 6i'
     header_size = struct.calcsize(header_fmt)
 
     def __init__(self, task_id: str):
@@ -175,9 +185,9 @@ class TaskFile(object):
         params_block = lzma.compress(pickle.dumps(params))
         header = self.TaskHeader(
             version=1,
-            status=b'new       ',
+            status=TaskStatus.new.value,
             tags=' '.join(sorted(tags)).ljust(128).encode(),
-            creation_time=now,
+            new_time=now,
             pending_time=0,
             running_time=0,
             submitted_time=0,
@@ -202,8 +212,8 @@ class TaskFile(object):
             header = self._read_header(fh)
             now = time.time()
             header = header._replace(
-                status=b'pending   ',
-                creation_time=now,
+                status=TaskStatus.pending.value,
+                new_time=now,
                 pending_time=0,
                 submitted_time=0,
                 running_time=0,
@@ -227,8 +237,8 @@ class TaskFile(object):
         header = self._read_header(fh)
         now = time.time()
         header = header._replace(
-            status=b'new       ',
-            creation_time=now,
+            status=TaskStatus.new.value,
+            new_time=now,
             pending_time=0,
             submitted_time=0,
             running_time=0,
@@ -348,7 +358,7 @@ class TaskFile(object):
     def _get_status(self):
         with open(self.task_file, 'rb') as fh:
             fh.seek(4, 0)
-            return fh.read(10).decode().strip()
+            return TaskStatus(struct.unpack('i', fh.read(4))[0]).name
 
     def _set_status(self, status):
         with open(self.task_file, 'r+b') as fh:
@@ -356,27 +366,27 @@ class TaskFile(object):
             now = time.time()
             if status == 'pending':
                 header = header._replace(
-                    status=status.ljust(10).encode(),
+                    status=TaskStatus[status].value,
                     pending_time=now, last_modified=now)
             elif status == 'submitted':
                 header = header._replace(
-                    status=status.ljust(10).encode(),
+                    status=TaskStatus[status].value,
                     submitted_time=now, last_modified=now)
             elif status == 'running':
                 header = header._replace(
-                    status=status.ljust(10).encode(),
+                    status=TaskStatus[status].value,
                     running_time=now, last_modified=now)
             elif status == 'failed':
                 header = header._replace(
-                    status=status.ljust(10).encode(),
+                    status=TaskStatus[status].value,
                     failed_time=now, last_modified=now)
             elif status == 'aborted':
                 header = header._replace(
-                    status=status.ljust(10).encode(),
+                    status=TaskStatus[status].value,
                     aborted_time=now, last_modified=now)
             elif status == 'completed':
                 header = header._replace(
-                    status=status.ljust(10).encode(),
+                    status=TaskStatus[status].value,
                     completed_time=now, last_modified=now)
             else:
                 raise RuntimeError(f'Unrecognized task status: {status}')
@@ -386,20 +396,20 @@ class TaskFile(object):
 
     def _get_tags(self):
         with open(self.task_file, 'rb') as fh:
-            fh.seek(14, 0)
+            fh.seek(8, 0)
             return fh.read(128).decode().strip()
 
     def _set_tags(self, tags: list):
         with open(self.task_file, 'r+b') as fh:
-            fh.seek(14, 0)
+            fh.seek(8, 0)
             fh.write(' '.join(
                 sorted(tags)).ljust(128).encode())
 
     def add_tags(self, tags: list):
         with open(self.task_file, 'r+b') as fh:
-            fh.seek(14, 0)
+            fh.seek(8, 0)
             existing_tags = fh.read(128).decode().strip()
-            fh.seek(14, 0)
+            fh.seek(8, 0)
             fh.write(' '.join(
                 sorted(tags + existing_tags.split())).ljust(128).encode())
 
@@ -483,7 +493,7 @@ class TaskFile(object):
         with open(self.task_file, 'rb') as fh:
             header = self._read_header(fh)
         tags = header.tags.decode().strip()
-        ct = header.creation_time
+        ct = header.new_time
         if header.running_time != 0:
             st = header.running_time
             dr = header.last_modified - st
