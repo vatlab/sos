@@ -133,8 +133,8 @@ class TaskEngine(threading.Thread):
                     tid, _, ct, st, dr, tst = line.split('\t')
                     # for some reason on windows there can be a \r at the end
                     self.task_status[tid] = tst.strip()
-                    self.task_date[tid] = (float(ct), float(
-                        st) if st else 0, float(dr) if dr else 0)
+                    self.task_date[tid] = [float(ct), float(
+                        st) if st else 0, float(dr) if dr else 0]
                 except Exception as e:
                     env.logger.warning(
                         f'Unrecognized response "{line}" ({e.__class__.__name__}): {e}')
@@ -325,9 +325,14 @@ class TaskEngine(threading.Thread):
                         ['pulse-status', self.agent.alias, task_id, status,
                          self.task_date.get(task_id, (None, None, None))])
                 else:
+                    if status == 'running':
+                        if task_id not in self.task_date:
+                            self.task_date = [time.time(), time.time(), 0]
+                        else:
+                            self.task_date[task_id][1] = time.time()
                     self.notify(
                         ['change-status', self.agent.alias, task_id, status,
-                            self.task_date.get(task_id, (None, None, None))])
+                            self.task_date[task_id]])
             self.task_status[task_id] = status
             if status == 'pening' and task_id not in self.pending_tasks:
                 self.pending_tasks.append(task_id)

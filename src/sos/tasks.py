@@ -18,7 +18,7 @@ from collections.abc import Sequence
 
 from .utils import (env, expand_time, linecount_of_file, sample_lines, log_to_file,
                     short_repr, tail_of_file, expand_size, format_HHMMSS,
-                    DelayedAction, format_relative_time, format_duration)
+                    DelayedAction, format_duration)
 from .targets import sos_targets
 
 monitor_interval = 5
@@ -487,13 +487,13 @@ class TaskFile(object):
             else:
                 dr = header.last_modified - st
         else:
-            return tags, ('Created ' + format_relative_time(time.time() - ct)) \
+            return tags, ('Created ' + format_duration(time.time() - ct, True) + ' ago') \
                 if formatted else ct, '', ''
         if not formatted:
             return tags, ct, st, dr
         #
-        return tags, 'Created ' + format_relative_time(time.time() - ct), \
-            'Started ' + format_relative_time(time.time() - st), \
+        return tags, 'Created ' + format_duration(time.time() - ct, True) + ' ago', \
+            'Started ' + format_duration(time.time() - st) + ' ago', \
             'Ran for ' + format_duration(int(dr))
 
 
@@ -747,7 +747,7 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, numeric_times=F
     #
     if html:
         # HTML output
-        from .utils import format_relative_time, isPrimitive
+        from .utils import isPrimitive
         from .monitor import summarizeExecution
         import pprint
         print('<table width="100%" class="resource_table">')

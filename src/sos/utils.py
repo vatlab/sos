@@ -770,16 +770,6 @@ def dict_merge(dct, merge_dct):
             dct[k] = v
 
 
-def format_relative_time(time_diff_secs):
-    secs = int(time_diff_secs)
-    rec = [
-        (secs // (3600 * 24), 'day'),
-        (secs % (3600 * 24) // 3600, 'hr'),
-        (secs % 3600 // 60, 'min'),
-        (secs % 60, 'sec')]
-    txt = [f'{x} {y}' for x, y in rec if x > 0]
-    return txt[0] + ' ago' if txt else 'just now'
-
 # display file size in K, M, G etc automatically. Code copied from
 # http://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
 # for its compact size
@@ -1218,22 +1208,15 @@ def load_config_files(filename=None):
     return cfg
 
 
-def format_duration(seconds: int):
-    res = []
-    day = seconds // 86400
-    if day > 0:
-        res.append(f'{day} day')
-    hh = (seconds % 86400) // 3600
-    if hh > 0:
-        res.append(f'{hh} hr')
-    mm = (seconds % 3600) // 60
-    if mm > 0:
-        res.append(f'{mm} min')
-    ss = seconds % 60
-    if ss > 0:
-        res.append(f'{ss} sec')
-    res = ' '.join(res)
-    return res if res else "0 sec"
+def format_duration(time_diff_secs, short=True):
+    secs = int(time_diff_secs)
+    rec = [
+        (secs // (3600 * 24), 'day'),
+        (secs % (3600 * 24) // 3600, 'hr'),
+        (secs % 3600 // 60, 'min'),
+        (secs % 60, 'sec')]
+    txt = [f'{x} {y}' for x, y in rec if x > 0]
+    return (txt[0] if short else ' '.join(txt)) if txt else '0s'
 
 
 def format_HHMMSS(v):
