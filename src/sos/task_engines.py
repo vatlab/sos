@@ -294,12 +294,18 @@ class TaskEngine(threading.Thread):
         env.logger.debug(
             ' '.join(f'{x}: {y}' for x, y in statuses.items()))
 
-    def check_task_status(self, task_id, unknown='pending'):
+    def check_task_status(self, task_id, unknown='pending', with_time_stamps=False):
         # we wait for the engine to start
         self.engine_ready.wait()
         try:
             with threading.Lock():
-                return (self.task_status[task_id], self.task_date.get(task_id, (None, None, None)))
+                # it is really a bad idea to return inconsistent types of data
+                # but I do not want to create a separate function just for a
+                # special usage.
+                if with_time_stamps:
+                    return (self.task_status[task_id], self.task_date.get(task_id, (None, None, None)))
+                else:
+                    return self.task_status[task_id]
         except Exception:
             # job not yet submitted
             return unknown
