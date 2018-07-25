@@ -133,7 +133,8 @@ class TaskEngine(threading.Thread):
                     tid, _, ct, st, dr, tst = line.split('\t')
                     # for some reason on windows there can be a \r at the end
                     self.task_status[tid] = tst.strip()
-                    self.task_date[tid] = (float(ct), float(st), float(dr))
+                    self.task_date[tid] = (float(ct), float(
+                        st) if st else 0, float(dr) if dr else 0)
                 except Exception as e:
                     env.logger.warning(
                         f'Unrecognized response "{line}" ({e.__class__.__name__}): {e}')
