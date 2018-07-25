@@ -186,17 +186,17 @@ class TaskEngine(threading.Thread):
                                         # task is canceled while being prepared
                                         self.notify(
                                             ['change-status', self.agent.alias, tid, 'aborted',
-                                             self.task_date.get(task_id, (None, None, None))])
+                                             self.task_date.get(tid, (None, None, None))])
                                     else:
                                         self.running_tasks.append(tid)
                                         self.notify(
                                             ['change-status', self.agent.alias, tid, 'submitted',
-                                             self.task_date.get(task_id, (None, None, None))])
+                                             self.task_date.get(tid, (None, None, None))])
                             else:
                                 for tid in k:
                                     self.notify(
                                         ['change-status', self.agent.alias, tid, 'failed',
-                                         self.task_date.get(task_id, (None, None, None))])
+                                         self.task_date.get(tid, (None, None, None))])
                                     self.task_status[tid] = 'failed'
                         # else:
                         #    env.logger.trace('{} is still being submitted.'.format(k))
