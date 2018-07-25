@@ -474,7 +474,11 @@ class TaskFile(object):
     def tags_created_start_and_duration(self, formatted=False):
         with open(self.task_file, 'rb') as fh:
             header = self._read_header(fh)
-        tags = header.tags.decode().strip()
+        try:
+            tags = header.tags.decode().strip()
+        except:
+            raise ValueError(
+                f'{self.task_file} is in a format that is no longer supported.')
         ct = header.new_time
         if header.running_time != 0:
             st = header.running_time
