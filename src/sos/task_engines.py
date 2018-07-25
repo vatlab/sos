@@ -109,8 +109,8 @@ class TaskEngine(threading.Thread):
         return sorted([(x, self.task_status[x], self.task_date.get(x, (time.time(), None, None))) for x in tasks
                        if (status is None or self.task_status[x] in status) and
                        (age is None or
-                        ((age > 0 and time.time() - self.task_date.get(x, (time.time(), 0, 0))[0] > age)
-                         or (age < 0 and time.time() - self.task_date.get(x, (time.time(), 0, 0))[0] < -age)))],
+                        ((age > 0 and time.time() - self.task_date.get(x, (time.time(), None, None))[0] > age)
+                         or (age < 0 and time.time() - self.task_date.get(x, (time.time(), None, None))[0] < -age)))],
                       key=lambda x: -x[2])
 
     def get_tasks(self):
@@ -252,7 +252,7 @@ class TaskEngine(threading.Thread):
                     self.running_tasks.append(task_id)
                     self.notify(f'{task_id} ``already runnng``')
                     self.notify(['new-status', self.agent.alias, task_id, 'running',
-                                 self.task_date.get(task_id, (time.time(), time.time(), None))])
+                                 self.task_date.get(task_id, (None, time.time(), None))])
                     return 'running'
                 # there is a case when the job is already completed (complete-old), but
                 # because we do not know if the user asks to rerun (-s force), we have to

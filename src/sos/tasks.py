@@ -371,7 +371,7 @@ class TaskFile(object):
             # update status and last modified
             fh.write(struct.pack('!hd', sts, now))
             # from the current location, move by status
-            fh.seek(sts * 4, 1)
+            fh.seek(sts * 8, 1)
             fh.write(struct.pack('!d', now))
 
     status = property(_get_status, _set_status)
@@ -482,7 +482,10 @@ class TaskFile(object):
         ct = header.new_time
         if header.running_time != 0:
             st = header.running_time
-            dr = header.last_modified - st
+            if TaskStatus(header.status) == TaskStatus.running:
+                dr = time.time() - st
+            else:
+                dr = header.last_modified - st
         else:
             return tags, ('Created ' + format_relative_time(time.time() - ct)) \
                 if formatted else ct, '', ''
@@ -775,7 +778,7 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, numeric_times=F
             row('Task')
             row(td=f'<pre style="text-align:left">{params.task}</pre>')
             row('Tags')
-            row(td=f'<pre style="text-align:left">{" ".join(tf.tags)}</pre>')
+            row(td=f'<pre style="text-align:left">{tf.tags}</pre>')
             if params.global_def:
                 row('Global')
                 row(
@@ -988,11 +991,11 @@ showResourceFigure_''' + t + '''()
             ts, ct, st, dr = tf.tags_created_start_and_duration(
                 formatted=True)
             print(f'{t}\t{s}\n')
-            print(f'Created {ct}')
+            print(f'{ct}')
             if st:
-                print(f'Started {st}')
+                print(f'{st}')
             if dr:
-                print(f'Ran {dr}')
+                print(f'{dr}')
             params = tf.params
             print('TASK:\n=====')
             print(params.task)
