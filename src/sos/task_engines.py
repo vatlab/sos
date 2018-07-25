@@ -185,15 +185,18 @@ class TaskEngine(threading.Thread):
                                     if tid in self.canceled_tasks:
                                         # task is canceled while being prepared
                                         self.notify(
-                                            ['change-status', self.agent.alias, tid, 'aborted'])
+                                            ['change-status', self.agent.alias, tid, 'aborted',
+                                             self.task_date.get(task_id, (None, None, None))])
                                     else:
                                         self.running_tasks.append(tid)
                                         self.notify(
-                                            ['change-status', self.agent.alias, tid, 'submitted'])
+                                            ['change-status', self.agent.alias, tid, 'submitted',
+                                             self.task_date.get(task_id, (None, None, None))])
                             else:
                                 for tid in k:
                                     self.notify(
-                                        ['change-status', self.agent.alias, tid, 'failed'])
+                                        ['change-status', self.agent.alias, tid, 'failed',
+                                         self.task_date.get(task_id, (None, None, None))])
                                     self.task_status[tid] = 'failed'
                         # else:
                         #    env.logger.trace('{} is still being submitted.'.format(k))
@@ -296,7 +299,7 @@ class TaskEngine(threading.Thread):
         self.engine_ready.wait()
         try:
             with threading.Lock():
-                return self.task_status[task_id]
+                return (self.task_status[task_id], self.task_date.get(task_id, (None, None, None)))
         except Exception:
             # job not yet submitted
             return unknown
@@ -313,10 +316,12 @@ class TaskEngine(threading.Thread):
             if status != 'missing':
                 if task_id in self.task_status and self.task_status[task_id] == status:
                     self.notify(
-                        ['pulse-status', self.agent.alias, task_id, status])
+                        ['pulse-status', self.agent.alias, task_id, status,
+                         self.task_date.get(task_id, (None, None, None))])
                 else:
                     self.notify(
-                        ['change-status', self.agent.alias, task_id, status])
+                        ['change-status', self.agent.alias, task_id, status,
+                            self.task_date.get(task_id, (None, None, None))])
             self.task_status[task_id] = status
             if status == 'pening' and task_id not in self.pending_tasks:
                 self.pending_tasks.append(task_id)
