@@ -327,12 +327,13 @@ class TaskEngine(threading.Thread):
                 else:
                     if status == 'running':
                         if task_id not in self.task_date:
-                            self.task_date = [time.time(), time.time(), 0]
+                            self.task_date[task_id] = [
+                                time.time(), time.time(), 0]
                         else:
                             self.task_date[task_id][1] = time.time()
                     self.notify(
                         ['change-status', self.agent.alias, task_id, status,
-                            self.task_date[task_id]])
+                            self.task_date.get(task_id, (None, None, None))])
             self.task_status[task_id] = status
             if status == 'pening' and task_id not in self.pending_tasks:
                 self.pending_tasks.append(task_id)
