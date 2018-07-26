@@ -31,7 +31,7 @@ from .targets import (BaseTarget, RemovedTarget, RuntimeInfo, UnavailableLock,
                       UnknownTarget, dynamic, file_target, path, paths, remote,
                       sos_targets, sos_step)
 from .tasks import MasterTaskParams, TaskParams, TaskFile
-from .utils import (SlotManager, StopInputGroup, TerminateExecution, env,
+from .utils import (SlotManager, StopInputGroup, TerminateExecution, ArgumentError, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr)
 
 __all__ = []
@@ -418,6 +418,8 @@ def concurrent_execute(stmt, proc_vars={}, sig=None, capture_output=False):
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res
+    except ArgumentError as e:
+        return {'ret_code': 1, 'exception': e}
     except Exception as e:
         error_class = e.__class__.__name__
         cl, exc, tb = sys.exc_info()
@@ -1133,6 +1135,8 @@ class Base_Step_Executor:
             raise
         except subprocess.CalledProcessError as e:
             raise RuntimeError(e.stderr)
+        except ArgumentError:
+            raise
         except Exception as e:
             error_class = e.__class__.__name__
             cl, exc, tb = sys.exc_info()
