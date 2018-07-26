@@ -403,6 +403,15 @@ output: f"{A}.txt"
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['res'], ['2.txt', '4.txt'])
 
+    def testGroupByWithNoInput(self):
+        '''Test group_by with no input file'''
+        script = SoS_Script(r'''
+[0]
+input: group_by=2
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
     def testPairedWith(self):
         '''Test option paired_with '''
         self.touch(['a.txt', 'b.txt'])

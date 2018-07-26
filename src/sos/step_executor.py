@@ -793,6 +793,9 @@ class Base_Step_Executor:
         if 'group_by' in kwargs:
             _groups = Base_Step_Executor.handle_group_by(
                 sos_targets(ifiles), kwargs['group_by'])
+            if not _groups:
+                env.logger.debug('No group defined because of no input file')
+                _groups = [[]]
         else:
             _groups = [sos_targets(ifiles)]
         #
