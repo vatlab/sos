@@ -33,6 +33,7 @@ class TaskEngine(threading.Thread):
         self.engine_ready = threading.Event()
 
         self.running_tasks = []
+        self.monitoring_tasks = []
         self.pending_tasks = []
         self.submitting_tasks = {}
         self.canceled_tasks = []
@@ -145,7 +146,7 @@ class TaskEngine(threading.Thread):
             if self.running_tasks and time.time() - self._last_status_check > self.status_check_interval:
                 if self._status_checker is None:
                     self._status_checker = self._thread_workers.submit(
-                        self.query_tasks, self.running_tasks, 1)
+                        self.query_tasks, self.running_tasks + self.monitoring_tasks, 1)
                     continue
                 elif self._status_checker.running():
                     time.sleep(0.01)
@@ -299,6 +300,15 @@ class TaskEngine(threading.Thread):
         self.engine_ready.wait()
         try:
             with threading.Lock():
+                # if a client check status, we assume that it also needs constant update
+                # for non-terminal status. But if it is in other states (e.g. submitted),
+                # we should just monitor but not submit by ourselves.
+                if self.task_status[task_id] == 'running':
+                    if task_id not in self.running_tasks:
+                        self.running_tasks.append(task_id)
+                elif self.task_status[task_id] in ('new', 'pending', 'submitted'):
+                    if task_id not in self.pending_tasks and task_id not in self.submitting_tasks:
+                        self.monitoring_tasks.append(task_id)
                 # it is really a bad idea to return inconsistent types of data
                 # but I do not want to create a separate function just for a
                 # special usage.
