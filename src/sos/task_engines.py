@@ -33,7 +33,6 @@ class TaskEngine(threading.Thread):
         self.engine_ready = threading.Event()
 
         self.running_tasks = []
-        self.monitoring_tasks = []
         self.pending_tasks = []
         self.submitting_tasks = {}
         self.canceled_tasks = []
@@ -92,7 +91,6 @@ class TaskEngine(threading.Thread):
     def monitor_tasks(self, tasks=None, status=None, age=None):
         '''Start monitoring specified or all tasks'''
         self.engine_ready.wait()
-
         if not tasks:
             tasks = self.task_status.keys()
         else:
@@ -112,7 +110,7 @@ class TaskEngine(threading.Thread):
                        (age is None or
                         ((age > 0 and time.time() - self.task_date.get(x, (time.time(), None, None))[0] > age)
                          or (age < 0 and time.time() - self.task_date.get(x, (time.time(), None, None))[0] < -age)))],
-                      key=lambda x: -x[2])
+                      key=lambda x: -x[2][0])
 
     def get_tasks(self):
         with threading.Lock():
@@ -146,7 +144,7 @@ class TaskEngine(threading.Thread):
             if self.running_tasks and time.time() - self._last_status_check > self.status_check_interval:
                 if self._status_checker is None:
                     self._status_checker = self._thread_workers.submit(
-                        self.query_tasks, self.running_tasks + self.monitoring_tasks, 1)
+                        self.query_tasks, self.running_tasks, 1)
                     continue
                 elif self._status_checker.running():
                     time.sleep(0.01)
@@ -295,27 +293,12 @@ class TaskEngine(threading.Thread):
         env.logger.debug(
             ' '.join(f'{x}: {y}' for x, y in statuses.items()))
 
-    def check_task_status(self, task_id, unknown='pending', with_time_stamps=False):
+    def check_task_status(self, task_id, unknown='pending'):
         # we wait for the engine to start
         self.engine_ready.wait()
         try:
             with threading.Lock():
-                # if a client check status, we assume that it also needs constant update
-                # for non-terminal status. But if it is in other states (e.g. submitted),
-                # we should just monitor but not submit by ourselves.
-                if self.task_status[task_id] == 'running':
-                    if task_id not in self.running_tasks:
-                        self.running_tasks.append(task_id)
-                elif self.task_status[task_id] in ('new', 'pending', 'submitted'):
-                    if task_id not in self.pending_tasks and task_id not in self.submitting_tasks:
-                        self.monitoring_tasks.append(task_id)
-                # it is really a bad idea to return inconsistent types of data
-                # but I do not want to create a separate function just for a
-                # special usage.
-                if with_time_stamps:
-                    return (self.task_status[task_id], self.task_date.get(task_id, (None, None, None)))
-                else:
-                    return self.task_status[task_id]
+                return self.task_status[task_id]
         except Exception:
             # job not yet submitted
             return unknown
