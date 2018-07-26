@@ -1457,10 +1457,11 @@ class Base_Step_Executor:
                                                     '_input', sos_targets(matched['input']))
                                                 env.sos_dict.set(
                                                     '_depends', sos_targets(matched['depends']))
-                                                env.sos_dict.set(
-                                                    '_output', sos_targets(matched['output']))
-                                                env.sos_dict['step_output'].extend(
-                                                    env.sos_dict['_output'])
+                                                if not env.sos_dict['_output'].determined():
+                                                    env.sos_dict.set(
+                                                        '_output', sos_targets(matched['output']))
+                                                    env.sos_dict['step_output'].extend(
+                                                        env.sos_dict['_output'])
                                                 env.sos_dict.update(
                                                     matched['vars'])
                                                 env.logger.info(
