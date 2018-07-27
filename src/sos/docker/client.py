@@ -156,12 +156,12 @@ class SoS_DockerClient:
             if script:
                 with open(os.path.join(tempdir, 'Dockerfile'), 'w') as df:
                     df.write(script)
-                file_opt = [f'{path(tempdir):p}']
+                file_opt = [tempdir]
             else:
                 if 'file' not in kwargs:
                     raise RuntimeError(
                         'Docker file must be specified with option file if not directly included.')
-                file_opt = ['--file', f"{path(kwargs['file']):p}"]
+                file_opt = ['--file', kwargs['file']]
 
             other_opts = []
             for arg, value in kwargs.items():
@@ -194,7 +194,7 @@ class SoS_DockerClient:
                 if script:
                     debug_script_dir = os.path.join(env.exec_dir, '.sos')
                     msg = 'The Dockerfile has been saved to {}/Dockerfile. To reproduce the error please run:\n``{}``'.format(
-                        debug_script_dir, cmd.replace(f'{path(tempdir):p}', f'{path(debug_script_dir):p}'))
+                        debug_script_dir, cmd.replace(tempdir, path(debug_script_dir)))
                     shutil.copy(os.path.join(
                         tempdir, 'Dockerfile'), debug_script_dir)
                 else:

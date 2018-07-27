@@ -149,11 +149,15 @@ echo 'Echo
     def testDockerBuildLinuxImage(self):
         '''Test action docker build'''
         script = SoS_Script(r'''
-# Indicates that the windowsservercore image will be used as the base image.
-FROM microsoft/windowsservercore
+#
+# Super simple example of a Dockerfile
+#
+FROM ubuntu:latest
+MAINTAINER Andrew Odewahn "odewahn@oreilly.com"
 
-# Metadata indicating an image maintainer.
-MAINTAINER someone@microsoft.com
+RUN apt-get update
+
+WORKDIR /home
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -178,15 +182,12 @@ WORKDIR /home
         script = SoS_Script(r'''
 [0]
 docker_build:  tag='test/docker_build'
-#
-# Super simple example of a Dockerfile
-#
-FROM ubuntu:latest
-MAINTAINER Andrew Odewahn "odewahn@oreilly.com"
+# Indicates that the windowsservercore image will be used as the base image.
+FROM microsoft/windowsservercore
 
-RUN apt-get update
+# Metadata indicating an image maintainer.
+MAINTAINER someone@microsoft.com
 
-WORKDIR /home
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
