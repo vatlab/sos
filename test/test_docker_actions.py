@@ -149,6 +149,8 @@ echo 'Echo
     def testDockerBuildLinuxImage(self):
         '''Test action docker build'''
         script = SoS_Script(r'''
+[0]
+docker_build:  tag='test/docker_build'
 #
 # Super simple example of a Dockerfile
 #
