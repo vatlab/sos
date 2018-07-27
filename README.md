@@ -49,6 +49,8 @@ other kernels. Please refer to [the installation page of sos website](https://va
 
 ### Change Log of SoS and SoS Notebook
 
+SoS 0.9.16.0, SoS Notebook 0.9.16.0
+* [sos#991](https://github.com/vatlab/SoS/issues/991): Use a new task file format to replace multiple files for each task. **This change is not backward compatible so please upgrade only after you completed and removed all existing tasks.**
 
 SoS 0.9.15.1
 * [sos-notebook#89](https://github.com/vatlab/sos-notebook/issues/89): Added templates to highlight source code using codemirror, with optional auto-generated table of contents.
