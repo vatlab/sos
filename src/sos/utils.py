@@ -1416,14 +1416,17 @@ def remove_arg(argv, arg):
 
 def pexpect_run(cmd, shell=False, win_width=None):
     if sys.platform == 'win32':
-        import subprocess
-        child = subprocess.Popen(cmd, shell=shell or isinstance(cmd, str), stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, bufsize=0)
-
-        out, err = child.communicate()
-        sys.stdout.write(out.decode())
-        sys.stderr.write(err.decode())
-        return child.returncode
+        import pexpect
+        import pexpect.popen_spawn as ps
+        child = ps.PopenSpawn(cmd)
+        while True:
+            try:
+                child.expect('\n')
+                if env.verbosity > 0:
+                    sys.stdout.write(child.before.decode() + '\n')
+            except pexpect.EOF:
+                break
+        return child.wait()
     else:
         import pexpect
         import subprocess
