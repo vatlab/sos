@@ -84,10 +84,9 @@ class Visualizer:
 
         tid = self.get_tid('table')
 
-        # if the user already specified a value other than 200, we do not display the warning
-        if args.limit >= 0 and df.shape[0] > args.limit and args.limit == 200 and self.kernel:
-            self.kernel.warn(
-                f"Only the first {args.limit} of the {df.shape[0]} records are previewed. Use option --limit to set a new limit.")
+        hint = ''
+        if args.limit >= 0 and df.shape[0] > args.limit and args.limit == 200:
+            hint += f'<div class="sos_hint">Only the first {args.limit} of the {df.shape[0]} records are previewed. Use option --limit to set a new limit.</div><br>'
         if args.limit >= 0:
             code = df.head(args.limit).to_html(index=True).replace('class="',
                                                                    f'id="dataframe_{tid}" class="sos_dataframe ', 1)
@@ -96,8 +95,10 @@ class Visualizer:
                 'class="', f'id="dataframe_{tid}" class="sos_dataframe ', 1)
 
         hr, rest = code.split('</tr>', 1)
-        index_type = 'numeric' if isinstance(df.index, pandas.RangeIndex) else 'alphabetic'
-        col_type = ['numeric' if self._is_numeric_type(x) else 'alphabetic' for x in df.dtypes]
+        index_type = 'numeric' if isinstance(
+            df.index, pandas.RangeIndex) else 'alphabetic'
+        col_type = ['numeric' if self._is_numeric_type(
+            x) else 'alphabetic' for x in df.dtypes]
         code = ''.join('''{} &nbsp; <i class="fa fa-sort" style="color:lightgray" onclick="sortDataFrame('{}', {}, '{}')"></th>'''.format(x,
                                                                                                                                           tid, idx,
                                                                                                                                           index_type if idx == 0 else col_type[idx - 1]) if '<th' in x else x for idx, x in enumerate(hr.split('</th>'))) + '</tr>' + rest
@@ -107,9 +108,9 @@ class Visualizer:
         code = f"""
     <div class='dataframe_container' style="max-height:400px">
     <input type="text" class='dataframe_input' id="search_{tid}" """ + \
-               f"""onkeyup="filterDataFrame('{tid}""" + """')" placeholder="Search for names..">
+            f"""onkeyup="filterDataFrame('{tid}""" + """')" placeholder="Search for names..">
     """ + code + '''</div>'''
-        return {'text/html': code}
+        return {'text/html': hint + code}
 
     #
     # SCATTERPLOT
@@ -125,8 +126,10 @@ class Visualizer:
         parser.add_argument('--xlim', nargs=2, help='''Range of x-axis''')
         parser.add_argument('--log', choices=['x', 'y', 'xy', 'yx'],
                             help='''Make x-axis, y-axis, or both to logarithmic''')
-        parser.add_argument('--width', default='50vw', help='''Width of the plot.''')
-        parser.add_argument('--height', default='38vw', help='''Height of the plot.''')
+        parser.add_argument('--width', default='50vw',
+                            help='''Width of the plot.''')
+        parser.add_argument('--height', default='38vw',
+                            help='''Height of the plot.''')
         parser.add_argument('-b', '--by', nargs='+',
                             help='''columns by which the data points are stratified.''')
         parser.add_argument('--show', nargs='+', help='''What to show in the plot,
@@ -168,13 +171,14 @@ class Visualizer:
 
         tid = str(self.get_tid('scatterplot'))
 
-        if df.shape[0] > args.limit and self.kernel:
-            self.kernel.warn(
-                f"Only the first {args.limit} of the {df.shape[0]} records are plotted. Use option --limit to set a new limit.")
+        hint: str = ''
+        if df.shape[0] > args.limit:
+            hint += f'<div class="sos_hint">Only the first {args.limit} of the {df.shape[0]} records are plotted. Use option --limit to set a new limit.</div><br>'
 
         # replacing ' ' with &nbsp and '-' with unicode hyphen will disallow webpage to separate words
         # into lines
-        indexes = [str(x).replace(' ', '&nbsp;').replace('-', '&#8209;') for x in df.index]
+        indexes = [str(x).replace(' ', '&nbsp;').replace(
+            '-', '&#8209;') for x in df.index]
 
         data = df.head(args.limit)
         nrow = data.shape[0]
@@ -192,9 +196,11 @@ class Visualizer:
             args.cols = ['_index', args.cols[0]]
 
         if args.cols[0] == '_index':
-            args.tooltip = [args.cols[0]] + (args.tooltip if args.tooltip else [])
+            args.tooltip = [args.cols[0]] + \
+                (args.tooltip if args.tooltip else [])
         else:
-            args.tooltip = ['_index', args.cols[0]] + (args.tooltip if args.tooltip else [])
+            args.tooltip = ['_index', args.cols[0]] + \
+                (args.tooltip if args.tooltip else [])
 
         # check datatype
         for col in args.cols + args.tooltip + (args.by if args.by else []):
@@ -246,7 +252,8 @@ class Visualizer:
                 for cat in categories:
                     series = {}
                     series['label'] = col + \
-                        ' (' + ' '.join(f'{x}={y}' for x, y in zip(args.by, cat)) + ')'
+                        ' (' + ' '.join(f'{x}={y}' for x,
+                                        y in zip(args.by, cat)) + ')'
                     # find index of values that falls into the category
                     series['data'] = [
                         all_data[i] for i in range(len(all_data)) if
@@ -272,7 +279,8 @@ class Visualizer:
         # if there are actual indexes... and plot by x
         class_name = 'scatterplot'
         if args.cols[0] == '_index' and not isinstance(df.index, pandas.RangeIndex):
-            options['xaxis']['ticks'] = [[x, str(y)] for x, y in enumerate(indexes)]
+            options['xaxis']['ticks'] = [
+                [x, str(y)] for x, y in enumerate(indexes)]
             class_name = 'scatterplot_by_rowname'
 
         if args.xlim:
@@ -364,4 +372,4 @@ function showFigure""" + tid + """() {
 showFigure""" + tid + """()
 </script>
 </div>"""
-        return {'text/html': code}
+        return {'text/html': hint + code}

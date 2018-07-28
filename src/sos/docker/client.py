@@ -184,7 +184,7 @@ class SoS_DockerClient:
 
             env.logger.debug(cmd)
             if env.config['run_mode'] == 'dryrun':
-                print(f'sos:: {cmd}')
+                print(f'HINT: {cmd}')
                 print(script)
                 return 0
 
@@ -223,7 +223,7 @@ class SoS_DockerClient:
         # if image is specified, check if it is available locally. If not, pull it
         ret = 0
         if not self._is_image_avail(image):
-            env.logger.info('docker pull {}'.format(image))
+            print(f'HINT: Pulling docker image {image}')
             ret = subprocess.call('docker pull {}'.format(image), shell=True)
         if not self._is_image_avail(image):
             raise RuntimeError('Failed to pull image {}'.format(image))
@@ -382,7 +382,7 @@ class SoS_DockerClient:
             )
             env.logger.debug(cmd)
             if env.config['run_mode'] == 'dryrun':
-                print(f'sos:: {cmd}')
+                print(f'HINT: {cmd}')
                 print(script)
                 return 0
 

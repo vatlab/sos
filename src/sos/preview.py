@@ -182,8 +182,8 @@ def preview_txt(filename, kernel=None, style=None):
         limit = 5
 
     nlines = linecount_of_file(filename)
-    content = 'sos:: {} lines{}\n'.format(nlines,
-            f' ({limit} displayed, see --limit)' if nlines > limit else '')
+    content = 'HINT: {} lines{}\n'.format(nlines,
+                                          f' ({limit} displayed, see --limit)' if nlines > limit else '')
 
     with open(filename, 'r') as fin:
         if limit < 0:
