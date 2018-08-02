@@ -7,7 +7,7 @@
 #
 # to build it.
 #
-FROM jupyter/datascience-notebook
+FROM jupyter/datascience-notebook:1085ca054a5f
 
 MAINTAINER Bo Peng <bpeng@mdanderson.org>
 
@@ -24,7 +24,6 @@ RUN     apt-get install -y octave
 RUN     apt-get purge --auto-remove nodejs npm node
 RUN     rm -rf ~/.nvm 
 RUN     apt-get install -y nodejs-legacy npm
-RUN     npm install -g ijavascript
 
 RUN     apt-get install -y libgmp3-dev
 RUN     apt-get install -y software-properties-common
@@ -51,6 +50,7 @@ RUN     python -m octave_kernel install --user
 
 #       JavaScript
 RUN     npm rebuild
+RUN     npm install -g ijavascript
 RUN     ijsinstall --spec-path=full
 
 #        Julia
