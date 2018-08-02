@@ -1269,6 +1269,23 @@ depends: a
         # but the file would be removed afterwards
         self.assertFalse(os.path.isfile('1.txt'))
 
+    def testDryrunInSosRun(self):
+        '''Test dryrun mode with sos_run #1007'''
+        file_target('1.txt').touch()
+        script = SoS_Script('''
+[remove]
+run:
+  rm 1.txt
+
+[default]
+sos_run('remove')
+''')
+        wf = script.workflow()
+        res = Base_Executor(wf).run(mode='dryrun')
+        self.assertTrue(os.path.isfile('1.txt'))
+        res = Base_Executor(wf).run(mode='run')
+        self.assertFalse(os.path.isfile('1.txt'))
+
 
 if __name__ == '__main__':
     unittest.main()

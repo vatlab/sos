@@ -1006,7 +1006,7 @@ class Base_Executor:
         if env.config['run_mode'] == 'dryrun':
             remove_placeholders(env.sos_dict['workflow_id'])
 
-    def run(self, targets: Optional[List[str]]=None, parent_pipe: None=None, my_workflow_id: None=None, mode: str='run') -> Dict[str, Any]:
+    def run(self, targets: Optional[List[str]]=None, parent_pipe: None=None, my_workflow_id: None=None, mode=None) -> Dict[str, Any]:
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
@@ -1026,7 +1026,8 @@ class Base_Executor:
             return 'Nested' if nested else 'Master'
 
         self.reset_dict()
-        env.config['run_mode'] = mode
+        env.config['run_mode'] = env.config.get(
+            'run_mode', 'run') if mode is None else mode
         # passing run_mode to SoS dict so that users can execute blocks of
         # python statements in different run modes.
         env.sos_dict.set('run_mode', env.config['run_mode'])
