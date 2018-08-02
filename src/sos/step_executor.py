@@ -1554,7 +1554,7 @@ class Base_Step_Executor:
                                     self.worker_pool.apply_async(concurrent_execute, kwds=dict(stmt=statement[1],
                                                                                                proc_vars=proc_vars, sig=signatures[
                                                                                                    idx],
-                                                                                               capture_output=self.run_mode == 'interactive')))
+                                                                                               capture_output=self.run_mode in ('interactive', 'dryrun'))))
                                 # signature will be written by the concurrent executor
                                 signatures[idx] = None
                             else:
