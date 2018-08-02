@@ -1333,7 +1333,7 @@ class Base_Step_Executor:
                 self._substeps, self._vars = self.process_input_args(
                     input_files, **kwargs)
                 self.concurrent_substep = 'concurrent' in kwargs and kwargs['concurrent'] and len(
-                    self._substeps) > 1
+                    self._substeps) > 1 and self.run_mode != 'dryrun'
             except (UnknownTarget, RemovedTarget, UnavailableLock):
                 raise
             except Exception as e:
@@ -1554,7 +1554,7 @@ class Base_Step_Executor:
                                     self.worker_pool.apply_async(concurrent_execute, kwds=dict(stmt=statement[1],
                                                                                                proc_vars=proc_vars, sig=signatures[
                                                                                                    idx],
-                                                                                               capture_output=self.run_mode in ('interactive', 'dryrun'))))
+                                                                                               capture_output=self.run_mode == 'interactive')))
                                 # signature will be written by the concurrent executor
                                 signatures[idx] = None
                             else:
