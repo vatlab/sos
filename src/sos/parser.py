@@ -4,6 +4,7 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import ast
+import builtins
 import copy
 import fnmatch
 import os
@@ -12,6 +13,7 @@ import shutil
 import sys
 import textwrap
 import types
+import typing
 from io import StringIO, TextIOBase
 from tokenize import generate_tokens
 from typing import Any, Dict, List, Optional, Tuple
@@ -22,7 +24,7 @@ from .syntax import (INDENTED, SOS_AS, SOS_CELL, SOS_DIRECTIVE, SOS_DIRECTIVES,
                      SOS_ELIF, SOS_ELSE, SOS_ENDIF, SOS_FORMAT_LINE,
                      SOS_FORMAT_VERSION, SOS_FROM_INCLUDE, SOS_IF, SOS_INCLUDE,
                      SOS_MAGIC, SOS_SECTION_HEADER, SOS_SECTION_NAME,
-                     SOS_SECTION_OPTION, SOS_STRU, SOS_SUBWORKFLOW)
+                     SOS_SECTION_OPTION, SOS_STRU, SOS_SUBWORKFLOW, SOS_ACTION_OPTIONS)
 from .targets import file_target, path, paths, sos_targets, textMD5
 from .utils import Error, env, locate_script, text_repr, format_par
 
@@ -46,26 +48,74 @@ class ParsingError(Error):
         self.message += f'\n\t[line {lineno:2d}]: {line}\n{msg}'
 
 
-def get_type_hint(stmt: str) -> Any:
-    try:
-        ns = {'file_target': file_target, 'sos_targets': sos_targets,
-              'path': path, 'paths': paths}
-        # let us grab the part before =
-        exec(stmt.split('=', 1)[0], ns)
-        # if it can compile, it can be typetrait, or something like
+_action_list = None
+def is_type_hint(stmt: str) -> bool:
+    '''Try to differentiate 
+
+    var: type = value
+
+    with
+
+    action: input = whatever
+
+    '''
+    if stmt.count('=') > 1:
+        return False
+    
+    if ':' not in stmt:
+        return False
+
+    #
+    # action:
+    if not stmt.split(':')[1].strip():
+        return False
+
+    #
+    # action: int
+    #
+    # or 
+    #
+    # input: variable
+    #
+    if '=' not in stmt:
+        action, par = [x.strip() for x in stmt.split(':', 1)]
+    else:
+        # one parameter?
         #
-        # python: input='a'
+        # action: input={'a': b}
         #
-        # where input is recognied
-        #
-        if '__annotations__' in ns and all(not isinstance(x, types.BuiltinFunctionType) and callable(x) for x in ns['__annotations__'].values()):
-            return ns.popitem()[1]
-        return None
-    except:
-        # if cannot compile, not type hint
-        #
-        # python: args='whatever'
-        return None
+        action, par = [x.strip() for x in stmt.split('=', 1)[0].split(':', 1)]
+
+    if action in SOS_DIRECTIVES:
+        return False
+    if par in SOS_ACTION_OPTIONS:
+        return False
+
+    # if par is something like List[Any], or 'classname'
+    if not par.isidentifier():
+        return True
+
+    # if action is a builtin function, such as sort, it cannot be
+    # a variable assignment.
+    if action in dir(builtins):
+        return False
+
+    # if action is registered
+    global _action_list
+    if _action_list is None:
+        import pkg_resources
+        _action_list = [x.name for x in pkg_resources.iter_entry_points(group='sos_actions')]
+    if action in _action_list:
+        return False
+
+    # if par is something like List, Tuple, str
+    if par in dir(typing) or par in dir(builtins):
+        return True
+
+    # if not quite sure???
+    env.logger.debug(f"Failed to tell if '{stmt}' is an assignment with type hint or function in script format. Assuming type hint.")
+    # regular function written in this format?
+    return True
 
 
 def extract_option_from_arg_list(options: str, optname: str, default_value: None) -> Tuple[any, str]:
@@ -424,7 +474,7 @@ class SoS_Step:
             if statement[0] == ':' and statement[1] == 'parameter':
                 if '=' not in statement[2]:
                     if ':' in statement[2]:
-                        if not get_type_hint(statement[2]):
+                        if not is_type_hint(statement[2]):
                             raise ValueError(
                                 f'Invalid type trait in parameter specification {statement[2]}')
                         name, value = statement[2].split(':')
@@ -1147,7 +1197,7 @@ for __n, __v in {repr(name_map)}.items():
             #
             # directive?
             mo = SOS_DIRECTIVE.match(line)
-            if mo and not get_type_hint(line):
+            if mo and not is_type_hint(line):
                 # check previous expression before a new directive
                 if cursect:
                     if not cursect.isValid():
