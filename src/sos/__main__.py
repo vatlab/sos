@@ -1025,7 +1025,7 @@ def cmd_execute(args, workflow_args):
             # preparation.
             status = check_task(task)['status']
             if status == 'running':
-                print(status)
+                print(f'{task} is already running')
                 exit_code.append(1)
                 continue
             # if status == 'completed' and args.__sig_mode__ != 'force':

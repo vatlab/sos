@@ -294,7 +294,9 @@ class TaskFile(object):
             header = header._replace(
                 pulse_size=len(pulse),
                 stdout_size=len(stdout),
-                stderr_size=len(stderr)
+                stderr_size=len(stderr),
+                result_size=0,
+                signature_size=0
             )
             self._write_header(fh, header)
             fh.seek(self.header_size + header.params_size, 0)
@@ -310,7 +312,8 @@ class TaskFile(object):
         with open(self.task_file, 'r+b') as fh:
             header = self._read_header(fh)
             header = header._replace(
-                result_size=len(result_block)
+                result_size=len(result_block),
+                signature_size=0,
             )
             self._write_header(fh, header)
             fh.seek(self.header_size + header.params_size +
@@ -1024,7 +1027,7 @@ showResourceFigure_''' + t + '''()
                     print('standout output:\n================\n' +
                           tf.stdout)
                 if tf.has_stderr():
-                    print('standout output:\n================\n' +
+                    print('standout error:\n================\n' +
                           tf.stderr)
             else:
                 # we have separate pulse, out and err files

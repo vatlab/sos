@@ -312,7 +312,11 @@ class SoS_ExecuteScript:
                 if env.config['run_mode'] == 'dryrun':
                     cmd = interpolate(f'{self.interpreter} {self.args}',
                                       {'filename': path('SCRIPT'), 'script': self.script})
-                    print(f'HINT: {cmd}\n{self.script}\n')
+                    if '__std_out__' in env.sos_dict:
+                        with open(env.sos_dict['__std_out__'], 'a') as so:
+                            so.write(f'HINT: {cmd}\n{self.script}\n')
+                    else:
+                        print(f'HINT: {cmd}\n{self.script}\n')
                     return None
                 cmd = interpolate(f'{self.interpreter} {self.args}',
                                   {'filename': sos_targets(script_file), 'script': self.script})

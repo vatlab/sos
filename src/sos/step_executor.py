@@ -1060,6 +1060,14 @@ class Base_Step_Executor:
                 rep_result['queue'] = queue
                 rep.write(f'task\t{id}\t{rep_result}\n')
         self.task_manager.clear_submitted()
+
+        # if in dryrun mode, we display the output of the dryrun task
+        if env.config['run_mode'] == 'dryrun':
+            tid = list(results.keys())[0]
+            tf = TaskFile(tid)
+            if tf.has_stdout():
+                print(TaskFile(tid).stdout)
+
         for idx, task in enumerate(self.proc_results):
             # if it is done
             if isinstance(task, dict):
