@@ -969,10 +969,17 @@ def report(script=None, input=None, output=None, **kwargs):
     will be written to standard output or appended to a file specified with command
     line option `-r`. '''
     if env.config['run_mode'] == 'dryrun':
-        print(f'HINT: report:\n{"" if script is None else script}')
-        if input is not None:
-            for ifile in input:
-                print(f'  from file: {ifile}')
+        if '__std_out__' in env.sos_dict:
+            with open(env.sos_dict['__std_out__'], 'a') as so:
+                so.write(f'HINT: report:\n{"" if script is None else script}\n')
+                if input is not None:
+                    for ifile in input:
+                        so.write(f'  from file: {ifile}\n')
+        else:
+            print(f'HINT: report:\n{"" if script is None else script}')
+            if input is not None:
+                for ifile in input:
+                    print(f'  from file: {ifile}')
         return
     file_handle = None
     if isinstance(output, str):
