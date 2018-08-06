@@ -980,14 +980,15 @@ class Base_Executor:
         except Exception as e:
             env.logger.warning(
                 f'Failed to clear workflow status file: {e}')
-        if self.completed["__step_completed__"] == 0:
-            sts = 'ignored'
-        elif env.config["run_mode"] == 'dryrun':
-            sts = 'tested successfully'
-        else:
-            sts = 'executed successfully'
-        env.logger.info(
-            f'Workflow {self.workflow.name} (ID={self.md5}) is {sts} with {self.describe_completed()}.')
+        if self.workflow.name != 'scratch':
+            if self.completed["__step_completed__"] == 0:
+                sts = 'ignored'
+            elif env.config["run_mode"] == 'dryrun':
+                sts = 'tested successfully'
+            else:
+                sts = 'executed successfully'
+            env.logger.info(
+                f'Workflow {self.workflow.name} (ID={self.md5}) is {sts} with {self.describe_completed()}.')
         if env.config['output_dag']:
             env.logger.info(
                 f"Workflow DAG saved to {env.config['output_dag']}")
