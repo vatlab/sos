@@ -176,8 +176,13 @@ class TaskFile(object):
 
     def save(self, params):
         if os.path.isfile(self.task_file):
-            env.logger.debug('Do not override existing task file')
-            return
+            if env.config['sig_mode'] in ('force', 'ignore') and self.status != 'running':
+                with open(self.task_file, 'r+b') as fh:
+                    self._reset(fh)
+                return
+            else:
+                env.logger.debug('Do not override existing task file')
+                return
         # updating job_file will not change timestamp because it will be Only
         # the update of runtime info
         now = time.time()
