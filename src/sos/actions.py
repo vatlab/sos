@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import time
 import tempfile
 import urllib
 import urllib.error
@@ -32,6 +33,7 @@ from .targets import (UnknownTarget, executable, file_target, fileMD5, path,
 from .utils import (SlotManager, StopInputGroup, TerminateExecution,
                     TimeoutInterProcessLock, env, get_traceback, short_repr,
                     transcribe)
+from .workflow_report import workflow_report
 
 from typing import Any, Callable, Dict, List, Tuple, Union
 __all__ = ['SoS_Action', 'script', 'sos_run',
@@ -288,7 +290,6 @@ class SoS_ExecuteScript:
                 raise RuntimeError(
                     f'Unacceptable interpreter {self.interpreter}')
 
-            transcribe(self.script, action=self.interpreter)
             debug_script_file = os.path.join(env.exec_dir, '.sos',
                                              f'{env.sos_dict["step_name"]}_{env.sos_dict["_index"]}_{str(uuid.uuid4())[:8]}{self.suffix}')
             #with open(debug_script_file, 'w') as sfile:
@@ -319,7 +320,14 @@ class SoS_ExecuteScript:
                     return None
                 cmd = interpolate(f'{self.interpreter} {self.args}',
                                   {'filename': sos_targets(script_file), 'script': self.script})
-                #
+                transcript_cmd = interpolate(f'{self.interpreter} {self.args}',
+                                  {'filename': sos_targets('SCRIPT'), 'script': self.script})
+                transcribe(self.script, cmd=transcript_cmd)
+                if env.sos_dict['_index'] == 0:
+                    with workflow_report() as rep:
+                        rep.write('transcript', env.sos_dict['step_name'],
+                            repr({'start_time': time.time(), 'command': transcript_cmd, 'script': self.script}))
+
                 if env.config['run_mode'] == 'interactive':
                     if 'stdout' in kwargs or 'stderr' in kwargs:
                         child = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,

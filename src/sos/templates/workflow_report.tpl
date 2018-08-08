@@ -261,6 +261,21 @@
 			id="source-code" class="sos-source" name="code">{{ workflows[master_id].script }}</textarea>
          </div>
       </div>
+      {% if transcripts %}
+      <h2 class='mt-3'> Transcript </h2>
+      <div class="transcript-list">
+        {% for id, trans in transcripts.items() %}
+        <div class="transcript-stepname">{{ id }}</div>
+        {% for tran in trans %}
+        <div class="transcript">
+            <span class="transcript-time">{{ tran.start_time_str }}</span>
+            <div class="transcript-command">{{ tran.command }}</div>
+            <div class="transcript-script">{{ tran.script }}</div>
+        </div>
+        {% endfor %}
+        {% endfor %}
+      </div>
+      {% endif %}
       <footer>
          <a class="sos-logo" href="https://vatlab.github.io/sos-docs">
          <img src="http://vatlab.github.io/sos-docs/img/sos_icon.svg" alt="sos_icon">

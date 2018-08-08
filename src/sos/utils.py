@@ -746,12 +746,13 @@ def natural_keys(text):
     return [int(c) if c.isdigit() else c for c in re.split('(\d+)', text)]
 
 
-def transcribe(text, action=None):
-    if action is not None:
+def transcribe(text, cmd=None):
+    if cmd is not None:
         text = '{}:\n{}'.format(
-            action, '    ' + text.replace('\n', '\n    ') + '\n')
-    with open(os.path.join(env.exec_dir, '.sos', 'transcript.txt'), 'a') as trans:
-        trans.write(text)
+            cmd, '    ' + text.replace('\n', '\n    ') + '\n')
+    with fasteners.InterProcessLock(os.path.join(env.temp_dir, 'transcript.lck')):
+        with open(os.path.join(env.exec_dir, '.sos', 'transcript.txt'), 'a') as trans:
+            trans.write(text)
 
 
 def dict_merge(dct, merge_dct):

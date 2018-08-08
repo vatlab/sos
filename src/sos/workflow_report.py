@@ -123,6 +123,13 @@ class WorkflowSig(object):
             env.logger.warning(e)
             return {}
 
+    def transcripts(self):
+        try:
+            return {step: [self.convert_time(eval(x)) for x in items] for step, items in self.data['transcript'].items()}
+        except Exception as e:
+            env.logger.warning(e)
+            return {}
+
     def tracked_files(self):
         try:
             files = sum(self.data['input_file'].values(), []) + sum(
@@ -168,6 +175,7 @@ def render_report(output_file, workflow_id):
         'workflows': data.workflows(),
         'tasks': data.tasks(),
         'steps': data.steps(),
+        'transcripts': data.transcripts(),
         'sos_version': __version__,
         'user': getpass.getuser(),
         'time_now_str': time.strftime(
