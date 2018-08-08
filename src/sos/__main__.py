@@ -1405,8 +1405,10 @@ def cmd_remove(args, unknown_args):
         # a special case where all file and runtime signatures are removed.
         # no other options are allowed.
         removed_cnt = 0
-        from .signature_store import target_signatures
+        from .signature_store import target_signatures, step_signatures
         target_signatures.clear()
+        step_signatures.clear(global_sig=False)
+        step_signatures.clear(global_sig=True)
         env.logger.info('All runtime signatures are removed')
         return
     #
