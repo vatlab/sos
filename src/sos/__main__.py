@@ -1355,10 +1355,8 @@ def get_tracked_files(sig_file):
     from .targets import file_target
     sig = WorkflowSig(sig_file)
     tracked_files = set([x['filename'] for x in sig.tracked_files()])
-    runtime_files = set(file_target(x).sig_file()
-                        for x in tracked_files if file_target(x).target_exists('signature'))
     placeholder_files = set(sig.placeholders())
-    return set(), tracked_files, runtime_files, placeholder_files
+    return set(), tracked_files, placeholder_files
 
 
 def cmd_remove(args, unknown_args):
@@ -1371,12 +1369,10 @@ def cmd_remove(args, unknown_args):
     # what about global signature?
     sig_files = glob.glob('.sos/*.sig')
     tracked_files = set()
-    runtime_files = set()
     placeholder_files = set()
     for sig_file in sig_files:
-        s, t, r, p = get_tracked_files(sig_file)
+        s, t, p = get_tracked_files(sig_file)
         tracked_files |= t
-        runtime_files |= r
         placeholder_files |= p
 
     if args.placeholders:
@@ -1407,25 +1403,9 @@ def cmd_remove(args, unknown_args):
         # a special case where all file and runtime signatures are removed.
         # no other options are allowed.
         removed_cnt = 0
-        for s in glob.glob(os.path.join('.sos', '.runtime', '*.file_info')):
-            try:
-                if args.dryrun:
-                    print('Would remove {}'.format(os.path.basename(s)))
-                else:
-                    env.logger.debug('Remove {}'.format(s))
-                    os.remove(s)
-                removed_cnt += 1
-            except Exception as e:
-                env.logger.warning(
-                    'Failed to remove signature {}: {}'.format(s, e))
-        if args.dryrun:
-            env.logger.info(
-                'Would remove {} runtime signatures'.format(removed_cnt))
-        elif removed_cnt:
-            env.logger.info(
-                '{} runtime signatures removed'.format(removed_cnt))
-        else:
-            env.logger.info('No runtime signatures removed')
+        from .signature_store import sig_store
+        sig_store.clear()
+        env.logger.info('All runtime signatures are removed')
         return
     #
     tracked_files = {os.path.abspath(os.path.expanduser(x))
@@ -1449,14 +1429,12 @@ def cmd_remove(args, unknown_args):
         from .utils import expand_time
         args.age = expand_time(args.age, default_unit='d')
     if args.signature:
+        from .signature_store import sig_store
         def func(filename, resp):
             if os.path.abspath(filename) not in tracked_files:
                 return False
-            target = file_target(filename)
-            if target.is_external() and not args.external():
-                env.logger.debug('Ignore external file {}'.format(filename))
-                return False
-            if not target.target_exists('signature'):
+            sig = sig_store.get(file_target(filename))
+            if not sig:
                 return False
             if args.size:
                 if (args.size > 0 and os.path.getsize(filename) < args.size) or \
@@ -1471,9 +1449,8 @@ def cmd_remove(args, unknown_args):
                         '{} ignored due to age limit {}'.format(filename, args.age))
                     return False
             if not args.dryrun:
-                env.logger.debug('Remove {}'.format(s))
                 try:
-                    os.remove(target.sig_file())
+                    sig_store.remove(file_target(target))
                 except Exception as e:
                     env.logger.warning(
                         'Failed to remove signature of {}: {}'.format(filename, e))
@@ -1569,9 +1546,7 @@ def cmd_remove(args, unknown_args):
                 if not args.dryrun:
                     env.logger.debug('Zap {}'.format(s))
                     try:
-                        target.write_sig()
-                        shutil.copy(target.sig_file(), filename + '.zapped')
-                        os.remove(filename)
+                        file_target(target).zap()
                     except Exception as e:
                         env.logger.warning(
                             'Failed to zap {}: {}'.format(filename, e))
@@ -1924,7 +1899,7 @@ def locate_files(session, include, exclude, all_files):
                              'Available sessions are:\n' +
                              '\n'.join(os.path.basename(x)[:-4] for x in sig_files))
     #
-    script_files, tracked_files, runtime_files, _ = get_tracked_files(sig_file)
+    script_files, tracked_files, _ = get_tracked_files(sig_file)
     # all
     if not all_files:
         external_files = []
@@ -1951,7 +1926,7 @@ def locate_files(session, include, exclude, all_files):
         tracked_files = [
             x for x in tracked_files if not fnmatch.fnmatch(x, ex)]
     #
-    return script_files, tracked_files, runtime_files
+    return script_files, tracked_files
 
 
 def cmd_pack(args, unknown_args):
@@ -1963,7 +1938,7 @@ def cmd_pack(args, unknown_args):
     #
     env.verbosity = args.verbosity
     try:
-        script_files, tracked_files, runtime_files = locate_files(
+        script_files, tracked_files = locate_files(
             args.session, args.include, args.exclude, args.__all__)
     except Exception as e:
         env.logger.error(e)
@@ -2015,14 +1990,6 @@ def cmd_pack(args, unknown_args):
             else:
                 manifest.write('TRACKED\t{}\t{}\t{}\t{}\n'.format(
                     f.replace('\\', '/'), ft.mtime(), ft.size(), ft.target_signature()))
-        for f in runtime_files:
-            ft = file_target(f)
-            if not ft.target_exists():
-                env.logger.warning(
-                    'Missing runtime file {}'.format(ft.target_name()))
-            else:
-                manifest.write('RUNTIME\t{}\t{}\t{}\t{}\n'.format(
-                    os.path.basename(f), ft.mtime(), ft.size(), ft.target_signature()))
     prog.close()
     #
     if args.dryrun:
@@ -2066,12 +2033,6 @@ def cmd_pack(args, unknown_args):
                         tarinfo, fileobj=ProgressFileObj(prog, f, 'rb'))
                 else:
                     archive.add(f, arcname='tracked/' + f)
-        env.logger.info('Adding runtime files')
-        for f in runtime_files:
-            if not os.path.isfile(f):
-                continue
-            env.logger.trace('Adding {}'.format(os.path.basename(f)))
-            archive.add(f, arcname='runtime/' + os.path.basename(f))
     prog.close()
 
 #

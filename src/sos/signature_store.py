@@ -63,7 +63,14 @@ class SignatureStore:
         #with fasteners.InterProcessLock(self.lock_file):
         cur=self.conn.cursor()
         cur.execute(
-                'DELETE FROM SIGNATURE WHERE md5=?', (target.target_name(),))
+                'DELETE FROM SIGNATURE WHERE target=?', (target.target_name(),))
+        self.conn.commit()
+
+    def clear(self):
+        cur=self.conn.cursor()
+        cur.execute('DELETE FROM SIGNATURE')
+        self.conn.commit()
+        cur.execute('VACUUM')
         self.conn.commit()
 
 sig_store = SignatureStore()
