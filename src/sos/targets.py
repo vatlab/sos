@@ -136,22 +136,12 @@ class BaseTarget(object):
     # -----------------------------------------------------
     # derived functions that do not need to be redefined
     #
-
-    def sig_file(self):
-        if self._sigfile is None:
-            self._sigfile = Path(env.exec_dir) / '.sos' / '.runtime' /  \
-                f'{self.__class__.__name__}_{textMD5(self.target_name())}.file_info'
-        return self._sigfile
-
     def remove_sig(self):
-        if self.sig_file() and self.sig_file().is_file():
-            self.sig_file().unlink()
+        sig_store.remove(self)
 
     def write_sig(self):
         '''Write .sig file with signature'''
-        # path to file
-        with open(self.sig_file(), 'w') as sig:
-            sig.write(f'{self.target_name()}\t{self.target_signature()}\n')
+        raise RuntimeError('Undefined base function')
 
     def __repr__(self):
         return f'{self.__class__.__name__}("{self.target_name()}")'
@@ -364,8 +354,6 @@ class executable(BaseTarget):
                 return False
             else:
                 return True
-        if mode in ('any', 'signature') and os.path.isfile(self.sig_file()):
-            return True
         return False
 
     def target_name(self):
@@ -819,13 +807,6 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
     def __eq__(self, other):
         return self._targets == other._targets if isinstance(other, sos_targets) else other
-
-    def sig_file(self):
-        if len(self._targets) == 1:
-            return self._targets[0].sig_file()
-        else:
-            raise ValueError(
-                f'Cannot get sig_file for group of targets {self}')
 
     def __add__(self, part):
         if len(self._targets) == 1:
