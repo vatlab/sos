@@ -21,7 +21,7 @@ from .workflow_report import workflow_report
 from .utils import (Error, env, load_var,
                     pickleable, save_var, short_repr, stable_repr)
 
-from .signature_store import target_signatures
+from .signature_store import target_signatures, step_signatures
 
 try:
     from xxhash import xxh64 as hash_md5
@@ -723,6 +723,11 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             if not isinstance(t, BaseTarget):
                 raise RuntimeError(f"Unrecognized target {t}")
 
+    def is_external(self):
+        if not self.determined():
+            return False
+        return all(x.is_external() for x in self._targets if isinstance(x, file_target))
+
     def determined(self):
         return self._targets or not self._undetermined
 
@@ -980,7 +985,7 @@ class InMemorySignature:
                     files_checked[freal.target_name()] = True
                 except Exception as e:
                     env.logger.debug(
-                        f'Wrong md5 line {line} in {self.proc_info}: {e}')
+                        f'Wrong md5 line {line} in signature: {e}')
         #
         if not all(files_checked.values()):
             return f'No MD5 signature for {", ".join(x for x,y in files_checked.items() if not y)}'
@@ -1003,19 +1008,11 @@ class RuntimeInfo(InMemorySignature):
         super(RuntimeInfo, self).__init__(input_files, output_files,
                                           dependent_files, signature_vars)
 
-        self.external_output = self.output_files and isinstance(
-            self.output_files[0], file_target) and self.output_files[0].is_external()
+        # if all output files are external
+        self.external_sig = self.output_files.is_external() and self.input_files.is_external()
 
         self.sig_id = textMD5(
             f'{self.script} {self.input_files} {self.output_files} {self.dependent_files} {stable_repr(self.init_signature)}')
-
-        if self.external_output:
-            # global signature
-            self.proc_info = str(path('~') / '.sos' /
-                                 '.runtime' / f'{self.sig_id}.exe_info')
-        else:
-            self.proc_info = str(path(env.exec_dir) / '.sos' /
-                                 '.runtime' / f'{self.sig_id}.exe_info')
 
     def __getstate__(self):
         return {'step_md5': self.step_md5,
@@ -1026,7 +1023,7 @@ class RuntimeInfo(InMemorySignature):
                 'init_signature': self.init_signature,
                 'script': self.script,
                 'sig_id': self.sig_id,
-                'external': self.external_output}
+                'external': self.external_sig}
 
     def __setstate__(self, sdict: Dict[str, Any]):
         self.step_md5 = sdict['step_md5']
@@ -1037,24 +1034,16 @@ class RuntimeInfo(InMemorySignature):
         self.init_signature = sdict['init_signature']
         self.script = sdict['script']
         self.sig_id = sdict['sig_id']
-        self.external_output = sdict['external']
-        #
-        # the signature might be on a remote machine and has changed location
-        if self.external_output:
-            self.proc_info = str(path('~') / '.sos' /
-                                 '.runtime' / f'{self.sig_id}.exe_info')
-        else:
-            self.proc_info = str(path(env.exec_dir) / '.sos' /
-                                 '.runtime' / f'{self.sig_id}.exe_info')
+        self.external_sig = sdict['external']
 
     def lock(self):
         # we will need to lock on a file that we do not really write to
         # otherwise the lock will be broken when we write to it.
-        self._lock = fasteners.InterProcessLock(self.proc_info + '_')
+        self._lock = fasteners.InterProcessLock(os.path.join(env.temp_dir,  self.sig_id + '.lock'))
         if not self._lock.acquire(blocking=False):
             self._lock = None
             raise UnavailableLock(
-                (self.input_files, self.output_files, self.proc_info))
+                (self.input_files, self.output_files, self.sig_id))
         else:
             env.logger.trace(
                 f'Lock acquired for output files {short_repr(self.output_files)}')
@@ -1091,9 +1080,8 @@ class RuntimeInfo(InMemorySignature):
         if ret is False:
             return ret
 
-        env.logger.trace(f'Write signature {self.proc_info}')
-        with open(self.proc_info, 'wb') as md5:
-            pickle.dump(ret, md5)
+        env.logger.trace(f'Write signature {self.sig_id}')
+        step_signatures.set(self.sig_id, ret, self.external_sig)
         # successfully write signature, write in workflow runtime info
         with workflow_report() as wf:
             for f in self.input_files:
@@ -1115,9 +1103,7 @@ class RuntimeInfo(InMemorySignature):
 
     def validate(self):
         '''Check if ofiles and ifiles match signatures recorded in md5file'''
-        if not self.proc_info or not os.path.isfile(self.proc_info):
-            return f'Missing signature file {self.proc_info}'
-        env.logger.trace(f'Validating {self.proc_info}')
+        env.logger.trace(f'Validating {self.sig_id}')
         #
         # file not exist?
         if not self.output_files.determined():
@@ -1128,6 +1114,7 @@ class RuntimeInfo(InMemorySignature):
             if not x.target_exists('any'):
                 return f'Missing target {x}'
         #
-        with open(self.proc_info, 'rb') as md5:
-            sig = pickle.load(md5)
+        sig = step_signatures.get(self.sig_id, self.external_sig)
+        if not sig:
+            return f"No signature found for {self.sig_id}"
         return super(RuntimeInfo, self).validate(sig)

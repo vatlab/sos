@@ -311,6 +311,7 @@ class RuntimeEnvironments(object):
         self.reset()
 
     _exec_dir = None
+    _temp_dir = os.path.join(tempfile.gettempdir(), getpass.getuser(), '.sos')
 
     def reset(self):
         # logger
@@ -426,6 +427,14 @@ class RuntimeEnvironments(object):
         return self._exec_dir
 
     exec_dir = property(_get_exec_dir, _set_exec_dir)
+
+    # attribute temp_dir
+    def _get_temp_dir(self):
+        if not os.path.isdir(self._temp_dir):
+            os.makedirs(self._temp_dir, exist_ok=True)
+        return self._temp_dir
+
+    temp_dir = property(_get_exec_dir)
 
     #
     # attribute logger
@@ -1011,13 +1020,10 @@ class SlotManager(object):
     def __init__(self, reset=False, name=None):
         # if a name is not given, the slot will be workflow dependent
         self.name = name if name else env.config['master_id']
-        tempdir = os.path.join(tempfile.gettempdir(),
-                               getpass.getuser(), 'sos_slots')
-        self.lock_file = os.path.join(tempdir, f'{self.name}.lck')
-        self.slot_file = os.path.join(tempdir, f'{self.name}.slot')
+        self.lock_file = os.path.join(env.temp_dir, f'slot_{self.name}.lck')
+        self.slot_file = os.path.join(env.temp_dir, f'slot_{self.name}.slot')
         if reset or not os.path.isfile(self.lock_file):
             with fasteners.InterProcessLock(self.lock_file):
-                os.makedirs(tempdir, exist_ok=True)
                 self._write_slot(0)
 
     def _read_slot(self):
