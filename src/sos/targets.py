@@ -21,6 +21,8 @@ from .workflow_report import workflow_report
 from .utils import (Error, env, load_var,
                     pickleable, save_var, short_repr, stable_repr)
 
+from .signature_store import sig_store
+
 try:
     from xxhash import xxh64 as hash_md5
 except ImportError:
@@ -89,7 +91,7 @@ def fileMD5(filename, partial=True):
                     md5.update(data)
         else:
             count = 16
-            # otherwise, use the first and last 32M
+            # otherwise, use the first and last 8M
             with open(filename, 'rb') as f:
                 while True:
                     data = f.read(block_size)
@@ -502,15 +504,12 @@ class file_target(path, BaseTarget):
         super(file_target, self).__init__(*args)
         if len(args) == 1 and isinstance(args[0], file_target):
             self._md5 = args[0]._md5
-            self._attachments = args[0]._attachments
         else:
             self._md5 = None
-            self._attachments = []
 
     def _init(self, template=None):
         super(file_target, self)._init(template)
         self._md5 = None
-        self._attachments = []
 
     def create_placeholder(self):
         # create an empty placeholder file
@@ -525,7 +524,7 @@ class file_target(path, BaseTarget):
                 return True
             elif mode == 'any' and (self + '.zapped').exists():
                 return True
-            elif mode == 'signature' and self.sig_file().exists():
+            elif mode == 'signature' and sig_store.get(self):
                 return True
             return False
         except Exception as e:
@@ -538,68 +537,34 @@ class file_target(path, BaseTarget):
     def __fspath__(self):
         return super(file_target, self).__fspath__()
 
-    def sig_file(self):
-        if self._sigfile is not None:
-            return self._sigfile
-        # If the output path is outside of the current working directory
-        fullname = str(self.resolve())
-        name_md5 = textMD5(fullname)
-
-        if self.is_external():
-            self._sigfile = path('~') / '.sos' / \
-                '.runtime' / name_md5 + '.file_info'
-        else:
-            self._sigfile = path(env.exec_dir) / '.sos' / \
-                '.runtime' / name_md5 + '.file_info'
-        return self._sigfile
-
     def target_signature(self, mode='any'):
         '''Return file signature'''
         if mode == 'target':
             self._md5 = fileMD5(self)
+            sig_store.set(self, os.path.getmtime(self), os.path.getsize(self), self._md5)
         if self._md5 is not None:
             return self._md5
-        if self.sig_file().is_file() and (not self.is_file() or os.path.getmtime(self.sig_file()) > os.path.getmtime(self)):
-            with open(self.sig_file()) as md5:
-                try:
-                    line = md5.readline()
-                    _, _, _, m = line.rsplit('\t', 3)
-                    return m.strip()
-                except Exception:
-                    pass
-        elif (self + '.zapped').is_file():
-            with open(self + '.zapped') as md5:
-                try:
-                    line = md5.readline()
-                    _, _, _, m = line.rsplit('\t', 3)
-                    return m.strip()
-                except Exception:
-                    pass
+        sig = sig_store.get(self)
+        if sig is not None:
+            self._md5 = sig.md5
+            return self._md5
         self._md5 = fileMD5(self)
+        sig_store.set(self, os.path.getmtime(self), os.path.getsize(self), self._md5)
         return self._md5
-    #
-    # file_target - specific functions. Not required by other targets
-    #
-
-    def add(self, filename):
-        '''add related files to the same signature'''
-        self._attachments.append(os.path.abspath(os.path.expanduser(filename)))
 
     def remove(self, mode='both'):
         if mode in ('both', 'target') and self.is_file():
             self.unlink()
-        if mode in ('both', 'signature') and self.sig_file().is_file():
-            self.sig_file().unlink()
+        if mode in ('both', 'signature'):
+            sig_store.remove(self)
 
     def size(self):
         if self.exists():
             return os.path.getsize(self)
-        elif self.sig_file().is_file():
-            with open(self.sig_file()) as md5:
-                line = md5.readline()
-                _, _, s, _ = line.rsplit('\t', 3)
-                return int(s.strip())
-        elif (self + '.zapped').is_file():
+        sig = sig_store.get(self)
+        if sig:
+            return sig.size
+        if (self + '.zapped').is_file():
             with open(self + '.zapped') as md5:
                 line = md5.readline()
                 _, _, s, _ = line.rsplit('\t', 3)
@@ -610,12 +575,10 @@ class file_target(path, BaseTarget):
     def mtime(self):
         if self.exists():
             return os.path.getmtime(self)
-        elif self.sig_file().is_file():
-            with open(self.sig_file()) as md5:
-                line = md5.readline()
-                _, t, _, _ = line.rsplit('\t', 3)
-                return t.strip()
-        elif (self + '.zapped').is_file():
+        sig = sig_store.get(self)
+        if sig:
+            return sig.mtime
+        if (self + '.zapped').is_file():
             with open(self + '.zapped') as md5:
                 line = md5.readline()
                 _, t, _, _ = line.rsplit('\t', 3)
@@ -624,31 +587,29 @@ class file_target(path, BaseTarget):
             raise RuntimeError(f'{self} or its signature does not exist.')
 
     def write_sig(self):
-        '''Write .file_info file with signature'''
+        '''Write signature to sig store'''
         # path to file
         if not self.exists() and (self + '.zapped').exists():
-            shutil.copy(self + '.zapped', self.sig_file())
+            with open(self + '.zapped') as md5:
+                line = md5.readline()
+                _, mtime, size, md5 = line.rsplit('\t', 3)
+                sig_store.set(self, mtime, size, md5.strip())
             return
-        with open(self.sig_file(), 'w') as md5:
-            md5.write(
-                f'{self.fullname()}\t{os.path.getmtime(self)}\t{os.path.getsize(self)}\t{self.target_signature()}\n')
-            for f in self._attachments:
-                md5.write(
-                    f'{f}\t{os.path.getmtime(f)}\t{os.path.getsize(f)}\t{fileMD5(f)}\n')
+        if not self._md5:
+            self._md5 = fileMD5(self)
+        sig_store.set(self,
+            os.path.getmtime(self), os.path.getsize(self), self._md5)
 
     def validate(self):
         '''Check if file matches its signature'''
-        if not self.sig_file().is_file():
+        sig = sig_store.get(self)
+        if not sig or not os.path.isfile(self) or sig.size != os.path.getsize(self):
             return False
-        with open(self.sig_file()) as md5:
-            for line in md5:
-                f, _, _, m = line.rsplit('\t', 3)
-                if not os.path.isfile(f):
-                    return False
-                if fileMD5(f) != m.strip():
-                    env.logger.debug(f'MD5 mismatch {f}')
-                    return False
-        return True
+        if sig.mtime == os.path.getmtime(self):
+            return True
+        if not self._md5:
+            self._md5 = fileMD5(self)
+        return self._md5 == sig.md5
 
     def __hash__(self):
         return hash(repr(self))
