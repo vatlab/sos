@@ -70,6 +70,12 @@ def textMD5(text):
         m.update(text)
     return m.hexdigest()
 
+def objectMD5(obj):
+    '''Get md5 of an object'''
+    try:
+        return textMD5(pickle.dumps(obj))
+    except:
+        return ''
 
 def fileMD5(filename, partial=True):
     '''Calculate partial MD5, basically the first and last 8M
@@ -105,7 +111,6 @@ def fileMD5(filename, partial=True):
     except IOError as e:
         sys.exit(f'Failed to read {filename}: {e}')
     return md5.hexdigest()
-
 
 class BaseTarget(object):
     '''A base class for all targets (e.g. a file)'''
@@ -909,7 +914,7 @@ class InMemorySignature:
                 env.logger.debug(
                     f'Failed to create signature: dependent target {f} does not exist')
                 return False
-        init_context = {var: self.init_signature[var] for var in self.init_signature if pickleable(
+        init_context_sig = {var: objectMD5(self.init_signature[var]) for var in self.init_signature if pickleable(
             self.init_signature[var], var)}
         end_context = {var: env.sos_dict[var] for var in self.signature_vars if var in env.sos_dict and pickleable(
             env.sos_dict[var], var)}
@@ -918,7 +923,7 @@ class InMemorySignature:
             'input': input_sig,
             'output': output_sig,
             'depends': dependent_sig,
-            'init_context': init_context,
+            'init_context_sig': init_context_sig,
             'end_context': end_context
         }
 
@@ -938,15 +943,26 @@ class InMemorySignature:
         files_checked = {x.target_name(): False for x in sig_files}
         res = {'input': [], 'output': [], 'depends': [], 'vars': {}}
         cur_type = 'input'
-        for key, value in signature['init_context'].items():
-            if key not in env.sos_dict:
-                return f'Variable {key} not in running environment'
-            try:
-                if env.sos_dict[key] != value:
-                    return f'Context variable {key} value mismatch: {short_repr(value)} saved, {short_repr(env.sos_dict[key])} current'
-            except Exception as e:
-                env.logger.debug(
-                    f"Variable {key} of type {type(value).__name__} cannot be compared: {e}")
+        # old signature
+        if 'init_context' in signature:
+            for key, value in signature['init_context'].items():
+                if key not in env.sos_dict:
+                    return f'Variable {key} not in running environment'
+                try:
+                    if env.sos_dict[key] != value:
+                        return f'Context variable {key} value mismatch: {short_repr(value)} saved, {short_repr(env.sos_dict[key])} current'
+                except Exception as e:
+                    env.logger.debug(
+                        f"Variable {key} of type {type(value).__name__} cannot be compared: {e}")
+        elif 'init_context_sig' in signature:
+            for key, value in signature['init_context_sig'].items():
+                if key not in env.sos_dict:
+                    return f'Variable {key} not in running environment'
+                try:
+                    if objectMD5(env.sos_dict[key]) != value:
+                        return f'ID of context variable {key} mismatch: {short_repr(env.sos_dict[key])} does not match id {value}'
+                except Exception as e:
+                    env.logger.debug(f"Variable {key} cannot be compared: {e}")
 
         res['vars'].update(signature['end_context'])
         #
