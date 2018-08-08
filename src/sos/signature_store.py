@@ -20,7 +20,7 @@ class TargetSignatures:
         with fasteners.InterProcessLock(self.lock_file):
             if not os.path.isfile(self.db_file):
                 conn = sqlite3.connect(self.db_file, timeout=20)
-                conn.execute('''CREATE TABLE SIGNATURE (
+                conn.execute('''CREATE TABLE targets (
                     target text PRIMARY KEY,
                     mtime FLOAT,
                     size INTEGER,
@@ -41,21 +41,21 @@ class TargetSignatures:
 
     def _list_all(self):
         cur = self.conn.cursor()
-        cur.execute('SELECT * FROM SIGNATURE;')
+        cur.execute('SELECT * FROM targets;')
         for rec in cur.fetchall():
             print(self.TargetSig._make(rec))
 
     def get(self, target):
         cur = self.conn.cursor()
         cur.execute(
-            'SELECT mtime, size, md5 FROM SIGNATURE WHERE target=? ', (target.target_name(),))
+            'SELECT mtime, size, md5 FROM targets WHERE target=? ', (target.target_name(),))
         res = cur.fetchone()
         return self.TargetSig._make(res) if res else None
 
     def set(self, target, mtime:float, size:str, md5: str):
         #with fasteners.InterProcessLock(self.lock_file):
         self.conn.cursor().execute(
-            'INSERT OR REPLACE INTO SIGNATURE VALUES (?, ?, ?, ?)',
+            'INSERT OR REPLACE INTO targets VALUES (?, ?, ?, ?)',
             (target.target_name(), mtime, size, md5))
         self.conn.commit()
 
@@ -63,12 +63,12 @@ class TargetSignatures:
         #with fasteners.InterProcessLock(self.lock_file):
         cur=self.conn.cursor()
         cur.execute(
-                'DELETE FROM SIGNATURE WHERE md5=?', (target.target_name(),))
+                'DELETE FROM targets WHERE md5=?', (target.target_name(),))
         self.conn.commit()
 
     def clear(self):
         cur=self.conn.cursor()
-        cur.execute('DELETE FROM SIGNATURE')
+        cur.execute('DELETE FROM targets')
         cur.execute()
         self.conn.commit()
 
