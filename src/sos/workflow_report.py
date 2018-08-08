@@ -10,7 +10,6 @@ import base64
 import sqlite3
 import fasteners
 from collections import defaultdict
-from contextlib import contextmanager
 
 from .utils import TimeoutInterProcessLock, env, format_duration, dot_to_gif
 from ._version import __version__
@@ -19,20 +18,31 @@ from io import TextIOWrapper
 from typing import Iterator
 
 
-@contextmanager
-def workflow_report(mode: str = 'a') -> Iterator[TextIOWrapper]:
-    db_file = os.path.join(env.exec_dir, '.sos', 'workflow_signatures.db')
-    with sqlite3.connect(db_file, timeout=20) as conn:
-        cur = conn.cursor()
-        cur.execute('''CREATE TABLE IF NOT EXISTS workflows (
+class workflow_report(object):
+    def __init__(self, mode: str = 'a'):
+        db_file = os.path.join(env.exec_dir, '.sos', 'workflow_signatures.db')
+        self.conn = sqlite3.connect(db_file, timeout=20)
+        self.cur = self.conn.cursor()
+        self.cur.execute('''CREATE TABLE IF NOT EXISTS workflows (
                 master_id text,
                 entry_type text,
                 id text,
                 item text
         )''')
         if mode == 'w':
-            cur.execute(f'DELETE FROM workflows WHERE master_id = ?', (env.config["master_id"],))
-        yield cur
+            self.cur.execute(f'DELETE FROM workflows WHERE master_id = ?', (env.config["master_id"],))
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.conn.commit()
+        self.conn.close()
+
+    def write(self, entry_type: str, id: str, item: str):
+        self.cur.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
+            (env.config["master_id"], entry_type, id, item))
+
 
 def list_workflows():
     db_file = os.path.join(env.exec_dir, '.sos', 'workflow_signatures.db')

@@ -70,12 +70,14 @@ def textMD5(text):
         m.update(text)
     return m.hexdigest()
 
+
 def objectMD5(obj):
     '''Get md5 of an object'''
     try:
         return textMD5(pickle.dumps(obj))
     except:
         return ''
+
 
 def fileMD5(filename, partial=True):
     '''Calculate partial MD5, basically the first and last 8M
@@ -111,6 +113,7 @@ def fileMD5(filename, partial=True):
     except IOError as e:
         sys.exit(f'Failed to read {filename}: {e}')
     return md5.hexdigest()
+
 
 class BaseTarget(object):
     '''A base class for all targets (e.g. a file)'''
@@ -509,9 +512,7 @@ class file_target(path, BaseTarget):
         env.logger.debug(f'Create placeholder target {self}')
         self.touch()
         with workflow_report() as rep:
-            rep.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
-                        (env.config["master_id"], 'placeholder', 'file_target',
-                        str(self)))
+            rep.write('placeholder', 'file_target', str(self))
 
     def target_exists(self, mode='any'):
         try:
@@ -1055,7 +1056,8 @@ class RuntimeInfo(InMemorySignature):
     def lock(self):
         # we will need to lock on a file that we do not really write to
         # otherwise the lock will be broken when we write to it.
-        self._lock = fasteners.InterProcessLock(os.path.join(env.temp_dir,  self.sig_id + '.lock'))
+        self._lock = fasteners.InterProcessLock(
+            os.path.join(env.temp_dir,  self.sig_id + '.lock'))
         if not self._lock.acquire(blocking=False):
             self._lock = None
             raise UnavailableLock(
@@ -1102,19 +1104,16 @@ class RuntimeInfo(InMemorySignature):
         with workflow_report() as wf:
             for f in self.input_files:
                 if isinstance(f, file_target):
-                    wf.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
-                               (env.config["master_id"], 'input_file', self.step_md5,
-                                f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}'))
+                    wf.write('input_file', self.step_md5,
+                             f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}')
             for f in self.dependent_files:
                 if isinstance(f, file_target):
-                    wf.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
-                               (env.config["master_id"], 'dependent_file', self.step_md5,
-                                f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}'))
+                    wf.write('dependent_file', self.step_md5,
+                             f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}')
             for f in self.output_files:
                 if isinstance(f, file_target):
-                    wf.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
-                               (env.config["master_id"], 'output_file', self.step_md5,
-                                f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}'))
+                    wf.write('output_file', self.step_md5,
+                             f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}')
         return True
 
     def validate(self):
