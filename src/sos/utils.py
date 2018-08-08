@@ -434,7 +434,7 @@ class RuntimeEnvironments(object):
             os.makedirs(self._temp_dir, exist_ok=True)
         return self._temp_dir
 
-    temp_dir = property(_get_exec_dir)
+    temp_dir = property(_get_temp_dir)
 
     #
     # attribute logger
