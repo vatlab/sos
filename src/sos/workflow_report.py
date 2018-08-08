@@ -7,6 +7,8 @@ import getpass
 import os
 import time
 import base64
+import sqlite3
+import fasteners
 from collections import defaultdict
 from contextlib import contextmanager
 
@@ -19,20 +21,29 @@ from typing import Iterator
 
 @contextmanager
 def workflow_report(mode: str = 'a') -> Iterator[TextIOWrapper]:
-    workflow_sig = os.path.join(
-        env.exec_dir, '.sos', f'{env.config["master_id"]}.sig')
-    with TimeoutInterProcessLock(workflow_sig + '_'):
-        with open(workflow_sig, mode) as sig:
-            yield sig
+    db_file = os.path.join(env.exec_dir, '.sos', 'workflow_signatures.db')
+    with sqlite3.connect(db_file, timeout=20) as conn:
+        cur = conn.cursor()
+        cur.execute('''CREATE TABLE IF NOT EXISTS workflows (
+                master_id text,
+                entry_type text,
+                id text,
+                item text
+        )''')
+        if mode == 'w':
+            cur.execute(f'DELETE FROM workflows WHERE master_id = ?', (env.config["master_id"],))
+        yield cur
 
 
 class WorkflowSig(object):
-    def __init__(self, workflow_info):
+    def __init__(self, workflow_id):
         self.data = defaultdict(lambda: defaultdict(list))
-        with open(workflow_info, 'r') as wi:
-            for line in wi:
+        db_file = os.path.join(env.exec_dir, '.sos', 'workflow_signatures.db')
+        with sqlite3.connect(db_file, timeout=20) as conn:
+            cur = conn.cursor()
+            cur.execute(f'SELECT entry_type, id, item FROM workflows WHERE master_id = ?', (workflow_id,))
+            for entry_type, id, item in cur:
                 try:
-                    entry_type, id, item = line.split('\t', 2)
                     self.data[entry_type][id].append(item.strip())
                 except Exception as e:
                     env.logger.debug(f'Failed to read report line {line}: {e}')
@@ -127,8 +138,7 @@ def calc_timeline(info, start_time, total_duration):
 
 
 def render_report(output_file, workflow_id):
-    data = WorkflowSig(os.path.join(
-        env.exec_dir, '.sos', f'{workflow_id}.sig'))
+    data = WorkflowSig(workflow_id)
 
     from jinja2 import Environment, PackageLoader, select_autoescape
     environment = Environment(
@@ -169,8 +179,7 @@ def render_report(output_file, workflow_id):
 def remove_placeholders(workflow_id):
     from .targets import file_target
     try:
-        data = WorkflowSig(os.path.join(
-            env.exec_dir, '.sos', f'{workflow_id}.sig'))
+        data = WorkflowSig(workflow_id)
     except Exception as e:
         # if the workflow sig file does not exist. Just quit
         env.logger.debug(

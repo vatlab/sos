@@ -612,8 +612,8 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                             if not os.path.isfile(dest_file):
                                 env.logger.warning(
                                     f'Missing decompressed file {dest_file}')
-                            else:
-                                sig.add(dest_file)
+                            #else:
+                            #    sig.add(dest_file)
                     elif tarfile.is_tarfile(dest):
                         with tarfile.open(dest, 'r:*') as tar:
                             # only extract files
@@ -626,7 +626,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                                         env.logger.warning(
                                             f'Missing decompressed file {dest_file}')
                                     else:
-                                        sig.add(dest_file)
+                                    #    sig.add(dest_file)
                                         file_count += 1
                                 # sometimes the file is very large but we do not need to decompress all
                                 # and track all files.
@@ -637,7 +637,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                         if not os.path.isfile(decomp):
                             env.logger.warning(
                                 f'Missing decompressed file {decomp}')
-                        sig.add(decomp)
+                        #sig.add(decomp)
                 prog.set_description(
                     message + ': \033[32m writing signature\033[0m')
                 prog.update()
@@ -746,7 +746,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                     elif not os.path.isfile(os.path.join(dest_dir, name)):
                         return False, slot
                     else:
-                        sig.add(os.path.join(dest_dir, name))
+                        #sig.add(os.path.join(dest_dir, name))
                         decompressed += 1
             elif tarfile.is_tarfile(dest):
                 prog.set_description(
@@ -761,7 +761,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                         if not os.path.isfile(os.path.join(dest_dir, name)):
                             return False, slot
                         else:
-                            sig.add(os.path.join(dest_dir, name))
+                            #sig.add(os.path.join(dest_dir, name))
                             decompressed += 1
             elif dest.endswith('.gz'):
                 prog.set_description(
@@ -774,7 +774,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                     while buffer:
                         fout.write(buffer)
                         buffer = fin.read(100000)
-                sig.add(decomp)
+                #sig.add(decomp)
                 decompressed += 1
         decompress_msg = '' if not decompressed else f' ({decompressed} file{"" if decompressed <= 1 else "s"} decompressed)'
         prog.set_description(

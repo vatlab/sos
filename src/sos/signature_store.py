@@ -69,7 +69,6 @@ class TargetSignatures:
     def clear(self):
         cur=self.conn.cursor()
         cur.execute('DELETE FROM targets')
-        cur.execute()
         self.conn.commit()
 
 target_signatures = TargetSignatures()

@@ -504,7 +504,9 @@ class file_target(path, BaseTarget):
         env.logger.debug(f'Create placeholder target {self}')
         self.touch()
         with workflow_report() as rep:
-            rep.write(f'placeholder\tfile_target\t{self}\n')
+            rep.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
+                        (env.config["master_id"], 'placeholder', 'file_target',
+                        str(self)))
 
     def target_exists(self, mode='any'):
         try:
@@ -529,7 +531,8 @@ class file_target(path, BaseTarget):
         '''Return file signature'''
         if mode == 'target':
             self._md5 = fileMD5(self)
-            target_signatures.set(self, os.path.getmtime(self), os.path.getsize(self), self._md5)
+            target_signatures.set(self, os.path.getmtime(
+                self), os.path.getsize(self), self._md5)
         if self._md5 is not None:
             return self._md5
         sig = target_signatures.get(self)
@@ -537,7 +540,8 @@ class file_target(path, BaseTarget):
             self._md5 = sig.md5
             return self._md5
         self._md5 = fileMD5(self)
-        target_signatures.set(self, os.path.getmtime(self), os.path.getsize(self), self._md5)
+        target_signatures.set(self, os.path.getmtime(
+            self), os.path.getsize(self), self._md5)
         return self._md5
 
     def remove(self, mode='both'):
@@ -586,7 +590,7 @@ class file_target(path, BaseTarget):
         if not self._md5:
             self._md5 = fileMD5(self)
         target_signatures.set(self,
-            os.path.getmtime(self), os.path.getsize(self), self._md5)
+                              os.path.getmtime(self), os.path.getsize(self), self._md5)
 
     def validate(self):
         '''Check if file matches its signature'''
@@ -1094,16 +1098,19 @@ class RuntimeInfo(InMemorySignature):
         with workflow_report() as wf:
             for f in self.input_files:
                 if isinstance(f, file_target):
-                    wf.write(
-                        f'input_file\t{self.step_md5}\t{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}\n')
+                    wf.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
+                               (env.config["master_id"], 'input_file', self.step_md5,
+                                f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}'))
             for f in self.dependent_files:
                 if isinstance(f, file_target):
-                    wf.write(
-                        f'dependent_file\t{self.step_md5}\t{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}\n')
+                    wf.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
+                               (env.config["master_id"], 'dependent_file', self.step_md5,
+                                f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}'))
             for f in self.output_files:
                 if isinstance(f, file_target):
-                    wf.write(
-                        f'output_file\t{self.step_md5}\t{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}\n')
+                    wf.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
+                               (env.config["master_id"], 'output_file', self.step_md5,
+                                f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}'))
         return True
 
     def validate(self):

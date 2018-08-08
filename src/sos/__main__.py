@@ -1353,7 +1353,7 @@ class AnswerMachine:
 def get_tracked_files(sig_file):
     from .workflow_report import WorkflowSig
     from .targets import file_target
-    sig = WorkflowSig(sig_file)
+    sig = WorkflowSig(os.path.basename(sig_file).split('.')[0])
     tracked_files = set([x['filename'] for x in sig.tracked_files()])
     placeholder_files = set(sig.placeholders())
     return set(), tracked_files, placeholder_files

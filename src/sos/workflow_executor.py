@@ -382,7 +382,8 @@ class Base_Executor:
                 self.workflow.content.text().encode()).decode('ascii')
         workflow_info['master_id'] = env.config['master_id']
         with workflow_report(mode='w' if env.config['master_id'] == self.md5 else 'a') as sig:
-            sig.write(f'workflow\t{self.md5}\t{workflow_info}\n')
+            sig.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
+                (env.config["master_id"], 'workflow', self.md5, repr(workflow_info)))
         #
         env.config['resumed_tasks'] = set()
         wf_status = os.path.join(os.path.expanduser(
@@ -999,7 +1000,8 @@ class Base_Executor:
             }
             if env.config['output_dag'] and env.config['master_id'] == self.md5:
                 workflow_info['dag'] = env.config['output_dag']
-            sig.write(f'workflow\t{self.md5}\t{workflow_info}\n')
+            sig.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
+                (env.config["master_id"], 'workflow', self.md5, repr(workflow_info)))
         if env.config['master_id'] == env.config['workflow_id'] and env.config['output_report']:
             # if this is the outter most workflow
             render_report(env.config['output_report'],

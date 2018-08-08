@@ -1058,7 +1058,8 @@ class Base_Step_Executor:
                     y)) for x, y in result.items()}
                 rep_result['tags'] = ' '.join(self.task_manager.tags(id))
                 rep_result['queue'] = queue
-                rep.write(f'task\t{id}\t{rep_result}\n')
+                rep.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
+                    (env.config["master_id"], 'task', id, repr(rep_result)))
         self.task_manager.clear_submitted()
 
         # if in dryrun mode, we display the output of the dryrun task
@@ -1748,8 +1749,9 @@ class Base_Step_Executor:
                     'completed': dict(self.completed),
                     'end_time': time.time()
                 }
-                rep.write(
-                    f'step\t{env.sos_dict["workflow_id"]}\t{step_info}\n')
+                rep.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
+                    (env.config["master_id"], 'step',
+                    env.sos_dict["workflow_id"], repr(step_info)))
             return self.collect_result()
         except KeyboardInterrupt:
             # if the worker_pool is not properly shutdown (e.g. interrupted by KeyboardInterrupt #871)
