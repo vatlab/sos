@@ -291,10 +291,9 @@ class SoS_ExecuteScript:
             transcribe(self.script, action=self.interpreter)
             debug_script_file = os.path.join(env.exec_dir, '.sos',
                                              f'{env.sos_dict["step_name"]}_{env.sos_dict["_index"]}_{str(uuid.uuid4())[:8]}{self.suffix}')
-            #env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
-            with open(debug_script_file, 'w') as sfile:
-                sfile.write(self.script)
-            env.logger.trace(self.script)
+            #with open(debug_script_file, 'w') as sfile:
+            #    sfile.write(self.script)
+            #env.logger.trace(self.script)
 
             try:
                 p = None
