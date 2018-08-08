@@ -126,10 +126,10 @@ class StepSignatures:
     #             'DELETE FROM steps WHERE step_id=?', (step_id,))
     #     conn.commit()
     #
-    # def clear(self, global_sig:bool):
-    #     conn = self.get_conn(global_sig)
-    #     conn.execute('DELETE FROM steps')
-    #     conn.commit()
+    def clear(self, global_sig:bool):
+        conn = self.get_conn(global_sig)
+        conn.execute('DELETE FROM steps')
+        conn.commit()
 
 target_signatures = TargetSignatures()
 step_signatures = StepSignatures()
