@@ -364,10 +364,6 @@ class RuntimeEnvironments(object):
 
         os.makedirs(os.path.join(os.path.expanduser(
             '~'), '.sos', 'tasks'), exist_ok=True)
-        os.makedirs(os.path.join(os.path.expanduser(
-            '~'), '.sos', '.runtime'), exist_ok=True)
-        os.makedirs(os.path.join('.sos', '.runtime'), exist_ok=True)
-
     #
     # attribute logger
     #
@@ -410,20 +406,16 @@ class RuntimeEnvironments(object):
             self._logger.addHandler(ch)
     #
     # attribute exec_dir
-
-    def _assure_runtime_dir(self, rdir):
-        os.makedirs(os.path.join(rdir, '.sos'), exist_ok=True)
-
     def _set_exec_dir(self, edir):
         if not os.path.isdir(edir):
             raise RuntimeError(f'Exec dir {edir} does not exist.')
-        self._assure_runtime_dir(edir)
+        os.makedirs(os.path.join(edir, '.sos'), exist_ok=True)
         self._exec_dir = edir
 
     def _get_exec_dir(self):
         if self._exec_dir is None:
             raise RuntimeError('Exec dir is not set')
-        self._assure_runtime_dir(self._exec_dir)
+        os.makedirs(os.path.join(self._exec_dir, '.sos'), exist_ok=True)
         return self._exec_dir
 
     exec_dir = property(_get_exec_dir, _set_exec_dir)
@@ -1119,8 +1111,7 @@ class TimeoutInterProcessLock(fasteners.InterProcessLock):
 
 def load_config_files(filename=None):
     cfg = {}
-    config_lock = os.path.join(os.path.expanduser(
-        '~'), '.sos', '.runtime', 'sos_config.lck')
+    config_lock = os.path.join(env.temp_dir, 'sos_config.lck')
     # site configuration file
     sos_config_file = os.path.join(
         os.path.split(__file__)[0], 'site_config.yml')

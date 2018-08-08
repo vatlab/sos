@@ -2120,8 +2120,6 @@ def cmd_unpack(args, unknown_args):
                     fields = line.split()
                     # type, name, mtime, size, md5
                     if args.__list__:
-                        if fields[0] == 'RUNTIME':
-                            continue
                         print(' {:>9s}  {:>12s} {:>6s} {}'.format(pretty_size(int(fields[3])),
                                                                   time.strftime(
                                                                       '%m-%d-%y %H:%M', time.gmtime(float(fields[2]))),
@@ -2143,9 +2141,6 @@ def cmd_unpack(args, unknown_args):
                     # see if filename matches specified name
                     selected = False
                     for pattern in args.files:
-                        # runtime information is not extracted with the specification of any file
-                        if f.name.startswith('runtime/'):
-                            continue
                         m_name = f.name.split('/', 1)[-1]
                         if fnmatch.fnmatch(m_name, pattern) or fnmatch.fnmatch(os.path.basename(m_name), pattern):
                             selected = True
@@ -2154,22 +2149,12 @@ def cmd_unpack(args, unknown_args):
                         env.logger.debug('Ignore {}'.format(m_name))
                         continue
                 dest = args.dest
-                is_runtime = False
                 # hacking f.name to correct destination
                 if f.name.startswith('external/'):
                     if not resp.get('Extract {} to outside of current directory'.format(f.name[9:])):
                         continue
                     f.name = f.name[9:]
                 elif f.name.startswith('tracked/'):
-                    f.name = f.name[8:]
-                elif f.name.startswith('runtime/'):
-                    is_runtime = True
-                    if f.name.endswith('.sig'):
-                        # this goes to local directory
-                        dest = os.path.join(args.dest, '.sos')
-                    else:
-                        # this goes to global signature directory
-                        dest = '.sos/.runtime'
                     f.name = f.name[8:]
                 elif f.name.startswith('scripts/'):
                     if not args.script:
@@ -2185,11 +2170,6 @@ def cmd_unpack(args, unknown_args):
                 if os.path.isfile(dest_file):
                     # signature files should not have md5
                     if dest_file.endswith('.zapped'):
-                        continue
-                    if fileMD5(dest_file) == md5[f.name]:
-                        if not is_runtime:
-                            env.logger.info(
-                                'Ignore identical {}'.format(f.name))
                         continue
                     if not resp.get('Overwrite existing file {}'.format(f.name)):
                         continue

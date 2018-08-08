@@ -1009,7 +1009,7 @@ def report(script=None, input=None, output=None, **kwargs):
         raise ValueError(f'Invalid output {output}.')
 
     # file lock to prevent race condition
-    with TimeoutInterProcessLock(os.path.join(os.path.expanduser('~'), '.sos', '.runtime', 'report_lock')):
+    with TimeoutInterProcessLock(os.path.join(env.temp_dir, 'report_lock')):
         if isinstance(script, str) and script.strip():
             writer(script.rstrip() + '\n\n')
         if input is not None:
