@@ -21,7 +21,7 @@ from .workflow_report import workflow_report
 from .utils import (Error, env, load_var,
                     pickleable, save_var, short_repr, stable_repr)
 
-from .signature_store import sig_store
+from .signature_store import target_signatures
 
 try:
     from xxhash import xxh64 as hash_md5
@@ -137,7 +137,7 @@ class BaseTarget(object):
     # derived functions that do not need to be redefined
     #
     def remove_sig(self):
-        sig_store.remove(self)
+        target_signatures.remove(self)
 
     def write_sig(self):
         '''Write .sig file with signature'''
@@ -512,7 +512,7 @@ class file_target(path, BaseTarget):
                 return True
             elif mode == 'any' and (self + '.zapped').exists():
                 return True
-            elif mode == 'signature' and sig_store.get(self):
+            elif mode == 'signature' and target_signatures.get(self):
                 return True
             return False
         except Exception as e:
@@ -529,27 +529,27 @@ class file_target(path, BaseTarget):
         '''Return file signature'''
         if mode == 'target':
             self._md5 = fileMD5(self)
-            sig_store.set(self, os.path.getmtime(self), os.path.getsize(self), self._md5)
+            target_signatures.set(self, os.path.getmtime(self), os.path.getsize(self), self._md5)
         if self._md5 is not None:
             return self._md5
-        sig = sig_store.get(self)
+        sig = target_signatures.get(self)
         if sig is not None:
             self._md5 = sig.md5
             return self._md5
         self._md5 = fileMD5(self)
-        sig_store.set(self, os.path.getmtime(self), os.path.getsize(self), self._md5)
+        target_signatures.set(self, os.path.getmtime(self), os.path.getsize(self), self._md5)
         return self._md5
 
     def remove(self, mode='both'):
         if mode in ('both', 'target') and self.is_file():
             self.unlink()
         if mode in ('both', 'signature'):
-            sig_store.remove(self)
+            target_signatures.remove(self)
 
     def size(self):
         if self.exists():
             return os.path.getsize(self)
-        sig = sig_store.get(self)
+        sig = target_signatures.get(self)
         if sig:
             return sig.size
         if (self + '.zapped').is_file():
@@ -563,7 +563,7 @@ class file_target(path, BaseTarget):
     def mtime(self):
         if self.exists():
             return os.path.getmtime(self)
-        sig = sig_store.get(self)
+        sig = target_signatures.get(self)
         if sig:
             return sig.mtime
         if (self + '.zapped').is_file():
@@ -581,16 +581,16 @@ class file_target(path, BaseTarget):
             with open(self + '.zapped') as md5:
                 line = md5.readline()
                 _, mtime, size, md5 = line.rsplit('\t', 3)
-                sig_store.set(self, mtime, size, md5.strip())
+                target_signatures.set(self, mtime, size, md5.strip())
             return
         if not self._md5:
             self._md5 = fileMD5(self)
-        sig_store.set(self,
+        target_signatures.set(self,
             os.path.getmtime(self), os.path.getsize(self), self._md5)
 
     def validate(self):
         '''Check if file matches its signature'''
-        sig = sig_store.get(self)
+        sig = target_signatures.get(self)
         if not sig or not os.path.isfile(self) or sig.size != os.path.getsize(self):
             return False
         if sig.mtime == os.path.getmtime(self):

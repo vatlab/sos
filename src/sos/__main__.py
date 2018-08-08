@@ -1403,8 +1403,8 @@ def cmd_remove(args, unknown_args):
         # a special case where all file and runtime signatures are removed.
         # no other options are allowed.
         removed_cnt = 0
-        from .signature_store import sig_store
-        sig_store.clear()
+        from .signature_store import target_signatures
+        target_signatures.clear()
         env.logger.info('All runtime signatures are removed')
         return
     #
@@ -1429,11 +1429,11 @@ def cmd_remove(args, unknown_args):
         from .utils import expand_time
         args.age = expand_time(args.age, default_unit='d')
     if args.signature:
-        from .signature_store import sig_store
+        from .signature_store import target_signatures
         def func(filename, resp):
             if os.path.abspath(filename) not in tracked_files:
                 return False
-            sig = sig_store.get(file_target(filename))
+            sig = target_signatures.get(file_target(filename))
             if not sig:
                 return False
             if args.size:
@@ -1450,7 +1450,7 @@ def cmd_remove(args, unknown_args):
                     return False
             if not args.dryrun:
                 try:
-                    sig_store.remove(file_target(target))
+                    target_signatures.remove(file_target(target))
                 except Exception as e:
                     env.logger.warning(
                         'Failed to remove signature of {}: {}'.format(filename, e))

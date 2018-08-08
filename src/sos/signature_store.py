@@ -8,11 +8,11 @@ import os
 import sqlite3
 import fasteners
 
-class SignatureStore:
+class TargetSignatures:
     TargetSig = namedtuple('TargetSig', 'mtime size md5')
 
     def __init__(self):
-        self.db_file = os.path.join(os.path.expanduser('~'), '.sos', 'signatures.db')
+        self.db_file = os.path.join(os.path.expanduser('~'), '.sos', 'target_signatures.db')
         self.lock_file=self.db_file + '_'
         self._conn = None
         self._pid = None
@@ -63,14 +63,13 @@ class SignatureStore:
         #with fasteners.InterProcessLock(self.lock_file):
         cur=self.conn.cursor()
         cur.execute(
-                'DELETE FROM SIGNATURE WHERE target=?', (target.target_name(),))
+                'DELETE FROM SIGNATURE WHERE md5=?', (target.target_name(),))
         self.conn.commit()
 
     def clear(self):
         cur=self.conn.cursor()
         cur.execute('DELETE FROM SIGNATURE')
-        self.conn.commit()
-        cur.execute('VACUUM')
+        cur.execute()
         self.conn.commit()
 
-sig_store = SignatureStore()
+target_signatures = TargetSignatures()
