@@ -63,7 +63,7 @@ class TargetSignatures:
         #with fasteners.InterProcessLock(self.lock_file):
         cur=self.conn.cursor()
         cur.execute(
-                'DELETE FROM targets WHERE md5=?', (target.target_name(),))
+                'DELETE FROM targets WHERE target=?', (target.target_name(),))
         self.conn.commit()
 
     def clear(self):

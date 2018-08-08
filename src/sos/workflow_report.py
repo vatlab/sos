@@ -34,6 +34,12 @@ def workflow_report(mode: str = 'a') -> Iterator[TextIOWrapper]:
             cur.execute(f'DELETE FROM workflows WHERE master_id = ?', (env.config["master_id"],))
         yield cur
 
+def list_workflows():
+    db_file = os.path.join(env.exec_dir, '.sos', 'workflow_signatures.db')
+    with sqlite3.connect(db_file, timeout=20) as conn:
+        cur = conn.cursor()
+        cur.execute('''SELECT DISTINCT master_id FROM workflows''')
+        return [x[0] for x in cur.fetchall()]
 
 class WorkflowSig(object):
     def __init__(self, workflow_id):

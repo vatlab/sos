@@ -1350,10 +1350,10 @@ class AnswerMachine:
                 return False
 
 
-def get_tracked_files(sig_file):
+def get_tracked_files(workflow_id):
     from .workflow_report import WorkflowSig
     from .targets import file_target
-    sig = WorkflowSig(os.path.basename(sig_file).split('.')[0])
+    sig = WorkflowSig(workflow_id)
     tracked_files = set([x['filename'] for x in sig.tracked_files()])
     placeholder_files = set(sig.placeholders())
     return set(), tracked_files, placeholder_files
@@ -1364,14 +1364,16 @@ def cmd_remove(args, unknown_args):
     from .utils import env
     import shutil
     from .targets import file_target
+    from .workflow_report import list_workflows
+
     env.verbosity = args.verbosity
 
     # what about global signature?
-    sig_files = glob.glob('.sos/*.sig')
+    wfs = list_workflows()
     tracked_files = set()
     placeholder_files = set()
-    for sig_file in sig_files:
-        s, t, p = get_tracked_files(sig_file)
+    for wf in wfs:
+        s, t, p = get_tracked_files(wf)
         tracked_files |= t
         placeholder_files |= p
 
@@ -1413,10 +1415,10 @@ def cmd_remove(args, unknown_args):
 
     if tracked_files:
         env.logger.info('{} tracked files from {} run{} are identified.'
-                        .format(len(tracked_files), len(sig_files), 's' if len(sig_files) > 1 else ''))
+                        .format(len(tracked_files), len(wfs), 's' if len(wfs) > 1 else ''))
     else:
         env.logger.info('No tracked file from {} run{} are identified.'
-                        .format(len(sig_files), 's' if len(sig_files) > 1 else ''))
+                        .format(len(wfs), 's' if len(wfs) > 1 else ''))
     #
     if not args.targets:
         args.targets = ['.']
@@ -1451,6 +1453,8 @@ def cmd_remove(args, unknown_args):
             if not args.dryrun:
                 try:
                     target_signatures.remove(file_target(target))
+                    if target_signatures.get(file_target(target)) is not None:
+                        raise ValueError('target still exists')
                 except Exception as e:
                     env.logger.warning(
                         'Failed to remove signature of {}: {}'.format(filename, e))
@@ -1478,7 +1482,7 @@ def cmd_remove(args, unknown_args):
                     return False
             if resp.get('{} tracked file {}'.format('Would remove' if args.dryrun else 'Remove', filename)):
                 if not args.dryrun:
-                    env.logger.debug('Remove {}'.format(s))
+                    env.logger.debug('Remove {}'.format(target))
                     try:
                         target.remove('both')
                     except Exception as e:
@@ -1511,7 +1515,7 @@ def cmd_remove(args, unknown_args):
                     return False
             if resp.get('{} untracked file {}'.format('Would remove' if args.dryrun else 'Remove', filename)):
                 if not args.dryrun:
-                    env.logger.debug('Remove {}'.format(s))
+                    env.logger.debug('Remove {}'.format(target))
                     try:
                         target.remove('both')
                     except Exception as e:
@@ -1544,7 +1548,7 @@ def cmd_remove(args, unknown_args):
                     return False
             if resp.get('{} tracked file {}'.format('Would zap' if args.dryrun else 'Zap', filename)):
                 if not args.dryrun:
-                    env.logger.debug('Zap {}'.format(s))
+                    env.logger.debug('Zap {}'.format(target))
                     try:
                         file_target(target).zap()
                     except Exception as e:
@@ -1576,7 +1580,7 @@ def cmd_remove(args, unknown_args):
                     return False
             if resp.get('{} file {}'.format('Would remove' if args.dryrun else 'Remove', filename)):
                 if not args.dryrun:
-                    env.logger.debug('Remove {}'.format(s))
+                    env.logger.debug('Remove {}'.format(target))
                     try:
                         target.remove('both')
                     except Exception as e:
@@ -1873,33 +1877,33 @@ def locate_files(session, include, exclude, all_files):
     import glob
     from .utils import env
     from .targets import file_target
-    sig_files = glob.glob('.sos/*.sig')
-    if not sig_files:
+    from .workflow_report import list_workflows
+    wfs = list_workflows()
+    if not wfs:
         raise ValueError('No executed workflow is identified.')
     if not session:
-        if len(sig_files) == 1:
-            sig_file = sig_files[0]
+        if len(wfs) == 1:
+            workflow_id = wfs[0]
         else:
             raise ValueError('More than one sessions have been executed. '
                              'Please specify one of the sessions to save.\n'
                              'Available sessions are:\n' +
-                             '\n'.join(os.path.basename(x)[:-4] for x in sig_files))
+                             '\n'.join(wfs))
     else:
-        matched = [x for x in sig_files if os.path.basename(
-            x).startswith(session)]
+        matched = [x for x in wfs if x.startswith(session)]
         if len(matched) == 1:
-            sig_file = matched[0]
+            workflow_id = matched[0]
         elif not matched:
             raise ValueError('No session matches specified session ID ({}). '.format(session) +
                              'Available sessions are:\n' +
-                             '\n'.join(os.path.basename(x)[:-4] for x in sig_files))
+                             '\n'.join(wfs))
         else:
             raise ValueError('More than one matching sessions have been located. '
                              'Please specify one of the sessions to save.\n '
                              'Available sessions are:\n' +
-                             '\n'.join(os.path.basename(x)[:-4] for x in sig_files))
+                             '\n'.join(wfs))
     #
-    script_files, tracked_files, _ = get_tracked_files(sig_file)
+    script_files, tracked_files, _ = get_tracked_files(workflow_id)
     # all
     if not all_files:
         external_files = []
