@@ -20,7 +20,7 @@ import pkg_resources
 from .utils import (Error, env, load_var,
                     pickleable, save_var, short_repr, stable_repr)
 
-from .signature_store import target_signatures, step_signatures, workflow_signatures
+from .signatures import target_signatures, step_signatures, workflow_signatures
 
 try:
     from xxhash import xxh64 as hash_md5

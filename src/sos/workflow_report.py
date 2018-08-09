@@ -11,7 +11,7 @@ from collections import defaultdict
 
 from .utils import env, format_duration, dot_to_gif
 from ._version import __version__
-from .signature_store import workflow_signatures
+from .signatures import workflow_signatures
 
 
 class WorkflowSig(object):

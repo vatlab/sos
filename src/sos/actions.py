@@ -33,7 +33,7 @@ from .targets import (UnknownTarget, executable, file_target, fileMD5, path,
 from .utils import (SlotManager, StopInputGroup, TerminateExecution,
                     TimeoutInterProcessLock, env, get_traceback, short_repr,
                     transcribe)
-from .signature_store import workflow_signatures
+from .signatures import workflow_signatures
 
 from typing import Any, Callable, Dict, List, Tuple, Union
 __all__ = ['SoS_Action', 'script', 'sos_run',

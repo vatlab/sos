@@ -24,7 +24,7 @@ from billiard import Pool
 from .eval import SoS_eval, SoS_exec, stmtHash
 from .parser import SoS_Step
 from .pattern import extract_pattern
-from .signature_store import workflow_signatures
+from .signatures import workflow_signatures
 from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
                      SOS_OUTPUT_OPTIONS, SOS_RUNTIME_OPTIONS, SOS_TAG)
 from .targets import (BaseTarget, RemovedTarget, RuntimeInfo, UnavailableLock,

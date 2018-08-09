@@ -1364,7 +1364,7 @@ def cmd_remove(args, unknown_args):
     from .utils import env
     import shutil
     from .targets import file_target
-    from .signature_store import workflow_signatures
+    from .signatures import workflow_signatures
 
     env.verbosity = args.verbosity
 
@@ -1405,7 +1405,7 @@ def cmd_remove(args, unknown_args):
         # a special case where all file and runtime signatures are removed.
         # no other options are allowed.
         removed_cnt = 0
-        from .signature_store import target_signatures, step_signatures
+        from .signatures import target_signatures, step_signatures
         target_signatures.clear()
         step_signatures.clear(global_sig=False)
         step_signatures.clear(global_sig=True)
@@ -1433,7 +1433,7 @@ def cmd_remove(args, unknown_args):
         from .utils import expand_time
         args.age = expand_time(args.age, default_unit='d')
     if args.signature:
-        from .signature_store import target_signatures
+        from .signatures import target_signatures
 
         def func(filename, resp):
             if os.path.abspath(filename) not in tracked_files:
@@ -1880,7 +1880,7 @@ def locate_files(session, include, exclude, all_files):
     import glob
     from .utils import env
     from .targets import file_target
-    from .signature_store import workflow_signatures
+    from .signatures import workflow_signatures
     wfs = workflow_signatures.workflows()
     if not wfs:
         raise ValueError('No executed workflow is identified.')
