@@ -49,15 +49,12 @@ textarea.sos-source {
 }
 
 .transcript-stepname {
-  margin-top: 0.2em;
   font-size: 100%;
   font-family: "SFMono-Regular",Consolas,"Liberation Mono",Menlo,Courier,monospace;
   line-height: 22px;
-  padding: 5px 10px;
-  background-color: #fafbfc;
-  border-bottom: 1px solid #e1e4e8;
-  border-top-left-radius: 2px;
-  border-top-right-radius: 2px;
+  padding-left: 1em;
+  padding-top: 10px;
+  background-color: #ddd;
 }
 
 
@@ -81,18 +78,20 @@ h1, h2, h3, h4, h5 {
   padding-left: 1em;
   padding-top: 0.5em;
   padding-bottom: 0.5em;
+  border-top: 1px solid #e1e4e8;
 }
 
 .transcript .transcript-time
 {
   font-family: monospace;
-  color: lightgray;
+  color: #999;
 }
 .transcript .transcript-command
 {
   font-family: monospace;
   font-weight: bold;
   margin-bottom: 0.5em;
+  color: #212529;
 }
 .transcript .transcript-script
 {

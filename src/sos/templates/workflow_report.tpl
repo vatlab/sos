@@ -270,7 +270,7 @@
         <div class="transcript">
             <span class="transcript-time">{{ tran.start_time_str }}</span>
             <div class="transcript-command">{{ tran.command }}</div>
-            <div class="transcript-script">{{ tran.script }}</div>
+            <div class="transcript-script"><pre>{{ tran.script | trim }}</pre></div>
         </div>
         {% endfor %}
         {% endfor %}
