@@ -17,11 +17,10 @@ from typing import Union, Dict, Any
 import fasteners
 import pkg_resources
 
-from .workflow_report import workflow_report
 from .utils import (Error, env, load_var,
                     pickleable, save_var, short_repr, stable_repr)
 
-from .signature_store import target_signatures, step_signatures
+from .signature_store import target_signatures, step_signatures, workflow_signatures
 
 try:
     from xxhash import xxh64 as hash_md5
@@ -511,8 +510,7 @@ class file_target(path, BaseTarget):
         # create an empty placeholder file
         env.logger.debug(f'Create placeholder target {self}')
         self.touch()
-        with workflow_report() as rep:
-            rep.write('placeholder', 'file_target', str(self))
+        workflow_signatures.write('placeholder', 'file_target', str(self))
 
     def target_exists(self, mode='any'):
         try:
@@ -1101,19 +1099,18 @@ class RuntimeInfo(InMemorySignature):
         env.logger.trace(f'Write signature {self.sig_id}')
         step_signatures.set(self.sig_id, ret, self.external_sig)
         # successfully write signature, write in workflow runtime info
-        with workflow_report() as wf:
-            for f in self.input_files:
-                if isinstance(f, file_target):
-                    wf.write('input_file', self.step_md5,
-                             f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}')
-            for f in self.dependent_files:
-                if isinstance(f, file_target):
-                    wf.write('dependent_file', self.step_md5,
-                             f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}')
-            for f in self.output_files:
-                if isinstance(f, file_target):
-                    wf.write('output_file', self.step_md5,
-                             f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}')
+        for f in self.input_files:
+            if isinstance(f, file_target):
+                workflow_signatures.write('input_file', self.step_md5,
+                                          f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}')
+        for f in self.dependent_files:
+            if isinstance(f, file_target):
+                workflow_signatures.write('dependent_file', self.step_md5,
+                                          f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}')
+        for f in self.output_files:
+            if isinstance(f, file_target):
+                workflow_signatures.write('output_file', self.step_md5,
+                                          f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}')
         return True
 
     def validate(self):

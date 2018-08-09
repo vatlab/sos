@@ -24,7 +24,8 @@ from .eval import SoS_exec
 from .hosts import Host
 from .parser import SoS_Step, SoS_Workflow
 from .pattern import extract_pattern
-from .workflow_report import render_report, workflow_report, remove_placeholders
+from .workflow_report import render_report, remove_placeholders
+from .signature_store import workflow_signatures
 from .step_executor import PendingTasks, Step_Executor, analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
                       UnknownTarget, file_target, path, paths,
@@ -381,8 +382,9 @@ class Base_Executor:
             workflow_info['script'] = base64.b64encode(
                 self.workflow.content.text().encode()).decode('ascii')
         workflow_info['master_id'] = env.config['master_id']
-        with workflow_report(mode='w' if env.config['master_id'] == self.md5 else 'a') as sig:
-            sig.write('workflow', self.md5, repr(workflow_info))
+        if env.config['master_id'] == self.md5:
+            workflow_signatures.clear()
+        workflow_signatures.write('workflow', self.md5, repr(workflow_info))
         #
         env.config['resumed_tasks'] = set()
         wf_status = os.path.join(os.path.expanduser(
@@ -992,14 +994,13 @@ class Base_Executor:
         if env.config['output_dag']:
             env.logger.info(
                 f"Workflow DAG saved to {env.config['output_dag']}")
-        with workflow_report() as sig:
-            workflow_info = {
-                'end_time': time.time(),
-                'stat': dict(self.completed),
-            }
-            if env.config['output_dag'] and env.config['master_id'] == self.md5:
-                workflow_info['dag'] = env.config['output_dag']
-            sig.write('workflow', self.md5, repr(workflow_info))
+        workflow_info = {
+            'end_time': time.time(),
+            'stat': dict(self.completed),
+        }
+        if env.config['output_dag'] and env.config['master_id'] == self.md5:
+            workflow_info['dag'] = env.config['output_dag']
+        workflow_signatures.write('workflow', self.md5, repr(workflow_info))
         if env.config['master_id'] == env.config['workflow_id'] and env.config['output_report']:
             # if this is the outter most workflow
             render_report(env.config['output_report'],

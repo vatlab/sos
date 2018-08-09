@@ -24,7 +24,7 @@ from billiard import Pool
 from .eval import SoS_eval, SoS_exec, stmtHash
 from .parser import SoS_Step
 from .pattern import extract_pattern
-from .workflow_report import workflow_report
+from .signature_store import workflow_signatures
 from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
                      SOS_OUTPUT_OPTIONS, SOS_RUNTIME_OPTIONS, SOS_TAG)
 from .targets import (BaseTarget, RemovedTarget, RuntimeInfo, UnavailableLock,
@@ -1042,23 +1042,22 @@ class Base_Step_Executor:
         results = self.wait_for_tasks(self.task_manager._submitted_tasks)
         #
         # report task
-        with workflow_report() as rep:
-            # what we should do here is to get the alias of the Host
-            # because it can be different (e.g. not localhost
-            if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
-                queue = env.sos_dict['_runtime']['queue']
-            elif env.config['default_queue']:
-                queue = env.config['default_queue']
-            else:
-                queue = 'localhost'
+        # what we should do here is to get the alias of the Host
+        # because it can be different (e.g. not localhost
+        if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
+            queue = env.sos_dict['_runtime']['queue']
+        elif env.config['default_queue']:
+            queue = env.config['default_queue']
+        else:
+            queue = 'localhost'
 
-            for id, result in results.items():
-                # turn to string to avoid naming lookup issue
-                rep_result = {x: (y if isinstance(y, (int, bool, float, str)) else short_repr(
-                    y)) for x, y in result.items()}
-                rep_result['tags'] = ' '.join(self.task_manager.tags(id))
-                rep_result['queue'] = queue
-                rep.write('task', id, repr(rep_result))
+        for id, result in results.items():
+            # turn to string to avoid naming lookup issue
+            rep_result = {x: (y if isinstance(y, (int, bool, float, str)) else short_repr(
+                y)) for x, y in result.items()}
+            rep_result['tags'] = ' '.join(self.task_manager.tags(id))
+            rep_result['queue'] = queue
+            workflow_signatures.write('task', id, repr(rep_result))
         self.task_manager.clear_submitted()
 
         # if in dryrun mode, we display the output of the dryrun task
@@ -1717,36 +1716,36 @@ class Base_Step_Executor:
                                         f'Failed to evaluate shared variable {var} from expression {val}: {e}')
             #
             self.verify_output()
-            with workflow_report() as rep:
-                substeps = self.completed['__substep_completed__'] + \
-                    self.completed['__substep_skipped__']
-                self.completed['__step_completed__'] = self.completed['__substep_completed__'] / substeps
-                self.completed['__step_skipped__'] = self.completed['__substep_skipped__'] / substeps
-                if self.completed['__step_completed__'].is_integer():
-                    self.completed['__step_completed__'] = int(
-                        self.completed['__step_completed__'])
-                if self.completed['__step_skipped__'].is_integer():
-                    self.completed['__step_skipped__'] = int(
-                        self.completed['__step_skipped__'])
+            substeps = self.completed['__substep_completed__'] + \
+                self.completed['__substep_skipped__']
+            self.completed['__step_completed__'] = self.completed['__substep_completed__'] / substeps
+            self.completed['__step_skipped__'] = self.completed['__substep_skipped__'] / substeps
+            if self.completed['__step_completed__'].is_integer():
+                self.completed['__step_completed__'] = int(
+                    self.completed['__step_completed__'])
+            if self.completed['__step_skipped__'].is_integer():
+                self.completed['__step_skipped__'] = int(
+                    self.completed['__step_skipped__'])
 
-                def file_only(targets):
-                    if not isinstance(targets, sos_targets):
-                        env.logger.warning(
-                            f"Unexpected input or output target for reporting. Empty list returned: {targets}")
-                        return []
-                    else:
-                        return [(str(x), x.size()) for x in targets._targets if isinstance(x, file_target)]
-                step_info = {
-                    'step_id': self.step.md5,
-                    'start_time': self.start_time,
-                    'stepname': self.step.step_name(True),
-                    'substeps': len(self._substeps),
-                    'input': file_only(env.sos_dict['step_input']),
-                    'output': file_only(env.sos_dict['step_output']),
-                    'completed': dict(self.completed),
-                    'end_time': time.time()
-                }
-                rep.write('step', env.sos_dict["workflow_id"], repr(step_info))
+            def file_only(targets):
+                if not isinstance(targets, sos_targets):
+                    env.logger.warning(
+                        f"Unexpected input or output target for reporting. Empty list returned: {targets}")
+                    return []
+                else:
+                    return [(str(x), x.size()) for x in targets._targets if isinstance(x, file_target)]
+            step_info = {
+                'step_id': self.step.md5,
+                'start_time': self.start_time,
+                'stepname': self.step.step_name(True),
+                'substeps': len(self._substeps),
+                'input': file_only(env.sos_dict['step_input']),
+                'output': file_only(env.sos_dict['step_output']),
+                'completed': dict(self.completed),
+                'end_time': time.time()
+            }
+            workflow_signatures.write(
+                'step', env.sos_dict["workflow_id"], repr(step_info))
             return self.collect_result()
         except KeyboardInterrupt:
             # if the worker_pool is not properly shutdown (e.g. interrupted by KeyboardInterrupt #871)

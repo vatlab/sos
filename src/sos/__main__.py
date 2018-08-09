@@ -1364,12 +1364,12 @@ def cmd_remove(args, unknown_args):
     from .utils import env
     import shutil
     from .targets import file_target
-    from .workflow_report import list_workflows
+    from .signature_store import workflow_signatures
 
     env.verbosity = args.verbosity
 
     # what about global signature?
-    wfs = list_workflows()
+    wfs = workflow_signatures.workflows()
     tracked_files = set()
     placeholder_files = set()
     for wf in wfs:
@@ -1434,6 +1434,7 @@ def cmd_remove(args, unknown_args):
         args.age = expand_time(args.age, default_unit='d')
     if args.signature:
         from .signature_store import target_signatures
+
         def func(filename, resp):
             if os.path.abspath(filename) not in tracked_files:
                 return False
@@ -1879,8 +1880,8 @@ def locate_files(session, include, exclude, all_files):
     import glob
     from .utils import env
     from .targets import file_target
-    from .workflow_report import list_workflows
-    wfs = list_workflows()
+    from .signature_store import workflow_signatures
+    wfs = workflow_signatures.workflows()
     if not wfs:
         raise ValueError('No executed workflow is identified.')
     if not session:

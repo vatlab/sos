@@ -33,7 +33,7 @@ from .targets import (UnknownTarget, executable, file_target, fileMD5, path,
 from .utils import (SlotManager, StopInputGroup, TerminateExecution,
                     TimeoutInterProcessLock, env, get_traceback, short_repr,
                     transcribe)
-from .workflow_report import workflow_report
+from .signature_store import workflow_signatures
 
 from typing import Any, Callable, Dict, List, Tuple, Union
 __all__ = ['SoS_Action', 'script', 'sos_run',
@@ -292,9 +292,9 @@ class SoS_ExecuteScript:
 
             debug_script_file = os.path.join(env.exec_dir, '.sos',
                                              f'{env.sos_dict["step_name"]}_{env.sos_dict["_index"]}_{str(uuid.uuid4())[:8]}{self.suffix}')
-            #with open(debug_script_file, 'w') as sfile:
+            # with open(debug_script_file, 'w') as sfile:
             #    sfile.write(self.script)
-            #env.logger.trace(self.script)
+            # env.logger.trace(self.script)
 
             try:
                 p = None
@@ -321,12 +321,11 @@ class SoS_ExecuteScript:
                 cmd = interpolate(f'{self.interpreter} {self.args}',
                                   {'filename': sos_targets(script_file), 'script': self.script})
                 transcript_cmd = interpolate(f'{self.interpreter} {self.args}',
-                                  {'filename': sos_targets('SCRIPT'), 'script': self.script})
+                                             {'filename': sos_targets('SCRIPT'), 'script': self.script})
                 transcribe(self.script, cmd=transcript_cmd)
                 if env.sos_dict['_index'] == 0:
-                    with workflow_report() as rep:
-                        rep.write('transcript', env.sos_dict['step_name'],
-                            repr({'start_time': time.time(), 'command': transcript_cmd, 'script': self.script}))
+                    workflow_signatures.write('transcript', env.sos_dict['step_name'],
+                                              repr({'start_time': time.time(), 'command': transcript_cmd, 'script': self.script}))
 
                 if env.config['run_mode'] == 'interactive':
                     if 'stdout' in kwargs or 'stderr' in kwargs:
@@ -619,7 +618,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                             if not os.path.isfile(dest_file):
                                 env.logger.warning(
                                     f'Missing decompressed file {dest_file}')
-                            #else:
+                            # else:
                             #    sig.add(dest_file)
                     elif tarfile.is_tarfile(dest):
                         with tarfile.open(dest, 'r:*') as tar:
@@ -633,7 +632,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                                         env.logger.warning(
                                             f'Missing decompressed file {dest_file}')
                                     else:
-                                    #    sig.add(dest_file)
+                                        #    sig.add(dest_file)
                                         file_count += 1
                                 # sometimes the file is very large but we do not need to decompress all
                                 # and track all files.
@@ -644,7 +643,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                         if not os.path.isfile(decomp):
                             env.logger.warning(
                                 f'Missing decompressed file {decomp}')
-                        #sig.add(decomp)
+                        # sig.add(decomp)
                 prog.set_description(
                     message + ': \033[32m writing signature\033[0m')
                 prog.update()
@@ -781,7 +780,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                     while buffer:
                         fout.write(buffer)
                         buffer = fin.read(100000)
-                #sig.add(decomp)
+                # sig.add(decomp)
                 decompressed += 1
         decompress_msg = '' if not decompressed else f' ({decompressed} file{"" if decompressed <= 1 else "s"} decompressed)'
         prog.set_description(
@@ -978,7 +977,8 @@ def report(script=None, input=None, output=None, **kwargs):
     if env.config['run_mode'] == 'dryrun':
         if '__std_out__' in env.sos_dict:
             with open(env.sos_dict['__std_out__'], 'a') as so:
-                so.write(f'HINT: report:\n{"" if script is None else script}\n')
+                so.write(
+                    f'HINT: report:\n{"" if script is None else script}\n')
                 if input is not None:
                     for ifile in input:
                         so.write(f'  from file: {ifile}\n')

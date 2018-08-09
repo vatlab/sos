@@ -7,62 +7,21 @@ import getpass
 import os
 import time
 import base64
-import sqlite3
-import fasteners
 from collections import defaultdict
 
-from .utils import TimeoutInterProcessLock, env, format_duration, dot_to_gif
+from .utils import env, format_duration, dot_to_gif
 from ._version import __version__
+from .signature_store import workflow_signatures
 
-from io import TextIOWrapper
-from typing import Iterator
-
-
-class workflow_report(object):
-    def __init__(self, mode: str = 'a'):
-        db_file = os.path.join(env.exec_dir, '.sos', 'workflow_signatures.db')
-        self.conn = sqlite3.connect(db_file, timeout=20)
-        self.cur = self.conn.cursor()
-        self.cur.execute('''CREATE TABLE IF NOT EXISTS workflows (
-                master_id text,
-                entry_type text,
-                id text,
-                item text
-        )''')
-        if mode == 'w':
-            self.cur.execute(f'DELETE FROM workflows WHERE master_id = ?', (env.config["master_id"],))
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc):
-        self.conn.commit()
-        self.conn.close()
-
-    def write(self, entry_type: str, id: str, item: str):
-        self.cur.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
-            (env.config["master_id"], entry_type, id, item))
-
-
-def list_workflows():
-    db_file = os.path.join(env.exec_dir, '.sos', 'workflow_signatures.db')
-    with sqlite3.connect(db_file, timeout=20) as conn:
-        cur = conn.cursor()
-        cur.execute('''SELECT DISTINCT master_id FROM workflows''')
-        return [x[0] for x in cur.fetchall()]
 
 class WorkflowSig(object):
     def __init__(self, workflow_id):
         self.data = defaultdict(lambda: defaultdict(list))
-        db_file = os.path.join(env.exec_dir, '.sos', 'workflow_signatures.db')
-        with sqlite3.connect(db_file, timeout=20) as conn:
-            cur = conn.cursor()
-            cur.execute(f'SELECT entry_type, id, item FROM workflows WHERE master_id = ?', (workflow_id,))
-            for entry_type, id, item in cur:
-                try:
-                    self.data[entry_type][id].append(item.strip())
-                except Exception as e:
-                    env.logger.debug(f'Failed to read report line {line}: {e}')
+        for entry_type, id, item in workflow_signatures.records(workflow_id):
+            try:
+                self.data[entry_type][id].append(item.strip())
+            except Exception as e:
+                env.logger.debug(f'Failed to read report line {line}: {e}')
 
     def convert_time(self, info):
         if 'start_time' in info:
