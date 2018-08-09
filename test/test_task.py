@@ -3,6 +3,7 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
+
 import glob
 import os
 import shutil
@@ -10,6 +11,8 @@ import subprocess
 import sys
 import time
 import unittest
+import sqlite3
+from contextlib import contextmanager
 
 from sos.hosts import Host
 from sos.parser import ParsingError, SoS_Script
@@ -39,6 +42,18 @@ except subprocess.CalledProcessError:
         print('Failed to set up a docker machine with sos')
         has_docker = False
 
+
+@contextmanager
+def cd_new(path):
+    old_dir = os.getcwd()
+    if os.path.isdir(path):
+        shutil.rmtree(path)
+    os.makedirs(path, exist_ok=True)
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(old_dir)
 
 class TestTask(unittest.TestCase):
     def setUp(self):
@@ -740,6 +755,46 @@ print('a')
             'default_queue': 'docker_limited',
             'sig_mode': 'force',
         }).run)
+
+
+    def testPurgeWithoutOption(self):
+        '''Test sos purge to remove only tasks related to current directory'''
+        def get_tasks():
+            conn = sqlite3.connect('.sos/workflow_signatures.db')
+            cur = conn.cursor()
+            cur.execute('SELECT DISTINCT id FROM workflows WHERE entry_type = "task"')
+            return [x[0] for x in cur.fetchall()]
+
+        with cd_new('temp_a'):
+            with open('test.sos', 'w') as tst:
+                tst.write('''
+input: for_each={'i': range(2)}
+output: f'a{i}.txt'
+task:
+run: expand=True
+echo temp_a
+touch {_output}
+''')
+            subprocess.call('sos run test -s force', shell=True)
+            tasks_a = get_tasks()
+        #
+        with cd_new('temp_b'):
+            with open('test.sos', 'w') as tst:
+                tst.write('''
+input: for_each={'i': range(2)}
+output: f'a{i}.txt'
+task:
+run: expand=True
+echo temp_b
+touch {_output}
+''')
+            subprocess.call('sos run test -s force', shell=True)
+            tasks_b = get_tasks()
+            subprocess.call('sos purge', shell=True)
+        # check tasks
+        tasks = [x.split()[0] for x in subprocess.check_output('sos status -v1', shell=True).decode().splitlines()]
+        self.assertTrue(all(x in tasks for x in tasks_a))
+        self.assertFalse(any(x in tasks for x in tasks_b))
 
 
 if __name__ == '__main__':
