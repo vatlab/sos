@@ -59,9 +59,14 @@ class WorkflowSig(object):
             return {}
 
     def tasks(self):
+        def merge_dict(items):
+            ret = {}
+            for item in items:
+                ret.update(eval(item))
+            return ret
         try:
-            # there should be only one task for each id
-            tasks = {id: eval(res[0]) for id, res in self.data['task'].items()}
+            # there can be multiple task status for each id
+            tasks = {id: merge_dict(res) for id, res in self.data['task'].items()}
             for val in tasks.values():
                 self.convert_time(val)
                 if 'peak_cpu' in val:
