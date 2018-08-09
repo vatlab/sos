@@ -12,11 +12,10 @@ import re
 import shutil
 import sys
 import textwrap
-import types
 import typing
 from io import StringIO, TextIOBase
 from tokenize import generate_tokens
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 
 from .eval import on_demand_options
@@ -29,6 +28,13 @@ from .targets import file_target, path, paths, sos_targets, textMD5
 from .utils import Error, env, locate_script, text_repr, format_par
 
 __all__ = ['SoS_Script']
+
+
+# these are needed by eval as recognizable types
+assert file_target
+assert path
+assert paths
+assert sos_targets
 
 
 class ParsingError(Error):
@@ -49,8 +55,10 @@ class ParsingError(Error):
 
 
 _action_list = None
+
+
 def is_type_hint(stmt: str) -> bool:
-    '''Try to differentiate 
+    '''Try to differentiate
 
     var: type = value
 
@@ -61,7 +69,7 @@ def is_type_hint(stmt: str) -> bool:
     '''
     if stmt.count('=') > 1:
         return False
-    
+
     if ':' not in stmt:
         return False
 
@@ -73,7 +81,7 @@ def is_type_hint(stmt: str) -> bool:
     #
     # action: int
     #
-    # or 
+    # or
     #
     # input: variable
     #
@@ -104,7 +112,8 @@ def is_type_hint(stmt: str) -> bool:
     global _action_list
     if _action_list is None:
         import pkg_resources
-        _action_list = [x.name for x in pkg_resources.iter_entry_points(group='sos_actions')]
+        _action_list = [
+            x.name for x in pkg_resources.iter_entry_points(group='sos_actions')]
     if action in _action_list:
         return False
 
@@ -113,7 +122,8 @@ def is_type_hint(stmt: str) -> bool:
         return True
 
     # if not quite sure???
-    env.logger.debug(f"Failed to tell if '{stmt}' is an assignment with type hint or function in script format. Assuming type hint.")
+    env.logger.debug(
+        f"Failed to tell if '{stmt}' is an assignment with type hint or function in script format. Assuming type hint.")
     # regular function written in this format?
     return True
 

@@ -367,6 +367,7 @@ class RuntimeEnvironments(object):
     #
     # attribute logger
     #
+
     def _set_logger(self, unused=None):
         if not hasattr(logging, 'TRACE'):
             logging.TRACE = 5
@@ -406,6 +407,7 @@ class RuntimeEnvironments(object):
             self._logger.addHandler(ch)
     #
     # attribute exec_dir
+
     def _set_exec_dir(self, edir):
         if not os.path.isdir(edir):
             raise RuntimeError(f'Exec dir {edir} does not exist.')

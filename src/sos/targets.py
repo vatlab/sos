@@ -17,8 +17,7 @@ from typing import Union, Dict, Any
 import fasteners
 import pkg_resources
 
-from .utils import (Error, env, load_var,
-                    pickleable, save_var, short_repr, stable_repr)
+from .utils import (Error, env, pickleable, short_repr, stable_repr)
 
 from .signatures import target_signatures, step_signatures, workflow_signatures
 
@@ -1000,7 +999,7 @@ class InMemorySignature:
                     files_checked[freal.target_name()] = True
                 except Exception as e:
                     env.logger.debug(
-                        f'Wrong md5 line {line} in signature: {e}')
+                        f'Wrong md5 in signature: {e}')
         #
         if not all(files_checked.values()):
             return f'No MD5 signature for {", ".join(x for x,y in files_checked.items() if not y)}'

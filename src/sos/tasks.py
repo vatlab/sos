@@ -14,9 +14,8 @@ from enum import Enum
 from collections import namedtuple
 
 from typing import Union, Dict
-from collections.abc import Sequence
 
-from .utils import (env, expand_time, linecount_of_file, sample_lines, log_to_file,
+from .utils import (env, expand_time, linecount_of_file, sample_lines,
                     short_repr, tail_of_file, expand_size, format_HHMMSS,
                     DelayedAction, format_duration)
 from .targets import sos_targets
@@ -525,7 +524,7 @@ def remove_task_files(task: str, exts: list):
                 # bit and try to remove it later. The function should not
                 # wiat for the thread thoug
                 try:
-                    s = DelayedAction(os.remove, filename)
+                    DelayedAction(os.remove, filename)
                 except:
                     pass
 

@@ -998,7 +998,6 @@ def get_execute_parser(desc_only=False):
 def cmd_execute(args, workflow_args):
     from .tasks import check_task, monitor_interval, resource_monitor_interval
     from .task_executor import execute_task
-    from .monitor import summarizeExecution
     from .utils import env, load_config_files
     import glob
     if args.queue is None:
@@ -1352,7 +1351,6 @@ class AnswerMachine:
 
 def get_tracked_files(workflow_id):
     from .workflow_report import WorkflowSig
-    from .targets import file_target
     sig = WorkflowSig(workflow_id)
     tracked_files = set([x['filename'] for x in sig.tracked_files()])
     placeholder_files = set(sig.placeholders())
@@ -1360,9 +1358,7 @@ def get_tracked_files(workflow_id):
 
 
 def cmd_remove(args, unknown_args):
-    import glob
     from .utils import env
-    import shutil
     from .targets import file_target
     from .signatures import workflow_signatures
 
@@ -1404,7 +1400,6 @@ def cmd_remove(args, unknown_args):
     if args.signature and not args.targets:
         # a special case where all file and runtime signatures are removed.
         # no other options are allowed.
-        removed_cnt = 0
         from .signatures import target_signatures, step_signatures
         target_signatures.clear()
         step_signatures.clear(global_sig=False)
@@ -1877,7 +1872,6 @@ def get_pack_parser(desc_only=False):
 
 def locate_files(session, include, exclude, all_files):
     import fnmatch
-    import glob
     from .utils import env
     from .targets import file_target
     from .signatures import workflow_signatures
@@ -2095,7 +2089,6 @@ def cmd_unpack(args, unknown_args):
     import tarfile
     from tqdm import tqdm as ProgressBar
     from .utils import env, pretty_size, ProgressFileObj
-    from .targets import fileMD5
     import fnmatch
     import time
 

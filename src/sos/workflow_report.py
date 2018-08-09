@@ -21,7 +21,7 @@ class WorkflowSig(object):
             try:
                 self.data[entry_type][id].append(item.strip())
             except Exception as e:
-                env.logger.debug(f'Failed to read report line {line}: {e}')
+                env.logger.debug(f'Failed to read report line: {e}')
 
     def convert_time(self, info):
         if 'start_time' in info:

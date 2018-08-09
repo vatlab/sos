@@ -6,7 +6,6 @@ import copy
 import glob
 import multiprocessing as mp
 import os
-import pickle
 import shutil
 import socket
 import stat
@@ -234,9 +233,6 @@ class LocalHost:
             p.join()
 
     def receive_result(self, task_id: str) -> Dict[str, Any]:
-        sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
-
-        task_file = os.path.join(sys_task_dir, task_id + '.task')
         tf = TaskFile(task_id)
         params = tf.params
         job_dict = params.sos_dict
@@ -698,7 +694,6 @@ class RemoteHost:
                 raise RuntimeError('Failed to retrieve result of job {} from {} with cmd\n{}'.format(
                     task_id, self.alias, receive_cmd))
 
-        task_file = os.path.join(sys_task_dir, task_id + '.task')
         tf = TaskFile(task_id)
         params = tf.params
         res = tf.result

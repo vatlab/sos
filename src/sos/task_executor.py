@@ -4,21 +4,17 @@
 # Distributed under the terms of the 3-clause BSD License.
 import copy
 import os
-import pickle
 import subprocess
-import stat
 import sys
 import time
 import traceback
 from collections import OrderedDict
 from collections.abc import Mapping, Sequence
-from io import StringIO
-from tokenize import generate_tokens
 
 from .eval import SoS_eval, SoS_exec, interpolate, stmtHash
 from .monitor import ProcessMonitor
 from .targets import (InMemorySignature, UnknownTarget, file_target,
-                      remote, sos_step, sos_targets, textMD5)
+                      remote, sos_step, sos_targets)
 from .utils import StopInputGroup, env, short_repr, pickleable
 from .tasks import TaskFile, remove_task_files
 
@@ -344,7 +340,6 @@ del sos_handle_parameter_
     if env.config['sig_mode'] == 'ignore':
         sig = None
     else:
-        tokens = [x[1] for x in generate_tokens(StringIO(task).readline)]
         # try to add #task so that the signature can be different from the step
         # if everything else is the same
         sig = InMemorySignature(env.sos_dict['_input'], env.sos_dict['_output'],
