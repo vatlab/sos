@@ -24,12 +24,9 @@ class WorkflowSig(object):
                 env.logger.debug(f'Failed to read report line: {e}')
 
     def convert_time(self, info):
-        if 'start_time' in info:
-            info['start_time_str'] = time.strftime(
-                '%Y-%m-%d %H:%M:%S', time.localtime(info['start_time']))
-        if 'end_time' in info:
-            info['end_time_str'] = time.strftime(
-                '%Y-%m-%d %H:%M:%S', time.localtime(info['end_time']))
+        for key in [x for x in info.keys() if x.endswith('_time')]:
+            info[key + '_str'] = time.strftime(
+                '%Y-%m-%d %H:%M:%S', time.localtime(info[key]))
         if 'start_time' in info and 'end_time' in info:
             info['duration'] = int(info['end_time'] - info['start_time'])
             info['duration_str'] = format_duration(info['duration'])

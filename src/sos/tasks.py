@@ -19,6 +19,7 @@ from .utils import (env, expand_time, linecount_of_file, sample_lines,
                     short_repr, tail_of_file, expand_size, format_HHMMSS,
                     DelayedAction, format_duration)
 from .targets import sos_targets
+from .signatures import workflow_signatures
 
 monitor_interval = 5
 resource_monitor_interval = 60
@@ -169,11 +170,14 @@ class TaskFile(object):
     tags_offset = 92  # struct.calcsize(status_fmt + '6i')
 
     def __init__(self, task_id: str):
+        self.task_id = task_id
         self.task_file = os.path.join(
             os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task'
         )
 
     def save(self, params):
+        workflow_signatures.write('task', self.task_id,
+            f"{{'creation_time': {time.time()}}}")
         if os.path.isfile(self.task_file):
             if env.config['sig_mode'] in ('force', 'ignore') and self.status != 'running':
                 with open(self.task_file, 'r+b') as fh:
@@ -1118,12 +1122,15 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
                        for x in matched]
             all_tasks.extend(matched)
         is_all = False
-    else:
+    elif purge_all:
         tasks = glob.glob(os.path.join(
             os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
         all_tasks = [(os.path.basename(x)[:-5], os.path.getmtime(x))
                      for x in tasks]
         is_all = True
+    else:
+        env.logger.error('No relevant task to remove.')
+        return ''
     #
     if age is not None:
         age = expand_time(age, default_unit='d')

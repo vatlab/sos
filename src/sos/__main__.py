@@ -1190,9 +1190,13 @@ def cmd_purge(args, workflow_args):
     from .tasks import purge_tasks
     from .utils import env, load_config_files, get_traceback
     from .hosts import Host
+    from .signatures import workflow_signatures
     #from .monitor import summarizeExecution
     env.verbosity = args.verbosity
     try:
+        # if not --all and no task is specified, find all tasks in the current directory
+        if not args.tasks and not args.all:
+            args.tasks = workflow_signatures.tasks()
         if not args.queue:
             purge_tasks(args.tasks, args.all, args.age,
                         args.status, args.tags, args.verbosity)

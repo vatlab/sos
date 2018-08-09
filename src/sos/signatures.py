@@ -178,6 +178,11 @@ class WorkflowSignatures(object):
         cur.execute('SELECT DISTINCT master_id FROM workflows')
         return [x[0] for x in cur.fetchall()]
 
+    def tasks(self):
+        cur = self.conn.cursor()
+        cur.execute('SELECT DISTINCT id FROM workflows WHERE entry_type = "task"')
+        return [x[0] for x in cur.fetchall()]
+
     def clear(self):
         self.conn.execute(
             f'DELETE FROM workflows WHERE master_id = ?', (env.config["master_id"],))
