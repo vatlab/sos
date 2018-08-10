@@ -362,7 +362,6 @@ def stdoutIO():
     sys.stdout = oldout
     sys.stderr = olderr
 
-
 def validate_step_sig(sig):
     if env.config['sig_mode'] == 'default':
         # if users use sos_run, the "scope" of the step goes beyong names in this step
@@ -413,7 +412,7 @@ def validate_step_sig(sig):
         # build signature require existence of files
         if 'sos_run' in env.sos_dict['__signature_vars__']:
             return False
-        elif sig.write(rebuild=True):
+        elif signatures[idx].write(rebuild=True):
             env.logger.info(
                 f'Step ``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` with signature constructed')
             return True
@@ -438,7 +437,7 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[], captur
     try:
         if sig:
             if validate_step_sig(sig):
-                return {'ret_code': 0, 'sig_skipped': 1}
+                return {'ret_code': 0, 'skipped': 1}
             sig.lock()
         if capture_output:
             with stdoutIO() as (out, err):
@@ -1198,7 +1197,7 @@ class Base_Step_Executor:
                 env.logger.info(
                     f'output:   ``{short_repr(env.sos_dict["step_output"])}``')
 
-    def execute(self, stmt):
+    def execute(self, stmt, sig=None):
         try:
             self.last_res = SoS_exec(
                 stmt, return_result=self.run_mode == 'interactive')
@@ -1608,7 +1607,7 @@ class Base_Step_Executor:
                                 proc_vars = env.sos_dict.clone_selected_vars(
                                     env.sos_dict['__signature_vars__']
                                     | {'_input', '_output', '_depends', '_index', '__args__',
-                                       'step_name', '_runtime',
+                                    'step_name', '_runtime',
                                        '__signature_vars__', '__step_context__'
                                        })
 
@@ -1625,22 +1624,7 @@ class Base_Step_Executor:
                                 # signature will be written by the concurrent executor
                                 signatures[idx] = None
                             else:
-                                if env.config['sig_mode'] == 'ignore':
-                                    self.execute(statement[1])
-                                else:
-                                    sig = RuntimeInfo(
-                                        self.step.md5, self.step.tokens,
-                                        env.sos_dict['_input'],
-                                        env.sos_dict['_output'],
-                                        env.sos_dict['_depends'],
-                                        env.sos_dict['__signature_vars__'])
-                                    skip_index = validate_step_sig(sig)
-                                    if not skip_index:
-                                        sig.lock()
-                                        try:
-                                            self.execute(statement[1])
-                                        finally:
-                                            sig.release()
+                                self.execute(statement[1], signatures[idx])
                         except StopInputGroup as e:
                             self.output_groups[idx] = []
                             if e.message:
@@ -1730,10 +1714,6 @@ class Base_Step_Executor:
                     if res['ret_code'] == 0:
                         signatures[idx].write()
                     signatures[idx] = None
-                if 'sig_skipped' in res:
-                    self.completed['__substep_skipped__'] += 1
-                    self.completed['__substep_completed__'] -= len(
-                        self._substeps)
             # check results
             for proc_result in [x for x in self.proc_results if x['ret_code'] == 0]:
                 if 'stdout' in proc_result and proc_result['stdout']:
