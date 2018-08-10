@@ -921,7 +921,7 @@ class InMemorySignature:
                 return False
         init_context_sig = {var: objectMD5(self.init_signature[var]) for var in self.init_signature if pickleable(
             self.init_signature[var], var)}
-        if share_vars:
+        if self.share_vars:
             end_context = {var: env.sos_dict[var] for var in self.signature_vars if var in env.sos_dict and pickleable(
                 env.sos_dict[var], var)}
         else:
