@@ -388,7 +388,8 @@ del sos_handle_parameter_
 
     sig = None if env.config['sig_mode'] == 'ignore' else InMemorySignature(
         env.sos_dict['_input'], env.sos_dict['_output'],
-        env.sos_dict['_depends'], env.sos_dict['__signature_vars__'])
+        env.sos_dict['_depends'], env.sos_dict['__signature_vars__'],
+        share_vars='shared' in env.sos_dict['_runtime'])
 
     if sig and _validate_task_signature(sig, sig_content.get(task_id, {})):
         env.logger.info(f'{task_id} ``skipped``')

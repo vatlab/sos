@@ -421,7 +421,8 @@ def validate_step_sig(sig):
             f'Unrecognized signature mode {env.config["sig_mode"]}')
 
 
-def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[], capture_output=False):
+def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
+    share_vars=False, capture_output=False):
     '''Execute statements in the passed dictionary'''
     env.sos_dict.quick_update(proc_vars)
     sig = None if env.config['sig_mode'] == 'ignore' else RuntimeInfo(
@@ -429,7 +430,8 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[], captur
         env.sos_dict['_input'],
         env.sos_dict['_output'],
         env.sos_dict['_depends'],
-        env.sos_dict['__signature_vars__'])
+        env.sos_dict['__signature_vars__'],
+        share_vars=share_vars)
     outmsg = ''
     errmsg = ''
     try:
@@ -1551,6 +1553,7 @@ class Base_Step_Executor:
                                                                            proc_vars=proc_vars,
                                                                            step_md5=self.step.md5,
                                                                            step_tokens=self.step.tokens,
+                                                                           share_vars='shared' in self.step.options,
                                                                            capture_output=self.run_mode == 'interactive')))
                             else:
                                 if env.config['sig_mode'] == 'ignore':
@@ -1561,7 +1564,8 @@ class Base_Step_Executor:
                                         env.sos_dict['_input'],
                                         env.sos_dict['_output'],
                                         env.sos_dict['_depends'],
-                                        env.sos_dict['__signature_vars__'])
+                                        env.sos_dict['__signature_vars__'],
+                                        share_vars='shared' in self.step.options)
                                     skip_index = validate_step_sig(sig)
                                     if not skip_index:
                                         sig.lock()
