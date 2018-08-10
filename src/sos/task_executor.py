@@ -522,7 +522,6 @@ del sos_handle_parameter_
         env.logger.error(f'{task_id} ``failed``: {error_class} {detail}')
         return {'ret_code': 1, 'exception': e, 'task': task_id, 'shared': {}}
     finally:
-        env.sos_dict.set('__step_sig__', None)
         os.chdir(orig_dir)
 
     # the final result should be relative to cur_dir, not workdir

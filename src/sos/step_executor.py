@@ -1131,10 +1131,6 @@ class Base_Step_Executor:
 
     def execute(self, stmt, sig=None):
         try:
-            if sig is None:
-                env.sos_dict.set('__step_sig__', None)
-            else:
-                env.sos_dict.set('__step_sig__', sig.sig_id)
             self.last_res = SoS_exec(
                 stmt, return_result=self.run_mode == 'interactive')
         except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks):
@@ -1166,8 +1162,6 @@ class Base_Step_Executor:
 {error_class}: {detail}''')
             else:
                 raise RuntimeError(f'{error_class}: {detail}')
-        finally:
-            env.sos_dict.set('__step_sig__', None)
 
     def collect_result(self):
         # only results will be sent back to the master process
@@ -1547,12 +1541,7 @@ class Base_Step_Executor:
                                                                                 '__signature_vars__', '__step_context__'
                                                                                 })
 
-                                if signatures[idx] is None:
-                                    proc_vars['__step_sig__'] = None
-                                else:
-                                    proc_vars['__step_sig__'] = signatures[idx].sig_id
-                                    # we need to release the signature otherwise there can be too many opened
-                                    # signatures for concurrent jobs
+                                if signatures[idx] is not None:
                                     signatures[idx].release()
 
                                 self.proc_results.append(
