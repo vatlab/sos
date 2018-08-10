@@ -386,7 +386,7 @@ del sos_handle_parameter_
             env.sos_dict.set(key, sos_targets(resolve_remote(x)
                                               for x in sos_dict[key] if not isinstance(x, sos_step)))
 
-    sig = None if env.config['sig_mode'] == 'ignore' else InMemorySignature(
+    sig = None if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].empty() else InMemorySignature(
         env.sos_dict['_input'], env.sos_dict['_output'],
         env.sos_dict['_depends'], env.sos_dict['__signature_vars__'],
         share_vars='shared' in env.sos_dict['_runtime'])

@@ -731,6 +731,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             return False
         return all(x.is_external() for x in self._targets if isinstance(x, file_target))
 
+    def empty(self):
+        return not self._undetermined and not self._targets
+
     def determined(self):
         return self._targets or not self._undetermined
 

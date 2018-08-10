@@ -425,7 +425,7 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
     share_vars=False, capture_output=False):
     '''Execute statements in the passed dictionary'''
     env.sos_dict.quick_update(proc_vars)
-    sig = None if env.config['sig_mode'] == 'ignore' else RuntimeInfo(
+    sig = None if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].empty() else RuntimeInfo(
         step_md5, step_tokens,
         env.sos_dict['_input'],
         env.sos_dict['_output'],
@@ -1556,7 +1556,7 @@ class Base_Step_Executor:
                                                                            share_vars='shared' in self.step.options,
                                                                            capture_output=self.run_mode == 'interactive')))
                             else:
-                                if env.config['sig_mode'] == 'ignore':
+                                if env.config['sig_mode'] == 'ignore' or env.sos_dict['_input'].empty():
                                     self.execute(statement[1])
                                 else:
                                     sig = RuntimeInfo(
