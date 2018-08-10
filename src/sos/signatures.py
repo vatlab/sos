@@ -11,7 +11,6 @@ import sqlite3
 
 from .utils import env
 
-
 class TargetSignatures:
     TargetSig = namedtuple('TargetSig', 'mtime size md5')
 
@@ -57,14 +56,35 @@ class TargetSignatures:
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to save signature for target {target}: {e}')
 
+    def _num_records(self, cur):
+        try:
+            cur.execute('SELECT COUNT(rowid) FROM targets')
+            return cur.fetchone()[0]
+        except sqlite3.DatabaseError as e:
+            env.logger.warning(f'Failed to number of records for target: {e}')
+            return 0
+
     def remove(self, target):
         try:
             cur = self.conn.cursor()
             cur.execute(
-                'DELETE FROM targets WHERE target=?', (target.target_name(),))
+                    'DELETE FROM targets WHERE target=?', (target.target_name(),))
             self.conn.commit()
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to remove signature for target {target}: {e}')
+
+    def remove_many(self, targets):
+        try:
+            cur = self.conn.cursor()
+            cnt = self._num_records(cur)
+            cur.executemany(
+                    'DELETE FROM targets WHERE target=?',
+                        [(x,) for x in targets])
+            self.conn.commit()
+            return cnt - self._num_records(cur)
+        except sqlite3.DatabaseError as e:
+            env.logger.warning(f'Failed to remove signature for {len(targets)} targets: {e}')
+            return 0
 
     def clear(self):
         try:
@@ -139,6 +159,28 @@ class StepSignatures:
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to set step signature for step {step_id}: {e}')
 
+    def _num_records(self, cur):
+        try:
+            cur.execute('SELECT COUNT(rowid) FROM steps')
+            return cur.fetchone()[0]
+        except sqlite3.DatabaseError as e:
+            env.logger.warning(f'Failed to number of records for steps: {e}')
+            return 0
+
+    def remove_many(self, steps: list, global_sig: bool):
+        try:
+            conn = self.get_conn(global_sig)
+            cur = conn.cursor()
+            cnt = self._num_records(cur)
+            cur.executemany(
+                    'DELETE FROM steps WHERE step_id=?',
+                    [(x,) for x in steps])
+            conn.commit()
+            return cnt - self._num_records(cur)
+        except sqlite3.DatabaseError as e:
+            env.logger.warning(f'Failed to remove signature for {len(steps)} substeps: {e}')
+            return 0
+
     def clear(self, global_sig: bool):
         try:
             conn = self.get_conn(global_sig)
@@ -211,8 +253,8 @@ class WorkflowSignatures(object):
         '''Listing files related to workflows related to current directory'''
         try:
             cur = self.conn.cursor()
-            cur.execute('SELECT DISTINCT item FROM workflows WHERE entry_type LIKE "%_file"')
-            return [eval(x[0])['filename'] for x in cur.fetchall()]
+            cur.execute('SELECT id, item FROM workflows WHERE entry_type LIKE "%_file"')
+            return [(x[0], eval(x[1])['filename']) for x in cur.fetchall()]
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to get files from signature database: {e}')
             return []

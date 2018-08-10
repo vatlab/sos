@@ -1100,15 +1100,15 @@ class RuntimeInfo(InMemorySignature):
         # successfully write signature, write in workflow runtime info
         for f in self.input_files:
             if isinstance(f, file_target):
-                workflow_signatures.write('input_file', self.step_md5,
+                workflow_signatures.write('input_file', self.sig_id,
                                           f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}')
         for f in self.dependent_files:
             if isinstance(f, file_target):
-                workflow_signatures.write('dependent_file', self.step_md5,
+                workflow_signatures.write('dependent_file', self.sig_id,
                                           f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}')
         for f in self.output_files:
             if isinstance(f, file_target):
-                workflow_signatures.write('output_file', self.step_md5,
+                workflow_signatures.write('output_file', self.sig_id,
                                           f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}')
         return True
 

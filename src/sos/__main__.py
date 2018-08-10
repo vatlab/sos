@@ -1405,10 +1405,16 @@ def cmd_remove(args, unknown_args):
         # a special case where all file and runtime signatures are removed.
         # no other options are allowed.
         from .signatures import target_signatures, step_signatures, workflow_signatures
-        target_signatures.remove(workflow_signatures.files())
-        step_signatures.remove(workflow_signatures.steps(), global_sig=False)
-        step_signatures.remove(workflow_signatures.steps(), global_sig=True)
-        env.logger.info('All runtime signatures are removed')
+        sig_files = workflow_signatures.files()
+        if sig_files:
+            files = list(set([x[1] for x in sig_files]))
+            num_removed_files = target_signatures.remove_many(files)
+            sig_ids = list(set([x[0] for x in sig_files]))
+            num_removed_local_steps = step_signatures.remove_many(sig_ids, global_sig=False)
+            num_removed_global_steps = step_signatures.remove_many(sig_ids, global_sig=True)
+            env.logger.info(f'Signatures of {num_removed_files} files from {num_removed_local_steps + num_removed_global_steps} substeps are removed.')
+        else:
+            env.logger.info('No signatures are found from workflows executed under the current directory.')
         return
     #
     tracked_files = {os.path.abspath(os.path.expanduser(x))
