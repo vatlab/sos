@@ -362,82 +362,14 @@ def stdoutIO():
     sys.stdout = oldout
     sys.stderr = olderr
 
-def validate_step_sig(sig):
-    if env.config['sig_mode'] == 'default':
-        # if users use sos_run, the "scope" of the step goes beyong names in this step
-        # so we cannot save signatures for it.
-        if 'sos_run' in env.sos_dict['__signature_vars__']:
-            return False
-        else:
-            matched = sig.validate()
-            if isinstance(matched, dict):
-                # in this case, an Undetermined output can get real output files
-                # from a signature
-                env.sos_dict.set(
-                    '_input', sos_targets(matched['input']))
-                env.sos_dict.set(
-                    '_depends', sos_targets(matched['depends']))
-                if not env.sos_dict['_output'].determined():
-                    env.sos_dict.set(
-                        '_output', sos_targets(matched['output']))
-                    env.sos_dict['step_output'].extend(
-                        env.sos_dict['_output'])
-                env.sos_dict.update(
-                    matched['vars'])
-                env.logger.info(
-                    f'``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` due to saved signature')
-                return True
-            else:
-                env.logger.debug(
-                    f'Signature mismatch: {matched}')
-                return False
-    elif env.config['sig_mode'] == 'assert':
-        matched = sig.validate()
-        if isinstance(matched, str):
-            raise RuntimeError(
-                f'Signature mismatch: {matched}')
-        else:
-            env.sos_dict.set(
-                '_input', sos_targets(matched['input']))
-            env.sos_dict.set(
-                '_depends', sos_targets(matched['depends']))
-            env.sos_dict.set(
-                '_output', sos_targets(matched['output']))
-            env.sos_dict.update(
-                matched['vars'])
-            env.logger.info(
-                f'Step ``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` with matching signature')
-            return True
-    elif env.config['sig_mode'] == 'build':
-        # build signature require existence of files
-        if 'sos_run' in env.sos_dict['__signature_vars__']:
-            return False
-        elif signatures[idx].write(rebuild=True):
-            env.logger.info(
-                f'Step ``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` with signature constructed')
-            return True
-    elif env.config['sig_mode'] == 'force':
-        return False
-    else:
-        raise RuntimeError(
-            f'Unrecognized signature mode {env.config["sig_mode"]}')
 
-
-def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[], capture_output=False):
+def concurrent_execute(stmt, proc_vars={}, sig=None, capture_output=False):
     '''Execute statements in the passed dictionary'''
     env.sos_dict.quick_update(proc_vars)
-    sig = None if env.config['sig_mode'] == 'ignore' else RuntimeInfo(
-        step_md5, step_tokens,
-        env.sos_dict['_input'],
-        env.sos_dict['_output'],
-        env.sos_dict['_depends'],
-        env.sos_dict['__signature_vars__'])
     outmsg = ''
     errmsg = ''
     try:
         if sig:
-            if validate_step_sig(sig):
-                return {'ret_code': 0, 'skipped': 1}
             sig.lock()
         if capture_output:
             with stdoutIO() as (out, err):
@@ -1604,23 +1536,19 @@ class Base_Step_Executor:
                         try:
                             self.verify_input()
                             if self.concurrent_substep:
-                                proc_vars = env.sos_dict.clone_selected_vars(
-                                    env.sos_dict['__signature_vars__']
-                                    | {'_input', '_output', '_depends', '_index', '__args__',
-                                    'step_name', '_runtime',
-                                       '__signature_vars__', '__step_context__'
-                                       })
+                                proc_vars = env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__']
+                                                                             | {'_input', '_output', '_depends', '_index', '__args__', 'step_name', '_runtime',
+                                                                                '__signature_vars__', '__step_context__'
+                                                                                })
 
                                 if signatures[idx] is not None:
                                     signatures[idx].release()
 
                                 self.proc_results.append(
-                                    self.worker_pool.apply_async(concurrent_execute,
-                                                                 kwds=dict(stmt=statement[1],
-                                                                           proc_vars=proc_vars,
-                                                                           step_md5=self.step.md5,
-                                                                           step_tokens=self.step.tokens,
-                                                                           capture_output=self.run_mode == 'interactive')))
+                                    self.worker_pool.apply_async(concurrent_execute, kwds=dict(stmt=statement[1],
+                                                                                               proc_vars=proc_vars, sig=signatures[
+                                                                                                   idx],
+                                                                                               capture_output=self.run_mode == 'interactive')))
                                 # signature will be written by the concurrent executor
                                 signatures[idx] = None
                             else:
