@@ -158,16 +158,25 @@ class TaskFile(object):
     6. compressed stderr
     7. compressed pickled signatures
     '''
-    TaskHeader = namedtuple('TaskHeader',
+    TaskHeader_v1 = namedtuple('TaskHeader',
                             'version status last_modified '
                             'new_time pending_time submitted_time running_time aborted_time failed_time completed_time '
                             'params_size pulse_size stdout_size stderr_size result_size signature_size '
                             'tags'
                             )
 
-    header_fmt = '!2h 8d 6i 128s'
+    TaskHeader = namedtuple('TaskHeader',
+                            'version status last_modified '
+                            'new_time pending_time submitted_time running_time aborted_time failed_time completed_time '
+                            'params_size shell_size pulse_size stdout_size stderr_size result_size signature_size '
+                            'tags'
+                            )
+
+    header_fmt_v1 = '!2h 8d 6i 128s'
+    header_fmt_v2 = '!2h 8d 7i 124s'
     header_size = 220  # struct.calcsize(header_fmt)
-    tags_offset = 92  # struct.calcsize(status_fmt + '6i')
+    tags_offset = [92, 96]  # struct.calcsize(status_fmt + '6i')
+    tags_size = [128, 124]
 
     def __init__(self, task_id: str):
         self.task_id = task_id
@@ -194,7 +203,7 @@ class TaskFile(object):
         del params.tags
         params_block = lzma.compress(pickle.dumps(params))
         header = self.TaskHeader(
-            version=1,
+            version=2,
             status=TaskStatus.new.value,
             last_modified=now,
             new_time=now,
@@ -205,6 +214,7 @@ class TaskFile(object):
             failed_time=0,
             completed_time=0,
             params_size=len(params_block),
+            shell_size=0,
             pulse_size=0,
             stdout_size=0,
             stderr_size=0,
@@ -233,6 +243,7 @@ class TaskFile(object):
                 failed_time=0,
                 completed_time=0,
                 params_size=len(params_block),
+                shell_size=0,
                 pulse_size=0,
                 stdout_size=0,
                 stderr_size=0,
@@ -248,6 +259,7 @@ class TaskFile(object):
         header = self._read_header(fh)
         now = time.time()
         header = header._replace(
+            version=2,
             status=TaskStatus.new.value,
             last_modified=now,
             new_time=now,
@@ -257,6 +269,7 @@ class TaskFile(object):
             aborted_time=0,
             failed_time=0,
             completed_time=0,
+            shell_size=0,
             pulse_size=0,
             stdout_size=0,
             stderr_size=0,
@@ -274,13 +287,18 @@ class TaskFile(object):
 
     def _read_header(self, fh):
         fh.seek(0, 0)
-        return self.TaskHeader._make(struct.unpack(
-            self.header_fmt,
-            fh.read(self.header_size)))
+        data = fh.read(self.header_size)
+        if struct.unpack('!h', data[:2])[0] == 1:
+            header = self.TaskHeader_v1._make(struct.unpack(
+                self.header_fmt_v1, data))
+            return self.TaskHeader(shell_size=0, **header._asdict())
+        else:
+            return self.TaskHeader._make(struct.unpack(
+               self.header_fmt_v2, data))
 
     def _write_header(self, fh, header):
         fh.seek(0, 0)
-        fh.write(struct.pack(self.header_fmt, *header))
+        fh.write(struct.pack(self.header_fmt_v2, *header))
 
     def _get_content(self, ext: str):
         filename = self.task_file[:-5] + ext
@@ -292,6 +310,7 @@ class TaskFile(object):
 
     def add_outputs(self):
         # get header
+        shell = self._get_content('.sh')
         pulse = self._get_content('.pulse')
         stdout = self._get_content('.out')
         stderr = self._get_content('.err')
@@ -300,6 +319,7 @@ class TaskFile(object):
             if header.result_size != 0:
                 self._reset(fh)
             header = header._replace(
+                shell_size=len(shell),
                 pulse_size=len(pulse),
                 stdout_size=len(stdout),
                 stderr_size=len(stderr),
@@ -308,6 +328,8 @@ class TaskFile(object):
             )
             self._write_header(fh, header)
             fh.seek(self.header_size + header.params_size, 0)
+            if shell:
+                fh.write(shell)
             if pulse:
                 fh.write(pulse)
             if stdout:
@@ -324,7 +346,7 @@ class TaskFile(object):
                 signature_size=0,
             )
             self._write_header(fh, header)
-            fh.seek(self.header_size + header.params_size +
+            fh.seek(self.header_size + header.params_size + header.shell_size +
                     header.pulse_size + header.stdout_size + header.stderr_size)
             fh.write(result_block)
 
@@ -336,7 +358,7 @@ class TaskFile(object):
                 signature_size=len(signature_block)
             )
             self._write_header(fh, header)
-            fh.seek(self.header_size + header.params_size +
+            fh.seek(self.header_size + header.params_size + header.shell_size +
                     header.pulse_size + header.stdout_size + header.stderr_size +
                     header.result_size)
             fh.write(signature_block)
@@ -346,6 +368,9 @@ class TaskFile(object):
             return self._read_header(fh)
 
     info = property(_get_info)
+
+    def has_shell(self):
+        return self.info.shell_size > 0
 
     def has_result(self):
         return self.info.result_size > 0
@@ -385,35 +410,53 @@ class TaskFile(object):
             fh.seek(sts * 8, 1)
             fh.write(struct.pack('!d', now))
 
+    def _get_version(self):
+        with open(self.task_file, 'rb') as fh:
+            fh.seek(0, 0)
+            return struct.unpack('!h', fh.read(2))[0]
+
+    version = property(_get_version)
+
     status = property(_get_status, _set_status)
 
     def _get_tags(self):
         with open(self.task_file, 'rb') as fh:
-            fh.seek(self.tags_offset, 0)
-            return fh.read(128).decode().strip()
+            fh.seek(0, 0)
+            ver = struct.unpack('!h', fh.read(2))[0]
+            fh.seek(self.tags_offset[ver-1], 0)
+            return fh.read(self.tags_size[ver-1]).decode().strip()
 
     def _set_tags(self, tags: list):
         with open(self.task_file, 'r+b') as fh:
-            fh.seek(self.tags_offset, 0)
+            fh.seek(0, 0)
+            ver = struct.unpack('!h', fh.read(2))[0]
+            fh.seek(self.tags_offset[ver-1], 0)
             fh.write(' '.join(
-                sorted(tags)).ljust(128).encode())
-
-    def add_tags(self, tags: list):
-        with open(self.task_file, 'r+b') as fh:
-            fh.seek(self.tags_offset, 0)
-            existing_tags = fh.read(128).decode().strip()
-            fh.seek(self.tags_offset, 0)
-            fh.write(' '.join(
-                sorted(tags + existing_tags.split())).ljust(128).encode())
+                sorted(tags)).ljust(self.tags_size[ver-1]).encode())
 
     tags = property(_get_tags, _set_tags)
+
+    def _get_shell(self):
+        with open(self.task_file, 'rb') as fh:
+            header = self._read_header(fh)
+            if header.shell_size == 0:
+                return ''
+            fh.seek(self.header_size + header.params_size + header.shell_size + header.pulse_size
+                    + header.stdout_size, 0)
+            try:
+                return lzma.decompress(fh.read(header.shell_size)).decode()
+            except Exception as e:
+                env.logger.warning(f'Failed to decode shell: {e}')
+                return ''
+
+    shell = property(_get_shell)
 
     def _get_pulse(self):
         with open(self.task_file, 'rb') as fh:
             header = self._read_header(fh)
             if header.pulse_size == 0:
                 return ''
-            fh.seek(self.header_size + header.params_size, 0)
+            fh.seek(self.header_size + header.params_size + header.shell_size, 0)
             try:
                 return lzma.decompress(fh.read(header.pulse_size)).decode()
             except Exception as e:
@@ -427,7 +470,7 @@ class TaskFile(object):
             header = self._read_header(fh)
             if header.stdout_size == 0:
                 return ''
-            fh.seek(self.header_size + header.params_size + header.pulse_size, 0)
+            fh.seek(self.header_size + header.params_size + header.pulse_size + header.shell_size, 0)
             try:
                 return lzma.decompress(fh.read(header.stdout_size)).decode()
             except Exception as e:
@@ -441,7 +484,7 @@ class TaskFile(object):
             header = self._read_header(fh)
             if header.stderr_size == 0:
                 return ''
-            fh.seek(self.header_size + header.params_size + header.pulse_size
+            fh.seek(self.header_size + header.params_size + header.shell_size + header.pulse_size
                     + header.stdout_size, 0)
             try:
                 return lzma.decompress(fh.read(header.stderr_size)).decode()
@@ -456,7 +499,7 @@ class TaskFile(object):
             header = self._read_header(fh)
             if header.result_size == 0:
                 return {}
-            fh.seek(self.header_size + header.params_size +
+            fh.seek(self.header_size + header.params_size + header.shell_size +
                     header.pulse_size + header.stdout_size + header.stderr_size, 0)
             try:
                 return pickle.loads(lzma.decompress(fh.read(header.result_size)))
@@ -472,7 +515,7 @@ class TaskFile(object):
             if header.signature_size == 0:
                 return {}
             fh.seek(self.header_size + header.params_size +
-                    header.pulse_size + header.stdout_size +
+                    header.shell_size + header.pulse_size + header.stdout_size +
                     header.stderr_size + header.result_size, 0)
             try:
                 return pickle.loads(lzma.decompress(fh.read(header.signature_size)))
@@ -1031,6 +1074,9 @@ showResourceFigure_''' + t + '''()
                     print('EXECUTION STATS:\n================')
                     print(summarizeExecution(t, res['pulse'], status=s))
                 # if there are other files such as job file, print them.
+                if tf.has_shell():
+                    print('execution script:\n================\n' +
+                          tf.shell)
                 if tf.has_stdout():
                     print('standout output:\n================\n' +
                           tf.stdout)
@@ -1046,7 +1092,7 @@ showResourceFigure_''' + t + '''()
                     with open(pulse_file) as pulse:
                         print(summarizeExecution(t, pulse.read(), status=s))
                 # if there are other files such as job file, print them.
-                for ext in ('.out', '.err'):
+                for ext in ('.sh', '.out', '.err'):
                     f = os.path.join(
                         os.path.expanduser('~'), '.sos', 'tasks', t + ext)
                     if not os.path.isfile(f):
