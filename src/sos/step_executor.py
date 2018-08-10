@@ -1556,7 +1556,7 @@ class Base_Step_Executor:
                                                                            share_vars='shared' in self.step.options,
                                                                            capture_output=self.run_mode == 'interactive')))
                             else:
-                                if env.config['sig_mode'] == 'ignore' or env.sos_dict['_input'].empty():
+                                if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].empty():
                                     self.execute(statement[1])
                                 else:
                                     sig = RuntimeInfo(
