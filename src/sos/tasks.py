@@ -291,7 +291,7 @@ class TaskFile(object):
         if struct.unpack('!h', data[:2])[0] == 1:
             header = self.TaskHeader_v1._make(struct.unpack(
                 self.header_fmt_v1, data))
-            return self.TaskHeader(shell_size=0, **header._asdict()).replace(version=2)
+            return self.TaskHeader(shell_size=0, **header._asdict())._replace(version=2)
         else:
             return self.TaskHeader._make(struct.unpack(
                self.header_fmt_v2, data))
