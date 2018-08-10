@@ -515,6 +515,7 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[], captur
     finally:
         # release the lock even if the process becomes zombie? #871
         if sig:
+            sig.write()
             sig.release(quiet=True)
 
 
@@ -1426,7 +1427,6 @@ class Base_Step_Executor:
         skip_index = False
         # signatures of each index, which can remain to be None if no output
         # is defined.
-        signatures = [None for x in self._substeps]
         self.output_groups = [[] for x in self._substeps]
 
         if self.concurrent_substep:
@@ -1510,74 +1510,6 @@ class Base_Step_Executor:
                                 self.output_groups[idx] = env.sos_dict['_output'].targets(
                                 )
 
-                                # signature for the substep, including step content and signature vars
-                                if env.config['sig_mode'] != 'ignore' and g.determined():
-                                    signatures[idx] = RuntimeInfo(self.step.md5, self.step.tokens,
-                                                                  env.sos_dict['_input'],
-                                                                  env.sos_dict['_output'],
-                                                                  env.sos_dict['_depends'],
-                                                                  env.sos_dict['__signature_vars__'])
-                                    signatures[idx].lock()
-                                    if env.config['sig_mode'] == 'default':
-                                        # if users use sos_run, the "scope" of the step goes beyong names in this step
-                                        # so we cannot save signatures for it.
-                                        if 'sos_run' in env.sos_dict['__signature_vars__']:
-                                            skip_index = False
-                                        else:
-                                            matched = signatures[idx].validate(
-                                            )
-                                            if isinstance(matched, dict):
-                                                # in this case, an Undetermined output can get real output files
-                                                # from a signature
-                                                env.sos_dict.set(
-                                                    '_input', sos_targets(matched['input']))
-                                                env.sos_dict.set(
-                                                    '_depends', sos_targets(matched['depends']))
-                                                if not env.sos_dict['_output'].determined():
-                                                    env.sos_dict.set(
-                                                        '_output', sos_targets(matched['output']))
-                                                    env.sos_dict['step_output'].extend(
-                                                        env.sos_dict['_output'])
-                                                env.sos_dict.update(
-                                                    matched['vars'])
-                                                env.logger.info(
-                                                    f'``{self.step.step_name(True)}`` (index={idx}) is ``ignored`` due to saved signature')
-                                                skip_index = True
-                                            else:
-                                                env.logger.debug(
-                                                    f'Signature mismatch: {matched}')
-                                    elif env.config['sig_mode'] == 'assert':
-                                        matched = signatures[idx].validate()
-                                        if isinstance(matched, str):
-                                            raise RuntimeError(
-                                                f'Signature mismatch: {matched}')
-                                        else:
-                                            env.sos_dict.set(
-                                                '_input', sos_targets(matched['input']))
-                                            env.sos_dict.set(
-                                                '_depends', sos_targets(matched['depends']))
-                                            env.sos_dict.set(
-                                                '_output', sos_targets(matched['output']))
-                                            env.sos_dict.update(
-                                                matched['vars'])
-                                            env.logger.info(
-                                                f'Step ``{self.step.step_name(True)}`` (index={idx}) is ``ignored`` with matching signature')
-                                            skip_index = True
-                                    elif env.config['sig_mode'] == 'build':
-                                        # build signature require existence of files
-                                        if 'sos_run' in env.sos_dict['__signature_vars__']:
-                                            skip_index = False
-                                        elif signatures[idx].write(rebuild=True):
-                                            env.logger.info(
-                                                f'Step ``{self.step.step_name(True)}`` (index={idx}) is ``ignored`` with signature constructed')
-                                            skip_index = True
-                                    elif env.config['sig_mode'] == 'force':
-                                        skip_index = False
-                                    else:
-                                        raise RuntimeError(
-                                            f'Unrecognized signature mode {env.config["sig_mode"]}')
-                                if skip_index:
-                                    break
                             elif key == 'depends':
                                 try:
                                     dfiles = self.expand_depends_files(*args)
@@ -1612,9 +1544,6 @@ class Base_Step_Executor:
                                        '__signature_vars__', '__step_context__'
                                        })
 
-                                if signatures[idx] is not None:
-                                    signatures[idx].release()
-
                                 self.proc_results.append(
                                     self.worker_pool.apply_async(concurrent_execute,
                                                                  kwds=dict(stmt=statement[1],
@@ -1622,8 +1551,6 @@ class Base_Step_Executor:
                                                                            step_md5=self.step.md5,
                                                                            step_tokens=self.step.tokens,
                                                                            capture_output=self.run_mode == 'interactive')))
-                                # signature will be written by the concurrent executor
-                                signatures[idx] = None
                             else:
                                 if env.config['sig_mode'] == 'ignore':
                                     self.execute(statement[1])
@@ -1640,6 +1567,12 @@ class Base_Step_Executor:
                                         try:
                                             self.execute(statement[1])
                                         finally:
+                                            if not env.sos_dict['step_output'].determined():
+                                                self.reevaluate_output()
+                                                # if output is no longer Undetermined, set it to output
+                                                # of each signature
+                                                sig.set(env.sos_dict['step_output'], 'output')
+                                            sig.write()
                                             sig.release()
                         except StopInputGroup as e:
                             self.output_groups[idx] = []
@@ -1653,27 +1586,13 @@ class Base_Step_Executor:
                     self.completed['__substep_skipped__'] += 1
                     self.completed['__substep_completed__'] -= 1
                     skip_index = False
-                    if signatures[idx]:
-                        signatures[idx].release()
-                        signatures[idx] = None
                     continue
 
                 # if concurrent input group, there is no task
                 if self.concurrent_substep:
                     continue
                 # finally, tasks..
-                # now the regular step process is done and we are going to the task part
-                # we should be able to release the signature because external task has its own signatures
-
-                if signatures[idx] is not None:
-                    signatures[idx].release()
-
                 if not self.step.task:
-                    # if output is undetermined, wait till everyone finishes and re-evaluate
-                    if signatures[idx] is not None and env.sos_dict['step_output'].determined():
-                        if 'sos_run' not in env.sos_dict['__signature_vars__']:
-                            signatures[idx].write()
-                        signatures[idx] = None
                     continue
 
                 if env.config['run_mode'] == 'dryrun' and env.sos_dict['_index'] != 0:
@@ -1726,10 +1645,6 @@ class Base_Step_Executor:
             # check results? This is only meaningful for pool
             self.wait_for_results()
             for idx, res in enumerate(self.proc_results):
-                if signatures[idx] is not None:
-                    if res['ret_code'] == 0:
-                        signatures[idx].write()
-                    signatures[idx] = None
                 if 'sig_skipped' in res:
                     self.completed['__substep_skipped__'] += 1
                     self.completed['__substep_completed__'] -= len(
@@ -1753,22 +1668,15 @@ class Base_Step_Executor:
             # not _output. For the same reason, signatures can be wrong if it has
             # Undetermined output.
             if env.config['run_mode'] in ('run', 'interactive'):
-                if not env.sos_dict['step_output'].determined():
-                    self.reevaluate_output()
-                    # if output is no longer Undetermined, set it to output
-                    # of each signature
-                    for sig in signatures:
-                        if sig is not None:
-                            sig.set(env.sos_dict['step_output'], 'output')
-                else:
-                    # finalize output from output_groups because some output might be skipped
-                    # this is the final version of the output but we do maintain output
-                    # during the execution of step, for compatibility.
-                    env.sos_dict.set(
-                        'step_output', sos_targets(self.output_groups[0]))
-                    for og in self.output_groups[1:]:
-                        if og != env.sos_dict['step_output'].targets():
-                            env.sos_dict['step_output'].extend(og)
+
+                # finalize output from output_groups because some output might be skipped
+                # this is the final version of the output but we do maintain output
+                # during the execution of step, for compatibility.
+                env.sos_dict.set(
+                    'step_output', sos_targets(self.output_groups[0]))
+                for og in self.output_groups[1:]:
+                    if og != env.sos_dict['step_output'].targets():
+                        env.sos_dict['step_output'].extend(og)
 
             self.log('output')
             # variables defined by the shared option needs to be available to be verified
@@ -1844,15 +1752,6 @@ class Base_Step_Executor:
                         self.worker_pool = None
                     except KeyboardInterrupt:
                         continue
-        finally:
-            # release all signatures
-            for sig in signatures:
-                if sig is not None:
-                    try:
-                        sig.release()
-                    except:
-                        pass
-
 
 def _expand_file_list(ignore_unknown: bool, *args) -> sos_targets:
     ifiles = []
