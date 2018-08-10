@@ -378,11 +378,8 @@ def validate_step_sig(sig):
                     '_input', sos_targets(matched['input']))
                 env.sos_dict.set(
                     '_depends', sos_targets(matched['depends']))
-                if not env.sos_dict['_output'].determined():
-                    env.sos_dict.set(
-                        '_output', sos_targets(matched['output']))
-                    env.sos_dict['step_output'].extend(
-                        env.sos_dict['_output'])
+                env.sos_dict.set(
+                    '_output', sos_targets(matched['output']))
                 env.sos_dict.update(
                     matched['vars'])
                 env.logger.info(
@@ -948,16 +945,6 @@ class Base_Step_Executor:
                 v = expand_size(v)
             env.sos_dict['_runtime'][k] = v
 
-    def reevaluate_output(self):
-        # re-process the output statement to determine output files
-        if not env.sos_dict['step_output'].determined():
-            args, _ = SoS_eval(
-                f'__null_func__({env.sos_dict["_output"]._undetermined})')
-            # handle dynamic args
-            args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-            env.sos_dict.set(
-                'step_output', self.expand_output_files('', *args))
-
     def prepare_task(self):
         env.sos_dict['_runtime']['cur_dir'] = os.getcwd()
         # we need to record the verbosity and sigmode of task during creation because
@@ -1203,6 +1190,15 @@ class Base_Step_Executor:
         try:
             self.last_res = SoS_exec(
                 stmt, return_result=self.run_mode == 'interactive')
+            if not env.sos_dict["_output"].determined():
+                args, _ = SoS_eval(
+                    f'__null_func__({env.sos_dict["_output"]._undetermined})')
+                if args is True:
+                    env.logger.error('Failed to resolve undetermined output')
+                    return
+                args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
+                env.sos_dict.set('_output', self.expand_output_files('', *args))
+                self.output_groups[env.sos_dict['_index']] = env.sos_dict['_output']
         except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks):
             raise
         except subprocess.CalledProcessError as e:
@@ -1402,8 +1398,11 @@ class Base_Step_Executor:
                 input_files: sos_targets = self.expand_input_files(stmt, *args)
                 self._substeps, self._vars = self.process_input_args(
                     input_files, **kwargs)
+                #
+                # if shared is true, we have to disable concurrent because we
+                # do not yet return anything from shared.
                 self.concurrent_substep = 'concurrent' in kwargs and kwargs['concurrent'] and len(
-                    self._substeps) > 1 and self.run_mode != 'dryrun'
+                    self._substeps) > 1 and self.run_mode != 'dryrun' and 'shared' not in self.step.options
             except (UnknownTarget, RemovedTarget, UnavailableLock):
                 raise
             except Exception as e:
@@ -1509,7 +1508,9 @@ class Base_Step_Executor:
                                 self.process_output_args(ofiles, **kwargs)
                                 self.output_groups[idx] = env.sos_dict['_output'].targets(
                                 )
-
+                                if self.concurrent_substep and not ofiles.determined():
+                                    env.logger.trace('Disable concurrent substeps because concurrent substeps does not return dynamic output to master')
+                                    self.concurrent_substep = False
                             elif key == 'depends':
                                 try:
                                     dfiles = self.expand_depends_files(*args)
@@ -1567,11 +1568,6 @@ class Base_Step_Executor:
                                         try:
                                             self.execute(statement[1])
                                         finally:
-                                            if not env.sos_dict['step_output'].determined():
-                                                self.reevaluate_output()
-                                                # if output is no longer Undetermined, set it to output
-                                                # of each signature
-                                                sig.set(env.sos_dict['step_output'], 'output')
                                             sig.write()
                                             sig.release()
                         except StopInputGroup as e:

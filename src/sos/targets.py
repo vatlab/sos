@@ -840,14 +840,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 f'Cannot treat an sos_targets object {self} with more than one targets as a single target')
 
     def __repr__(self):
-        return ('[' + ', '.join(repr(x) for x in self._targets) + ']') if self.determined() else 'TBD'
+        return ('[' + ', '.join(repr(x) for x in self._targets) + ']') if self.determined() else ('TBD' if self._undetermined is True else self._undetermined.strip())
 
     def __str__(self):
-        return self.__format__('') if self.determined() else 'TBD'
+        return self.__format__('') if self.determined() else ('TBD' if self._undetermined is True else self._undetermined.strip())
 
     def __format__(self, format_spec):
         if not self.determined():
-            return 'TBD'
+            return 'TBD' if self._undetermined is True else self._undetermined.strip()
         if ',' in format_spec:
             fmt_spec = format_spec.replace(',', '')
             return ','.join(x.__format__(fmt_spec) for x in self._targets)
@@ -863,22 +863,27 @@ class InMemorySignature:
         '''
         if not sdict:
             sdict = env.sos_dict
+        if not input_files.determined():
+            raise RuntimeError('Input files of step signature cannot be undetermined.')
+        if not dependent_files.determined():
+            raise RuntimeError('Dependent files of step signature cannot be undetermined.')
+
         self.input_files = sos_targets(
             [x for x in input_files._targets if not isinstance(x, sos_step)])
         self.dependent_files = sos_targets(
             [x for x in dependent_files._targets if not isinstance(x, sos_step)])
         self.output_files = sos_targets(
-            [x for x in output_files._targets if not isinstance(x, sos_step)])
+            [x for x in output_files._targets if not isinstance(x, sos_step)]) \
+            if output_files.determined() else output_files
         self.signature_vars = signature_vars
         # signatures that exist before execution and might change during execution
         self.init_signature = {x: deepcopy(sdict[x]) for x in sorted(
             signature_vars) if x in sdict and not callable(sdict[x]) and pickleable(sdict[x], x)}
 
     def write(self, rebuild=False):
-        if not self.output_files.determined() or not self.dependent_files.determined():
-            env.logger.trace(
-                'Write signature failed due to undetermined files')
-            return False
+        if not self.output_files.determined():
+            self.output_files = env.sos_dict['_output']
+            env.logger.trace(f'Set undetermined output files to {env.sos_dict["_output"]}')
         input_sig = {}
         for f in self.input_files:
             try:
