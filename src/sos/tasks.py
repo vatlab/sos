@@ -1175,7 +1175,7 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
                      for x in tasks]
         is_all = True
     else:
-        env.logger.error('No relevant task to remove.')
+        env.logger.warning('No relevant task to remove.')
         return ''
     #
     if age is not None:
