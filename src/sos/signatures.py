@@ -207,6 +207,16 @@ class WorkflowSignatures(object):
             env.logger.warning(f'Failed to get tasks from signature database: {e}')
             return []
 
+    def files(self):
+        '''Listing files related to workflows related to current directory'''
+        try:
+            cur = self.conn.cursor()
+            cur.execute('SELECT DISTINCT item FROM workflows WHERE entry_type LIKE "%_file"')
+            return [eval(x[0])['filename'] for x in cur.fetchall()]
+        except sqlite3.DatabaseError as e:
+            env.logger.warning(f'Failed to get files from signature database: {e}')
+            return []
+
     def clear(self):
         try:
             self.conn.execute(

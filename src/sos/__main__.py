@@ -1404,10 +1404,10 @@ def cmd_remove(args, unknown_args):
     if args.signature and not args.targets:
         # a special case where all file and runtime signatures are removed.
         # no other options are allowed.
-        from .signatures import target_signatures, step_signatures
-        target_signatures.clear()
-        step_signatures.clear(global_sig=False)
-        step_signatures.clear(global_sig=True)
+        from .signatures import target_signatures, step_signatures, workflow_signatures
+        target_signatures.remove(workflow_signatures.files())
+        step_signatures.remove(workflow_signatures.steps(), global_sig=False)
+        step_signatures.remove(workflow_signatures.steps(), global_sig=True)
         env.logger.info('All runtime signatures are removed')
         return
     #
