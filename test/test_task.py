@@ -55,6 +55,12 @@ def cd_new(path):
     finally:
         os.chdir(old_dir)
 
+def get_tasks():
+    conn = sqlite3.connect('.sos/workflow_signatures.db')
+    cur = conn.cursor()
+    cur.execute('SELECT DISTINCT id FROM workflows WHERE entry_type = "task"')
+    return [x[0] for x in cur.fetchall()]
+
 class TestTask(unittest.TestCase):
     def setUp(self):
         env.reset()
@@ -759,12 +765,6 @@ print('a')
 
     def testPurgeWithoutOption(self):
         '''Test sos purge to remove only tasks related to current directory'''
-        def get_tasks():
-            conn = sqlite3.connect('.sos/workflow_signatures.db')
-            cur = conn.cursor()
-            cur.execute('SELECT DISTINCT id FROM workflows WHERE entry_type = "task"')
-            return [x[0] for x in cur.fetchall()]
-
         with cd_new('temp_a'):
             with open('test.sos', 'w') as tst:
                 tst.write('''
@@ -795,6 +795,36 @@ touch {_output}
         tasks = [x.split()[0] for x in subprocess.check_output('sos status -v1', shell=True).decode().splitlines()]
         self.assertTrue(all(x in tasks for x in tasks_a))
         self.assertFalse(any(x in tasks for x in tasks_b))
+
+
+    def testPurgeAllWithOption(self):
+        '''Test sos purge all with options such as -s completed'''
+        with cd_new('temp_c'):
+            with open('test.sos', 'w') as tst:
+                tst.write('''
+input: for_each={'i': range(2)}
+output: f'a{i}.txt'
+task:
+run: expand=True
+echo temp_a
+touch {_output}
+''')
+            subprocess.call('sos run test -s force', shell=True)
+            tasks = get_tasks()
+            subprocess.call('sos purge --all -s failed', shell=True)
+        # check tasks
+        taskstatus = [x.split()[0] for x in subprocess.check_output('sos status -v1', shell=True).decode().splitlines()]
+        self.assertTrue(all(x in taskstatus for x in tasks))
+        # purge one of them
+        subprocess.call(f'sos purge {tasks[0]}', shell=True)
+        taskstatus = [x.split()[0] for x in subprocess.check_output('sos status -v1', shell=True).decode().splitlines()]
+        self.assertTrue(tasks[0] not in taskstatus)
+        self.assertTrue(tasks[1] in taskstatus)
+        #
+        subprocess.call(f'sos purge --all', shell=True)
+        taskstatus = [x.split()[0] for x in subprocess.check_output('sos status -v1', shell=True).decode().splitlines()]
+        self.assertTrue(tasks[1] not in taskstatus)
+
 
 
 if __name__ == '__main__':
