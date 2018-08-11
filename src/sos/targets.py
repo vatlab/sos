@@ -724,11 +724,11 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 env.logger.debug(f'Ignore non-file target {target}')
 
     def __getstate__(self):
-        return self._targets
+        return (self._targets, self._undetermined)
 
-    def __setstate__(self, targets) -> None:
-        self._targets = targets
-        self._undetermined = True
+    def __setstate__(self, state) -> None:
+        self._targets = state[0]
+        self._undetermined = state[1]
 
     def __len__(self):
         return len(self._targets)
