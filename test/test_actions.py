@@ -53,7 +53,8 @@ class TestActions(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            file_target(f).unlink()
+            if file_target(f).exists():
+                file_target(f).unlink()
 
     def touch(self, files):
         '''create temporary files'''
@@ -366,7 +367,7 @@ pandoc(input='a.md', output=_output[0])
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('myreport.html'))
-        file_target('myreport.html').remove()
+        file_target('myreport.html').unlink()
         #
         # another case is no output
         script = SoS_Script(r'''
@@ -403,7 +404,7 @@ pandoc(input=['default_10.md', 'default_20.md'], output='output.html')
         Base_Executor(wf).run()
         for f in ['default_10.md', 'default_20.md', 'output.html']:
             self.assertTrue(file_target(f).target_exists())
-            file_target(f).remove()
+            file_target(f).unlink()
 
     def testReport(self):
         '''Test action report'''
@@ -415,7 +416,8 @@ report: output='report.txt', expand=True
 
 ''')
         # output to a file
-        file_target('report.txt').unlink()
+        if file_target('report.txt').exists():
+            file_target('report.txt').unlink()
         wf = script.workflow()
         # run twice
         Base_Executor(wf, args=['--num', '7']).run()
@@ -423,7 +425,8 @@ report: output='report.txt', expand=True
         with open('report.txt') as report:
             self.assertEqual(report.read(), 'touch 5.txt\n\n')
         # test overwrite
-        file_target('report.txt').unlink()
+        if file_target('report.txt').exists():
+            file_target('report.txt').unlink()
         script = SoS_Script(r'''
 [A]
 report: output='report.txt', expand=True
@@ -443,7 +446,8 @@ report: output='report.txt', expand=True
 
         #
         # test input from another file
-        file_target('report.txt').remove()
+        if file_target('report.txt').exists():
+            file_target('report.txt').unlink()
         script = SoS_Script(r'''
 [A_1]
 run: output='a.txt'
@@ -455,7 +459,7 @@ report(input='a.txt', output='out.txt')
         for name in ('a.txt', 'out.txt'):
             with open(name) as report:
                 self.assertEqual(report.read().strip(), 'something')
-            file_target(name).remove()
+            file_target(name).unlink()
         #
         script = SoS_Script(r'''
 [A_1]
@@ -473,7 +477,7 @@ report(input=['a.txt', 'b.txt'], output='out.txt')
         Base_Executor(wf).run()
         for name in ('a.txt', 'b.txt', 'out.txt'):
             self.assertTrue(file_target(name).target_exists())
-            file_target(name).remove()
+            file_target(name).unlink()
         #
         # test report to other types of output: path
         script = SoS_Script(r'''
@@ -584,7 +588,8 @@ report:     input=['a1.md', 'a2.md'], output='out.md'
         with open('out.md') as a:
             self.assertEqual(a.read(), 'a1\n\na2\n\n')
         for name in ('a1.md', 'a2.md', 'out.md'):
-            file_target(name).remove('target')
+            if file_target(name).exists():
+                file_target(name).unlink()
         wf = script.workflow()
         Base_Executor(wf).run()
 
