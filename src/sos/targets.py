@@ -727,8 +727,13 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         return (self._targets, self._undetermined)
 
     def __setstate__(self, state) -> None:
-        self._targets = state[0]
-        self._undetermined = state[1]
+        try:
+            self._targets = state[0]
+            self._undetermined = state[1]
+        except:
+            # older version of sig file might only saved targets
+            self._targets = state
+            self._undetermined = False
 
     def __len__(self):
         return len(self._targets)
