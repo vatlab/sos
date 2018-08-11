@@ -31,7 +31,8 @@ class TestTarget(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            file_target(f).unlink()
+            if file_target(f).exists():
+                file_target(f).unlink()
 
     def touch(self, files):
         '''create temporary files'''
@@ -194,7 +195,8 @@ run:
     touch a.txt
 ''')
         wf = script.workflow()
-        file_target('a.txt').unlink()
+        if file_target('a.txt').exists():
+            file_target('a.txt').unlink()
         Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('a.txt'))
         file_target('a.txt').unlink()
@@ -213,17 +215,20 @@ run:
     chmod +x lls
 ''')
         wf = script.workflow()
-        file_target('lls').unlink()
+        if file_target('lls').exists():
+            file_target('lls').unlink()
         env.config['sig_mode'] = 'force'
         Base_Executor(wf).run()
         # test validation
         env.config['sig_mode'] = 'default'
         Base_Executor(wf).run()
-        file_target('lls').unlink()
+        if file_target('ls').exists():
+            file_target('lls').unlink()
 
     def testDependsEnvVariable(self):
         '''Testing target env_variable.'''
-        file_target('a.txt').unlink()
+        if file_target('a.txt').exists():
+            file_target('a.txt').unlink()
         if sys.platform == 'win32':
             script = SoS_Script('''
 [0]
@@ -261,7 +266,8 @@ run:
         # change $PATH so that lls can be found at the current
         # directory.
         os.environ['PATH'] += os.pathsep + '.'
-        file_target('lls').unlink()
+        if file_target('lls').exists():
+            file_target('lls').unlink()
         script = SoS_Script('''
 [lls: provides=executable('lkls')]
 run:
@@ -294,7 +300,8 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
         for file in ('1.out', '2.out', '1.out2', '2.out2'):
-            file_target(file).unlink()
+            if file_target(file).exists():
+                file_target(file).unlink()
 
     def testSharedVarInForEach(self):
         self.touch(['1.txt', '2.txt'])
@@ -340,7 +347,8 @@ run:
     def testSoSStep(self):
         '''Test target sos_step'''
         for file in ['t1.txt', 't2.txt', '5.txt', '10.txt', '20.txt']:
-            file_target(file).unlink()
+            if file_target(file).exists():
+                file_target(file).unlink()
         script = SoS_Script('''
 [t1]
 run:
@@ -372,7 +380,8 @@ run:
         for file in ['t1.txt', 't2.txt', '5.txt', '10.txt', '20.txt']:
             self.assertTrue(file_target(file).target_exists(),
                             file + ' should exist')
-            file_target(file).unlink()
+            if file_target(file).exists():
+                file_target(file).unlink()
 
     def testZap(self):
         '''Test zap'''

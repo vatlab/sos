@@ -439,6 +439,7 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
             if validate_step_sig(sig):
                 return {'ret_code': 0, 'sig_skipped': 1}
             sig.lock()
+        verify_input()
         if capture_output:
             with stdoutIO() as (out, err):
                 SoS_exec(stmt, return_result=False)
@@ -517,6 +518,14 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
             sig.write()
             sig.release(quiet=True)
 
+def verify_input():
+    # now, if we are actually going to run the script, we
+    # need to check the input files actually exists, not just the signatures
+    for key in ('_input', '_depends'):
+        for target in env.sos_dict[key]:
+            if not target.target_exists('target'):
+                raise RemovedTarget(target)
+
 
 class Base_Step_Executor:
     # This base class defines how steps are executed. The derived classes will reimplement
@@ -548,13 +557,6 @@ class Base_Step_Executor:
         else:
             return _expand_file_list(True, *args)
 
-    def verify_input(self):
-        # now, if we are actually going to run the script, we
-        # need to check the input files actually exists, not just the signatures
-        for key in ('_input', '_depends'):
-            for target in env.sos_dict[key]:
-                if not target.target_exists('target'):
-                    raise RemovedTarget(target)
 
     def verify_output(self):
         if env.sos_dict['step_output'] is None:
@@ -1537,7 +1539,6 @@ class Base_Step_Executor:
                                 f'Failed to process step {key} ({value.strip()}): {e}')
                     else:
                         try:
-                            self.verify_input()
                             if self.concurrent_substep:
                                 env.logger.trace('Execute substep {env.sos_dict["step_name"]} concurrently')
                                 proc_vars = env.sos_dict.clone_selected_vars(
@@ -1558,6 +1559,7 @@ class Base_Step_Executor:
                             else:
                                 if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified():
                                     env.logger.trace('Execute substep {env.sos_dict["step_name"]} without signature')
+                                    verify_input()
                                     self.execute(statement[1])
                                 else:
                                     sig = RuntimeInfo(
@@ -1572,6 +1574,7 @@ class Base_Step_Executor:
                                     if not skip_index:
                                         sig.lock()
                                         try:
+                                            verify_input()
                                             self.execute(statement[1])
                                         finally:
                                             sig.write()
@@ -1794,9 +1797,9 @@ def _expand_file_list(ignore_unknown: bool, *args) -> sos_targets:
                 raise UnknownTarget(ifile)
         elif file_target(ifile).target_exists('target'):
             tmp.append(ifile)
-        elif file_target(ifile).target_exists('signature'):
+        elif file_target(ifile).target_exists('any'):
             env.logger.debug(
-                f'``{ifile}`` exists in signature form (actual target has been removed).')
+                f'``{ifile}`` exists in zapped form (actual target has been removed).')
             tmp.append(ifile)
         elif isinstance(ifile, sos_targets):
             raise ValueError("sos_targets should not appear here")

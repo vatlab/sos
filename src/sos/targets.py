@@ -505,7 +505,14 @@ class file_target(path, BaseTarget):
             return False
 
     def size(self):
-        return os.path.getsize(self)
+        try:
+            return os.path.getsize(self)
+        except:
+            if (self + '.zapped').is_file():
+                with open(self + '.zapped') as sig:
+                    line = sig.readline()
+                    _, _, s, _ = line.strip().rsplit('\t', 3)
+                    return int(s)
 
     def target_name(self):
         return str(self)
@@ -521,8 +528,9 @@ class file_target(path, BaseTarget):
             return (os.path.getmtime(self), os.path.getsize(self), self._md5)
         elif (self + '.zapped').is_file():
             with open(self + '.zapped') as sig:
-                line = md5.readline()
-                _, mtime, size, md5 = line.rsplit('\t', 3).strip()
+                line = sig.readline()
+                _, mtime, size, md5 = line.strip().rsplit('\t', 3)
+                self._md5 = md5
                 return (float(mtime), int(size), md5)
         else:
             raise ValueError('{self} does not exist.')
@@ -530,16 +538,21 @@ class file_target(path, BaseTarget):
     def validate(self, sig=None):
         '''Check if file matches its signature'''
         # old signature file with only md5
-        if isinstance(sig, str):
-            if not self._md5:
-                self._md5 = fileMD5(self)
-            return self._md5 == sig[2]
-        if not sig or not os.path.isfile(self) or sig[0]!= os.path.getsize(self):
+        if isinstance(sig, str) or not self.exists():
+            try:
+                mysig = self.target_signature()
+            except ValueError:
+                # if file does not exist
+                raise
+                return False
+            return self._md5 == (sig if isinstance(sig, str) else sig[2])
+        if not sig or sig[1]!= os.path.getsize(self):
             return False
-        if sig[1] == os.path.getmtime(self):
+        if sig[0] == os.path.getmtime(self):
             return True
         if not self._md5:
             self._md5 = fileMD5(self)
+        env.logger.error('md4 {self._md5} {sig[2]}')
         return self._md5 == sig[2]
 
     def __hash__(self):
@@ -929,7 +942,7 @@ class InMemorySignature:
                     else:
                         freal = file_target(f)
                     if not freal.validate(m):
-                        return f'Signature of target {f} (freal.target_signature()) does not match saved signature {m}'
+                        return f'Signature of target {f} {freal.target_signature()} does not match saved signature {m}'
                     res[cur_type].append(freal.target_name() if isinstance(
                         freal, file_target) else freal)
                     files_checked[freal.target_name()] = True
