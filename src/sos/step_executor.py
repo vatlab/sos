@@ -923,7 +923,7 @@ class Base_Step_Executor:
         # set variables
         env.sos_dict.set('_output', ofiles)
         #
-        if env.sos_dict['step_output'].valid():
+        if not env.sos_dict['step_output'].valid():
             env.sos_dict.set('step_output', copy.deepcopy(ofiles))
         else:
             for ofile in ofiles:
