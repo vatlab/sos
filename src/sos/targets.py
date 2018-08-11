@@ -552,7 +552,6 @@ class file_target(path, BaseTarget):
             return True
         if not self._md5:
             self._md5 = fileMD5(self)
-        env.logger.error('md4 {self._md5} {sig[2]}')
         return self._md5 == sig[2]
 
     def __hash__(self):

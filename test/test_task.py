@@ -534,7 +534,7 @@ run: expand=True
         for i in range(10):
             self.assertTrue(os.path.isfile(f'{i}.txt'))
             file_target(f'{i}.txt').unlink()
-        file_target('test_trunksize.sos').remove()
+        file_target('test_trunksize.sos').unlink()
 
     @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')
     def testTrunkWorkersOption(self):
@@ -569,7 +569,7 @@ run: expand=True
         for i in range(10):
             self.assertTrue(os.path.isfile('{}.txt'.format(i)))
             file_target('{}.txt'.format(i)).unlink()
-        file_target('test_trunkworker.sos').remove()
+        file_target('test_trunkworker.sos').unlink()
 
     @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')
     def testTaskTags(self):

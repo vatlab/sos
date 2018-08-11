@@ -1586,6 +1586,20 @@ class Base_Step_Executor:
                             skip_index = True
                             break
 
+                # if there is no statement , but there are tasks, we should
+                # check signature here.
+                if not any(x[0] == '!' for x in self.step.statements[input_statement_idx:]) and self.step.task \
+                    and env.config['sig_mode'] != 'ignore' and not env.sos_dict['_output'].unspecified():
+                    sig = RuntimeInfo(
+                        self.step.md5, self.step.tokens,
+                        env.sos_dict['_input'],
+                        env.sos_dict['_output'],
+                        env.sos_dict['_depends'],
+                        env.sos_dict['__signature_vars__'],
+                        share_vars='shared' in self.step.options)
+                    env.logger.trace(f'Check task-only step {env.sos_dict["step_name"]} with signature {sig.sig_id}')
+                    skip_index = validate_step_sig(sig)
+
                 # if this index is skipped, go directly to the next one
                 if skip_index:
                     self.completed['__substep_skipped__'] += 1
