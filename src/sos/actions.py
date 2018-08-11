@@ -647,7 +647,6 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                 prog.set_description(
                     message + ': \033[32m writing signature\033[0m')
                 prog.update()
-                sig.write_sig()
                 prog.set_description(
                     message + ': \033[32m signature calculated\033[0m')
                 prog.update()
@@ -818,7 +817,6 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
         # if there is something wrong still remove temporary file
         if os.path.isfile(dest_tmp):
             os.remove(dest_tmp)
-    sig.write_sig()
     return os.path.isfile(dest), slot
 
 

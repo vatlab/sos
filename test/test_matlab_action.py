@@ -24,7 +24,7 @@ class TestActions(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            file_target(f).remove('both')
+            file_target(f).unlink()
 
     @unittest.skipIf(not shutil.which('matlab'), 'Matlab not installed')
     def testMatlab(self):

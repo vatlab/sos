@@ -429,12 +429,10 @@ del sos_handle_parameter_
             if isinstance(target, str):
                 if not file_target(target).target_exists('target'):
                     # remove the signature and regenerate the file
-                    file_target(target).remove_sig()
                     raise UnknownTarget(target)
             # the sos_step target should not be checked in tasks because tasks are
             # independently executable units.
             elif not isinstance(target, sos_step) and not target.target_exists('target'):
-                target.remove_sig()
                 raise UnknownTarget(target)
 
         # create directory. This usually has been done at the step level but the task can be executed

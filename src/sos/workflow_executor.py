@@ -892,12 +892,9 @@ class Base_Executor:
             if target.target_exists('target'):
                 if env.config['sig_mode'] == 'force':
                     env.logger.info(f'Re-generating {target}')
-                    target.remove('both')
+                    target.unlink()
                 else:
                     env.logger.info(f'Target {target} already exists')
-            elif target.target_exists('signature'):
-                env.logger.info(f'Re-generating {target}')
-                target.remove('signature')
         return sos_targets([x for x in targets if not file_target(x).target_exists('target') or env.config['sig_mode'] == 'force'])
 
     def step_completed(self, res, dag, runnable):

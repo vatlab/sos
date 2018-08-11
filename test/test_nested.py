@@ -27,7 +27,7 @@ class TestNested(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            file_target(f).remove('both')
+            file_target(f).unlink()
 
     def touch(self, files):
         '''create temporary files'''
@@ -154,7 +154,7 @@ sos_run('a', shared=['executed', 'inputs'])
                          'c', 'a_1', 'a_2', 'a_1', 'a_2'])
         #self.assertEqual(env.sos_dict['inputs'], [['a.txt'], ['a.txt'], ['a.txt.a1'], ['b.txt'], ['b.txt'], ['b.txt.a1']])
         for file in ('a.txt.a1', 'a.txt.a1.a2', 'b.txt.a1', 'b.txt.a1.a2'):
-            file_target(file).remove('both')
+            file_target(file).unlink()
         #
         env.sos_dict.pop('executed', None)
         # allow specifying a single step
@@ -284,7 +284,7 @@ input: 'a.txt', 'b.txt', group_by='single'
         self.assertEqual(env.sos_dict['executed'], ['e2_2'])
         #
         # clean up
-        file_target('a.done').remove('both')
+        file_target('a.done').unlink()
 
     def testDynamicNestedWorkflow(self):
         '''Test nested workflow controlled by command line option'''
@@ -365,7 +365,7 @@ sos_run('A', shared='executed')
         #
         subprocess.call('sos remove -s', shell=True)
         for file in ('a.txt.a1', 'a.txt.a1.a2', 'b.txt.a1', 'b.txt.a1.a2'):
-            file_target(file).remove('both')
+            file_target(file).unlink()
         #
         env.sos_dict.pop('executed', None)
         script = SoS_Script('''
@@ -391,7 +391,7 @@ sos_run('k.A', shared='executed')
     def testSoSRun(self):
         '''Test action sos_run with keyword parameters'''
         for f in ['0.txt', '1.txt']:
-            file_target(f).remove('both')
+            file_target(f).unlink()
         script = SoS_Script(r'''
 [A]
 parameter: num=5
@@ -406,11 +406,11 @@ for k in range(2):
         Base_Executor(wf).run()
         for f in ['0.txt', '1.txt']:
             self.assertTrue(file_target(f).target_exists())
-            file_target(f).remove('both')
+            file_target(f).unlink()
         #
         # if we do not pass num, parameter would not change
         for f in ['0.txt', '1.txt']:
-            file_target(f).remove('both')
+            file_target(f).unlink()
         script = SoS_Script(r'''
 [A]
 parameter: num=5
@@ -426,7 +426,7 @@ for num in range(2):
         for f in ['0.txt', '1.txt']:
             self.assertFalse(file_target(f).target_exists())
         self.assertTrue(file_target('5.txt').target_exists())
-        file_target('5.txt').remove('both')
+        file_target('5.txt').unlink()
         #
         # test parameter shared to send and return vars
         #
@@ -443,7 +443,7 @@ for k in range(2):
         Base_Executor(wf).run()
         for f in ['10.txt', '11.txt']:
             self.assertTrue(file_target(f).target_exists())
-            file_target(f).remove('both')
+            file_target(f).unlink()
 
     def testDAGofDynamicNestedWorkflow(self):
         #
@@ -452,7 +452,7 @@ for k in range(2):
         # until runtime.
         #
         for f in ['B0.txt', 'B0.txt.p', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
-            file_target(f).remove('both')
+            file_target(f).unlink()
         #
         #  A1 <- P <- B
         #  A1 <- P <- B
@@ -486,7 +486,7 @@ for i in range(3):
         Base_Executor(wf).run()
         for f in ['B0.txt', 'B0.txt.p', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
             self.assertTrue(file_target(f).target_exists())
-            file_target(f).remove('both')
+            file_target(f).unlink()
 
     def testPassingVarsToNestedWorkflow(self):
         '''Test if variables can be passed to nested workflows'''

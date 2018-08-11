@@ -33,7 +33,7 @@ class TestSignature(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            file_target(f).remove('both')
+            file_target(f).unlink()
 
     def touch(self, files):
         '''create temporary files'''
@@ -111,7 +111,7 @@ cp {_input} {_dest[0]}
     @unittest.skipIf('TRAVIS' in os.environ and test_interactive, 'This test fails for unknown reason under travis and interactive mode')
     def testSignatureWithSharedVariable(self):
         '''Test restoration of signature from variables.'''
-        file_target('a.txt').remove('both')
+        file_target('a.txt').unlink()
         # shared
         script = SoS_Script(r"""
 [0: shared='a']
@@ -132,7 +132,7 @@ print(a)
         # rerun
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 1)
-        file_target('a.txt').remove('both')
+        file_target('a.txt').unlink()
 
     def testSignatureWithoutOutput(self):
         # signature without output file
@@ -165,7 +165,7 @@ cp {_input} {_dest[0]}
         env.config['wait_for_task'] = True
         script = SoS_Script(text)
         for f in ['temp/a.txt', 'temp/b.txt']:
-            file_target(f).remove('both')
+            file_target(f).unlink()
         #
         # only the first step
         wf = script.workflow('default:0')
@@ -235,7 +235,7 @@ run(f"touch {_output}")
         wf = script.workflow()
         try:
             # remove existing output if exists
-            file_target('a.txt').remove('both')
+            file_target('a.txt').unlink()
         except Exception:
             pass
         res = Base_Executor(wf).run()
@@ -296,7 +296,7 @@ run: expand='${ }'
             lf.write('something')
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 1)
-        file_target('largefile.txt').remove('both')
+        file_target('largefile.txt').unlink()
 
     @unittest.skipIf(sys.platform == 'win32', 'Windows executable cannot be created with chmod.')
     def testRemovalOfIntermediateFiles(self):
@@ -350,13 +350,13 @@ run: expand=True
         subprocess.call('sos remove midfile.txt --zap -y', shell=True)
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 0)
-        file_target('midfile.txt').remove('both')
-        file_target('midfile.txt.zapped').remove('both')
-        file_target('final.txt').remove('both')
+        file_target('midfile.txt').unlink()
+        file_target('midfile.txt.zapped').unlink()
+        file_target('final.txt').unlink()
 
     def testSignatureWithParameter(self):
         '''Test signature'''
-        file_target('myfile.txt').remove('both')
+        file_target('myfile.txt').unlink()
         #
         script = SoS_Script(r'''
 parameter: gvar = 10
@@ -419,12 +419,12 @@ run: expand=True
         self.assertEqual(res['__completed__']['__step_completed__'], 0)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read().strip(), '20')
-        file_target('myfile.txt').remove('both')
+        file_target('myfile.txt').unlink()
 
     def testLoopWiseSignature(self):
         '''Test partial signature'''
         for i in range(10, 12):
-            file_target('myfile_{}.txt'.format(i)).remove('both')
+            file_target('myfile_{}.txt'.format(i)).unlink()
         #
         script = SoS_Script(r'''
 parameter: gvar = 10
@@ -487,7 +487,7 @@ run: expand=True
         for t in range(10, 12):
             with open('myfile_{}.txt'.format(t)) as tmp:
                 self.assertEqual(tmp.read().strip(), str(t))
-            file_target('myfile_{}.txt'.format(t)).remove('both')
+            file_target('myfile_{}.txt'.format(t)).unlink()
 
     def testOutputFromSignature(self):
         'Test restoration of output from signature'''
@@ -515,13 +515,13 @@ run: expand=True
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 0)
         for file in ['1.out', '2.out', '1.2.out', '2.3.out']:
-            file_target(file).remove('both')
+            file_target(file).unlink()
 
     def testSignatureWithVars(self):
         '''Test revaluation with variable change'''
         self.touch(('a1.out', 'a2.out'))
-        file_target('b1.out').remove('both')
-        file_target('b2.out').remove('both')
+        file_target('b1.out').unlink()
+        file_target('b2.out').unlink()
         script = SoS_Script('''
 parameter: DB = {'input': ['a1.out'], 'output': ['b1.out']}
 parameter: input_file = DB['input']
@@ -580,7 +580,7 @@ output: 'aa'
 sh:
   echo aa > aa
 ''')
-        file_target('aa').remove('both')
+        file_target('aa').unlink()
         wf = script.workflow()
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 1)

@@ -19,7 +19,7 @@ import pkg_resources
 
 from .utils import (Error, env, pickleable, short_repr, stable_repr)
 
-from .signatures import target_signatures, step_signatures, workflow_signatures
+from .signatures import step_signatures, workflow_signatures
 
 try:
     from xxhash import xxh64 as hash_md5
@@ -128,32 +128,22 @@ class BaseTarget(object):
         # this object with other targets of the same type.
         raise RuntimeError('Undefined base function')
 
-    def target_signature(self, mode='any'):
+    def target_signature(self):
         # signature of the content of the target, which should be
         # able to detect changes of the content of target
-        #
-        # if mode == 'target', the target has to exist and the signature
-        # has to be calculated. Otherwise you can return cached signature
         raise RuntimeError('Undefined base function')
 
     def create_placeholder(self):
         pass
-
-    # -----------------------------------------------------
-    # derived functions that do not need to be redefined
-    #
-    def remove_sig(self):
-        target_signatures.remove(self)
-
-    def write_sig(self):
-        '''Write .sig file with signature'''
-        raise RuntimeError('Undefined base function')
 
     def __repr__(self):
         return f'{self.__class__.__name__}("{self.target_name()}")'
 
     def __hash__(self):
         return hash(repr(self))
+
+    def validate(self, sig):
+        return self.target_signature() == sig
 
     def __eq__(self, obj):
         return isinstance(obj, self.__class__) and self.target_signature() == obj.target_signature()
@@ -172,8 +162,8 @@ class sos_variable(BaseTarget):
     def target_name(self):
         return self._var
 
-    def target_signature(self, mode='any'):
-        return textMD5(self._var)
+    def target_signature(self):
+        return objectMD5(env.sos_dict[self._var])
 
     def __hash__(self):
         return hash(repr(self))
@@ -243,9 +233,6 @@ class sos_step(BaseTarget):
 
     def target_signature(self, mode='any'):
         return textMD5(f'sos_step({self._step_name})')
-
-    def write_sig(self):
-        pass
 
     def __eq__(self, other):
         return isinstance(other, sos_step) and self._step_name == other._step_name
@@ -368,15 +355,10 @@ class executable(BaseTarget):
         else:
             return self._cmd
 
-    def target_signature(self, mode='any'):
-        if mode != 'target' and self._md5:
-            return self._md5
-        exe_file = shutil.which(shlex.split(self._cmd)[0])
-        if exe_file is None or not os.path.isfile(exe_file):
-            self._md5 = None
-        else:
-            self._md5 = fileMD5(exe_file)
-        return self._md5
+    def target_signature(self):
+        # we do not care if the target actually exist
+        # or its content has changed
+        return textMD5(self._cmd)
 
     def __hash__(self):
         return hash(repr(self))
@@ -517,12 +499,13 @@ class file_target(path, BaseTarget):
                 return True
             elif mode == 'any' and (self + '.zapped').exists():
                 return True
-            elif mode == 'signature' and target_signatures.get(self):
-                return True
             return False
         except Exception as e:
             env.logger.debug(f"Invalid file_target {self}: {e}")
             return False
+
+    def size(self):
+        return os.path.getsize(self)
 
     def target_name(self):
         return str(self)
@@ -530,81 +513,34 @@ class file_target(path, BaseTarget):
     def __fspath__(self):
         return super(file_target, self).__fspath__()
 
-    def target_signature(self, mode='any'):
+    def target_signature(self):
         '''Return file signature'''
-        if mode == 'target':
-            self._md5 = fileMD5(self)
-            target_signatures.set(self, os.path.getmtime(
-                self), os.path.getsize(self), self._md5)
-        if self._md5 is not None:
-            return self._md5
-        sig = target_signatures.get(self)
-        if sig is not None:
-            self._md5 = sig.md5
-            return self._md5
-        self._md5 = fileMD5(self)
-        target_signatures.set(self, os.path.getmtime(
-            self), os.path.getsize(self), self._md5)
-        return self._md5
-
-    def remove(self, mode='both'):
-        if mode in ('both', 'target') and self.is_file():
-            self.unlink()
-        if mode in ('both', 'signature'):
-            target_signatures.remove(self)
-
-    def size(self):
         if self.exists():
-            return os.path.getsize(self)
-        sig = target_signatures.get(self)
-        if sig:
-            return sig.size
-        if (self + '.zapped').is_file():
-            with open(self + '.zapped') as md5:
+            if not self._md5:
+                self._md5 = fileMD5(self)
+            return (os.path.getmtime(self), os.path.getsize(self), self._md5)
+        elif (self + '.zapped').is_file():
+            with open(self + '.zapped') as sig:
                 line = md5.readline()
-                _, _, s, _ = line.rsplit('\t', 3)
-                return int(s.strip())
+                _, mtime, size, md5 = line.rsplit('\t', 3).strip()
+                return (float(mtime), int(size), md5)
         else:
-            raise RuntimeError(f'{self} or its signature does not exist.')
+            raise ValueError('{self} does not exist.')
 
-    def mtime(self):
-        if self.exists():
-            return os.path.getmtime(self)
-        sig = target_signatures.get(self)
-        if sig:
-            return sig.mtime
-        if (self + '.zapped').is_file():
-            with open(self + '.zapped') as md5:
-                line = md5.readline()
-                _, t, _, _ = line.rsplit('\t', 3)
-                return t.strip()
-        else:
-            raise RuntimeError(f'{self} or its signature does not exist.')
-
-    def write_sig(self):
-        '''Write signature to sig store'''
-        # path to file
-        if not self.exists() and (self + '.zapped').exists():
-            with open(self + '.zapped') as md5:
-                line = md5.readline()
-                _, mtime, size, md5 = line.rsplit('\t', 3)
-                target_signatures.set(self, mtime, size, md5.strip())
-            return
-        if not self._md5:
-            self._md5 = fileMD5(self)
-        target_signatures.set(self,
-                              os.path.getmtime(self), os.path.getsize(self), self._md5)
-
-    def validate(self):
+    def validate(self, sig=None):
         '''Check if file matches its signature'''
-        sig = target_signatures.get(self)
-        if not sig or not os.path.isfile(self) or sig.size != os.path.getsize(self):
+        # old signature file with only md5
+        if isinstance(sig, str):
+            if not self._md5:
+                self._md5 = fileMD5(self)
+            return self._md5 == sig[2]
+        if not sig or not os.path.isfile(self) or sig[0]!= os.path.getsize(self):
             return False
-        if sig.mtime == os.path.getmtime(self):
+        if sig[1] == os.path.getmtime(self):
             return True
         if not self._md5:
             self._md5 = fileMD5(self)
-        return self._md5 == sig.md5
+        return self._md5 == sig[2]
 
     def __hash__(self):
         return hash(repr(self))
@@ -788,7 +724,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def __getitem__(self, i):
         return self._targets[i]
 
-    def target_signature(self, mode='any'):
+    def target_signature(self):
         if len(self._targets) == 1:
             return self._targets[0].target_signature()
         else:
@@ -894,9 +830,6 @@ class InMemorySignature:
         input_sig = {}
         for f in self.input_files:
             try:
-                if f.target_exists('any'):
-                    # this calculates file MD5
-                    f.write_sig()
                 input_sig[str(f)] = f.target_signature()
             except Exception as e:
                 env.logger.debug(
@@ -905,9 +838,6 @@ class InMemorySignature:
         output_sig = {}
         for f in self.output_files:
             try:
-                if f.target_exists('any'):
-                    # this calculates file MD5
-                    f.write_sig()
                 output_sig[str(f)] = f.target_signature()
             except Exception as e:
                 env.logger.debug(
@@ -916,9 +846,6 @@ class InMemorySignature:
         dependent_sig = {}
         for f in self.dependent_files:
             try:
-                if f.target_exists('any'):
-                    # this calculates file MD5
-                    f.write_sig()
                 dependent_sig[str(f)] = f.target_signature()
             except Exception as e:
                 env.logger.debug(
@@ -1001,16 +928,10 @@ class InMemorySignature:
                         freal = eval(f, {target_type: target_class})
                     else:
                         freal = file_target(f)
-                    if freal.target_exists('target'):
-                        fmd5 = freal.target_signature('target')
-                    elif freal.target_exists('signature'):
-                        fmd5 = freal.target_signature()
-                    else:
-                        return f'File {f} not exist'
+                    if not freal.validate(m):
+                        return f'Signature of target {f} (freal.target_signature()) does not match saved signature {m}'
                     res[cur_type].append(freal.target_name() if isinstance(
                         freal, file_target) else freal)
-                    if fmd5 != m.strip():
-                        return f'File has changed {f}'
                     files_checked[freal.target_name()] = True
                 except Exception as e:
                     env.logger.debug(
@@ -1114,19 +1035,6 @@ class RuntimeInfo(InMemorySignature):
 
         env.logger.trace(f'Write signature {self.sig_id}')
         step_signatures.set(self.sig_id, ret, self.external_sig)
-        # successfully write signature, write in workflow runtime info
-        for f in self.input_files:
-            if isinstance(f, file_target):
-                workflow_signatures.write('input_file', self.sig_id,
-                                          f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}')
-        for f in self.dependent_files:
-            if isinstance(f, file_target):
-                workflow_signatures.write('dependent_file', self.sig_id,
-                                          f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}')
-        for f in self.output_files:
-            if isinstance(f, file_target):
-                workflow_signatures.write('output_file', self.sig_id,
-                                          f'{{"filename":{str(f)!r},"size":{f.size()},"md5":{f.target_signature()!r}}}')
         return True
 
     def validate(self):

@@ -41,7 +41,7 @@ class TestRemote(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            file_target(f).remove('both')
+            file_target(f).unlink()
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testRemoteExecute(self):

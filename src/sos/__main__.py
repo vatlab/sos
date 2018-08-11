@@ -1386,7 +1386,7 @@ def cmd_remove(args, unknown_args):
             if p.size() == 0:
                 try:
                     env.logger.debug(f'Remove placeholder file {ph}')
-                    p.remove('both')
+                    p.unlink()
                     removed += 1
                 except Exception as e:
                     env.logger.debug(
@@ -1401,18 +1401,17 @@ def cmd_remove(args, unknown_args):
             env.logger.info('No remaining placeholder file exists.')
         return
         #
-    if args.signature and not args.targets:
+    if args.signature:
         # a special case where all file and runtime signatures are removed.
         # no other options are allowed.
-        from .signatures import target_signatures, step_signatures, workflow_signatures
+        from .signatures import step_signatures, workflow_signatures
         sig_files = workflow_signatures.files()
         if sig_files:
             files = list(set([x[1] for x in sig_files]))
-            num_removed_files = target_signatures.remove_many(files)
             sig_ids = list(set([x[0] for x in sig_files]))
             num_removed_local_steps = step_signatures.remove_many(sig_ids, global_sig=False)
             num_removed_global_steps = step_signatures.remove_many(sig_ids, global_sig=True)
-            env.logger.info(f'Signatures of {num_removed_files} files from {num_removed_local_steps + num_removed_global_steps} substeps are removed.')
+            env.logger.info(f'Signatures of {len(files)} files from {num_removed_local_steps + num_removed_global_steps} substeps are removed.')
         else:
             env.logger.info('No signatures are found from workflows executed under the current directory.')
         return
@@ -1437,38 +1436,7 @@ def cmd_remove(args, unknown_args):
         import time
         from .utils import expand_time
         args.age = expand_time(args.age, default_unit='d')
-    if args.signature:
-        from .signatures import target_signatures
-
-        def func(filename, resp):
-            if os.path.abspath(filename) not in tracked_files:
-                return False
-            sig = target_signatures.get(file_target(filename))
-            if not sig:
-                return False
-            if args.size:
-                if (args.size > 0 and os.path.getsize(filename) < args.size) or \
-                        (args.size < 0 and os.path.getsize(filename) > -args.size):
-                    env.logger.debug(
-                        '{} ignored due to size limit {}'.format(filename, args.size))
-                    return False
-            if args.age:
-                if (args.age > 0 and time.time() - os.path.getmtime(filename) < args.age) or \
-                        (args.age < 0 and time.time() - os.path.getmtime(filename) > -args.age):
-                    env.logger.debug(
-                        '{} ignored due to age limit {}'.format(filename, args.age))
-                    return False
-            if not args.dryrun:
-                try:
-                    target_signatures.remove(file_target(target))
-                    if target_signatures.get(file_target(target)) is not None:
-                        raise ValueError('target still exists')
-                except Exception as e:
-                    env.logger.warning(
-                        'Failed to remove signature of {}: {}'.format(filename, e))
-                return True
-            return False
-    elif args.tracked:
+    if args.tracked:
         def func(filename, resp):
             if os.path.abspath(filename) not in tracked_files:
                 return False
@@ -1492,7 +1460,7 @@ def cmd_remove(args, unknown_args):
                 if not args.dryrun:
                     env.logger.debug('Remove {}'.format(target))
                     try:
-                        target.remove('both')
+                        target.unlink()
                     except Exception as e:
                         env.logger.warning(
                             'Failed to remove {}: {}'.format(filename, e))
@@ -1525,7 +1493,7 @@ def cmd_remove(args, unknown_args):
                 if not args.dryrun:
                     env.logger.debug('Remove {}'.format(target))
                     try:
-                        target.remove('both')
+                        target.unlink()
                     except Exception as e:
                         env.logger.warning(
                             'Failed to remove {}: {}'.format(filename, e))
@@ -1590,7 +1558,7 @@ def cmd_remove(args, unknown_args):
                 if not args.dryrun:
                     env.logger.debug('Remove {}'.format(target))
                     try:
-                        target.remove('both')
+                        target.unlink()
                     except Exception as e:
                         env.logger.warning(
                             'Failed to remove {}: {}'.format(filename, e))

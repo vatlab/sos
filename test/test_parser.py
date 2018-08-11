@@ -80,7 +80,7 @@ class TestParser(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            file_target(f).remove('both')
+            file_target(f).unlink()
 
     def touch(self, files):
         '''create temporary files'''
@@ -1232,7 +1232,7 @@ a = 2
 
     def testOverwriteKeyword(self):
         '''Test overwrite sos keyword with user defined one.'''
-        file_target('a.txt').remove('both')
+        file_target('a.txt').unlink()
         #
         script = SoS_Script('''
 def run(script):

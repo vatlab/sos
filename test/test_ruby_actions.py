@@ -24,12 +24,12 @@ class TestActions(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            file_target(f).remove('both')
+            file_target(f).unlink()
 
     @unittest.skipIf(not shutil.which('ruby'), 'ruby not installed')
     def testRuby(self):
         '''Test action ruby'''
-        file_target('sample.txt').remove('both')
+        file_target('sample.txt').unlink()
         script = SoS_Script(r'''
 [10]
 
@@ -44,7 +44,7 @@ ruby:
         Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('sample.txt'))
         #
-        file_target('sample.txt').remove('both')
+        file_target('sample.txt').unlink()
 
 
 if __name__ == '__main__':

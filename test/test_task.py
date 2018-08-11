@@ -71,7 +71,7 @@ class TestTask(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            file_target(f).remove('both')
+            file_target(f).unlink()
 
     def touch(self, files):
         '''create temporary files'''
@@ -320,7 +320,7 @@ touch temp/{ff}
     def testPassingVarToTask(self):
         '''Test passing used variable to tasks'''
         for i in range(10, 13):
-            file_target('myfile_{}.txt'.format(i)).remove('both')
+            file_target('myfile_{}.txt'.format(i)).unlink()
         #
         env.config['sig_mode'] = 'force'
         script = SoS_Script(r'''
@@ -347,7 +347,7 @@ run: expand=True
             with open('myfile_{}.txt'.format(t)) as tmp:
                 self.assertEqual(tmp.read().strip(),
                                  str(t) + '_' + str(t - 10))
-            file_target('myfile_{}.txt'.format(t)).remove('both')
+            file_target('myfile_{}.txt'.format(t)).unlink()
 
     def testMaxJobs(self):
         '''Test default max number of jobs'''
@@ -466,8 +466,8 @@ run: expand=True
 
     def testSharedOption(self):
         '''Test shared option of task'''
-        file_target("a.txt").remove("both")
-        file_target("a100.txt").remove("both")
+        file_target("a.txt").unlink()
+        file_target("a100.txt").unlink()
         script = SoS_Script('''
 [10: shared = {'a': 'a[0]'}]
 task: shared={'a': 'int(open("a.txt").read())'}
@@ -484,8 +484,8 @@ run: expand=True
         Base_Executor(wf, config={'sig_mode': 'force'}).run()
         self.assertTrue(os.path.isfile("a100.txt"))
         # sequence of var or mapping
-        file_target("a.txt").remove("both")
-        file_target("a100.txt").remove("both")
+        file_target("a.txt").unlink()
+        file_target("a100.txt").unlink()
         script = SoS_Script('''
 [10: shared = {'a': 'a[0]', 'b':'b[0]'}]
 task: shared=[{'a': 'int(open("a.txt").read())'}, 'b']
@@ -533,7 +533,7 @@ run: expand=True
         subprocess.call('sos resume -w', shell=True)
         for i in range(10):
             self.assertTrue(os.path.isfile(f'{i}.txt'))
-            file_target(f'{i}.txt').remove('both')
+            file_target(f'{i}.txt').unlink()
         file_target('test_trunksize.sos').remove()
 
     @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')
@@ -568,7 +568,7 @@ run: expand=True
         subprocess.call('sos resume -w', shell=True)
         for i in range(10):
             self.assertTrue(os.path.isfile('{}.txt'.format(i)))
-            file_target('{}.txt'.format(i)).remove('both')
+            file_target('{}.txt'.format(i)).unlink()
         file_target('test_trunkworker.sos').remove()
 
     @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')

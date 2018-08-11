@@ -24,7 +24,7 @@ class TestActions(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            file_target(f).remove('both')
+            file_target(f).unlink()
 
     @unittest.skipIf(not shutil.which('Rscript'), 'R not installed')
     def testRmarkdown(self):
@@ -48,7 +48,7 @@ Rmarkdown(output=_output[0])
         Base_Executor(wf, config={'report_output': 'report.md'}).run()
         self.assertTrue(os.path.isfile('myreport.html'))
         #
-        file_target('myreport.html').remove('both')
+        file_target('myreport.html').unlink()
 
     @unittest.skipIf(not shutil.which('Rscript'), 'R not installed')
     def testRmarkdownWithInput(self):

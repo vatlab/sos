@@ -172,7 +172,7 @@ def remove_placeholders(workflow_id):
         return
     for filename in data.placeholders():
         try:
-            file_target(filename).remove('both')
+            file_target(filename).unlink()
             env.logger.debug(f'Remove placeholder {filename}')
         except Exception as e:
             env.logger.warning(f'Failed to remove placeholder {filename}: {e}')

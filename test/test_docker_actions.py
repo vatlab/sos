@@ -94,7 +94,7 @@ class TestDockerActions(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            file_target(f).remove('both')
+            file_target(f).unlink()
         os.chdir(self.olddir)
 
     def touch(self, files):

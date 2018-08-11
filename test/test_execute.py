@@ -44,7 +44,7 @@ class TestExecute(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            file_target(f).remove('both')
+            file_target(f).unlink()
 
     def touch(self, files):
         '''create temporary files'''
@@ -416,7 +416,7 @@ input: group_by=2
         '''Test option paired_with '''
         self.touch(['a.txt', 'b.txt'])
         for ofile in ['a.txt1', 'b.txt2']:
-            file_target(ofile).remove('both')
+            file_target(ofile).unlink()
         #
         # string input
         script = SoS_Script(r'''
@@ -433,7 +433,7 @@ run: expand=True
         Base_Executor(wf).run()
         for ofile in ['a.txt1', 'b.txt2']:
             self.assertTrue(file_target(ofile).target_exists('target'))
-            file_target(ofile).remove('both')
+            file_target(ofile).unlink()
         #
         # list input
         script = SoS_Script(r'''
@@ -451,7 +451,7 @@ run: expand=True
         Base_Executor(wf).run()
         for ofile in ['a.txt1', 'b.txt2']:
             self.assertTrue(file_target(ofile).target_exists('target'))
-            file_target(ofile).remove('both')
+            file_target(ofile).unlink()
         #
         # dict input
         script = SoS_Script(r'''
@@ -466,13 +466,13 @@ run: expand=True
         Base_Executor(wf).run()
         for ofile in ['a.txt1', 'b.txt2']:
             self.assertTrue(file_target(ofile).target_exists('target'))
-            file_target(ofile).remove('both')
+            file_target(ofile).unlink()
 
     def testGroupWith(self):
         '''Test option group_with '''
         self.touch(['a.txt', 'b.txt'])
         for ofile in ['a.txt1', 'b.txt2']:
-            file_target(ofile).remove('both')
+            file_target(ofile).unlink()
         #
         # string input
         script = SoS_Script(r'''
@@ -489,7 +489,7 @@ run: expand=True
         Base_Executor(wf).run()
         for ofile in ['a.txt1', 'b.txt2']:
             self.assertTrue(file_target(ofile).target_exists('target'))
-            file_target(ofile).remove('both')
+            file_target(ofile).unlink()
         #
         # list input
         script = SoS_Script(r'''
@@ -507,7 +507,7 @@ run: expand=True
         Base_Executor(wf).run()
         for ofile in ['a.txt1']:
             self.assertTrue(file_target(ofile).target_exists('target'))
-            file_target(ofile).remove('both')
+            file_target(ofile).unlink()
         #
         # dict input
         script = SoS_Script(r'''
@@ -522,7 +522,7 @@ run: expand=True
         Base_Executor(wf).run()
         for ofile in ['a.txt1']:
             self.assertTrue(file_target(ofile).target_exists('target'))
-            file_target(ofile).remove('both')
+            file_target(ofile).unlink()
 
     def testInputPattern(self):
         '''Test option pattern of step input '''
@@ -933,12 +933,12 @@ with open('b.txt', 'w') as txt:
         ret2.wait()
         # two processes execute A_1 and A_2 separately, usually
         # takes less than 5 seconds
-        file_target('lock.sos').remove('both')
+        file_target('lock.sos').unlink()
 
     def testRemovedIntermediateFiles(self):
         '''Test behavior of workflow with removed internediate files'''
-        file_target('a.txt').remove('both')
-        file_target('aa.txt').remove('both')
+        file_target('a.txt').unlink()
+        file_target('aa.txt').unlink()
         script = SoS_Script('''
 [10]
 output: 'a.txt'
@@ -965,16 +965,16 @@ run: expand=True
         #
         # now we request the generation of target
         file_target('a.txt').remove('target')
-        file_target('aa.txt').remove('both')
+        file_target('aa.txt').unlink()
         Base_Executor(wf).run()
         #
-        file_target('a.txt').remove('both')
-        file_target('aa.txt').remove('both')
+        file_target('a.txt').unlink()
+        file_target('aa.txt').unlink()
 
     def testStoppedOutput(self):
         '''test output with stopped step'''
         for file in ["{}.txt".format(a) for a in range(10)]:
-            file_target(file).remove('both')
+            file_target(file).unlink()
 
         script = SoS_Script('''
 [test_1]
@@ -997,7 +997,7 @@ assert(len(_input) == 5)
             else:
                 self.assertTrue(file_target(
                     "{}.txt".format(idx)).target_exists())
-                file_target(f"{idx}.txt").remove('both')
+                file_target(f"{idx}.txt").unlink()
 
     def testAllowError(self):
         '''Test option allow error'''
@@ -1031,7 +1031,7 @@ input: for_each={'i': range(2)}
     def testDependsCausedDependency(self):
         # test for #674
         for tfile in ('1.txt', '2.txt', '3.txt'):
-            file_target(tfile).remove('both')
+            file_target(tfile).unlink()
         script = SoS_Script('''
 [1: shared = {'dfile':'_output'}]
 output: '1.txt'
@@ -1054,7 +1054,7 @@ run: expand=True
         Base_Executor(wf).run()
         for tfile in ('1.txt', '2.txt', '3.txt'):
             self.assertTrue(file_target(tfile).target_exists())
-            file_target(tfile).remove('both')
+            file_target(tfile).unlink()
 
     def testConcurrentInputOption(self):
         '''Test input option'''
@@ -1169,8 +1169,8 @@ depends: sos_step('step')
 
     def testMultiSoSStep(self):
         '''Test matching 'a_1', 'a_2' etc with sos_step('a')'''
-        file_target('a_1').remove('both')
-        file_target('a_2').remove('both')
+        file_target('a_1').unlink()
+        file_target('a_2').unlink()
         script = SoS_Script('''
 [a_b_1]
 output: "a_1"
@@ -1195,8 +1195,8 @@ depends: sos_step('a_b')
 
     def testDependsAuxiAndForward(self):
         '''Test depends on auxiliary, which then depends on a forward-workflow #983'''
-        file_target('a_1').remove('both')
-        file_target('a_2').remove('both')
+        file_target('a_1').unlink()
+        file_target('a_2').unlink()
         script = SoS_Script('''
 
 [hg_1]
@@ -1224,8 +1224,8 @@ depends: "a_2"
 
     def testDependsAuxiAndSingleStepForward(self):
         '''Test depends on auxiliary, which then depends on a single-step forward-workflow'''
-        file_target('a_1').remove('both')
-        file_target('a_2').remove('both')
+        file_target('a_1').unlink()
+        file_target('a_2').unlink()
         script = SoS_Script('''
 
 [hg_1]
@@ -1251,7 +1251,7 @@ depends: "a_2"
 
     def testDryrunPlaceholder(self):
         '''Test the creation and removal of placeholder files in dryrun mode'''
-        file_target('1.txt').remove('both')
+        file_target('1.txt').unlink()
         script = SoS_Script('''
 a = '1.txt'
 

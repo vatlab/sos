@@ -53,7 +53,7 @@ class TestActions(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            file_target(f).remove('both')
+            file_target(f).unlink()
 
     def touch(self, files):
         '''create temporary files'''
@@ -348,7 +348,7 @@ pandoc(input='report.md', output=_output[0])
         Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('myreport.html'))
         #
-        file_target('myreport.html').remove('both')
+        file_target('myreport.html').unlink()
         # pandoc with specified input.
         script = SoS_Script(r'''
 [10]
@@ -415,7 +415,7 @@ report: output='report.txt', expand=True
 
 ''')
         # output to a file
-        file_target('report.txt').remove('both')
+        file_target('report.txt').unlink()
         wf = script.workflow()
         # run twice
         Base_Executor(wf, args=['--num', '7']).run()
@@ -423,7 +423,7 @@ report: output='report.txt', expand=True
         with open('report.txt') as report:
             self.assertEqual(report.read(), 'touch 5.txt\n\n')
         # test overwrite
-        file_target('report.txt').remove('both')
+        file_target('report.txt').unlink()
         script = SoS_Script(r'''
 [A]
 report: output='report.txt', expand=True

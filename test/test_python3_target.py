@@ -23,11 +23,11 @@ class TestTarget(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            file_target(f).remove('both')
+            file_target(f).unlink()
 
     def testPy_Module(self):
         '''Test target Py_Module'''
-        file_target('report.md').remove('both')
+        file_target('report.md').unlink()
         script = SoS_Script(r'''
 [10]
 depends: Py_Module('tabulate')
