@@ -946,6 +946,17 @@ class Base_Step_Executor:
                 v = expand_size(v)
             env.sos_dict['_runtime'][k] = v
 
+    def reevaluate_output(self):
+        # re-process the output statement to determine output files
+        args, _ = SoS_eval(
+            f'__null_func__({env.sos_dict["_output"]._undetermined})')
+        if args is True:
+            env.logger.error('Failed to resolve unspecified output')
+            return
+        # handle dynamic args
+        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
+        return self.expand_output_files('', *args)
+
     def prepare_task(self):
         env.sos_dict['_runtime']['cur_dir'] = os.getcwd()
         # we need to record the verbosity and sigmode of task during creation because
@@ -1191,15 +1202,6 @@ class Base_Step_Executor:
         try:
             self.last_res = SoS_exec(
                 stmt, return_result=self.run_mode == 'interactive')
-            if env.sos_dict["_output"].undetermined():
-                args, _ = SoS_eval(
-                    f'__null_func__({env.sos_dict["_output"]._undetermined})')
-                if args is True:
-                    env.logger.error('Failed to resolve undetermined output')
-                    return
-                args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-                env.sos_dict.set('_output', self.expand_output_files('', *args))
-                self.output_groups[env.sos_dict['_index']] = env.sos_dict['_output']
         except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks):
             raise
         except subprocess.CalledProcessError as e:
@@ -1458,7 +1460,8 @@ class Base_Step_Executor:
         try:
             self.completed['__substep_skipped__'] = 0
             self.completed['__substep_completed__'] = len(self._substeps)
-
+            # pending signatures are signatures for steps with external tasks
+            pending_signatures = [None for x in self._substeps]
             for idx, (g, v) in enumerate(zip(self._substeps, self._vars)):
                 # other variables
                 #
@@ -1570,6 +1573,8 @@ class Base_Step_Executor:
                                         env.sos_dict['__signature_vars__'],
                                         share_vars='shared' in self.step.options)
                                     env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} with signature {sig.sig_id}')
+                                    # if singaure match, we skip the substep even  if
+                                    # there are tasks.
                                     skip_index = validate_step_sig(sig)
                                     if not skip_index:
                                         sig.lock()
@@ -1577,7 +1582,17 @@ class Base_Step_Executor:
                                             verify_input()
                                             self.execute(statement[1])
                                         finally:
-                                            sig.write()
+                                            # if this is the end of substep, save the signature
+                                            # otherwise we need to wait for the completion
+                                            # of the task.
+                                            if not self.step.task:
+                                                if env.sos_dict['step_output'].undetermined():
+                                                    output = self.reevaluate_output()
+                                                    self.output_groups[env.sos_dict['_index']] = output
+                                                    sig.set_output(output)
+                                                sig.write()
+                                            else:
+                                                pending_signatures[idx] = sig
                                             sig.release()
                         except StopInputGroup as e:
                             self.output_groups[idx] = []
@@ -1599,6 +1614,7 @@ class Base_Step_Executor:
                         share_vars='shared' in self.step.options)
                     env.logger.trace(f'Check task-only step {env.sos_dict["step_name"]} with signature {sig.sig_id}')
                     skip_index = validate_step_sig(sig)
+                    pending_signatures[idx] = sig
 
                 # if this index is skipped, go directly to the next one
                 if skip_index:
@@ -1682,20 +1698,28 @@ class Base_Step_Executor:
                 if 'exception' in proc_result:
                     raise proc_result['exception']
             # if output is Undetermined, re-evalulate it
-            #
-            # NOTE: dynamic output is evaluated at last, so it sets output,
-            # not _output. For the same reason, signatures can be wrong if it has
-            # Undetermined output.
-            if env.config['run_mode'] in ('run', 'interactive'):
-
+            if env.config['run_mode'] != 'dryrun':
+                if env.sos_dict['step_output'].undetermined():
+                    output = self.reevaluate_output()
+                    env.sos_dict.set('step_output', output)
+                    # for all pending signatures, output need to be set at this point
+                    for idx, res in enumerate(self.proc_results):
+                        if pending_signatures[idx] is not None:
+                            pending_signatures[idx].set_output(output)
+                else:
                 # finalize output from output_groups because some output might be skipped
                 # this is the final version of the output but we do maintain output
                 # during the execution of step, for compatibility.
-                env.sos_dict.set(
-                    'step_output', sos_targets(self.output_groups[0]))
-                for og in self.output_groups[1:]:
-                    if og != env.sos_dict['step_output'].targets():
-                        env.sos_dict['step_output'].extend(og)
+                    env.sos_dict.set(
+                        'step_output', sos_targets(self.output_groups[0]))
+                    for og in self.output_groups[1:]:
+                        if og != env.sos_dict['step_output'].targets():
+                            env.sos_dict['step_output'].extend(og)
+            # now that output is settled, we can write remaining signatures
+            for idx, res in enumerate(self.proc_results):
+                if pending_signatures[idx] is not None:
+                    if res['ret_code'] == 0:
+                        pending_signatures[idx].write()
 
             self.log('output')
             # variables defined by the shared option needs to be available to be verified

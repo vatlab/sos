@@ -1026,15 +1026,10 @@ class RuntimeInfo(InMemorySignature):
             finally:
                 self._lock = None
 
-    def set(self, files: sos_targets, file_type: str):
+    def set_output(self, files: sos_targets):
         # add signature file if input and output files are dynamic
         env.logger.trace(f'Set {file_type} of signature to {files}')
-        if file_type == 'output':
-            self.output_files = files
-        elif file_type == 'depends':
-            self.depends_files = files
-        else:
-            raise RuntimeError(f'Invalid signature file type {file_type}')
+        self.output_files = files
 
     def write(self, rebuild=False):
         '''Write signature file with signature of script, input, output and dependent files.
@@ -1043,6 +1038,7 @@ class RuntimeInfo(InMemorySignature):
         '''
         ret = super(RuntimeInfo, self).write()
         if ret is False:
+            env.logger.debug(f'Failed to write signature {self.sig_id}')
             return ret
 
         env.logger.trace(f'Write signature {self.sig_id}')
