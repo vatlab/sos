@@ -554,7 +554,6 @@ class Base_Step_Executor:
         for key in ('_input', '_depends'):
             for target in env.sos_dict[key]:
                 if not target.target_exists('target'):
-                    target.remove_sig()
                     raise RemovedTarget(target)
 
     def verify_output(self):

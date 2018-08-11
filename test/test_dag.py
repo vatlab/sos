@@ -26,7 +26,8 @@ class TestDAG(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            file_target(f).unlink()
+            if file_target(f).exists():
+                file_target(f).unlink()
 
     def touch(self, files):
         '''create temporary files'''
@@ -402,7 +403,8 @@ output: 'A.txt'
         '''Test long make file style dependencies.'''
         #
         for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
-            file_target(f).unlink()
+            if file_target(f).exists():
+                file_target(f).unlink()
         #
         #  A1 <- B1 <- B2 <- B3
         #   |
@@ -496,7 +498,8 @@ A_1 -> A_2;
         '''Test executing only part of a workflow.'''
         #
         for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
-            file_target(f).unlink()
+            if file_target(f).exists():
+                file_target(f).unlink()
         #
         #  A1 <- B1 <- B2 <- B3
         #   |
@@ -637,7 +640,8 @@ strict digraph "" {
         '''Test repeated use of steps that use pattern and produce different files.'''
         #
         for f in ['A1.txt', 'A2.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
-            file_target(f).unlink()
+            if file_target(f).exists():
+                file_target(f).unlink()
         #
         #  A1 <- P <- B1
         #  A1 <- P <- B2
@@ -699,7 +703,8 @@ A_1 -> A_2;
         A2 <- B2
         '''
         for f in ['A1.txt', 'B2.txt', 'A2.txt']:
-            file_target(f).unlink()
+            if file_target(f).exists():
+                file_target(f).unlink()
         script = SoS_Script('''
 [A_1]
 output: 'A1.txt'
@@ -738,14 +743,16 @@ A_2;
         Base_Executor(wf).run()
         # the process is slower after switching to spawn mode
         for f in ['A1.txt', 'B2.txt', 'A2.txt']:
-            file_target(f).unlink()
+            if file_target(f).exists():
+                file_target(f).unlink()
 
     def testSharedDependency(self):
         #
         # shared variable should introduce additional dependency
         #
         for f in ['A1.txt']:
-            file_target(f).unlink()
+            if file_target(f).exists():
+                file_target(f).unlink()
         #
         # A1 introduces a shared variable ss, A3 depends on ss but not A2
         #
@@ -787,7 +794,8 @@ A_1 -> A_3;
     def testLiteralConnection(self):
         '''Testing the connection of steps with by variables.'''
         for f in ['A1.txt']:
-            file_target(f).unlink()
+            if file_target(f).exists():
+                file_target(f).unlink()
         #
         # A1 introduces a shared variable ss, A3 depends on ss but not A2
         #
@@ -861,7 +869,8 @@ p = c + b
 
     def testReverseSharedVariable(self):
         '''Test shared variables defined in auxiliary steps'''
-        file_target('a.txt').unlink()
+        if file_target('a.txt').exists():
+            file_target('a.txt').unlink()
         script = SoS_Script(r'''
 [A: shared='b', provides='a.txt']
 b = 1
@@ -896,18 +905,22 @@ run: expand=True
    echo "Calling variants from {_input} with {_depends} to {_output}"
    touch {_output}
 ''')
-        file_target('a.bam.bai').unlink()
-        file_target('a.vcf').unlink()
+        if file_target('a.bam.bai').exists():
+            file_target('a.bam.bai').unlink()
+        if file_target('a.vcf').exists():
+            file_target('a.vcf').unlink()
         self.touch('a.bam')
         Base_Executor(script.workflow()).run(targets=['a.vcf'])
-        for file in ('a.vcf', 'a.bam', 'a.bam.bai'):
-            file_target(file).unlink()
+        for f in ('a.vcf', 'a.bam', 'a.bam.bai'):
+            if file_target(f).exists():
+                file_target(f).unlink()
 
     def testOutputOfDAG(self):
         '''Test output of dag'''
         #
         for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
-            file_target(f).unlink()
+            if file_target(f).exists():
+                file_target(f).unlink()
         #
         #  A1 <- B1 <- B2 <- B3
         #   |
@@ -1024,7 +1037,8 @@ strict digraph "" {
 }
 ''')
         for f in ['C2.txt', 'B3.txt', 'C4.txt', 'test.dot', 'test_2.dot']:
-            file_target(f).unlink()
+            if file_target(f).exists():
+                file_target(f).unlink()
 
     def testStepWithMultipleOutput(self):
         '''Test addition of steps with multiple outputs. It should be added only once'''
@@ -1069,7 +1083,8 @@ touch 1.txt
 
     def testForwardStyleDepend(self):
         '''Test the execution of forward-style workflow with undtermined dependency'''
-        file_target('a.txt.bak').unlink()
+        if file_target('a.txt.bak').exists():
+            file_target('a.txt.bak').unlink()
         self.touch('a.txt')
         script = SoS_Script('''
 [10]
