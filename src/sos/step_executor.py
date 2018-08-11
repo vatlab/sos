@@ -246,7 +246,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     # finally, tasks..
     if section.task:
         signature_vars |= accessed_vars(section.task)
-    if 'provides' in section.options and '__default_output__' in env.sos_dict and step_output.determined():
+    if 'provides' in section.options and '__default_output__' in env.sos_dict and step_output.valid():
         for out in env.sos_dict['__default_output__']:
             # 981
             if not isinstance(out, sos_step) and out not in step_output:
@@ -425,7 +425,7 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
     share_vars=False, capture_output=False):
     '''Execute statements in the passed dictionary'''
     env.sos_dict.quick_update(proc_vars)
-    sig = None if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].empty() else RuntimeInfo(
+    sig = None if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified() else RuntimeInfo(
         step_md5, step_tokens,
         env.sos_dict['_input'],
         env.sos_dict['_output'],
@@ -560,9 +560,9 @@ class Base_Step_Executor:
     def verify_output(self):
         if env.sos_dict['step_output'] is None:
             return
-        if not env.sos_dict['step_output'].determined():
+        if not env.sos_dict['step_output'].valid():
             raise RuntimeError(
-                'Output of a completed step cannot be undetermined.')
+                'Output of a completed step cannot be undetermined or unspecified.')
         for target in env.sos_dict['step_output']:
             if isinstance(target, sos_step):
                 continue
@@ -833,13 +833,11 @@ class Base_Step_Executor:
             _vars
         which are groups of _input and related _vars
         """
-        if not ifiles.determined():
-            env.sos_dict.set('step_input', sos_targets())
-            env.sos_dict.set('_input', sos_targets())
-            # temporarily set depends and output to Undetermined because we cannot
-            # go far with such input
+        if ifiles.unspecified():
+            env.sos_dict.set('step_input', sos_targets([]))
+            env.sos_dict.set('_input', sos_targets([]))
             env.sos_dict.set('step_output', sos_targets())
-            return [sos_targets()], [{}]
+            return [sos_targets([])], [{}]
 
         for k in kwargs.keys():
             if k not in SOS_INPUT_OPTIONS:
@@ -893,7 +891,7 @@ class Base_Step_Executor:
         for k in kwargs.keys():
             if k not in SOS_DEPENDS_OPTIONS:
                 raise RuntimeError(f'Unrecognized depends option {k}')
-        if not dfiles.determined():
+        if dfiles.undetermined():
             raise ValueError(r"Depends needs to handle undetermined")
 
         env.sos_dict.set('_depends', dfiles)
@@ -916,7 +914,7 @@ class Base_Step_Executor:
             ofiles = _ogroups[env.sos_dict['_index']]
 
         # create directory
-        if ofiles.determined():
+        if ofiles.valid():
             for ofile in ofiles:
                 if isinstance(ofile, file_target):
                     parent_dir = ofile.parent
@@ -926,7 +924,7 @@ class Base_Step_Executor:
         # set variables
         env.sos_dict.set('_output', ofiles)
         #
-        if not env.sos_dict['step_output'].determined():
+        if env.sos_dict['step_output'].valid():
             env.sos_dict.set('step_output', copy.deepcopy(ofiles))
         else:
             for ofile in ofiles:
@@ -1192,7 +1190,7 @@ class Base_Step_Executor:
         try:
             self.last_res = SoS_exec(
                 stmt, return_result=self.run_mode == 'interactive')
-            if not env.sos_dict["_output"].determined():
+            if env.sos_dict["_output"].undetermined():
                 args, _ = SoS_eval(
                     f'__null_func__({env.sos_dict["_output"]._undetermined})')
                 if args is True:
@@ -1324,7 +1322,7 @@ class Base_Step_Executor:
         # * depends:    None at first, can be redefined by depends statement
         # * _depends:   None at first, can be redefined by depends statement
         #
-        if '__step_output__' not in env.sos_dict or not env.sos_dict['__step_output__'].determined():
+        if '__step_output__' not in env.sos_dict or env.sos_dict['__step_output__'].unspecified():
             env.sos_dict.set('step_input', sos_targets([]))
         else:
             env.sos_dict.set('step_input', env.sos_dict['__step_output__'])
@@ -1344,7 +1342,8 @@ class Base_Step_Executor:
                 env.sos_dict['__default_output__']))
         else:
             env.sos_dict.set('step_output', sos_targets([]))
-            env.sos_dict.set('_output', sos_targets([]))
+            # output is said to be unspecified until output: is used
+            env.sos_dict.set('_output', sos_targets(undetermined=True))
         env.sos_dict.set('step_depends', sos_targets([]))
         env.sos_dict.set('_depends', sos_targets([]))
         # _index is needed for pre-input action's active option and for debug output of scripts
@@ -1487,7 +1486,8 @@ class Base_Step_Executor:
 
                 for statement in pre_statement + self.step.statements[input_statement_idx:]:
                     # if input is undertermined, we can only process output:
-                    if not g.determined() and statement[0] != ':':
+                    if not g.valid() and statement[0] != ':':
+                        raise RuntimeError('Undetermined input encountered')
                         return self.collect_result()
                     if statement[0] == ':':
                         key, value = statement[1:3]
@@ -1502,7 +1502,7 @@ class Base_Step_Executor:
                                         'step_output', sos_targets())
                                 ofiles: sos_targets = self.expand_output_files(
                                     value, *args)
-                                if g.determined() and ofiles.determined():
+                                if g.valid() and ofiles.valid():
                                     if any(x in g._targets for x in ofiles if not isinstance(x, sos_step)):
                                         raise RuntimeError(
                                             f'Overlapping input and output files: {", ".join(repr(x) for x in ofiles if x in g)}')
@@ -1510,7 +1510,7 @@ class Base_Step_Executor:
                                 self.process_output_args(ofiles, **kwargs)
                                 self.output_groups[idx] = env.sos_dict['_output'].targets(
                                 )
-                                if self.concurrent_substep and not ofiles.determined():
+                                if self.concurrent_substep and ofiles.undetermined():
                                     env.logger.trace('Disable concurrent substeps because concurrent substeps does not return dynamic output to master')
                                     self.concurrent_substep = False
                             elif key == 'depends':
@@ -1532,7 +1532,7 @@ class Base_Step_Executor:
                         except Exception as e:
                             # if input is Undertermined, it is possible that output cannot be processed
                             # due to that, and we just return
-                            if not g.determined():
+                            if g.valid():
                                 return self.collect_result()
                             raise RuntimeError(
                                 f'Failed to process step {key} ({value.strip()}): {e}')
@@ -1540,6 +1540,7 @@ class Base_Step_Executor:
                         try:
                             self.verify_input()
                             if self.concurrent_substep:
+                                env.logger.trace('Execute substep {env.sos_dict["step_name"]} concurrently')
                                 proc_vars = env.sos_dict.clone_selected_vars(
                                     env.sos_dict['__signature_vars__']
                                     | {'_input', '_output', '_depends', '_index', '__args__',
@@ -1556,7 +1557,8 @@ class Base_Step_Executor:
                                                                            share_vars='shared' in self.step.options,
                                                                            capture_output=self.run_mode == 'interactive')))
                             else:
-                                if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].empty():
+                                if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified():
+                                    env.logger.trace('Execute substep {env.sos_dict["step_name"]} without signature')
                                     self.execute(statement[1])
                                 else:
                                     sig = RuntimeInfo(
@@ -1566,6 +1568,7 @@ class Base_Step_Executor:
                                         env.sos_dict['_depends'],
                                         env.sos_dict['__signature_vars__'],
                                         share_vars='shared' in self.step.options)
+                                    env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} with signature {sig.sig_id}')
                                     skip_index = validate_step_sig(sig)
                                     if not skip_index:
                                         sig.lock()

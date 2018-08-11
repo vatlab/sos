@@ -270,7 +270,7 @@ class SoS_DAG(nx.DiGraph):
         # first, find all nodes with targets
         subnodes = []
         for node in self.nodes():
-            if node._output_targets.determined() and any(x in node._output_targets for x in targets):
+            if node._output_targets.valid() and any(x in node._output_targets for x in targets):
                 subnodes.append(node)
         #
         ancestors = set()
@@ -303,10 +303,10 @@ class SoS_DAG(nx.DiGraph):
 
                 # 2. if the input of a step is undetermined, it has to be executed
                 # after all its previous steps.
-                if not node._input_targets.determined() and idx > 0:
+                if not node._input_targets.valid() and idx > 0:
                     # if there is some input specified, it does not use default
                     # input, so the relationship can be further looked before
-                    if isinstance(node._input_targets._undetermined, str):
+                    if node._input_targets.undetermined():
                         # if the input is dynamic, has to rely on previous step...
                         if 'dynamic' in node._context['__environ_vars__']:
                             self.add_edge(indexed[idx - 1], node)

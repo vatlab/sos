@@ -81,7 +81,7 @@ def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
     # which should not be reported.
     if env.sos_dict['_output'] is None:
         output = {}
-    elif not env.sos_dict['_output'].determined():
+    elif env.sos_dict['_output'].undetermined():
         from .workflow_executor import __null_func__
         from .targets import dynamic
         from .step_executor import _expand_file_list
@@ -386,7 +386,7 @@ del sos_handle_parameter_
             env.sos_dict.set(key, sos_targets(resolve_remote(x)
                                               for x in sos_dict[key] if not isinstance(x, sos_step)))
 
-    sig = None if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].empty() else InMemorySignature(
+    sig = None if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified() else InMemorySignature(
         env.sos_dict['_input'], env.sos_dict['_output'],
         env.sos_dict['_depends'], env.sos_dict['__signature_vars__'],
         share_vars='shared' in env.sos_dict['_runtime'])
@@ -440,7 +440,7 @@ del sos_handle_parameter_
         # create directory. This usually has been done at the step level but the task can be executed
         # on a remote host where the directory does not yet exist.
         ofiles = env.sos_dict['_output']
-        if ofiles.determined():
+        if ofiles.valid():
             for ofile in ofiles:
                 parent_dir = ofile.parent
                 if not parent_dir.is_dir():

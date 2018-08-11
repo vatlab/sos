@@ -543,7 +543,7 @@ class Base_Executor:
                         # if this is an index step... simply let it depends on previous steps
                         if node._node_index is not None:
                             indexed = [x for x in dag.nodes() if x._node_index is not None and x._node_index <
-                                       node._node_index and not x._output_targets.determined()]
+                                       node._node_index and not x._output_targets.valid()]
                             indexed.sort(key=lambda x: x._node_index)
                             if not indexed:
                                 raise RuntimeError(
@@ -557,10 +557,10 @@ class Base_Executor:
                                 # all previous status has been failed or completed...
                                 raise RuntimeError(
                                     f'Previous step{" has" if len(indexed) == 1 else "s have"} not generated target {target}{dag.steps_depending_on(target, self.workflow)}')
-                            if node._input_targets.determined():
-                                node._input_targets = sos_targets()
-                            if node._depends_targets.determined():
-                                node._depends_targets = sos_targets()
+                            if node._input_targets.valid():
+                                node._input_targets = sos_targets([])
+                            if node._depends_targets.valid():
+                                node._depends_targets = sos_targets([])
                         else:
                             raise RuntimeError(
                                 f'No step to generate target {target}{dag.steps_depending_on(target, self.workflow)}')
@@ -950,7 +950,7 @@ class Base_Executor:
             if self.resolve_dangling_targets(dag, sos_targets(target)) == 0:
                 raise RuntimeError(
                     f'Failed to regenerate or resolve {target}{dag.steps_depending_on(target, self.workflow)}.')
-            if runnable._depends_targets.determined():
+            if runnable._depends_targets.valid():
                 runnable._depends_targets.extend(target)
             if runnable not in dag._all_dependent_files[target]:
                 dag._all_dependent_files[target].append(

@@ -727,15 +727,18 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 raise RuntimeError(f"Unrecognized target {t}")
 
     def is_external(self):
-        if not self.determined():
+        if not self.valid():
             return False
         return all(x.is_external() for x in self._targets if isinstance(x, file_target))
 
-    def empty(self):
-        return not self._undetermined and not self._targets
+    def unspecified(self):
+        return not self._targets and self._undetermined is True
 
-    def determined(self):
-        return self._targets or not self._undetermined
+    def undetermined(self):
+        return not self._targets and isinstance(self._undetermined, str)
+
+    def valid(self):
+        return self._targets or self._undetermined is False
 
     def __append__(self, arg):
         if isinstance(arg, paths):
@@ -743,7 +746,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         elif isinstance(arg, (str, path)):
             self._targets.append(file_target(arg))
         elif isinstance(arg, sos_targets):
-            if arg.determined() and not self.determined():
+            if arg.valid() and not self.valid():
                 self._undetermined = False
             self._targets.extend(arg._targets)
         elif isinstance(arg, BaseTarget):
@@ -843,14 +846,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 f'Cannot treat an sos_targets object {self} with more than one targets as a single target')
 
     def __repr__(self):
-        return ('[' + ', '.join(repr(x) for x in self._targets) + ']') if self.determined() else ('TBD' if self._undetermined is True else self._undetermined.strip())
+        return ('[' + ', '.join(repr(x) for x in self._targets) + ']') if self.valid() else ('Unspecified' if self.unspecified() else self._undetermined)
 
     def __str__(self):
-        return self.__format__('') if self.determined() else ('TBD' if self._undetermined is True else self._undetermined.strip())
+        return self.__format__('') if self.valid() else ('Unspecified' if self.unspecified() else self._undetermined)
 
     def __format__(self, format_spec):
-        if not self.determined():
-            return 'TBD' if self._undetermined is True else self._undetermined.strip()
+        if not self.valid():
+            return 'Unspecified' if self.unspecified() else self._undetermined
         if ',' in format_spec:
             fmt_spec = format_spec.replace(',', '')
             return ','.join(x.__format__(fmt_spec) for x in self._targets)
@@ -867,18 +870,17 @@ class InMemorySignature:
         '''
         if not sdict:
             sdict = env.sos_dict
-        if not input_files.determined():
+        if not input_files.valid():
             raise RuntimeError('Input files of step signature cannot be undetermined.')
-        if not dependent_files.determined():
+        if not dependent_files.valid():
             raise RuntimeError('Dependent files of step signature cannot be undetermined.')
 
         self.input_files = sos_targets(
             [x for x in input_files._targets if not isinstance(x, sos_step)])
         self.dependent_files = sos_targets(
             [x for x in dependent_files._targets if not isinstance(x, sos_step)])
-        self.output_files = sos_targets(
-            [x for x in output_files._targets if not isinstance(x, sos_step)]) \
-            if output_files.determined() else output_files
+        self.output_files = output_files if output_files.undetermined() else sos_targets(
+            [x for x in output_files._targets if not isinstance(x, sos_step)])
         self.signature_vars = signature_vars
         self.share_vars = share_vars
         # signatures that exist before execution and might change during execution
@@ -886,7 +888,7 @@ class InMemorySignature:
             signature_vars) if x in sdict and not callable(sdict[x]) and pickleable(sdict[x], x)}
 
     def write(self, rebuild=False):
-        if not self.output_files.determined():
+        if self.output_files.undetermined():
             self.output_files = env.sos_dict['_output']
             env.logger.trace(f'Set undetermined output files to {env.sos_dict["_output"]}')
         input_sig = {}
@@ -943,7 +945,7 @@ class InMemorySignature:
         if not signature:
             return 'Empty signature'
         # file not exist?
-        if not self.output_files.determined():
+        if self.output_files.undetermined():
             return "Undetermined output files"
         sig_files = self.input_files._targets + self.output_files._targets + \
             self.dependent_files._targets
@@ -1132,7 +1134,7 @@ class RuntimeInfo(InMemorySignature):
         env.logger.trace(f'Validating {self.sig_id}')
         #
         # file not exist?
-        if not self.output_files.determined():
+        if self.output_files.undetermined():
             return "Undetermined output files"
         sig_files = self.input_files._targets + self.output_files._targets + \
             self.dependent_files._targets
