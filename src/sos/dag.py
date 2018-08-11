@@ -11,7 +11,7 @@ import fasteners
 import networkx as nx
 
 
-from .targets import (file_target, sos_step, sos_targets, sos_variable, textMD5,
+from .targets import (sos_step, sos_targets, sos_variable, textMD5,
                       BaseTarget)
 from .utils import ActivityNotifier, env, short_repr
 

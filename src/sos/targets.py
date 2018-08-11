@@ -540,7 +540,7 @@ class file_target(path, BaseTarget):
         # old signature file with only md5
         if isinstance(sig, str) or not self.exists():
             try:
-                mysig = self.target_signature()
+                self.target_signature()
             except ValueError:
                 # if file does not exist
                 raise
@@ -1028,7 +1028,7 @@ class RuntimeInfo(InMemorySignature):
 
     def set_output(self, files: sos_targets):
         # add signature file if input and output files are dynamic
-        env.logger.trace(f'Set {file_type} of signature to {files}')
+        env.logger.trace(f'Set output of signature to {files}')
         self.output_files = files
 
     def write(self, rebuild=False):

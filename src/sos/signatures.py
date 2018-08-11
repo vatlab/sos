@@ -3,7 +3,6 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
-from collections import namedtuple
 import os
 import pickle
 import lzma
@@ -133,7 +132,7 @@ class WorkflowSignatures(object):
                           (env.config["master_id"], entry_type, id, item))
             self.conn.commit()
         except sqlite3.DatabaseError as e:
-            env.logger.warning(f'Failed to write workflow signature of type {entry_tyoe} and id {id}: {e}')
+            env.logger.warning(f'Failed to write workflow signature of type {entry_type} and id {id}: {e}')
             return None
 
     def records(self, workflow_id):
