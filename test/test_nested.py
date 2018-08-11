@@ -27,7 +27,8 @@ class TestNested(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            file_target(f).unlink()
+            if file_target(f).exists():
+                file_target(f).unlink()
 
     def touch(self, files):
         '''create temporary files'''
@@ -154,7 +155,8 @@ sos_run('a', shared=['executed', 'inputs'])
                          'c', 'a_1', 'a_2', 'a_1', 'a_2'])
         #self.assertEqual(env.sos_dict['inputs'], [['a.txt'], ['a.txt'], ['a.txt.a1'], ['b.txt'], ['b.txt'], ['b.txt.a1']])
         for file in ('a.txt.a1', 'a.txt.a1.a2', 'b.txt.a1', 'b.txt.a1.a2'):
-            file_target(file).unlink()
+            if file_target(file).exists():
+                file_target(file).unlink()
         #
         env.sos_dict.pop('executed', None)
         # allow specifying a single step
@@ -365,7 +367,8 @@ sos_run('A', shared='executed')
         #
         subprocess.call('sos remove -s', shell=True)
         for file in ('a.txt.a1', 'a.txt.a1.a2', 'b.txt.a1', 'b.txt.a1.a2'):
-            file_target(file).unlink()
+            if file_target(file).exists():
+                file_target(file).unlink()
         #
         env.sos_dict.pop('executed', None)
         script = SoS_Script('''
@@ -391,7 +394,8 @@ sos_run('k.A', shared='executed')
     def testSoSRun(self):
         '''Test action sos_run with keyword parameters'''
         for f in ['0.txt', '1.txt']:
-            file_target(f).unlink()
+            if file_target(f).exists():
+                file_target(f).unlink()
         script = SoS_Script(r'''
 [A]
 parameter: num=5
@@ -410,7 +414,8 @@ for k in range(2):
         #
         # if we do not pass num, parameter would not change
         for f in ['0.txt', '1.txt']:
-            file_target(f).unlink()
+            if file_target(f).exists():
+                file_target(f).unlink()
         script = SoS_Script(r'''
 [A]
 parameter: num=5
@@ -452,7 +457,8 @@ for k in range(2):
         # until runtime.
         #
         for f in ['B0.txt', 'B0.txt.p', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
-            file_target(f).unlink()
+            if file_target(f).exists():
+                file_target(f).unlink()
         #
         #  A1 <- P <- B
         #  A1 <- P <- B

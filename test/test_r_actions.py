@@ -24,12 +24,14 @@ class TestActions(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            file_target(f).unlink()
+            if file_target(f).exists():
+                file_target(f).unlink()
 
     @unittest.skipIf(not shutil.which('Rscript'), 'R not installed')
     def testRmarkdown(self):
         '''Test action Rmarkdown'''
-        file_target('myreport.html').remove()
+        if file_target('myreport.html').exists():
+            file_target('myreport.html').unlink()
         script = SoS_Script(r'''
 [10]
 
@@ -69,7 +71,8 @@ Rmarkdown(input='a.md', output=_output[0])
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('myreport.html'))
-        file_target('myreport.html').remove()
+        if file_target('myreport.html').exists():
+            file_target('myreport.html').unlink()
 
 #     def testRmarkdownWithNoOutput(self):
 #         # another case is no output, so output goes to standard output
@@ -108,7 +111,7 @@ Rmarkdown(input=['default_10.md', 'default_20.md'], output='output.html')
         Base_Executor(wf, config={'report_output': '${step_name}.md'}).run()
         for f in ['default_10.md', 'default_20.md', 'output.html']:
             self.assertTrue(file_target(f).exists())
-            file_target(f).remove()
+            file_target(f).unlink()
 
     @unittest.skipIf(not shutil.which('Rscript'), 'R not installed')
     def testRmarkdownToStdout(self):

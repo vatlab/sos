@@ -111,7 +111,8 @@ cp {_input} {_dest[0]}
     @unittest.skipIf('TRAVIS' in os.environ and test_interactive, 'This test fails for unknown reason under travis and interactive mode')
     def testSignatureWithSharedVariable(self):
         '''Test restoration of signature from variables.'''
-        file_target('a.txt').unlink()
+        if file_target('a.txt').exists():
+            file_target('a.txt').unlink()
         # shared
         script = SoS_Script(r"""
 [0: shared='a']
@@ -165,7 +166,8 @@ cp {_input} {_dest[0]}
         env.config['wait_for_task'] = True
         script = SoS_Script(text)
         for f in ['temp/a.txt', 'temp/b.txt']:
-            file_target(f).unlink()
+            if file_target(f).exists():
+                file_target(f).unlink()
         #
         # only the first step
         wf = script.workflow('default:0')
@@ -287,7 +289,6 @@ run: expand='${ }'
         # we discard the signature, the step would still be
         # skipped because file signature will be calculated
         # during verification
-        file_target('largefile.txt').remove('signature')
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 0)
         #
@@ -334,7 +335,6 @@ run: expand=True
         self.assertTrue(os.path.isfile('midfile.txt'))
         #
         # we discard the signature, and change midfile rerun
-        file_target('midfile.txt').remove('signature')
         with open('midfile.txt', 'a') as mf:
             mf.write('extra')
         res = Base_Executor(wf).run()
@@ -350,13 +350,11 @@ run: expand=True
         subprocess.call('sos remove midfile.txt --zap -y', shell=True)
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 0)
-        file_target('midfile.txt').unlink()
-        file_target('midfile.txt.zapped').unlink()
-        file_target('final.txt').unlink()
 
     def testSignatureWithParameter(self):
         '''Test signature'''
-        file_target('myfile.txt').unlink()
+        if file_target('myfile.txt').exists():
+            file_target('myfile.txt').unlink()
         #
         script = SoS_Script(r'''
 parameter: gvar = 10
@@ -424,7 +422,8 @@ run: expand=True
     def testLoopWiseSignature(self):
         '''Test partial signature'''
         for i in range(10, 12):
-            file_target('myfile_{}.txt'.format(i)).unlink()
+            if file_target(f'myfile_{i}.txt').exists():
+                file_target(f'myfile_{i}.txt').unlink()
         #
         script = SoS_Script(r'''
 parameter: gvar = 10
@@ -520,8 +519,9 @@ run: expand=True
     def testSignatureWithVars(self):
         '''Test revaluation with variable change'''
         self.touch(('a1.out', 'a2.out'))
-        file_target('b1.out').unlink()
-        file_target('b2.out').unlink()
+        for f in ('b1.out', 'b2.out'):
+            if file_target(f).exists():
+                file_target(f).unlink()
         script = SoS_Script('''
 parameter: DB = {'input': ['a1.out'], 'output': ['b1.out']}
 parameter: input_file = DB['input']
@@ -580,7 +580,8 @@ output: 'aa'
 sh:
   echo aa > aa
 ''')
-        file_target('aa').unlink()
+        if file_target('aa').exists():
+            file_target('aa').unlink()
         wf = script.workflow()
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 1)

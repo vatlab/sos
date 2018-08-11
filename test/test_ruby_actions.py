@@ -24,12 +24,14 @@ class TestActions(unittest.TestCase):
 
     def tearDown(self):
         for f in self.temp_files:
-            file_target(f).unlink()
+            if file_target(f).exists():
+                file_target(f).unlink()
 
     @unittest.skipIf(not shutil.which('ruby'), 'ruby not installed')
     def testRuby(self):
         '''Test action ruby'''
-        file_target('sample.txt').unlink()
+        if file_target('sample.txt').exists():
+            file_target('sample.txt').unlink()
         script = SoS_Script(r'''
 [10]
 
