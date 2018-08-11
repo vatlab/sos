@@ -261,10 +261,7 @@ class TaskEngine(threading.Thread):
                 # resubmit the job. In the case of not-rerun, the task would be marked
                 # completed very soon.
                 elif self.task_status[task_id] == 'completed':
-                    if env.config['sig_mode'] != 'force':
-                        self.notify(f'{task_id} ``already completed``')
-                        return 'completed'
-                    elif task_id in env.config.get('resumed_tasks', []):
+                    if task_id in env.config.get('resumed_tasks', []):
                         # force re-execution, but it is possible that this task has been
                         # executed but quit in no-wait mode (or canceled by user). More
                         # importantly, the Jupyter notebook would re-run complted workflow
