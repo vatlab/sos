@@ -229,7 +229,7 @@ task:
         for section in wf.sections:
             res = analyze_section(section)
             if section.names[0][1] == '1':
-                self.assertFalse(res['step_input'].determined())
+                self.assertTrue(res['step_input'].undetermined())
                 self.assertEqual(res['step_depends'], sos_targets())
                 self.assertEqual(res['step_output'], sos_targets())
                 self.assertEqual(res['environ_vars'], {'b', 'p1', 'infiles'})
@@ -239,7 +239,7 @@ task:
                 self.assertEqual(res['step_input'], sos_targets())
                 self.assertEqual(res['step_depends'], sos_targets(
                     'some.txt', executable('ls')))
-                self.assertFalse(res['step_output'].determined())
+                self.assertTrue(res['step_output'].unspecified())
                 # for_each will not be used for DAG
                 self.assertEqual(res['environ_vars'], {
                                  'b', 'for_each', 'executable'})
