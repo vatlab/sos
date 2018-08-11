@@ -1073,6 +1073,19 @@ class Base_Step_Executor:
 
     def wait_for_results(self):
         if self.concurrent_substep:
+            def check_res():
+                while True:
+                    all_done = True
+                    for idx, res in self.proc_results:
+                        if not isinstance(res, dict):
+                            # not already done
+                            if res.ready():
+                                self.proc_results[idx] = res.get()
+                            else:
+                                all_done = False
+                    if not all_done:
+                        time.sleep(0.1)
+
             sm = SlotManager()
             nMax = env.config.get(
                 'max_procs', max(int(os.cpu_count() / 2), 1))
@@ -1097,6 +1110,8 @@ class Base_Step_Executor:
             self.worker_pool.close()
             self.worker_pool.join()
             self.worker_pool = None
+
+
             return
 
         if self.task_manager is None:
@@ -1433,29 +1448,28 @@ class Base_Step_Executor:
         self.output_groups = [[] for x in self._substeps]
 
         if self.concurrent_substep:
-            if self.step.task:
+            if self.step.task and 'concurrent' in env.sos_dict['_runtime'] and \
+                env.sos_dict['_runtime']['concurrent'] is False:
                 self.concurrent_substep = False
                 env.logger.debug(
                     'Input groups are executed sequentially because of existence of tasks')
+            elif len([
+                    x for x in self.step.statements[input_statement_idx:] if x[0] != ':']) > 1:
+                self.concurrent_substep = False
+                env.logger.debug(
+                    'Input groups are executed sequentially because of existence of directives between statements.')
+            elif any('sos_run' in x[1] for x in self.step.statements[input_statement_idx:]):
+                self.concurrent_substep = False
+                env.logger.debug(
+                    'Input groups are executed sequentially because of existence of nested workflow.')
             else:
-                conc_stmts = [
-                    x for x in self.step.statements[input_statement_idx:] if x[0] != ':']
-                if len(conc_stmts) > 1:
-                    self.concurrent_substep = False
-                    env.logger.debug(
-                        'Input groups are executed sequentially because of existence of directives between statements.')
-                elif any('sos_run' in x[1] for x in self.step.statements[input_statement_idx:]):
-                    self.concurrent_substep = False
-                    env.logger.debug(
-                        'Input groups are executed sequentially because of existence of nested workflow.')
-                else:
-                    sm = SlotManager()
-                    # because the master process pool will count one worker in (step)
-                    gotten = sm.acquire(len(self._substeps) - 1,
-                                        env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
-                    env.logger.debug(
-                        f'Using process pool with size {gotten+1}')
-                    self.worker_pool = Pool(gotten + 1)
+                sm = SlotManager()
+                # because the master process pool will count one worker in (step)
+                gotten = sm.acquire(len(self._substeps) - 1,
+                                    env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
+                env.logger.debug(
+                    f'Using process pool with size {gotten+1}')
+                self.worker_pool = Pool(gotten + 1)
 
         try:
             self.completed['__substep_skipped__'] = 0
@@ -1467,6 +1481,7 @@ class Base_Step_Executor:
                 #
                 env.sos_dict.update(v)
                 env.sos_dict.set('_input', copy.deepcopy(g))
+
                 self.log('_input')
                 env.sos_dict.set('_index', idx)
 
@@ -1543,7 +1558,9 @@ class Base_Step_Executor:
                     else:
                         try:
                             if self.concurrent_substep:
-                                env.logger.trace('Execute substep {env.sos_dict["step_name"]} concurrently')
+                                env.logger.error(f'Execute substep {env.sos_dict["step_name"]} concurrently')
+                                env.logger.error(f"INPUT SET TO {env.sos_dict['_input']}")
+
                                 proc_vars = env.sos_dict.clone_selected_vars(
                                     env.sos_dict['__signature_vars__']
                                     | {'_input', '_output', '_depends', '_index', '__args__',
@@ -1561,7 +1578,7 @@ class Base_Step_Executor:
                                                                            capture_output=self.run_mode == 'interactive')))
                             else:
                                 if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified():
-                                    env.logger.trace('Execute substep {env.sos_dict["step_name"]} without signature')
+                                    env.logger.error('Execute substep {env.sos_dict["step_name"]} without signature')
                                     verify_input()
                                     self.execute(statement[1])
                                 else:
@@ -1572,7 +1589,7 @@ class Base_Step_Executor:
                                         env.sos_dict['_depends'],
                                         env.sos_dict['__signature_vars__'],
                                         share_vars='shared' in self.step.options)
-                                    env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} with signature {sig.sig_id}')
+                                    env.logger.error(f'Execute substep {env.sos_dict["step_name"]} with signature {sig.sig_id}')
                                     # if singaure match, we skip the substep even  if
                                     # there are tasks.
                                     skip_index = validate_step_sig(sig)
@@ -1677,7 +1694,6 @@ class Base_Step_Executor:
                 #
                 # endfor loop for each input group
                 #
-            # check results? This is only meaningful for pool
             self.wait_for_results()
             for idx, res in enumerate(self.proc_results):
                 if 'sig_skipped' in res:
