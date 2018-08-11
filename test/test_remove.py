@@ -70,34 +70,6 @@ run:
         # this is the tricky part, directory containing untracked file should remain
         self.assertExists(['t_d1', 't_f1',  't_d1/ut_f4'])
 
-    def testRemoveAllSignatures(self):
-        '''test removal of signatures'''
-        from sos.utils import env
-        env.exec_dir = '.'
-        for f in ('t_f1', 't_d1/t_f2', 't_d2/t_d3/t_f3'):
-            self.assertTrue(file_target(f).target_exists(
-                'signature'), '{} has signature'.format(f))
-        subprocess.call('sos remove -s', shell=True)
-        # create some other files and directory
-        for f in ('t_f1', 't_d1/t_f2', 't_d2/t_d3/t_f3'):
-            self.assertFalse(file_target(f).target_exists('signature'))
-            self.assertTrue(file_target(f).target_exists('target'))
-
-    def testRemoveSpecifiedSignatures(self):
-        '''test removal of signatures'''
-        from sos.utils import env
-        env.exec_dir = '.'
-        for f in ('t_f1', 't_d1/t_f2', 't_d2/t_d3/t_f3'):
-            self.assertTrue(file_target(f).target_exists(
-                'signature'), '{} has signature'.format(f))
-        subprocess.call('sos remove t_f1 t_d2/t_d3/t_f3 -s', shell=True)
-        # create some other files and directory
-        for f in ('t_f1', 't_d2/t_d3/t_f3'):
-            self.assertFalse(file_target(f).target_exists('signature'))
-            self.assertTrue(file_target(f).target_exists('target'))
-        self.assertTrue(file_target('t_d1/t_f2').target_exists('signature'))
-        self.assertTrue(file_target('t_d1/t_f2').target_exists('target'))
-
     def testRemoveSpecificTracked(self):
         # note the t_f1, which is under current directory and has to be remove specifically.
         subprocess.call('sos remove t_f1 ut_f1 t_d2 ut_d2 -t -y', shell=True)
