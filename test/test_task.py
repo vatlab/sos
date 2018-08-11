@@ -69,10 +69,6 @@ class TestTask(unittest.TestCase):
         self.temp_files = []
         Host.reset()
 
-    def tearDown(self):
-        for f in self.temp_files:
-            file_target(f).unlink()
-
     def touch(self, files):
         '''create temporary files'''
         if isinstance(files, str):
@@ -320,7 +316,8 @@ touch temp/{ff}
     def testPassingVarToTask(self):
         '''Test passing used variable to tasks'''
         for i in range(10, 13):
-            file_target('myfile_{}.txt'.format(i)).unlink()
+            if file_target(f'myfile_{i}.txt').exists():
+                file_target(f'myfile_{i}.txt').unlink()
         #
         env.config['sig_mode'] = 'force'
         script = SoS_Script(r'''
@@ -334,7 +331,7 @@ output: f"myfile_{_tt}.txt"
 # additional comment
 
 # _tt should be used in task
-task: concurrent=True
+task:
 run: expand=True
     echo {_tt}_{_index} > {_output:q}
 
@@ -344,10 +341,11 @@ run: expand=True
         env.config['wait_for_task'] = True
         Base_Executor(wf).run()
         for t in range(10, 13):
-            with open('myfile_{}.txt'.format(t)) as tmp:
+            with open(f'myfile_{t}.txt') as tmp:
                 self.assertEqual(tmp.read().strip(),
                                  str(t) + '_' + str(t - 10))
-            file_target('myfile_{}.txt'.format(t)).unlink()
+            if file_target(f'myfile_{t}.txt').exists():
+                file_target(f'myfile_{t}.txt').unlink()
 
     def testMaxJobs(self):
         '''Test default max number of jobs'''
@@ -466,8 +464,9 @@ run: expand=True
 
     def testSharedOption(self):
         '''Test shared option of task'''
-        file_target("a.txt").unlink()
-        file_target("a100.txt").unlink()
+        for f in ('a.txt', 'a100.txt'):
+            if file_target(f).exists():
+                file_target(f).unlink()
         script = SoS_Script('''
 [10: shared = {'a': 'a[0]'}]
 task: shared={'a': 'int(open("a.txt").read())'}
@@ -484,8 +483,9 @@ run: expand=True
         Base_Executor(wf, config={'sig_mode': 'force'}).run()
         self.assertTrue(os.path.isfile("a100.txt"))
         # sequence of var or mapping
-        file_target("a.txt").unlink()
-        file_target("a100.txt").unlink()
+        for f in ('a.txt', 'a100.txt'):
+            if file_target(f).exists():
+                file_target(f).unlink()
         script = SoS_Script('''
 [10: shared = {'a': 'a[0]', 'b':'b[0]'}]
 task: shared=[{'a': 'int(open("a.txt").read())'}, 'b']
