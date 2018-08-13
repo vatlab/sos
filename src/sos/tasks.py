@@ -225,49 +225,51 @@ class TaskFile(object):
             tags=' '.join(sorted(tags)).ljust(128).encode(),
 
         )
-        with open(self.task_file, 'wb+') as fh:
-            self._write_header(fh, header)
-            fh.write(params_block)
+        with fasteners.InterProcessLock(os.path.join(env.temp_dir, self.task_id + '.lck')):
+            with open(self.task_file, 'wb+') as fh:
+                self._write_header(fh, header)
+                fh.write(params_block)
 
     def update(self, params, status='pending'):
         params_block = lzma.compress(pickle.dumps(params))
-        with open(self.task_file, 'r+b') as fh:
-            header = self._read_header(fh)
-            now = time.time()
-            if len(params_block) == header.params_size:
-                header._replace(status=TaskStatus[status].value,
-                                last_modified=now, new_time=now)
-                fh.seek(0, 0)
-                self._write_header(fh, header)
-                fh.write(params_block)
-            else:
+        with fasteners.InterProcessLock(os.path.join(env.temp_dir, self.task_id + '.lck')):
+            with open(self.task_file, 'r+b') as fh:
                 header = self._read_header(fh)
-                param = fh.read(header.params_size)
-                shell = fh.read(header.shell_size)
-                pulse = fh.read(header.pulse_size)
-                stdout = fh.read(header.stdout_size)
-                stderr = fh.read(header.stderr_size)
-                result = fh.read(header.result_size)
-                signature = fh.read(header.signature_size)
-                header = header._replace(status=TaskStatus[status].value,
-                                         params_size=len(params_block), last_modified=now)
-                self._write_header(fh, header)
-                fh.write(params_block)
-                if shell:
-                    fh.write(shell)
-                if pulse:
-                    fh.write(pulse)
-                if stdout:
-                    fh.write(stdout)
-                if stderr:
-                    fh.write(stderr)
-                if result:
-                    fh.write(result)
-                if signature:
-                    fh.write(signature)
-                fh.truncate(self.header_size + header.params_size + header.shell_size +
-                            header.pulse_size + header.stdout_size + header.stderr_size +
-                            header.result_size + header.signature_size)
+                now = time.time()
+                if len(params_block) == header.params_size:
+                    header._replace(status=TaskStatus[status].value,
+                                    last_modified=now, new_time=now)
+                    fh.seek(0, 0)
+                    self._write_header(fh, header)
+                    fh.write(params_block)
+                else:
+                    header = self._read_header(fh)
+                    param = fh.read(header.params_size)
+                    shell = fh.read(header.shell_size)
+                    pulse = fh.read(header.pulse_size)
+                    stdout = fh.read(header.stdout_size)
+                    stderr = fh.read(header.stderr_size)
+                    result = fh.read(header.result_size)
+                    signature = fh.read(header.signature_size)
+                    header = header._replace(status=TaskStatus[status].value,
+                                             params_size=len(params_block), last_modified=now)
+                    self._write_header(fh, header)
+                    fh.write(params_block)
+                    if shell:
+                        fh.write(shell)
+                    if pulse:
+                        fh.write(pulse)
+                    if stdout:
+                        fh.write(stdout)
+                    if stderr:
+                        fh.write(stderr)
+                    if result:
+                        fh.write(result)
+                    if signature:
+                        fh.write(signature)
+                    fh.truncate(self.header_size + header.params_size + header.shell_size +
+                                header.pulse_size + header.stdout_size + header.stderr_size +
+                                header.result_size + header.signature_size)
 
     def _reset(self, fh):
         # remove result, input, output etc and set the status of the task to new
@@ -297,8 +299,9 @@ class TaskFile(object):
 
     def reset(self):
         # remove result, input, output etc and set the status of the task to new
-        with open(self.task_file, 'r+b') as fh:
-            self._reset(fh)
+        with fasteners.InterProcessLock(os.path.join(env.temp_dir, self.task_id + '.lck')):
+            with open(self.task_file, 'r+b') as fh:
+                self._reset(fh)
 
     def _read_header(self, fh):
         fh.seek(0, 0)
@@ -336,54 +339,57 @@ class TaskFile(object):
         pulse = self._get_content('.pulse')
         stdout = self._get_content('.out')
         stderr = self._get_content('.err')
-        with open(self.task_file, 'r+b') as fh:
-            header = self._read_header(fh)
-            if header.result_size != 0:
-                self._reset(fh)
-            header = header._replace(
-                shell_size=len(shell),
-                pulse_size=len(pulse),
-                stdout_size=len(stdout),
-                stderr_size=len(stderr),
-                result_size=0,
-                signature_size=0
-            )
-            self._write_header(fh, header)
-            fh.seek(self.header_size + header.params_size, 0)
-            if shell:
-                fh.write(shell)
-            if pulse:
-                fh.write(pulse)
-            if stdout:
-                fh.write(stdout)
-            if stderr:
-                fh.write(stderr)
+        with fasteners.InterProcessLock(os.path.join(env.temp_dir, self.task_id + '.lck')):
+            with open(self.task_file, 'r+b') as fh:
+                header = self._read_header(fh)
+                if header.result_size != 0:
+                    self._reset(fh)
+                header = header._replace(
+                    shell_size=len(shell),
+                    pulse_size=len(pulse),
+                    stdout_size=len(stdout),
+                    stderr_size=len(stderr),
+                    result_size=0,
+                    signature_size=0
+                )
+                self._write_header(fh, header)
+                fh.seek(self.header_size + header.params_size, 0)
+                if shell:
+                    fh.write(shell)
+                if pulse:
+                    fh.write(pulse)
+                if stdout:
+                    fh.write(stdout)
+                if stderr:
+                    fh.write(stderr)
 
     def add_result(self, result: dict):
         result_block = lzma.compress(pickle.dumps(result))
-        with open(self.task_file, 'r+b') as fh:
-            header = self._read_header(fh)
-            header = header._replace(
-                result_size=len(result_block),
-                signature_size=0,
-            )
-            self._write_header(fh, header)
-            fh.seek(self.header_size + header.params_size + header.shell_size +
-                    header.pulse_size + header.stdout_size + header.stderr_size)
-            fh.write(result_block)
+        with fasteners.InterProcessLock(os.path.join(env.temp_dir, self.task_id + '.lck')):
+            with open(self.task_file, 'r+b') as fh:
+                header = self._read_header(fh)
+                header = header._replace(
+                    result_size=len(result_block),
+                    signature_size=0,
+                )
+                self._write_header(fh, header)
+                fh.seek(self.header_size + header.params_size + header.shell_size +
+                        header.pulse_size + header.stdout_size + header.stderr_size)
+                fh.write(result_block)
 
     def add_signature(self, signature: dict):
         signature_block = lzma.compress(pickle.dumps(signature))
-        with open(self.task_file, 'r+b') as fh:
-            header = self._read_header(fh)
-            header = header._replace(
-                signature_size=len(signature_block)
-            )
-            self._write_header(fh, header)
-            fh.seek(self.header_size + header.params_size + header.shell_size +
-                    header.pulse_size + header.stdout_size + header.stderr_size +
-                    header.result_size)
-            fh.write(signature_block)
+        with fasteners.InterProcessLock(os.path.join(env.temp_dir, self.task_id + '.lck')):
+            with open(self.task_file, 'r+b') as fh:
+                header = self._read_header(fh)
+                header = header._replace(
+                    signature_size=len(signature_block)
+                )
+                self._write_header(fh, header)
+                fh.seek(self.header_size + header.params_size + header.shell_size +
+                        header.pulse_size + header.stdout_size + header.stderr_size +
+                        header.result_size)
+                fh.write(signature_block)
 
     def _get_info(self):
         with open(self.task_file, 'rb') as fh:
