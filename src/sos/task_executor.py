@@ -183,7 +183,7 @@ def _validate_task_signature(sig, saved_sig):
 
 
 def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode,
-    monitor_interval, resource_monitor_interval):
+                       monitor_interval, resource_monitor_interval):
     '''If this is a master task, execute as individual tasks'''
     m = ProcessMonitor(task_id, monitor_interval=monitor_interval,
                        resource_monitor_interval=resource_monitor_interval,
@@ -242,8 +242,8 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
             results = []
             for t in params.task_stack:
                 results.append(p.apply_async(_execute_task,
-                    ((*t, {t[0]: sig_content.get(t[0], {})}), verbosity, runmode,
-                         sigmode, monitor_interval, resource_monitor_interval), callback=copy_out_and_err))
+                                             ((*t, {t[0]: sig_content.get(t[0], {})}), verbosity, runmode,
+                                              sigmode, monitor_interval, resource_monitor_interval), callback=copy_out_and_err))
             for idx, r in enumerate(results):
                 results[idx] = r.get()
             p.close()
@@ -308,7 +308,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
 
     if hasattr(params, 'task_stack'):
         return _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode,
-            monitor_interval, resource_monitor_interval)
+                                  monitor_interval, resource_monitor_interval)
 
     global_def, task, sos_dict = params.global_def, params.task, params.sos_dict
 

@@ -145,7 +145,7 @@ class TaskEngine(threading.Thread):
             if self.running_tasks and time.time() - self._last_status_check > self.status_check_interval:
                 if self._status_checker is None:
                     self._status_checker = self._thread_workers.submit(
-                        self.query_tasks, self.running_tasks, 1)
+                        self.query_tasks, self.running_tasks, check_all=False, verbosity=1)
                     continue
                 elif self._status_checker.running():
                     time.sleep(0.01)
@@ -345,7 +345,7 @@ class TaskEngine(threading.Thread):
 
     def query_tasks(self, tasks=None, check_all=False, verbosity=1, html=False, numeric_times=False, age=None, tags=None, status=None):
         try:
-            return self.agent.check_output("sos status {} -v {} {} {} {} {} {}".format(
+            return self.agent.check_output("sos status {} -v {} {} {} {} {} {} {}".format(
                 '' if tasks is None else ' '.join(tasks), verbosity,
                 '--all' if check_all else '',
                 '--html' if html else '',

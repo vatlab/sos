@@ -472,7 +472,7 @@ def workflow_status(workflow):
     for k, v in pending_tasks.items():
         if k in ('', 'localhost'):
             with StringIO() as buf, redirect_stdout(buf):
-                print_task_status(v, 0, False, False, None)
+                print_task_status(v, check_all=False, verbosity=0, html=False)
                 status = buf.getvalue().strip().split('\n')
         else:
             # remote host?
@@ -480,7 +480,7 @@ def workflow_status(workflow):
             try:
                 host = Host(k)
                 status = host._task_engine.query_tasks(
-                    v, 0, False, False, None).strip().split('\n')
+                    v, check_all=False, verbosity=0).strip().split('\n')
             except Exception as e:
                 env.logger.warning(
                     'Failed to check status of task {} at host {}'.format(v, k))
@@ -1135,7 +1135,8 @@ def cmd_status(args, workflow_args):
         load_config_files(args.config)
         # if not --all and no task is specified, find all tasks in the current directory
         if not args.tasks and not args.all:
-            args.tasks = workflow_signatures.tasks()
+            args.tasks = [x for x in workflow_signatures.tasks() if os.path.isfile(
+                os.path.join(os.path.expanduser('~'), '.sos', 'tasks', x + '.task'))]
         if not args.queue:
             print_task_status(tasks=args.tasks, check_all=args.all, verbosity=args.verbosity, html=args.html, numeric_times=args.numeric_times,
                               age=args.age, tags=args.tags, status=args.status)
@@ -1202,7 +1203,8 @@ def cmd_purge(args, workflow_args):
     try:
         # if not --all and no task is specified, find all tasks in the current directory
         if not args.tasks and not args.all:
-            args.tasks = workflow_signatures.tasks()
+            args.tasks = [x for x in workflow_signatures.tasks() if os.path.isfile(
+                os.path.join(os.path.expanduser('~'), '.sos', 'tasks', x + '.task'))]
         if not args.queue:
             purge_tasks(args.tasks, args.all, args.age,
                         args.status, args.tags, args.verbosity)

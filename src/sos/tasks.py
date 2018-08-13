@@ -431,11 +431,15 @@ class TaskFile(object):
     status = property(_get_status, _set_status)
 
     def _get_tags(self):
-        with open(self.task_file, 'rb') as fh:
-            fh.seek(0, 0)
-            ver = struct.unpack('!h', fh.read(2))[0]
-            fh.seek(self.tags_offset[ver - 1], 0)
-            return fh.read(self.tags_size[ver - 1]).decode().strip()
+        try:
+            with open(self.task_file, 'rb') as fh:
+                fh.seek(0, 0)
+                ver = struct.unpack('!h', fh.read(2))[0]
+                fh.seek(self.tags_offset[ver - 1], 0)
+                return fh.read(self.tags_size[ver - 1]).decode().strip()
+        except Exception as e:
+            raise RuntimeError(
+                f'Corrupted task file {self.task_file}. Please report a bug if you can reproduce the generation of this file.')
 
     def _set_tags(self, tags: list):
         with open(self.task_file, 'r+b') as fh:
@@ -1192,7 +1196,7 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
                      for x in tasks]
         is_all = True
     else:
-        env.logger.warning('No relevant task to remove.')
+        env.logger.info('No relevant task to remove.')
         return ''
     #
     if age is not None:
