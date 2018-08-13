@@ -1073,19 +1073,6 @@ class Base_Step_Executor:
 
     def wait_for_results(self):
         if self.concurrent_substep:
-            def check_res():
-                while True:
-                    all_done = True
-                    for idx, res in self.proc_results:
-                        if not isinstance(res, dict):
-                            # not already done
-                            if res.ready():
-                                self.proc_results[idx] = res.get()
-                            else:
-                                all_done = False
-                    if not all_done:
-                        time.sleep(0.1)
-
             sm = SlotManager()
             nMax = env.config.get(
                 'max_procs', max(int(os.cpu_count() / 2), 1))
@@ -1110,8 +1097,6 @@ class Base_Step_Executor:
             self.worker_pool.close()
             self.worker_pool.join()
             self.worker_pool = None
-
-
             return
 
         if self.task_manager is None:
@@ -1448,8 +1433,9 @@ class Base_Step_Executor:
         self.output_groups = [[] for x in self._substeps]
 
         if self.concurrent_substep:
-            if self.step.task and 'concurrent' in env.sos_dict['_runtime'] and \
-                env.sos_dict['_runtime']['concurrent'] is False:
+            if self.step.task:
+                # and 'concurrent' in env.sos_dict['_runtime'] and \
+                #env.sos_dict['_runtime']['concurrent'] is False:
                 self.concurrent_substep = False
                 env.logger.debug(
                     'Input groups are executed sequentially because of existence of tasks')
