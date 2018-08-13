@@ -1551,7 +1551,8 @@ class Base_Step_Executor:
                         except Exception as e:
                             # if input is Undertermined, it is possible that output cannot be processed
                             # due to that, and we just return
-                            if g.valid():
+                            if not g.valid():
+                                env.logger.debug(e)
                                 return self.collect_result()
                             raise RuntimeError(
                                 f'Failed to process step {key} ({value.strip()}): {e}')
