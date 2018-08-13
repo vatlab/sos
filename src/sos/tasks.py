@@ -187,8 +187,15 @@ class TaskFile(object):
     def save(self, params):
         workflow_signatures.write('task', self.task_id,
                                   f"{{'creation_time': {time.time()}}}")
-        if os.path.isfile(self.task_file) and self.status == 'running':
-            env.logger.debug('Running task is not updated')
+        if os.path.isfile(self.task_file):
+            if self.status == 'running':
+                env.logger.debug('Running task is not updated')
+                return
+            if env.config['sig_mode'] in ('assert', 'build'):
+                env.logger.debug('Do not overwrite task in assert mode')
+                return
+            # keep original stuff ...
+            self.update(params, status='new')
             return
         # updating job_file will not change timestamp because it will be Only
         # the update of runtime info
@@ -222,32 +229,45 @@ class TaskFile(object):
             self._write_header(fh, header)
             fh.write(params_block)
 
-    def update(self, params):
+    def update(self, params, status='pending'):
         params_block = lzma.compress(pickle.dumps(params))
         with open(self.task_file, 'r+b') as fh:
             header = self._read_header(fh)
             now = time.time()
-            header = header._replace(
-                status=TaskStatus.pending.value,
-                last_modified=now,
-                new_time=now,
-                pending_time=0,
-                submitted_time=0,
-                running_time=0,
-                aborted_time=0,
-                failed_time=0,
-                completed_time=0,
-                params_size=len(params_block),
-                shell_size=0,
-                pulse_size=0,
-                stdout_size=0,
-                stderr_size=0,
-                result_size=0,
-                signature_size=0
-            )
-            self._write_header(fh, header)
-            fh.write(params_block)
-            fh.truncate(self.header_size + header.params_size)
+            if len(params_block) == header.params_size:
+                header._replace(status=TaskStatus[status].value,
+                                last_modified=now, new_time=now)
+                fh.seek(0, 0)
+                self._write_header(fh, header)
+                fh.write(params_block)
+            else:
+                header = self._read_header(fh)
+                param = fh.read(header.params_size)
+                shell = fh.read(header.shell_size)
+                pulse = fh.read(header.pulse_size)
+                stdout = fh.read(header.stdout_size)
+                stderr = fh.read(header.stderr_size)
+                result = fh.read(header.result_size)
+                signature = fh.read(header.signature_size)
+                header = header._replace(status=TaskStatus[status].value,
+                                         params_size=len(params_block), last_modified=now)
+                self._write_header(fh, header)
+                fh.write(params_block)
+                if shell:
+                    fh.write(shell)
+                if pulse:
+                    fh.write(pulse)
+                if stdout:
+                    fh.write(stdout)
+                if stderr:
+                    fh.write(stderr)
+                if result:
+                    fh.write(result)
+                if signature:
+                    fh.write(signature)
+                fh.truncate(self.header_size + header.params_size + header.shell_size +
+                            header.pulse_size + header.stdout_size + header.stderr_size +
+                            header.result_size + header.signature_size)
 
     def _reset(self, fh):
         # remove result, input, output etc and set the status of the task to new

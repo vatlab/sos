@@ -548,7 +548,7 @@ class file_target(path, BaseTarget):
                 raise
                 return False
             return self._md5 == (sig if isinstance(sig, str) else sig[2])
-        if not sig or sig[1]!= os.path.getsize(self):
+        if not sig or sig[1] != os.path.getsize(self):
             return False
         if sig[0] == os.path.getmtime(self):
             return True
@@ -840,9 +840,11 @@ class InMemorySignature:
         if not sdict:
             sdict = env.sos_dict
         if not input_files.valid():
-            raise RuntimeError('Input files of step signature cannot be undetermined.')
+            raise RuntimeError(
+                'Input files of step signature cannot be undetermined.')
         if not dependent_files.valid():
-            raise RuntimeError('Dependent files of step signature cannot be undetermined.')
+            raise RuntimeError(
+                'Dependent files of step signature cannot be undetermined.')
 
         self.input_files = sos_targets(
             [x for x in input_files._targets if not isinstance(x, sos_step)])
@@ -857,9 +859,12 @@ class InMemorySignature:
             signature_vars) if x in sdict and not callable(sdict[x]) and pickleable(sdict[x], x)}
 
     def write(self, rebuild=False):
+        if hasattr(self, 'content'):
+            return self.content
         if self.output_files.undetermined():
             self.output_files = env.sos_dict['_output']
-            env.logger.trace(f'Set undetermined output files to {env.sos_dict["_output"]}')
+            env.logger.trace(
+                f'Set undetermined output files to {env.sos_dict["_output"]}')
         input_sig = {}
         for f in self.input_files:
             try:
@@ -892,13 +897,14 @@ class InMemorySignature:
         else:
             end_context = {}
 
-        return {
+        self.content = {
             'input': input_sig,
             'output': output_sig,
             'depends': dependent_sig,
             'init_context_sig': init_context_sig,
             'end_context': end_context
         }
+        return self.content
 
     def validate(self, signature):
         '''Check if ofiles and ifiles match signatures recorded in md5file'''
@@ -982,7 +988,7 @@ class RuntimeInfo(InMemorySignature):
 
     def __init__(self, step_md5: str, script: str, input_files: sos_targets, output_files: sos_targets,
                  dependent_files: sos_targets, signature_vars: set=set(), sdict: dict={},
-                 share_vars:bool=False):
+                 share_vars: bool=False):
         '''Runtime information for specified output files
         '''
         if not sdict:
@@ -991,7 +997,7 @@ class RuntimeInfo(InMemorySignature):
         self.script = script
         super(RuntimeInfo, self).__init__(input_files, output_files,
                                           dependent_files, signature_vars,
-                                          share_vars = share_vars)
+                                          share_vars=share_vars)
 
         # if all output files are external
         self.external_sig = self.output_files.is_external() and self.input_files.is_external()

@@ -164,6 +164,7 @@ def _validate_task_signature(sig, saved_sig):
             env.sos_dict.update(matched['vars'])
             env.logger.info(
                 f'Step ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with matching signature')
+            sig.content = saved_sig
             return True
     elif env.config['sig_mode'] == 'build':
         # The signature will be write twice
@@ -393,7 +394,7 @@ del sos_handle_parameter_
 
     if sig and _validate_task_signature(sig, sig_content.get(task_id, {})):
         env.logger.info(f'{task_id} ``skipped``')
-        return collect_task_result(task_id, sos_dict, skipped=True)
+        return collect_task_result(task_id, sos_dict, skipped=True, signature=sig)
 
     # if we are to really execute the task, touch the task file so that sos status shows correct
     # execution duration.
