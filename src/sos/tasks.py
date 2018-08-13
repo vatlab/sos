@@ -367,6 +367,9 @@ class TaskFile(object):
     def has_shell(self):
         return self.info.shell_size > 0
 
+    def has_pulse(self):
+        return self.info.pulse_size > 0
+
     def has_result(self):
         return self.info.result_size > 0
 
@@ -436,8 +439,7 @@ class TaskFile(object):
             header = self._read_header(fh)
             if header.shell_size == 0:
                 return ''
-            fh.seek(self.header_size + header.params_size + header.shell_size + header.pulse_size
-                    + header.stdout_size, 0)
+            fh.seek(self.header_size + header.params_size, 0)
             try:
                 return lzma.decompress(fh.read(header.shell_size)).decode()
             except Exception as e:

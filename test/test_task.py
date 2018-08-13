@@ -82,7 +82,7 @@ class TestTask(unittest.TestCase):
 
     def testTaskFile(self):
         '''Test task file handling'''
-        for ext in ('.pulse', '.out', '.err', '.task'):
+        for ext in ('.pulse', '.out', '.err', '.task', '.sh'):
             filename = os.path.join(os.path.expanduser('~'),
                                     '.sos', 'tasks', 'ffffffffffffffff' + ext)
             if os.path.isfile(filename):
@@ -93,7 +93,7 @@ class TestTask(unittest.TestCase):
         a = TaskFile('ffffffffffffffff')
         a.save(params)
         self.assertEqual(a.tags, 'a b')
-        for ext in ('.pulse', '.out', '.err'):
+        for ext in ('.pulse', '.out', '.err', '.sh'):
             with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', 'ffffffffffffffff' + ext), 'w') as fh:
                 fh.write(ext)
         self.assertFalse(a.has_stdout())
@@ -119,8 +119,11 @@ class TestTask(unittest.TestCase):
         self.assertEqual(a.stdout, '.out')
         self.assertEqual(a.stderr, '.err')
         self.assertEqual(a.pulse, '.pulse')
+        self.assertEqual(a.shell, '.sh')
         self.assertTrue(a.has_stdout())
         self.assertTrue(a.has_stderr())
+        self.assertTrue(a.has_pulse())
+        self.assertTrue(a.has_shell())
         #
         self.assertFalse(a.has_signature())
         a.add_signature({'file': 'md5'})
