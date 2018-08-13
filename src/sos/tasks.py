@@ -291,12 +291,12 @@ class TaskFile(object):
                     f'Corrupted task file {self.task_file}. Please report a bug if you can reproduce the generation of this file.')
             return self.TaskHeader(shell_size=0, **header._asdict())._replace(version=2)
         else:
-            res = self.TaskHeader._make(struct.unpack(
+            header = self.TaskHeader._make(struct.unpack(
                 self.header_fmt_v2, data))
             if header.version not in (1, 2):
                 raise RuntimeError(
                     f'Corrupted task file {self.task_file}. Please report a bug if you can reproduce the generation of this file.')
-            return res
+            return header
 
     def _write_header(self, fh, header):
         fh.seek(0, 0)
