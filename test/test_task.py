@@ -819,16 +819,16 @@ touch {_output}
             tasks = get_tasks()
             subprocess.call('sos purge --all -s failed', shell=True)
         # check tasks
-        taskstatus = [x.split()[0] for x in subprocess.check_output('sos status -v1', shell=True).decode().splitlines()]
+        taskstatus = [x.split()[0] for x in subprocess.check_output('sos status --all -v1', shell=True).decode().splitlines()]
         self.assertTrue(all(x in taskstatus for x in tasks))
         # purge one of them
         subprocess.call(f'sos purge {tasks[0]}', shell=True)
-        taskstatus = [x.split()[0] for x in subprocess.check_output('sos status -v1', shell=True).decode().splitlines()]
+        taskstatus = [x.split()[0] for x in subprocess.check_output('sos status --all -v1', shell=True).decode().splitlines()]
         self.assertTrue(tasks[0] not in taskstatus)
         self.assertTrue(tasks[1] in taskstatus)
         #
         subprocess.call(f'sos purge --all', shell=True)
-        taskstatus = [x.split()[0] for x in subprocess.check_output('sos status -v1', shell=True).decode().splitlines()]
+        taskstatus = [x.split()[0] for x in subprocess.check_output('sos status --all -v1', shell=True).decode().splitlines()]
         self.assertTrue(tasks[1] not in taskstatus)
 
     def testResubmitTaskWithDifferentWalltime(self):
