@@ -825,6 +825,32 @@ touch {_output}
         taskstatus = [x.split()[0] for x in subprocess.check_output('sos status -v1', shell=True).decode().splitlines()]
         self.assertTrue(tasks[1] not in taskstatus)
 
+    def testResubmitTaskWithDifferentWalltime(self):
+        '''Test resubmission of tasks with different walltime #1019'''
+        with cd_new('temp_walltime'):
+            with open('test.sos', 'w') as tst:
+                tst.write('''
+task: walltime='1m'
+sh:
+echo 0.1
+''')
+            subprocess.call('sos run test -s force', shell=True)
+            tasks = get_tasks()
+            out = subprocess.check_output(f'sos status {tasks[0]} -v4', shell=True)
+            self.assertTrue('00:01:00' in out.decode())
+            with open('test1.sos', 'w') as tst:
+                tst.write('''
+task: walltime='2m'
+sh:
+echo 0.1
+''')
+            subprocess.call('sos run test1 -s force', shell=True)
+            new_tasks = get_tasks()
+            self.assertEqual(tasks, new_tasks)
+            #
+            out = subprocess.check_output(f'sos status {tasks[0]} -v4', shell=True)
+            self.assertTrue('00:02:00' in out.decode())
+
 
 
 if __name__ == '__main__':
