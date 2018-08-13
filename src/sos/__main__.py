@@ -1089,6 +1089,7 @@ def get_status_parser(desc_only=False):
     if desc_only:
         return parser
     parser.add_argument('tasks', nargs='*', help='''ID of the task. All tasks
+        that are releted to the workflow executed under the current directory
         will be checked if unspecified. There is no need to specify compelete
         task IDs because SoS will match specified name with tasks starting with
         these names.''')
@@ -1100,6 +1101,9 @@ def get_status_parser(desc_only=False):
         is found.''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global sos config.yml files.''')
+    parser.add_argument('-a', '--all', action='store_true',
+                        help='''Check the status of all tasks on local or specified remote task queue,
+        including tasks created by workflows executed from other directories.''')
     parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=2,
                         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
@@ -1126,15 +1130,19 @@ def cmd_status(args, workflow_args):
     from .tasks import print_task_status
     from .utils import env, load_config_files, get_traceback
     from .hosts import Host
+    from .signatures import workflow_signatures
     try:
         load_config_files(args.config)
+        # if not --all and no task is specified, find all tasks in the current directory
+        if not args.tasks and not args.all:
+            args.tasks = workflow_signatures.tasks()
         if not args.queue:
-            print_task_status(tasks=args.tasks, verbosity=args.verbosity, html=args.html, numeric_times=args.numeric_times,
+            print_task_status(tasks=args.tasks, check_all=args.all, verbosity=args.verbosity, html=args.html, numeric_times=args.numeric_times,
                               age=args.age, tags=args.tags, status=args.status)
         else:
             # remote host?
             host = Host(args.queue)
-            print(host._task_engine.query_tasks(tasks=args.tasks, verbosity=args.verbosity, html=args.html,
+            print(host._task_engine.query_tasks(tasks=args.tasks, check_all=args.all, verbosity=args.verbosity, html=args.html,
                                                 numeric_times=args.numeric_times, age=args.age, tags=args.tags, status=args.status))
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
@@ -1407,11 +1415,15 @@ def cmd_remove(args, unknown_args):
         if sig_files:
             files = list(set([x[1] for x in sig_files]))
             sig_ids = list(set([x[0] for x in sig_files]))
-            num_removed_local_steps = step_signatures.remove_many(sig_ids, global_sig=False)
-            num_removed_global_steps = step_signatures.remove_many(sig_ids, global_sig=True)
-            env.logger.info(f'Signatures of {len(files)} files from {num_removed_local_steps + num_removed_global_steps} substeps are removed.')
+            num_removed_local_steps = step_signatures.remove_many(
+                sig_ids, global_sig=False)
+            num_removed_global_steps = step_signatures.remove_many(
+                sig_ids, global_sig=True)
+            env.logger.info(
+                f'Signatures of {len(files)} files from {num_removed_local_steps + num_removed_global_steps} substeps are removed.')
         else:
-            env.logger.info('No signatures are found from workflows executed under the current directory.')
+            env.logger.info(
+                'No signatures are found from workflows executed under the current directory.')
         return
     #
     tracked_files = {os.path.abspath(os.path.expanduser(x))

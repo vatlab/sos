@@ -159,11 +159,11 @@ class TaskFile(object):
     7. compressed pickled signatures
     '''
     TaskHeader_v1 = namedtuple('TaskHeader',
-                            'version status last_modified '
-                            'new_time pending_time submitted_time running_time aborted_time failed_time completed_time '
-                            'params_size pulse_size stdout_size stderr_size result_size signature_size '
-                            'tags'
-                            )
+                               'version status last_modified '
+                               'new_time pending_time submitted_time running_time aborted_time failed_time completed_time '
+                               'params_size pulse_size stdout_size stderr_size result_size signature_size '
+                               'tags'
+                               )
 
     TaskHeader = namedtuple('TaskHeader',
                             'version status last_modified '
@@ -186,7 +186,7 @@ class TaskFile(object):
 
     def save(self, params):
         workflow_signatures.write('task', self.task_id,
-            f"{{'creation_time': {time.time()}}}")
+                                  f"{{'creation_time': {time.time()}}}")
         if os.path.isfile(self.task_file) and self.status == 'running':
             env.logger.debug('Running task is not updated')
             return
@@ -289,7 +289,7 @@ class TaskFile(object):
             return self.TaskHeader(shell_size=0, **header._asdict())._replace(version=2)
         else:
             return self.TaskHeader._make(struct.unpack(
-               self.header_fmt_v2, data))
+                self.header_fmt_v2, data))
 
     def _write_header(self, fh, header):
         fh.seek(0, 0)
@@ -421,16 +421,16 @@ class TaskFile(object):
         with open(self.task_file, 'rb') as fh:
             fh.seek(0, 0)
             ver = struct.unpack('!h', fh.read(2))[0]
-            fh.seek(self.tags_offset[ver-1], 0)
-            return fh.read(self.tags_size[ver-1]).decode().strip()
+            fh.seek(self.tags_offset[ver - 1], 0)
+            return fh.read(self.tags_size[ver - 1]).decode().strip()
 
     def _set_tags(self, tags: list):
         with open(self.task_file, 'r+b') as fh:
             fh.seek(0, 0)
             ver = struct.unpack('!h', fh.read(2))[0]
-            fh.seek(self.tags_offset[ver-1], 0)
+            fh.seek(self.tags_offset[ver - 1], 0)
             fh.write(' '.join(
-                sorted(tags)).ljust(self.tags_size[ver-1]).encode())
+                sorted(tags)).ljust(self.tags_size[ver - 1]).encode())
 
     tags = property(_get_tags, _set_tags)
 
@@ -467,7 +467,8 @@ class TaskFile(object):
             header = self._read_header(fh)
             if header.stdout_size == 0:
                 return ''
-            fh.seek(self.header_size + header.params_size + header.pulse_size + header.shell_size, 0)
+            fh.seek(self.header_size + header.params_size +
+                    header.pulse_size + header.shell_size, 0)
             try:
                 return lzma.decompress(fh.read(header.stdout_size)).decode()
             except Exception as e:
@@ -743,10 +744,9 @@ def check_tasks(tasks, is_all: bool):
     return status_cache
 
 
-def print_task_status(tasks, verbosity: int=1, html: bool=False, numeric_times=False, age=None, tags=None, status=None):
+def print_task_status(tasks, check_all=False, verbosity: int=1, html: bool=False, numeric_times=False, age=None, tags=None, status=None):
     # verbose is ignored for now
     import glob
-    check_all: bool = not tasks
     if check_all:
         tasks = glob.glob(os.path.join(
             os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
@@ -781,7 +781,7 @@ def print_task_status(tasks, verbosity: int=1, html: bool=False, numeric_times=F
             x in tags for x in TaskFile(x[0]).tags.split())]
 
     if not all_tasks:
-        env.logger.info('No matching tasks')
+        env.logger.info('No matching tasks are identified.')
         return
 
     raw_status = check_tasks([x[0] for x in all_tasks], check_all)

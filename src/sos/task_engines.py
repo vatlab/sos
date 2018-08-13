@@ -122,7 +122,8 @@ class TaskEngine(threading.Thread):
     def run(self):
         # get all system tasks that might have been running ...
         # this will be run only once when the task engine starts
-        status_output = self.query_tasks([], verbosity=3, numeric_times=True)
+        status_output = self.query_tasks(
+            check_all=True, verbosity=3, numeric_times=True)
         with threading.Lock():
             for line in status_output.split('\n'):
                 if not line.strip():
@@ -342,10 +343,11 @@ class TaskEngine(threading.Thread):
                 # if task in self.running_tasks:
                 #    self.running_tasks.remove(task)
 
-    def query_tasks(self, tasks=None, verbosity=1, html=False, numeric_times=False, age=None, tags=None, status=None):
+    def query_tasks(self, tasks=None, check_all=False, verbosity=1, html=False, numeric_times=False, age=None, tags=None, status=None):
         try:
             return self.agent.check_output("sos status {} -v {} {} {} {} {} {}".format(
                 '' if tasks is None else ' '.join(tasks), verbosity,
+                '--all' if check_all else '',
                 '--html' if html else '',
                 '--numeric-times' if numeric_times else '',
                 f'--age {age}' if age else '',
