@@ -743,10 +743,10 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         return (self._targets, self._undetermined)
 
     def __setstate__(self, state) -> None:
-        try:
+        if isinstance(state, tuple):
             self._targets = state[0]
             self._undetermined = state[1]
-        except:
+        else:
             # older version of sig file might only saved targets
             self._targets = state
             self._undetermined = False
