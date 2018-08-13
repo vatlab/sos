@@ -793,9 +793,12 @@ touch {_output}
 ''')
             subprocess.call('sos run test -s force', shell=True)
             tasks_b = get_tasks()
+            # only tasks related to this directory will be listed.
+            self.assertEqual(len(tasks_b),
+                len(subprocess.check_output('sos status -v1', shell=True).decode().splitlines()))
             subprocess.call('sos purge', shell=True)
         # check tasks
-        tasks = [x.split()[0] for x in subprocess.check_output('sos status -v1', shell=True).decode().splitlines()]
+        tasks = [x.split()[0] for x in subprocess.check_output('sos status -v1 --all', shell=True).decode().splitlines()]
         self.assertTrue(all(x in tasks for x in tasks_a))
         self.assertFalse(any(x in tasks for x in tasks_b))
 
