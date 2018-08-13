@@ -187,14 +187,9 @@ class TaskFile(object):
     def save(self, params):
         workflow_signatures.write('task', self.task_id,
             f"{{'creation_time': {time.time()}}}")
-        if os.path.isfile(self.task_file):
-            if env.config['sig_mode'] in ('force', 'ignore') and self.status != 'running':
-                with open(self.task_file, 'r+b') as fh:
-                    self._reset(fh)
-                return
-            else:
-                env.logger.debug('Do not override existing task file')
-                return
+        if os.path.isfile(self.task_file) and self.status == 'running':
+            env.logger.debug('Running task is not updated')
+            return
         # updating job_file will not change timestamp because it will be Only
         # the update of runtime info
         now = time.time()
