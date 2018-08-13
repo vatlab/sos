@@ -1041,6 +1041,10 @@ class RuntimeInfo(InMemorySignature):
                 f'Lock acquired for output files {short_repr(self.output_files)}')
 
     def release(self, quiet=False):
+        if not hasattr(self, '_lock') or self._lock is None:
+            env.logger.warning(
+                f'Releasing an non-existent or released lock for {self.sig_id}.')
+            return
         if self._lock:
             try:
                 self._lock.release()
