@@ -1559,8 +1559,7 @@ class Base_Step_Executor:
                     else:
                         try:
                             if self.concurrent_substep:
-                                env.logger.error(f'Execute substep {env.sos_dict["step_name"]} concurrently')
-                                env.logger.error(f"INPUT SET TO {env.sos_dict['_input']}")
+                                env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} concurrently')
 
                                 proc_vars = env.sos_dict.clone_selected_vars(
                                     env.sos_dict['__signature_vars__']
@@ -1579,7 +1578,7 @@ class Base_Step_Executor:
                                                                            capture_output=self.run_mode == 'interactive')))
                             else:
                                 if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified():
-                                    env.logger.error('Execute substep {env.sos_dict["step_name"]} without signature')
+                                    env.logger.trace('Execute substep {env.sos_dict["step_name"]} without signature')
                                     verify_input()
                                     self.execute(statement[1])
                                 else:
@@ -1590,7 +1589,7 @@ class Base_Step_Executor:
                                         env.sos_dict['_depends'],
                                         env.sos_dict['__signature_vars__'],
                                         share_vars='shared' in self.step.options)
-                                    env.logger.error(f'Execute substep {env.sos_dict["step_name"]} with signature {sig.sig_id}')
+                                    env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} with signature {sig.sig_id}')
                                     # if singaure match, we skip the substep even  if
                                     # there are tasks.
                                     skip_index = validate_step_sig(sig)
