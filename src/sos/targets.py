@@ -19,7 +19,7 @@ import pkg_resources
 
 from .utils import (Error, env, pickleable, short_repr, stable_repr)
 
-from .signatures import step_signatures, workflow_signatures
+from .signatures import target_signatures, step_signatures, workflow_signatures
 
 try:
     from xxhash import xxh64 as hash_md5
@@ -537,6 +537,8 @@ class file_target(path, BaseTarget):
 
     def validate(self, sig=None):
         '''Check if file matches its signature'''
+        if sig is None:
+            sig = target_signatures.get(self)
         # old signature file with only md5
         if isinstance(sig, str) or not self.exists():
             try:
@@ -553,6 +555,20 @@ class file_target(path, BaseTarget):
         if not self._md5:
             self._md5 = fileMD5(self)
         return self._md5 == sig[2]
+
+    def write_sig(self):
+        '''Write signature to sig store'''
+        # path to file
+        if not self.exists() and (self + '.zapped').exists():
+            with open(self + '.zapped') as md5:
+                line = md5.readline()
+                _, mtime, size, md5 = line.rsplit('\t', 3)
+                target_signatures.set(self, mtime, size, md5.strip())
+            return
+        if not self._md5:
+            self._md5 = fileMD5(self)
+        target_signatures.set(self,
+                              os.path.getmtime(self), os.path.getsize(self), self._md5)
 
     def __hash__(self):
         return hash(repr(self))
