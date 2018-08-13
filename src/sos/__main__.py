@@ -1126,8 +1126,6 @@ def cmd_status(args, workflow_args):
     from .tasks import print_task_status
     from .utils import env, load_config_files, get_traceback
     from .hosts import Host
-    #from .monitor import summarizeExecution
-    env.verbosity = args.verbosity
     try:
         load_config_files(args.config)
         if not args.queue:
