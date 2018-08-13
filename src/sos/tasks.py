@@ -286,10 +286,17 @@ class TaskFile(object):
         if struct.unpack('!h', data[:2])[0] == 1:
             header = self.TaskHeader_v1._make(struct.unpack(
                 self.header_fmt_v1, data))
+            if header.version not in (1, 2):
+                raise RuntimeError(
+                    f'Corrupted task file {self.task_file}. Please report a bug if you can reproduce the generation of this file.')
             return self.TaskHeader(shell_size=0, **header._asdict())._replace(version=2)
         else:
-            return self.TaskHeader._make(struct.unpack(
+            res = self.TaskHeader._make(struct.unpack(
                 self.header_fmt_v2, data))
+            if header.version not in (1, 2):
+                raise RuntimeError(
+                    f'Corrupted task file {self.task_file}. Please report a bug if you can reproduce the generation of this file.')
+            return res
 
     def _write_header(self, fh, header):
         fh.seek(0, 0)
@@ -393,9 +400,15 @@ class TaskFile(object):
     params = property(_get_params)
 
     def _get_status(self):
-        with open(self.task_file, 'rb') as fh:
-            fh.seek(2, 0)
-            return TaskStatus(struct.unpack('!h', fh.read(2))[0]).name
+        if not os.path.isfile(self.task_file):
+            return 'missing'
+        try:
+            with open(self.task_file, 'rb') as fh:
+                fh.seek(2, 0)
+                return TaskStatus(struct.unpack('!h', fh.read(2))[0]).name
+        except Exception as e:
+            raise RuntimeError(
+                f'Corrupted task file {self.task_file}. Please report a bug if you can reproduce the generation of this file: {e}')
 
     def _set_status(self, status):
         with open(self.task_file, 'r+b') as fh:
@@ -524,29 +537,33 @@ class TaskFile(object):
     signature = property(_get_signature)
 
     def tags_created_start_and_duration(self, formatted=False):
-        with open(self.task_file, 'rb') as fh:
-            header = self._read_header(fh)
         try:
-            tags = header.tags.decode().strip()
-        except:
-            raise ValueError(
-                f'{self.task_file} is in a format that is no longer supported.')
-        ct = header.new_time
-        if header.running_time != 0:
-            st = header.running_time
-            if TaskStatus(header.status) == TaskStatus.running:
-                dr = time.time() - st
+            with open(self.task_file, 'rb') as fh:
+                header = self._read_header(fh)
+            try:
+                tags = header.tags.decode().strip()
+            except:
+                raise ValueError(
+                    f'{self.task_file} is in a format that is no longer supported.')
+            ct = header.new_time
+            if header.running_time != 0:
+                st = header.running_time
+                if TaskStatus(header.status) == TaskStatus.running:
+                    dr = time.time() - st
+                else:
+                    dr = header.last_modified - st
             else:
-                dr = header.last_modified - st
-        else:
-            return tags, ('Created ' + format_duration(time.time() - ct, True) + ' ago') \
-                if formatted else ct, '', ''
-        if not formatted:
-            return tags, ct, st, dr
-        #
-        return tags, 'Created ' + format_duration(time.time() - ct, True) + ' ago', \
-            'Started ' + format_duration(time.time() - st) + ' ago', \
-            'Ran for ' + format_duration(int(dr))
+                return tags, ('Created ' + format_duration(time.time() - ct, True) + ' ago') \
+                    if formatted else ct, '', ''
+            if not formatted:
+                return tags, ct, st, dr
+            #
+            return tags, 'Created ' + format_duration(time.time() - ct, True) + ' ago', \
+                'Started ' + format_duration(time.time() - st) + ' ago', \
+                'Ran for ' + format_duration(int(dr))
+        except:
+            # missing tag file or something went wrong
+            return '', '', '', ''
 
 
 def taskDuration(task):
@@ -1039,6 +1056,9 @@ showResourceFigure_''' + t + '''()
         from .monitor import summarizeExecution
         for s, (t, d) in zip(obtained_status, all_tasks):
             tf = TaskFile(t)
+            if s == 'missing':
+                print(f'{t}\t{s}\n')
+                continue
             ts, ct, st, dr = tf.tags_created_start_and_duration(
                 formatted=True)
             print(f'{t}\t{s}\n')
