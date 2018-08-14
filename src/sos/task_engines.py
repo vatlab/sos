@@ -326,12 +326,12 @@ class TaskEngine(threading.Thread):
                         ['change-status', self.agent.alias, task_id, status,
                             self.task_date.get(task_id, (None, None, None))])
             self.task_status[task_id] = status
-            if status in 'pening' and task_id not in self.pending_tasks:
+            if status == 'pening' and task_id not in self.pending_tasks:
                 self.pending_tasks.append(task_id)
             if status == 'running' and task_id not in self.running_tasks:
                 self.running_tasks.append(task_id)
             # terminal states, remove tasks from task list
-            if status != 'running' and task_id in self.running_tasks:
+            if status in ('completed', 'failed', 'aborted') and task_id in self.running_tasks:
                 self.running_tasks.remove(task_id)
 
     def remove_tasks(self, tasks):

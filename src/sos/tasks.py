@@ -188,10 +188,14 @@ class TaskFile(object):
         workflow_signatures.write('task', self.task_id,
                                   f"{{'creation_time': {time.time()}}}")
         if os.path.isfile(self.task_file):
-            # keep original stuff but update params, which could contain
-            # new runtime info
-            self.update(params)
-            return
+            if self.status == 'running':
+                env.logger.debug('Running task is not updated')
+                return
+            else:
+                # keep original stuff but update params, which could contain
+                # new runtime info
+                self.update(params)
+                return
         # updating job_file will not change timestamp because it will be Only
         # the update of runtime info
         now = time.time()
