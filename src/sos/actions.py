@@ -60,16 +60,32 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated', acceptable_args: 
     def runtime_decorator(func):
         @wraps(func)
         def action_wrapper(*args, **kwargs):
-            # if docker_image in args, a large number of docker-specific
+            # if container in args, a large number of docker-specific
             # args would be allowed.
             for k in default_args:
                 if k in default_args and not k in kwargs:
                     kwargs[k] = default_args[k]
-            if '*' not in acceptable_args and 'docker_image' not in kwargs:
+            if '*' not in acceptable_args and 'docker_image' not in kwargs and 'container' not in kwargs:
                 for key in kwargs.keys():
                     if key not in acceptable_args and key not in SOS_ACTION_OPTIONS:
                         raise ValueError(
                             f'Unrecognized option "{key}" for action {func}')
+            if 'container' in kwargs and kwargs['container']:
+                if not isinstance(kwargs['container'], str):
+                    raise ValueError(
+                        f'A string in the format of "scheme://tag" is expected for option container, {kwargs["container"]} provided')
+                if '://' in kwargs['container']:
+                    cty, cname = kwargs['container'].split('://', 1)
+                else:
+                    cty = 'docker'
+                    cname = kwargs['container']
+                if cty == 'docker':
+                    kwargs['docker_image'] = cname
+                elif cty == 'local':
+                    pass
+                else:
+                    raise ValueError(
+                        f'Unsupported container type {cty} for option container with value {kwargs["container"]}')
             # docker files will be downloaded in run or prepare mode
             if 'docker_file' in kwargs and env.config['run_mode'] in ['run', 'interactive']:
                 from .docker.client import SoS_DockerClient

@@ -113,7 +113,7 @@ class TestDockerActions(unittest.TestCase):
         '''Test action bash in docker environment'''
         script = SoS_Script(r'''
 [0]
-run:  docker_image='ubuntu'
+run:  container='docker://ubuntu'
 echo 'Echo'
 ''')
         wf = script.workflow()
@@ -125,7 +125,7 @@ echo 'Echo'
 #        '''Test action powershell in docker environment'''
 #        script = SoS_Script(r'''
 #[0]
-#run:  docker_image='microsoft/windowsservercore'
+#run:  container='docker://microsoft/windowsservercore'
 #dir c:\
 #''')
 #        wf = script.workflow()
@@ -137,7 +137,7 @@ echo 'Echo'
         # test docker
         script = SoS_Script(r'''
 [0]
-run: docker_image='ubuntu'
+run: container='docker://ubuntu'
 echo 'Echo
 ''')
         wf = script.workflow()
@@ -203,7 +203,7 @@ fastq_files = glob.glob('data/*.fastq')
 input_volume = os.path.dirname(fastq_files[0])
 output_volume = os.getcwd()
 
-run: docker_image='compbio/ngseasy-fastqc:1.0-r001',
+run: container='docker://compbio/ngseasy-fastqc:1.0-r001',
     volumes=[f"{input_volume}:/input_data", f"{output_volume}:/output_data"]
 
     ls -l /input_data
@@ -218,7 +218,7 @@ run: docker_image='compbio/ngseasy-fastqc:1.0-r001',
         # image from a saved file
         script = SoS_Script(r'''
 [0]
-run:   docker_image='blang/busybox-bash'
+run:   container='docker://blang/busybox-bash'
 
 [1]
 run:
@@ -226,7 +226,7 @@ run:
     docker rmi -f blang/busybox-bash
 
 [2]
-run: docker_image='blang/busybox-bash', docker_file = 'hello.tar'
+run: container='docker://blang/busybox-bash', docker_file = 'hello.tar'
 
     echo "a"
 ''')
@@ -239,7 +239,7 @@ run: docker_image='blang/busybox-bash', docker_file = 'hello.tar'
         # test docker
         script = SoS_Script(r'''
 [0]
-script: docker_image='ubuntu', args='{script}'
+script: container='docker://ubuntu', args='{script}'
 echo 'Echo'
 ''')
         wf = script.workflow()
@@ -250,7 +250,7 @@ echo 'Echo'
         '''Test use of option port in action'''
         script = SoS_Script(r'''
 [0]
-run:  docker_image='ubuntu', port=True
+run:  container='ubuntu', port=True
 echo 'Echo'
 ''')
         wf = script.workflow()
@@ -258,7 +258,7 @@ echo 'Echo'
         #
         script = SoS_Script(r'''
 [0]
-run:  docker_image='ubuntu', port=2345
+run:  container='ubuntu', port=2345
 echo 'Echo'
 ''')
         wf = script.workflow()
