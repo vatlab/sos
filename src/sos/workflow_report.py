@@ -91,14 +91,6 @@ class WorkflowSig(object):
             env.logger.warning(e)
             return {}
 
-    def tracked_files(self):
-        try:
-            files = sum(self.data['input_file'].values(), []) + sum(
-                self.data['output_file'].values(), []) + sum(self.data['dependent_file'].values(), [])
-            return [eval(x) for x in files]
-        except:
-            return []
-
     def placeholders(self):
         try:
             return self.data['placeholder']['file_target']

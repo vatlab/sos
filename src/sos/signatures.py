@@ -253,8 +253,8 @@ class WorkflowSignatures(object):
         '''Listing files related to workflows related to current directory'''
         try:
             cur = self.conn.cursor()
-            cur.execute('SELECT id, item FROM workflows WHERE entry_type LIKE "%_file"')
-            return [(x[0], eval(x[1])['filename']) for x in cur.fetchall()]
+            cur.execute('SELECT id, item FROM workflows WHERE entry_type = "tracked_files"')
+            return [(x[0], eval(x[1])) for x in cur.fetchall()]
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to get files from signature database: {e}')
             return []

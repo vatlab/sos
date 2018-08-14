@@ -1415,7 +1415,7 @@ def cmd_remove(args, unknown_args):
         from .signatures import step_signatures, workflow_signatures
         sig_files = workflow_signatures.files()
         if sig_files:
-            files = list(set([x[1] for x in sig_files]))
+            files = list(set(sum([sum(x[1].values(), []) for x in sig_files], [])))
             sig_ids = list(set([x[0] for x in sig_files]))
             num_removed_local_steps = step_signatures.remove_many(
                 sig_ids, global_sig=False)

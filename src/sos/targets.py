@@ -1074,18 +1074,11 @@ class RuntimeInfo(InMemorySignature):
 
         env.logger.trace(f'Write signature {self.sig_id}')
         step_signatures.set(self.sig_id, ret, self.external_sig)
-        for f in self.input_files:
-            if isinstance(f, file_target):
-                workflow_signatures.write('input_file', self.sig_id,
-                                          f'{{"filename":{str(f)!r},"sig":{f.target_signature()!r}}}')
-        for f in self.dependent_files:
-            if isinstance(f, file_target):
-                workflow_signatures.write('dependent_file', self.sig_id,
-                                          f'{{"filename":{str(f)!r},"sig":{f.target_signature()!r}}}')
-        for f in self.output_files:
-            if isinstance(f, file_target):
-                workflow_signatures.write('output_file', self.sig_id,
-                                          f'{{"filename":{str(f)!r},"sig":{f.target_signature()!r}}}')
+        workflow_signatures.write('tracked_files', self.sig_id, repr({
+            'input_files': [str(f) for f in self.input_files if isinstance(f, file_target)],
+            'dependent_files': [str(f) for f in self.dependent_files if isinstance(f, file_target)],
+            'output_files': [str(f) for f in self.output_files if isinstance(f, file_target)]
+            }))
         return True
 
     def validate(self):
