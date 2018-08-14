@@ -103,6 +103,7 @@ class TestTask(unittest.TestCase):
         self.assertEqual(a.params.sos_dict['a'], 1)
         self.assertEqual(a.status, 'new')
         a.status = 'completed'
+        self.assertLess(time.time() - a.last_updated, 2)
         self.assertEqual(a.status, 'completed')
         #
         a.add_result({'ret_code': 5})

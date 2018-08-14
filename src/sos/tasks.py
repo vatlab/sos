@@ -429,6 +429,20 @@ class TaskFile(object):
             raise RuntimeError(
                 f'Corrupted task file {self.task_file}. Please report a bug if you can reproduce the generation of this file: {e}')
 
+    def _get_version(self):
+        with open(self.task_file, 'rb') as fh:
+            fh.seek(0, 0)
+            return struct.unpack('!h', fh.read(2))[0]
+
+    version = property(_get_version)
+
+    def _get_last_updated(self):
+        with open(self.task_file, 'rb') as fh:
+            fh.seek(4, 0)
+            return struct.unpack('!d', fh.read(8))[0]
+
+    last_updated = property(_get_last_updated)
+
     def _set_status(self, status):
         with open(self.task_file, 'r+b') as fh:
             fh.seek(2, 0)
@@ -440,12 +454,6 @@ class TaskFile(object):
             fh.seek(sts * 8, 1)
             fh.write(struct.pack('!d', now))
 
-    def _get_version(self):
-        with open(self.task_file, 'rb') as fh:
-            fh.seek(0, 0)
-            return struct.unpack('!h', fh.read(2))[0]
-
-    version = property(_get_version)
 
     status = property(_get_status, _set_status)
 
@@ -645,10 +653,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         '~'), '.sos', 'tasks', task + '.pulse')
 
     # check the existence and validity of .pulse file
-    # for whatever reason, sometimes the pulse file might appear to be slightly
-    # before the task file, and if the task is very short so the pulse file is
-    # not updated, the task will appear to be in pending mode forever
-    if os.path.isfile(pulse_file) and os.stat(pulse_file).st_mtime >= os.stat(task_file).st_mtime - 1:
+    if os.path.isfile(pulse_file):
         try:
             status_files = {task_file: os.stat(task_file).st_mtime,
                             pulse_file: os.stat(pulse_file).st_mtime}
@@ -712,6 +717,14 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                 return check_task(task)
             else:
                 raise
+    elif status == 'running':
+        # if there is no pulse file and task has been in running status for a
+        # while, this task is not started correctly.
+        if time.time() - tf.last_updated > 2 * monitor_interval:
+            tf.status = 'aborted'
+            return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
+                    pulse_file: 0})
+
     # if there is no pulse file
     job_file = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', task + '.sh')
