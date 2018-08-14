@@ -303,7 +303,7 @@ class SoS_DockerClient:
                                        .format(kwargs['docker_workdir'], os.path.abspath(os.path.expanduser(kwargs['docker_workdir']))))
                     workdir_opt = f'-w={path(kwargs["docker_workdir"]).resolve():p}'
                 else:
-                    workdir_opt = f'-w={kwargs["docker_workdir"]:p}'
+                    workdir_opt = f'-w={path(kwargs["docker_workdir"]):p}'
             elif 'docker_workdir' not in kwargs:
                 # by default, map current working directoryself.
                 workdir_opt = f'-w={path(wdir):p}'
