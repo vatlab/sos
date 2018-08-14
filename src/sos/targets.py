@@ -1075,9 +1075,9 @@ class RuntimeInfo(InMemorySignature):
         env.logger.trace(f'Write signature {self.sig_id}')
         step_signatures.set(self.sig_id, ret, self.external_sig)
         workflow_signatures.write('tracked_files', self.sig_id, repr({
-            'input_files': [str(f) for f in self.input_files if isinstance(f, file_target)],
-            'dependent_files': [str(f) for f in self.dependent_files if isinstance(f, file_target)],
-            'output_files': [str(f) for f in self.output_files if isinstance(f, file_target)]
+            'input_files': [str(f.resolve()) for f in self.input_files if isinstance(f, file_target)],
+            'dependent_files': [str(f.resolve()) for f in self.dependent_files if isinstance(f, file_target)],
+            'output_files': [str(f.resolve()) for f in self.output_files if isinstance(f, file_target)]
             }))
         return True
 

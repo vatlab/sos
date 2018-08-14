@@ -259,6 +259,15 @@ class WorkflowSignatures(object):
             env.logger.warning(f'Failed to get files from signature database: {e}')
             return []
 
+    def placeholders(self):
+        try:
+            cur = self.conn.cursor()
+            cur.execute('SELECT item FROM workflows WHERE entry_type = "placeholder"')
+            return [x[0] for x in cur.fetchall()]
+        except sqlite3.DatabaseError as e:
+            env.logger.warning(f'Failed to get placeholders from signature database: {e}')
+            return []
+
     def clear(self):
         try:
             self.conn.execute(

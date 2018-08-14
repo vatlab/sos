@@ -1372,20 +1372,12 @@ def get_tracked_files(workflow_id):
 def cmd_remove(args, unknown_args):
     from .utils import env
     from .targets import file_target
-    from .signatures import workflow_signatures
+    from .signatures import step_signatures, workflow_signatures
 
     env.verbosity = args.verbosity
 
-    # what about global signature?
-    wfs = workflow_signatures.workflows()
-    tracked_files = set()
-    placeholder_files = set()
-    for wf in wfs:
-        _, t, p = get_tracked_files(wf)
-        tracked_files |= t
-        placeholder_files |= p
-
     if args.placeholders:
+        placeholder_files = workflow_signatures.placeholders()
         removed: int = 0
         for ph in sorted(placeholder_files):
             p = file_target(ph)
@@ -1408,12 +1400,11 @@ def cmd_remove(args, unknown_args):
         else:
             env.logger.info('No remaining placeholder file exists.')
         return
-        #
+
+    sig_files = workflow_signatures.files()
     if args.signature:
         # a special case where all file and runtime signatures are removed.
         # no other options are allowed.
-        from .signatures import step_signatures, workflow_signatures
-        sig_files = workflow_signatures.files()
         if sig_files:
             files = list(set(sum([sum(x[1].values(), []) for x in sig_files], [])))
             sig_ids = list(set([x[0] for x in sig_files]))
@@ -1421,22 +1412,21 @@ def cmd_remove(args, unknown_args):
                 sig_ids, global_sig=False)
             num_removed_global_steps = step_signatures.remove_many(
                 sig_ids, global_sig=True)
-            env.logger.info(
-                f'Signatures of {len(files)} files from {num_removed_local_steps + num_removed_global_steps} substeps are removed.')
+            if not (num_removed_local_steps + num_removed_global_steps):
+                env.logger.info('No signature is found from workflows executed under the current directory.')
+            else:
+                env.logger.info(
+                    f'Signatures from {num_removed_local_steps + num_removed_global_steps} substeps are removed.')
         else:
             env.logger.info(
-                'No signatures are found from workflows executed under the current directory.')
+                'No signatures is found from workflows executed under the current directory.')
         return
     #
-    tracked_files = {os.path.abspath(os.path.expanduser(x))
-                     for x in tracked_files}
-
+    tracked_files = list(set(sum([sum(x[1].values(), []) for x in sig_files], [])))
     if tracked_files:
-        env.logger.info('{} tracked files from {} run{} are identified.'
-                        .format(len(tracked_files), len(wfs), 's' if len(wfs) > 1 else ''))
+        env.logger.info(f'{len(tracked_files)} tracked files are identified.')
     else:
-        env.logger.info('No tracked file from {} run{} are identified.'
-                        .format(len(wfs), 's' if len(wfs) > 1 else ''))
+        env.logger.info('No tracked file is identified.')
     #
     if not args.targets:
         args.targets = ['.']
@@ -1451,6 +1441,7 @@ def cmd_remove(args, unknown_args):
     if args.tracked:
         def func(filename, resp):
             if os.path.abspath(filename) not in tracked_files:
+                env.logger.debug(f'{filename} is not tracked.')
                 return False
             target = file_target(filename)
             if target.is_external() and not args.external():
@@ -1516,8 +1507,6 @@ def cmd_remove(args, unknown_args):
             return False
     elif args.zap:
         def func(filename, resp):
-            if os.path.abspath(filename) not in tracked_files:
-                return False
             target = file_target(filename)
             if target.is_external() and not args.external():
                 env.logger.debug('Ignore external file {}'.format(filename))
