@@ -186,6 +186,7 @@ class LocalHost:
                 return False
 
         tf.update(params)
+        tf.status = 'pending'
         #
         if 'to_host' in task_vars['_runtime'] and isinstance(task_vars['_runtime']['to_host'], dict):
             for l, r in task_vars['_runtime']['to_host'].items():
@@ -604,6 +605,7 @@ class RemoteHost:
                 task_vars['_runtime']['max_walltime'])
 
         tf.update(params)
+        tf.status = 'pending'
         self.send_task_file(task_file)
 
     def send_task_file(self, task_file):

@@ -188,14 +188,9 @@ class TaskFile(object):
         workflow_signatures.write('task', self.task_id,
                                   f"{{'creation_time': {time.time()}}}")
         if os.path.isfile(self.task_file):
-            if self.status == 'running':
-                env.logger.debug('Running task is not updated')
-                return
-            if env.config['sig_mode'] in ('assert', 'build'):
-                env.logger.debug('Do not overwrite task in assert mode')
-                return
-            # keep original stuff ...
-            self.update(params, status='new')
+            # keep original stuff but update params, which could contain
+            # new runtime info
+            self.update(params)
             return
         # updating job_file will not change timestamp because it will be Only
         # the update of runtime info
@@ -230,17 +225,12 @@ class TaskFile(object):
                 self._write_header(fh, header)
                 fh.write(params_block)
 
-    def update(self, params, status='pending'):
+    def update(self, params):
         params_block = lzma.compress(pickle.dumps(params))
         with fasteners.InterProcessLock(os.path.join(env.temp_dir, self.task_id + '.lck')):
             with open(self.task_file, 'r+b') as fh:
-                header = self._read_header(fh)
-                now = time.time()
                 if len(params_block) == header.params_size:
-                    header._replace(status=TaskStatus[status].value,
-                                    last_modified=now, new_time=now)
-                    fh.seek(0, 0)
-                    self._write_header(fh, header)
+                    fh.seek(self.header_size, 0)
                     fh.write(params_block)
                 else:
                     header = self._read_header(fh)
@@ -251,8 +241,7 @@ class TaskFile(object):
                     stderr = fh.read(header.stderr_size)
                     result = fh.read(header.result_size)
                     signature = fh.read(header.signature_size)
-                    header = header._replace(status=TaskStatus[status].value,
-                                             params_size=len(params_block), last_modified=now)
+                    header = header._replace(params_size=len(params_block))
                     self._write_header(fh, header)
                     fh.write(params_block)
                     if shell:
