@@ -151,20 +151,3 @@ def render_report(output_file, workflow_id):
     with open(output_file, 'w') as wo:
         wo.write(template.render(context))
     env.logger.info(f'Summary of workflow saved to {output_file}')
-
-
-def remove_placeholders(workflow_id):
-    from .targets import file_target
-    try:
-        data = WorkflowSig(workflow_id)
-    except Exception as e:
-        # if the workflow sig file does not exist. Just quit
-        env.logger.debug(
-            f'Failed to remove placeholder files for workflow {workflow_id}: {e}')
-        return
-    for filename in data.placeholders():
-        try:
-            file_target(filename).unlink()
-            env.logger.debug(f'Remove placeholder {filename}')
-        except Exception as e:
-            env.logger.warning(f'Failed to remove placeholder {filename}: {e}')

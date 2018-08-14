@@ -24,7 +24,7 @@ from .eval import SoS_exec
 from .hosts import Host
 from .parser import SoS_Step, SoS_Workflow
 from .pattern import extract_pattern
-from .workflow_report import render_report, remove_placeholders
+from .workflow_report import render_report
 from .signatures import workflow_signatures
 from .step_executor import PendingTasks, Step_Executor, analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
@@ -1003,7 +1003,14 @@ class Base_Executor:
             render_report(env.config['output_report'],
                           env.sos_dict['workflow_id'])
         if env.config['run_mode'] == 'dryrun':
-            remove_placeholders(env.sos_dict['workflow_id'])
+            for filename in workflow_signatures.placeholders(env.sos_dict['workflow_id']):
+                try:
+                    if os.path.getsize(file_target(filename)) == 0:
+                        file_target(filename).unlink()
+                        env.logger.debug(f'Remove placeholder {filename}')
+                except Exception as e:
+                    env.logger.warning(f'Failed to remove placeholder {filename}: {e}')
+
 
     def run(self, targets: Optional[List[str]]=None, parent_pipe: None=None, my_workflow_id: None=None, mode=None) -> Dict[str, Any]:
         '''Execute a workflow with specified command line args. If sub is True, this
