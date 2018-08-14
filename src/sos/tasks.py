@@ -229,11 +229,11 @@ class TaskFile(object):
         params_block = lzma.compress(pickle.dumps(params))
         with fasteners.InterProcessLock(os.path.join(env.temp_dir, self.task_id + '.lck')):
             with open(self.task_file, 'r+b') as fh:
+                header = self._read_header(fh)
                 if len(params_block) == header.params_size:
                     fh.seek(self.header_size, 0)
                     fh.write(params_block)
                 else:
-                    header = self._read_header(fh)
                     param = fh.read(header.params_size)
                     shell = fh.read(header.shell_size)
                     pulse = fh.read(header.pulse_size)
