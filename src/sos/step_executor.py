@@ -437,6 +437,8 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
     try:
         if sig:
             if validate_step_sig(sig):
+                # avoid sig being released in the final statement
+                sig = None
                 return {'ret_code': 0, 'sig_skipped': 1}
             sig.lock()
         verify_input()
