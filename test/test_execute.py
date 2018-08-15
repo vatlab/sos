@@ -1298,6 +1298,23 @@ sos_run('remove')
         res = Base_Executor(wf).run(mode='run')
         self.assertFalse(os.path.isfile('1.txt'))
 
+    def testConcurrentWithDynamicOutput(self):
+        '''Test concurrent steps with dynamic output'''
+        douts = glob.glob('*.dout')
+        for dout in douts:
+            os.remove(dout)
+        script = SoS_Script('''
+input: for_each={'i': range(3)}, concurrent=True
+output: dynamic('*.txt')
+import random
+sh: expand=True
+touch {random.randint(0, 1000000)}.dout
+''')    
+        wf = script.workflow()
+        res = Base_Executor(wf).run()
+        douts = glob.glob('*.dout')
+        self.assertEqual(len(douts), 3)
+
 
 if __name__ == '__main__':
     unittest.main()
