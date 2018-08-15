@@ -1686,8 +1686,7 @@ class Base_Step_Executor:
             for idx, res in enumerate(self.proc_results):
                 if 'sig_skipped' in res:
                     self.completed['__substep_skipped__'] += 1
-                    self.completed['__substep_completed__'] -= len(
-                        self._substeps)
+                    self.completed['__substep_completed__'] -= 1
             # check results
             for proc_result in [x for x in self.proc_results if x['ret_code'] == 0]:
                 if 'stdout' in proc_result and proc_result['stdout']:
