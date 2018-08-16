@@ -66,6 +66,10 @@ RUN     /bin/bash -c "source activate ipykernel_py2; python -m ipykernel install
 # Bioinfo
 RUN     pip install pysam
 
+## Sparql kernel for the demonstration of unsupported language
+RUN     pip install sparqlkernel
+RUN     jupyter sparqlkernel install
+
 # SOS
 RUN     pip install pip --upgrade
 RUN     pip install xlrd docker
