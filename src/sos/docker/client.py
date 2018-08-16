@@ -248,7 +248,9 @@ class SoS_DockerClient:
             if script:
                 tempscript = 'docker_run_{}{}'.format(os.getpid(), suffix)
                 with open(os.path.join(tempdir, tempscript), 'w') as script_file:
-                    script_file.write(script)
+                    # the input script might have windows new line but the container
+                    # will need linux new line for proper execution #1023
+                    script_file.write('\n'.join(script.splitlines()))
             #
             # if there is an interpreter and with args
             if not args:
