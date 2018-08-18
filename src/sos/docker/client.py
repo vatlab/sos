@@ -223,9 +223,14 @@ class SoS_DockerClient:
         ret = 0
         if not self._is_image_avail(image):
             print(f'HINT: Pulling docker image {image}')
-            ret = subprocess.call('docker pull {}'.format(image), shell=True)
+            try:
+                output = subprocess.check_output(
+                    'docker pull {}'.format(image), stderr=subprocess.STDOUT, shell=True,
+                    universal_newlines=True)
+            except subprocess.CalledProcessError as exc:
+                raise RuntimeError(f'Failed to pull docker image {image}:\n { exc.output}')
         if not self._is_image_avail(image):
-            raise RuntimeError('Failed to pull image {}'.format(image))
+            raise RuntimeError('Image {image} unavailable after docker pull')
         return ret
 
     def run(self, image, script='', interpreter='', args='', suffix='.sh', **kwargs):
@@ -243,7 +248,9 @@ class SoS_DockerClient:
             if script:
                 tempscript = 'docker_run_{}{}'.format(os.getpid(), suffix)
                 with open(os.path.join(tempdir, tempscript), 'w') as script_file:
-                    script_file.write(script)
+                    # the input script might have windows new line but the container
+                    # will need linux new line for proper execution #1023
+                    script_file.write('\n'.join(script.splitlines()))
             #
             # if there is an interpreter and with args
             if not args:

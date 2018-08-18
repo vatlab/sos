@@ -53,6 +53,10 @@ RUN     npm rebuild
 RUN     npm install -g ijavascript
 RUN     ijsinstall --spec-path=full
 
+#       SPARQL kernel for testing
+RUN     cd /tmp && git clone https://github.com/asanchez75/sparql-kernel.git && cd /tmp/sparql-kernel && python setup.py install
+RUN     jupyter sparqlkernel install --user
+
 #        Julia
 RUN     julia -e "ENV[\"JUPYTER\"]=\"$(which jupyter)\";Pkg.add(\"IJulia\")"
 RUN     julia -e 'Pkg.add("Feather")'
@@ -66,9 +70,8 @@ RUN     /bin/bash -c "source activate ipykernel_py2; python -m ipykernel install
 # Bioinfo
 RUN     pip install pysam
 
-## Sparql kernel for the demonstration of unsupported language
-RUN     pip install sparqlkernel
-RUN     jupyter sparqlkernel install
+# for testing
+RUN     pip install xlsx2csv
 
 # SOS
 RUN     pip install pip --upgrade
@@ -81,6 +84,8 @@ RUN     pip install nbformat --upgrade
 ARG	DUMMY=unknown
 RUN     DUMMY=${DUMMY} pip install sos sos-notebook sos-r sos-julia sos-python sos-matlab sos-javascript sos-bash sos-bioinfo --upgrade
 RUN     python -m sos_notebook.install
+RUN     pip install jupyterlab
+RUN     jupyter labextension install jupyterlab-sos
 
 COPY    examples /home/jovyan/examples
 
