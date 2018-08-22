@@ -8,7 +8,7 @@ import subprocess
 import unittest
 
 from sos.parser import ParsingError, SoS_Script
-from sos.targets import file_target, sos_targets
+from sos.targets import file_target, sos_targets, path, paths
 from sos.utils import ArgumentError, env
 # if the test is imported under sos/test, test interacive executor
 if 'sos-notebook' in __file__.split(os.sep):
@@ -441,6 +441,75 @@ parameter: a_b = int
         self.assertEqual(env.sos_dict['a_b'], 10)
         Base_Executor(wf, args=['--a-b', '10']).run(mode='dryrun')
         self.assertEqual(env.sos_dict['a_b'], 10)
+        # 
+        # test support for type path, paths, file_target and sos_targets
+        script = SoS_Script('''
+parameter: path_var = path
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--path-var', 'a.txt']).run(mode='run')
+        self.assertTrue(isinstance(env.sos_dict['path_var'], path))
+        #
+        script = SoS_Script('''
+parameter: path_var = file_target
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--path-var', 'a.txt']).run(mode='run')
+        self.assertTrue(isinstance(env.sos_dict['path_var'], file_target))
+        #
+        script = SoS_Script('''
+parameter: path_var = paths
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--path-var', 'a.txt', 'b.txt']).run(mode='run')
+        self.assertTrue(isinstance(env.sos_dict['path_var'], paths))
+        #
+        #
+        script = SoS_Script('''
+parameter: path_var = sos_targets
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--path-var', 'a.txt']).run(mode='run')
+        self.assertTrue(isinstance(env.sos_dict['path_var'], sos_targets))
+
+        #
+        script = SoS_Script('''
+parameter: path_var = path('a.txt')
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--path-var', 'a.txt']).run(mode='run')
+        self.assertTrue(isinstance(env.sos_dict['path_var'], path))
+        #
+        script = SoS_Script('''
+parameter: path_var = file_target('a.txt')
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--path-var', 'a.txt']).run(mode='run')
+        self.assertTrue(isinstance(env.sos_dict['path_var'], file_target))
+        #
+        script = SoS_Script('''
+parameter: path_var = paths('a.txt')
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--path-var', 'a.txt', 'b.txt']).run(mode='run')
+        self.assertTrue(isinstance(env.sos_dict['path_var'], paths))
+        #
+        #
+        script = SoS_Script('''
+parameter: path_var = sos_targets('a.txt')
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--path-var', 'a.txt']).run(mode='run')
+        self.assertTrue(isinstance(env.sos_dict['path_var'], sos_targets))
+
         #
         # parameter cannot be any keyword
         for key in ['input', 'output', '_input', 'with']:

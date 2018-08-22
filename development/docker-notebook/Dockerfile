@@ -71,12 +71,13 @@ RUN     /bin/bash -c "source activate ipykernel_py2; python -m ipykernel install
 RUN     pip install pysam
 
 # for testing
-RUN     pip install xlsx2csv
+RUN     pip install xlsx2csv bs4
 
 # SOS
 RUN     pip install pip --upgrade
 RUN     pip install xlrd docker
-RUN     pip install markdown wand graphviz
+RUN     pip install markdown wand graphviz imageio pillow 
+
 
 RUN     conda install -y feather-format -c conda-forge
 RUN     pip install nbformat --upgrade
