@@ -1180,7 +1180,7 @@ class Base_Step_Executor:
     def log(self, stage=None, msg=None):
         if stage == 'start':
             env.logger.info(
-                f'"Executing" ``{self.step.step_name(True)}``: {self.step.comment.strip()}')
+                f'{"Checking" if env.config["run_mode"] == "dryrun" else "Running"} ``{self.step.step_name(True)}``: {self.step.comment.strip()}')
         elif stage == 'input statement':
             env.logger.trace(f'Handling input statement {msg}')
         elif stage == '_input':
@@ -1196,7 +1196,7 @@ class Base_Step_Executor:
                 env.logger.info(
                     f'input:   ``{short_repr(env.sos_dict["step_input"])}``')
         elif stage == 'output':
-            if env.sos_dict['step_output'] is not None:
+            if env.sos_dict['step_output'] is not None and len(env.sos_dict['step_output']) > 0:
                 env.logger.info(
                     f'output:   ``{short_repr(env.sos_dict["step_output"])}``')
 
@@ -1314,6 +1314,7 @@ class Base_Step_Executor:
         # * step_name:  name of the step, can be used by step process to determine
         #               actions dynamically.
         env.sos_dict.set('step_name', self.step.step_name())
+        self.log('start')
         env.sos_dict.set('step_id', self.step.md5)
         # used by nested workflow
         env.sos_dict.set('__step_context__', self.step.context)
