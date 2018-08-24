@@ -220,18 +220,16 @@ class SoS_DockerClient:
             raise RuntimeError(
                 'Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
         # if image is specified, check if it is available locally. If not, pull it
-        ret = 0
-        if not self._is_image_avail(image):
+        err_msg = ''
+        try:
             print(f'HINT: Pulling docker image {image}')
-            try:
-                output = subprocess.check_output(
-                    'docker pull {}'.format(image), stderr=subprocess.STDOUT, shell=True,
-                    universal_newlines=True)
-            except subprocess.CalledProcessError as exc:
-                raise RuntimeError(f'Failed to pull docker image {image}:\n { exc.output}')
+            output = subprocess.check_output(
+                'docker pull {}'.format(image), stderr=subprocess.STDOUT, shell=True,
+                universal_newlines=True)
+        except subprocess.CalledProcessError as exc:
+            err_msg = exc.output
         if not self._is_image_avail(image):
-            raise RuntimeError('Image {image} unavailable after docker pull')
-        return ret
+            raise RuntimeError(f'Failed to pull docker image {image}:\n {err_msg}')
 
     def run(self, image, script='', interpreter='', args='', suffix='.sh', **kwargs):
         if self.client is None:
