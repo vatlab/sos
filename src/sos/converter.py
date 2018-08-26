@@ -198,8 +198,12 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
         time.sleep(2)
 
 
-def extract_workflow(notebook_file):
-    nb = nbformat.read(notebook_file, nbformat.NO_CONVERT)
+def extract_workflow(notebook):
+    '''Extract workflow from a notebook file or notebook JSON instance'''
+    if isinstance(notebook, str):
+        nb = nbformat.read(notebook, nbformat.NO_CONVERT)
+    else:
+        nb = notebook
     cells = nb.cells
     content = '#!/usr/bin/env sos-runner\n#fileformat=SOS1.0\n\n'
     for cell in cells:
