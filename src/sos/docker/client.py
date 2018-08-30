@@ -266,8 +266,10 @@ class SoS_DockerClient:
                         continue
                     if vol.count(':') == 0:
                         host_dir, mnt_dir = vol, vol
-                    elif vol.count(':') == 1:
+                    elif vol.count(':') in (1, 2):
                         host_dir, mnt_dir = vol.split(':', 1)
+                    else:
+                        raise ValueError(f'Invalid format for volume specification: {vol}')
                     binds.append(
                         f'{path(host_dir).resolve():p}:{path(mnt_dir):p}')
                     if wdir.startswith(os.path.abspath(os.path.expanduser(host_dir))):
