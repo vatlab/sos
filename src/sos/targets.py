@@ -910,9 +910,6 @@ class InMemorySignature:
         '''Check if ofiles and ifiles match signatures recorded in md5file'''
         if not signature:
             return 'Empty signature'
-        # file not exist?
-        if self.output_files.undetermined():
-            return "Undetermined output files"
         sig_files = self.input_files._targets + self.output_files._targets + \
             self.dependent_files._targets
         for x in sig_files:
@@ -1086,8 +1083,6 @@ class RuntimeInfo(InMemorySignature):
         env.logger.trace(f'Validating {self.sig_id}')
         #
         # file not exist?
-        if self.output_files.undetermined():
-            return "Undetermined output files"
         sig_files = self.input_files._targets + self.output_files._targets + \
             self.dependent_files._targets
         for x in sig_files:
