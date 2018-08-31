@@ -951,7 +951,7 @@ class Base_Step_Executor:
     def reevaluate_output(self):
         # re-process the output statement to determine output files
         args, _ = SoS_eval(
-            f'__null_func__({env.sos_dict["_output"]._undetermined})')
+            f'__null_func__({env.sos_dict["step_output"]._undetermined})')
         if args is True:
             env.logger.error('Failed to resolve unspecified output')
             return
@@ -1576,7 +1576,9 @@ class Base_Step_Executor:
                                         env.sos_dict['_input'],
                                         env.sos_dict['_output'],
                                         env.sos_dict['_depends'],
-                                        env.sos_dict['__signature_vars__'],
+                                        env.sos_dict['__signature_vars__'] | {'_input', '_output', '_depends', '_index', '__args__',
+                                           'step_name', '_runtime', '__signature_vars__', '__step_context__'
+                                           },
                                         share_vars='shared' in self.step.options)
                                     env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} with signature {sig.sig_id}')
                                     # if singaure match, we skip the substep even  if
@@ -1703,22 +1705,15 @@ class Base_Step_Executor:
                     raise proc_result['exception']
             # if output is Undetermined, re-evalulate it
             if env.config['run_mode'] != 'dryrun':
-                if env.sos_dict['step_output'].undetermined():
-                    output = self.reevaluate_output()
-                    env.sos_dict.set('step_output', output)
-                    # for all pending signatures, output need to be set at this point
-                    for idx, res in enumerate(self.proc_results):
-                        if pending_signatures[idx] is not None:
-                            pending_signatures[idx].set_output(output)
-                else:
                 # finalize output from output_groups because some output might be skipped
                 # this is the final version of the output but we do maintain output
                 # during the execution of step, for compatibility.
-                    env.sos_dict.set(
-                        'step_output', sos_targets(self.output_groups[0]))
-                    for og in self.output_groups[1:]:
-                        if og != env.sos_dict['step_output'].targets():
-                            env.sos_dict['step_output'].extend(og)
+
+                env.sos_dict.set(
+                    'step_output', sos_targets(self.output_groups[0]))
+                for og in self.output_groups[1:]:
+                    if og != env.sos_dict['step_output'].targets():
+                        env.sos_dict['step_output'].extend(og)
             # now that output is settled, we can write remaining signatures
             for idx, res in enumerate(self.proc_results):
                 if pending_signatures[idx] is not None:

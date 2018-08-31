@@ -1305,7 +1305,7 @@ sos_run('remove')
             os.remove(dout)
         script = SoS_Script('''
 input: for_each={'i': range(3)}, concurrent=True
-output: dynamic('*.txt')
+output: dynamic('*.dout')
 import random
 sh: expand=True
 touch {random.randint(0, 1000000)}.dout
