@@ -998,7 +998,7 @@ class RuntimeInfo(InMemorySignature):
         # if all output files are external
         self.external_sig = self.output_files.is_external() and self.input_files.is_external()
         self.sig_id = textMD5(
-            f'{self.script} {self.input_files} {self.output_files} {self.dependent_files} {stable_repr(self.init_signature)}')
+            f'{self.script} {self.input_files} {self.output_files} {self.dependent_files} {stable_repr(self.init_signature)}{sdict["_index"] if self.output_files.undetermined() else ""}')
 
     def __getstate__(self):
         return {'step_md5': self.step_md5,
