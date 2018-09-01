@@ -1582,7 +1582,11 @@ class Base_Step_Executor:
                                     # if singaure match, we skip the substep even  if
                                     # there are tasks.
                                     skip_index = validate_step_sig(sig)
-                                    if not skip_index:
+
+                                    if skip_index:
+                                        if env.sos_dict['step_output'].undetermined():
+                                            self.output_groups[env.sos_dict['_index']] = env.sos_dict["_output"]
+                                    else:
                                         sig.lock()
                                         try:
                                             verify_input()
@@ -1600,6 +1604,7 @@ class Base_Step_Executor:
                                             else:
                                                 pending_signatures[idx] = sig
                                             sig.release()
+
                         except StopInputGroup as e:
                             self.output_groups[idx] = []
                             if e.message:
@@ -1706,12 +1711,12 @@ class Base_Step_Executor:
                 # finalize output from output_groups because some output might be skipped
                 # this is the final version of the output but we do maintain output
                 # during the execution of step, for compatibility.
-
                 env.sos_dict.set(
                     'step_output', sos_targets(self.output_groups[0]))
                 for og in self.output_groups[1:]:
                     if og != env.sos_dict['step_output'].targets():
                         env.sos_dict['step_output'].extend(og)
+
             # now that output is settled, we can write remaining signatures
             for idx, res in enumerate(self.proc_results):
                 if pending_signatures[idx] is not None:

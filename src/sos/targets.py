@@ -543,9 +543,8 @@ class file_target(path, BaseTarget):
         if isinstance(sig, str) or not self.exists():
             try:
                 self.target_signature()
-            except ValueError:
+            except:
                 # if file does not exist
-                raise
                 return False
             return self._md5 == (sig if isinstance(sig, str) else sig[2])
         if not sig or sig[1] != os.path.getsize(self):
@@ -793,7 +792,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         return hash(repr(self))
 
     def __eq__(self, other):
-        return self._targets == other._targets if isinstance(other, sos_targets) else other
+        return self._targets == other._targets if isinstance(other, sos_targets) else False
 
     def __add__(self, part):
         if len(self._targets) == 1:
@@ -965,7 +964,7 @@ class InMemorySignature:
                     else:
                         freal = file_target(f)
                     if not freal.validate(m):
-                        return f'Signature of target {f} {freal.target_signature()} does not match saved signature {m}'
+                        return f'Target {f} does not exist or does not match saved signature {m}'
                     res[cur_type].append(freal.target_name() if isinstance(
                         freal, file_target) else freal)
                     files_checked[freal.target_name()] = True
@@ -998,7 +997,6 @@ class RuntimeInfo(InMemorySignature):
 
         # if all output files are external
         self.external_sig = self.output_files.is_external() and self.input_files.is_external()
-
         self.sig_id = textMD5(
             f'{self.script} {self.input_files} {self.output_files} {self.dependent_files} {stable_repr(self.init_signature)}')
 
@@ -1064,12 +1062,14 @@ class RuntimeInfo(InMemorySignature):
         Because local input and output files can only be determined after the execution
         of workflow. They are not part of the construction.
         '''
+        if not self.output_files.valid():
+            raise ValueError(f'Cannot write signature with undetermined output {self.output_files}')
+        else:
+            env.logger.trace(f'write signature {self.sig_id} with output {self.output_files}')
         ret = super(RuntimeInfo, self).write()
         if ret is False:
             env.logger.debug(f'Failed to write signature {self.sig_id}')
             return ret
-
-        env.logger.trace(f'Write signature {self.sig_id}')
         step_signatures.set(self.sig_id, ret, self.external_sig)
         workflow_signatures.write('tracked_files', self.sig_id, repr({
             'input_files': [str(f.resolve()) for f in self.input_files if isinstance(f, file_target)],

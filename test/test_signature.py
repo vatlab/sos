@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import unittest
+import shutil
 
 from sos.hosts import Host
 from sos.parser import SoS_Script
@@ -601,5 +602,31 @@ sh:
         self.assertEqual(res['__completed__']['__step_completed__'], 0)
 
 
+    def testSignatureWithDynamicOutput(self):
+        '''Test return of output from dynamic output'''
+        for i in range(5):
+            if os.path.exists(f'rep_{i}'):
+                shutil.rmtree(f'rep_{i}')
+        script = SoS_Script(r'''\
+[1: shared={'step1': 'step_output'}]
+input: for_each={'i': range(5)}, concurrent=True
+output: dynamic(f'rep_{i}/*.res')
+
+import random
+os.makedirs(f'rep_{i}', exist_ok=True)
+path(f'rep_{i}/{random.randint(0, 10000)}.res').touch()
+''')
+        wf = script.workflow()
+        res = Base_Executor(wf).run()
+        files = env.sos_dict['step1']
+        self.assertEqual(len(files), 5)
+        self.assertEqual(res['__completed__']['__substep_completed__'], 5)
+        # rerun
+        res = Base_Executor(wf).run()
+        files_again = env.sos_dict['step1']
+        self.assertEqual(files, files_again)
+        self.assertEqual(res['__completed__']['__substep_completed__'], 0)
+
 if __name__ == '__main__':
     unittest.main()
+
