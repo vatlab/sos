@@ -1409,7 +1409,7 @@ class Base_Step_Executor:
                 # if shared is true, we have to disable concurrent because we
                 # do not yet return anything from shared.
                 self.concurrent_substep = 'concurrent' in kwargs and kwargs['concurrent'] and len(
-                    self._substeps) > 1 and self.run_mode != 'dryrun' and 'shared' not in self.step.options
+                    self._substeps) > 1 and self.run_mode != 'dryrun'
             except (UnknownTarget, RemovedTarget, UnavailableLock):
                 raise
             except Exception as e:
@@ -1518,9 +1518,6 @@ class Base_Step_Executor:
                                 self.process_output_args(ofiles, **kwargs)
                                 self.output_groups[idx] = env.sos_dict['_output'].targets(
                                 )
-                                if self.concurrent_substep and ofiles.undetermined():
-                                    env.logger.trace('Disable concurrent substeps because concurrent substeps does not return dynamic output to master')
-                                    self.concurrent_substep = False
                             elif key == 'depends':
                                 try:
                                     dfiles = self.expand_depends_files(*args)
