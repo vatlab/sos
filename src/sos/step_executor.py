@@ -1576,9 +1576,7 @@ class Base_Step_Executor:
                                         env.sos_dict['_input'],
                                         env.sos_dict['_output'],
                                         env.sos_dict['_depends'],
-                                        env.sos_dict['__signature_vars__'] | {'_input', '_output', '_depends', '_index', '__args__',
-                                           'step_name', '_runtime', '__signature_vars__', '__step_context__'
-                                           },
+                                        env.sos_dict['__signature_vars__'],
                                         share_vars='shared' in self.step.options)
                                     env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} with signature {sig.sig_id}')
                                     # if singaure match, we skip the substep even  if
