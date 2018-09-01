@@ -439,7 +439,7 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
             if validate_step_sig(sig):
                 # avoid sig being released in the final statement
                 sig = None
-                return {'ret_code': 0, 'sig_skipped': 1}
+                return {'ret_code': 0, 'sig_skipped': 1, 'output': env.sos_dict['_output']}
             sig.lock()
         verify_input()
         if capture_output:
@@ -449,9 +449,12 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
                 errmsg = err.getvalue()
         else:
             SoS_exec(stmt, return_result=False)
+        if env.sos_dict['step_output'].undetermined():
+            env.sos_dict.set('_output', reevaluate_output())
         if sig:
+            sig.set_output(env.sos_dict['_output'])
             sig.write()
-        res = {'ret_code': 0}
+        res = {'ret_code': 0, 'output': env.sos_dict['_output']}
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res
@@ -517,7 +520,6 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
     finally:
         # release the lock even if the process becomes zombie? #871
         if sig:
-            sig.write()
             sig.release(quiet=True)
 
 def verify_input():
@@ -528,6 +530,38 @@ def verify_input():
             if not target.target_exists('target'):
                 raise RemovedTarget(target)
 
+def expand_input_files(value, *args):
+    # if unspecified, use __step_output__ as input (default)
+    # resolve dynamic input.
+    args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
+    if not args:
+        return env.sos_dict['step_input']
+    else:
+        return _expand_file_list(False, *args)
+
+def expand_depends_files(*args, **kwargs):
+    '''handle directive depends'''
+    args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
+    return _expand_file_list(False, *args)
+
+def expand_output_files(value, *args):
+    '''Process output files (perhaps a pattern) to determine input files.
+    '''
+    if any(isinstance(x, dynamic) for x in args):
+        return sos_targets(undetermined=value)
+    else:
+        return _expand_file_list(True, *args)
+
+def reevaluate_output():
+    # re-process the output statement to determine output files
+    args, _ = SoS_eval(
+        f'__null_func__({env.sos_dict["step_output"]._undetermined})')
+    if args is True:
+        env.logger.error('Failed to resolve unspecified output')
+        return
+    # handle dynamic args
+    args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
+    return expand_output_files('', *args)
 
 class Base_Step_Executor:
     # This base class defines how steps are executed. The derived classes will reimplement
@@ -536,29 +570,6 @@ class Base_Step_Executor:
     def __init__(self, step):
         self.step = step
         self.task_manager = None
-
-    def expand_input_files(self, value, *args):
-        # if unspecified, use __step_output__ as input (default)
-        # resolve dynamic input.
-        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-        if not args:
-            return env.sos_dict['step_input']
-        else:
-            return _expand_file_list(False, *args)
-
-    def expand_depends_files(self, *args, **kwargs):
-        '''handle directive depends'''
-        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-        return _expand_file_list(False, *args)
-
-    def expand_output_files(self, value, *args):
-        '''Process output files (perhaps a pattern) to determine input files.
-        '''
-        if any(isinstance(x, dynamic) for x in args):
-            return sos_targets(undetermined=value)
-        else:
-            return _expand_file_list(True, *args)
-
 
     def verify_output(self):
         if env.sos_dict['step_output'] is None:
@@ -947,17 +958,6 @@ class Base_Step_Executor:
             elif k == 'mem':
                 v = expand_size(v)
             env.sos_dict['_runtime'][k] = v
-
-    def reevaluate_output(self):
-        # re-process the output statement to determine output files
-        args, _ = SoS_eval(
-            f'__null_func__({env.sos_dict["step_output"]._undetermined})')
-        if args is True:
-            env.logger.error('Failed to resolve unspecified output')
-            return
-        # handle dynamic args
-        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-        return self.expand_output_files('', *args)
 
     def prepare_task(self):
         env.sos_dict['_runtime']['cur_dir'] = os.getcwd()
@@ -1381,7 +1381,7 @@ class Base_Step_Executor:
                             f'Step input should be specified before {key}')
                     try:
                         args, kwargs = SoS_eval(f'__null_func__({value})')
-                        dfiles = self.expand_depends_files(*args)
+                        dfiles = expand_depends_files(*args)
                         # dfiles can be Undetermined
                         self.process_depends_args(dfiles, **kwargs)
                     except (UnknownTarget, RemovedTarget, UnavailableLock):
@@ -1402,7 +1402,7 @@ class Base_Step_Executor:
             try:
                 args, kwargs = SoS_eval(f"__null_func__({stmt})")
                 # Files will be expanded differently with different running modes
-                input_files: sos_targets = self.expand_input_files(stmt, *args)
+                input_files: sos_targets = expand_input_files(stmt, *args)
                 self._substeps, self._vars = self.process_input_args(
                     input_files, **kwargs)
                 #
@@ -1508,8 +1508,7 @@ class Base_Step_Executor:
                                 if idx == 0:
                                     env.sos_dict.set(
                                         'step_output', sos_targets())
-                                ofiles: sos_targets = self.expand_output_files(
-                                    value, *args)
+                                ofiles: sos_targets = expand_output_files(value, *args)
                                 if g.valid() and ofiles.valid():
                                     if any(x in g._targets for x in ofiles if not isinstance(x, sos_step)):
                                         raise RuntimeError(
@@ -1520,7 +1519,7 @@ class Base_Step_Executor:
                                 )
                             elif key == 'depends':
                                 try:
-                                    dfiles = self.expand_depends_files(*args)
+                                    dfiles = expand_depends_files(*args)
                                     # dfiles can be Undetermined
                                     self.process_depends_args(dfiles, **kwargs)
                                     self.log('_depends')
@@ -1549,7 +1548,7 @@ class Base_Step_Executor:
 
                                 proc_vars = env.sos_dict.clone_selected_vars(
                                     env.sos_dict['__signature_vars__']
-                                    | {'_input', '_output', '_depends', '_index', '__args__',
+                                    | {'step_output', '_input', '_output', '_depends', '_index', '__args__',
                                        'step_name', '_runtime',
                                        '__signature_vars__', '__step_context__'
                                        })
@@ -1594,7 +1593,7 @@ class Base_Step_Executor:
                                             # of the task.
                                             if not self.step.task:
                                                 if env.sos_dict['step_output'].undetermined():
-                                                    output = self.reevaluate_output()
+                                                    output = reevaluate_output()
                                                     self.output_groups[env.sos_dict['_index']] = output
                                                     sig.set_output(output)
                                                 sig.write()
@@ -1690,12 +1689,15 @@ class Base_Step_Executor:
                 if 'sig_skipped' in res:
                     self.completed['__substep_skipped__'] += 1
                     self.completed['__substep_completed__'] -= 1
+                if 'output' in res and env.sos_dict['step_output'].undetermined():
+                    self.output_groups[idx] = res['output']
             # check results
             for proc_result in [x for x in self.proc_results if x['ret_code'] == 0]:
                 if 'stdout' in proc_result and proc_result['stdout']:
                     sys.stdout.write(proc_result['stdout'])
                 if 'stderr' in proc_result and proc_result['stderr']:
                     sys.stderr.write(proc_result['stderr'])
+
             for proc_result in [x for x in self.proc_results if x['ret_code'] != 0]:
                 if 'stdout' in proc_result and proc_result['stdout']:
                     sys.stdout.write(proc_result['stdout'])
