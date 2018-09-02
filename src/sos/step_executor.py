@@ -444,6 +444,7 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
         verify_input()
 
         from .workflow_executor import __null_func__
+        from ._version import __version__
         env.sos_dict.set('__null_func__', __null_func__)
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
