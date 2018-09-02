@@ -442,6 +442,13 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
                 return {'ret_code': 0, 'sig_skipped': 1, 'output': env.sos_dict['_output']}
             sig.lock()
         verify_input()
+
+        from .workflow_executor import __null_func__
+        env.sos_dict.set('__null_func__', __null_func__)
+        # initial values
+        env.sos_dict.set('SOS_VERSION', __version__)
+        SoS_exec('import os, sys, glob', None)
+        SoS_exec('from sos.runtime import *', None)
         if capture_output:
             with stdoutIO() as (out, err):
                 SoS_exec(stmt, return_result=False)
@@ -451,8 +458,6 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
             SoS_exec(stmt, return_result=False)
         if env.sos_dict['step_output'].undetermined():
             # the pool worker does not have __null_func__ defined
-            from .workflow_executor import __null_func__
-            env.sos_dict.set('__null_func__', __null_func__)
             env.sos_dict.set('_output', reevaluate_output())
         if sig:
             sig.set_output(env.sos_dict['_output'])
