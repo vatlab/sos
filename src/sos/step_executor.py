@@ -451,6 +451,7 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
             SoS_exec(stmt, return_result=False)
         if env.sos_dict['step_output'].undetermined():
             # the pool worker does not have __null_func__ defined
+            from .workflow_executor import __null_func__
             env.sos_dict.set('__null_func__', __null_func__)
             env.sos_dict.set('_output', reevaluate_output())
         if sig:
