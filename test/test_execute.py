@@ -1307,8 +1307,7 @@ sos_run('remove')
 input: for_each={'i': range(3)}, concurrent=True
 output: dynamic('*.dout')
 import random
-sh: expand=True
-touch {random.randint(0, 1000000)}.dout
+path(f'{random.randint(0, 1000000)}.dout').touch()
 ''')    
         wf = script.workflow()
         res = Base_Executor(wf).run()
