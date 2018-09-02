@@ -113,6 +113,8 @@ setup(name="sos",
           'jinja2',
           # to execute workflow embedded in .ipynb files
           'nbformat',
+          # zeromq for IPC
+          'pyzmq',
       ],
       entry_points='''
 [console_scripts]
