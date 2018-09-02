@@ -1713,8 +1713,8 @@ class Base_Step_Executor:
                 env.sos_dict.set(
                     'step_output', sos_targets(self.output_groups[0]))
                 for og in self.output_groups[1:]:
-                    if og != env.sos_dict['step_output'].targets():
-                        env.sos_dict['step_output'].extend(og)
+                    env.sos_dict['step_output'].extend(og)
+                env.sos_dict['step_output'].dedup()
 
             # now that output is settled, we can write remaining signatures
             for idx, res in enumerate(self.proc_results):

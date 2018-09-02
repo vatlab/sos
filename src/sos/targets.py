@@ -573,7 +573,7 @@ class file_target(path, BaseTarget):
         return hash(repr(self))
 
     def __eq__(self, obj):
-        return isinstance(obj, file_target) and str(self) == str(obj)
+        return isinstance(obj, file_target) and os.path.abspath(self) == os.path.abspath(obj)
 
 
 class paths(Sequence, os.PathLike):
@@ -788,11 +788,18 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         else:
             raise ValueError(f'Cannot get name() for group of targets {self}')
 
+    def dedup(self):
+        self._targets = list(dict.fromkeys(self._targets))
+
     def __hash__(self):
         return hash(repr(self))
 
     def __eq__(self, other):
-        return self._targets == other._targets if isinstance(other, sos_targets) else False
+        try:
+            # allow compare to any object as long as it can be converted to sos_targets
+            return self._targets == (other._targets if isinstance(other, sos_targets) else sos_targets(other)._targets)
+        except:
+            return False
 
     def __add__(self, part):
         if len(self._targets) == 1:
