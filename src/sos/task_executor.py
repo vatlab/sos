@@ -17,14 +17,14 @@ from .targets import (InMemorySignature, UnknownTarget, file_target,
                       remote, sos_step, sos_targets)
 from .utils import StopInputGroup, env, short_repr, pickleable
 from .tasks import TaskFile, remove_task_files
-
+from .step_executor import parse_shared_vars
 
 def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
     shared = {}
     if 'shared' in env.sos_dict['_runtime']:
         svars = env.sos_dict['_runtime']['shared']
         if isinstance(svars, str):
-            if vars not in env.sos_dict:
+            if svars not in env.sos_dict:
                 raise ValueError(
                     f'Unavailable shared variable {svars} after the completion of task {task_id}')
             if not pickleable(env.sos_dict[svars], svars):
@@ -104,7 +104,7 @@ def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
     depends = {} if env.sos_dict['_depends'] is None or sos_dict['_depends'] is None else {
         x: file_target(x).target_signature() for x in sos_dict['_depends'] if isinstance(x, (str, file_target))}
     return {'ret_code': 0, 'task': task_id, 'input': input, 'output': output, 'depends': depends,
-            'shared': {env.sos_dict['_index']: shared}, 'skipped': skipped,
+            'shared': shared, 'skipped': skipped,
             'start_time': sos_dict.get('start_time', ''),
             'peak_cpu': sos_dict.get('peak_cpu', 0),
             'peak_mem': sos_dict.get('peak_mem', 0),
@@ -390,7 +390,7 @@ del sos_handle_parameter_
     sig = None if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified() else InMemorySignature(
         env.sos_dict['_input'], env.sos_dict['_output'],
         env.sos_dict['_depends'], env.sos_dict['__signature_vars__'],
-        share_vars='shared' in env.sos_dict['_runtime'])
+        shared_vars=parse_shared_vars(env.sos_dict['_runtime'].get('shared', None)))
 
     if sig and _validate_task_signature(sig, sig_content.get(task_id, {})):
         env.logger.info(f'{task_id} ``skipped``')

@@ -21,7 +21,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import psutil
 from billiard import Pool
 
-from .eval import SoS_eval, SoS_exec, stmtHash
+from .eval import SoS_eval, SoS_exec, stmtHash, accessed_vars
+
 from .parser import SoS_Step
 from .pattern import extract_pattern
 from .signatures import workflow_signatures
@@ -48,7 +49,6 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     it uses, and input, output, etc.'''
     from .workflow_executor import __null_func__
     from ._version import __version__
-    from .eval import accessed_vars
 
     # these are the information we need to build a DAG, by default
     # input and output and undetermined, and there are no variables.
@@ -368,61 +368,47 @@ def validate_step_sig(sig):
         # if users use sos_run, the "scope" of the step goes beyong names in this step
         # so we cannot save signatures for it.
         if 'sos_run' in env.sos_dict['__signature_vars__']:
-            return False
+            return {}
         else:
             matched = sig.validate()
             if isinstance(matched, dict):
-                # in this case, an Undetermined output can get real output files
-                # from a signature
-                env.sos_dict.set(
-                    '_input', sos_targets(matched['input']))
-                env.sos_dict.set(
-                    '_depends', sos_targets(matched['depends']))
-                env.sos_dict.set(
-                    '_output', sos_targets(matched['output']))
-                env.sos_dict.update(
-                    matched['vars'])
                 env.logger.info(
                     f'``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` due to saved signature')
-                return True
+                return matched
             else:
                 env.logger.debug(
                     f'Signature mismatch: {matched}')
-                return False
+                return {}
     elif env.config['sig_mode'] == 'assert':
         matched = sig.validate()
         if isinstance(matched, str):
             raise RuntimeError(
                 f'Signature mismatch: {matched}')
         else:
-            env.sos_dict.set(
-                '_input', sos_targets(matched['input']))
-            env.sos_dict.set(
-                '_depends', sos_targets(matched['depends']))
-            env.sos_dict.set(
-                '_output', sos_targets(matched['output']))
-            env.sos_dict.update(
-                matched['vars'])
             env.logger.info(
                 f'Step ``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` with matching signature')
-            return True
+            return matched
     elif env.config['sig_mode'] == 'build':
         # build signature require existence of files
         if 'sos_run' in env.sos_dict['__signature_vars__']:
-            return False
+            return {}
         elif sig.write(rebuild=True):
             env.logger.info(
                 f'Step ``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` with signature constructed')
-            return True
+            return {'input': sig.content['input'],
+                'output': sig.content['output'],
+                'depends': sig.content['depends'],
+                'vars': sig.content['end_context']
+                }
     elif env.config['sig_mode'] == 'force':
-        return False
+        return {}
     else:
         raise RuntimeError(
             f'Unrecognized signature mode {env.config["sig_mode"]}')
 
 
 def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
-    share_vars=False, capture_output=False):
+    shared_vars=[], capture_output=False):
     '''Execute statements in the passed dictionary'''
     env.sos_dict.quick_update(proc_vars)
     sig = None if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified() else RuntimeInfo(
@@ -431,15 +417,16 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
         env.sos_dict['_output'],
         env.sos_dict['_depends'],
         env.sos_dict['__signature_vars__'],
-        share_vars=share_vars)
+        shared_vars=shared_vars)
     outmsg = ''
     errmsg = ''
     try:
         if sig:
-            if validate_step_sig(sig):
+            matched = validate_step_sig(sig)
+            if matched:
                 # avoid sig being released in the final statement
                 sig = None
-                return {'ret_code': 0, 'sig_skipped': 1, 'output': env.sos_dict['_output']}
+                return {'ret_code': 0, 'sig_skipped': 1, 'output': matched['output'], 'shared': matched['vars']}
             sig.lock()
         verify_input()
 
@@ -463,7 +450,7 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
         if sig:
             sig.set_output(env.sos_dict['_output'])
             sig.write()
-        res = {'ret_code': 0, 'output': env.sos_dict['_output']}
+        res = {'ret_code': 0, 'output': sig.content['output'], 'shared': sig.content['end_context']}
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res
@@ -571,6 +558,68 @@ def reevaluate_output():
     # handle dynamic args
     args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
     return expand_output_files('', *args)
+
+def parse_shared_vars(option):
+    shared_vars = set()
+    if not option:
+        return shared_vars
+    if isinstance(option, str):
+        shared_vars.add(option)
+    elif isinstance(option, Mapping):
+        for var, val in option.items():
+            shared_vars |= accessed_vars(val)
+    elif isinstance(option, Sequence):
+        for item in option:
+            if isinstance(item, str):
+                shared_vars.add(item)
+            elif isinstance(item, Mapping):
+                for var, val in item.items():
+                    shared_vars |= accessed_vars(val)
+    return shared_vars
+
+def evaluate_shared(vars, option):
+    # handle option shared and store variables in a "__shared_vars" variable
+    shared_vars = {}
+    env.sos_dict.quick_update(vars[-1])
+    if isinstance(option, str):
+        if option in env.sos_dict:
+            shared_vars[option] = env.sos_dict[option]
+        else:
+            raise RuntimeError(f'shared variable does not exist: {option}')
+    elif isinstance(option, Mapping):
+        for var, val in option.items():
+            try:
+                if var == val:
+                    shared_vars[var] = env.sos_dict[var]
+                else:
+                    shared_vars[var] = SoS_eval(val)
+            except Exception as e:
+                raise RuntimeError(
+                    f'Failed to evaluate shared variable {var} from expression {val}: {e}')
+    # if there are dictionaries in the sequence, e.g.
+    # shared=['A', 'B', {'C':'D"}]
+    elif isinstance(option, Sequence):
+        for item in option:
+            if isinstance(item, str):
+                if item in env.sos_dict:
+                    shared_vars[item] = env.sos_dict[item]
+                else:
+                    raise RuntimeError(f'shared variable does not exist: {option}')
+            elif isinstance(item, Mapping):
+                for var, val in item.items():
+                    try:
+                        if var == val:
+                            continue
+                        else:
+                            shared_vars[var] = SoS_eval(val)
+                    except Exception as e:
+                        raise RuntimeError(
+                            f'Failed to evaluate shared variable {var} from expression {val}: {e}')
+            else:
+                raise RuntimeError(f'Unacceptable shared option. Only str or mapping are accepted in sequence: {option}')
+    else:
+        raise RuntimeError(f'Unacceptable shared option. Only str, sequence, or mapping are accepted in sequence: {option}')
+    return shared_vars
 
 class Base_Step_Executor:
     # This base class defines how steps are executed. The derived classes will reimplement
@@ -1164,27 +1213,14 @@ class Base_Step_Executor:
             raise RuntimeError(
                 f'Failed to get results for tasks {", ".join(x for x in self.proc_results if isinstance(x, str))}')
         #
-        # now, if the task has shared variable, merge to sos_dict
-        shared = {}
-        for res in self.proc_results:
-            if 'shared' not in res:
-                continue
+        for idx, res in enumerate(self.proc_results):
             if 'skipped' in res:
                 if res['skipped']:
                     self.completed['__task_skipped__'] += 1
                 else:
                     self.completed['__task_completed__'] += 1
-            #
-            # shared looks like: {0: {'a': 100}} where the first 0 is _index
-            # we need to convert it to {'a': {0: 100}}
-            env.logger.debug(f'Collect shared result {res["shared"]}')
-            for idx, sh in res['shared'].items():
-                for k, v in sh.items():
-                    if k in shared:
-                        shared[k][idx] = v
-                    else:
-                        shared[k] = {idx: v}
-        env.sos_dict.update(shared)
+            if 'shared' in res:
+                self.shared_vars[idx].update(res['shared'])
 
     def log(self, stage=None, msg=None):
         if stage == 'start':
@@ -1260,50 +1296,7 @@ class Base_Step_Executor:
         result['__changed_vars__'] = set()
         result['__shared__'] = {}
         if 'shared' in self.step.options:
-            rvars = self.step.options['shared']
-            if isinstance(rvars, str):
-                result['__changed_vars__'].add(rvars)
-                if rvars not in env.sos_dict:
-                    env.logger.warning(
-                        f'Shared variable {rvars} does not exist.')
-                else:
-                    result['__shared__'][rvars] = copy.deepcopy(
-                        env.sos_dict[rvars])
-            elif isinstance(rvars, Mapping):
-                result['__changed_vars__'] |= rvars.keys()
-                for var in rvars.keys():
-                    if var not in env.sos_dict:
-                        env.logger.warning(
-                            f'Shared variable {var} does not exist.')
-                    else:
-                        result['__shared__'][var] = copy.deepcopy(
-                            env.sos_dict[var])
-            elif isinstance(rvars, Sequence):
-                for item in rvars:
-                    if isinstance(item, str):
-                        result['__changed_vars__'].add(item)
-                        if item not in env.sos_dict:
-                            env.logger.warning(
-                                f'Shared variable {item} does not exist.')
-                        else:
-                            result['__shared__'][item] = copy.deepcopy(
-                                env.sos_dict[item])
-                    elif isinstance(item, Mapping):
-                        result['__changed_vars__'] |= item.keys()
-                        for var in item.keys():
-                            if var not in env.sos_dict:
-                                env.logger.warning(
-                                    f'Shared variable {var} does not exist.')
-                            else:
-                                result['__shared__'][var] = copy.deepcopy(
-                                    env.sos_dict[var])
-                    else:
-                        raise ValueError(
-                            f'Option shared should be a string, a mapping of expression, or a list of string or mappings. {rvars} provided')
-            else:
-                raise ValueError(
-                    f'Option shared should be a string, a mapping of expression, or a list of string or mappings. {rvars} provided')
-
+            result['__shared__'] = self.shared_vars
         if hasattr(env, 'accessed_vars'):
             result['__environ_vars__'] = self.environ_vars
             result['__signature_vars__'] = env.accessed_vars
@@ -1434,6 +1427,11 @@ class Base_Step_Executor:
             input_statement_idx = 0
 
         self.proc_results = []
+        self.vars_to_be_shared = set()
+        if 'shared' in self.step.options:
+            self.vars_to_be_shared = parse_shared_vars(self.step.options['shared'])
+        self.vars_to_be_shared = sorted(list(self.vars_to_be_shared - {'step_output', 'step_input', 'step_depends'}))
+        self.shared_vars = [{} for x in self._substeps]
         # run steps after input statement, which will be run multiple times for each input
         # group.
         env.sos_dict.set('__num_groups__', len(self._substeps))
@@ -1568,7 +1566,7 @@ class Base_Step_Executor:
                                                                            proc_vars=proc_vars,
                                                                            step_md5=self.step.md5,
                                                                            step_tokens=self.step.tokens,
-                                                                           share_vars='shared' in self.step.options,
+                                                                           shared_vars=self.vars_to_be_shared,
                                                                            capture_output=self.run_mode == 'interactive')))
                             else:
                                 if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified():
@@ -1582,15 +1580,17 @@ class Base_Step_Executor:
                                         env.sos_dict['_output'],
                                         env.sos_dict['_depends'],
                                         env.sos_dict['__signature_vars__'],
-                                        share_vars='shared' in self.step.options)
+                                        shared_vars=self.vars_to_be_shared)
                                     env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} with signature {sig.sig_id}')
                                     # if singaure match, we skip the substep even  if
                                     # there are tasks.
-                                    skip_index = validate_step_sig(sig)
-
-                                    if skip_index:
+                                    matched = validate_step_sig(sig)
+                                    skip_index = bool(matched)
+                                    if matched:
                                         if env.sos_dict['step_output'].undetermined():
-                                            self.output_groups[env.sos_dict['_index']] = env.sos_dict["_output"]
+                                            self.output_groups[env.sos_dict['_index']] = matched["output"]
+                                        if 'vars' in matched:
+                                            self.shared_vars[env.sos_dict['_index']] = matched["vars"]
                                     else:
                                         sig.lock()
                                         try:
@@ -1608,8 +1608,13 @@ class Base_Step_Executor:
                                                 sig.write()
                                             else:
                                                 pending_signatures[idx] = sig
+                                            if 'shared' in self.step.options:
+                                                try:
+                                                    self.shared_vars[env.sos_dict['_index']] = {
+                                                        x:env.sos_dict[x] for x in self.vars_to_be_shared}
+                                                except Exception as e:
+                                                    raise ValueError(f'Missing shared variable {e}.')
                                             sig.release()
-
                         except StopInputGroup as e:
                             self.output_groups[idx] = []
                             if e.message:
@@ -1627,9 +1632,14 @@ class Base_Step_Executor:
                         env.sos_dict['_output'],
                         env.sos_dict['_depends'],
                         env.sos_dict['__signature_vars__'],
-                        share_vars='shared' in self.step.options)
+                        shared_vars=self.vars_to_be_shared)
                     env.logger.trace(f'Check task-only step {env.sos_dict["step_name"]} with signature {sig.sig_id}')
-                    skip_index = validate_step_sig(sig)
+                    matched = validate_step_sig(sig)
+                    skip_index = bool(matched)
+                    if matched:
+                        if env.sos_dict['step_output'].undetermined():
+                            self.output_groups[env.sos_dict['_index']] = matched["output"]
+                        self.shared_vars[env.sos_dict['_index']] = matched["vars"]
                     pending_signatures[idx] = sig
 
                 # if this index is skipped, go directly to the next one
@@ -1715,15 +1725,14 @@ class Base_Step_Executor:
                 if 'exception' in proc_result:
                     raise proc_result['exception']
             # if output is Undetermined, re-evalulate it
-            if env.config['run_mode'] != 'dryrun':
-                # finalize output from output_groups because some output might be skipped
-                # this is the final version of the output but we do maintain output
-                # during the execution of step, for compatibility.
-                env.sos_dict.set(
-                    'step_output', sos_targets(self.output_groups[0]))
-                for og in self.output_groups[1:]:
-                    env.sos_dict['step_output'].extend(og)
-                env.sos_dict['step_output'].dedup()
+            # finalize output from output_groups because some output might be skipped
+            # this is the final version of the output but we do maintain output
+            # during the execution of step, for compatibility.
+            env.sos_dict.set(
+                'step_output', sos_targets(self.output_groups[0]))
+            for og in self.output_groups[1:]:
+                env.sos_dict['step_output'].extend(og)
+            env.sos_dict['step_output'].dedup()
 
             # now that output is settled, we can write remaining signatures
             for idx, res in enumerate(self.proc_results):
@@ -1731,32 +1740,12 @@ class Base_Step_Executor:
                     if res['ret_code'] == 0:
                         pending_signatures[idx].write()
 
-            self.log('output')
-            # variables defined by the shared option needs to be available to be verified
+            # if there exists an option shared, the variable would be treated as
+            # provides=sos_variable(), and then as step_output
             if 'shared' in self.step.options:
-                if isinstance(self.step.options['shared'], Mapping):
-                    for var, val in self.step.options['shared'].items():
-                        if var == val:
-                            continue
-                        try:
-                            env.sos_dict.set(var, SoS_eval(val))
-                        except Exception as e:
-                            raise RuntimeError(
-                                f'Failed to evaluate shared variable {var} from expression {val}: {e}')
-                # if there are dictionaries in the sequence, e.g.
-                # shared=['A', 'B', {'C':'D"}]
-                elif isinstance(self.step.options['shared'], Sequence):
-                    for item in self.step.options['shared']:
-                        if isinstance(item, Mapping):
-                            for var, val in item.items():
-                                if var == val:
-                                    continue
-                                try:
-                                    env.sos_dict.set(var, SoS_eval(val))
-                                except Exception as e:
-                                    raise RuntimeError(
-                                        f'Failed to evaluate shared variable {var} from expression {val}: {e}')
-            #
+                self.shared_vars = evaluate_shared(self.shared_vars, self.step.options['shared'])
+                env.sos_dict.quick_update(self.shared_vars)
+            self.log('output')
             self.verify_output()
             substeps = self.completed['__substep_completed__'] + \
                 self.completed['__substep_skipped__']

@@ -804,8 +804,6 @@ class Base_Executor:
             if idx == 0:
                 context['__step_output__'] = env.sos_dict['__step_output__']
 
-            # NOTE: if a section has option 'shared', the execution of this step would
-            # change dictionary, essentially making all later steps rely on this step.
             dag.add_step(section.uuid,
                          section.step_name(),
                          idx,

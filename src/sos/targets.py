@@ -840,7 +840,7 @@ class InMemorySignature:
     def __init__(self, input_files: sos_targets, output_files: sos_targets,
                  dependent_files: sos_targets, signature_vars: set=set(),
                  sdict: dict={},
-                 share_vars=False):
+                 shared_vars: list= []):
         '''Runtime information for specified output files
         '''
         if not sdict:
@@ -859,7 +859,7 @@ class InMemorySignature:
         self.output_files = output_files if output_files.undetermined() else sos_targets(
             [x for x in output_files._targets if not isinstance(x, sos_step)])
         self.signature_vars = signature_vars
-        self.share_vars = share_vars
+        self.shared_vars = shared_vars
         # signatures that exist before execution and might change during execution
         self.init_signature = {x: deepcopy(sdict[x]) for x in sorted(
             signature_vars) if x in sdict and not callable(sdict[x]) and pickleable(sdict[x], x)}
@@ -897,8 +897,8 @@ class InMemorySignature:
                 return False
         init_context_sig = {var: objectMD5(self.init_signature[var]) for var in self.init_signature if pickleable(
             self.init_signature[var], var)}
-        if self.share_vars:
-            end_context = {var: env.sos_dict[var] for var in self.signature_vars if var in env.sos_dict and pickleable(
+        if self.shared_vars:
+            end_context = {var: env.sos_dict[var] for var in self.shared_vars if var in env.sos_dict and pickleable(
                 env.sos_dict[var], var)}
         else:
             end_context = {}
@@ -991,7 +991,7 @@ class RuntimeInfo(InMemorySignature):
 
     def __init__(self, step_md5: str, script: str, input_files: sos_targets, output_files: sos_targets,
                  dependent_files: sos_targets, signature_vars: set=set(), sdict: dict={},
-                 share_vars: bool=False):
+                 shared_vars: list=[]):
         '''Runtime information for specified output files
         '''
         if not sdict:
@@ -1000,7 +1000,7 @@ class RuntimeInfo(InMemorySignature):
         self.script = script
         super(RuntimeInfo, self).__init__(input_files, output_files,
                                           dependent_files, signature_vars,
-                                          share_vars=share_vars)
+                                          shared_vars=shared_vars)
 
         # if all output files are external
         self.external_sig = self.output_files.is_external() and self.input_files.is_external()

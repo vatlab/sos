@@ -523,7 +523,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
                                   == 1 else f'-{task_ids[-1]}.sh')
         # now we need to write a job file
         job_file = os.path.join(os.path.expanduser(
-            '~'), '.sos', 'tasks', self.alias, filename)
+            '~'), '.sos', 'tasks', filename)
         # do not translate newline under windows because the script will be executed
         # under linux/mac
         with open(job_file, 'w', newline='') as job:
