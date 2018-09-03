@@ -508,7 +508,7 @@ run: expand=True
         self.assertTrue(os.path.isfile("a100_20.txt"))
 
         script = SoS_Script('''
-[10 (simulate): shared='rng']
+[10 (simulate): shared=['rng', 'step_rng']]
 input: for_each={'i': range(5)}
 task: shared='rng'
 print(f"{i}")
@@ -519,9 +519,13 @@ rng = random.randint(1, 1000)
         Base_Executor(wf).run()
         var = env.sos_dict['rng']
         self.assertTrue(isinstance(var, int))
+        self.assertTrue(isinstance(env.sos_dict['step_rng'], list))
+        self.assertEqual(env.sos_dict['step_rng'][-1], var)
         # run it again, should get from signature
         Base_Executor(wf).run()
         self.assertEqual(var, env.sos_dict['rng'])
+        #
+
 
 
     @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')

@@ -581,6 +581,14 @@ def evaluate_shared(vars, option):
     # handle option shared and store variables in a "__shared_vars" variable
     shared_vars = {}
     env.sos_dict.quick_update(vars[-1])
+    for key in vars[-1].keys():
+        try:
+            if key in ('output', 'depends', 'input'):
+                env.logger.warning(f'Cannot overwrite variable step_{key} from substep variable {key}')
+            else:
+                env.sos_dict.set('step_' + key, [x[key] for x in vars])
+        except Exception as e:
+            env.logger.warning('Failed to create step level variable step_{key}')
     if isinstance(option, str):
         if option in env.sos_dict:
             shared_vars[option] = env.sos_dict[option]
@@ -1430,7 +1438,7 @@ class Base_Step_Executor:
         self.vars_to_be_shared = set()
         if 'shared' in self.step.options:
             self.vars_to_be_shared = parse_shared_vars(self.step.options['shared'])
-        self.vars_to_be_shared = sorted(list(self.vars_to_be_shared - {'step_output', 'step_input', 'step_depends'}))
+        self.vars_to_be_shared = sorted([x[5:] if x.startswith('step_') else x for x in self.vars_to_be_shared if x not in ('step_', 'step_input', 'step_output', 'step_depends')])
         self.shared_vars = [{} for x in self._substeps]
         # run steps after input statement, which will be run multiple times for each input
         # group.
@@ -1608,13 +1616,15 @@ class Base_Step_Executor:
                                                 sig.write()
                                             else:
                                                 pending_signatures[idx] = sig
-                                            if 'shared' in self.step.options:
-                                                try:
-                                                    self.shared_vars[env.sos_dict['_index']] = {
-                                                        x:env.sos_dict[x] for x in self.vars_to_be_shared}
-                                                except Exception as e:
-                                                    raise ValueError(f'Missing shared variable {e}.')
                                             sig.release()
+
+                                if 'shared' in self.step.options:
+                                    try:
+                                        self.shared_vars[env.sos_dict['_index']] = {
+                                            x:env.sos_dict[x] for x in self.vars_to_be_shared
+                                                if x in env.sos_dict}
+                                    except Exception as e:
+                                        raise ValueError(f'Missing shared variable {e}.')
                         except StopInputGroup as e:
                             self.output_groups[idx] = []
                             if e.message:
