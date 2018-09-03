@@ -615,7 +615,7 @@ def remove_task_files(task: str, exts: list):
             except Exception as e:
                 # if the file cannot be removed now, we use a thread to wait a
                 # bit and try to remove it later. The function should not
-                # wiat for the thread thoug
+                # wait for the thread though
                 try:
                     DelayedAction(os.remove, filename)
                 except:

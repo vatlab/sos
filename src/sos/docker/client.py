@@ -12,7 +12,7 @@ import tempfile
 
 from sos.eval import interpolate
 from sos.targets import sos_targets, path
-from sos.utils import env, pexpect_run
+from sos.utils import env, pexpect_run, DelayedAction
 
 #
 # docker support
@@ -222,10 +222,11 @@ class SoS_DockerClient:
         # if image is specified, check if it is available locally. If not, pull it
         err_msg = ''
         try:
-            print(f'HINT: Pulling docker image {image}')
+            print_msg = DelayedAction(print, f'HINT: Pulling docker image {image}')
             output = subprocess.check_output(
                 'docker pull {}'.format(image), stderr=subprocess.STDOUT, shell=True,
                 universal_newlines=True)
+            del print_msg
         except subprocess.CalledProcessError as exc:
             err_msg = exc.output
         if not self._is_image_avail(image):
