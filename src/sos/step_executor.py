@@ -1581,6 +1581,13 @@ class Base_Step_Executor:
                                     env.logger.trace('Execute substep {env.sos_dict["step_name"]} without signature')
                                     verify_input()
                                     self.execute(statement[1])
+                                    if 'shared' in self.step.options:
+                                        try:
+                                            self.shared_vars[env.sos_dict['_index']].update({
+                                                x:env.sos_dict[x] for x in self.vars_to_be_shared
+                                                    if x in env.sos_dict})
+                                        except Exception as e:
+                                            raise ValueError(f'Missing shared variable {e}.')
                                 else:
                                     sig = RuntimeInfo(
                                         self.step.md5, self.step.tokens,
@@ -1598,12 +1605,19 @@ class Base_Step_Executor:
                                         if env.sos_dict['step_output'].undetermined():
                                             self.output_groups[env.sos_dict['_index']] = matched["output"]
                                         if 'vars' in matched:
-                                            self.shared_vars[env.sos_dict['_index']] = matched["vars"]
+                                            self.shared_vars[env.sos_dict['_index']].update(matched["vars"])
                                     else:
                                         sig.lock()
                                         try:
                                             verify_input()
                                             self.execute(statement[1])
+                                            if 'shared' in self.step.options:
+                                                try:
+                                                    self.shared_vars[env.sos_dict['_index']].update({
+                                                        x:env.sos_dict[x] for x in self.vars_to_be_shared
+                                                            if x in env.sos_dict})
+                                                except Exception as e:
+                                                    raise ValueError(f'Missing shared variable {e}.')
                                         finally:
                                             # if this is the end of substep, save the signature
                                             # otherwise we need to wait for the completion
@@ -1618,13 +1632,7 @@ class Base_Step_Executor:
                                                 pending_signatures[idx] = sig
                                             sig.release()
 
-                                if 'shared' in self.step.options:
-                                    try:
-                                        self.shared_vars[env.sos_dict['_index']] = {
-                                            x:env.sos_dict[x] for x in self.vars_to_be_shared
-                                                if x in env.sos_dict}
-                                    except Exception as e:
-                                        raise ValueError(f'Missing shared variable {e}.')
+
                         except StopInputGroup as e:
                             self.output_groups[idx] = []
                             if e.message:
@@ -1649,7 +1657,7 @@ class Base_Step_Executor:
                     if matched:
                         if env.sos_dict['step_output'].undetermined():
                             self.output_groups[env.sos_dict['_index']] = matched["output"]
-                        self.shared_vars[env.sos_dict['_index']] = matched["vars"]
+                        self.shared_vars[env.sos_dict['_index']].update(matched["vars"])
                     pending_signatures[idx] = sig
 
                 # if this index is skipped, go directly to the next one
