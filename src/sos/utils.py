@@ -956,7 +956,7 @@ def sos_handle_parameter_(key, defvalue):
                     f'--{key.replace("_", "-")}', dest=key, action='store_true')
                 feature_parser.add_argument(
                     f'--no-{key.replace("_", "-")}', dest=key, action='store_false')
-            feature_parser.set_defaults(key=defvalue)
+            feature_parser.set_defaults(**{key: defvalue})
         else:
             if isinstance(defvalue, (file_target, path)):
                 deftype = type(defvalue)
