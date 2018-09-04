@@ -459,6 +459,33 @@ _input.zap()
         os.remove('zap2.txt')
         self.assertRaises(Exception, Base_Executor(wf).run)
 
+    def testSystemResource(self):
+        '''Test targtet system_resource'''
+        script = SoS_Script('''\
+[1: shared='a']
+depends: system_resource(mem='1M',disk='1M')
+a = 1
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertEqual(env.sos_dict['a'], 1)
+        #
+        script = SoS_Script('''\
+[1: shared='a']
+depends: system_resource(mem='1T')
+a = 1
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+        #
+        script = SoS_Script('''\
+[1: shared='a']
+depends: system_resource(disk='10P')
+a = 1
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+
 
 if __name__ == '__main__':
     unittest.main()
