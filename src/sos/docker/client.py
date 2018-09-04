@@ -23,14 +23,13 @@ class SoS_DockerClient:
     '''A singleton class to ensure there is only one client'''
     _instance = None
 
+    client = shutil.which('docker')
+    pulled_images = set()
+
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
             cls._instance = super(SoS_DockerClient, cls).__new__(cls)
         return cls._instance
-
-    def __init__(self):
-        # check if docker exists
-        self.client = shutil.which('docker')
 
     def total_memory(self, image='ubuntu'):
         '''Get the available ram fo the docker machine in Kb'''
@@ -219,6 +218,8 @@ class SoS_DockerClient:
         if not self.client:
             raise RuntimeError(
                 'Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
+        if image in self.pulled_images:
+            return
         # if image is specified, check if it is available locally. If not, pull it
         err_msg = ''
         try:
@@ -231,6 +232,7 @@ class SoS_DockerClient:
             err_msg = exc.output
         if not self._is_image_avail(image):
             raise RuntimeError(f'Failed to pull docker image {image}:\n {err_msg}')
+        self.pulled_images.add(image)
 
     def run(self, image, script='', interpreter='', args='', suffix='.sh', **kwargs):
         if self.client is None:
