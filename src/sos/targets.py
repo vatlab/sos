@@ -209,6 +209,46 @@ class env_variable(BaseTarget):
             return str(self).__format__(format_spec)
 
 
+class system_resource(BaseTarget):
+    '''A target for required computing resource.'''
+
+    def __init__(self, mem=None, disk=None):
+        super(system_resource, self).__init__()
+        self._mem = mem
+        self._disk = disk
+
+    def target_exists(self, mode='any'):
+        if self._mem:
+            import psutil
+            from .utils import expand_size
+            avail = psutil.virtual_memory().available
+            if avail < expand_size(self._mem):
+                #env.logger.warning(f'System available memory {avail} is less than request {self._mem}')
+                return False
+        if self._disk:
+            import psutil
+            from .utils import expand_size
+            avail = psutil.disk_usage(os.path.abspath('.')).free
+            if avail < expand_size(self._disk):
+                #env.logger.warning(f'System available diskspace {avail} is less than request {self._disk}')
+                return False
+        return True
+
+    def target_name(self):
+        res = []
+        if self._mem:
+            res.append(f'mem={repr(self._mem)}')
+        if self._disk:
+            res.append(f'disk={repr(self._disk)}')
+        return f'system_resource({",".join(res)})'
+
+    def target_signature(self):
+        return ''
+
+    def __repr__(self):
+        return self.target_name()
+
+
 class sos_step(BaseTarget):
     '''A target for a step of sos.'''
 
@@ -543,9 +583,8 @@ class file_target(path, BaseTarget):
         if isinstance(sig, str) or not self.exists():
             try:
                 self.target_signature()
-            except ValueError:
+            except:
                 # if file does not exist
-                raise
                 return False
             return self._md5 == (sig if isinstance(sig, str) else sig[2])
         if not sig or sig[1] != os.path.getsize(self):
@@ -574,7 +613,7 @@ class file_target(path, BaseTarget):
         return hash(repr(self))
 
     def __eq__(self, obj):
-        return isinstance(obj, file_target) and str(self) == str(obj)
+        return isinstance(obj, file_target) and os.path.abspath(self) == os.path.abspath(obj)
 
 
 class paths(Sequence, os.PathLike):
@@ -789,11 +828,18 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         else:
             raise ValueError(f'Cannot get name() for group of targets {self}')
 
+    def dedup(self):
+        self._targets = list(dict.fromkeys(self._targets))
+
     def __hash__(self):
         return hash(repr(self))
 
     def __eq__(self, other):
-        return self._targets == other._targets if isinstance(other, sos_targets) else other
+        try:
+            # allow compare to any object as long as it can be converted to sos_targets
+            return self._targets == (other._targets if isinstance(other, sos_targets) else sos_targets(other)._targets)
+        except:
+            return False
 
     def __add__(self, part):
         if len(self._targets) == 1:
@@ -834,7 +880,7 @@ class InMemorySignature:
     def __init__(self, input_files: sos_targets, output_files: sos_targets,
                  dependent_files: sos_targets, signature_vars: set=set(),
                  sdict: dict={},
-                 share_vars=False):
+                 shared_vars: list= []):
         '''Runtime information for specified output files
         '''
         if not sdict:
@@ -853,7 +899,7 @@ class InMemorySignature:
         self.output_files = output_files if output_files.undetermined() else sos_targets(
             [x for x in output_files._targets if not isinstance(x, sos_step)])
         self.signature_vars = signature_vars
-        self.share_vars = share_vars
+        self.shared_vars = shared_vars
         # signatures that exist before execution and might change during execution
         self.init_signature = {x: deepcopy(sdict[x]) for x in sorted(
             signature_vars) if x in sdict and not callable(sdict[x]) and pickleable(sdict[x], x)}
@@ -891,8 +937,8 @@ class InMemorySignature:
                 return False
         init_context_sig = {var: objectMD5(self.init_signature[var]) for var in self.init_signature if pickleable(
             self.init_signature[var], var)}
-        if self.share_vars:
-            end_context = {var: env.sos_dict[var] for var in self.signature_vars if var in env.sos_dict and pickleable(
+        if self.shared_vars:
+            end_context = {var: env.sos_dict[var] for var in self.shared_vars if var in env.sos_dict and pickleable(
                 env.sos_dict[var], var)}
         else:
             end_context = {}
@@ -965,7 +1011,7 @@ class InMemorySignature:
                     else:
                         freal = file_target(f)
                     if not freal.validate(m):
-                        return f'Signature of target {f} {freal.target_signature()} does not match saved signature {m}'
+                        return f'Target {f} does not exist or does not match saved signature {m}'
                     res[cur_type].append(freal.target_name() if isinstance(
                         freal, file_target) else freal)
                     files_checked[freal.target_name()] = True
@@ -985,7 +1031,7 @@ class RuntimeInfo(InMemorySignature):
 
     def __init__(self, step_md5: str, script: str, input_files: sos_targets, output_files: sos_targets,
                  dependent_files: sos_targets, signature_vars: set=set(), sdict: dict={},
-                 share_vars: bool=False):
+                 shared_vars: list=[]):
         '''Runtime information for specified output files
         '''
         if not sdict:
@@ -994,13 +1040,12 @@ class RuntimeInfo(InMemorySignature):
         self.script = script
         super(RuntimeInfo, self).__init__(input_files, output_files,
                                           dependent_files, signature_vars,
-                                          share_vars=share_vars)
+                                          shared_vars=shared_vars)
 
         # if all output files are external
         self.external_sig = self.output_files.is_external() and self.input_files.is_external()
-
         self.sig_id = textMD5(
-            f'{self.script} {self.input_files} {self.output_files} {self.dependent_files} {stable_repr(self.init_signature)}')
+            f'{self.script} {self.input_files} {self.output_files} {self.dependent_files} {stable_repr(self.init_signature)}{sdict["_index"] if self.output_files.undetermined() else ""}')
 
     def __getstate__(self):
         return {'step_md5': self.step_md5,
@@ -1064,12 +1109,14 @@ class RuntimeInfo(InMemorySignature):
         Because local input and output files can only be determined after the execution
         of workflow. They are not part of the construction.
         '''
+        if not self.output_files.valid():
+            raise ValueError(f'Cannot write signature with undetermined output {self.output_files}')
+        else:
+            env.logger.trace(f'write signature {self.sig_id} with output {self.output_files}')
         ret = super(RuntimeInfo, self).write()
         if ret is False:
             env.logger.debug(f'Failed to write signature {self.sig_id}')
             return ret
-
-        env.logger.trace(f'Write signature {self.sig_id}')
         step_signatures.set(self.sig_id, ret, self.external_sig)
         workflow_signatures.write('tracked_files', self.sig_id, repr({
             'input_files': [str(f.resolve()) for f in self.input_files if isinstance(f, file_target)],

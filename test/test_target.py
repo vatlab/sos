@@ -172,6 +172,20 @@ a = 5
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'], 3)
         self.assertEqual(env.sos_dict['c'], 5)
+        # test the step_ version of variables
+        script = SoS_Script(r"""
+parameter: res = 1
+parameter: a = 30
+
+[1: shared=['res', {'c': 'sum(step_a)'}]]
+input: for_each={'i': range(10)}
+a = _index**2
+
+""")
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertEqual(env.sos_dict['c'], sum(x**2 for x in range(10)))
+
 
 #    def testSectionOptionWorkdir(self):
 #        '''Test section option workdir'''
@@ -443,6 +457,33 @@ _input.zap()
         Base_Executor(wf).run()
         # now if we remove target
         os.remove('zap2.txt')
+        self.assertRaises(Exception, Base_Executor(wf).run)
+
+    def testSystemResource(self):
+        '''Test targtet system_resource'''
+        script = SoS_Script('''\
+[1: shared='a']
+depends: system_resource(mem='1M',disk='1M')
+a = 1
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertEqual(env.sos_dict['a'], 1)
+        #
+        script = SoS_Script('''\
+[1: shared='a']
+depends: system_resource(mem='1T')
+a = 1
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+        #
+        script = SoS_Script('''\
+[1: shared='a']
+depends: system_resource(disk='10P')
+a = 1
+''')
+        wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
 
 

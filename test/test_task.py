@@ -472,7 +472,8 @@ run: expand=True
             if file_target(f).exists():
                 file_target(f).unlink()
         script = SoS_Script('''
-[10: shared = {'a': 'a[0]'}]
+[10: shared = 'a']
+output: 'a.txt'
 task: shared={'a': 'int(open("a.txt").read())'}
 run:
   echo 100 > a.txt
@@ -491,7 +492,8 @@ run: expand=True
             if file_target(f).exists():
                 file_target(f).unlink()
         script = SoS_Script('''
-[10: shared = {'a': 'a[0]', 'b':'b[0]'}]
+[10: shared = ['a', 'b']]
+output: 'a.txt'
 task: shared=[{'a': 'int(open("a.txt").read())'}, 'b']
 b = 20
 run:
@@ -504,6 +506,27 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf, config={'sig_mode': 'force'}).run()
         self.assertTrue(os.path.isfile("a100_20.txt"))
+
+        script = SoS_Script('''
+[10 (simulate): shared=['rng', 'step_rng']]
+input: for_each={'i': range(5)}
+task: shared='rng'
+print(f"{i}")
+import random
+rng = random.randint(1, 1000)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        var = env.sos_dict['rng']
+        self.assertTrue(isinstance(var, int))
+        self.assertTrue(isinstance(env.sos_dict['step_rng'], list))
+        self.assertEqual(env.sos_dict['step_rng'][-1], var)
+        # run it again, should get from signature
+        #
+        #Base_Executor(wf).run()
+        #self.assertEqual(var, env.sos_dict['rng'])
+
+
 
     @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')
     def testTrunkSizeOption(self):
