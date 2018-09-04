@@ -447,10 +447,11 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
         if env.sos_dict['step_output'].undetermined():
             # the pool worker does not have __null_func__ defined
             env.sos_dict.set('_output', reevaluate_output())
+        res = {'ret_code': 0}
         if sig:
             sig.set_output(env.sos_dict['_output'])
             sig.write()
-        res = {'ret_code': 0, 'output': sig.content['output'], 'shared': sig.content['end_context']}
+            res.update({'output': sig.content['output'], 'shared': sig.content['end_context']})
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res
