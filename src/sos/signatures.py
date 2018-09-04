@@ -3,6 +3,7 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
+import fasteners
 import os
 import pickle
 import lzma
@@ -195,6 +196,7 @@ class WorkflowSignatures(object):
             env.exec_dir, '.sos', 'workflow_signatures.db')
         self._conn = None
         self._pid = None
+        self._lock = os.path.join(env.temp_dir, 'workflow_db.lck')
 
     def _get_conn(self):
         # there is a possibility that the _conn is copied with a process
@@ -214,9 +216,10 @@ class WorkflowSignatures(object):
 
     def write(self, entry_type: str, id: str, item: str):
         try:
-            self.conn.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
+            with fasteners.InterProcessLock(self._lock):
+                self.conn.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
                           (env.config["master_id"], entry_type, id, item))
-            self.conn.commit()
+                self.conn.commit()
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to write workflow signature of type {entry_type} and id {id}: {e}')
             return None
