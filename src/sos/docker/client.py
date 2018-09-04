@@ -421,7 +421,9 @@ class SoS_DockerClient:
                         msg = 'Script killed by docker, probably because of lack of RAM (available RAM={:.1f}GB, exitcode=137). '.format(
                             self.tot_mem / 1024 / 1024) + msg
                 else:
-                    msg = f"Executing script in docker returns an error (exitcode={ret}{', err=``%s``' % kwargs['stderr'] if 'stderr' in kwargs and os.path.isfile(kwargs['stderr']) else ''}).\n{msg}"
+                    out = f", stdout={kwargs['stdout']}" if 'stdout' in kwargs and os.path.isfile(kwargs['stdout']) and os.path.getsize(kwargs['stdout']) > 0 else ''
+                    err = f", stderr={kwargs['stderr']}" if 'stderr' in kwargs and os.path.isfile(kwargs['stderr']) and os.path.getsize(kwargs['stderr']) > 0 else ''
+                    msg = f"Executing script in docker returns an error (exitcode={ret}{err}{out}).\n{msg}"
                 raise subprocess.CalledProcessError(
                     returncode=ret,
                     cmd=cmd.replace(tempdir, debug_script_dir),
