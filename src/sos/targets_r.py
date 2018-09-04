@@ -7,6 +7,7 @@ import os
 
 from sos.targets import BaseTarget, textMD5
 from sos.utils import env
+import shutil
 
 
 class R_library(BaseTarget):
@@ -148,6 +149,10 @@ class R_library(BaseTarget):
         if (self._library, self._version) in self.LIB_STATUS_CACHE:
             return self.LIB_STATUS_CACHE[(self._library, self._version)]
         else:
+            # check if R is installed
+            if not shutil.which('Rscript'):
+                env.logger.warning(f'Rscript: command not found')
+                return False
             ret = self._install(self._library, self._version, self._repos)
             self.LIB_STATUS_CACHE[(self._library, self._version)] = ret
             return ret
