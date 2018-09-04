@@ -264,6 +264,10 @@ class SoS_DockerClient:
                 for vol in volumes:
                     if not vol:
                         continue
+                    if isinstance(vol, (str, path)):
+                        vol = str(vol)
+                    else:
+                        raise ValueError(f'Unacceptable value {vol} for parameter volumes')
                     if vol.count(':') == 0:
                         host_dir, mnt_dir = vol, vol
                     elif vol.count(':') in (1, 2):
