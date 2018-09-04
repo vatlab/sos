@@ -172,6 +172,20 @@ a = 5
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'], 3)
         self.assertEqual(env.sos_dict['c'], 5)
+        # test the step_ version of variables
+        script = SoS_Script(r"""
+parameter: res = 1
+parameter: a = 30
+
+[1: shared=['res', {'c': 'sum(step_a)'}]]
+input: for_each={'i': range(10)}
+a = _index**2
+
+""")
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertEqual(env.sos_dict['c'], sum(x**2 for x in range(10)))
+
 
 #    def testSectionOptionWorkdir(self):
 #        '''Test section option workdir'''
