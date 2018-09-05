@@ -534,13 +534,16 @@ parameter: path_var = sos_targets('a.txt')
         self.assertTrue(isinstance(env.sos_dict['path_var'], sos_targets))
 
         #
-        # parameter cannot be any keyword
-        for key in ['input', 'output', '_input', 'with']:
-            self.assertRaises(Exception, SoS_Script, '''
-
-parameter: {} = int
-[0]
-'''.format(key))
+        # Test allow the use of sos keywords as parameters #1041
+        script = SoS_Script('''\
+[1]
+parameter: input = 5
+output = 10
+python: expand=True
+  print({input})
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
         # multiple parameters
         script = SoS_Script('''
 parameter: a_b = int
@@ -1398,18 +1401,6 @@ run:
         # when introducing sections
         self.assertTrue('workflow_a_10, workflow_b' in msg)
         self.assertTrue('default' in msg)
-
-    def testAllowSoSKeywordAsParam(self):
-        '''Test allow the use of sos keywords as parameters #1041 '''
-        script = SoS_Script('''\
-[1]
-parameter: input = 5
-output = 10
-python: expand=True
-  print({input})
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
 
 
 if __name__ == '__main__':
