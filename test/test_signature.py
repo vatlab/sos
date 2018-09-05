@@ -627,6 +627,20 @@ path(f'rep_{i}/{random.randint(0, 10000)}.res').touch()
         self.assertEqual(files, files_again)
         self.assertEqual(res['__completed__']['__substep_completed__'], 0)
 
+    def testIgnoreSignature(self):
+        '''Test ignore signature mode #1028 '''
+        script = SoS_Script(r'''
+input: for_each={'i': range(3)}, concurrent=True
+output: f'out_{i}.txt'
+sh: expand=True
+  touch {_output}
+''')
+        env.config['sig_mode'] = 'ignore'
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        env.config['sig_mode'] = 'default'
+
+
 if __name__ == '__main__':
     unittest.main()
 
