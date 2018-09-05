@@ -499,9 +499,6 @@ class SoS_Step:
                 if name.startswith('_'):
                     raise ValueError(
                         f'Invalid parameter name {name}: names with leading underscore is not allowed.')
-                if name in SOS_DIRECTIVES:
-                    raise ValueError(
-                        f'Invalid parameter name {name}: {name} is a SoS keyword')
                 if not value.strip():
                     raise ValueError(
                         f'{self.step_name()}: Invalid parameter definition: {statement[2]}')
