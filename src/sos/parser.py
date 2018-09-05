@@ -22,7 +22,7 @@ from .eval import on_demand_options
 from .syntax import (INDENTED, SOS_AS, SOS_CELL, SOS_DIRECTIVE, SOS_DIRECTIVES,
                      SOS_ELIF, SOS_ELSE, SOS_ENDIF, SOS_FORMAT_LINE,
                      SOS_FORMAT_VERSION, SOS_FROM_INCLUDE, SOS_IF, SOS_INCLUDE,
-                     SOS_MAGIC, SOS_SECTION_HEADER, SOS_SECTION_NAME,
+                     SOS_MAGIC, SOS_SECTION_HEADER, SOS_SECTION_NAME,so
                      SOS_SECTION_OPTION, SOS_STRU, SOS_SUBWORKFLOW, SOS_ACTION_OPTIONS)
 from .targets import file_target, path, paths, sos_targets, textMD5
 from .utils import Error, env, locate_script, text_repr, format_par
@@ -499,9 +499,6 @@ class SoS_Step:
                 if name.startswith('_'):
                     raise ValueError(
                         f'Invalid parameter name {name}: names with leading underscore is not allowed.')
-                if name in SOS_DIRECTIVES:
-                    raise ValueError(
-                        f'Invalid parameter name {name}: {name} is a SoS keyword')
                 if not value.strip():
                     raise ValueError(
                         f'{self.step_name()}: Invalid parameter definition: {statement[2]}')
