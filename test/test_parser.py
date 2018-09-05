@@ -1399,6 +1399,18 @@ run:
         self.assertTrue('workflow_a_10, workflow_b' in msg)
         self.assertTrue('default' in msg)
 
+    def testAllowSoSKeywordAsParam(self):
+        '''Test allow the use of sos keywords as parameters #1041 '''
+        script = SoS_Script('''\
+[1]
+parameter: input = 5
+output = 10
+python: expand=True
+  print({input})
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
