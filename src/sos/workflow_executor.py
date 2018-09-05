@@ -586,9 +586,8 @@ class Base_Executor:
                                 continue
                             res = analyze_section(section, default_input)
 
-                            environ_vars = res['environ_vars'] - env.symbols
-                            signature_vars = res['signature_vars'] - \
-                                env.symbols
+                            environ_vars = res['environ_vars']
+                            signature_vars = res['signature_vars']
                             changed_vars = res['changed_vars']
                             # parameters, if used in the step, should be considered environmental
                             environ_vars |= env.parameter_vars & signature_vars
@@ -778,8 +777,8 @@ class Base_Executor:
             #
             res = analyze_section(section, default_input)
 
-            environ_vars = res['environ_vars'] - env.symbols
-            signature_vars = res['signature_vars'] - env.symbols
+            environ_vars = res['environ_vars']
+            signature_vars = res['signature_vars']
             changed_vars = res['changed_vars']
             # parameters, if used in the step, should be considered environmental
             environ_vars |= env.parameter_vars & signature_vars
@@ -816,8 +815,8 @@ class Base_Executor:
         # analyze auxiliary steps
         for idx, section in enumerate(self.workflow.auxiliary_sections):
             res = analyze_section(section, default_input)
-            environ_vars = res['environ_vars'] - env.symbols
-            signature_vars = res['signature_vars'] - env.symbols
+            environ_vars = res['environ_vars']
+            signature_vars = res['signature_vars']
             changed_vars = res['changed_vars']
             # parameters, if used in the step, should be considered environmental
             environ_vars |= env.parameter_vars & signature_vars

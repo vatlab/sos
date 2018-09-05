@@ -410,6 +410,15 @@ def validate_step_sig(sig):
 def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
     shared_vars=[], capture_output=False):
     '''Execute statements in the passed dictionary'''
+    # prepare a working environment with sos symbols and functions
+    from .workflow_executor import __null_func__
+    from ._version import __version__
+    env.sos_dict.set('__null_func__', __null_func__)
+    # initial values
+    env.sos_dict.set('SOS_VERSION', __version__)
+    SoS_exec('import os, sys, glob', None)
+    SoS_exec('from sos.runtime import *', None)
+    # update it with variables passed from master process
     env.sos_dict.quick_update(proc_vars)
     sig = None if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified() else RuntimeInfo(
         step_md5, step_tokens,
@@ -430,13 +439,6 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
             sig.lock()
         verify_input()
 
-        from .workflow_executor import __null_func__
-        from ._version import __version__
-        env.sos_dict.set('__null_func__', __null_func__)
-        # initial values
-        env.sos_dict.set('SOS_VERSION', __version__)
-        SoS_exec('import os, sys, glob', None)
-        SoS_exec('from sos.runtime import *', None)
         if capture_output:
             with stdoutIO() as (out, err):
                 SoS_exec(stmt, return_result=False)

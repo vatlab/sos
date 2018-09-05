@@ -351,16 +351,6 @@ class RuntimeEnvironments(object):
         self.running_jobs: int = 0
         # this directory will be used by a lot of processes
         self.exec_dir = os.getcwd()
-        #
-        self.symbols = set(dir(builtins)) | set(keyword.kwlist) | {
-            'logger', 'get_output', 'sos_handle_parameter_'
-            'interpolate', 'sos_namespace_',
-            'expand_pattern', 'runfile'
-        }
-        for grp in ('sos_targets', 'sos_actions', 'sos_functions'):
-            self.symbols |= {
-                x.name for x in pkg_resources.iter_entry_points(group=grp)}
-        self.symbols -= {'dynamic', 'sos_run'}
 
         os.makedirs(os.path.join(os.path.expanduser(
             '~'), '.sos', 'tasks'), exist_ok=True)
