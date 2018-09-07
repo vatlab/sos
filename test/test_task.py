@@ -106,6 +106,14 @@ class TestTask(unittest.TestCase):
         self.assertLess(time.time() - a.last_updated, 2)
         self.assertEqual(a.status, 'completed')
         #
+        # get and reset info
+        info = a.info
+        a.status = 'running'
+        self.assertEqual(a.status, 'running')
+        a.info = info
+        self.assertEqual(a.status, 'completed')
+        self.assertTrue(a.has_stdout())
+        #
         a.add_result({'ret_code': 5})
         #
         a.tags = ['ee', 'd']

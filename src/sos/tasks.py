@@ -388,7 +388,11 @@ class TaskFile(object):
         with open(self.task_file, 'rb') as fh:
             return self._read_header(fh)
 
-    info = property(_get_info)
+    def _set_info(self, info):
+        with open(self.task_file, 'r+b') as fh:
+            fh.write(struct.pack(self.header_fmt_v2, *info))
+
+    info = property(_get_info, _set_info)
 
     def has_shell(self):
         return self.info.shell_size > 0

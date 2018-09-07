@@ -116,6 +116,9 @@ def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
 def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_interval=5,
                  resource_monitor_interval=60):
     tf = TaskFile(task_id)
+
+    # cache task info, in case we need to roll back
+    task_info = tf.info
     tf.status = 'running'
     # write result file
     res = _execute_task(task_id, verbosity, runmode, sigmode,
@@ -125,16 +128,20 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'), 'a') as err:
             err.write(f'Task {task_id} exits with code {res["ret_code"]}')
 
-    tf.status = 'completed' if res['ret_code'] == 0 else 'failed'
-    tf.add_outputs()
-    sig = res.get('signature', {})
-    res.pop('signature', None)
-    tf.add_result(res)
-    if sig:
-        tf.add_signature(sig)
+    # if the task is skipped, restore its previous header
+    if res.get('skipped', False):
+        tf.info = task_info
+    else:
+        tf.status = 'completed' if res['ret_code'] == 0 else 'failed'
+        tf.add_outputs()
+        sig = res.get('signature', {})
+        res.pop('signature', None)
+        tf.add_result(res)
+        if sig:
+            tf.add_signature(sig)
 
-    # **after** result file is created, remove other files
-    remove_task_files(task_id, ['.pulse', '.out', '.err', '.job_id', '.sh'])
+        # **after** result file is created, remove other files
+        remove_task_files(task_id, ['.pulse', '.out', '.err', '.job_id', '.sh'])
 
     return res['ret_code']
 
