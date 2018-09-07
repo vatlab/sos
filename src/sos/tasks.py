@@ -937,13 +937,13 @@ def print_task_status(tasks, check_all=False, verbosity: int=1, html: bool=False
                 if tf.has_shell():
                     shell = tf.shell
                     numLines = shell.count('\n')
-                    row('submission script', f'{numLines} lines')
+                    row('shell', f'{numLines} lines')
                     row(
                         td=f'<small><pre style="text-align:left">{shell}</pre></small>')
                 if tf.has_stdout():
                     stdout = tf.stdout
                     numLines = stdout.count('\n')
-                    row('standard output', '(empty)' if numLines ==
+                    row('stdout', '(empty)' if numLines ==
                         0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}')
                     if numLines > 200:
                         stdout = "\n".join(stdout.splitlines()[-200:])
@@ -952,7 +952,7 @@ def print_task_status(tasks, check_all=False, verbosity: int=1, html: bool=False
                 if tf.has_stderr():
                     stderr = tf.stderr
                     numLines = stderr.count('\n')
-                    row('standard error', '(empty)' if numLines ==
+                    row('stderr', '(empty)' if numLines ==
                         0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}')
                     if numLines > 200:
                         stderr = "\n".join(stderr.splitlines()[-200:])
@@ -981,7 +981,14 @@ def print_task_status(tasks, check_all=False, verbosity: int=1, html: bool=False
                     os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
                 for f in sorted([x for x in files if os.path.splitext(x)[-1] not in ('.task', '.pulse')]):
                     numLines = linecount_of_file(f)
-                    row(os.path.splitext(f)[-1], '(empty)' if numLines ==
+                    rhead = os.path.splitext(f)[-1]
+                    if rhead == '.sh':
+                        rhead = 'shell'
+                    elif rhead == '.err':
+                        rhead = 'stderr'
+                    elif rhead == '.out':
+                        rhead = 'stdout'
+                    row(rhead, '(empty)' if numLines ==
                         0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}')
                     try:
                         row(
