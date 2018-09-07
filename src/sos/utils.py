@@ -590,6 +590,8 @@ def pickleable(obj, name):
         return True
     if isinstance(obj, (types.ModuleType, WorkflowDict)):
         return False
+    if callable(obj):
+        return False
     try:
         pickle.dumps(obj)
         return True
