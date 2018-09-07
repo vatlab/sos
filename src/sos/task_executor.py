@@ -117,8 +117,6 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                  resource_monitor_interval=60):
     tf = TaskFile(task_id)
 
-    # cache task info, in case we need to roll back
-    task_info = tf.info
     tf.status = 'running'
     # write result file
     res = _execute_task(task_id, verbosity, runmode, sigmode,
@@ -128,9 +126,8 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'), 'a') as err:
             err.write(f'Task {task_id} exits with code {res["ret_code"]}')
 
-    # if the task is skipped, restore its previous header
     if res.get('skipped', False):
-        tf.info = task_info
+        tf.status = 'skipped'
     else:
         tf.status = 'completed' if res['ret_code'] == 0 else 'failed'
         tf.add_outputs()
