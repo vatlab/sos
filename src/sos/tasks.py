@@ -934,18 +934,30 @@ def print_task_status(tasks, check_all=False, verbosity: int=1, html: bool=False
                 # this is a placeholder for the frontend to draw figure
                 row(td=f'<div id="res_{t}"></div>')
                 #
-                if 'stdout' in res:
-                    numLines = res['stdout'].count('\n')
+                if tf.has_shell():
+                    shell = tf.shell
+                    numLines = shell.count('\n')
+                    row('submission script', f'{numLines} lines')
+                    row(
+                        td=f'<small><pre style="text-align:left">{shell}</pre></small>')
+                if tf.has_stdout():
+                    stdout = tf.stdout
+                    numLines = stdout.count('\n')
                     row('standard output', '(empty)' if numLines ==
                         0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}')
+                    if numLines > 200:
+                        stdout = "\n".join(stdout.splitlines()[-200:])
                     row(
-                        td=f'<small><pre style="text-align:left">{res["stdout"].splitlines()[-200:]}</pre></small>')
-                if 'stderr' in res:
-                    numLines = res['stderr'].count('\n')
+                        td=f'<small><pre style="text-align:left">{stdout}</pre></small>')
+                if tf.has_stderr():
+                    stderr = tf.stderr
+                    numLines = stderr.count('\n')
                     row('standard error', '(empty)' if numLines ==
                         0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}')
+                    if numLines > 200:
+                        stderr = "\n".join(stderr.splitlines()[-200:])
                     row(
-                        td=f'<small><pre style="text-align:left">{res["stderr"].splitlines()[-200:]}</pre></small>')
+                        td=f'<small><pre style="text-align:left">{stderr}</pre></small>')
             else:
                 pulse_file = os.path.join(
                     os.path.expanduser('~'), '.sos', 'tasks', t + '.pulse')
