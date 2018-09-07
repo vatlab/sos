@@ -947,7 +947,7 @@ class Base_Step_Executor:
                 sos_targets(ifiles), kwargs['group_by'])
             if not _groups:
                 env.logger.debug('No group defined because of no input file')
-                _groups = [[]]
+                _groups = [sos_targets([])]
         else:
             _groups = [sos_targets(ifiles)]
         #

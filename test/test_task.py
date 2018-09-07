@@ -106,6 +106,14 @@ class TestTask(unittest.TestCase):
         self.assertLess(time.time() - a.last_updated, 2)
         self.assertEqual(a.status, 'completed')
         #
+        # get and reset info
+        info = a.info
+        a.status = 'running'
+        self.assertEqual(a.status, 'running')
+        a.info = info
+        self.assertEqual(a.status, 'completed')
+        self.assertTrue(a.has_stdout())
+        #
         a.add_result({'ret_code': 5})
         #
         a.tags = ['ee', 'd']
@@ -881,6 +889,25 @@ echo 0.1
             out = subprocess.check_output(f'sos status {tasks[0]} -v4', shell=True)
             self.assertTrue('00:02:00' in out.decode())
 
+
+    def testTaskSignature(self):
+        '''Test re-execution of tasks'''
+        with cd_new('temp_signature'):
+            with open('test.sos', 'w') as tst:
+                tst.write('''
+task:
+sh:
+sleep 2
+''')
+            subprocess.call('sos run test -s force', shell=True)
+            tasks = get_tasks()
+            tf = TaskFile(tasks[0])
+            self.assertTrue(tf.has_signature())
+            self.assertEqual(tf.status, 'completed')
+            info = tf.tags_created_start_and_duration()
+            #
+            subprocess.call('sos run test', shell=True)
+            self.assertLess(tf.tags_created_start_and_duration()[3], 1)
 
 
 if __name__ == '__main__':

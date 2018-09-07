@@ -388,7 +388,11 @@ class TaskFile(object):
         with open(self.task_file, 'rb') as fh:
             return self._read_header(fh)
 
-    info = property(_get_info)
+    def _set_info(self, info):
+        with open(self.task_file, 'r+b') as fh:
+            fh.write(struct.pack(self.header_fmt_v2, *info))
+
+    info = property(_get_info, _set_info)
 
     def has_shell(self):
         return self.info.shell_size > 0
@@ -446,13 +450,29 @@ class TaskFile(object):
     def _set_status(self, status):
         with open(self.task_file, 'r+b') as fh:
             fh.seek(2, 0)
-            now = time.time()
-            sts = TaskStatus[status].value
-            # update status and last modified
-            fh.write(struct.pack('!hd', sts, now))
-            # from the current location, move by status
-            fh.seek(sts * 8, 1)
-            fh.write(struct.pack('!d', now))
+            if status == 'skipped':
+                # special status, set completed_time = running_time
+                # to make sure duration is zero
+                now = time.time()
+                sts = TaskStatus['completed'].value
+                # update status and last modified
+                fh.write(struct.pack('!hd', sts, now))
+                # also set 'run'
+                fh.seek(3 * 8, 1)
+                fh.write(struct.pack('!d', now))
+                # from the current location, move by status
+                fh.seek(2 * 8, 1)
+                fh.write(struct.pack('!d', now))
+            else:
+                # if completed, we make sure that the duration will not
+                # be zero even if the task is completed very rapidly
+                now = time.time() + (0.01 if status == 'completed' else 0)
+                sts = TaskStatus[status].value
+                # update status and last modified
+                fh.write(struct.pack('!hd', sts, now))
+                # from the current location, move by status
+                fh.seek(sts * 8, 1)
+                fh.write(struct.pack('!d', now))
 
 
     status = property(_get_status, _set_status)
@@ -591,7 +611,7 @@ class TaskFile(object):
             #
             return tags, 'Created ' + format_duration(time.time() - ct, True) + ' ago', \
                 'Started ' + format_duration(time.time() - st) + ' ago', \
-                'Ran for ' + format_duration(int(dr))
+                ('Ran for ' + format_duration(int(dr))) if dr > 0 else 'Signature checked'
         except:
             # missing tag file or something went wrong
             return '', '', '', ''
