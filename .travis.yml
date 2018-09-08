@@ -37,7 +37,6 @@ before_install:
     # install anaconda Python 3
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then  wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh; fi
     #- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then wget  https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh; fi
-    - ls /usr/include/arch*
     - bash miniconda.sh -b -p $HOME/miniconda
     - export PATH="$HOME/miniconda/bin:$PATH"
     - hash -r
@@ -64,7 +63,7 @@ before_install:
     # singularity
     - sudo sed -i -e 's/^Defaults\tsecure_path.*$//' /etc/sudoers
     - pip install sregistry[all]
-    - cd /tmp && wget https://github.com/singularityware/singularity/archive/2.6.0.tar.gz && tar zxf 2.6.0.tar.gz; cd singularity-2.6.0 && ./autogen.sh && ./configure --prefix=/usr/local && make && sudo make install
+    - cd /tmp && wget https://github.com/singularityware/singularity/archive/2.6.0.tar.gz && tar zxf 2.6.0.tar.gz; cd singularity-2.6.0 && ./autogen.sh && env CPPFLAGS='-I/usr/include' ./configure --prefix=/usr/local && make && sudo make install
 
 sudo: required
 services:
