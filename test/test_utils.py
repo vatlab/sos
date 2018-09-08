@@ -83,11 +83,6 @@ class TestUtils(unittest.TestCase):
         logging.shutdown()
         os.remove('test.log')
 
-    def testSymbols(self):
-        '''Test listing of symbols in env'''
-        for key in ('run', 'id', 'hash', 'if', 'True'):
-            self.assertTrue(key in env.symbols)
-
     def testWorkflowDict(self):
         '''Test workflow dict with attribute access'''
         env.reset()

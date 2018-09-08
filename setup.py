@@ -134,6 +134,7 @@ sos_variable = sos.targets:sos_variable
 sos_step = sos.targets:sos_step
 env_variable = sos.targets:env_variable
 sos_targets = sos.targets:sos_targets
+system_resource = sos.targets:system_resource
 
 Py_Module = sos.targets_python:Py_Module
 R_library = sos.targets_r:R_library

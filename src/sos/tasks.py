@@ -388,7 +388,11 @@ class TaskFile(object):
         with open(self.task_file, 'rb') as fh:
             return self._read_header(fh)
 
-    info = property(_get_info)
+    def _set_info(self, info):
+        with open(self.task_file, 'r+b') as fh:
+            fh.write(struct.pack(self.header_fmt_v2, *info))
+
+    info = property(_get_info, _set_info)
 
     def has_shell(self):
         return self.info.shell_size > 0
@@ -446,13 +450,29 @@ class TaskFile(object):
     def _set_status(self, status):
         with open(self.task_file, 'r+b') as fh:
             fh.seek(2, 0)
-            now = time.time()
-            sts = TaskStatus[status].value
-            # update status and last modified
-            fh.write(struct.pack('!hd', sts, now))
-            # from the current location, move by status
-            fh.seek(sts * 8, 1)
-            fh.write(struct.pack('!d', now))
+            if status == 'skipped':
+                # special status, set completed_time = running_time
+                # to make sure duration is zero
+                now = time.time()
+                sts = TaskStatus['completed'].value
+                # update status and last modified
+                fh.write(struct.pack('!hd', sts, now))
+                # also set 'run'
+                fh.seek(3 * 8, 1)
+                fh.write(struct.pack('!d', now))
+                # from the current location, move by status
+                fh.seek(2 * 8, 1)
+                fh.write(struct.pack('!d', now))
+            else:
+                # if completed, we make sure that the duration will not
+                # be zero even if the task is completed very rapidly
+                now = time.time() + (0.01 if status == 'completed' else 0)
+                sts = TaskStatus[status].value
+                # update status and last modified
+                fh.write(struct.pack('!hd', sts, now))
+                # from the current location, move by status
+                fh.seek(sts * 8, 1)
+                fh.write(struct.pack('!d', now))
 
 
     status = property(_get_status, _set_status)
@@ -591,7 +611,7 @@ class TaskFile(object):
             #
             return tags, 'Created ' + format_duration(time.time() - ct, True) + ' ago', \
                 'Started ' + format_duration(time.time() - st) + ' ago', \
-                'Ran for ' + format_duration(int(dr))
+                ('Ran for ' + format_duration(int(dr))) if dr > 0 else 'Signature checked'
         except:
             # missing tag file or something went wrong
             return '', '', '', ''
@@ -914,18 +934,30 @@ def print_task_status(tasks, check_all=False, verbosity: int=1, html: bool=False
                 # this is a placeholder for the frontend to draw figure
                 row(td=f'<div id="res_{t}"></div>')
                 #
-                if 'stdout' in res:
-                    numLines = res['stdout'].count('\n')
-                    row('standard output', '(empty)' if numLines ==
-                        0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}')
+                if tf.has_shell():
+                    shell = tf.shell
+                    numLines = shell.count('\n')
+                    row('shell', f'{numLines} lines')
                     row(
-                        td=f'<small><pre style="text-align:left">{res["stdout"].splitlines()[-200:]}</pre></small>')
-                if 'stderr' in res:
-                    numLines = res['stderr'].count('\n')
-                    row('standard error', '(empty)' if numLines ==
+                        td=f'<small><pre style="text-align:left">{shell}</pre></small>')
+                if tf.has_stdout():
+                    stdout = tf.stdout
+                    numLines = stdout.count('\n')
+                    row('stdout', '(empty)' if numLines ==
                         0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}')
+                    if numLines > 200:
+                        stdout = "\n".join(stdout.splitlines()[-200:])
                     row(
-                        td=f'<small><pre style="text-align:left">{res["stderr"].splitlines()[-200:]}</pre></small>')
+                        td=f'<small><pre style="text-align:left">{stdout}</pre></small>')
+                if tf.has_stderr():
+                    stderr = tf.stderr
+                    numLines = stderr.count('\n')
+                    row('stderr', '(empty)' if numLines ==
+                        0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}')
+                    if numLines > 200:
+                        stderr = "\n".join(stderr.splitlines()[-200:])
+                    row(
+                        td=f'<small><pre style="text-align:left">{stderr}</pre></small>')
             else:
                 pulse_file = os.path.join(
                     os.path.expanduser('~'), '.sos', 'tasks', t + '.pulse')
@@ -949,7 +981,14 @@ def print_task_status(tasks, check_all=False, verbosity: int=1, html: bool=False
                     os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
                 for f in sorted([x for x in files if os.path.splitext(x)[-1] not in ('.task', '.pulse')]):
                     numLines = linecount_of_file(f)
-                    row(os.path.splitext(f)[-1], '(empty)' if numLines ==
+                    rhead = os.path.splitext(f)[-1]
+                    if rhead == '.sh':
+                        rhead = 'shell'
+                    elif rhead == '.err':
+                        rhead = 'stderr'
+                    elif rhead == '.out':
+                        rhead = 'stdout'
+                    row(rhead, '(empty)' if numLines ==
                         0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}')
                     try:
                         row(
@@ -1078,15 +1117,19 @@ showResourceFigure_''' + t + '''()
         for s, (t, d) in zip(obtained_status, all_tasks):
             print(f'{t}\t{s}')
     elif verbosity == 2:
+        tsize = 20
         for s, (t, d) in zip(obtained_status, all_tasks):
             ts, _, _, dr = TaskFile(t).tags_created_start_and_duration(
                 formatted=not numeric_times)
-            print(f'{t}\t{ts}\t{dr}\t{s}')
+            tsize = max(tsize, len(ts))
+            print(f'{t}\t{ts.ljust(tsize)}\t{dr:<14}\t{s}')
     elif verbosity == 3:
+        tsize = 20
         for s, (t, d) in zip(obtained_status, all_tasks):
             ts, ct, st, dr = TaskFile(t).tags_created_start_and_duration(
                 formatted=not numeric_times)
-            print(f'{t}\t{ts}\t{ct}\t{st}\t{dr}\t{s}')
+            tsize = max(tsize, len(ts))
+            print(f'{t}\t{ts.ljust(tsize)}\t{ct:<14}\t{st:<14}\t{dr:<14}\t{s}')
     elif verbosity == 4:
         import pprint
         from .monitor import summarizeExecution

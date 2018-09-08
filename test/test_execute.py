@@ -1314,6 +1314,16 @@ path(f'{random.randint(0, 1000000)}.dout').touch()
         douts = glob.glob('*.dout')
         self.assertEqual(len(douts), 3)
 
+    def testGroupByWithEmtpyInput(self):
+        ''' Test option group by with empty input #1044'''
+        script = SoS_Script('''
+[1]
+input: group_by=1
+print(_input)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
 
 if __name__ == '__main__':
     unittest.main()

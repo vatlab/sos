@@ -439,13 +439,15 @@ class SoS_ExecuteScript:
                         sfile.write(self.script)
                     cmd = cmd.replace(
                         script_file, f'.sos/{path(debug_script_file):b}')
+                    out = f", stdout={kwargs['stdout']}" if 'stdout' in kwargs and os.path.isfile(kwargs['stdout']) and os.path.getsize(kwargs['stdout']) > 0 else ''
+                    err = f", stderr={kwargs['stderr']}" if 'stderr' in kwargs and os.path.isfile(kwargs['stderr']) and os.path.getsize(kwargs['stderr']) > 0 else ''
                     raise subprocess.CalledProcessError(
                         returncode=ret,
                         cmd=cmd,
-                        stderr='\nFailed to execute ``{}``\nexitcode={}, workdir=``{}``{}{}\n{}'.format(
+                        stderr='\nFailed to execute ``{}``\nexitcode={}, workdir=``{}``{}{}{}\n{}'.format(
                             cmd, ret, os.getcwd(),
                             f', task={os.path.basename(env.sos_dict["__std_err__"]).split(".")[0]}' if '__std_err__' in env.sos_dict else '',
-                            f', err=``{kwargs["stderr"]}``' if 'stderr' in kwargs and os.path.isfile(kwargs['stderr']) else '', '-' * 75))
+                            out, err, '-' * 75))
             except RuntimeError:
                 raise
             except Exception as e:

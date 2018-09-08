@@ -410,6 +410,15 @@ def validate_step_sig(sig):
 def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
     shared_vars=[], capture_output=False):
     '''Execute statements in the passed dictionary'''
+    # prepare a working environment with sos symbols and functions
+    from .workflow_executor import __null_func__
+    from ._version import __version__
+    env.sos_dict.set('__null_func__', __null_func__)
+    # initial values
+    env.sos_dict.set('SOS_VERSION', __version__)
+    SoS_exec('import os, sys, glob', None)
+    SoS_exec('from sos.runtime import *', None)
+    # update it with variables passed from master process
     env.sos_dict.quick_update(proc_vars)
     sig = None if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified() else RuntimeInfo(
         step_md5, step_tokens,
@@ -430,13 +439,6 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
             sig.lock()
         verify_input()
 
-        from .workflow_executor import __null_func__
-        from ._version import __version__
-        env.sos_dict.set('__null_func__', __null_func__)
-        # initial values
-        env.sos_dict.set('SOS_VERSION', __version__)
-        SoS_exec('import os, sys, glob', None)
-        SoS_exec('from sos.runtime import *', None)
         if capture_output:
             with stdoutIO() as (out, err):
                 SoS_exec(stmt, return_result=False)
@@ -447,10 +449,11 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
         if env.sos_dict['step_output'].undetermined():
             # the pool worker does not have __null_func__ defined
             env.sos_dict.set('_output', reevaluate_output())
+        res = {'ret_code': 0}
         if sig:
             sig.set_output(env.sos_dict['_output'])
             sig.write()
-        res = {'ret_code': 0, 'output': sig.content['output'], 'shared': sig.content['end_context']}
+            res.update({'output': sig.content['output'], 'shared': sig.content['end_context']})
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res
@@ -944,7 +947,7 @@ class Base_Step_Executor:
                 sos_targets(ifiles), kwargs['group_by'])
             if not _groups:
                 env.logger.debug('No group defined because of no input file')
-                _groups = [[]]
+                _groups = [sos_targets([])]
         else:
             _groups = [sos_targets(ifiles)]
         #

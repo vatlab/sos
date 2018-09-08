@@ -209,6 +209,46 @@ class env_variable(BaseTarget):
             return str(self).__format__(format_spec)
 
 
+class system_resource(BaseTarget):
+    '''A target for required computing resource.'''
+
+    def __init__(self, mem=None, disk=None):
+        super(system_resource, self).__init__()
+        self._mem = mem
+        self._disk = disk
+
+    def target_exists(self, mode='any'):
+        if self._mem:
+            import psutil
+            from .utils import expand_size
+            avail = psutil.virtual_memory().available
+            if avail < expand_size(self._mem):
+                #env.logger.warning(f'System available memory {avail} is less than request {self._mem}')
+                return False
+        if self._disk:
+            import psutil
+            from .utils import expand_size
+            avail = psutil.disk_usage(os.path.abspath('.')).free
+            if avail < expand_size(self._disk):
+                #env.logger.warning(f'System available diskspace {avail} is less than request {self._disk}')
+                return False
+        return True
+
+    def target_name(self):
+        res = []
+        if self._mem:
+            res.append(f'mem={repr(self._mem)}')
+        if self._disk:
+            res.append(f'disk={repr(self._disk)}')
+        return f'system_resource({",".join(res)})'
+
+    def target_signature(self):
+        return ''
+
+    def __repr__(self):
+        return self.target_name()
+
+
 class sos_step(BaseTarget):
     '''A target for a step of sos.'''
 

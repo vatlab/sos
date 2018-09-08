@@ -351,16 +351,6 @@ class RuntimeEnvironments(object):
         self.running_jobs: int = 0
         # this directory will be used by a lot of processes
         self.exec_dir = os.getcwd()
-        #
-        self.symbols = set(dir(builtins)) | set(keyword.kwlist) | {
-            'logger', 'get_output', 'sos_handle_parameter_'
-            'interpolate', 'sos_namespace_',
-            'expand_pattern', 'runfile'
-        }
-        for grp in ('sos_targets', 'sos_actions', 'sos_functions'):
-            self.symbols |= {
-                x.name for x in pkg_resources.iter_entry_points(group=grp)}
-        self.symbols -= {'dynamic', 'sos_run'}
 
         os.makedirs(os.path.join(os.path.expanduser(
             '~'), '.sos', 'tasks'), exist_ok=True)
@@ -599,6 +589,8 @@ def pickleable(obj, name):
     if isinstance(obj, (str, bool, int, float, complex, bytes)):
         return True
     if isinstance(obj, (types.ModuleType, WorkflowDict)):
+        return False
+    if callable(obj):
         return False
     try:
         pickle.dumps(obj)
@@ -956,7 +948,7 @@ def sos_handle_parameter_(key, defvalue):
                     f'--{key.replace("_", "-")}', dest=key, action='store_true')
                 feature_parser.add_argument(
                     f'--no-{key.replace("_", "-")}', dest=key, action='store_false')
-            feature_parser.set_defaults(key=defvalue)
+            feature_parser.set_defaults(**{key: defvalue})
         else:
             if isinstance(defvalue, (file_target, path)):
                 deftype = type(defvalue)

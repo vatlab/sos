@@ -12,7 +12,7 @@ import tempfile
 
 from sos.eval import interpolate
 from sos.targets import sos_targets, path
-from sos.utils import env, pexpect_run, DelayedAction
+from sos.utils import env, pexpect_run
 
 #
 # docker support
@@ -23,14 +23,13 @@ class SoS_DockerClient:
     '''A singleton class to ensure there is only one client'''
     _instance = None
 
+    client = shutil.which('docker')
+    pulled_images = set()
+
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
             cls._instance = super(SoS_DockerClient, cls).__new__(cls)
         return cls._instance
-
-    def __init__(self):
-        # check if docker exists
-        self.client = shutil.which('docker')
 
     def total_memory(self, image='ubuntu'):
         '''Get the available ram fo the docker machine in Kb'''
@@ -219,18 +218,20 @@ class SoS_DockerClient:
         if not self.client:
             raise RuntimeError(
                 'Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
+        if image in self.pulled_images:
+            return
         # if image is specified, check if it is available locally. If not, pull it
         err_msg = ''
         try:
-            print_msg = DelayedAction(print, f'HINT: Pulling docker image {image}')
+            print(f'HINT: Pulling docker image {image}')
             output = subprocess.check_output(
                 'docker pull {}'.format(image), stderr=subprocess.STDOUT, shell=True,
                 universal_newlines=True)
-            del print_msg
         except subprocess.CalledProcessError as exc:
             err_msg = exc.output
         if not self._is_image_avail(image):
             raise RuntimeError(f'Failed to pull docker image {image}:\n {err_msg}')
+        self.pulled_images.add(image)
 
     def run(self, image, script='', interpreter='', args='', suffix='.sh', **kwargs):
         if self.client is None:
@@ -265,6 +266,10 @@ class SoS_DockerClient:
                 for vol in volumes:
                     if not vol:
                         continue
+                    if isinstance(vol, (str, path)):
+                        vol = str(vol)
+                    else:
+                        raise ValueError(f'Unacceptable value {vol} for parameter volumes')
                     if vol.count(':') == 0:
                         host_dir, mnt_dir = vol, vol
                     elif vol.count(':') in (1, 2):
@@ -416,7 +421,9 @@ class SoS_DockerClient:
                         msg = 'Script killed by docker, probably because of lack of RAM (available RAM={:.1f}GB, exitcode=137). '.format(
                             self.tot_mem / 1024 / 1024) + msg
                 else:
-                    msg = f"Executing script in docker returns an error (exitcode={ret}{', err=``%s``' % kwargs['stderr'] if 'stderr' in kwargs and os.path.isfile(kwargs['stderr']) else ''}).\n{msg}"
+                    out = f", stdout={kwargs['stdout']}" if 'stdout' in kwargs and os.path.isfile(kwargs['stdout']) and os.path.getsize(kwargs['stdout']) > 0 else ''
+                    err = f", stderr={kwargs['stderr']}" if 'stderr' in kwargs and os.path.isfile(kwargs['stderr']) and os.path.getsize(kwargs['stderr']) > 0 else ''
+                    msg = f"Executing script in docker returns an error (exitcode={ret}{err}{out}).\n{msg}"
                 raise subprocess.CalledProcessError(
                     returncode=ret,
                     cmd=cmd.replace(tempdir, debug_script_dir),

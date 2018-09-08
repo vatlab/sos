@@ -260,12 +260,15 @@ parameter: a = [1, 2]
         self.assertEqual(list(wf.parameters().keys()), ['a'])
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['a'], [1, 2])
+        env.sos_dict.pop('a')
         wf = script.workflow()
         Base_Executor(wf, args=['--a', '3']).run()
         self.assertEqual(env.sos_dict['a'], [3])
+        env.sos_dict.pop('a')
         wf = script.workflow()
         Base_Executor(wf, args=['--a', '3', '5']).run()
         self.assertEqual(env.sos_dict['a'], [3, 5])
+        env.sos_dict.pop('a')
         #
         script = SoS_Script('''
 # comment
@@ -276,12 +279,15 @@ parameter: a = ['a.txt', 'b.txt']
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['a'], ['a.txt', 'b.txt'])
+        env.sos_dict.pop('a')
         wf = script.workflow()
         Base_Executor(wf, args=['--a', '3']).run()
         self.assertEqual(env.sos_dict['a'], ['3'])
+        env.sos_dict.pop('a')
         wf = script.workflow()
         Base_Executor(wf, args=['--a', '3', '5']).run()
         self.assertEqual(env.sos_dict['a'], ['3', '5'])
+        env.sos_dict.pop('a')
         #
         # test parameter using global definition
         script = SoS_Script('''
@@ -295,6 +301,7 @@ parameter: b=str(int(a)+1)
         self.assertEqual(list(wf.parameters().keys()), ['b'])
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['b'], '101')
+        env.sos_dict.pop('b')
         #
         env.sos_dict.clear()
         script = SoS_Script('''
@@ -306,6 +313,7 @@ parameter: b=a+1
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['b'], 101)
+        env.sos_dict.pop('b')
         #
         script = SoS_Script('''
 a=100
@@ -317,6 +325,7 @@ parameter: b=a+1.
         Base_Executor(wf, args=['--b', '1000']).run()
         #
         self.assertEqual(env.sos_dict['b'], 1000)
+        env.sos_dict.pop('b')
         #
         # argument has hve a value
         self.assertRaises(ParsingError, SoS_Script, '''
@@ -356,6 +365,7 @@ parameter: b = int
         wf = script.workflow()
         Base_Executor(wf, args=['--b', '5']).run(mode='dryrun')
         self.assertEqual(env.sos_dict['b'], 5)
+        env.sos_dict.pop('b')
         # string
         script = SoS_Script('''
 parameter: b = str
@@ -364,6 +374,7 @@ parameter: b = str
         wf = script.workflow()
         Base_Executor(wf, args=['--b', '5']).run(mode='dryrun')
         self.assertEqual(env.sos_dict['b'], '5')
+        env.sos_dict.pop('b')
         # list is ok
         script = SoS_Script('''
 parameter: b = list
@@ -381,8 +392,10 @@ parameter: b = bool
         wf = script.workflow()
         Base_Executor(wf, args=['--b']).run(mode='dryrun')
         self.assertEqual(env.sos_dict['b'], True)
+        env.sos_dict.pop('b')
         Base_Executor(wf, args=['--no-b']).run(mode='dryrun')
         self.assertEqual(env.sos_dict['b'], False)
+        env.sos_dict.pop('b')
         # bool with default True
         script = SoS_Script('''
 parameter: b = True
@@ -391,10 +404,13 @@ parameter: b = True
         wf = script.workflow()
         Base_Executor(wf, args=[]).run(mode='dryrun')
         self.assertEqual(env.sos_dict['b'], True)
+        env.sos_dict.pop('b')
         Base_Executor(wf, args=['--b']).run(mode='dryrun')
         self.assertEqual(env.sos_dict['b'], True)
+        env.sos_dict.pop('b')
         Base_Executor(wf, args=['--no-b']).run(mode='dryrun')
         self.assertEqual(env.sos_dict['b'], False)
+        env.sos_dict.pop('b')
         # bool with default False
         script = SoS_Script('''
 parameter: b = False
@@ -403,10 +419,13 @@ parameter: b = False
         wf = script.workflow()
         Base_Executor(wf, args=[]).run(mode='dryrun')
         self.assertEqual(env.sos_dict['b'], False)
+        env.sos_dict.pop('b')
         Base_Executor(wf, args=['--b']).run(mode='dryrun')
         self.assertEqual(env.sos_dict['b'], True)
+        env.sos_dict.pop('b')
         Base_Executor(wf, args=['--no-b']).run(mode='dryrun')
         self.assertEqual(env.sos_dict['b'], False)
+        env.sos_dict.pop('b')
         #
         # parameters cannot coincide with a readonly global variable
         # are masked by previous definition
@@ -428,8 +447,10 @@ parameter: a_b = 5
         wf = script.workflow()
         Base_Executor(wf, args=['--a_b', '10']).run(mode='dryrun')
         self.assertEqual(env.sos_dict['a_b'], 10)
+        env.sos_dict.pop('a_b')
         Base_Executor(wf, args=['--a-b', '10']).run(mode='dryrun')
         self.assertEqual(env.sos_dict['a_b'], 10)
+        env.sos_dict.pop('a_b')
         #
         #
         script = SoS_Script('''
@@ -439,8 +460,10 @@ parameter: a_b = int
         wf = script.workflow()
         Base_Executor(wf, args=['--a_b', '10']).run(mode='dryrun')
         self.assertEqual(env.sos_dict['a_b'], 10)
+        env.sos_dict.pop('a_b')
         Base_Executor(wf, args=['--a-b', '10']).run(mode='dryrun')
         self.assertEqual(env.sos_dict['a_b'], 10)
+        env.sos_dict.pop('a_b')
         # 
         # test support for type path, paths, file_target and sos_targets
         script = SoS_Script('''
@@ -511,13 +534,16 @@ parameter: path_var = sos_targets('a.txt')
         self.assertTrue(isinstance(env.sos_dict['path_var'], sos_targets))
 
         #
-        # parameter cannot be any keyword
-        for key in ['input', 'output', '_input', 'with']:
-            self.assertRaises(Exception, SoS_Script, '''
-
-parameter: {} = int
-[0]
-'''.format(key))
+        # Test allow the use of sos keywords as parameters #1041
+        script = SoS_Script('''\
+[1]
+parameter: input = 5
+output = 10
+python: expand=True
+  print({input})
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
         # multiple parameters
         script = SoS_Script('''
 parameter: a_b = int
@@ -1317,14 +1343,15 @@ run:
         Base_Executor(wf).run()
         self.assertFalse(os.path.isfile('a.txt'))
         #
-        script = '''
+        script = SoS_Script('''
 parameter: run = 5
 
 [1]
 run:
     touch a.txt
-'''
-        self.assertRaises(Exception, SoS_Script, script)
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
 
     def testComments(self):
         '''Test the use of comments in sos script'''
