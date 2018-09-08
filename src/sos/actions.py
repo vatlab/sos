@@ -88,6 +88,10 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated', acceptable_args: 
                 engine = kwargs['engine'] if 'engine' in kwargs and kwargs['engine'] else None
                 if '://' in kwargs['container']:
                     cty, cname = kwargs['container'].split('://', 1)
+                elif kwargs['container'].endswith('.simg'):
+                    engine = 'singularity'
+                    cty = 'file'
+                    cname = kwargs['container']
                 else:
                     cty = None
                     cname = kwargs['container']
