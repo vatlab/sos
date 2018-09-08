@@ -70,32 +70,66 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated', acceptable_args: 
                     if key not in acceptable_args and key not in SOS_ACTION_OPTIONS:
                         raise ValueError(
                             f'Unrecognized option "{key}" for action {func}')
-            if 'container' in kwargs and kwargs['container']:
-                if not isinstance(kwargs['container'], str):
-                    raise ValueError(
-                        f'A string in the format of "scheme://tag" is expected for option container, {kwargs["container"]} provided')
-                if '://' in kwargs['container']:
-                    cty, cname = kwargs['container'].split('://', 1)
-                else:
-                    cty = 'docker'
-                    cname = kwargs['container']
-                if cty == 'docker':
-                    kwargs['docker_image'] = cname
-                elif cty == 'local':
-                    pass
-                else:
-                    raise ValueError(
-                        f'Unsupported container type {cty} for option container with value {kwargs["container"]}')
             # docker files will be downloaded in run or prepare mode
+            # this option is independent of container...
             if 'docker_file' in kwargs and env.config['run_mode'] in ['run', 'interactive']:
                 from .docker.client import SoS_DockerClient
                 docker = SoS_DockerClient()
                 docker.load_image(kwargs['docker_file'])
             # handle image
             if 'docker_image' in kwargs:
-                from .docker.client import SoS_DockerClient
-                docker = SoS_DockerClient()
-                docker.pull(kwargs['docker_image'])
+                if 'container' in kwargs and kwargs['container']:
+                    raise ValueError('Option docker_image is deprecated and should not be specified with option container')
+                kwargs['container'] = 'docker://' + kwargs['container']
+            if 'container' in kwargs and kwargs['container']:
+                if not isinstance(kwargs['container'], str):
+                    raise ValueError(
+                        f'A string in the format of "scheme://tag" is expected for option container, {kwargs["container"]} provided')
+                engine = kwargs['engine'] if 'engine' in kwargs and kwargs['engine'] else None
+                if '://' in kwargs['container']:
+                    cty, cname = kwargs['container'].split('://', 1)
+                else:
+                    cty = None
+                    cname = kwargs['container']
+                # now let us figure out image and engine
+                # if engine is specified
+                if engine == 'docker':
+                    if cty is not None and cty != 'docker':
+                        raise ValueError(f'docker engine only allows docker container {cty} specified')
+                elif engine == 'singularity':
+                    if cty is not None and cty not in ('docker', 'file', 'shub'):
+                        raise ValueError(f'singularity engine only allows docker, file and shub container {cty} specified')
+                elif engine is not None and engine != 'local':
+                    raise ValueError(f'Only docker and singularity container engines are supported: {engine} specified')
+                else:
+                    # engine is none, need to be refered
+                    if cty == 'docker':
+                        engine = 'docker'
+                    elif cty in ('file', 'shub'):
+                        engine = 'singularity'
+                    elif cty == 'local':
+                        engine = 'local'
+                    else:
+                        raise ValueError(
+                            f'Unsupported container type {cty} for option container with value {kwargs["container"]}')
+                #
+                # handle different container type
+                if engine == 'docker':
+                    from .docker.client import SoS_DockerClient
+                    docker = SoS_DockerClient()
+                    docker.pull(cname)
+                    kwargs['engine'] = 'docker'
+                    kwargs['container'] = cname
+                elif engine == 'singularity':
+                    kwargs['engine'] = 'singularity'
+                    if cty == 'shub':
+                        from .singularity.client import SoS_SingularityClient
+                        singularity = SoS_SingularityClient()
+                        singularity.pull(kwargs['container'])
+                else:
+                    # if local or none, reset container
+                    kwargs['engine'] = None
+                    kwargs['container'] = None
             if 'active' in kwargs:
                 if kwargs['active'] is False:
                     return None
@@ -282,10 +316,15 @@ class SoS_ExecuteScript:
                     content += iscript.read()
             self.script = content + self.script
 
-        if 'docker_image' in kwargs:
+        if 'engine' in kwargs and kwargs['engine'] == 'docker':
             from .docker.client import SoS_DockerClient
             docker = SoS_DockerClient()
-            docker.run(kwargs['docker_image'], self.script, self.interpreter, self.args, self.suffix,
+            docker.run(kwargs['container'], self.script, self.interpreter, self.args, self.suffix,
+                       **kwargs)
+        elif 'engine' in kwargs and kwargs['engine'] == 'singularity':
+            from .singularity.client import SoS_SingularityClient
+            singularity = SoS_SingularityClient()
+            singularity.run(kwargs['container'], self.script, self.interpreter, self.args, self.suffix,
                        **kwargs)
         else:
             if isinstance(self.interpreter, str):

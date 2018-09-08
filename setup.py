@@ -173,6 +173,7 @@ report = sos.actions:report
 pandoc = sos.actions:pandoc
 
 docker_build = sos.docker.actions:docker_build
+singularity_build = sos.singularity.actions:singularity_build
 
 [sos_taskengines]
 process = sos.tasks:BackgroundProcess_TaskEngine
