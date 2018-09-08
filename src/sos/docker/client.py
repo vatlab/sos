@@ -245,8 +245,8 @@ class SoS_DockerClient:
         with tempfile.TemporaryDirectory(dir=os.getcwd()) as tempdir:
             # keep the temporary script for debugging purposes
             # tempdir = tempfile.mkdtemp(dir=os.getcwd())
+            tempscript = 'docker_run_{}{}'.format(os.getpid(), suffix)
             if script:
-                tempscript = 'docker_run_{}{}'.format(os.getpid(), suffix)
                 with open(os.path.join(tempdir, tempscript), 'w') as script_file:
                     # the input script might have windows new line but the container
                     # will need linux new line for proper execution #1023

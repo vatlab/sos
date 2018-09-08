@@ -140,11 +140,10 @@ class SoS_SingularityClient:
         self._ensure_singularity()
         if not dest:
             raise ValueError(f'Please specify result of sigularity build with option dest')
-        if not script and not src:
         with tempfile.TemporaryDirectory(dir=os.getcwd()) as tempdir:
             if script:
                 with open(os.path.join(tempdir, 'singularity.def'), 'w') as df:
-                    df.write(df)
+                    df.write(script)
                 file_opt = [dest, os.path.join(tempdir, 'singularity.def')]
             else:
                 if not src:
@@ -152,6 +151,7 @@ class SoS_SingularityClient:
                 file_opt = [dest, src]
 
             other_opts = []
+            sudo_opt = []
             for arg, value in kwargs.items():
                 # boolean args
                 if arg in ('sandbox', 'writable', 'notest', 'checks', 'low', 'med', 'high'):
@@ -162,9 +162,13 @@ class SoS_SingularityClient:
                             f'Boolean {arg} is ignored (True should be provided)')
                 elif arg in ('section', 'tag'):
                     other_opts.extend([f'--{arg.replace("_", "-")}', value])
+                elif arg == 'sudo':
+                    sudo_opt = ['sudo']
+                else:
+                    env.logger.warning(f'Unrecognized option for singularity build {arg}')
 
             cmd = subprocess.list2cmdline(
-                ['singularity', 'build'] + other_opts + file_opt)
+                sudo_opt + ['singularity', 'build'] + other_opts + file_opt)
 
             env.logger.debug(cmd)
             if env.config['run_mode'] == 'dryrun':
@@ -176,9 +180,9 @@ class SoS_SingularityClient:
 
             if ret != 0:
                 if script:
-                    debug_script_dir = os.path.join(env.exec_dir, '.sos)
+                    debug_script_dir = os.path.join(env.exec_dir, '.sos')
                     msg = 'The definition has been saved to {}/singularity.def. To reproduce the error please run:\n``{}``'.format(
-                        debug_script_dir, cmd.replace(tempdir, path(debug_script_dir)))
+                        debug_script_dir, cmd.replace(tempdir, debug_script_dir))
                     shutil.copy(os.path.join(
                         tempdir, 'Singularityfile'), debug_script_dir)
                 else:
@@ -186,20 +190,26 @@ class SoS_SingularityClient:
                 raise subprocess.CalledProcessError(
                     returncode=ret, cmd=cmd, stderr=msg)
 
+    def _image_file(self, image):
+        return image.split('://')[-1].replace('/', '-') + '.simg'
+
     def pull(self, image):
         self._ensure_singularity()
 
         if image in self.pulled_images:
             return
+        image_file = self._image_file(image)
         # if image is specified, check if it is available locally. If not, pull it
         try:
             print(f'HINT: Pulling singularity image {image}')
             output = subprocess.check_output(
-                'singularity pull {}'.format(image), stderr=subprocess.STDOUT, shell=True,
+                'singularity pull --name {} {}'.format(image_file, image), stderr=subprocess.STDOUT, shell=True,
                 universal_newlines=True)
             self.pulled_images.add(image)
         except subprocess.CalledProcessError as exc:
-            env.logger.warning('Failed to pull {image}: {e}')
+            env.logger.warning(f'Failed to pull {image}: {exc.output}')
+        if not path(image_file).exists():
+            raise ValueError(f'Image {image_file} does not exist after pulling {image}.')
 
     def run(self, image, script='', interpreter='', args='', suffix='.sh', **kwargs):
         self._ensure_singularity()
@@ -211,8 +221,8 @@ class SoS_SingularityClient:
         with tempfile.TemporaryDirectory(dir=os.getcwd()) as tempdir:
             # keep the temporary script for debugging purposes
             # tempdir = tempfile.mkdtemp(dir=os.getcwd())
+            tempscript = 'singularity_run_{}{}'.format(os.getpid(), suffix)
             if script:
-                tempscript = 'singularity_run_{}{}'.format(os.getpid(), suffix)
                 with open(os.path.join(tempdir, tempscript), 'w') as script_file:
                     # the input script might have windows new line but the container
                     # will need linux new line for proper execution #1023
@@ -223,46 +233,20 @@ class SoS_SingularityClient:
                 args = '{filename:pq}'
             #
             # under mac, we by default share /Users within Singularity
-            wdir = os.path.abspath(os.getcwd())
-            binds = []
             if 'bind' in kwargs:
-                volumes = [kwargs['bind']] if isinstance(
+                binds = [kwargs['bind']] if isinstance(
                     kwargs['bind'], str) else kwargs['bind']
-                has_wdir = False
-                for vol in volumes:
-                    if not vol:
-                        continue
-                    if isinstance(vol, (str, path)):
-                        vol = str(vol)
-                    else:
-                        raise ValueError(f'Unacceptable value {vol} for parameter bind')
-                    if vol.count(':') == 0:
-                        host_dir, mnt_dir = vol, vol
-                    elif vol.count(':') in (1, 2):
-                        host_dir, mnt_dir = vol.split(':', 1)
-                    else:
-                        raise ValueError(f'Invalid format for bind specification: {vol}')
-                    binds.append(
-                        f'{path(host_dir).resolve():p}:{path(mnt_dir):p}')
-                    if wdir.startswith(os.path.abspath(os.path.expanduser(host_dir))):
-                        has_wdir = True
-                bind_opt = ' '.join('-v {}'.format(x) for x in binds)
-                if not has_wdir:
-                    bind_opt += f' -v {path(wdir):p}:{path(wdir):p}'
+                bind_opt = ' '.join('-B {}'.format(x) for x in binds)
             else:
-                bind_opt = f' -v {path(wdir):p}:{path(wdir):p}'
+                bind_opt = ''
 
-
-            # we also need to mount the script
-            if script:
-                bind_opt += f' -v {path(tempdir)/tempscript:p}:/var/lib/sos/{tempscript}'
             cmd_opt = interpolate(f'{interpreter if isinstance(interpreter, str) else interpreter[0]} {args}', {
-                'filename': sos_targets(f'/var/lib/sos/{tempscript}'),
+                'filename': path(tempdir) / tempscript,
                 'script': script})
 
             cmd = 'singularity exec {} {} {}'.format(
                 bind_opt,        # volumes
-                image,              # image
+                self._image_file(image),
                 cmd_opt
             )
             env.logger.debug(cmd)
