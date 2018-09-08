@@ -21,9 +21,9 @@ addons:
       - libgpgme11-dev
       - libseccomp-dev
       - git
-      - build-essentials
+      - build-essential
       - libtool
-      - utotools-dev
+      - autotools-dev
       - automake
       - autoconf
       - uuid-dev
