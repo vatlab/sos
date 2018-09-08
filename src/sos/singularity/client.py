@@ -201,7 +201,7 @@ class SoS_SingularityClient:
         image_file = self._image_file(image)
         # if image is specified, check if it is available locally. If not, pull it
         try:
-            print(f'HINT: Pulling singularity image {image}')
+            print(f'HINT: Pulling image {image}')
             output = subprocess.check_output(
                 'singularity pull --name {} {}'.format(image_file, image), stderr=subprocess.STDOUT, shell=True,
                 universal_newlines=True)

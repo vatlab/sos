@@ -122,7 +122,7 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated', acceptable_args: 
                     kwargs['container'] = cname
                 elif engine == 'singularity':
                     kwargs['engine'] = 'singularity'
-                    if cty == 'shub':
+                    if cty in ('shub', 'docker'):
                         from .singularity.client import SoS_SingularityClient
                         singularity = SoS_SingularityClient()
                         singularity.pull(kwargs['container'])
