@@ -196,7 +196,7 @@ class SoS_SingularityClient:
             if ctx == 'file':
                 return image
             else:
-                return cname + '.simg'
+                return cname.replace('/', '-') + '.simg'
         else:
             return image
 
