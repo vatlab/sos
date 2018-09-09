@@ -196,7 +196,7 @@ class SoS_SingularityClient:
             if ctx == 'file':
                 return image
             else:
-                return cname.replace('/', '-') + '.simg'
+                return cname.replace('/', '-').replace(':', '-') + '.simg'
         else:
             return image
 
@@ -215,7 +215,7 @@ class SoS_SingularityClient:
             raise ValueError(f'Cannot locate or pull singularity image {image}')
         # if image is specified, check if it is available locally. If not, pull it
         try:
-            print(f'HINT: Pulling image {image}')
+            print(f'HINT: Pulling image {image} to {image_file}')
             output = subprocess.check_output(
                 'singularity pull --name {} {}'.format(image_file, image), stderr=subprocess.STDOUT, shell=True,
                 universal_newlines=True)
