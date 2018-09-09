@@ -64,7 +64,7 @@ before_install:
     - sudo sed -i -e 's/^Defaults\tsecure_path.*$//' /etc/sudoers
     - pip install sregistry[all]
     - cd /tmp && wget https://github.com/singularityware/singularity/archive/2.6.0.tar.gz && tar zxf 2.6.0.tar.gz
-    - cd /tmp/singularity-2.6.0 && ./autogen.sh && ./configure CFLAGS=-I/usr/include --prefix=/usr/local || cat config.log
+    - cd /tmp/singularity-2.6.0 && ./autogen.sh && ./configure CFLAGS='$CFLAGS -I/usr/include' --prefix=/usr/local || cat config.log
     - cd /tmp/singularity-2.6.0 && make && sudo make install
 
 sudo: required
