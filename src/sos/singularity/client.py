@@ -205,7 +205,14 @@ class SoS_SingularityClient:
 
         if image in self.pulled_images:
             return
+        if image.startswith('instance://'):
+            return image
         image_file = self._image_file(image)
+        if os.path.exists(image_file):
+            env.logger.debug(f'Using existing singularity image {image_file}')
+            return
+        if '://' not in image:
+            raise ValueError(f'Cannot locate or pull singularity image {image}')
         # if image is specified, check if it is available locally. If not, pull it
         try:
             print(f'HINT: Pulling image {image}')

@@ -125,10 +125,9 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated', acceptable_args: 
                     kwargs['container'] = cname
                 elif engine == 'singularity':
                     kwargs['engine'] = 'singularity'
-                    if cty in ('shub', 'docker'):
-                        from .singularity.client import SoS_SingularityClient
-                        singularity = SoS_SingularityClient()
-                        singularity.pull(kwargs['container'])
+                    from .singularity.client import SoS_SingularityClient
+                    singularity = SoS_SingularityClient()
+                    singularity.pull(kwargs['container'])
                 else:
                     # if local or none, reset container
                     kwargs['engine'] = None
