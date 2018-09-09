@@ -114,8 +114,7 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated', acceptable_args: 
                     elif cty == 'local':
                         engine = 'local'
                     else:
-                        raise ValueError(
-                            f'Unsupported container type {cty} for option container with value {kwargs["container"]}')
+                        engine = 'docker'
                 #
                 # handle different container type
                 if engine == 'docker':
