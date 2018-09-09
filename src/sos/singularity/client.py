@@ -191,7 +191,14 @@ class SoS_SingularityClient:
                     returncode=ret, cmd=cmd, stderr=msg)
 
     def _image_file(self, image):
-        return image.split('://')[-1].replace('/', '-') + '.simg'
+        if '://' in image:
+            ctx, cname = image.split('://', 1)
+            if ctx == 'file':
+                return image
+            else:
+                return cname + '.simg'
+        else:
+            return image
 
     def pull(self, image):
         self._ensure_singularity()

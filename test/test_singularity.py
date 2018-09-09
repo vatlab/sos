@@ -87,6 +87,14 @@ singularity_build(src='docker://godlovedc/lolcow', dest='lolcow_docker.simg', su
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
+        # test handling simg with singularity
+        script = SoS_Script(r'''
+run: container='lolcow_docker.simg'
+  ls /
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
 
 if __name__ == '__main__':
     unittest.main()
