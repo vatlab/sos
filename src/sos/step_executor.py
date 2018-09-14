@@ -452,8 +452,8 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
         res = {'ret_code': 0}
         if sig:
             sig.set_output(env.sos_dict['_output'])
-            sig.write()
-            res.update({'output': sig.content['output'], 'shared': sig.content['end_context']})
+            if sig.write():
+                res.update({'output': sig.content['output'], 'shared': sig.content['end_context']})
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res
