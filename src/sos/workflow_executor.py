@@ -914,7 +914,7 @@ class Base_Executor:
                 # and node._node_index == runnable._node_index + 1:
                 node._context.update(env.sos_dict.clone_selected_vars(
                     node._context['__signature_vars__'] | node._context['__environ_vars__']
-                    | {'_input', '__step_output__', '__default_output__', '__args__'}))
+                    | {'_input', '__step_output__', '__args__'}))
             node._context.update(svar)
             node._context['__completed__'].append(
                 res['__step_name__'])
