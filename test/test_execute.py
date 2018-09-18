@@ -1308,7 +1308,7 @@ input: for_each={'i': range(3)}, concurrent=True
 output: dynamic('*.dout')
 import random
 path(f'{random.randint(0, 1000000)}.dout').touch()
-''')    
+''')
         wf = script.workflow()
         res = Base_Executor(wf).run()
         douts = glob.glob('*.dout')
@@ -1362,6 +1362,29 @@ depends: 'dbsnp.vcf', 'hg19.fa'
         for file in ('dbsnp.vcf', 'hg19.fa', 'f1.bam', 'f2.bam', 'f1.bam.idx', 'f2.bam.idx'):
             self.assertTrue(os.path.isfile(file))
 
+
+    def testRemovalOfOutputFromFailedStep(self):
+        '''Test the removal of output files if a step fails #1055'''
+        for file in ('failed.csv', 'result.csv'):
+            if os.path.isfile(file):
+                os.remove(file)
+        script = SoS_Script('''
+[sub: provides='{file}.csv']
+sh: expand=True
+   touch {_output}
+   eco "something wrong"
+
+[step]
+depends: 'failed.csv'
+path('result.csv').touch()
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception,  Base_Executor(wf).run)
+        # rerun should still raise
+        self.assertRaises(Exception,  Base_Executor(wf).run)
+
+        self.assertFalse(os.path.isfile('failed.csv'))
+        self.assertFalse(os.path.isfile('result.csv'))
 
 if __name__ == '__main__':
     unittest.main()
