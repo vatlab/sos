@@ -892,7 +892,7 @@ def sos_handle_parameter_(key, defvalue):
         if key in env.sos_dict['__args__']:
             return env.sos_dict['__args__'][key]
     #
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(allow_abbrev=False)
     # thre is a possibility that users specify --cut-off instead of --cut_off for parameter
     # cut_off. It owuld be nice to allow both.
     #
