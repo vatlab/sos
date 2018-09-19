@@ -1308,7 +1308,7 @@ input: for_each={'i': range(3)}, concurrent=True
 output: dynamic('*.dout')
 import random
 path(f'{random.randint(0, 1000000)}.dout').touch()
-''')    
+''')
         wf = script.workflow()
         res = Base_Executor(wf).run()
         douts = glob.glob('*.dout')
@@ -1324,6 +1324,67 @@ print(_input)
         wf = script.workflow()
         Base_Executor(wf).run()
 
+
+    def testMultiDepends(self):
+        '''Test a step with multiple depdendend steps'''
+        for file in ('dbsnp.vcf', 'hg19.fa', 'f1.fastq', 'f2.fastq', 'f1.bam', 'f2.bam', 'f1.bam.idx', 'f2.bam.idx'):
+           if os.path.isfile(file):
+               os.remove(file)
+        self.touch(['f1.fastq', 'f2.fastq'])
+        script = SoS_Script('''
+import time
+
+[refseq: provides='hg19.fa']
+time.sleep(1)
+_output.touch()
+
+[dbsnp: provides='dbsnp.vcf']
+_output.touch()
+
+[align_10]
+depends: 'hg19.fa'
+input: 'f1.fastq', 'f2.fastq', group_by=1, concurrent=True
+output: _input.with_suffix('.bam')
+_output.touch()
+
+[align_20]
+input: group_by=1, concurrent=True
+output: _input.with_suffix('.bam.idx')
+_output.touch()
+
+[call_10]
+depends: 'dbsnp.vcf', 'hg19.fa'
+
+[call_20]
+''')
+        wf = script.workflow('align+call')
+        Base_Executor(wf).run()
+        for file in ('dbsnp.vcf', 'hg19.fa', 'f1.bam', 'f2.bam', 'f1.bam.idx', 'f2.bam.idx'):
+            self.assertTrue(os.path.isfile(file))
+
+
+    def testRemovalOfOutputFromFailedStep(self):
+        '''Test the removal of output files if a step fails #1055'''
+        for file in ('failed.csv', 'result.csv'):
+            if os.path.isfile(file):
+                os.remove(file)
+        script = SoS_Script('''
+[sub: provides='{file}.csv']
+sh: expand=True
+   touch {_output}
+   eco "something wrong"
+
+[step]
+depends: 'failed.csv'
+path('result.csv').touch()
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception,  Base_Executor(wf).run)
+        # rerun should still raise
+        self.assertRaises(Exception,  Base_Executor(wf).run)
+
+        self.assertFalse(os.path.isfile('failed.csv'))
+        self.assertFalse(os.path.isfile('result.csv'))
 
 if __name__ == '__main__':
     unittest.main()

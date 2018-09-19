@@ -112,7 +112,8 @@ echo "Hello World!", $SHELL
 
     def testArgs(self):
         '''Test args option of scripts'''
-        file_target('a.txt').unlink()
+        if os.path.isfile('a.txt'):
+            file_target('a.txt').unlink()
         script = SoS_Script(r'''
 [0]
 sh: args='-n {filename:q}'

@@ -1402,6 +1402,24 @@ run:
         self.assertTrue('workflow_a_10, workflow_b' in msg)
         self.assertTrue('default' in msg)
 
+    def testParameterAbbreviation(self):
+        '''Test potential problem caused by parameter abbreviation #1053'''
+        if os.path.isfile('0914.txt'):
+            os.remove('0914.txt')
+        script = SoS_Script('''
+[global]
+parameter: name = '0914'
+
+[1]
+parameter: n = 4
+output: f'{name}.txt'
+print(_output)
+_output.touch()
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--n', '5']).run()
+        self.assertTrue(os.path.isfile('0914.txt'))
+
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
