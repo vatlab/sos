@@ -10,6 +10,8 @@ import subprocess
 import sys
 import time
 import uuid
+import zmq
+
 from collections import defaultdict
 from collections.abc import Sequence
 from io import StringIO
@@ -90,7 +92,7 @@ class SoS_Worker(mp.Process):
     Worker process to process SoS step or workflow in separate process.
     '''
 
-    def __init__(self,  pipe: Connection, config: Optional[Dict[str, Any]] = None, args: Optional[Any] = None, **kwargs) -> None:
+    def __init__(self,  config: Optional[Dict[str, Any]] = None, args: Optional[Any] = None, **kwargs) -> None:
         '''
         cmd_queue: a single direction queue for the master process to push
             items to the worker.
@@ -109,8 +111,8 @@ class SoS_Worker(mp.Process):
         # the worker process knows configuration file, command line argument etc
         super(SoS_Worker, self).__init__(**kwargs)
         #
-        self.pipe = pipe
         env.config.update(config)
+
         self.args = [] if args is None else args
 
     def reset_dict(self):
@@ -138,23 +140,51 @@ class SoS_Worker(mp.Process):
                     env.sos_dict.set(key, value)
 
     def run(self):
+        env.zmq_context = zmq.Context()
+        env.pull_socket = env.zmq_context.socket(zmq.PULL)
+        env.pull_socket.connect(f'tcp://127.0.0.1:{env.config["server_push_port"]}')
+        env.push_socket = env.zmq_context.socket(zmq.PUSH)
+        env.push_socket.connect(f'tcp://127.0.0.1:{env.config["server_pull_port"]}')
+        env.sub_socket = env.zmq_context.socket(zmq.SUB)
+        env.sub_socket.connect(f'tcp://127.0.0.1:{env.config["server_pub_port"]}')
+
+        env.logger.warning(f'I am slave with {env.config["server_pull_port"]} {env.config["server_push_port"]} {env.config["server_pub_port"]} ')
+
+        # Process messages from receiver and controller
+        poller = zmq.Poller()
+        poller.register(env.pull_socket, zmq.POLLIN)
+        poller.register(env.sub_socket, zmq.POLLIN)
+
         # wait to handle jobs
         while True:
+            socks = dict(poller.poll())
+
             try:
-                work = self.pipe.recv()
-                if work is None:
+                if socks.get(env.sub_socket) == zmq.POLLIN:
                     break
-                env.logger.debug(
-                    f'Worker {self.name} receives request {short_repr(work)}')
-                if work[0] == 'step':
-                    # this is a step ...
-                    self.run_step(*work[1:])
-                else:
-                    self.run_workflow(*work[1:])
-                env.logger.debug(
-                    f'Worker {self.name} completes request {short_repr(work)}')
+
+                if socks.get(env.pull_socket) == zmq.POLLIN:
+                    # get job
+                    work = env.pull_socket.recv()
+                    if work is None:
+                        break
+
+                    env.logger.debug(
+                        f'Worker {self.name} receives request {short_repr(work)}')
+                    if work[0] == 'step':
+                        # this is a step ...
+                        self.run_step(*work[1:])
+                    else:
+                        self.run_workflow(*work[1:])
+                    env.logger.debug(
+                        f'Worker {self.name} completes request {short_repr(work)}')
             except KeyboardInterrupt:
                 break
+        # Finished
+        env.pull_socket.close()
+        env.push_socket.close()
+        env.sub_socket.close()
+        env.zmq_context.term()
 
     def run_workflow(self, workflow_id, wf, targets, args, shared, config):
         #
@@ -174,10 +204,10 @@ class SoS_Worker(mp.Process):
         # everything directly to the master process, so we do not
         # have to collect result here
         try:
-            executer.run(targets=targets, parent_pipe=self.pipe,
+            executer.run(targets=targets, parent_socket=env.push_socket,
                          my_workflow_id=workflow_id)
         except Exception as e:
-            self.pipe.send(e)
+            env.push_socket.send(e)
 
     def run_step(self, section, context, shared, args, config, verbosity):
         env.logger.debug(
@@ -270,8 +300,7 @@ class ExecutionManager(object):
 
     def execute(self, runnable: Union[SoS_Node, dummy_node], config: Dict[str, Any], args: Any, spec: Any) -> None:
         if not self.pool:
-            q1, q2 = mp.Pipe()
-            worker = SoS_Worker(pipe=q2, config=config, args=args)
+            worker = SoS_Worker(config=config, args=args)
             worker.start()
         else:
             # get worker, q and runnable is not needed any more
@@ -376,6 +405,17 @@ class Base_Executor:
         }
         if not env.config['master_id']:
             env.config['master_id'] = self.md5
+            # this is the master process.Create a server socket
+            env.zmq_context = zmq.Context()
+            env.pull_socket = env.zmq_context.socket(zmq.PULL)
+            env.config['server_pull_port'] = env.pull_socket.bind_to_random_port('tcp://127.0.0.1')
+            env.push_socket = env.zmq_context.socket(zmq.PUSH)
+            env.config['server_push_port'] = env.push_socket.bind_to_random_port('tcp://127.0.0.1')
+            env.pub_socket = env.zmq_context.socket(zmq.PUB)
+            env.config['server_pub_port'] = env.pub_socket.bind_to_random_port('tcp://127.0.0.1')
+
+            env.logger.error(f'Starting zmq server with port {env.config["server_pull_port"]} {env.config["server_push_port"]} {env.config["server_pub_port"]}')
+
             workflow_info['command_line'] = subprocess.list2cmdline(
                 [os.path.basename(sys.argv[0])] + sys.argv[1:])
             workflow_info['project_dir'] = os.getcwd()
@@ -1009,20 +1049,20 @@ class Base_Executor:
                     env.logger.warning(f'Failed to remove placeholder {filename}: {e}')
 
 
-    def run(self, targets: Optional[List[str]]=None, parent_pipe: None=None, my_workflow_id: None=None, mode=None) -> Dict[str, Any]:
+    def run(self, targets: Optional[List[str]]=None, parent_socket: None=None, my_workflow_id: None=None, mode=None) -> Dict[str, Any]:
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
         #
         # There are threee cases
         #
-        # parent_pipe = None: this is the master workflow executor
-        # parent_pipe != None, my_workflow_id != None: this is a nested workflow inside a master workflow
+        # parent_socket = None: this is the master workflow executor
+        # parent_socket != None, my_workflow_id != None: this is a nested workflow inside a master workflow
         #   executor and needs to pass tasks etc to master
-        # parent_pipe != None, my_workflow_id == None: this is a nested workflow inside a task and needs to
+        # parent_socket != None, my_workflow_id == None: this is a nested workflow inside a task and needs to
         #   handle its own tasks.
         #
-        nested = parent_pipe is not None and my_workflow_id is not None
+        nested = parent_socket is not None and my_workflow_id is not None
         self.completed = defaultdict(int)
 
         def i_am():
@@ -1041,8 +1081,8 @@ class Base_Executor:
         if targets:
             targets = self.check_targets(targets)
             if len(targets) == 0:
-                if parent_pipe:
-                    parent_pipe.send(wf_result)
+                if parent_socket:
+                    parent_socket.send(wf_result)
                 else:
                     return wf_result
 
@@ -1333,9 +1373,9 @@ class Base_Executor:
                         step_id = uuid.uuid4()
                         env.logger.debug(
                             f'{i_am()} send step {section.step_name()} to master with args {self.args} and context {runnable._context}')
-                        parent_pipe.send(f'step {step_id}')
+                        parent_socket.send(f'step {step_id}')
                         q = mp.Pipe()
-                        parent_pipe.send((section, runnable._context, shared, self.args,
+                        parent_socket.send((section, runnable._context, shared, self.args,
                                           env.config, env.verbosity, q[1]))
                         # this is a real step
                         manager.add_placeholder_worker(runnable, q[0])
@@ -1401,8 +1441,8 @@ class Base_Executor:
                 exec_error.append(self.workflow.name,
                                   RuntimeError(
                                       f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'))
-            if parent_pipe is not None:
-                parent_pipe.send(exec_error)
+            if parent_socket is not None:
+                parent_socket.send(exec_error)
                 return wf_result
             else:
                 raise exec_error
@@ -1414,7 +1454,7 @@ class Base_Executor:
         wf_result['shared'] = {x: env.sos_dict[x]
                                for x in self.shared.keys() if x in env.sos_dict}
         wf_result['__completed__'] = self.completed
-        if parent_pipe:
-            parent_pipe.send(wf_result)
+        if parent_socket:
+            parent_socket.send(wf_result)
         else:
             return wf_result
