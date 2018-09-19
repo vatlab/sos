@@ -1130,11 +1130,12 @@ def cmd_status(args, workflow_args):
     from .tasks import print_task_status
     from .utils import env, load_config_files, get_traceback
     from .hosts import Host
-    from .signatures import workflow_signatures
+    from .signatures import WorkflowSignatures
     try:
         load_config_files(args.config)
         # if not --all and no task is specified, find all tasks in the current directory
         if not args.tasks and not args.all:
+            workflow_signatures = WorkflowSignatures()
             args.tasks = [x for x in workflow_signatures.tasks() if os.path.isfile(
                 os.path.join(os.path.expanduser('~'), '.sos', 'tasks', x + '.task'))]
         if not args.queue:
@@ -1197,12 +1198,13 @@ def cmd_purge(args, workflow_args):
     from .tasks import purge_tasks
     from .utils import env, load_config_files, get_traceback
     from .hosts import Host
-    from .signatures import workflow_signatures
+    from .signatures import WorkflowSignatures
     #from .monitor import summarizeExecution
     env.verbosity = args.verbosity
     try:
         # if not --all and no task is specified, find all tasks in the current directory
         if not args.tasks and not args.all:
+            workflow_signatures = WorkflowSignatures()
             args.tasks = [x for x in workflow_signatures.tasks() if os.path.isfile(
                 os.path.join(os.path.expanduser('~'), '.sos', 'tasks', x + '.task'))]
         if not args.queue:
@@ -1372,10 +1374,11 @@ def get_tracked_files(workflow_id):
 def cmd_remove(args, unknown_args):
     from .utils import env
     from .targets import file_target
-    from .signatures import step_signatures, workflow_signatures
+    from .signatures import StepSignatures, WorkflowSignatures
 
     env.verbosity = args.verbosity
 
+    workflow_signatures = WorkflowSignatures()
     if args.placeholders:
         placeholder_files = workflow_signatures.placeholders()
         removed: int = 0
@@ -1408,6 +1411,7 @@ def cmd_remove(args, unknown_args):
         if sig_files:
             files = list(set(sum([sum(x[1].values(), []) for x in sig_files], [])))
             sig_ids = list(set([x[0] for x in sig_files]))
+            step_signatures = StepSignatures()
             num_removed_local_steps = step_signatures.remove_many(
                 sig_ids, global_sig=False)
             num_removed_global_steps = step_signatures.remove_many(

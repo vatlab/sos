@@ -5,6 +5,7 @@
 
 import base64
 import multiprocessing as mp
+import threading
 import os
 import subprocess
 import sys
@@ -27,7 +28,7 @@ from .hosts import Host
 from .parser import SoS_Step, SoS_Workflow
 from .pattern import extract_pattern
 from .workflow_report import render_report
-from .signatures import workflow_signatures
+from .signatures import SignatureHandler
 from .step_executor import PendingTasks, Step_Executor, analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
                       UnknownTarget, file_target, path, paths,
@@ -87,6 +88,8 @@ def __null_func__(*args, **kwargs) -> Any:
     return _flatten(args), kwargs
 
 
+
+
 class SoS_Worker(mp.Process):
     '''
     Worker process to process SoS step or workflow in separate process.
@@ -142,19 +145,11 @@ class SoS_Worker(mp.Process):
 
     def run(self):
         env.zmq_context = zmq.Context()
-        env.pull_socket = env.zmq_context.socket(zmq.PULL)
-        env.pull_socket.connect(f'tcp://127.0.0.1:{env.config["server_push_port"]}')
-        env.push_socket = env.zmq_context.socket(zmq.PUSH)
-        env.push_socket.connect(f'tcp://127.0.0.1:{env.config["server_pull_port"]}')
-        env.sub_socket = env.zmq_context.socket(zmq.SUB)
-        env.sub_socket.connect(f'tcp://127.0.0.1:{env.config["server_pub_port"]}')
 
-        env.logger.trace(f'I am slave with {env.config["server_pull_port"]} {env.config["server_push_port"]} {env.config["server_pub_port"]} ')
-
-        # Process messages from receiver and controller
-        poller = zmq.Poller()
-        poller.register(env.pull_socket, zmq.POLLIN)
-        poller.register(env.sub_socket, zmq.POLLIN)
+        env.signature_push_socket = env.zmq_context.socket(zmq.PUSH)
+        env.signature_push_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["signature_push"]}')
+        env.signature_req_socket = env.zmq_context.socket(zmq.REQ)
+        env.signature_req_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["signature_req"]}')
 
         # wait to handle jobs
         while True:
@@ -174,10 +169,8 @@ class SoS_Worker(mp.Process):
             except KeyboardInterrupt:
                 break
         # Finished
-        env.pull_socket.close()
-        env.push_socket.close()
-        env.sub_socket.close()
-        env.zmq_context.term()
+        env.signature_push_socket.close()
+        env.signature_req_socket.close()
 
     def run_workflow(self, workflow_id, wf, targets, args, shared, config):
         #
@@ -399,26 +392,30 @@ class Base_Executor:
         }
         if not env.config['master_id']:
             env.config['master_id'] = self.md5
-            # this is the master process.Create a server socket
+            env.config['sockets'] = {}
+            #
             env.zmq_context = zmq.Context()
-            env.pull_socket = env.zmq_context.socket(zmq.PULL)
-            env.config['server_pull_port'] = env.pull_socket.bind_to_random_port('tcp://127.0.0.1')
-            env.push_socket = env.zmq_context.socket(zmq.PUSH)
-            env.config['server_push_port'] = env.push_socket.bind_to_random_port('tcp://127.0.0.1')
-            env.pub_socket = env.zmq_context.socket(zmq.PUB)
-            env.config['server_pub_port'] = env.pub_socket.bind_to_random_port('tcp://127.0.0.1')
-
-            env.logger.trace(f'Starting zmq server with port {env.config["server_pull_port"]} {env.config["server_push_port"]} {env.config["server_pub_port"]}')
+            # signature handler in a separate thread, connected by zmq socket
+            handler = SignatureHandler()
+            handler.start()
 
             workflow_info['command_line'] = subprocess.list2cmdline(
                 [os.path.basename(sys.argv[0])] + sys.argv[1:])
             workflow_info['project_dir'] = os.getcwd()
             workflow_info['script'] = base64.b64encode(
                 self.workflow.content.text().encode()).decode('ascii')
+
+        # master process connect to signature sockets
+        env.signature_push_socket = env.zmq_context.socket(zmq.PUSH)
+        env.signature_push_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["signature_push"]}')
+        env.signature_req_socket = env.zmq_context.socket(zmq.REQ)
+        env.signature_req_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["signature_req"]}')
+
         workflow_info['master_id'] = env.config['master_id']
         if env.config['master_id'] == self.md5:
-            workflow_signatures.clear()
-        workflow_signatures.write('workflow', self.md5, repr(workflow_info))
+            env.signature_req_socket.send_pyobj(['workflow', 'clear'])
+            reply = env.signature_req_socket.recv_pyobj()
+        env.signature_push_socket.send_pyobj(['workflow', 'workflow', self.md5, repr(workflow_info)])
         #
         env.config['resumed_tasks'] = set()
         wf_status = os.path.join(os.path.expanduser(
@@ -1028,7 +1025,7 @@ class Base_Executor:
         }
         if env.config['output_dag'] and env.config['master_id'] == self.md5:
             workflow_info['dag'] = env.config['output_dag']
-        workflow_signatures.write('workflow', self.md5, repr(workflow_info))
+        env.signature_push_socket.send_pyobj(['workflow', 'workflow', self.md5, repr(workflow_info)])
         if env.config['master_id'] == env.config['workflow_id'] and env.config['output_report']:
             # if this is the outter most workflow
             render_report(env.config['output_report'],

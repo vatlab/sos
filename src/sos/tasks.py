@@ -19,7 +19,6 @@ from .utils import (env, expand_time, linecount_of_file, sample_lines,
                     short_repr, tail_of_file, expand_size, format_HHMMSS,
                     DelayedAction, format_duration)
 from .targets import sos_targets
-from .signatures import workflow_signatures
 
 monitor_interval = 5
 resource_monitor_interval = 60
@@ -185,8 +184,8 @@ class TaskFile(object):
         )
 
     def save(self, params):
-        workflow_signatures.write('task', self.task_id,
-                                  f"{{'creation_time': {time.time()}}}")
+        env.signature_push_socket.send_pyobj(['workflow', 'task', self.task_id,
+                                  f"{{'creation_time': {time.time()}}}"])
         if os.path.isfile(self.task_file):
             if self.status == 'running':
                 env.logger.debug('Running task is not updated')

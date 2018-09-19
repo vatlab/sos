@@ -33,7 +33,6 @@ from .targets import (UnknownTarget, executable, file_target, fileMD5, path,
 from .utils import (SlotManager, StopInputGroup, TerminateExecution,
                     TimeoutInterProcessLock, env, get_traceback, short_repr,
                     transcribe)
-from .signatures import workflow_signatures
 
 from typing import Any, Callable, Dict, List, Tuple, Union
 __all__ = ['SoS_Action', 'script', 'sos_run',
@@ -381,8 +380,8 @@ class SoS_ExecuteScript:
                                              {'filename': sos_targets('SCRIPT'), 'script': self.script})
                 transcribe(self.script, cmd=transcript_cmd)
                 if env.sos_dict['_index'] == 0:
-                    workflow_signatures.write('transcript', env.sos_dict['step_name'],
-                                              repr({'start_time': time.time(), 'command': transcript_cmd, 'script': self.script}))
+                    env.signature_push_socket.send_pyobj(['workflow', 'transcript', env.sos_dict['step_name'],
+                                              repr({'start_time': time.time(), 'command': transcript_cmd, 'script': self.script})])
 
                 if env.config['run_mode'] == 'interactive':
                     if 'stdout' in kwargs or 'stderr' in kwargs:

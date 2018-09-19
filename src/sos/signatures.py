@@ -3,15 +3,15 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
-import fasteners
 import os
+import zmq
 import pickle
 import lzma
 import sqlite3
+import threading
 from collections import namedtuple
 
 from .utils import env
-
 
 class TargetSignatures:
     TargetSig = namedtuple('TargetSig', 'mtime size md5')
@@ -20,12 +20,11 @@ class TargetSignatures:
         self.db_file = os.path.join(os.path.expanduser(
             '~'), '.sos', 'target_signatures.db')
         self._conn = None
-        self._pid = None
 
     def _get_conn(self):
         # there is a possibility that the _conn is copied with a process
         # and we would better have a fresh conn
-        if self._conn is None or self._pid != os.getpid():
+        if self._conn is None:
             self._conn = sqlite3.connect(self.db_file, timeout=60)
             self._conn.execute('''CREATE TABLE IF NOT EXISTS targets (
                 target text PRIMARY KEY,
@@ -33,7 +32,6 @@ class TargetSignatures:
                 size INTEGER,
                 md5 text NOT NULL
                 )''')
-            self._pid = os.getpid()
         return self._conn
 
     conn = property(_get_conn)
@@ -105,30 +103,27 @@ class StepSignatures:
             env.exec_dir, '.sos', 'step_signatures.db')
         self._global_conn = None
         self._local_conn = None
-        self._pid = None
 
     def get_conn(self, global_sig=False):
         # there is a possibility that the _conn is copied with a process
         # and we would better have a fresh conn
         if global_sig:
-            if self._global_conn is None or self._pid != os.getpid():
+            if self._global_conn is None:
                 self._global_conn = sqlite3.connect(
                     self.global_db_file, timeout=60)
                 self._global_conn.execute('''CREATE TABLE IF NOT EXISTS steps (
                     step_id text PRIMARY KEY,
                     signature BLOB
                     )''')
-                self._pid = os.getpid()
             return self._global_conn
         else:
-            if self._local_conn is None or self._pid != os.getpid():
+            if self._local_conn is None:
                 self._local_conn = sqlite3.connect(
                     self.local_db_file, timeout=60)
                 self._local_conn.execute('''CREATE TABLE IF NOT EXISTS steps (
                     step_id text PRIMARY KEY,
                     signature BLOB
                     )''')
-                self._pid = os.getpid()
             return self._local_conn
 
     def get(self, step_id: str, global_sig: bool):
@@ -195,13 +190,11 @@ class WorkflowSignatures(object):
         self.db_file = os.path.join(
             env.exec_dir, '.sos', 'workflow_signatures.db')
         self._conn = None
-        self._pid = None
-        self._lock = os.path.join(env.temp_dir, 'workflow_db.lck')
 
     def _get_conn(self):
         # there is a possibility that the _conn is copied with a process
         # and we would better have a fresh conn
-        if self._conn is None or self._pid != os.getpid():
+        if self._conn is None:
             self._conn = sqlite3.connect(self.db_file, timeout=60)
             self._conn.execute('''CREATE TABLE IF NOT EXISTS workflows (
                     master_id text,
@@ -209,17 +202,15 @@ class WorkflowSignatures(object):
                     id text,
                     item text
             )''')
-            self._pid = os.getpid()
         return self._conn
 
     conn = property(_get_conn)
 
     def write(self, entry_type: str, id: str, item: str):
         try:
-            with fasteners.InterProcessLock(self._lock):
-                self.conn.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
-                          (env.config["master_id"], entry_type, id, item))
-                self.conn.commit()
+            self.conn.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
+                      (env.config["master_id"], entry_type, id, item))
+            self.conn.commit()
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to write workflow signature of type {entry_type} and id {id}: {e}')
             return None
@@ -284,6 +275,64 @@ class WorkflowSignatures(object):
             return []
 
 
-target_signatures = TargetSignatures()
-step_signatures = StepSignatures()
-workflow_signatures = WorkflowSignatures()
+class SignatureHandler(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.daemon = True
+
+        self.target_signatures = TargetSignatures()
+        self.step_signatures = StepSignatures()
+        self.workflow_signatures = WorkflowSignatures()
+
+    def run(self):
+        # there are two sockets
+        #
+        # signature_push is used to write signatures. It is a single push operation with no reply.
+        # signature_req is used to query information. The sender would need to get an response.
+        push_socket = env.zmq_context.socket(zmq.PULL)
+        env.config['sockets']['signature_push'] = push_socket.bind_to_random_port('tcp://127.0.0.1')
+        req_socket = env.zmq_context.socket(zmq.REP)
+        env.config['sockets']['signature_req'] = req_socket.bind_to_random_port('tcp://127.0.0.1')
+
+        # Process messages from receiver and controller
+        poller = zmq.Poller()
+        poller.register(push_socket, zmq.POLLIN)
+        poller.register(req_socket, zmq.POLLIN)
+
+        while True:
+            try:
+                socks = dict(poller.poll())
+
+                if push_socket in socks:
+                    msg = push_socket.recv_pyobj()
+                    if msg[0] == 'workflow':
+                        self.workflow_signatures.write(*msg[1:])
+                    elif msg[0] == 'target':
+                        self.target_signatures.set(*msg[1:])
+                    elif msg[0] == 'step':
+                        self.step_signatures.set(*msg[1:])
+                    else:
+                        env.logger.warning(f'Unknown message passed {msg}')
+
+                if req_socket in socks:
+                    msg = req_socket.recv_pyobj()
+                    if msg[0] == 'workflow':
+                        if msg[1] == 'clear':
+                            self.workflow_signatures.clear()
+                            req_socket.send_pyobj('ok')
+                        else:
+                            env.logger.warning(f'Unknown request {msg}')
+                    elif msg[0] == 'target':
+                        if msg[1] == 'get':
+                            req_socket.send_pyobj(self.target_signatures.get(msg[1]))
+                        else:
+                            env.logger.warning(f'Unknown request {msg}')
+                    elif msg[0] == 'step':
+                        if msg[1] == 'get':
+                            req_socket.send_pyobj(self.step_signatures.get(*msg[2:]))
+                        else:
+                            env.logger.warning(f'Unknown request {msg}')
+            except Exception as e:
+                env.logger.warning(f'Signature handling warning: {e}')
+            except KeyboardInterrupt:
+                break

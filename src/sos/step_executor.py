@@ -25,7 +25,6 @@ from .eval import SoS_eval, SoS_exec, stmtHash, accessed_vars
 
 from .parser import SoS_Step
 from .pattern import extract_pattern
-from .signatures import workflow_signatures
 from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
                      SOS_OUTPUT_OPTIONS, SOS_RUNTIME_OPTIONS, SOS_TAG)
 from .targets import (BaseTarget, RemovedTarget, RuntimeInfo, UnavailableLock,
@@ -1211,7 +1210,7 @@ class Base_Step_Executor:
                 y)) for x, y in result.items()}
             rep_result['tags'] = ' '.join(self.task_manager.tags(id))
             rep_result['queue'] = queue
-            workflow_signatures.write('task', id, repr(rep_result))
+            env.signature_push_socket.send_pyobj(['workflow', 'task', id, repr(rep_result)])
         self.task_manager.clear_submitted()
 
         # if in dryrun mode, we display the output of the dryrun task
@@ -1818,8 +1817,8 @@ class Base_Step_Executor:
                 'completed': dict(self.completed),
                 'end_time': time.time()
             }
-            workflow_signatures.write(
-                'step', env.sos_dict["workflow_id"], repr(step_info))
+            env.signature_push_socket.send_pyobj([
+                'workflow', 'step', env.sos_dict["workflow_id"], repr(step_info)])
             return self.collect_result()
         except KeyboardInterrupt:
             # if the worker_pool is not properly shutdown (e.g. interrupted by KeyboardInterrupt #871)

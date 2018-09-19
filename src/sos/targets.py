@@ -19,7 +19,6 @@ import pkg_resources
 
 from .utils import (Error, env, pickleable, short_repr, stable_repr)
 
-from .signatures import target_signatures, step_signatures, workflow_signatures
 
 try:
     from xxhash import xxh64 as hash_md5
@@ -531,7 +530,7 @@ class file_target(path, BaseTarget):
         # create an empty placeholder file
         env.logger.debug(f'Create placeholder target {self}')
         self.touch()
-        workflow_signatures.write('placeholder', 'file_target', str(self))
+        env.signature_push_socket.send_pyobj(['workflow', 'placeholder', 'file_target', str(self)])
 
     def target_exists(self, mode='any'):
         try:
@@ -578,7 +577,8 @@ class file_target(path, BaseTarget):
     def validate(self, sig=None):
         '''Check if file matches its signature'''
         if sig is None:
-            sig = target_signatures.get(self)
+            env.signature_req_socket.send_pyobj('target', self)
+            sig = env.signature_req_socket.recv_pyobj()
         # old signature file with only md5
         if isinstance(sig, str) or not self.exists():
             try:
@@ -602,12 +602,12 @@ class file_target(path, BaseTarget):
             with open(self + '.zapped') as md5:
                 line = md5.readline()
                 _, mtime, size, md5 = line.rsplit('\t', 3)
-                target_signatures.set(self, mtime, size, md5.strip())
+                env.signature_push_socket.send_pyobj(['target', self, mtime, size, md5.strip()])
             return
         if not self._md5:
             self._md5 = fileMD5(self)
-        target_signatures.set(self,
-                              os.path.getmtime(self), os.path.getsize(self), self._md5)
+        env.signature_push_socket.send_pyobj([
+            'target', os.path.getmtime(self), os.path.getsize(self), self._md5])
 
     def __hash__(self):
         return hash(repr(self))
@@ -1117,12 +1117,12 @@ class RuntimeInfo(InMemorySignature):
         if ret is False:
             env.logger.debug(f'Failed to write signature {self.sig_id}')
             return ret
-        step_signatures.set(self.sig_id, ret, self.external_sig)
-        workflow_signatures.write('tracked_files', self.sig_id, repr({
+        env.signature_push_socket.send_pyobj(['step', self.sig_id, ret, self.external_sig])
+        env.signature_push_socket.send_pyobj(['workflow', 'tracked_files', self.sig_id, repr({
             'input_files': [str(f.resolve()) for f in self.input_files if isinstance(f, file_target)],
             'dependent_files': [str(f.resolve()) for f in self.dependent_files if isinstance(f, file_target)],
             'output_files': [str(f.resolve()) for f in self.output_files if isinstance(f, file_target)]
-            }))
+            })])
         return True
 
     def validate(self):
@@ -1136,7 +1136,8 @@ class RuntimeInfo(InMemorySignature):
             if not x.target_exists('any'):
                 return f'Missing target {x}'
         #
-        sig = step_signatures.get(self.sig_id, self.external_sig)
+        env.signature_req_socket.send_pyobj(['step', 'get', self.sig_id, self.external_sig])
+        sig = env.signature_req_socket.recv_pyobj()
         if not sig:
             return f"No signature found for {self.sig_id}"
         return super(RuntimeInfo, self).validate(sig)
