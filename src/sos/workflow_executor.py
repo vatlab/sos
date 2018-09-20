@@ -1031,7 +1031,8 @@ class Base_Executor:
             render_report(env.config['output_report'],
                           env.sos_dict['workflow_id'])
         if env.config['run_mode'] == 'dryrun':
-            for filename in workflow_signatures.placeholders(env.sos_dict['workflow_id']):
+            env.signature_req_socket.send_pyobj(['workflow', 'placeholders', env.sos_dict['workflow_id']])
+            for filename in env.signature_req_socket.recv_pyobj():
                 try:
                     if os.path.getsize(file_target(filename)) == 0:
                         file_target(filename).unlink()

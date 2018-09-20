@@ -320,6 +320,8 @@ class SignatureHandler(threading.Thread):
                         if msg[1] == 'clear':
                             self.workflow_signatures.clear()
                             req_socket.send_pyobj('ok')
+                        elif msg[1] == 'placeholders':
+                            req_socket.send_pyobj(self.workflow_signatures.placeholders(msg[2]))
                         else:
                             env.logger.warning(f'Unknown request {msg}')
                     elif msg[0] == 'target':
