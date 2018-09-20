@@ -88,8 +88,6 @@ def __null_func__(*args, **kwargs) -> Any:
     return _flatten(args), kwargs
 
 
-
-
 class SoS_Worker(mp.Process):
     '''
     Worker process to process SoS step or workflow in separate process.
@@ -193,7 +191,7 @@ class SoS_Worker(mp.Process):
             executer.run(targets=targets, parent_pipe=self.pipe,
                          my_workflow_id=workflow_id)
         except Exception as e:
-            env.push_socket.send(e)
+            self.pipe.send(e)
 
     def run_step(self, section, context, shared, args, config, verbosity):
         env.logger.debug(
