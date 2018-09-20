@@ -1952,7 +1952,7 @@ class Step_Executor(Base_Step_Executor):
             if self.socket is not None:
                 env.logger.debug(
                     f'Step {self.step.step_name()} sends result {short_repr(res)}')
-                self.socket.send(res)
+                self.socket.send_pyobj(res)
             else:
                 return res
         except Exception as e:

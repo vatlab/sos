@@ -150,7 +150,7 @@ class SoS_Worker(mp.Process):
         env.signature_req_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["signature_req"]}')
 
         env.master_socket = env.zmq_context.socket(zmq.PAIR)
-        env.master_socket.connect(f'tcp://127.0.0.1:{self.poart}')
+        env.master_socket.connect(f'tcp://127.0.0.1:{self.port}')
 
         # wait to handle jobs
         while True:
@@ -176,7 +176,6 @@ class SoS_Worker(mp.Process):
 
     def run_workflow(self, workflow_id, wf, targets, args, shared, config):
         #
-        # The pipe is the way to communicate with the master process.
         #
         # get workflow, args, shared, and config
         self.args = args
@@ -188,7 +187,7 @@ class SoS_Worker(mp.Process):
         env.logger.debug(
             f'Worker {self.name} working on a workflow {workflow_id} with args {args}')
         executer = Base_Executor(wf, args=args, shared=shared, config=config)
-        # we send the pipe to subworkflow, which would send
+        # we send the socket to subworkflow, which would send
         # everything directly to the master process, so we do not
         # have to collect result here
         try:
@@ -267,11 +266,11 @@ class ExecutionManager(object):
                 #
         # running processes. It consisists of
         #
-        # [ [proc, queue], pipe, node]
+        # [ [proc, queue], socket, node]
         #
         # where:
         #   proc, queue: process, which is None for the nested workflow.
-        #   pipe: pipe to get information from workers
+        #   socket: socket to get information from workers
         #   node: node that is being executed, which is a dummy node
         #       created on the fly for steps passed from nested workflow
         #
@@ -1075,11 +1074,11 @@ class Base_Executor:
         #
         # running processes. It consisists of
         #
-        # [ [proc, queue], pipe, node]
+        # [ [proc, queue], socket, node]
         #
         # where:
         #   proc, queue: process, which is None for the nested workflow.
-        #   pipe: pipe to get information from workers
+        #   socket: socket to get information from workers
         #   node: node that is being executed, which is a dummy node
         #       created on the fly for steps passed from nested workflow
         #
@@ -1101,7 +1100,7 @@ class Base_Executor:
                         continue
 
                     runnable = proc.step
-                    # echck if there is any message from the pipe
+                    # echck if there is any message from the socket
                     if not proc.socket.poll():
                         continue
 
@@ -1182,7 +1181,7 @@ class Base_Executor:
                         env.logger.debug(f'{i_am()} send res to nested')
                         runnable._status = 'completed'
                         dag.save(env.config['output_dag'])
-                        runnable._child_pipe.send(res)
+                        runnable._child_socket.send_pyobj(res)
                     elif isinstance(res, (UnknownTarget, RemovedTarget)):
                         self.handle_unknown_target(res, dag, runnable)
                     elif isinstance(res, UnavailableLock):
@@ -1288,14 +1287,15 @@ class Base_Executor:
                     # if steps from child nested workflow?
                     if self.step_queue:
                         step_id, step_param = self.step_queue.popitem()
-                        section, context, shared, args, config, verbosity, pipe = step_param
+                        section, context, shared, args, config, verbosity, port = step_param
                         # run it!
                         runnable = dummy_node()
                         runnable._node_id = step_id
                         runnable._status = 'running'
                         dag.save(env.config['output_dag'])
                         runnable._from_nested = True
-                        runnable._child_pipe = pipe
+                        runnable._child_socket = env.zmq_context.socket(zmq.PAIR)
+                        runnable._child_socket.connect(f'tcp://127.0.0.1:{port}')
 
                         env.logger.debug(
                             f'{i_am()} sends {section.step_name()} from step queue with args {args} and context {context}')
@@ -1357,11 +1357,13 @@ class Base_Executor:
                         env.logger.debug(
                             f'{i_am()} send step {section.step_name()} to master with args {self.args} and context {runnable._context}')
                         parent_socket.send_pyobj(f'step {step_id}')
-                        q = mp.Pipe()
+
+                        socket = env.zmq_context.socket(zmq.PAIR)
+                        port = socket.bind_to_random_port('tcp://127.0.0.1')
                         parent_socket.send_pyobj((section, runnable._context, shared, self.args,
-                                          env.config, env.verbosity, q[1]))
+                                          env.config, env.verbosity, port))
                         # this is a real step
-                        manager.add_placeholder_worker(runnable, q[0])
+                        manager.add_placeholder_worker(runnable, socket)
 
                 if manager.all_done_or_failed():
                     break
