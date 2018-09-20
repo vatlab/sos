@@ -51,7 +51,7 @@ before_install:
     #- conda info -a
 
     # downgrade python if needed
-    - conda create -n python_test python=$TRAVIS_PYTHON_VERSION anaconda
+    - conda create --quiet -n python_test python=$TRAVIS_PYTHON_VERSION anaconda
     - source activate python_test
 
     # R

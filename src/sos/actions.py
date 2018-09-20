@@ -380,7 +380,9 @@ class SoS_ExecuteScript:
                                              {'filename': sos_targets('SCRIPT'), 'script': self.script})
                 transcribe(self.script, cmd=transcript_cmd)
                 if env.sos_dict['_index'] == 0:
-                    env.signature_push_socket.send_pyobj(['workflow', 'transcript', env.sos_dict['step_name'],
+                    # if action is in a task , it will not have access to a workflow signature
+                    if hasattr(env, 'signature_push_socket'):
+                        env.signature_push_socket.send_pyobj(['workflow', 'transcript', env.sos_dict['step_name'],
                                               repr({'start_time': time.time(), 'command': transcript_cmd, 'script': self.script})])
 
                 if env.config['run_mode'] == 'interactive':
