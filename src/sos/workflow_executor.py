@@ -33,7 +33,7 @@ from .step_executor import PendingTasks, Step_Executor, analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
                       UnknownTarget, file_target, path, paths,
                       sos_step, sos_targets, sos_variable, textMD5)
-from .utils import (Error, SlotManager, WorkflowDict, env, get_traceback,
+from .utils import (Error, WorkflowDict, env, get_traceback,
                     load_config_files, load_var, pickleable, save_var,
                     short_repr)
 
@@ -276,10 +276,6 @@ class ExecutionManager(object):
 
         # process pool that is used to pool temporarily unused processed.
         self.pool = []
-
-        self.slot_manager = SlotManager(reset=master)
-        self.last_num_procs = None
-
         self.max_workers = max_workers
 
     def execute(self, runnable: Union[SoS_Node, dummy_node], config: Dict[str, Any], args: Any, spec: Any) -> None:
@@ -303,18 +299,6 @@ class ExecutionManager(object):
     def all_busy(self) -> bool:
         n = len([x for x in self.procs if x and not x.is_pending()
                  and not x.in_status('failed')])
-        if self.last_num_procs is None:
-            if n > 0:
-                self.slot_manager.acquire(n, self.max_workers)
-            self.last_num_procs = n
-        elif n != self.last_num_procs:
-            if self.last_num_procs > n:
-                self.slot_manager.release(self.last_num_procs - n)
-            else:
-                # we force the increase of numbers because the increment is observed
-                self.slot_manager.acquire(
-                    n - self.last_num_procs, self.max_workers, force=True)
-            self.last_num_procs = n
         return n >= self.max_workers
 
     def all_done_or_failed(self) -> bool:

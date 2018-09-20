@@ -32,7 +32,7 @@ from .targets import (BaseTarget, RemovedTarget, RuntimeInfo, UnavailableLock,
                       UnknownTarget, dynamic, file_target, path, paths, remote,
                       sos_targets, sos_step)
 from .tasks import MasterTaskParams, TaskParams, TaskFile
-from .utils import (SlotManager, StopInputGroup, TerminateExecution, ArgumentError, env,
+from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr)
 
 __all__ = []
@@ -1165,7 +1165,8 @@ class Base_Step_Executor:
 
     def wait_for_results(self):
         if self.concurrent_substep:
-            sm = SlotManager()
+            env.signature_req_socket.send_pyobj(['nprocs'])
+            nProcs = env.signature_req_socket.recv_pyobj()
             nMax = env.config.get(
                 'max_procs', max(int(os.cpu_count() / 2), 1))
             if nMax > self.worker_pool._processes - 1 and len(self._substeps) > nMax:
@@ -1177,15 +1178,14 @@ class Base_Step_Executor:
                         self.proc_results = [x.get()
                                              for x in self.proc_results]
                         break
-                    if sm.available(nMax) > 0:
-                        extra = sm.acquire(nPending - 1, nMax)
+                    if nMax > nProcs:
+                        extra = max(min(nMax - nProcs, nPending), 0)
                         if extra > 0:
                             self.worker_pool.grow(extra)
                             env.logger.debug(f'Expand pool by {extra} slots')
                     time.sleep(1)
             else:
                 self.proc_results = [x.get() for x in self.proc_results]
-            sm.release(self.worker_pool._processes - 1)
             self.worker_pool.close()
             self.worker_pool.join()
             self.worker_pool = None
@@ -1491,11 +1491,11 @@ class Base_Step_Executor:
                 env.logger.debug(
                     'Input groups are executed sequentially because of existence of nested workflow.')
             else:
-                sm = SlotManager()
-                # because the master process pool will count one worker in (step)
-                gotten = sm.acquire(len(self._substeps) - 1,
-                                    env.config.get('max_procs', max(int(os.cpu_count() / 2), 1)))
-                env.logger.debug(
+                env.signature_req_socket.send_pyobj(['nprocs'])
+                nProcs = env.signature_req_socket.recv_pyobj()
+                nMax = env.config.get('max_procs', max(int(os.cpu_count() / 2), 1))
+                gotten = max(min(nMax - nProcs, len(self._substeps) - 1), 0)
+                env.logger.trace(
                     f'Using process pool with size {gotten+1}')
                 self.worker_pool = Pool(gotten + 1)
 
@@ -1840,7 +1840,6 @@ class Base_Step_Executor:
                 while self.worker_pool:
                     try:
                         self.worker_pool.terminate()
-                        SlotManager().release(self.worker_pool._processes - 1)
                         self.worker_pool = None
                     except KeyboardInterrupt:
                         continue

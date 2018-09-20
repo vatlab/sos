@@ -346,8 +346,10 @@ class SignatureHandler(threading.Thread):
                             req_socket.send_pyobj(self.step_signatures.get(*msg[2:]))
                         else:
                             env.logger.warning(f'Unknown request {msg}')
-                    elif msg[0] == 'clients':
+                    elif msg[0] == 'nprocs':
                         req_socket.send_pyobj(self._num_clients)
+                    else:
+                        raise RuntimeError(f'Unrecognized request {msg}')
 
                 if monitor_socket in socks:
                     evt = recv_monitor_message(monitor_socket)

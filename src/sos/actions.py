@@ -30,7 +30,7 @@ from .parser import SoS_Script
 from .syntax import SOS_ACTION_OPTIONS
 from .targets import (UnknownTarget, executable, file_target, fileMD5, path,
                       paths, sos_targets, textMD5)
-from .utils import (SlotManager, StopInputGroup, TerminateExecution,
+from .utils import (StopInputGroup, TerminateExecution,
                     TimeoutInterProcessLock, env, get_traceback, short_repr,
                     transcribe)
 
@@ -640,7 +640,7 @@ def stop_if(expr, msg=''):
 #
 
 
-def downloadURL(URL, dest, decompress=False, index=None, slot=None):
+def downloadURL(URL, dest, decompress=False, index=None):
     dest = os.path.abspath(os.path.expanduser(dest))
     dest_dir, filename = os.path.split(dest)
     #
@@ -712,13 +712,13 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                     message + ': \033[32m signature calculated\033[0m')
                 prog.update()
                 prog.close()
-                return True, slot
+                return True
             elif env.config['sig_mode'] == 'ignore':
                 prog.set_description(
                     message + ': \033[32m use existing\033[0m')
                 prog.update()
                 prog.close()
-                return True, slot
+                return True
             elif env.config['sig_mode'] == 'default':
                 prog.update()
                 if sig.validate():
@@ -726,7 +726,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                         message + ': \033[32m Validated\033[0m')
                     prog.update()
                     prog.close()
-                    return True, slot
+                    return True
                 else:
                     prog.set_description(
                         message + ':\033[91m Signature mismatch\033[0m')
@@ -784,7 +784,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                     os.remove(dest_tmp)
                 except OSError:
                     pass
-                return False, slot
+                return False
             except Exception as e:
                 prog.set_description(message + f':\033[91m {e}\033[0m')
                 prog.update()
@@ -793,7 +793,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                     os.remove(dest_tmp)
                 except OSError:
                     pass
-                return False, slot
+                return False
         #
         os.rename(dest_tmp, dest)
         decompressed = 0
@@ -810,7 +810,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                     if os.path.isdir(os.path.join(dest_dir, name)):
                         continue
                     elif not os.path.isfile(os.path.join(dest_dir, name)):
-                        return False, slot
+                        return False
                     else:
                         #sig.add(os.path.join(dest_dir, name))
                         decompressed += 1
@@ -825,7 +825,7 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
                     files = [x.name for x in tar.getmembers() if x.isfile()]
                     for name in files:
                         if not os.path.isfile(os.path.join(dest_dir, name)):
-                            return False, slot
+                            return False
                         else:
                             #sig.add(os.path.join(dest_dir, name))
                             decompressed += 1
@@ -873,13 +873,13 @@ def downloadURL(URL, dest, decompress=False, index=None, slot=None):
         if env.verbosity > 2:
             sys.stderr.write(get_traceback())
         env.logger.error(f'Failed to download: {e}')
-        return False, slot
+        return False
     finally:
         # if there is something wrong still remove temporary file
         if os.path.isfile(dest_tmp):
             os.remove(dest_tmp)
     sig.write_sig()
-    return os.path.isfile(dest), slot
+    return os.path.isfile(dest)
 
 
 @SoS_Action(acceptable_args=['URLs', 'dest_dir', 'dest_file', 'decompress', 'max_jobs'])
@@ -936,24 +936,18 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
         with mp.Pool(processes=max_jobs) as pool:
             for idx, (url, uh, filename) in enumerate(zip(urls, url_hash, filenames)):
                 # if there is alot, start download
-                sm = SlotManager(name=uh).acquire(1, max_jobs, wait=True)
                 succ[idx] = pool.apply_async(downloadURL, (url, filename,
-                                                           decompress, idx, uh), callback=lambda x: SlotManager(name=x[1]).release(1))
+                                                           decompress, idx, uh))
             succ = [x.get() if isinstance(x, mp.pool.AsyncResult)
                     else x for x in succ]
     else:
-        try:
-            sm = SlotManager(name=url_hash[0])
-            sm.acquire(1, max_jobs, wait=True)
-            succ[0] = downloadURL(urls[0], filenames[0],
-                                  decompress=decompress, slot=url_hash[0])
-        finally:
-            sm.release(1)
-    #
+        succ[0] = downloadURL(urls[0], filenames[0],
+                                  decompress=decompress)
+
     # for su, url in zip(succ, urls):
     #    if not su:
     #        env.logger.warning('Failed to download {}'.format(url))
-    failed = [y for x, y in zip(succ, urls) if not x[0]]
+    failed = [y for x, y in zip(succ, urls) if not x]
     if failed:
         if len(urls) == 1:
             raise RuntimeError('Failed to download {urls[0]}')
