@@ -402,7 +402,12 @@ class Base_Executor:
             workflow_info['project_dir'] = os.getcwd()
             workflow_info['script'] = base64.b64encode(
                 self.workflow.content.text().encode()).decode('ascii')
-
+        # wait for the thread to start with a signature_req saved to env.config
+        while True:
+            if 'signature_req' not in env.config['sockets']:
+                time.sleep(0.01)
+            else:
+                break
         # master process connect to signature sockets
         env.signature_push_socket = env.zmq_context.socket(zmq.PUSH)
         env.signature_push_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["signature_push"]}')

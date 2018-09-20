@@ -10,6 +10,7 @@ import lzma
 import sqlite3
 import threading
 from collections import namedtuple
+from zmq.utils.monitor import recv_monitor_message
 
 from .utils import env
 
@@ -284,6 +285,14 @@ class SignatureHandler(threading.Thread):
         self.step_signatures = StepSignatures()
         self.workflow_signatures = WorkflowSignatures()
 
+        self._num_clients = 0
+
+        # self.event_map = {}
+        # for name in dir(zmq):
+        #     if name.startswith('EVENT_'):
+        #         value = getattr(zmq, name)
+        #          self.event_map[value] = name
+
     def run(self):
         # there are two sockets
         #
@@ -294,10 +303,13 @@ class SignatureHandler(threading.Thread):
         req_socket = env.zmq_context.socket(zmq.REP)
         env.config['sockets']['signature_req'] = req_socket.bind_to_random_port('tcp://127.0.0.1')
 
+        monitor_socket = req_socket.get_monitor_socket()
+
         # Process messages from receiver and controller
         poller = zmq.Poller()
         poller.register(push_socket, zmq.POLLIN)
         poller.register(req_socket, zmq.POLLIN)
+        poller.register(monitor_socket, zmq.POLLIN)
 
         while True:
             try:
@@ -334,6 +346,15 @@ class SignatureHandler(threading.Thread):
                             req_socket.send_pyobj(self.step_signatures.get(*msg[2:]))
                         else:
                             env.logger.warning(f'Unknown request {msg}')
+                    elif msg[0] == 'clients':
+                        req_socket.send_pyobj(self._num_clients)
+
+                if monitor_socket in socks:
+                    evt = recv_monitor_message(monitor_socket)
+                    if evt['event'] == zmq.EVENT_ACCEPTED:
+                        self._num_clients += 1
+                    elif evt['event'] == zmq.EVENT_DISCONNECTED:
+                        self._num_clients -= 1
             except Exception as e:
                 env.logger.warning(f'Signature handling warning: {e}')
             except KeyboardInterrupt:
