@@ -326,7 +326,7 @@ class SignatureHandler(threading.Thread):
                             env.logger.warning(f'Unknown request {msg}')
                     elif msg[0] == 'target':
                         if msg[1] == 'get':
-                            req_socket.send_pyobj(self.target_signatures.get(msg[1]))
+                            req_socket.send_pyobj(self.target_signatures.get(msg[2]))
                         else:
                             env.logger.warning(f'Unknown request {msg}')
                     elif msg[0] == 'step':

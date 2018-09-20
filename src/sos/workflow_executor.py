@@ -414,7 +414,7 @@ class Base_Executor:
         workflow_info['master_id'] = env.config['master_id']
         if env.config['master_id'] == self.md5:
             env.signature_req_socket.send_pyobj(['workflow', 'clear'])
-            reply = env.signature_req_socket.recv_pyobj()
+            env.signature_req_socket.recv_pyobj()
         env.signature_push_socket.send_pyobj(['workflow', 'workflow', self.md5, repr(workflow_info)])
         #
         env.config['resumed_tasks'] = set()

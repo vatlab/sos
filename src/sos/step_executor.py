@@ -13,6 +13,7 @@ import subprocess
 import sys
 import time
 import traceback
+import zmq
 from collections import Iterable, Mapping, Sequence, defaultdict
 from io import StringIO
 from itertools import combinations, tee
@@ -418,6 +419,13 @@ def clear_output():
 def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
     shared_vars=[], capture_output=False):
     '''Execute statements in the passed dictionary'''
+    env.zmq_context = zmq.Context()
+
+    env.signature_push_socket = env.zmq_context.socket(zmq.PUSH)
+    env.signature_push_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["signature_push"]}')
+    env.signature_req_socket = env.zmq_context.socket(zmq.REQ)
+    env.signature_req_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["signature_req"]}')
+
     # prepare a working environment with sos symbols and functions
     from .workflow_executor import __null_func__
     from ._version import __version__

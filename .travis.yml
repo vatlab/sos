@@ -48,7 +48,7 @@ before_install:
     - conda config --set always_yes yes --set changeps1 no
     - conda update -q conda
     # Useful for debugging any issues with conda
-    - conda info -a
+    #- conda info -a
 
     # downgrade python if needed
     - conda create -n python_test python=$TRAVIS_PYTHON_VERSION anaconda
