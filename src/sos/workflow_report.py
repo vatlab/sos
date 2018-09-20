@@ -138,17 +138,20 @@ def render_report(output_file, workflow_id):
     # derived context
     context['master_id'] = next(
         iter(context['workflows'].values()))['master_id']
-    # calculate percentage
-    start_time = context['workflows'][context['master_id']]['start_time']
-    total_duration = context['workflows'][context['master_id']
-                                          ]['end_time'] - start_time
-    for info in context['workflows'].values():
-        calc_timeline(info, start_time, total_duration)
-    for steps in context['steps'].values():
-        for step in steps:
-            calc_timeline(step, start_time, total_duration)
-    for info in context['tasks'].values():
-        calc_timeline(info, start_time, total_duration)
-    with open(output_file, 'w') as wo:
-        wo.write(template.render(context))
-    env.logger.info(f'Summary of workflow saved to {output_file}')
+    try:
+        # calculate percentage
+        start_time = context['workflows'][context['master_id']]['start_time']
+        total_duration = context['workflows'][context['master_id']
+                                              ]['end_time'] - start_time
+        for info in context['workflows'].values():
+            calc_timeline(info, start_time, total_duration)
+        for steps in context['steps'].values():
+            for step in steps:
+                calc_timeline(step, start_time, total_duration)
+        for info in context['tasks'].values():
+            calc_timeline(info, start_time, total_duration)
+        with open(output_file, 'w') as wo:
+            wo.write(template.render(context))
+        env.logger.info(f'Summary of workflow saved to {output_file}')
+    except Exception as e:
+        env.logger.error(f'Failed to generate report {output_file}: {e}')
