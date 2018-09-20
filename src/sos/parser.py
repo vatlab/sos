@@ -259,6 +259,9 @@ class SoS_Step:
     def has_external_task(self) -> bool:
         return self.task != ''
 
+    def has_nested_workflow(self) -> bool:
+        return any('sos_run' in x[1] for x in self.step.statements)
+
     def step_name(self, alias: bool = False) -> str:
         # if the step is not part of any workflow and is not given a name
         if not self.name:

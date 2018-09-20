@@ -1910,17 +1910,17 @@ def _expand_file_list(ignore_unknown: bool, *args) -> sos_targets:
 class Step_Executor(Base_Step_Executor):
     '''Single process step executor'''
 
-    def __init__(self, step, pipe, mode='run'):
+    def __init__(self, step, socket, mode='run'):
         self.run_mode = mode
         env.config['run_mode'] = mode
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
         super(Step_Executor, self).__init__(step)
-        self.pipe = pipe
+        self.socket = socket
         # because step is executed in a separate SoS_Worker process, this
-        # __pipe__ is available to all the actions that will be executed
+        # __socket__ is available to all the actions that will be executed
         # in the step
-        env.__pipe__ = pipe
+        env.__socket__ = socket
 
     def submit_tasks(self, tasks):
         env.logger.debug(f'Send {tasks}')
@@ -1929,7 +1929,7 @@ class Step_Executor(Base_Step_Executor):
         else:
             # otherwise, use workflow default
             host = '__default__'
-        self.pipe.send(f'tasks {host} {" ".join(tasks)}')
+        self.socket.send_pyobj(f'tasks {host} {" ".join(tasks)}')
 
     def wait_for_tasks(self, tasks):
         if not tasks:
@@ -1937,7 +1937,7 @@ class Step_Executor(Base_Step_Executor):
         # wait till the executor responde
         results = {}
         while True:
-            res = self.pipe.recv()
+            res = self.socket.recv_pyobj()
             if res is None:
                 sys.exit(0)
             results.update(res)
@@ -1949,19 +1949,19 @@ class Step_Executor(Base_Step_Executor):
     def run(self):
         try:
             res = Base_Step_Executor.run(self)
-            if self.pipe is not None:
+            if self.socket is not None:
                 env.logger.debug(
                     f'Step {self.step.step_name()} sends result {short_repr(res)}')
-                self.pipe.send(res)
+                self.socket.send(res)
             else:
                 return res
         except Exception as e:
             clear_output()
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
-            if self.pipe is not None:
+            if self.socket is not None:
                 env.logger.debug(
                     f'Step {self.step.step_name()} sends exception {e}')
-                self.pipe.send(e)
+                self.socket.send_pyobj(e)
             else:
                 raise e

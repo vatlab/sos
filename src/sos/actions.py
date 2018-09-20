@@ -543,8 +543,8 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
                          .format(workflow, short_repr(env.sos_dict.get('_input', None), True),
                                  'no args' if not args_output else args_output))
 
-        if not hasattr(env, '__pipe__'):
-            # if env has no __pipe__, this means the nested workflow is executed from
+        if not hasattr(env, '__socket__'):
+            # if env has no __socket__, this means the nested workflow is executed from
             # within a task, and we can just use an executor to execute it.
             #         # tell the master process to receive a workflow
             shared = {
@@ -583,12 +583,12 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
                 return res.get('__last_res__', None)
         else:
             # tell the master process to receive a workflow
-            env.__pipe__.send(f'workflow {uuid.uuid4()}')
+            env.__socket__.send_pyobj(f'workflow {uuid.uuid4()}')
             # really send the workflow
             shared = {
                 x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
-            env.__pipe__.send((wf, targets, args, shared, env.config))
-            res = env.__pipe__.recv()
+            env.__socket__.send_pyobj((wf, targets, args, shared, env.config))
+            res = env.__socket__.recv_pyobj()
             if res is None:
                 sys.exit(0)
             elif isinstance(res, Exception):

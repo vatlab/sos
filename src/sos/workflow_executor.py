@@ -93,7 +93,7 @@ class SoS_Worker(mp.Process):
     Worker process to process SoS step or workflow in separate process.
     '''
 
-    def __init__(self, pipe: Connection, config: Optional[Dict[str, Any]] = None, args: Optional[Any] = None, **kwargs) -> None:
+    def __init__(self, port: int, config: Optional[Dict[str, Any]] = None, args: Optional[Any] = None, **kwargs) -> None:
         '''
         cmd_queue: a single direction queue for the master process to push
             items to the worker.
@@ -112,7 +112,7 @@ class SoS_Worker(mp.Process):
         # the worker process knows configuration file, command line argument etc
         super(SoS_Worker, self).__init__(**kwargs)
         #
-        self.pipe = pipe
+        self.port = port
         env.config.update(config)
 
         self.args = [] if args is None else args
@@ -149,10 +149,13 @@ class SoS_Worker(mp.Process):
         env.signature_req_socket = env.zmq_context.socket(zmq.REQ)
         env.signature_req_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["signature_req"]}')
 
+        env.master_socket = env.zmq_context.socket(zmq.PAIR)
+        env.master_socket.connect(f'tcp://127.0.0.1:{self.poart}')
+
         # wait to handle jobs
         while True:
             try:
-                work = self.pipe.recv()
+                work = env.master_socket.recv_pyobj()
                 if work is None:
                     break
                 env.logger.debug(
@@ -169,6 +172,7 @@ class SoS_Worker(mp.Process):
         # Finished
         env.signature_push_socket.close()
         env.signature_req_socket.close()
+        env.master_socket.close()
 
     def run_workflow(self, workflow_id, wf, targets, args, shared, config):
         #
@@ -188,10 +192,10 @@ class SoS_Worker(mp.Process):
         # everything directly to the master process, so we do not
         # have to collect result here
         try:
-            executer.run(targets=targets, parent_pipe=self.pipe,
+            executer.run(targets=targets, parent_socket=env.master_socket,
                          my_workflow_id=workflow_id)
         except Exception as e:
-            self.pipe.send(e)
+            env.master_socket.send_pyobj(e)
 
     def run_step(self, section, context, shared, args, config, verbosity):
         env.logger.debug(
@@ -228,7 +232,7 @@ class SoS_Worker(mp.Process):
         env.sos_dict.quick_update(context)
 
         executor = Step_Executor(
-            section, self.pipe, mode=env.config['run_mode'])
+            section, env.master_socket, mode=env.config['run_mode'])
         executor.run()
 
 
@@ -240,9 +244,9 @@ class dummy_node:
 
 
 class ProcInfo(object):
-    def __init__(self, worker: SoS_Worker, pipe: Connection, step: Union[SoS_Node, dummy_node]) -> None:
+    def __init__(self, worker: SoS_Worker, socket, step: Union[SoS_Node, dummy_node]) -> None:
         self.worker = worker
-        self.pipe = pipe
+        self.socket = socket
         self.step = step
 
     def set_status(self, status: str) -> None:
@@ -256,7 +260,6 @@ class ProcInfo(object):
 
     def is_pending(self) -> bool:
         return self.step._status.endswith('_pending')
-
 
 class ExecutionManager(object):
     # this class managers workers and their status ...
@@ -280,21 +283,22 @@ class ExecutionManager(object):
 
     def execute(self, runnable: Union[SoS_Node, dummy_node], config: Dict[str, Any], args: Any, spec: Any) -> None:
         if not self.pool:
-            q1, q2 = mp.Pipe()
-            worker = SoS_Worker(pipe=q2, config=config, args=args)
+            socket = env.zmq_context.socket(zmq.PAIR)
+            port = socket.bind_to_random_port('tcp://127.0.0.1')
+            worker = SoS_Worker(port=port, config=config, args=args)
             worker.start()
         else:
             # get worker, q and runnable is not needed any more
             pi = self.pool.pop(0)
             worker = pi.worker
-            q1 = pi.pipe
+            socket = pi.socket
 
-        q1.send(spec)
-        self.procs.append(ProcInfo(worker=worker, pipe=q1, step=runnable))
+        socket.send_pyobj(spec)
+        self.procs.append(ProcInfo(worker=worker, socket=socket, step=runnable))
 
-    def add_placeholder_worker(self, runnable, pipe):
+    def add_placeholder_worker(self, runnable, socket):
         runnable._status = 'step_pending'
-        self.procs.append(ProcInfo(worker=None, pipe=pipe, step=runnable))
+        self.procs.append(ProcInfo(worker=None, socket=socket, step=runnable))
 
     def all_busy(self) -> bool:
         n = len([x for x in self.procs if x and not x.is_pending()
@@ -315,7 +319,7 @@ class ExecutionManager(object):
         self.cleanup()
         if not brutal:
             for proc in self.procs + self.pool:
-                proc.pipe.send(None)
+                proc.socket.send_pyobj(None)
             time.sleep(0.1)
             for proc in self.procs + self.pool:
                 if proc.worker and proc.worker.is_alive():
@@ -1028,20 +1032,20 @@ class Base_Executor:
                     env.logger.warning(f'Failed to remove placeholder {filename}: {e}')
 
 
-    def run(self, targets: Optional[List[str]]=None, parent_pipe: None=None, my_workflow_id: None=None, mode=None) -> Dict[str, Any]:
+    def run(self, targets: Optional[List[str]]=None, parent_socket: None=None, my_workflow_id: None=None, mode=None) -> Dict[str, Any]:
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
         #
         # There are threee cases
         #
-        # parent_pipe = None: this is the master workflow executor
-        # parent_pipe != None, my_workflow_id != None: this is a nested workflow inside a master workflow
+        # parent_socket = None: this is the master workflow executor
+        # parent_socket != None, my_workflow_id != None: this is a nested workflow inside a master workflow
         #   executor and needs to pass tasks etc to master
-        # parent_pipe != None, my_workflow_id == None: this is a nested workflow inside a task and needs to
+        # parent_socket != None, my_workflow_id == None: this is a nested workflow inside a task and needs to
         #   handle its own tasks.
         #
-        nested = parent_pipe is not None and my_workflow_id is not None
+        nested = parent_socket is not None and my_workflow_id is not None
         self.completed = defaultdict(int)
 
         def i_am():
@@ -1060,8 +1064,8 @@ class Base_Executor:
         if targets:
             targets = self.check_targets(targets)
             if len(targets) == 0:
-                if parent_pipe:
-                    parent_pipe.send(wf_result)
+                if parent_socket:
+                    parent_socket.send_pyobj(wf_result)
                 else:
                     return wf_result
 
@@ -1098,11 +1102,11 @@ class Base_Executor:
 
                     runnable = proc.step
                     # echck if there is any message from the pipe
-                    if not proc.pipe.poll():
+                    if not proc.socket.poll():
                         continue
 
                     # receieve something from the pipe
-                    res = proc.pipe.recv()
+                    res = proc.socket.recv_pyobj()
                     #
                     # if this is NOT a result, rather some request for task, step, workflow etc
                     if isinstance(res, str):
@@ -1133,7 +1137,7 @@ class Base_Executor:
                         elif res.startswith('step'):
                             # step sent from nested workflow
                             step_id = res.split(' ')[1]
-                            step_params = proc.pipe.recv()
+                            step_params = proc.socket.recv_pyobj()
                             env.logger.debug(
                                 f'{i_am()} receives step request {step_id} with args {step_params[3]}')
                             self.step_queue[step_id] = step_params
@@ -1145,7 +1149,7 @@ class Base_Executor:
                             env.logger.debug(
                                 f'{i_am()} receives workflow request {workflow_id}')
                             # (wf, args, shared, config)
-                            wf, targets, args, shared, config = proc.pipe.recv()
+                            wf, targets, args, shared, config = proc.socket.recv_pyobj()
                             # a workflow needs to be executed immediately because otherwise if all workflows
                             # occupies all workers, no real step could be executed.
 
@@ -1221,7 +1225,7 @@ class Base_Executor:
                             if proc is None:
                                 continue
                             if proc.in_status('workflow_pending') and proc.step._pending_workflow == res['__workflow_id__']:
-                                proc.pipe.send(res)
+                                proc.socket.send_pyobj(res)
                                 proc.set_status('running')
                                 break
                         dag.save(env.config['output_dag'])
@@ -1251,7 +1255,7 @@ class Base_Executor:
                                 # we try to get results
                                 task_status = proc.step._host.retrieve_results(
                                     proc.step._pending_tasks)
-                                proc.pipe.send(task_status)
+                                proc.socket.send_pyobj(task_status)
                                 proc.set_status('failed')
                                 status = [('completed', len([x for x in res if x == 'completed'])),
                                           ('failed', len(
@@ -1268,7 +1272,7 @@ class Base_Executor:
                                 f'Proc {proc_idx} puts results for {" ".join(proc.step._pending_tasks)} from step {proc.step._node_id}')
                             res = proc.step._host.retrieve_results(
                                 proc.step._pending_tasks)
-                            proc.pipe.send(res)
+                            proc.socket.send_pyobj(res)
                             proc.step._pending_tasks = []
                             proc.set_status('running')
                         else:
@@ -1352,9 +1356,9 @@ class Base_Executor:
                         step_id = uuid.uuid4()
                         env.logger.debug(
                             f'{i_am()} send step {section.step_name()} to master with args {self.args} and context {runnable._context}')
-                        parent_pipe.send(f'step {step_id}')
+                        parent_socket.send_pyobj(f'step {step_id}')
                         q = mp.Pipe()
-                        parent_pipe.send((section, runnable._context, shared, self.args,
+                        parent_socket.send_pyobj((section, runnable._context, shared, self.args,
                                           env.config, env.verbosity, q[1]))
                         # this is a real step
                         manager.add_placeholder_worker(runnable, q[0])
@@ -1420,8 +1424,8 @@ class Base_Executor:
                 exec_error.append(self.workflow.name,
                                   RuntimeError(
                                       f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'))
-            if parent_pipe is not None:
-                parent_pipe.send(exec_error)
+            if parent_socket is not None:
+                parent_socket.send_pyobj(exec_error)
                 return wf_result
             else:
                 raise exec_error
@@ -1433,7 +1437,7 @@ class Base_Executor:
         wf_result['shared'] = {x: env.sos_dict[x]
                                for x in self.shared.keys() if x in env.sos_dict}
         wf_result['__completed__'] = self.completed
-        if parent_pipe:
-            parent_pipe.send(wf_result)
+        if parent_socket:
+            parent_socket.send_pyobj(wf_result)
         else:
             return wf_result
