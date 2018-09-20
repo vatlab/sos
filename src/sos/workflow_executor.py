@@ -1101,7 +1101,7 @@ class Base_Executor:
 
                     runnable = proc.step
                     # echck if there is any message from the socket
-                    if not proc.socket.poll():
+                    if not proc.socket.poll(0.001):
                         continue
 
                     # receieve something from the pipe
