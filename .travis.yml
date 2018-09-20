@@ -55,15 +55,9 @@ before_install:
     - source activate python_test
 
     # R
-    - conda install -c r r-markdown r-rmarkdown r-base64enc  pandoc
+    - conda install --quiet -c r r-markdown r-rmarkdown r-base64enc  pandoc pandas numpy gxx_linux-64
     # add docker
-    - pip install docker
-    # packages required by SoS
-    - pip install pyyaml psutil tqdm
-    - pip install fasteners pygments networkx pydot pydotplus graphviz imageio pillow
-    # https://github.com/jupyter/jupyter/issues/150
-    - pip install entrypoints jupyter coverage codacy-coverage pytest pytest-cov python-coveralls
-    - conda install pandas numpy gxx_linux-64
+    - pip install docker pyyaml psutil tqdm fasteners pygments networkx pydot pydotplus graphviz imageio pillow entrypoints jupyter coverage codacy-coverage pytest pytest-cov python-coveralls
 
 sudo: required
 services:
