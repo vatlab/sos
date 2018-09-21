@@ -435,7 +435,7 @@ run: expand=True
             with open('test.sos', 'w') as tst:
                 tst.write(r'''
 [10]
-input: for_each=[{'a': range(3)}]
+input: for_each=[{'a': range(1)}]
 
 task: concurrent=True
 run: expand=True
