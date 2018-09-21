@@ -483,7 +483,7 @@ def workflow_status(workflow):
                     v, check_all=False, verbosity=0).strip().split('\n')
             except Exception as e:
                 env.logger.warning(
-                    'Failed to check status of task {} at host {}'.format(v, k))
+                    f'Failed to check status of task {v} at host {k}: {e}')
                 status = ['unknown'] * len(v)
         for v, s in zip(v, status):
             env.logger.info('{:15s} \t{} at {}, currently ``{}``'.format(
@@ -1409,7 +1409,6 @@ def cmd_remove(args, unknown_args):
         # a special case where all file and runtime signatures are removed.
         # no other options are allowed.
         if sig_files:
-            files = list(set(sum([sum(x[1].values(), []) for x in sig_files], [])))
             sig_ids = list(set([x[0] for x in sig_files]))
             step_signatures = StepSignatures()
             num_removed_local_steps = step_signatures.remove_many(

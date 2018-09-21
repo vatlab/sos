@@ -237,7 +237,7 @@ class TaskFile(object):
                     fh.seek(self.header_size, 0)
                     fh.write(params_block)
                 else:
-                    param = fh.read(header.params_size)
+                    fh.read(header.params_size)
                     shell = fh.read(header.shell_size)
                     pulse = fh.read(header.pulse_size)
                     stdout = fh.read(header.stdout_size)
@@ -483,7 +483,7 @@ class TaskFile(object):
                 ver = struct.unpack('!h', fh.read(2))[0]
                 fh.seek(self.tags_offset[ver - 1], 0)
                 return fh.read(self.tags_size[ver - 1]).decode().strip()
-        except Exception as e:
+        except Exception:
             raise RuntimeError(
                 f'Corrupted task file {self.task_file}. Please report a bug if you can reproduce the generation of this file.')
 
@@ -631,7 +631,7 @@ def remove_task_files(task: str, exts: list):
                 os.chmod(filename, stat.S_IREAD | stat.S_IWRITE)
             try:
                 os.remove(filename)
-            except Exception as e:
+            except Exception:
                 # if the file cannot be removed now, we use a thread to wait a
                 # bit and try to remove it later. The function should not
                 # wait for the thread though
@@ -1322,7 +1322,7 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
                 except Exception as e:
                     removed = False
                     if verbosity > 0:
-                        env.logger.warning(f'Failed to purge task {task[0]}')
+                        env.logger.warning(f'Failed to purge task {task[0]}: {e}')
             status_cache.pop(task, None)
             if removed and verbosity > 1:
                 env.logger.info(f'Task ``{task}`` removed.')
@@ -1343,7 +1343,7 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
                     count += 1
                 except Exception as e:
                     if verbosity > 0:
-                        env.logger.warning(f'Failed to remove {f}')
+                        env.logger.warning(f'Failed to remove {f}: {e}')
             else:
                 try:
                     os.remove(f)

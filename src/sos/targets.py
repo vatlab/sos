@@ -915,7 +915,7 @@ class InMemorySignature:
         for f in self.input_files:
             try:
                 input_sig[str(f)] = f.target_signature()
-            except Exception as e:
+            except Exception:
                 env.logger.debug(
                     f'Failed to create signature: input target {f} does not exist')
                 return False
@@ -923,7 +923,7 @@ class InMemorySignature:
         for f in self.output_files:
             try:
                 output_sig[str(f)] = f.target_signature()
-            except Exception as e:
+            except Exception :
                 env.logger.debug(
                     f'Failed to create signature: output target {f} does not exist')
                 return False
@@ -931,7 +931,7 @@ class InMemorySignature:
         for f in self.dependent_files:
             try:
                 dependent_sig[str(f)] = f.target_signature()
-            except Exception as e:
+            except Exception:
                 env.logger.debug(
                     f'Failed to create signature: dependent target {f} does not exist')
                 return False

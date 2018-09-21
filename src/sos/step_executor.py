@@ -612,7 +612,7 @@ def evaluate_shared(vars, option):
             else:
                 env.sos_dict.set('step_' + key, [x[key] for x in vars])
         except Exception as e:
-            env.logger.warning('Failed to create step level variable step_{key}')
+            env.logger.warning(f'Failed to create step level variable step_{key}: {e}')
     if isinstance(option, str):
         if option in env.sos_dict:
             shared_vars[option] = env.sos_dict[option]

@@ -146,7 +146,7 @@ def extract_option_from_arg_list(options: str, optname: str, default_value: None
                     raise ValueError(
                         f"A constant value is expected for option {optname}: {options} provided.")
         return default_value, options
-    except SyntaxError as e:
+    except SyntaxError:
         raise ValueError(
             f"Expect a list of keyword arguments: {options} provided")
 
@@ -163,7 +163,7 @@ def separate_options(options: str) -> List[str]:
             idx += 1
             if idx == len(pieces):
                 break
-        except Exception as e:
+        except Exception:
             # error happens merge the next piece
             if idx < len(pieces) - 1:
                 pieces[idx] += ',' + pieces[idx + 1]

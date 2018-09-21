@@ -5,7 +5,6 @@
 
 import base64
 import multiprocessing as mp
-import threading
 import os
 import subprocess
 import sys
@@ -16,7 +15,6 @@ import zmq
 from collections import defaultdict
 from collections.abc import Sequence
 from io import StringIO
-from multiprocessing.connection import Connection
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm as ProgressBar
@@ -28,7 +26,7 @@ from .hosts import Host
 from .parser import SoS_Step, SoS_Workflow
 from .pattern import extract_pattern
 from .workflow_report import render_report
-from .signatures import SignatureHandler
+from .signatures import Controller
 from .step_executor import PendingTasks, Step_Executor, analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
                       UnknownTarget, file_target, path, paths,
@@ -381,8 +379,8 @@ class Base_Executor:
             #
             env.zmq_context = zmq.Context()
             # signature handler in a separate thread, connected by zmq socket
-            handler = SignatureHandler()
-            handler.start()
+            controller = Controller()
+            controller.start()
 
             workflow_info['command_line'] = subprocess.list2cmdline(
                 [os.path.basename(sys.argv[0])] + sys.argv[1:])

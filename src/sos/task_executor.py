@@ -239,7 +239,7 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
             try:
                 remove_task_files(tid, ['.out', '.err'])
             except Exception as e:
-                env.logger.debug('Failed to remove files {tid}: {e}')
+                env.logger.debug(f'Failed to remove files {tid}: {e}')
 
         if params.num_workers > 1:
             from multiprocessing.pool import Pool
@@ -419,7 +419,7 @@ del sos_handle_parameter_
                     # file system differences, but this should be ok if a work_dir
                     # has been specified.
                     env.logger.debug(
-                        f'Failed to create cur_dir {sos_dict["_runtime"]["cur_dir"]}')
+                        f'Failed to create cur_dir {sos_dict["_runtime"]["cur_dir"]}: {e}')
             else:
                 os.chdir(os.path.expanduser(sos_dict['_runtime']['cur_dir']))
         #
@@ -457,7 +457,7 @@ del sos_handle_parameter_
                         sos_dict['_runtime']['workdir']))
                 except Exception as e:
                     raise RuntimeError(
-                        f'Failed to create workdir {sos_dict["_runtime"]["workdir"]}')
+                        f'Failed to create workdir {sos_dict["_runtime"]["workdir"]}: {e}')
             os.chdir(os.path.expanduser(sos_dict['_runtime']['workdir']))
         # set environ ...
         # we join PATH because the task might be executed on a different machine

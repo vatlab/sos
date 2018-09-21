@@ -249,7 +249,7 @@ class LocalHost:
                 _show_err_and_out(task_id, res)
         except Exception as e:
             # if ret_code does not exist...
-            return {'ret_code': 1, 'output': {}}
+            return {'ret_code': 1, 'output': {}, 'exception': e}
         return res
 
 
@@ -474,7 +474,7 @@ class RemoteHost:
                     os.path.makedirs(dest_dir)
                 except Exception as e:
                     env.logger.error(
-                        f'Failed to create destination directory {dest_dir}')
+                        f'Failed to create destination directory {dest_dir}: {e}')
             if self.is_shared(dest) and os.path.basename(source) == os.path.basename(dest):
                 env.logger.debug(
                     f'Skip retrieving ``{dest}`` from shared file system')
@@ -1265,7 +1265,7 @@ def stty_sane():
 def test_queue(host):
     try:
         h = Host(host, start_engine=False)
-    except Exception as e:
+    except Exception:
         return [host, '?', '?', '-', '-', '-', '-', '-']
     ssh_res = test_ssh(h._host_agent)
     return [h.alias, h._host_agent.address, h._task_engine_type, ssh_res,
@@ -1401,7 +1401,7 @@ def setup_remote_access(cfg, hosts=[], password='', verbosity=1):
                 from argparse import Namespace
                 host_agent = Namespace(address=host, port=22)
         except Exception as e:
-            env.logger.error(f'Failed to start task engine {host}.')
+            env.logger.error(f'Failed to start task engine {host}: {e}')
             continue
 
         if os.path.isfile(public_key):

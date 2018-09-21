@@ -4,15 +4,12 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import argparse
-import builtins
 import base64
 import copy
 import getpass
-import keyword
 import logging
 import math
 import os
-import pkg_resources
 import pickle
 import re
 import sys
@@ -680,7 +677,7 @@ def locate_script(filename, start=''):
         try:
             with open(sos_config_file) as config:
                 cfg = yaml.safe_load(config)
-        except Exception as e:
+        except Exception:
             raise RuntimeError(
                 f'Failed to parse global sos config file {sos_config_file}, is it in JSON format?')
         #
@@ -703,7 +700,7 @@ def locate_script(filename, start=''):
                 with open(local_filename) as script:
                     content = script.read()
                 return content, url
-            except Exception as e:
+            except Exception:
                 pass
     #
     raise ValueError(f'Failed to locate {filename}')
