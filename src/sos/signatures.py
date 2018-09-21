@@ -216,7 +216,7 @@ class WorkflowSignatures(object):
             cur = self.conn.cursor()
             cur.execute(
                 'SELECT entry_type, id, item FROM workflows WHERE master_id = ?', (workflow_id,))
-            return cur if cur else []
+            return cur.fetchall() if cur else []
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to get records of workflow {workflow_id}: {e}')
             return []

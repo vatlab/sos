@@ -97,6 +97,8 @@ class Controller(threading.Thread):
                                 sig_req_socket.send_pyobj('ok')
                             elif msg[1] == 'placeholders':
                                 sig_req_socket.send_pyobj(self.workflow_signatures.placeholders(msg[2]))
+                            elif msg[1] == 'records':
+                                sig_req_socket.send_pyobj(self.workflow_signatures.records(msg[2]))
                             else:
                                 env.logger.warning(f'Unknown signature request {msg}')
                         elif msg[0] == 'target':

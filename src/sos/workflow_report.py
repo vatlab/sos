@@ -11,14 +11,12 @@ from collections import defaultdict
 
 from .utils import env, format_duration, dot_to_gif
 from ._version import __version__
-from .signatures import WorkflowSignatures
-
 
 class WorkflowSig(object):
     def __init__(self, workflow_id):
         self.data = defaultdict(lambda: defaultdict(list))
-        workflow_signatures = WorkflowSignatures()
-        for entry_type, id, item in workflow_signatures.records(workflow_id):
+        env.signature_req_socket.send_pyobj(['workflow', 'records', workflow_id])
+        for entry_type, id, item in env.signature_req_socket.recv_pyobj():
             try:
                 self.data[entry_type][id].append(item.strip())
             except Exception as e:
