@@ -444,6 +444,8 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
             if matched:
                 # avoid sig being released in the final statement
                 sig = None
+                # complte case 1: concurrent ignore without task
+                env.controller_push_socket.send_pyobj(['progress', 'substep_ignored', env.sos_dict['step_id']])
                 return {'ret_code': 0, 'sig_skipped': 1, 'output': matched['output'], 'shared': matched['vars']}
             sig.lock()
         verify_input()
@@ -465,6 +467,8 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
                 res.update({'output': sig.content['output'], 'shared': sig.content['end_context']})
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
+        # complte case 2: concurrent execution without task
+        env.controller_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
         return res
     except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks) as e:
         clear_output()
@@ -1239,11 +1243,14 @@ class Base_Step_Executor:
                 f'Failed to get results for tasks {", ".join(x for x in self.proc_results if isinstance(x, str))}')
         #
         for idx, res in enumerate(self.proc_results):
-            if 'skipped' in res:
-                if res['skipped']:
-                    self.completed['__task_skipped__'] += 1
-                else:
-                    self.completed['__task_completed__'] += 1
+            if 'skipped' in res and res['skipped']:
+                self.completed['__task_skipped__'] += 1
+                # complte case 5: task skipped
+                env.controller_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
+            else:
+                # complte case 6: task completed
+                env.controller_push_socket.send_pyobj(['progress', 'substep_ignored', env.sos_dict['step_id']])
+                self.completed['__task_completed__'] += 1
             if 'shared' in res:
                 self.shared_vars[idx].update(res['shared'])
 
@@ -1628,6 +1635,8 @@ class Base_Step_Executor:
                                             self.output_groups[env.sos_dict['_index']] = matched["output"]
                                         if 'vars' in matched:
                                             self.shared_vars[env.sos_dict['_index']].update(matched["vars"])
+                                        # complte case 3: local skip without task
+                                        env.controller_push_socket.send_pyobj(['progress', 'substep_ignored', env.sos_dict['step_id']])
                                     else:
                                         sig.lock()
                                         try:
@@ -1653,6 +1662,8 @@ class Base_Step_Executor:
                                                     self.output_groups[env.sos_dict['_index']] = output
                                                     sig.set_output(output)
                                                 sig.write()
+                                                # complte case 4: local execution without task
+                                                env.controller_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
                                             else:
                                                 pending_signatures[idx] = sig
                                             sig.release()
@@ -1683,6 +1694,8 @@ class Base_Step_Executor:
                         if env.sos_dict['step_output'].undetermined():
                             self.output_groups[env.sos_dict['_index']] = matched["output"]
                         self.shared_vars[env.sos_dict['_index']].update(matched["vars"])
+                        # case 7: step with task ignored
+                        env.controller_push_socket.send_pyobj(['progress', 'substep_ignored', env.sos_dict['step_id']])
                     pending_signatures[idx] = sig
 
                 # if this index is skipped, go directly to the next one

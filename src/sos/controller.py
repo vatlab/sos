@@ -2,11 +2,14 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
+import sys
 import zmq
 
 import threading
+from collections import defaultdict
 from .utils import env
 from .signatures import TargetSignatures, StepSignatures, WorkflowSignatures
+
 # from zmq.utils.monitor import recv_monitor_message
 
 def connect_controllers(context=None):
@@ -35,6 +38,16 @@ class Controller(threading.Thread):
 
         # number of active running master processes
         self._nprocs = 0
+
+        # self._completed = {
+            # 'step_completed': 0,
+            # 'step_skipped': 0,
+            # 'substep_completed': 0,
+            # 'substep_skipped': 0,
+            # 'task_completed': 0,
+            # 'task_skipped': 0
+        # }
+        self._completed = defaultdict(int)
 
         # self.event_map = {}
         # for name in dir(zmq):
@@ -123,6 +136,18 @@ class Controller(threading.Thread):
                         if msg[0] == 'nprocs':
                             env.logger.trace(f'Active running process set to {msg[1]}')
                             self._nprocs = msg[1]
+                        elif msg[0] == 'progress':
+                            if env.verbosity == 1:
+                                if msg[1] == 'done':
+                                    sys.stderr.write('\n')
+                                    sys.stderr.flush()
+                                else:
+                                    # self._completed[msg[1]] += 1
+                                    if 'ignored' in msg[1]:
+                                        sys.stderr.write(f'\033[90m.\033[0m')
+                                    else:
+                                        sys.stderr.write(f'\033[92m.\033[0m')
+                                    sys.stderr.flush()
                         else:
                             raise RuntimeError(f'Unrecognized request {msg}')
                     except Exception as e:

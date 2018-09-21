@@ -987,6 +987,7 @@ class Base_Executor:
         except Exception as e:
             env.logger.warning(
                 f'Failed to clear workflow status file: {e}')
+        env.controller_push_socket.send_pyobj(['progress', 'done'])
         if self.workflow.name != 'scratch':
             if self.completed["__step_completed__"] == 0:
                 sts = 'ignored'
