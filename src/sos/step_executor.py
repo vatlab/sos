@@ -13,7 +13,6 @@ import subprocess
 import sys
 import time
 import traceback
-import zmq
 from collections import Iterable, Mapping, Sequence, defaultdict
 from io import StringIO
 from itertools import combinations, tee
@@ -23,7 +22,7 @@ import psutil
 from billiard import Pool
 
 from .eval import SoS_eval, SoS_exec, stmtHash, accessed_vars
-
+from .controller import connect_controllers
 from .parser import SoS_Step
 from .pattern import extract_pattern
 from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
@@ -419,13 +418,7 @@ def clear_output():
 def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
     shared_vars=[], capture_output=False):
     '''Execute statements in the passed dictionary'''
-    env.zmq_context = zmq.Context()
-
-    env.signature_push_socket = env.zmq_context.socket(zmq.PUSH)
-    env.signature_push_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["signature_push"]}')
-    env.signature_req_socket = env.zmq_context.socket(zmq.REQ)
-    env.signature_req_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["signature_req"]}')
-
+    connect_controllers()
     # prepare a working environment with sos symbols and functions
     from .workflow_executor import __null_func__
     from ._version import __version__
@@ -1165,8 +1158,8 @@ class Base_Step_Executor:
 
     def wait_for_results(self):
         if self.concurrent_substep:
-            env.signature_req_socket.send_pyobj(['nprocs'])
-            nProcs = env.signature_req_socket.recv_pyobj()
+            env.controller_req_socket.send_pyobj(['nprocs'])
+            nProcs = env.controller_req_socket.recv_pyobj()
             nMax = env.config.get(
                 'max_procs', max(int(os.cpu_count() / 2), 1))
             if nMax > self.worker_pool._processes - 1 and len(self._substeps) > nMax:

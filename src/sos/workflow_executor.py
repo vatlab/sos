@@ -16,7 +16,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from io import StringIO
 from typing import Any, Dict, List, Optional, Tuple, Union
-
+from threading import Event
 from tqdm import tqdm as ProgressBar
 
 from ._version import __version__
@@ -26,7 +26,7 @@ from .hosts import Host
 from .parser import SoS_Step, SoS_Workflow
 from .pattern import extract_pattern
 from .workflow_report import render_report
-from .signatures import Controller
+from .controller import Controller, connect_controllers
 from .step_executor import PendingTasks, Step_Executor, analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
                       UnknownTarget, file_target, path, paths,
@@ -140,12 +140,7 @@ class SoS_Worker(mp.Process):
                     env.sos_dict.set(key, value)
 
     def run(self):
-        env.zmq_context = zmq.Context()
-
-        env.signature_push_socket = env.zmq_context.socket(zmq.PUSH)
-        env.signature_push_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["signature_push"]}')
-        env.signature_req_socket = env.zmq_context.socket(zmq.REQ)
-        env.signature_req_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["signature_req"]}')
+        connect_controllers()
 
         env.master_socket = env.zmq_context.socket(zmq.PAIR)
         env.master_socket.connect(f'tcp://127.0.0.1:{self.port}')
@@ -290,6 +285,9 @@ class ExecutionManager(object):
             worker = pi.worker
             socket = pi.socket
 
+        # we need to report number of active works, plus master process itself
+        env.controller_push_socket.send_pyobj(['nprocs', self.num_active() + 1])
+
         socket.send_pyobj(spec)
         self.procs.append(ProcInfo(worker=worker, socket=socket, step=runnable))
 
@@ -297,10 +295,12 @@ class ExecutionManager(object):
         runnable._status = 'step_pending'
         self.procs.append(ProcInfo(worker=None, socket=socket, step=runnable))
 
-    def all_busy(self) -> bool:
-        n = len([x for x in self.procs if x and not x.is_pending()
+    def num_active(self) -> int:
+        return len([x for x in self.procs if x and not x.is_pending()
                  and not x.in_status('failed')])
-        return n >= self.max_workers
+
+    def all_busy(self) -> bool:
+        return self.num_active() >= self.max_workers
 
     def all_done_or_failed(self) -> bool:
         return not self.procs or all(x.in_status('failed') for x in self.procs)
@@ -374,12 +374,13 @@ class Base_Executor:
             'start_time': time.time(),
         }
         if not env.config['master_id']:
+            # if this is the executor for the master workflow, start controller
             env.config['master_id'] = self.md5
             env.config['sockets'] = {}
             #
-            env.zmq_context = zmq.Context()
-            # signature handler in a separate thread, connected by zmq socket
-            controller = Controller()
+            # control panel in a separate thread, connected by zmq socket
+            ready = Event()
+            controller = Controller(ready)
             controller.start()
 
             workflow_info['command_line'] = subprocess.list2cmdline(
@@ -387,17 +388,9 @@ class Base_Executor:
             workflow_info['project_dir'] = os.getcwd()
             workflow_info['script'] = base64.b64encode(
                 self.workflow.content.text().encode()).decode('ascii')
-        # wait for the thread to start with a signature_req saved to env.config
-        while True:
-            if 'signature_req' not in env.config['sockets']:
-                time.sleep(0.01)
-            else:
-                break
-        # master process connect to signature sockets
-        env.signature_push_socket = env.zmq_context.socket(zmq.PUSH)
-        env.signature_push_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["signature_push"]}')
-        env.signature_req_socket = env.zmq_context.socket(zmq.REQ)
-        env.signature_req_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["signature_req"]}')
+            # wait for the thread to start with a signature_req saved to env.config
+            ready.wait()
+        connect_controllers(env.zmq_context)
 
         workflow_info['master_id'] = env.config['master_id']
         if env.config['master_id'] == self.md5:
