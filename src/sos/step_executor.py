@@ -1349,7 +1349,7 @@ class Base_Step_Executor:
         #               actions dynamically.
         env.sos_dict.set('step_name', self.step.step_name())
         self.log('start')
-        env.sos_dict.set('step_id', self.step.md5)
+        env.sos_dict.set('step_id', hash((env.sos_dict["workflow_id"], env.sos_dict["step_name"], self.step.md5)))
         # used by nested workflow
         env.sos_dict.set('__step_context__', self.step.context)
 
@@ -1522,7 +1522,7 @@ class Base_Step_Executor:
                 # process/context etc
                 if env.config['run_mode'] == 'interactive':
                     env.sos_dict.set('step_name', self.step.step_name())
-                    env.sos_dict.set('step_id', self.step.md5)
+                    env.sos_dict.set('step_id', hash((env.sos_dict["workflow_id"], env.sos_dict["step_name"], self.step.md5)))
                     # used by nested workflow
                     env.sos_dict.set('__step_context__', self.step.context)
                 #

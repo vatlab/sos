@@ -429,50 +429,26 @@ run: expand=True
         subprocess.call(['sos', 'purge', '--age=-20s'])
         # purge by all is not tested because it is dangerous
 
-    @unittest.skipIf('TRAVIS' in os.environ or test_interactive, 'Skip test because of slow working environment in travis test')
     def testNoWait(self):
         '''Test no wait'''
-        script = SoS_Script(r'''
+        with cd_new('temp_nowait'):
+            with open('test.sos', 'w') as tst:
+                tst.write(r'''
 [10]
 input: for_each=[{'a': range(3)}]
 
 task: concurrent=True
 run: expand=True
     echo "a = {a}"
-    sleep 20
+    sleep 15
 ''')
-        wf = script.workflow()
-        #st = time.time()
-        env.config['sig_mode'] = 'force'
-        env.config['max_procs'] = 4
-        env.config['wait_for_task'] = False
-        ret = Base_Executor(wf).run()
-        # sos should quit
-        self.assertGreater(len(ret['pending_tasks']), 0)
-        #
-        time.sleep(38)
-        print('RESTART')
-        env.config['sig_mode'] = 'default'
-        env.config['wait_for_task'] = True
-        env.config['resume_mode'] = True
-        #st = time.time()
-        try:
-            Base_Executor(wf).run()
-            # sos should wait till everything exists
-            #self.assertLess(time.time() - st, 15)
-        except SystemExit:
-            # ok if the task has already been completed and there is nothing
-            # to resume
-            pass
-        #
-        # rerun task in different mode
-        env.config['resume_mode'] = False
-        env.config['wait_for_task'] = True
-        Base_Executor(wf).run()
-        env.config['sig_mode'] = 'assert'
-        Base_Executor(wf).run()
-        env.config['sig_mode'] = 'build'
-        Base_Executor(wf).run()
+            subprocess.call('sos run test -s force -W', shell=True)
+            tasks = get_tasks()
+            taskstatus = [x.split()[1] for x in subprocess.check_output('sos status -v1', shell=True).decode().splitlines()]
+            self.assertTrue(all(x == 'running' for x in taskstatus))
+            time.sleep(20)
+            taskstatus = [x.split()[1] for x in subprocess.check_output('sos status -v1', shell=True).decode().splitlines()]
+            self.assertTrue(all(x == 'completed' for x in taskstatus))
 
     def testSharedOption(self):
         '''Test shared option of task'''
