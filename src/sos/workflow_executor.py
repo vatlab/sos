@@ -17,7 +17,6 @@ from collections.abc import Sequence
 from io import StringIO
 from typing import Any, Dict, List, Optional, Tuple, Union
 from threading import Event
-from tqdm import tqdm as ProgressBar
 
 from ._version import __version__
 from .dag import SoS_DAG, SoS_Node
@@ -1081,8 +1080,6 @@ class Base_Executor:
         # on the master process.
         self.step_queue = {}
         try:
-            prog = ProgressBar(desc=self.workflow.name, total=dag.num_nodes(),
-                               disable=dag.num_nodes() <= 1 or env.verbosity != 1)
             exec_error = ExecuteError(self.workflow.name)
             while True:
                 # step 1: check existing jobs and see if they are completed
@@ -1194,11 +1191,9 @@ class Base_Executor:
                                         and proc.step._pending_workflow == runnable._pending_workflow:
                                     proc.set_status('failed')
                             dag.save(env.config['output_dag'])
-                        prog.update(1)
                     elif '__step_name__' in res:
                         env.logger.debug(f'{i_am()} receive step result ')
                         self.step_completed(res, dag, runnable)
-                        prog.update(1)
                     elif '__workflow_id__' in res:
                         # result from a workflow
                         # the worker process has been returned to the pool, now we need to
@@ -1402,7 +1397,6 @@ class Base_Executor:
         finally:
             if not nested:
                 manager.terminate()
-            prog.close()
         #
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
