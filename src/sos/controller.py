@@ -39,15 +39,8 @@ class Controller(threading.Thread):
         # number of active running master processes
         self._nprocs = 0
 
-        # self._completed = {
-            # 'step_completed': 0,
-            # 'step_skipped': 0,
-            # 'substep_completed': 0,
-            # 'substep_skipped': 0,
-            # 'task_completed': 0,
-            # 'task_skipped': 0
-        # }
         self._completed = defaultdict(int)
+        self._ignored = defaultdict(int)
 
         # self.event_map = {}
         # for name in dir(zmq):
@@ -139,14 +132,18 @@ class Controller(threading.Thread):
                         elif msg[0] == 'progress':
                             if env.verbosity == 1:
                                 if msg[1] == 'done':
-                                    sys.stderr.write('\n')
+                                    completed = f'{len(self._completed)}/{sum(self._completed.values())} completed' if self._completed else ''
+                                    ignored = f'{len(self._ignored)}/{sum(self._ignored.values())} ignored' if self._ignored else ''
+                                    sys.stderr.write(f' {completed}{", " if completed and ignored else ""}{ignored}\n')
                                     sys.stderr.flush()
                                 else:
                                     # self._completed[msg[1]] += 1
                                     if 'ignored' in msg[1]:
                                         sys.stderr.write(f'\033[90m.\033[0m')
+                                        self._ignored[msg[2]] += 1
                                     else:
                                         sys.stderr.write(f'\033[92m.\033[0m')
+                                        self._completed[msg[2]] += 1
                                     sys.stderr.flush()
                         else:
                             raise RuntimeError(f'Unrecognized request {msg}')
