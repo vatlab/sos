@@ -54,7 +54,7 @@ class Controller(threading.Thread):
         sig_req_socket = env.zmq_context.socket(zmq.REP)
         env.config['sockets']['signature_req'] = sig_req_socket.bind_to_random_port('tcp://127.0.0.1')
 
-        ctl_push_socket = env.zmq_context.socket(zmq.PUSH)
+        ctl_push_socket = env.zmq_context.socket(zmq.PULL)
         env.config['sockets']['controller_push'] = ctl_push_socket.bind_to_random_port('tcp://127.0.0.1')
         ctl_req_socket = env.zmq_context.socket(zmq.REP)
         env.config['sockets']['controller_req'] = ctl_req_socket.bind_to_random_port('tcp://127.0.0.1')
