@@ -25,6 +25,7 @@ from functools import wraps
 
 from tqdm import tqdm as ProgressBar
 
+from .controller import connect_controllers
 from .eval import interpolate
 from .parser import SoS_Script
 from .syntax import SOS_ACTION_OPTIONS
@@ -641,6 +642,8 @@ def stop_if(expr, msg=''):
 
 
 def downloadURL(URL, dest, decompress=False, index=None):
+    # controller is needed for the verification of signatures
+    connect_controllers()
     dest = os.path.abspath(os.path.expanduser(dest))
     dest_dir, filename = os.path.split(dest)
     #
@@ -911,7 +914,6 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
     #
     if dest_file is None:
         filenames = []
-        url_hash = []
         for idx, url in enumerate(urls):
             token = urllib.parse.urlparse(url)
             # if no scheme or netloc, the URL is not acceptable
@@ -922,22 +924,20 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
                 raise ValueError(
                     f'Cannot determine destination file for {url}')
             filenames.append(os.path.join(dest_dir, filename))
-            url_hash.append(textMD5(token.netloc))
     else:
         token = urllib.parse.urlparse(urls[0])
         if not all([getattr(token, qualifying_attr) for qualifying_attr in ('scheme', 'netloc')]):
             raise ValueError(f'Invalid URL {url}')
-        url_hash = [textMD5(token.netloc)]
         filenames = [dest_file]
     #
     succ = [(False, None) for x in urls]
     if len(succ) > 1:
         # first scroll several lines to reserve place for progress bar
         with mp.Pool(processes=max_jobs) as pool:
-            for idx, (url, uh, filename) in enumerate(zip(urls, url_hash, filenames)):
+            for idx, (url, filename) in enumerate(zip(urls, filenames)):
                 # if there is alot, start download
                 succ[idx] = pool.apply_async(downloadURL, (url, filename,
-                                                           decompress, idx, uh))
+                                                           decompress, idx))
             succ = [x.get() if isinstance(x, mp.pool.AsyncResult)
                     else x for x in succ]
     else:
