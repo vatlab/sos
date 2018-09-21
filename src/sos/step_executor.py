@@ -1484,8 +1484,8 @@ class Base_Step_Executor:
                 env.logger.debug(
                     'Input groups are executed sequentially because of existence of nested workflow.')
             else:
-                env.signature_req_socket.send_pyobj(['nprocs'])
-                nProcs = env.signature_req_socket.recv_pyobj()
+                env.controller_req_socket.send_pyobj(['nprocs'])
+                nProcs = env.controller_req_socket.recv_pyobj()
                 nMax = env.config.get('max_procs', max(int(os.cpu_count() / 2), 1))
                 gotten = max(min(nMax - nProcs, len(self._substeps) - 1), 0)
                 env.logger.trace(
