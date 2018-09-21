@@ -76,61 +76,70 @@ class Controller(threading.Thread):
 
                 if sig_push_socket in socks:
                     msg = sig_push_socket.recv_pyobj()
-                    if msg[0] == 'workflow':
-                        self.workflow_signatures.write(*msg[1:])
-                    elif msg[0] == 'target':
-                        self.target_signatures.set(*msg[1:])
-                    elif msg[0] == 'step':
-                        self.step_signatures.set(*msg[1:])
-                    else:
-                        env.logger.warning(f'Unknown message passed {msg}')
+                    try:
+                        if msg[0] == 'workflow':
+                            self.workflow_signatures.write(*msg[1:])
+                        elif msg[0] == 'target':
+                            self.target_signatures.set(*msg[1:])
+                        elif msg[0] == 'step':
+                            self.step_signatures.set(*msg[1:])
+                        else:
+                            env.logger.warning(f'Unknown message passed {msg}')
+                    except Exception as e:
+                        env.logger.warning(f'Failed to push signature {msg}: {e}')
 
                 if sig_req_socket in socks:
                     msg = sig_req_socket.recv_pyobj()
-                    if msg[0] == 'workflow':
-                        if msg[1] == 'clear':
-                            self.workflow_signatures.clear()
-                            sig_req_socket.send_pyobj('ok')
-                        elif msg[1] == 'placeholders':
-                            sig_req_socket.send_pyobj(self.workflow_signatures.placeholders(msg[2]))
+                    try:
+                        if msg[0] == 'workflow':
+                            if msg[1] == 'clear':
+                                self.workflow_signatures.clear()
+                                sig_req_socket.send_pyobj('ok')
+                            elif msg[1] == 'placeholders':
+                                sig_req_socket.send_pyobj(self.workflow_signatures.placeholders(msg[2]))
+                            else:
+                                env.logger.warning(f'Unknown signature request {msg}')
+                        elif msg[0] == 'target':
+                            if msg[1] == 'get':
+                                sig_req_socket.send_pyobj(self.target_signatures.get(msg[2]))
+                            else:
+                                env.logger.warning(f'Unknown signature request {msg}')
+                        elif msg[0] == 'step':
+                            if msg[1] == 'get':
+                                sig_req_socket.send_pyobj(self.step_signatures.get(*msg[2:]))
+                            else:
+                                env.logger.warning(f'Unknown signature request {msg}')
                         else:
-                            env.logger.warning(f'Unknown signature request {msg}')
-                    elif msg[0] == 'target':
-                        if msg[1] == 'get':
-                            sig_req_socket.send_pyobj(self.target_signatures.get(msg[2]))
-                        else:
-                            env.logger.warning(f'Unknown signature request {msg}')
-                    elif msg[0] == 'step':
-                        if msg[1] == 'get':
-                            sig_req_socket.send_pyobj(self.step_signatures.get(*msg[2:]))
-                        else:
-                            env.logger.warning(f'Unknown signature request {msg}')
-                    else:
-                        raise RuntimeError(f'Unrecognized signature request {msg}')
+                            raise RuntimeError(f'Unrecognized signature request {msg}')
+                    except Exception as e:
+                        env.logger.warning(f'Failed to respond to signature request {msg}: {e}')
+                        sig_req_socket.send_pyobj(None)
 
                 if ctl_push_socket in socks:
                     msg = ctl_push_socket.recv_pyobj()
-                    if msg[0] == 'nprocs':
-                        env.logger.trace(f'Active running process set to {msg[1]}')
-                        self._nprocs = msg[1]
-                    else:
-                        raise RuntimeError(f'Unrecognized request {msg}')
+                    try:
+                        if msg[0] == 'nprocs':
+                            env.logger.trace(f'Active running process set to {msg[1]}')
+                            self._nprocs = msg[1]
+                        else:
+                            raise RuntimeError(f'Unrecognized request {msg}')
+                    except Exception as e:
+                        env.logger.warning(f'Failed to push controller {msg}: {e}')
 
                 if ctl_req_socket in socks:
                     msg = ctl_req_socket.recv_pyobj()
-                    if msg[0] == 'nprocs':
-                        ctl_req_socket.send_pyobj(self._nprocs)
-                    else:
-                        raise RuntimeError(f'Unrecognized request {msg}')
-
+                    try:
+                        if msg[0] == 'nprocs':
+                            ctl_req_socket.send_pyobj(self._nprocs)
+                        else:
+                            raise RuntimeError(f'Unrecognized request {msg}')
+                    except Exception as e:
+                        env.logger.warning(f'Failed to respond controller {msg}: {e}')
                 # if monitor_socket in socks:
                 #     evt = recv_monitor_message(monitor_socket)
                 #     if evt['event'] == zmq.EVENT_ACCEPTED:
                 #         self._num_clients += 1
                 #     elif evt['event'] == zmq.EVENT_DISCONNECTED:
                 #         self._num_clients -= 1
-
-            except Exception as e:
-                env.logger.warning(f'Signature handling warning: {e}')
             except KeyboardInterrupt:
                 break

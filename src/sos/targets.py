@@ -577,7 +577,7 @@ class file_target(path, BaseTarget):
     def validate(self, sig=None):
         '''Check if file matches its signature'''
         if sig is None:
-            env.signature_req_socket.send_pyobj('target', self)
+            env.signature_req_socket.send_pyobj(['target', 'get', self])
             sig = env.signature_req_socket.recv_pyobj()
         # old signature file with only md5
         if isinstance(sig, str) or not self.exists():
@@ -607,7 +607,7 @@ class file_target(path, BaseTarget):
         if not self._md5:
             self._md5 = fileMD5(self)
         env.signature_push_socket.send_pyobj([
-            'target', os.path.getmtime(self), os.path.getsize(self), self._md5])
+            'target', self, os.path.getmtime(self), os.path.getsize(self), self._md5])
 
     def __hash__(self):
         return hash(repr(self))

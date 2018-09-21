@@ -12,8 +12,6 @@ from collections import namedtuple
 from .utils import env
 
 class TargetSignatures:
-    TargetSig = namedtuple('TargetSig', 'mtime size md5')
-
     def __init__(self):
         self.db_file = os.path.join(os.path.expanduser(
             '~'), '.sos', 'target_signatures.db')
@@ -40,7 +38,7 @@ class TargetSignatures:
             cur.execute(
                 'SELECT mtime, size, md5 FROM targets WHERE target=? ', (target.target_name(),))
             res = cur.fetchone()
-            return self.TargetSig._make(res) if res else None
+            return res if res else None
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to get signature for target {target}: {e}')
             return None
