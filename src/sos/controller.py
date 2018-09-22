@@ -82,7 +82,7 @@ class Controller(threading.Thread):
 
         if env.verbosity == 1:
             # leading progress bar
-            sys.stderr.write('\033[92m[\033[0m')
+            sys.stderr.write('\033[32m[\033[0m')
             sys.stderr.flush()
 
         while True:
@@ -158,7 +158,7 @@ class Controller(threading.Thread):
                                 else:
                                     # remove existing subworkflow
                                     if time.time() - self._subprogressbar_last_updated > 1:
-                                        if self._subprogressbar_cnt == self._subprogressbar_size:
+                                        if self._subprogressbar_cnt == self._subprogressbar_size    :
                                             sys.stderr.write('\b \b'*self._subprogressbar_cnt)
                                             self._subprogressbar_cnt = 0
                                         if msg[1] == 'substep_ignored':
