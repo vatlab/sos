@@ -126,14 +126,16 @@ class Controller(threading.Thread):
                 if ctl_push_socket in socks:
                     msg = ctl_push_socket.recv_pyobj()
                     try:
-                        if msg[0] == 'nprocs':
+                        if msg is None:
+                            break
+                        elif msg[0] == 'nprocs':
                             env.logger.trace(f'Active running process set to {msg[1]}')
                             self._nprocs = msg[1]
                         elif msg[0] == 'progress':
                             if env.verbosity == 1:
                                 if msg[1] == 'done':
-                                    completed = f'{len(self._completed)}/{sum(self._completed.values())} completed' if self._completed else ''
-                                    ignored = f'{len(self._ignored)}/{sum(self._ignored.values())} ignored' if self._ignored else ''
+                                    completed = f'{len(self._completed)} step{"s" if len(self._completed) > 1 else ""} completed' if self._completed else ''
+                                    ignored = f'{len(self._ignored)} step{"s" if len(self._ignored) > 1 else ""} ignored' if self._ignored else ''
                                     sys.stderr.write(f' {completed}{", " if completed and ignored else ""}{ignored}\n')
                                     sys.stderr.flush()
                                 else:
@@ -167,3 +169,8 @@ class Controller(threading.Thread):
                 #         self._num_clients -= 1
             except KeyboardInterrupt:
                 break
+
+        sig_push_socket.close()
+        sig_req_socket.close()
+        ctl_push_socket.close()
+        ctl_req_socket.close()

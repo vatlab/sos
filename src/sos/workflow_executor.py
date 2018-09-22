@@ -379,8 +379,8 @@ class Base_Executor:
             #
             # control panel in a separate thread, connected by zmq socket
             ready = Event()
-            controller = Controller(ready)
-            controller.start()
+            self.controller = Controller(ready)
+            self.controller.start()
 
             workflow_info['command_line'] = subprocess.list2cmdline(
                 [os.path.basename(sys.argv[0])] + sys.argv[1:])
@@ -987,7 +987,9 @@ class Base_Executor:
         except Exception as e:
             env.logger.warning(
                 f'Failed to clear workflow status file: {e}')
-        env.controller_push_socket.send_pyobj(['progress', 'done'])
+        if env.sos_dict['master_id'] == env.sos_dict['workflow_id']:
+            # end progress bar when the master workflow stops
+            env.controller_push_socket.send_pyobj(['progress', 'done'])
         if self.workflow.name != 'scratch':
             if self.completed["__step_completed__"] == 0:
                 sts = 'ignored'
@@ -1020,6 +1022,10 @@ class Base_Executor:
                         env.logger.debug(f'Remove placeholder {filename}')
                 except Exception as e:
                     env.logger.warning(f'Failed to remove placeholder {filename}: {e}')
+        # terminate controller
+        if env.sos_dict['master_id'] == env.sos_dict['workflow_id']:
+            env.controller_push_socket.send_pyobj(None)
+            self.controller.join(1)
 
 
     def run(self, targets: Optional[List[str]]=None, parent_socket: None=None, my_workflow_id: None=None, mode=None) -> Dict[str, Any]:

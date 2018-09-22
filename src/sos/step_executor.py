@@ -1610,6 +1610,11 @@ class Base_Step_Executor:
                                         #1055
                                         clear_output()
                                         raise
+                                    finally:
+                                        if not self.step.task:
+                                            # if no task, this step is __completed
+                                            # complte case 3: local skip without task
+                                            env.controller_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
                                     if 'shared' in self.step.options:
                                         try:
                                             self.shared_vars[env.sos_dict['_index']].update({
