@@ -142,22 +142,17 @@ class Controller(threading.Thread):
                                     nSteps = len(set(self._completed.keys()) | set(self._ignored.keys()))
                                     nCompleted = sum(self._completed.values())
                                     nIgnored = sum(self._ignored.values())
-                                    completed_text = f'{nCompleted} substep{"s" if nCompleted > 1 else ""}'
-                                    ignored_text = f'{nIgnored} substep{"s" if nIgnored > 1 else ""}'
-                                    steps_text = f'{nSteps} step{"s" if nSteps > 1 else ""}'
-                                    if nIgnored == 0:
-                                        sys.stderr.write(f'\033[32m]\033[0m {completed_text} from {steps_text} {"are" if nCompleted > 1 else "is"} completed\n')
-                                    elif nCompleted == 0:
-                                        sys.stderr.write(f'\033[32m]\033[0m {ignored_text} from {steps_text} {"are" if nIgnored > 1 else "is"} ignored\n')
-                                    else:
-                                        sys.stderr.write(f'\033[32m]\033[0m {nCompleted + nIgnored} substeps from {steps_text} are processed ({nCompleted} completed, {nIgnored} ignored)\n')
+                                    completed_text = f'{nCompleted} job{"s" if nCompleted > 1 else ""} completed' if nCompleted else ''
+                                    ignored_text = f'{nIgnored} job{"s" if nIgnored > 1 else ""} ignored' if nIgnored else ''
+                                    steps_text = f'{nSteps} step{"s" if nSteps > 1 else ""} processed'
+                                    sys.stderr.write(f'\033[32m]\033[0m {steps_text} ({completed_text}{", " if nCompleted and nIgnored else ""}{ignored_text})\n')
                                     sys.stderr.flush()
                                 else:
                                     # self._completed[msg[1]] += 1
-                                    if 'ignored' in msg[1]:
+                                    if msg[1] == 'substep_ignored':
                                         sys.stderr.write(f'\033[90m▣\033[0m')
                                         self._ignored[msg[2]] += 1
-                                    else:
+                                    elif msg[1] == 'substep_completed':
                                         sys.stderr.write(f'\033[32m▣\033[0m')
                                         self._completed[msg[2]] += 1
                                     sys.stderr.flush()
