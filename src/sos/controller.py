@@ -139,9 +139,18 @@ class Controller(threading.Thread):
                         elif msg[0] == 'progress':
                             if env.verbosity == 1:
                                 if msg[1] == 'done':
-                                    completed = f'{len(self._completed)} step{"s" if len(self._completed) > 1 else ""} completed' if self._completed else ''
-                                    ignored = f'{len(self._ignored)} step{"s" if len(self._ignored) > 1 else ""} ignored' if self._ignored else ''
-                                    sys.stderr.write(f'\033[32m]\033[0m {completed}{", " if completed and ignored else ""}{ignored}\n')
+                                    nSteps = len(set(self._completed.keys()) | set(self._ignored.keys()))
+                                    nCompleted = sum(self._completed.values())
+                                    nIgnored = sum(self._ignored.values())
+                                    completed_text = f'{nCompleted} substep{"s" if nCompleted > 1 else ""}'
+                                    ignored_text = f'{nIgnored} substep{"s" if nIgnored > 1 else ""}'
+                                    steps_text = f'{nSteps} step{"s" if nSteps > 1 else ""}'
+                                    if nIgnored == 0:
+                                        sys.stderr.write(f'\033[32m]\033[0m {completed_text} from {steps_text} {"are" if nCompleted > 1 else "is"} completed\n')
+                                    elif nCompleted == 0:
+                                        sys.stderr.write(f'\033[32m]\033[0m {ignored_text} from {steps_text} {"are" if nIgnored > 1 else "is"} ignored\n')
+                                    else:
+                                        sys.stderr.write(f'\033[32m]\033[0m {nCompleted + nIgnored} substeps from {steps_text} are processed ({nCompleted} completed, {nIgnored} ignored)\n')
                                     sys.stderr.flush()
                                 else:
                                     # self._completed[msg[1]] += 1
