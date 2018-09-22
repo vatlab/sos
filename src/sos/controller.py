@@ -78,7 +78,7 @@ class Controller(threading.Thread):
 
         if env.verbosity == 1:
             # leading progress bar
-            sys.stderr.write('\033[92m▣ \033[0m')
+            sys.stderr.write('\033[92m[\033[0m')
             sys.stderr.flush()
 
         while True:
@@ -141,15 +141,15 @@ class Controller(threading.Thread):
                                 if msg[1] == 'done':
                                     completed = f'{len(self._completed)} step{"s" if len(self._completed) > 1 else ""} completed' if self._completed else ''
                                     ignored = f'{len(self._ignored)} step{"s" if len(self._ignored) > 1 else ""} ignored' if self._ignored else ''
-                                    sys.stderr.write(f'\b\b {completed}{", " if completed and ignored else ""}{ignored}\n')
+                                    sys.stderr.write(f'\033[32m]\033[0m {completed}{", " if completed and ignored else ""}{ignored}\n')
                                     sys.stderr.flush()
                                 else:
                                     # self._completed[msg[1]] += 1
                                     if 'ignored' in msg[1]:
-                                        sys.stderr.write(f'\b\b\033[90m▣\033[92m▣ \033[0m')
+                                        sys.stderr.write(f'\033[90m▣\033[0m')
                                         self._ignored[msg[2]] += 1
                                     else:
-                                        sys.stderr.write(f'\b\b\033[32m▣\033[92m▣ \033[0m')
+                                        sys.stderr.write(f'\033[32m▣\033[0m')
                                         self._completed[msg[2]] += 1
                                     sys.stderr.flush()
                         else:
