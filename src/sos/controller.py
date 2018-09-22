@@ -146,29 +146,20 @@ class Controller(threading.Thread):
                             elif msg[1] == 'substep_completed':
                                 self._completed[msg[2]] += 1
                             if env.verbosity == 1:
-                                if msg[1] == 'done':
-                                    nSteps = len(set(self._completed.keys()) | set(self._ignored.keys()))
-                                    nCompleted = sum(self._completed.values())
-                                    nIgnored = sum(self._ignored.values())
-                                    completed_text = f'{nCompleted} job{"s" if nCompleted > 1 else ""} completed' if nCompleted else ''
-                                    ignored_text = f'{nIgnored} job{"s" if nIgnored > 1 else ""} ignored' if nIgnored else ''
-                                    steps_text = f'{nSteps} step{"s" if nSteps > 1 else ""} processed'
-                                    sys.stderr.write('\b \b'*self._subprogressbar_cnt + f'\033[32m]\033[0m {steps_text} ({completed_text}{", " if nCompleted and nIgnored else ""}{ignored_text})\n')
-                                    sys.stderr.flush()
-                                else:
-                                    # remove existing subworkflow
-                                    if time.time() - self._subprogressbar_last_updated > 1:
-                                        if self._subprogressbar_cnt == self._subprogressbar_size    :
-                                            sys.stderr.write('\b \b'*self._subprogressbar_cnt)
-                                            self._subprogressbar_cnt = 0
-                                        if msg[1] == 'substep_ignored':
-                                            sys.stderr.write(f'\033[90m.\033[0m')
-                                            self._subprogressbar_cnt += 1
-                                        elif msg[1] == 'substep_completed':
-                                            sys.stderr.write(f'\033[32m.\033[0m')
-                                            self._subprogressbar_cnt += 1
-                                        self._subprogressbar_last_updated = time.time()
-                                    if msg[1] == 'step_completed':
+                                # remove existing subworkflow
+                                if time.time() - self._subprogressbar_last_updated > 1:
+                                    if self._subprogressbar_cnt == self._subprogressbar_size    :
+                                        sys.stderr.write('\b \b'*self._subprogressbar_cnt)
+                                        self._subprogressbar_cnt = 0
+                                    if msg[1] == 'substep_ignored':
+                                        sys.stderr.write(f'\033[90m.\033[0m')
+                                        self._subprogressbar_cnt += 1
+                                    elif msg[1] == 'substep_completed':
+                                        sys.stderr.write(f'\033[32m.\033[0m')
+                                        self._subprogressbar_cnt += 1
+                                    self._subprogressbar_last_updated = time.time()
+                                if msg[1] == 'step_completed':
+                                    if env.verbosity == 1:
                                         if self._subprogressbar_cnt > 0:
                                             sys.stderr.write('\b \b'*self._subprogressbar_cnt)
                                             self._subprogressbar_cnt = 0
@@ -180,7 +171,7 @@ class Controller(threading.Thread):
                                             sys.stderr.write(f'\033[36m#\033[0m')
                                         else: # untracked (no signature)
                                             sys.stderr.write(f'\033[33m#\033[0m')
-                                    sys.stderr.flush()
+                                sys.stderr.flush()
                         else:
                             raise RuntimeError(f'Unrecognized request {msg}')
                     except Exception as e:
@@ -191,6 +182,16 @@ class Controller(threading.Thread):
                     try:
                         if msg[0] == 'nprocs':
                             ctl_req_socket.send_pyobj(self._nprocs)
+                        elif msg[0] == 'done':
+                            nSteps = len(set(self._completed.keys()) | set(self._ignored.keys()))
+                            nCompleted = sum(self._completed.values())
+                            nIgnored = sum(self._ignored.values())
+                            completed_text = f'{nCompleted} job{"s" if nCompleted > 1 else ""} completed' if nCompleted else ''
+                            ignored_text = f'{nIgnored} job{"s" if nIgnored > 1 else ""} ignored' if nIgnored else ''
+                            steps_text = f'{nSteps} step{"s" if nSteps > 1 else ""} processed'
+                            sys.stderr.write('\b \b'*self._subprogressbar_cnt + f'\033[32m]\033[0m {steps_text} ({completed_text}{", " if nCompleted and nIgnored else ""}{ignored_text})\n')
+                            sys.stderr.flush()
+                            ctl_req_socket.send_pyobj('bye')
                         else:
                             raise RuntimeError(f'Unrecognized request {msg}')
                     except Exception as e:
