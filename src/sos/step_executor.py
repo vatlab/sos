@@ -1332,7 +1332,9 @@ class Base_Step_Executor:
         if hasattr(env, 'accessed_vars'):
             result['__environ_vars__'] = self.environ_vars
             result['__signature_vars__'] = env.accessed_vars
-        env.controller_push_socket.send_pyobj(['progress', 'step_completed', env.sos_dict['step_id']])
+        env.controller_push_socket.send_pyobj(['progress', 'step_completed',
+            -1 if 'sos_run' in env.sos_dict['__signature_vars__'] else self.completed['__step_completed__'],
+            env.sos_dict['step_id']])
         return result
 
     def run(self):

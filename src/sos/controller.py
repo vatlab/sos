@@ -4,7 +4,7 @@
 # Distributed under the terms of the 3-clause BSD License.
 import sys
 import zmq
-
+import time
 import threading
 from collections import defaultdict
 from .utils import env
@@ -41,6 +41,10 @@ class Controller(threading.Thread):
 
         self._completed = defaultdict(int)
         self._ignored = defaultdict(int)
+        self._subprogressbar_cnt = 0
+        # size of sub progress bar
+        self._subprogressbar_size = 25
+        self._subprogressbar_last_updated = time.time()
 
         # self.event_map = {}
         # for name in dir(zmq):
@@ -137,6 +141,10 @@ class Controller(threading.Thread):
                             env.logger.trace(f'Active running process set to {msg[1]}')
                             self._nprocs = msg[1]
                         elif msg[0] == 'progress':
+                            if msg[1] == 'substep_ignored':
+                                self._ignored[msg[2]] += 1
+                            elif msg[1] == 'substep_completed':
+                                self._completed[msg[2]] += 1
                             if env.verbosity == 1:
                                 if msg[1] == 'done':
                                     nSteps = len(set(self._completed.keys()) | set(self._ignored.keys()))
@@ -145,16 +153,33 @@ class Controller(threading.Thread):
                                     completed_text = f'{nCompleted} job{"s" if nCompleted > 1 else ""} completed' if nCompleted else ''
                                     ignored_text = f'{nIgnored} job{"s" if nIgnored > 1 else ""} ignored' if nIgnored else ''
                                     steps_text = f'{nSteps} step{"s" if nSteps > 1 else ""} processed'
-                                    sys.stderr.write(f'\033[32m]\033[0m {steps_text} ({completed_text}{", " if nCompleted and nIgnored else ""}{ignored_text})\n')
+                                    sys.stderr.write('\b \b'*self._subprogressbar_cnt + f'\033[32m]\033[0m {steps_text} ({completed_text}{", " if nCompleted and nIgnored else ""}{ignored_text})\n')
                                     sys.stderr.flush()
                                 else:
-                                    # self._completed[msg[1]] += 1
-                                    if msg[1] == 'substep_ignored':
-                                        sys.stderr.write(f'\033[90m▣\033[0m')
-                                        self._ignored[msg[2]] += 1
-                                    elif msg[1] == 'substep_completed':
-                                        sys.stderr.write(f'\033[32m▣\033[0m')
-                                        self._completed[msg[2]] += 1
+                                    # remove existing subworkflow
+                                    if time.time() - self._subprogressbar_last_updated > 1:
+                                        if self._subprogressbar_cnt == self._subprogressbar_size:
+                                            sys.stderr.write('\b \b'*self._subprogressbar_cnt)
+                                            self._subprogressbar_cnt = 0
+                                        if msg[1] == 'substep_ignored':
+                                            sys.stderr.write(f'\033[90m.\033[0m')
+                                            self._subprogressbar_cnt += 1
+                                        elif msg[1] == 'substep_completed':
+                                            sys.stderr.write(f'\033[32m.\033[0m')
+                                            self._subprogressbar_cnt += 1
+                                        self._subprogressbar_last_updated = time.time()
+                                    if msg[1] == 'step_completed':
+                                        if self._subprogressbar_cnt > 0:
+                                            sys.stderr.write('\b \b'*self._subprogressbar_cnt)
+                                            self._subprogressbar_cnt = 0
+                                        if msg[2] == 1:  # completed
+                                            sys.stderr.write(f'\033[32m#\033[0m')
+                                        elif msg[2] == 0:  # completed
+                                            sys.stderr.write(f'\033[90m#\033[0m')
+                                        elif msg[2] > 0:  # in the middle
+                                            sys.stderr.write(f'\033[36m#\033[0m')
+                                        else: # untracked (no signature)
+                                            sys.stderr.write(f'\033[33m#\033[0m')
                                     sys.stderr.flush()
                         else:
                             raise RuntimeError(f'Unrecognized request {msg}')
