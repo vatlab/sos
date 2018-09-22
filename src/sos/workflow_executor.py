@@ -1025,7 +1025,7 @@ class Base_Executor:
         # terminate controller
         if env.sos_dict['master_id'] == env.sos_dict['workflow_id']:
             env.controller_push_socket.send_pyobj(None)
-            self.controller.join(1)
+            self.controller.join(5)
 
 
     def run(self, targets: Optional[List[str]]=None, parent_socket: None=None, my_workflow_id: None=None, mode=None) -> Dict[str, Any]:
