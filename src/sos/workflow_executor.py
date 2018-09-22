@@ -110,7 +110,7 @@ class SoS_Worker(mp.Process):
         super(SoS_Worker, self).__init__(**kwargs)
         #
         self.port = port
-        env.config.update(config)
+        self.config = config
 
         self.args = [] if args is None else args
 
@@ -139,6 +139,7 @@ class SoS_Worker(mp.Process):
                     env.sos_dict.set(key, value)
 
     def run(self):
+        env.config.update(self.config)
         connect_controllers()
 
         env.master_socket = env.zmq_context.socket(zmq.PAIR)
