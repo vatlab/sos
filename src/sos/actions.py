@@ -658,12 +658,8 @@ def downloadURL(URL, dest, decompress=False, index=None):
     term_width = shutil.get_terminal_size((80, 20)).columns
     try:
         env.logger.debug(f'Download {URL} to {dest}')
-        if os.path.isfile(dest):
-            prog = ProgressBar(desc=message + ': \033[32m validating\033[0m', disable=env.verbosity <= 1,
-                               position=index, leave=True, bar_format='{desc}', total=10000000)
-        else:
-            prog = ProgressBar(desc=message, disable=env.verbosity <= 1, position=index,
-                               leave=True, bar_format='{desc}', total=10000000)
+        prog = ProgressBar(desc=message, disable=env.verbosity <= 1, position=index,
+                       leave=True, bar_format='{desc}', total=10000000)
 
         #
         # Stop using pycurl because of libcurl version compatibility problems

@@ -284,7 +284,7 @@ download: dest_dir='tmp'
         # this will take a while
         script = SoS_Script(r'''
 [0]
-download: dest_dir='tmp', decompress=True
+download: dest_dir='tmp', decompress=True, max_jobs=1
 
     ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/non-existing.gz
     ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.zip
@@ -305,7 +305,7 @@ download: dest_dir='tmp', decompress=True
         # test decompress tar.gz, .zip and .gz files
         script = SoS_Script(r'''
 [0]
-download: dest_dir='tmp', decompress=True
+download: dest_dir='tmp', decompress=True, max_jobs=1
     ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.tar.gz
     ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.zip
     ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.tar.bz2
@@ -316,7 +316,7 @@ download: dest_dir='tmp', decompress=True
         # run in build mode
         script = SoS_Script(r'''
 [0]
-download: dest_dir='tmp', decompress=True
+download: dest_dir='tmp', decompress=True, max_jobs=1
     ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.tar.gz
     ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.zip
     ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.tar.bz2
