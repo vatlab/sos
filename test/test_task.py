@@ -271,59 +271,6 @@ run:
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    def testActiveTaskOption(self):
-        '''Test the active option of actions'''
-        # disallow
-        self.assertRaises(ParsingError, SoS_Script, '''
-[1]
-rep = range(5)
-input: for_each = 'rep'
-# ff should change and be usable inside run
-ff = f"{_rep}.txt"
-run:  expand=True, active=1,2
-echo {ff}
-touch temp/{ff}
-''')
-        #
-        for active, result in [
-            ('0', ['temp/0.txt']),
-            ('-1', ['temp/4.txt']),
-            ('(1,2)', ['temp/1.txt', 'temp/2.txt']),
-            ('[2,3]', ['temp/2.txt', 'temp/3.txt']),
-            ('(0,2,4)', ['temp/0.txt', 'temp/2.txt', 'temp/4.txt']),
-            ('slice(1,None)', ['temp/1.txt',
-                               'temp/2.txt', 'temp/3.txt', 'temp/4.txt']),
-            ('slice(1,-2)', ['temp/1.txt', 'temp/2.txt']),
-            ('slice(None,None,2)', ['temp/0.txt', 'temp/2.txt', 'temp/4.txt']),
-            ('True', ['temp/0.txt', 'temp/1.txt',
-                      'temp/2.txt', 'temp/3.txt', 'temp/4.txt']),
-            ('False', []),
-        ]:
-            if os.path.isdir('temp'):
-                shutil.rmtree('temp')
-            os.mkdir('temp')
-            script = SoS_Script(('''
-[1]
-rep = range(5)
-input: for_each = 'rep'
-# ff should change and be usable inside run
-ff = f"{_rep}.txt"
-task:  active=%s
-run: expand=True
-echo {ff}
-touch temp/{ff}
-''' % active).replace('/', os.sep))
-            wf = script.workflow()
-            env.config['sig_mode'] = 'force'
-            env.config['wait_for_task'] = True
-            Host.reset()
-            Base_Executor(wf).run()
-            files = list(glob.glob(os.path.join('temp', '*.txt')))
-            self.assertEqual(sorted(files), sorted([x.replace('/', os.sep) for x in result]),
-                             'With option {}'.format(active))
-            #
-            # test last iteration
-            shutil.rmtree('temp')
 
     def testPassingVarToTask(self):
         '''Test passing used variable to tasks'''
