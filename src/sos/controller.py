@@ -8,7 +8,7 @@ import time
 import threading
 from collections import defaultdict
 from .utils import env
-from .signatures import TargetSignatures, StepSignatures, WorkflowSignatures
+from .signatures import StepSignatures, WorkflowSignatures
 
 # from zmq.utils.monitor import recv_monitor_message
 
@@ -30,7 +30,6 @@ class Controller(threading.Thread):
         threading.Thread.__init__(self)
         self.daemon = True
 
-        self.target_signatures = TargetSignatures()
         self.step_signatures = StepSignatures()
         self.workflow_signatures = WorkflowSignatures()
 
@@ -55,8 +54,6 @@ class Controller(threading.Thread):
         try:
             if msg[0] == 'workflow':
                 self.workflow_signatures.write(*msg[1:])
-            elif msg[0] == 'target':
-                self.target_signatures.set(*msg[1:])
             elif msg[0] == 'step':
                 self.step_signatures.set(*msg[1:])
             else:
@@ -74,11 +71,6 @@ class Controller(threading.Thread):
                     self.sig_req_socket.send_pyobj(self.workflow_signatures.placeholders(msg[2]))
                 elif msg[1] == 'records':
                     self.sig_req_socket.send_pyobj(self.workflow_signatures.records(msg[2]))
-                else:
-                    env.logger.warning(f'Unknown signature request {msg}')
-            elif msg[0] == 'target':
-                if msg[1] == 'get':
-                    self.sig_req_socket.send_pyobj(self.target_signatures.get(msg[2]))
                 else:
                     env.logger.warning(f'Unknown signature request {msg}')
             elif msg[0] == 'step':
@@ -145,7 +137,6 @@ class Controller(threading.Thread):
                     else:
                         break
                 # close all databses
-                #self.target_signatures.close()
                 #self.step_signatures.close()
                 #self.workflow_signatures.close()
                 # handle all ctl_push_msgs #1062
