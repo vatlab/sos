@@ -1618,10 +1618,6 @@ class Base_Step_Executor:
                                     try:
                                         verify_input()
                                         self.execute(statement[1])
-                                    except:
-                                        #1055
-                                        clear_output()
-                                        raise
                                     finally:
                                         if not self.step.task:
                                             # if no task, this step is __completed
@@ -1666,9 +1662,6 @@ class Base_Step_Executor:
                                                             if x in env.sos_dict})
                                                 except Exception as e:
                                                     raise ValueError(f'Missing shared variable {e}.')
-                                        except:
-                                            clear_output()
-                                            raise
                                         finally:
                                             # if this is the end of substep, save the signature
                                             # otherwise we need to wait for the completion
@@ -1692,6 +1685,9 @@ class Base_Step_Executor:
                                 env.logger.info(e)
                             skip_index = True
                             break
+                        except:
+                            clear_output()
+                            raise
 
                 # if there is no statement , but there are tasks, we should
                 # check signature here.

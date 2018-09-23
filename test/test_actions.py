@@ -168,6 +168,7 @@ rep = range(20)
 result = []
 input: for_each='rep'
 
+
 stop_if(_rep > 10)
 result.append(_rep)
 ''')
@@ -175,6 +176,27 @@ result.append(_rep)
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['result'], [
                          0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+
+        # stop_if should not be treated as error so the previously
+        # generated output file will not be removed
+        for rep in range(2):
+            file = f'test_stop_if_{rep}.txt'
+            if os.path.isfile(file):
+                os.remove(file)
+        script = SoS_Script(r'''
+rep = range(2)
+input: for_each='rep'
+output: f'test_stop_if_{_rep}.txt'
+
+_output.touch()
+stop_if(_rep == 1)
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertTrue(os.path.isfile('test_stop_if_0.txt'))
+        self.assertTrue(os.path.isfile('test_stop_if_1.txt'))
+
 
     def testRun(self):
         '''Test action run'''
