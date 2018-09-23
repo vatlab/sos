@@ -659,7 +659,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
     try:
         env.logger.debug(f'Download {URL} to {dest}')
         prog = ProgressBar(desc=message, disable=env.verbosity <= 1, position=index,
-                       leave=True, bar_format='{desc}', total=10000000)
+                               leave=True, bar_format='{desc}', total=10000000)
 
         #
         # Stop using pycurl because of libcurl version compatibility problems
@@ -721,6 +721,8 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     pass
                 return False
         #
+        if os.path.isfile(dest):
+            os.remove(dest)
         os.rename(dest_tmp, dest)
         decompressed = 0
         if decompress:
