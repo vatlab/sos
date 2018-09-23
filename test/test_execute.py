@@ -567,49 +567,6 @@ output: expand_pattern('{base}-{name}-{par}.txt'), expand_pattern('{par}.txt')
         self.assertEqual(env.sos_dict['_output'], ['a-20-a-20.txt',
                                                    'b-10-b-10.txt', '20.txt', '10.txt'])
 
-    def testFileType(self):
-        '''Test input option filetype'''
-        self.touch(['a.txt', 'b.txt', 'a.pdf', 'b.html'])
-        script = SoS_Script(r"""
-[0: shared={'res':'step_output'}]
-files = ['a.txt', 'b.txt']
-counter = 0
-
-input: 'a.pdf', files, filetype='*.txt', group_by='single'
-
-output: f"{_input}.res"
-
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['res'], ['a.txt.res', 'b.txt.res'])
-        #
-        script = SoS_Script(r"""
-[0: shared='counter']
-files = ['a.txt', 'b.txt']
-counter = 0
-
-input: 'a.pdf', 'b.html', files, filetype=('*.txt', '*.pdf'), group_by='single'
-
-counter += 1
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['counter'], 3)
-        #
-        script = SoS_Script(r"""
-[0: shared='counter']
-files = ['a.txt', 'b.txt']
-counter = 0
-
-input: 'a.pdf', 'b.html', files, filetype=lambda x: 'a' in x, group_by='single'
-
-counter += 1
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['counter'], 2)
-
     def testOutputFromInput(self):
         '''Test deriving output files from input files'''
         self.touch(['a.txt', 'b.txt'])

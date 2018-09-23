@@ -947,6 +947,7 @@ class Base_Step_Executor:
                 raise RuntimeError(f'Unrecognized input option {k}')
         #
         if 'filetype' in kwargs:
+            env.logger.warning('Input option filetype is deprecated and will be removed from future versions of SoS.')
             if isinstance(kwargs['filetype'], str):
                 ifiles = fnmatch.filter(ifiles.targets(
                     file_only=True), kwargs['filetype'])
