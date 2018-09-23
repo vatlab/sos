@@ -8,8 +8,7 @@ import subprocess
 import sys
 import time
 import traceback
-from collections import OrderedDict
-from collections.abc import Mapping, Sequence
+from collections import OrderedDict, Mapping, Sequence
 
 from .eval import SoS_eval, SoS_exec, interpolate, stmtHash
 from .monitor import ProcessMonitor

@@ -11,7 +11,7 @@ import socket
 import stat
 import subprocess
 import sys
-from collections.abc import Sequence
+from collections import Sequence
 
 import pexpect
 import pkg_resources

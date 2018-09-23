@@ -9,7 +9,7 @@ import shlex
 import shutil
 import subprocess
 import sys
-from collections.abc import Iterable, Sequence
+from collections import Iterable, Sequence
 from copy import deepcopy
 from pathlib import Path
 from shlex import quote

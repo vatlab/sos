@@ -12,8 +12,7 @@ import time
 import uuid
 import zmq
 
-from collections import defaultdict
-from collections.abc import Sequence
+from collections import defaultdict, Sequence
 from io import StringIO
 from typing import Any, Dict, List, Optional, Tuple, Union
 from threading import Event
