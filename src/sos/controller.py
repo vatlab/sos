@@ -51,6 +51,108 @@ class Controller(threading.Thread):
         #     if name.startswith('EVENT_'):
         #         value = getattr(zmq, name)
         #          self.event_map[value] = name
+    def handle_sig_push_msg(self, msg):
+        try:
+            if msg[0] == 'workflow':
+                self.workflow_signatures.write(*msg[1:])
+            elif msg[0] == 'target':
+                self.target_signatures.set(*msg[1:])
+            elif msg[0] == 'step':
+                self.step_signatures.set(*msg[1:])
+            else:
+                env.logger.warning(f'Unknown message passed {msg}')
+        except Exception as e:
+            env.logger.warning(f'Failed to push signature {msg}: {e}')
+
+    def handle_sig_req_msg(self, msg):
+        try:
+            if msg[0] == 'workflow':
+                if msg[1] == 'clear':
+                    self.workflow_signatures.clear()
+                    self.sig_req_socket.send_pyobj('ok')
+                elif msg[1] == 'placeholders':
+                    self.sig_req_socket.send_pyobj(self.workflow_signatures.placeholders(msg[2]))
+                elif msg[1] == 'records':
+                    self.sig_req_socket.send_pyobj(self.workflow_signatures.records(msg[2]))
+                else:
+                    env.logger.warning(f'Unknown signature request {msg}')
+            elif msg[0] == 'target':
+                if msg[1] == 'get':
+                    self.sig_req_socket.send_pyobj(self.target_signatures.get(msg[2]))
+                else:
+                    env.logger.warning(f'Unknown signature request {msg}')
+            elif msg[0] == 'step':
+                if msg[1] == 'get':
+                    self.sig_req_socket.send_pyobj(self.step_signatures.get(*msg[2:]))
+                else:
+                    env.logger.warning(f'Unknown signature request {msg}')
+            else:
+                raise RuntimeError(f'Unrecognized signature request {msg}')
+        except Exception as e:
+            env.logger.warning(f'Failed to respond to signature request {msg}: {e}')
+            self.sig_req_socket.send_pyobj(None)
+
+    def handle_ctl_push_msg(self, msg):
+        try:
+            if msg[0] == 'nprocs':
+                env.logger.trace(f'Active running process set to {msg[1]}')
+                self._nprocs = msg[1]
+            elif msg[0] == 'progress':
+                if msg[1] == 'substep_ignored':
+                    self._ignored[msg[2]] += 1
+                elif msg[1] == 'substep_completed':
+                    self._completed[msg[2]] += 1
+                if env.verbosity == 1 and env.config['run_mode'] != 'interactive':
+                    # remove existing subworkflow
+                    if time.time() - self._subprogressbar_last_updated > 1:
+                        if self._subprogressbar_cnt == self._subprogressbar_size    :
+                            sys.stderr.write('\b \b'*self._subprogressbar_cnt)
+                            self._subprogressbar_cnt = 0
+                        if msg[1] == 'substep_ignored':
+                            sys.stderr.write(f'\033[90m.\033[0m')
+                            self._subprogressbar_cnt += 1
+                        elif msg[1] == 'substep_completed':
+                            sys.stderr.write(f'\033[32m.\033[0m')
+                            self._subprogressbar_cnt += 1
+                        self._subprogressbar_last_updated = time.time()
+                    if msg[1] == 'step_completed':
+                        if self._subprogressbar_cnt > 0:
+                            sys.stderr.write('\b \b'*self._subprogressbar_cnt)
+                            self._subprogressbar_cnt = 0
+                        if msg[2] == 1:  # completed
+                            sys.stderr.write(f'\033[32m#\033[0m')
+                        elif msg[2] == 0:  # completed
+                            sys.stderr.write(f'\033[90m#\033[0m')
+                        elif msg[2] > 0:  # in the middle
+                            sys.stderr.write(f'\033[36m#\033[0m')
+                        else: # untracked (no signature)
+                            sys.stderr.write(f'\033[33m#\033[0m')
+                    sys.stderr.flush()
+            else:
+                raise RuntimeError(f'Unrecognized request {msg}')
+        except Exception as e:
+            env.logger.warning(f'Failed to push controller {msg}: {e}')
+
+    def handle_ctl_req_msg(self, msg):
+        try:
+            if msg[0] == 'nprocs':
+                self.ctl_req_socket.send_pyobj(self._nprocs)
+            elif msg[0] == 'done':
+                if env.verbosity == 1 and env.config['run_mode'] != 'interactive':
+                    nSteps = len(set(self._completed.keys()) | set(self._ignored.keys()))
+                    nCompleted = sum(self._completed.values())
+                    nIgnored = sum(self._ignored.values())
+                    completed_text = f'{nCompleted} job{"s" if nCompleted > 1 else ""} completed' if nCompleted else ''
+                    ignored_text = f'{nIgnored} job{"s" if nIgnored > 1 else ""} ignored' if nIgnored else ''
+                    steps_text = f'{nSteps} step{"s" if nSteps > 1 else ""} processed'
+                    sys.stderr.write('\b \b'*self._subprogressbar_cnt + f'\033[32m]\033[0m {steps_text} ({completed_text}{", " if nCompleted and nIgnored else ""}{ignored_text})\n')
+                    sys.stderr.flush()
+                self.ctl_req_socket.send_pyobj('bye')
+            else:
+                raise RuntimeError(f'Unrecognized request {msg}')
+        except Exception as e:
+            env.logger.warning(f'Failed to respond controller {msg}: {e}')
+            self.ctl_req_socket.send_pyobj(None)
 
     def run(self):
         # there are two sockets
@@ -59,25 +161,25 @@ class Controller(threading.Thread):
         # signature_req is used to query information. The sender would need to get an response.
         env.zmq_context = zmq.Context()
 
-        sig_push_socket = env.zmq_context.socket(zmq.PULL)
-        env.config['sockets']['signature_push'] = sig_push_socket.bind_to_random_port('tcp://127.0.0.1')
-        sig_req_socket = env.zmq_context.socket(zmq.REP)
-        env.config['sockets']['signature_req'] = sig_req_socket.bind_to_random_port('tcp://127.0.0.1')
+        self.sig_push_socket = env.zmq_context.socket(zmq.PULL)
+        env.config['sockets']['signature_push'] = self.sig_push_socket.bind_to_random_port('tcp://127.0.0.1')
+        self.sig_req_socket = env.zmq_context.socket(zmq.REP)
+        env.config['sockets']['signature_req'] = self.sig_req_socket.bind_to_random_port('tcp://127.0.0.1')
 
-        ctl_push_socket = env.zmq_context.socket(zmq.PULL)
-        env.config['sockets']['controller_push'] = ctl_push_socket.bind_to_random_port('tcp://127.0.0.1')
-        ctl_req_socket = env.zmq_context.socket(zmq.REP)
-        env.config['sockets']['controller_req'] = ctl_req_socket.bind_to_random_port('tcp://127.0.0.1')
+        self.ctl_push_socket = env.zmq_context.socket(zmq.PULL)
+        env.config['sockets']['controller_push'] = self.ctl_push_socket.bind_to_random_port('tcp://127.0.0.1')
+        self.ctl_req_socket = env.zmq_context.socket(zmq.REP)
+        env.config['sockets']['controller_req'] = self.ctl_req_socket.bind_to_random_port('tcp://127.0.0.1')
 
-        #monitor_socket = sig_req_socket.get_monitor_socket()
+        #monitor_socket = self.sig_req_socket.get_monitor_socket()
         # tell others that the sockets are ready
         self.ready.set()
         # Process messages from receiver and controller
         poller = zmq.Poller()
-        poller.register(sig_push_socket, zmq.POLLIN)
-        poller.register(sig_req_socket, zmq.POLLIN)
-        poller.register(ctl_push_socket, zmq.POLLIN)
-        poller.register(ctl_req_socket, zmq.POLLIN)
+        poller.register(self.sig_push_socket, zmq.POLLIN)
+        poller.register(self.sig_req_socket, zmq.POLLIN)
+        poller.register(self.ctl_push_socket, zmq.POLLIN)
+        poller.register(self.ctl_req_socket, zmq.POLLIN)
         #poller.register(monitor_socket, zmq.POLLIN)
 
         if env.verbosity == 1:
@@ -89,113 +191,18 @@ class Controller(threading.Thread):
             try:
                 socks = dict(poller.poll())
 
-                if sig_push_socket in socks:
-                    msg = sig_push_socket.recv_pyobj()
-                    try:
-                        if msg[0] == 'workflow':
-                            self.workflow_signatures.write(*msg[1:])
-                        elif msg[0] == 'target':
-                            self.target_signatures.set(*msg[1:])
-                        elif msg[0] == 'step':
-                            self.step_signatures.set(*msg[1:])
-                        else:
-                            env.logger.warning(f'Unknown message passed {msg}')
-                    except Exception as e:
-                        env.logger.warning(f'Failed to push signature {msg}: {e}')
+                if self.sig_push_socket in socks:
+                    self.handle_sig_push_msg(self.sig_push_socket.recv_pyobj())
 
-                if sig_req_socket in socks:
-                    msg = sig_req_socket.recv_pyobj()
-                    try:
-                        if msg[0] == 'workflow':
-                            if msg[1] == 'clear':
-                                self.workflow_signatures.clear()
-                                sig_req_socket.send_pyobj('ok')
-                            elif msg[1] == 'placeholders':
-                                sig_req_socket.send_pyobj(self.workflow_signatures.placeholders(msg[2]))
-                            elif msg[1] == 'records':
-                                sig_req_socket.send_pyobj(self.workflow_signatures.records(msg[2]))
-                            else:
-                                env.logger.warning(f'Unknown signature request {msg}')
-                        elif msg[0] == 'target':
-                            if msg[1] == 'get':
-                                sig_req_socket.send_pyobj(self.target_signatures.get(msg[2]))
-                            else:
-                                env.logger.warning(f'Unknown signature request {msg}')
-                        elif msg[0] == 'step':
-                            if msg[1] == 'get':
-                                sig_req_socket.send_pyobj(self.step_signatures.get(*msg[2:]))
-                            else:
-                                env.logger.warning(f'Unknown signature request {msg}')
-                        else:
-                            raise RuntimeError(f'Unrecognized signature request {msg}')
-                    except Exception as e:
-                        env.logger.warning(f'Failed to respond to signature request {msg}: {e}')
-                        sig_req_socket.send_pyobj(None)
+                if self.sig_req_socket in socks:
+                    self.handle_sig_req_msg(self.sig_req_socket.recv_pyobj())
 
-                if ctl_push_socket in socks:
-                    msg = ctl_push_socket.recv_pyobj()
-                    try:
-                        if msg is None:
-                            break
-                        elif msg[0] == 'nprocs':
-                            env.logger.trace(f'Active running process set to {msg[1]}')
-                            self._nprocs = msg[1]
-                        elif msg[0] == 'progress':
-                            if msg[1] == 'substep_ignored':
-                                self._ignored[msg[2]] += 1
-                            elif msg[1] == 'substep_completed':
-                                self._completed[msg[2]] += 1
-                            if env.verbosity == 1 and env.run_mode != 'interactive':
-                                # remove existing subworkflow
-                                if time.time() - self._subprogressbar_last_updated > 1:
-                                    if self._subprogressbar_cnt == self._subprogressbar_size    :
-                                        sys.stderr.write('\b \b'*self._subprogressbar_cnt)
-                                        self._subprogressbar_cnt = 0
-                                    if msg[1] == 'substep_ignored':
-                                        sys.stderr.write(f'\033[90m.\033[0m')
-                                        self._subprogressbar_cnt += 1
-                                    elif msg[1] == 'substep_completed':
-                                        sys.stderr.write(f'\033[32m.\033[0m')
-                                        self._subprogressbar_cnt += 1
-                                    self._subprogressbar_last_updated = time.time()
-                                if msg[1] == 'step_completed':
-                                    if self._subprogressbar_cnt > 0:
-                                        sys.stderr.write('\b \b'*self._subprogressbar_cnt)
-                                        self._subprogressbar_cnt = 0
-                                    if msg[2] == 1:  # completed
-                                        sys.stderr.write(f'\033[32m#\033[0m')
-                                    elif msg[2] == 0:  # completed
-                                        sys.stderr.write(f'\033[90m#\033[0m')
-                                    elif msg[2] > 0:  # in the middle
-                                        sys.stderr.write(f'\033[36m#\033[0m')
-                                    else: # untracked (no signature)
-                                        sys.stderr.write(f'\033[33m#\033[0m')
-                                sys.stderr.flush()
-                        else:
-                            raise RuntimeError(f'Unrecognized request {msg}')
-                    except Exception as e:
-                        env.logger.warning(f'Failed to push controller {msg}: {e}')
+                if self.ctl_push_socket in socks:
+                    self.handle_ctl_push_msg(self.ctl_push_socket.recv_pyobj())
 
-                if ctl_req_socket in socks:
-                    msg = ctl_req_socket.recv_pyobj()
-                    try:
-                        if msg[0] == 'nprocs':
-                            ctl_req_socket.send_pyobj(self._nprocs)
-                        elif msg[0] == 'done':
-                            if env.verbosity == 1 and env.run_mode != 'interactive':
-                                nSteps = len(set(self._completed.keys()) | set(self._ignored.keys()))
-                                nCompleted = sum(self._completed.values())
-                                nIgnored = sum(self._ignored.values())
-                                completed_text = f'{nCompleted} job{"s" if nCompleted > 1 else ""} completed' if nCompleted else ''
-                                ignored_text = f'{nIgnored} job{"s" if nIgnored > 1 else ""} ignored' if nIgnored else ''
-                                steps_text = f'{nSteps} step{"s" if nSteps > 1 else ""} processed'
-                                sys.stderr.write('\b \b'*self._subprogressbar_cnt + f'\033[32m]\033[0m {steps_text} ({completed_text}{", " if nCompleted and nIgnored else ""}{ignored_text})\n')
-                                sys.stderr.flush()
-                            ctl_req_socket.send_pyobj('bye')
-                        else:
-                            raise RuntimeError(f'Unrecognized request {msg}')
-                    except Exception as e:
-                        env.logger.warning(f'Failed to respond controller {msg}: {e}')
+                if self.ctl_req_socket in socks:
+                    self.handle_ctl_req_msg(self.ctl_req_socket.recv_pyobj())
+
                 # if monitor_socket in socks:
                 #     evt = recv_monitor_message(monitor_socket)
                 #     if evt['event'] == zmq.EVENT_ACCEPTED:
@@ -205,7 +212,7 @@ class Controller(threading.Thread):
             except KeyboardInterrupt:
                 break
 
-        sig_push_socket.close()
-        sig_req_socket.close()
-        ctl_push_socket.close()
-        ctl_req_socket.close()
+        self.sig_push_socket.close()
+        self.sig_req_socket.close()
+        self.ctl_push_socket.close()
+        self.ctl_req_socket.close()
