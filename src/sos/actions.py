@@ -642,8 +642,6 @@ def stop_if(expr, msg=''):
 
 
 def downloadURL(URL, dest, decompress=False, index=None):
-    # controller is needed for the verification of signatures
-    connect_controllers()
     dest = os.path.abspath(os.path.expanduser(dest))
     dest_dir, filename = os.path.split(dest)
     #
@@ -661,79 +659,9 @@ def downloadURL(URL, dest, decompress=False, index=None):
     term_width = shutil.get_terminal_size((80, 20)).columns
     try:
         env.logger.debug(f'Download {URL} to {dest}')
-        sig = file_target(dest)
         if os.path.isfile(dest):
             prog = ProgressBar(desc=message + ': \033[32m validating\033[0m', disable=env.verbosity <= 1,
                                position=index, leave=True, bar_format='{desc}', total=10000000)
-            if env.config['sig_mode'] == 'build':
-                if decompress:
-                    prog.set_description(
-                        message + ': \033[32m scanning decompressed files\033[0m')
-                    prog.update()
-                    if zipfile.is_zipfile(dest):
-                        zfile = zipfile.ZipFile(dest)
-                        names = zfile.namelist()
-                        for name in names:
-                            # only python3.6 has the is_dir function for ZipInfo
-                            if name.endswith('/'):
-                                continue
-                            dest_file = os.path.join(dest_dir, name)
-                            if not os.path.isfile(dest_file):
-                                env.logger.warning(
-                                    f'Missing decompressed file {dest_file}')
-                            # else:
-                            #    sig.add(dest_file)
-                    elif tarfile.is_tarfile(dest):
-                        with tarfile.open(dest, 'r:*') as tar:
-                            # only extract files
-                            file_count = 0
-                            for tarinfo in tar:
-                                if tarinfo.isfile():
-                                    dest_file = os.path.join(
-                                        dest_dir, tarinfo.name)
-                                    if not os.path.isfile(dest_file):
-                                        env.logger.warning(
-                                            f'Missing decompressed file {dest_file}')
-                                    else:
-                                        #    sig.add(dest_file)
-                                        file_count += 1
-                                # sometimes the file is very large but we do not need to decompress all
-                                # and track all files.
-                                if file_count > 10:
-                                    break
-                    elif dest.endswith('.gz'):
-                        decomp = dest[:-3]
-                        if not os.path.isfile(decomp):
-                            env.logger.warning(
-                                f'Missing decompressed file {decomp}')
-                        # sig.add(decomp)
-                prog.set_description(
-                    message + ': \033[32m writing signature\033[0m')
-                prog.update()
-                sig.write_sig()
-                prog.set_description(
-                    message + ': \033[32m signature calculated\033[0m')
-                prog.update()
-                prog.close()
-                return True
-            elif env.config['sig_mode'] == 'ignore':
-                prog.set_description(
-                    message + ': \033[32m use existing\033[0m')
-                prog.update()
-                prog.close()
-                return True
-            elif env.config['sig_mode'] == 'default':
-                prog.update()
-                if sig.validate():
-                    prog.set_description(
-                        message + ': \033[32m Validated\033[0m')
-                    prog.update()
-                    prog.close()
-                    return True
-                else:
-                    prog.set_description(
-                        message + ':\033[91m Signature mismatch\033[0m')
-                    prog.update()
         else:
             prog = ProgressBar(desc=message, disable=env.verbosity <= 1, position=index,
                                leave=True, bar_format='{desc}', total=10000000)
@@ -815,7 +743,6 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     elif not os.path.isfile(os.path.join(dest_dir, name)):
                         return False
                     else:
-                        #sig.add(os.path.join(dest_dir, name))
                         decompressed += 1
             elif tarfile.is_tarfile(dest):
                 prog.set_description(
@@ -830,7 +757,6 @@ def downloadURL(URL, dest, decompress=False, index=None):
                         if not os.path.isfile(os.path.join(dest_dir, name)):
                             return False
                         else:
-                            #sig.add(os.path.join(dest_dir, name))
                             decompressed += 1
             elif dest.endswith('.gz'):
                 prog.set_description(
@@ -843,7 +769,6 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     while buffer:
                         fout.write(buffer)
                         buffer = fin.read(100000)
-                # sig.add(decomp)
                 decompressed += 1
         decompress_msg = '' if not decompressed else f' ({decompressed} file{"" if decompressed <= 1 else "s"} decompressed)'
         prog.set_description(
@@ -881,7 +806,6 @@ def downloadURL(URL, dest, decompress=False, index=None):
         # if there is something wrong still remove temporary file
         if os.path.isfile(dest_tmp):
             os.remove(dest_tmp)
-    sig.write_sig()
     return os.path.isfile(dest)
 
 
