@@ -25,7 +25,6 @@ from functools import wraps
 
 from tqdm import tqdm as ProgressBar
 
-from .controller import connect_controllers
 from .eval import interpolate
 from .parser import SoS_Script
 from .syntax import SOS_ACTION_OPTIONS
@@ -380,10 +379,10 @@ class SoS_ExecuteScript:
                 transcript_cmd = interpolate(f'{self.interpreter} {self.args}',
                                              {'filename': sos_targets('SCRIPT'), 'script': self.script})
                 transcribe(self.script, cmd=transcript_cmd)
-                if env.sos_dict['_index'] == 0:
-                    # if action is in a task , it will not have access to a workflow signature
-                    if hasattr(env, 'signature_push_socket'):
-                        env.signature_push_socket.send_pyobj(['workflow', 'transcript', env.sos_dict['step_name'],
+                # if not notebook, not task, signature database is avaialble.
+                if env.sos_dict['_index'] == 0 and env.config['run_mode'] != 'interactive' \
+                    and '__std_out__' not in env.sos_dict and hasattr(env, 'signature_push_socket'):
+                    env.signature_push_socket.send_pyobj(['workflow', 'transcript', env.sos_dict['step_name'],
                                               repr({'start_time': time.time(), 'command': transcript_cmd, 'script': self.script})])
 
                 if env.config['run_mode'] == 'interactive':
