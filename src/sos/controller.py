@@ -198,7 +198,7 @@ class Controller(threading.Thread):
         poller.register(self.ctl_req_socket, zmq.POLLIN)
         #poller.register(monitor_socket, zmq.POLLIN)
 
-        if env.verbosity == 1:
+        if env.verbosity == 1 and env.config['run_mode'] != 'interactive':
             # leading progress bar
             sys.stderr.write('\033[32m[\033[0m')
             sys.stderr.flush()
