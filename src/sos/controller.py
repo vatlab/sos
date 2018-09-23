@@ -145,9 +145,9 @@ class Controller(threading.Thread):
                     else:
                         break
                 # close all databses
-                self.target_signatures.close()
-                self.step_signatures.close()
-                self.workflow_signatures.close()
+                #self.target_signatures.close()
+                #self.step_signatures.close()
+                #self.workflow_signatures.close()
                 # handle all ctl_push_msgs #1062
                 while True:
                     if self.ctl_push_socket.poll(0.01):

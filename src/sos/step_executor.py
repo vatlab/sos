@@ -416,8 +416,10 @@ def clear_output():
                 env.logger.warning(f'Failed to remove {target}: {e}')
 
 def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
-    shared_vars=[], capture_output=False):
+    shared_vars=[], config={}, capture_output=False):
     '''Execute statements in the passed dictionary'''
+    # passing configuration and port numbers to the subprocess
+    env.config.update(config)
     connect_controllers()
     # prepare a working environment with sos symbols and functions
     from .workflow_executor import __null_func__
@@ -1607,6 +1609,7 @@ class Base_Step_Executor:
                                                                            step_md5=self.step.md5,
                                                                            step_tokens=self.step.tokens,
                                                                            shared_vars=self.vars_to_be_shared,
+                                                                           config=env.config,
                                                                            capture_output=self.run_mode == 'interactive')))
                             else:
                                 if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified():
