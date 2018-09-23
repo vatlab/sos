@@ -138,6 +138,22 @@ class Controller(threading.Thread):
             if msg[0] == 'nprocs':
                 self.ctl_req_socket.send_pyobj(self._nprocs)
             elif msg[0] == 'done':
+                # handle all sig_push_msg
+                while True:
+                    if self.sig_push_socket.poll(0.01):
+                        self.handle_sig_push_msg(self.sig_push_socket.recv_pyobj())
+                    else:
+                        break
+                # close all databses
+                self.target_signatures.close()
+                self.step_signatures.close()
+                self.workflow_signatures.close()
+                # handle all ctl_push_msgs #1062
+                while True:
+                    if self.ctl_push_socket.poll(0.01):
+                        self.handle_ctl_push_msg(self.ctl_push_socket.recv_pyobj())
+                    else:
+                        break
                 if env.verbosity == 1 and env.config['run_mode'] != 'interactive':
                     nSteps = len(set(self._completed.keys()) | set(self._ignored.keys()))
                     nCompleted = sum(self._completed.values())

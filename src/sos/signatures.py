@@ -90,6 +90,8 @@ class TargetSignatures:
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to clear file signature database: {e}')
 
+    def close(self):
+        self.conn.close()
 
 class StepSignatures:
     def __init__(self):
@@ -181,6 +183,10 @@ class StepSignatures:
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to clear step signature database: {e}')
 
+    def close(self):
+        self.get_conn(True).close()
+        self.get_conn(False).close()
+
 class WorkflowSignatures(object):
     def __init__(self):
         self.db_file = os.path.join(
@@ -269,3 +275,6 @@ class WorkflowSignatures(object):
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to clear workflow database: {e}')
             return []
+
+    def close(self):
+        self.conn.close()
