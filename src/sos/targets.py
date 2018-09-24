@@ -574,40 +574,28 @@ class file_target(path, BaseTarget):
         else:
             raise ValueError('{self} does not exist.')
 
-    def validate(self, sig=None):
+    def sig_file(self):
+        return os.path.join(env.exec_dir, '.sos', f'{textMD5(str(self.resolve()))}.file_info')
+
+    def validate(self):
         '''Check if file matches its signature'''
-        if sig is None:
-            env.signature_req_socket.send_pyobj(['target', 'get', self])
-            sig = env.signature_req_socket.recv_pyobj()
-        # old signature file with only md5
-        if isinstance(sig, str) or not self.exists():
-            try:
-                self.target_signature()
-            except:
-                # if file does not exist
-                return False
-            return self._md5 == (sig if isinstance(sig, str) else sig[2])
-        if not sig or sig[1] != os.path.getsize(self):
+        if not self.exists() or not self.sig_file():
             return False
-        if sig[0] == os.path.getmtime(self):
+        try:
+            with open(self.sig_file()) as sig:
+                mdate, size, md5 = sig.read().split()
+        except:
+            return False
+        if mdate == os.path.getmtime(self) and size == os.path.getsize(self):
             return True
-        if not self._md5:
-            self._md5 = fileMD5(self)
-        return self._md5 == sig[2]
+        return fileMD5(self) == md5
 
     def write_sig(self):
         '''Write signature to sig store'''
-        # path to file
-        if not self.exists() and (self + '.zapped').exists():
-            with open(self + '.zapped') as md5:
-                line = md5.readline()
-                _, mtime, size, md5 = line.rsplit('\t', 3)
-                env.signature_push_socket.send_pyobj(['target', self, mtime, size, md5.strip()])
-            return
         if not self._md5:
             self._md5 = fileMD5(self)
-        env.signature_push_socket.send_pyobj([
-            'target', self, os.path.getmtime(self), os.path.getsize(self), self._md5])
+        with open(self.sig_file(), 'w') as sig:
+            sig.write(f'{os.path.getmtime(self)}\t{os.path.getsize(self)}\t{self._md5}')
 
     def __hash__(self):
         return hash(repr(self))

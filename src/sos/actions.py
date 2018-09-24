@@ -5,7 +5,6 @@
 
 import copy
 import gzip
-import multiprocessing as mp
 import os
 import shlex
 import shutil
@@ -24,6 +23,7 @@ from collections import Sequence
 from functools import wraps
 
 from tqdm import tqdm as ProgressBar
+from concurrent.futures import ThreadPoolExecutor
 
 from .eval import interpolate
 from .parser import SoS_Script
@@ -550,37 +550,15 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
             shared = {
                 x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
             if env.config['run_mode'] == 'run':
-                from .workflow_executor import Base_Executor
-                executor = Base_Executor(
-                    wf, args=args, shared=shared, config=env.config)
-                if shared:
-                    q = mp.Pipe()
-                else:
-                    q = None
-                p = mp.Process(target=executor.run, kwargs={
-                               'targets': targets, 'parent_pipe': q[1], 'my_workflow_id': None})
-                p.start()
-                if shared:
-                    res = q[0].recv()
-                    if res is None:
-                        # worker is killed
-                        sys.exit(0)
-                    elif isinstance(res, Exception):
-                        raise res
-                    env.sos_dict.quick_update(res['shared'])
-                else:
-                    res = None
-                p.join()
-                return res
-            else:
-                from sos_notebook.workflow_executor import Interactive_Executor
-                executor = Interactive_Executor(
-                    wf, args=args, shared=shared, config=env.config)
-                res = executor.run(targets=targets)
-                if shared and 'shared' in res:
-                    env.sos_dict.quick_update(res['shared'])
-                # in interactive mode, we just return the __last_res__
-                return res.get('__last_res__', None)
+                raise RuntimeError('Nested workflow is not allowed from a task')
+            from sos_notebook.workflow_executor import Interactive_Executor
+            executor = Interactive_Executor(
+                wf, args=args, shared=shared, config=env.config)
+            res = executor.run(targets=targets)
+            if shared and 'shared' in res:
+                env.sos_dict.quick_update(res['shared'])
+            # in interactive mode, we just return the __last_res__
+            return res.get('__last_res__', None)
         else:
             # tell the master process to receive a workflow
             env.__socket__.send_pyobj(f'workflow {uuid.uuid4()}')
@@ -658,9 +636,39 @@ def downloadURL(URL, dest, decompress=False, index=None):
     term_width = shutil.get_terminal_size((80, 20)).columns
     try:
         env.logger.debug(f'Download {URL} to {dest}')
+        sig = file_target(dest)
+        if os.path.isfile(dest):
+            prog = ProgressBar(desc=message, disable=env.verbosity <= 1, position=index,
+                           leave=True, bar_format='{desc}', total=10000000)
+            target = file_target(dest)
+            if env.config['sig_mode'] == 'build':
+                prog.set_description(
+                    message + ': \033[32m writing signature\033[0m')
+                prog.update()
+                target.write_sig()
+                prog.close()
+                return True
+            elif env.config['sig_mode'] == 'ignore':
+                prog.set_description(
+                    message + ': \033[32m use existing\033[0m')
+                prog.update()
+                prog.close()
+                return True
+            elif env.config['sig_mode'] == 'default':
+                prog.update()
+                if sig.validate():
+                    prog.set_description(
+                        message + ': \033[32m Validated\033[0m')
+                    prog.update()
+                    prog.close()
+                    return True
+                else:
+                    prog.set_description(
+                        message + ':\033[91m Signature mismatch\033[0m')
+                    prog.update()
+        #
         prog = ProgressBar(desc=message, disable=env.verbosity <= 1, position=index,
-                               leave=True, bar_format='{desc}', total=10000000)
-
+                       leave=True, bar_format='{desc}', total=10000000)
         #
         # Stop using pycurl because of libcurl version compatibility problems
         # that happen so often and difficult to fix. Error message looks like
@@ -852,18 +860,11 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
         filenames = [dest_file]
     #
     succ = [(False, None) for x in urls]
-    if len(succ) > 1:
-        # first scroll several lines to reserve place for progress bar
-        with mp.Pool(processes=max_jobs) as pool:
-            for idx, (url, filename) in enumerate(zip(urls, filenames)):
-                # if there is alot, start download
-                succ[idx] = pool.apply_async(downloadURL, (url, filename,
-                                                           decompress, idx))
-            succ = [x.get() if isinstance(x, mp.pool.AsyncResult)
-                    else x for x in succ]
-    else:
-        succ[0] = downloadURL(urls[0], filenames[0],
-                                  decompress=decompress)
+    with ThreadPoolExecutor(max_workers=max_jobs) as executor:
+        for idx, (url, filename) in enumerate(zip(urls, filenames)):
+            # if there is alot, start download
+            succ[idx] = executor.submit(downloadURL, url, filename, decompress, idx)
+    succ = [x.result() for x in succ]
 
     # for su, url in zip(succ, urls):
     #    if not su:

@@ -275,48 +275,46 @@ end
         # test decompress tar.gz file
         script = SoS_Script(r'''
 [0]
-download(['ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.tar.gz'],
+download(['http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/CancerGeneCensus-20170912.DB.gz'],
     dest_dir='tmp', decompress=True)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(os.path.isdir('tmp/pcre-8.41'))
-        self.assertTrue(os.path.isfile('tmp/pcre-8.41/pcre_get.c'))
+        self.assertTrue(os.path.isfile('tmp/CancerGeneCensus-20170912.DB'))
         #
         # testing the download of single file
         #
         script = SoS_Script(r'''
 [0]
-download: dest_file='tmp/pcre-8.41.zip.sig'
-    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.zip.sig
+download: dest_file='tmp/refgene.ppp'
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/resource/refgene.pkl
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(os.path.isfile('tmp/pcre-8.41.zip.sig'))
+        self.assertTrue(os.path.isfile('tmp/refgene.ppp'))
         # test option dest_dir
         script = SoS_Script(r'''
 [0]
 download: dest_dir='tmp'
-    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.zip.sig
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/resource/refgene.pkl
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(os.path.isfile('tmp/pcre-8.41.zip.sig'))
+        self.assertTrue(os.path.isfile('tmp/refgene.pkl'))
         #
         # this will take a while
         script = SoS_Script(r'''
 [0]
-download: dest_dir='tmp', decompress=True, max_jobs=1
-
-    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/non-existing.gz
-    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.zip
-    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.zip.sig
-    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.tar.gz
+download: dest_dir='tmp', decompress=True, max_jobs=2
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/resource/non-existing.gz
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/CancerGeneCensus-20170912.DB.gz
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/CancerGeneCensus.ann
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/DGV-hg38_20160831.ann
 ''')
         #start = time.time()
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
-        self.assertTrue(os.path.isfile('tmp/pcre-8.41/pcre_get.c'))
+        self.assertTrue(os.path.isfile('tmp/CancerGeneCensus.ann'))
         #self.assertGreater(time.time() - start, 3)
         # this will be fast
         #start = time.time()
@@ -327,22 +325,20 @@ download: dest_dir='tmp', decompress=True, max_jobs=1
         # test decompress tar.gz, .zip and .gz files
         script = SoS_Script(r'''
 [0]
-download: dest_dir='tmp', decompress=True, max_jobs=1
-    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.tar.gz
-    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.zip
-    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.tar.bz2
-    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.zip.sig
+download: dest_dir='tmp', decompress=True
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/CancerGeneCensus-20170912.DB.gz
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/CancerGeneCensus.ann
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/DGV-hg38_20160831.ann
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
         # run in build mode
         script = SoS_Script(r'''
 [0]
-download: dest_dir='tmp', decompress=True, max_jobs=1
-    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.tar.gz
-    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.zip
-    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.tar.bz2
-    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.41.zip.sig
+download: dest_dir='tmp', decompress=True
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/CancerGeneCensus-20170912.DB.gz
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/CancerGeneCensus.ann
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/DGV-hg38_20160831.ann
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={'sig_mode': 'build'}).run()

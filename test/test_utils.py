@@ -11,7 +11,7 @@ import unittest
 from sos.eval import accessed_vars, on_demand_options
 from sos.parser import SoS_Script
 from sos.pattern import expand_pattern, extract_pattern
-from sos.targets import executable, sos_targets
+from sos.targets import executable, sos_targets, file_target
 # these functions are normally not available but can be imported
 # using their names for testing purposes
 from sos.utils import WorkflowDict, env, logger, stable_repr
@@ -267,6 +267,21 @@ task:
         self.assertEqual(stable_repr({1, 2, '3', '1'}), "{'1', '3', 1, 2}")
         self.assertEqual(stable_repr({1: 2, 3: 4}), "{1:2, 3:4}")
         self.assertEqual(stable_repr([1, 3, 4]), "[1, 3, 4]")
+
+    def testFileSig(self):
+        '''test save and validate of file signature'''
+        a = file_target('test_utils.py')
+        a.write_sig()
+        self.assertTrue(a.validate())
+        #
+        with open('test_sig.txt', 'w') as ts:
+            ts.write('ba')
+        a = file_target('test_sig.txt')
+        a.write_sig()
+        self.assertTrue(a.validate())
+        with open('test_sig.txt', 'w') as ts:
+            ts.write('bac')
+        self.assertFalse(a.validate())
 
 
 if __name__ == '__main__':
