@@ -279,6 +279,9 @@ task:
         a = file_target('test_sig.txt')
         a.write_sig()
         self.assertTrue(a.validate())
+        #
+        a.zap()
+        self.assertTrue(a.validate())
         with open('test_sig.txt', 'w') as ts:
             ts.write('bac')
         self.assertFalse(a.validate())

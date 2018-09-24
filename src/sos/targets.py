@@ -579,19 +579,25 @@ class file_target(path, BaseTarget):
 
     def validate(self, sig=None):
         '''Check if file matches its signature'''
-        if not self.exists() or not self.sig_file():
-            return False
         if sig is not None:
-            mdate, size, md5 = sig
+            sig_mtime, sig_size, sig_md5 = sig
         else:
             try:
                 with open(self.sig_file()) as sig:
-                    mdate, size, md5 = sig.read().split()
+                    sig_mtime, sig_size, sig_md5 = sig.read().strip().split()
             except:
                 return False
-        if mdate == os.path.getmtime(self) and size == os.path.getsize(self):
+        if not self.exists():
+            if (self + '.zapped').is_file():
+                with open(self + '.zapped') as sig:
+                    line = sig.readline()
+                    _, mtime, size, md5 = line.strip().rsplit('\t', 3)
+                    return sig_md5 == md5
+            else:
+                return False
+        if sig_mtime == os.path.getmtime(self) and sig_size == os.path.getsize(self):
             return True
-        return fileMD5(self) == md5
+        return fileMD5(self) == sig_md5
 
     def write_sig(self):
         '''Write signature to sig store'''
