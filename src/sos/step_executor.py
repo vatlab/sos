@@ -1172,7 +1172,8 @@ class Base_Step_Executor:
             nProcs = env.controller_req_socket.recv_pyobj()
             nMax = env.config.get(
                 'max_procs', max(int(os.cpu_count() / 2), 1))
-            if nMax > self.worker_pool._processes - 1 and len(self._substeps) > nMax:
+            # only billard version of pool can grow, but billiard is buggy under windows
+            if hasattr(self.worker_pool, 'grow') and nMax > self.worker_pool._processes - 1 and len(self._substeps) > nMax:
                 # use billiard pool, can expand pool if more slots are available
                 while True:
                     nPending = [not x.ready()
