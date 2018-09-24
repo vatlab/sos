@@ -1022,7 +1022,7 @@ class Base_Executor:
                         file_target(filename).unlink()
                         env.logger.debug(f'Remove placeholder {filename}')
                 except Exception as e:
-                    env.logger.warning(f'Failed to remove placeholder {filename}: {e}')
+                    env.logger.trace(f'Failed to remove placeholder {filename}: {e}')
 
 
     def run(self, targets: Optional[List[str]]=None, parent_socket: None=None, my_workflow_id: None=None, mode=None) -> Dict[str, Any]:
@@ -1402,6 +1402,7 @@ class Base_Executor:
             if not nested:
                 manager.terminate()
         #
+
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
             # if failed_steps:
