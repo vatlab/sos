@@ -577,15 +577,18 @@ class file_target(path, BaseTarget):
     def sig_file(self):
         return os.path.join(env.exec_dir, '.sos', f'{textMD5(str(self.resolve()))}.file_info')
 
-    def validate(self):
+    def validate(self, sig=None):
         '''Check if file matches its signature'''
         if not self.exists() or not self.sig_file():
             return False
-        try:
-            with open(self.sig_file()) as sig:
-                mdate, size, md5 = sig.read().split()
-        except:
-            return False
+        if sig is not None:
+            mdate, size, md5 = sig
+        else:
+            try:
+                with open(self.sig_file()) as sig:
+                    mdate, size, md5 = sig.read().split()
+            except:
+                return False
         if mdate == os.path.getmtime(self) and size == os.path.getsize(self):
             return True
         return fileMD5(self) == md5
