@@ -19,7 +19,10 @@ from itertools import combinations, tee
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import psutil
-from billiard import Pool
+if sys.platform == 'win32':
+    from multiprocessing import Pool
+else:
+    from billiard import Pool
 
 from .eval import SoS_eval, SoS_exec, stmtHash, accessed_vars
 from .controller import connect_controllers
@@ -1599,7 +1602,7 @@ class Base_Step_Executor:
                                 proc_vars = env.sos_dict.clone_selected_vars(
                                     env.sos_dict['__signature_vars__']
                                     | {'step_output', '_input', '_output', '_depends', '_index', '__args__',
-                                       'step_name', '_runtime',
+                                       'step_name', '_runtime', 'step_id',
                                        '__signature_vars__', '__step_context__'
                                        })
 
