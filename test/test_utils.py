@@ -270,10 +270,6 @@ task:
 
     def testFileSig(self):
         '''test save and validate of file signature'''
-        a = file_target('test_utils.py')
-        a.write_sig()
-        self.assertTrue(a.validate())
-        #
         with open('test_sig.txt', 'w') as ts:
             ts.write('ba')
         a = file_target('test_sig.txt')
