@@ -132,6 +132,7 @@ print(a)
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 2)
         # rerun
+        env.sos_dict.pop('a')
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 1)
         file_target('a.txt').unlink()
