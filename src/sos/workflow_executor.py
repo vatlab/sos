@@ -1188,6 +1188,9 @@ class Base_Executor:
                         runnable._status = 'completed'
                         dag.save(env.config['output_dag'])
                         runnable._child_socket.send_pyobj(res)
+                        # this is a onetime use socket that passes results from
+                        # nested workflow to master
+                        runnable._child_socket.close()
                     elif isinstance(res, (UnknownTarget, RemovedTarget)):
                         self.handle_unknown_target(res, dag, runnable)
                     elif isinstance(res, UnavailableLock):
