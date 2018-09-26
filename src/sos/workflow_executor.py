@@ -383,19 +383,20 @@ class Base_Executor:
             env.config['sockets'] = {}
             #
             # control panel in a separate thread, connected by zmq socket
-            ready = Event()
-            self.controller = Controller(ready)
-            self.controller.start()
-
+            if not parent_socket:
+                ready = Event()
+                self.controller = Controller(ready)
+                self.controller.start()
+                # wait for the thread to start with a signature_req saved to env.config
+                ready.wait()
             workflow_info['command_line'] = subprocess.list2cmdline(
                 [os.path.basename(sys.argv[0])] + sys.argv[1:])
             workflow_info['project_dir'] = os.getcwd()
             workflow_info['script'] = base64.b64encode(
                 self.workflow.content.text().encode()).decode('ascii')
-            # wait for the thread to start with a signature_req saved to env.config
-            ready.wait()
 
-        connect_controllers(env.zmq_context)
+        if not parent_socket:
+            connect_controllers(env.zmq_context)
         workflow_info['master_id'] = env.config['master_id']
         if env.config['master_id'] == self.md5:
             env.signature_req_socket.send_pyobj(['workflow', 'clear'])
@@ -1037,10 +1038,6 @@ class Base_Executor:
                         env.logger.debug(f'Remove placeholder {filename}')
                 except Exception as e:
                     env.logger.trace(f'Failed to remove placeholder {filename}: {e}')
-        if env.sos_dict['master_id'] == env.sos_dict['workflow_id']:
-            # end progress bar when the master workflow stops
-            env.controller_req_socket.send_pyobj(['done'])
-            env.controller_req_socket.recv()
 
     def _run(self, targets: Optional[List[str]]=None, parent_socket: None=None, my_workflow_id: None=None, mode=None) -> Dict[str, Any]:
         '''Execute a workflow with specified command line args. If sub is True, this
@@ -1440,6 +1437,12 @@ class Base_Executor:
                 raise exec_error
         elif 'pending_tasks' not in wf_result or not wf_result['pending_tasks']:
             self.finalize_and_report()
+            if not parent_socket and env.sos_dict['master_id'] == env.sos_dict['workflow_id']:
+                # end progress bar when the master workflow stops
+                env.logger.trace(f'Stop controller from {os.getpid()}')
+                env.controller_req_socket.send_pyobj(['done'])
+                env.controller_req_socket.recv()
+
         else:
             # exit with pending tasks
             pass
