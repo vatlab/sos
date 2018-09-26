@@ -430,11 +430,13 @@ class Base_Executor:
             return self._run(targets=targets, parent_socket=parent_socket,
                 my_workflow_id=my_workflow_id, mode=mode)
         finally:
-            env.logger.trace('disconntecting master')
-            disconnect_controllers(env.zmq_context)
-            # when the run() function is called again, the controller
-            # thread will be start again.
-            env.config['master_id'] = None
+            if env.config['master_id'] == self.md5:
+                env.logger.trace('disconntecting master')
+                disconnect_controllers(env.zmq_context)
+                self.controller.join()
+                # when the run() function is called again, the controller
+                # thread will be start again.
+                env.config['master_id'] = None
 
 
     def record_quit_status(self, tasks: List[Tuple[str, str]]) -> None:

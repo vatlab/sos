@@ -45,7 +45,7 @@ def disconnect_controllers(context=None):
 class Controller(threading.Thread):
     def __init__(self, ready):
         threading.Thread.__init__(self)
-        self.daemon = True
+        #self.daemon = True
 
         self.step_signatures = StepSignatures()
         self.workflow_signatures = WorkflowSignatures()
@@ -242,6 +242,10 @@ class Controller(threading.Thread):
             except KeyboardInterrupt:
                 break
 
+        poller.unregister(self.sig_push_socket)
+        poller.unregister(self.sig_req_socket)
+        poller.unregister(self.ctl_push_socket)
+        poller.unregister(self.ctl_req_socket)
         self.sig_push_socket.close()
         self.sig_req_socket.close()
         self.ctl_push_socket.close()
