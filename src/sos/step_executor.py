@@ -1618,7 +1618,7 @@ class Base_Step_Executor:
                                                                            capture_output=self.run_mode == 'interactive')))
                             else:
                                 if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified():
-                                    env.logger.trace('Execute substep {env.sos_dict["step_name"]} without signature')
+                                    env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} without signature')
                                     try:
                                         verify_input()
                                         self.execute(statement[1])
