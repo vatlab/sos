@@ -2,6 +2,7 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
+import os
 import sys
 import zmq
 import time
@@ -13,6 +14,7 @@ from .signatures import StepSignatures, WorkflowSignatures
 # from zmq.utils.monitor import recv_monitor_message
 
 def connect_controllers(context=None):
+    env.logger.trace(f'Connecting sockets from {os.getpid()}')
     if not context:
         env.zmq_context = zmq.Context()
     env.signature_push_socket = env.zmq_context.socket(zmq.PUSH)
@@ -24,6 +26,14 @@ def connect_controllers(context=None):
     env.controller_push_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["controller_push"]}')
     env.controller_req_socket = env.zmq_context.socket(zmq.REQ)
     env.controller_req_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["controller_req"]}')
+
+def disconnect_controllers(context=None):
+    env.signature_push_socket.close()
+    env.signature_req_socket.close()
+    env.controller_push_socket.close()
+    env.controller_req_socket.close()
+    env.logger.trace(f'Disconnecting sockets from {os.getpid()}')
+
 
 class Controller(threading.Thread):
     def __init__(self, ready):
@@ -155,8 +165,10 @@ class Controller(threading.Thread):
                     sys.stderr.write('\b \b'*self._subprogressbar_cnt + f'\033[32m]\033[0m {steps_text} ({completed_text}{", " if nCompleted and nIgnored else ""}{ignored_text})\n')
                     sys.stderr.flush()
                 self.ctl_req_socket.send_pyobj('bye')
+                return False
             else:
                 raise RuntimeError(f'Unrecognized request {msg}')
+            return True
         except Exception as e:
             env.logger.warning(f'Failed to respond controller {msg}: {e}')
             self.ctl_req_socket.send_pyobj(None)
@@ -167,6 +179,7 @@ class Controller(threading.Thread):
         # signature_push is used to write signatures. It is a single push operation with no reply.
         # signature_req is used to query information. The sender would need to get an response.
         env.zmq_context = zmq.Context()
+        env.logger.trace(f'controller started {os.getpid()}')
 
         self.sig_push_socket = env.zmq_context.socket(zmq.PULL)
         env.config['sockets']['signature_push'] = self.sig_push_socket.bind_to_random_port('tcp://127.0.0.1')
@@ -208,7 +221,8 @@ class Controller(threading.Thread):
                     self.handle_ctl_push_msg(self.ctl_push_socket.recv_pyobj())
 
                 if self.ctl_req_socket in socks:
-                    self.handle_ctl_req_msg(self.ctl_req_socket.recv_pyobj())
+                    if not self.handle_ctl_req_msg(self.ctl_req_socket.recv_pyobj()):
+                        break
 
                 # if monitor_socket in socks:
                 #     evt = recv_monitor_message(monitor_socket)
@@ -223,3 +237,4 @@ class Controller(threading.Thread):
         self.sig_req_socket.close()
         self.ctl_push_socket.close()
         self.ctl_req_socket.close()
+        env.logger.trace(f'controller stopped {os.getpid()}')

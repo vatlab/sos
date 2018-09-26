@@ -24,7 +24,7 @@ from .hosts import Host
 from .parser import SoS_Step, SoS_Workflow
 from .pattern import extract_pattern
 from .workflow_report import render_report
-from .controller import Controller, connect_controllers
+from .controller import Controller, connect_controllers, disconnect_controllers
 from .step_executor import PendingTasks, Step_Executor, analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
                       UnknownTarget, file_target, path, paths,
@@ -162,8 +162,7 @@ class SoS_Worker(mp.Process):
             except KeyboardInterrupt:
                 break
         # Finished
-        env.signature_push_socket.close()
-        env.signature_req_socket.close()
+        disconnect_controllers()
         env.master_socket.close()
 
     def run_workflow(self, workflow_id, wf, targets, args, shared, config):
@@ -316,6 +315,7 @@ class ExecutionManager(object):
         if not brutal:
             for proc in self.procs + self.pool:
                 proc.socket.send_pyobj(None)
+                proc.socket.close()
             time.sleep(0.1)
             for proc in self.procs + self.pool:
                 if proc.worker and proc.worker.is_alive():
@@ -365,6 +365,8 @@ class Base_Executor:
         self.md5 = self.calculate_md5()
         env.config['workflow_id'] = self.md5
         env.sos_dict.set('workflow_id', self.md5)
+
+    def run(self, targets: Optional[List[str]]=None, parent_socket: None=None, my_workflow_id: None=None, mode=None) -> Dict[str, Any]:
         #
         # if this is the outter most workflow, master)id should have =
         # not been set so we set it for all other workflows
@@ -420,6 +422,14 @@ class Base_Executor:
         # if this is a resumed task?
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
+
+        try:
+            return self._run(targets=targets, parent_socket=parent_socket,
+                my_workflow_id=my_workflow_id, mode=mode)
+        finally:
+            disconnect_controllers()
+            env.zmq_context.term()
+
 
     def record_quit_status(self, tasks: List[Tuple[str, str]]) -> None:
         if not self.md5:
@@ -987,10 +997,6 @@ class Base_Executor:
         except Exception as e:
             env.logger.warning(
                 f'Failed to clear workflow status file: {e}')
-        if env.sos_dict['master_id'] == env.sos_dict['workflow_id']:
-            # end progress bar when the master workflow stops
-            env.controller_req_socket.send_pyobj(['done'])
-            env.controller_req_socket.recv()
         if self.workflow.name != 'scratch':
             if self.completed["__step_completed__"] == 0:
                 sts = 'ignored'
@@ -1023,9 +1029,12 @@ class Base_Executor:
                         env.logger.debug(f'Remove placeholder {filename}')
                 except Exception as e:
                     env.logger.trace(f'Failed to remove placeholder {filename}: {e}')
+        if env.sos_dict['master_id'] == env.sos_dict['workflow_id']:
+            # end progress bar when the master workflow stops
+            env.controller_req_socket.send_pyobj(['done'])
+            env.controller_req_socket.recv()
 
-
-    def run(self, targets: Optional[List[str]]=None, parent_socket: None=None, my_workflow_id: None=None, mode=None) -> Dict[str, Any]:
+    def _run(self, targets: Optional[List[str]]=None, parent_socket: None=None, my_workflow_id: None=None, mode=None) -> Dict[str, Any]:
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
