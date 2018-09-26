@@ -139,7 +139,7 @@ class SoS_Worker(mp.Process):
 
     def run(self):
         env.config.update(self.config)
-        connect_controllers()
+        env.zmq_context = connect_controllers()
 
         env.master_socket = env.zmq_context.socket(zmq.PAIR)
         env.master_socket.connect(f'tcp://127.0.0.1:{self.port}')
@@ -162,8 +162,9 @@ class SoS_Worker(mp.Process):
             except KeyboardInterrupt:
                 break
         # Finished
-        disconnect_controllers()
         env.master_socket.close()
+        disconnect_controllers(env.zmq_context)
+
 
     def run_workflow(self, workflow_id, wf, targets, args, shared, config):
         #
@@ -374,6 +375,8 @@ class Base_Executor:
             'name': self.workflow.name,
             'start_time': time.time(),
         }
+        env.zmq_context = zmq.Context()
+
         if not env.config['master_id']:
             # if this is the executor for the master workflow, start controller
             env.config['master_id'] = self.md5
@@ -391,8 +394,8 @@ class Base_Executor:
                 self.workflow.content.text().encode()).decode('ascii')
             # wait for the thread to start with a signature_req saved to env.config
             ready.wait()
-        connect_controllers(env.zmq_context)
 
+        connect_controllers(env.zmq_context)
         workflow_info['master_id'] = env.config['master_id']
         if env.config['master_id'] == self.md5:
             env.signature_req_socket.send_pyobj(['workflow', 'clear'])
@@ -427,8 +430,11 @@ class Base_Executor:
             return self._run(targets=targets, parent_socket=parent_socket,
                 my_workflow_id=my_workflow_id, mode=mode)
         finally:
-            disconnect_controllers()
-            env.zmq_context.term()
+            env.logger.trace('disconntecting master')
+            disconnect_controllers(env.zmq_context)
+            # when the run() function is called again, the controller
+            # thread will be start again.
+            env.config['master_id'] = None
 
 
     def record_quit_status(self, tasks: List[Tuple[str, str]]) -> None:

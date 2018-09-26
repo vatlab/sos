@@ -14,18 +14,21 @@ from .signatures import StepSignatures, WorkflowSignatures
 # from zmq.utils.monitor import recv_monitor_message
 
 def connect_controllers(context=None):
-    env.logger.trace(f'Connecting sockets from {os.getpid()}')
     if not context:
-        env.zmq_context = zmq.Context()
-    env.signature_push_socket = env.zmq_context.socket(zmq.PUSH)
+        env.logger.trace(f'create context at {os.getpid()}')
+        context = zmq.Context()
+    env.logger.trace(f'Connecting sockets from {os.getpid()}')
+
+    env.signature_push_socket = context.socket(zmq.PUSH)
     env.signature_push_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["signature_push"]}')
-    env.signature_req_socket = env.zmq_context.socket(zmq.REQ)
+    env.signature_req_socket = context.socket(zmq.REQ)
     env.signature_req_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["signature_req"]}')
 
-    env.controller_push_socket = env.zmq_context.socket(zmq.PUSH)
+    env.controller_push_socket = context.socket(zmq.PUSH)
     env.controller_push_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["controller_push"]}')
-    env.controller_req_socket = env.zmq_context.socket(zmq.REQ)
+    env.controller_req_socket = context.socket(zmq.REQ)
     env.controller_req_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["controller_req"]}')
+    return context
 
 def disconnect_controllers(context=None):
     env.signature_push_socket.close()
@@ -33,6 +36,10 @@ def disconnect_controllers(context=None):
     env.controller_push_socket.close()
     env.controller_req_socket.close()
     env.logger.trace(f'Disconnecting sockets from {os.getpid()}')
+
+    if context:
+        env.logger.trace(f'terminate context at {os.getpid()}')
+        context.term()
 
 
 class Controller(threading.Thread):
@@ -178,17 +185,19 @@ class Controller(threading.Thread):
         #
         # signature_push is used to write signatures. It is a single push operation with no reply.
         # signature_req is used to query information. The sender would need to get an response.
-        env.zmq_context = zmq.Context()
+
+        self.context = zmq.Context.instance()
+
         env.logger.trace(f'controller started {os.getpid()}')
 
-        self.sig_push_socket = env.zmq_context.socket(zmq.PULL)
+        self.sig_push_socket = self.context.socket(zmq.PULL)
         env.config['sockets']['signature_push'] = self.sig_push_socket.bind_to_random_port('tcp://127.0.0.1')
-        self.sig_req_socket = env.zmq_context.socket(zmq.REP)
+        self.sig_req_socket = self.context.socket(zmq.REP)
         env.config['sockets']['signature_req'] = self.sig_req_socket.bind_to_random_port('tcp://127.0.0.1')
 
-        self.ctl_push_socket = env.zmq_context.socket(zmq.PULL)
+        self.ctl_push_socket = self.context.socket(zmq.PULL)
         env.config['sockets']['controller_push'] = self.ctl_push_socket.bind_to_random_port('tcp://127.0.0.1')
-        self.ctl_req_socket = env.zmq_context.socket(zmq.REP)
+        self.ctl_req_socket = self.context.socket(zmq.REP)
         env.config['sockets']['controller_req'] = self.ctl_req_socket.bind_to_random_port('tcp://127.0.0.1')
 
         #monitor_socket = self.sig_req_socket.get_monitor_socket()
@@ -237,4 +246,5 @@ class Controller(threading.Thread):
         self.sig_req_socket.close()
         self.ctl_push_socket.close()
         self.ctl_req_socket.close()
+
         env.logger.trace(f'controller stopped {os.getpid()}')
