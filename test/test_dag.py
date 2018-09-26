@@ -335,7 +335,7 @@ C_3 -> C_4;
 [K: provides='{name}.txt']
 output: f"{name}.txt"
 
-run:
+run: expand=True
     touch '{name}.txt'
 
 [C_2]
