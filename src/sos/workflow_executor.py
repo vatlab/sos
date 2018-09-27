@@ -431,7 +431,11 @@ class Base_Executor:
             return self._run(targets=targets, parent_socket=parent_socket,
                 my_workflow_id=my_workflow_id, mode=mode)
         finally:
-            if env.config['master_id'] == self.md5:
+            if not parent_socket and env.sos_dict['master_id'] == env.sos_dict['workflow_id']:
+                # end progress bar when the master workflow stops
+                env.logger.trace(f'Stop controller from {os.getpid()}')
+                env.controller_req_socket.send_pyobj(['done'])
+                env.controller_req_socket.recv()
                 env.logger.trace('disconntecting master')
                 disconnect_controllers(env.zmq_context)
                 self.controller.join()
@@ -1440,12 +1444,6 @@ class Base_Executor:
                 raise exec_error
         elif 'pending_tasks' not in wf_result or not wf_result['pending_tasks']:
             self.finalize_and_report()
-            if not parent_socket and env.sos_dict['master_id'] == env.sos_dict['workflow_id']:
-                # end progress bar when the master workflow stops
-                env.logger.trace(f'Stop controller from {os.getpid()}')
-                env.controller_req_socket.send_pyobj(['done'])
-                env.controller_req_socket.recv()
-
         else:
             # exit with pending tasks
             pass
