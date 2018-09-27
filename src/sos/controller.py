@@ -31,9 +31,13 @@ def connect_controllers(context=None):
     return context
 
 def disconnect_controllers(context=None):
+    env.signature_push_socket.LINGER = 0
     env.signature_push_socket.close()
+    env.signature_req_socket.LINGER = 0
     env.signature_req_socket.close()
+    env.controller_push_socket.LINGER = 0
     env.controller_push_socket.close()
+    env.controller_req_socket.LINGER = 0
     env.controller_req_socket.close()
     env.logger.trace(f'Disconnecting sockets from {os.getpid()}')
 
@@ -247,9 +251,13 @@ class Controller(threading.Thread):
         poller.unregister(self.sig_req_socket)
         poller.unregister(self.ctl_push_socket)
         poller.unregister(self.ctl_req_socket)
+        self.sig_push_socket.LINGER = 0
         self.sig_push_socket.close()
+        self.sig_req_socket.LINGER = 0
         self.sig_req_socket.close()
+        self.ctl_push_socket.LINGER = 0
         self.ctl_push_socket.close()
+        self.ctl_req_socket.LINGER = 0
         self.ctl_req_socket.close()
 
         env.logger.trace(f'controller stopped {os.getpid()}')

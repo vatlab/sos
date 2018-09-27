@@ -162,6 +162,7 @@ class SoS_Worker(mp.Process):
             except KeyboardInterrupt:
                 break
         # Finished
+        env.master_socket.LINGER = 0
         env.master_socket.close()
         disconnect_controllers(env.zmq_context)
 
@@ -316,6 +317,7 @@ class ExecutionManager(object):
         if not brutal:
             for proc in self.procs + self.pool:
                 proc.socket.send_pyobj(None)
+                proc.socket.LINGER = 0
                 proc.socket.close()
             time.sleep(0.1)
             for proc in self.procs + self.pool:
@@ -1193,6 +1195,7 @@ class Base_Executor:
                         runnable._child_socket.send_pyobj(res)
                         # this is a onetime use socket that passes results from
                         # nested workflow to master
+                        runnable._child_socket.LINGER = 0
                         runnable._child_socket.close()
                     elif isinstance(res, (UnknownTarget, RemovedTarget)):
                         self.handle_unknown_target(res, dag, runnable)
