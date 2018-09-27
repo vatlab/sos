@@ -380,7 +380,6 @@ class Base_Executor:
         if not env.config['master_id']:
             # if this is the executor for the master workflow, start controller
             env.config['master_id'] = self.md5
-            env.config['sockets'] = {}
             #
             # control panel in a separate thread, connected by zmq socket
             if not parent_socket:

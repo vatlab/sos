@@ -190,6 +190,7 @@ class Controller(threading.Thread):
 
         env.logger.trace(f'controller started {os.getpid()}')
 
+        env.config['sockets'] = {}
         self.sig_push_socket = self.context.socket(zmq.PULL)
         env.config['sockets']['signature_push'] = self.sig_push_socket.bind_to_random_port('tcp://127.0.0.1')
         self.sig_req_socket = self.context.socket(zmq.REP)
