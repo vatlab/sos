@@ -323,6 +323,8 @@ class TaskManager:
                 # if the task file, perhaps it is already running, we do not change
                 # the task file. Otherwise we are changing the status of the task
                 TaskFile(task_id).save(taskdef)
+                env.signature_push_socket.send_pyobj(['workflow', 'task', task_id,
+                                          f"{{'creation_time': {time.time()}}}"])
                 ids.append(task_id)
         else:
             master = None
@@ -330,6 +332,8 @@ class TaskManager:
                 if master is not None and master.num_tasks() == self.trunk_size:
                     ids.append(master.ID)
                     TaskFile(master.ID).save(master)
+                    env.signature_push_socket.send_pyobj(['workflow', 'task', master.ID,
+                                              f"{{'creation_time': {time.time()}}}"])
                     master = None
                 if master is None:
                     master = MasterTaskParams(self.trunk_workers)
@@ -337,6 +341,8 @@ class TaskManager:
             # the last piece
             if master is not None:
                 TaskFile(master.ID).save(master)
+                env.signature_push_socket.send_pyobj(['workflow', 'task', master.ID,
+                                          f"{{'creation_time': {time.time()}}}"])
                 ids.append(master.ID)
 
         if not ids:
