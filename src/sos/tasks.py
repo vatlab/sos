@@ -184,7 +184,8 @@ class TaskFile(object):
         )
 
     def save(self, params):
-        env.signature_push_socket.send_pyobj(['workflow', 'task', self.task_id,
+        if hasattr(env, 'signature_push_socket'):
+            env.signature_push_socket.send_pyobj(['workflow', 'task', self.task_id,
                                   f"{{'creation_time': {time.time()}}}"])
         if os.path.isfile(self.task_file):
             if self.status == 'running':
