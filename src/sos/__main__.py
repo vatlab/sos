@@ -329,6 +329,14 @@ def cmd_run(args, workflow_args):
         args.__report__ = None
     env.verbosity = args.verbosity
 
+    if args.__report__ and args.__dag__:
+        try:
+            import graphviz
+            import PIL
+            import imageio
+        except ImportError as e:
+            raise RuntimeError(f'Python packages graphviz, pillow, and imageio are required for the generation of DAG animation in workflow report (options -p with -d): {e}')
+
     from .workflow_executor import Base_Executor
 
     if args.__bin_dirs__:
