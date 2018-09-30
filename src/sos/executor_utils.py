@@ -10,8 +10,9 @@ from typing import Any
 from collections import Sequence, Iterable
 
 from .targets import (RemovedTarget, file_target, path, BaseTarget,
-    sos_targets, UnknownTarget, paths)
+    sos_targets, UnknownTarget, paths, dynamic)
 from .utils import env
+from .eval import SoS_eval
 
 def verify_input():
     # now, if we are actually going to run the script, we
@@ -164,4 +165,4 @@ def reevaluate_output():
         return
     # handle dynamic args
     args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-    return expand_output_files('', *args)
+    return expand_file_list(True, *args)
