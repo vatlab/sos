@@ -24,7 +24,8 @@ from .parser import SoS_Step, SoS_Workflow
 from .pattern import extract_pattern
 from .workflow_report import render_report
 from .controller import Controller, connect_controllers, disconnect_controllers
-from .step_executor import PendingTasks, analyze_section
+from .step_executor import PendingTasks
+from .section_analyzer import analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
                       UnknownTarget, file_target, path, paths,
                       sos_step, sos_targets, sos_variable, textMD5)
