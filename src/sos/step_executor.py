@@ -35,7 +35,8 @@ from .targets import (BaseTarget, RemovedTarget, RuntimeInfo, UnavailableLock,
                       sos_targets, sos_step)
 from .tasks import MasterTaskParams, TaskParams, TaskFile
 from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
-                    expand_size, format_HHMMSS, get_traceback, short_repr)
+                    expand_size, format_HHMMSS, get_traceback, short_repr,
+                    __null_func__)
 
 __all__ = []
 
@@ -49,7 +50,6 @@ class PendingTasks(Exception):
 def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = None) -> Dict[str, Any]:
     '''Analyze a section for how it uses input and output, what variables
     it uses, and input, output, etc.'''
-    from .workflow_executor import __null_func__
     from ._version import __version__
 
     # these are the information we need to build a DAG, by default
@@ -431,7 +431,6 @@ def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
     env.config.update(config)
     connect_controllers()
     # prepare a working environment with sos symbols and functions
-    from .workflow_executor import __null_func__
     from ._version import __version__
     env.sos_dict.set('__null_func__', __null_func__)
     # initial values

@@ -19,7 +19,6 @@ import urllib.parse
 import urllib.request
 import uuid
 import zipfile
-import multiprocessing as mp
 from collections import Sequence
 from functools import wraps
 
@@ -30,7 +29,7 @@ from .eval import interpolate
 from .parser import SoS_Script
 from .syntax import SOS_ACTION_OPTIONS
 from .targets import (UnknownTarget, executable, file_target, fileMD5, path,
-                      paths, sos_targets, textMD5)
+                      paths, sos_targets)
 from .utils import (StopInputGroup, TerminateExecution,
                     TimeoutInterProcessLock, env, get_traceback, short_repr,
                     transcribe)

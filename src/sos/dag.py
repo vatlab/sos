@@ -15,7 +15,7 @@ from .targets import (sos_step, sos_targets, sos_variable, textMD5,
                       BaseTarget)
 from .utils import ActivityNotifier, env, short_repr
 
-from typing import Union, DefaultDict, List
+from typing import Union
 
 #
 # DAG design:

@@ -7,7 +7,6 @@ import os
 import pickle
 import lzma
 import sqlite3
-from collections import namedtuple
 
 from .utils import env
 
