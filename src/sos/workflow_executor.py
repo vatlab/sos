@@ -29,10 +29,11 @@ from .section_analyzer import analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
                       UnknownTarget, file_target, path, paths,
                       sos_step, sos_targets, sos_variable, textMD5)
-from .utils import (Error, WorkflowDict, env, get_traceback, __null_func__,
+from .utils import (Error, WorkflowDict, env, get_traceback,
                     load_config_files, load_var, pickleable, save_var,
                     short_repr)
 from .workers import SoS_Worker
+from .executor_utils import __null_func__
 
 __all__ = []
 

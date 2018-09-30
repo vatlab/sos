@@ -3,10 +3,8 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
-import contextlib
 import copy
 import fnmatch
-import glob
 import os
 import re
 import subprocess
@@ -14,29 +12,28 @@ import sys
 import time
 import traceback
 from collections import Iterable, Mapping, Sequence, defaultdict
-from io import StringIO
 from itertools import combinations, tee
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import List, Tuple, Union
 
-import psutil
 if sys.platform == 'win32':
     from multiprocessing import Pool
 else:
     from billiard import Pool
 
 from .eval import SoS_eval, SoS_exec, stmtHash, accessed_vars
-from .controller import connect_controllers
-from .parser import SoS_Step
 from .pattern import extract_pattern
 from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
                      SOS_OUTPUT_OPTIONS, SOS_RUNTIME_OPTIONS, SOS_TAG)
-from .targets import (BaseTarget, RemovedTarget, RuntimeInfo, UnavailableLock,
-                      UnknownTarget, dynamic, file_target, path, paths, remote,
+from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
+                      UnknownTarget, dynamic, file_target,
                       sos_targets, sos_step)
 from .tasks import MasterTaskParams, TaskParams, TaskFile
 from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
-                    expand_size, format_HHMMSS, get_traceback, short_repr,
-                    __null_func__)
+                    expand_size, format_HHMMSS, get_traceback, short_repr)
+from .substep_executor import execute_substep
+from .executor_utils import (clear_output,  verify_input, reevaluate_output,
+                    validate_step_sig, expand_file_list)
+
 
 __all__ = []
 
@@ -47,224 +44,6 @@ class PendingTasks(Exception):
         self.tasks = tasks
 
 
-def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = None) -> Dict[str, Any]:
-    '''Analyze a section for how it uses input and output, what variables
-    it uses, and input, output, etc.'''
-    from ._version import __version__
-
-    # these are the information we need to build a DAG, by default
-    # input and output and undetermined, and there are no variables.
-    #
-    # step input and output can be true "Undetermined", namely unspecified,
-    # can be dynamic and has to be determined at run time, or undetermined
-    # at this stage because something cannot be determined now.
-    step_input: sos_targets = sos_targets()
-    step_output: sos_targets = sos_targets()
-    step_depends: sos_targets = sos_targets([])
-    environ_vars = set()
-    signature_vars = set()
-    changed_vars = set()
-    #
-    # 1. execute global definition to get a basic environment
-    #
-    # FIXME: this could be made much more efficient
-    if 'provides' in section.options:
-        if '__default_output__' in env.sos_dict:
-            step_output = env.sos_dict['__default_output__']
-    else:
-        # env.sos_dict = WorkflowDict()
-        env.sos_dict.set('__null_func__', __null_func__)
-        # initial values
-        env.sos_dict.set('SOS_VERSION', __version__)
-        SoS_exec('import os, sys, glob', None)
-        SoS_exec('from sos.runtime import *', None)
-
-    env.logger.trace(
-        f'Analyzing {section.step_name()} with step_output {step_output}')
-
-    #
-    # Here we need to get "contant" values from the global section
-    # Because parameters are considered variable, they has to be
-    # removed. We achieve this by removing function sos_handle_parameter_
-    # from the SoS_dict namespace
-    #
-    if section.global_def:
-        try:
-            SoS_exec('del sos_handle_parameter_\n' + section.global_def)
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(e.stderr)
-        except RuntimeError as e:
-            if env.verbosity > 2:
-                sys.stderr.write(get_traceback())
-            raise RuntimeError(
-                f'Failed to execute statements\n"{section.global_def}"\n{e}')
-        finally:
-            SoS_exec('from sos.runtime import sos_handle_parameter_', None)
-
-    #
-    # 2. look for input statement
-    if 'shared' in section.options:
-        svars = section.options['shared']
-        if isinstance(svars, str):
-            changed_vars.add(svars)
-            svars = {svars: svars}
-        elif isinstance(svars, Sequence):
-            for item in svars:
-                if isinstance(item, str):
-                    changed_vars.add(item)
-                elif isinstance(item, Mapping):
-                    changed_vars |= set(item.keys())
-                else:
-                    raise ValueError(
-                        f'Option shared should be a string, a mapping of expression, or list of string or mappings. {svars} provided')
-        elif isinstance(svars, Mapping):
-            changed_vars |= set(svars.keys())
-        else:
-            raise ValueError(
-                f'Option shared should be a string, a mapping of expression, or list of string or mappings. {svars} provided')
-
-    # look for input statement.
-    input_statement_idx = [idx for idx, x in enumerate(
-        section.statements) if x[0] == ':' and x[1] == 'input']
-    if not input_statement_idx:
-        input_statement_idx = None
-    elif len(input_statement_idx) == 1:
-        input_statement_idx = input_statement_idx[0]
-    else:
-        raise RuntimeError(
-            f'More than one step input are specified in step {section.name if section.index is None else f"{section.name}_{section.index}"}')
-
-    # if there is an input statement, analyze the statements before it, and then the input statement
-    if input_statement_idx is not None:
-        # execute before input stuff
-        for statement in section.statements[:input_statement_idx]:
-            if statement[0] == ':':
-                if statement[1] == 'depends':
-                    environ_vars |= accessed_vars(statement[2])
-                    key, value = statement[1:3]
-                    try:
-                        args, kwargs = SoS_eval(f'__null_func__({value})')
-                        if any(isinstance(x, (dynamic, remote)) for x in args):
-                            step_depends = sos_targets()
-                        else:
-                            step_depends = _expand_file_list(True, *args)
-                    except Exception as e:
-                        env.logger.debug(
-                            f"Args {value} cannot be determined: {e}")
-                else:
-                    raise RuntimeError(
-                        f'Step input should be specified before {statement[1]}')
-            else:
-                environ_vars |= accessed_vars(statement[1])
-        #
-        # input statement
-        stmt = section.statements[input_statement_idx][2]
-        try:
-            environ_vars |= accessed_vars(stmt)
-            args, kwargs = SoS_eval(f'__null_func__({stmt})')
-
-            if not args:
-                if default_input is None:
-                    step_input = sos_targets()
-                else:
-                    step_input = default_input
-            elif not any(isinstance(x, (dynamic, remote)) for x in args):
-                step_input = _expand_file_list(True, *args)
-            env.sos_dict.set('input', step_input)
-
-            if 'paired_with' in kwargs:
-                pw = kwargs['paired_with']
-                if pw is None or not pw:
-                    pass
-                elif isinstance(pw, str):
-                    environ_vars.add(pw)
-                elif isinstance(pw, Iterable):
-                    environ_vars |= set(pw)
-                elif isinstance(pw, Iterable):
-                    # value supplied, no environ var
-                    environ_vars |= set()
-                else:
-                    raise ValueError(
-                        f'Unacceptable value for parameter paired_with: {pw}')
-            if 'group_with' in kwargs:
-                pw = kwargs['group_with']
-                if pw is None or not pw:
-                    pass
-                elif isinstance(pw, str):
-                    environ_vars.add(pw)
-                elif isinstance(pw, Iterable):
-                    environ_vars |= set(pw)
-                elif isinstance(pw, Iterable):
-                    # value supplied, no environ var
-                    environ_vars |= set()
-                else:
-                    raise ValueError(
-                        f'Unacceptable value for parameter group_with: {pw}')
-            if 'for_each' in kwargs:
-                fe = kwargs['for_each']
-                if fe is None or not fe:
-                    pass
-                elif isinstance(fe, str):
-                    environ_vars |= set([x.strip() for x in fe.split(',')])
-                elif isinstance(fe, Sequence):
-                    for fei in fe:
-                        environ_vars |= set([x.strip()
-                                             for x in fei.split(',')])
-                else:
-                    raise ValueError(
-                        f'Unacceptable value for parameter fe: {fe}')
-        except Exception as e:
-            # if anything is not evalutable, keep Undetermined
-            env.logger.debug(
-                f'Input of step {section.name if section.index is None else f"{section.name}_{section.index}"} is set to Undertermined: {e}')
-            # expression ...
-            step_input = sos_targets(undetermined=stmt)
-        input_statement_idx += 1
-    else:
-        # assuming everything starts from 0 is after input
-        input_statement_idx = 0
-
-    # other variables
-    for statement in section.statements[input_statement_idx:]:
-        # if input is undertermined, we can only process output:
-        if statement[0] == '=':
-            signature_vars |= accessed_vars('='.join(statement[1:3]))
-        elif statement[0] == ':':
-            key, value = statement[1:3]
-            # if key == 'depends':
-            environ_vars |= accessed_vars(value)
-            # output, depends, and process can be processed multiple times
-            try:
-                args, kwargs = SoS_eval(f'__null_func__({value})')
-                if not any(isinstance(x, (dynamic, remote)) for x in args):
-                    if key == 'output':
-                        step_output = _expand_file_list(True, *args)
-                    elif key == 'depends':
-                        step_depends = _expand_file_list(True, *args)
-            except Exception as e:
-                env.logger.debug(f"Args {value} cannot be determined: {e}")
-        else:  # statement
-            signature_vars |= accessed_vars(statement[1])
-    # finally, tasks..
-    if section.task:
-        signature_vars |= accessed_vars(section.task)
-    if 'provides' in section.options and '__default_output__' in env.sos_dict and step_output.valid():
-        for out in env.sos_dict['__default_output__']:
-            # 981
-            if not isinstance(out, sos_step) and out not in step_output:
-                raise ValueError(
-                    f'Defined output fail to produce expected output: {step_output} generated, {env.sos_dict["__default_output__"]} expected.')
-
-    return {
-        'step_name': f'{section.name}_{section.index}' if isinstance(section.index, int) else section.name,
-        'step_input': step_input,
-        'step_output': step_output,
-        'step_depends': step_depends,
-        # variables starting with __ are internals...
-        'environ_vars': {x for x in environ_vars if not x.startswith('__')},
-        'signature_vars': {x for x in signature_vars if not x.startswith('__')},
-        'changed_vars': changed_vars
-    }
 
 
 class TaskManager:
@@ -355,207 +134,7 @@ class TaskManager:
         self._submitted_tasks = []
 
 
-# overwrite concurrent_execute defined in Base_Step_Executor because sos notebook
-# can only handle stdout/stderr from the master process
-#
-@contextlib.contextmanager
-def stdoutIO():
-    oldout = sys.stdout
-    olderr = sys.stderr
-    stdout = StringIO()
-    stderr = StringIO()
-    sys.stdout = stdout
-    sys.stderr = stderr
-    yield stdout, stderr
-    sys.stdout = oldout
-    sys.stderr = olderr
 
-
-def validate_step_sig(sig):
-    if env.config['sig_mode'] == 'default':
-        # if users use sos_run, the "scope" of the step goes beyong names in this step
-        # so we cannot save signatures for it.
-        if 'sos_run' in env.sos_dict['__signature_vars__']:
-            return {}
-        else:
-            matched = sig.validate()
-            if isinstance(matched, dict):
-                env.logger.info(
-                    f'``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` due to saved signature')
-                return matched
-            else:
-                env.logger.debug(
-                    f'Signature mismatch: {matched}')
-                return {}
-    elif env.config['sig_mode'] == 'assert':
-        matched = sig.validate()
-        if isinstance(matched, str):
-            raise RuntimeError(
-                f'Signature mismatch: {matched}')
-        else:
-            env.logger.info(
-                f'Step ``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` with matching signature')
-            return matched
-    elif env.config['sig_mode'] == 'build':
-        # build signature require existence of files
-        if 'sos_run' in env.sos_dict['__signature_vars__']:
-            return {}
-        elif sig.write(rebuild=True):
-            env.logger.info(
-                f'Step ``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` with signature constructed')
-            return {'input': sig.content['input'],
-                'output': sig.content['output'],
-                'depends': sig.content['depends'],
-                'vars': sig.content['end_context']
-                }
-    elif env.config['sig_mode'] == 'force':
-        return {}
-    else:
-        raise RuntimeError(
-            f'Unrecognized signature mode {env.config["sig_mode"]}')
-
-
-def clear_output():
-    for target in env.sos_dict['_output']:
-        if isinstance(target, file_target) and target.exists():
-            try:
-                target.unlink()
-                env.logger.warn(f'Removing {target} generated by failed step {env.sos_dict["step_name"]}.')
-            except Exception as e:
-                env.logger.warning(f'Failed to remove {target}: {e}')
-
-def concurrent_execute(stmt, proc_vars={}, step_md5=None, step_tokens=[],
-    shared_vars=[], config={}, capture_output=False):
-    '''Execute statements in the passed dictionary'''
-    # passing configuration and port numbers to the subprocess
-    env.config.update(config)
-    connect_controllers()
-    # prepare a working environment with sos symbols and functions
-    from ._version import __version__
-    env.sos_dict.set('__null_func__', __null_func__)
-    # initial values
-    env.sos_dict.set('SOS_VERSION', __version__)
-    SoS_exec('import os, sys, glob', None)
-    SoS_exec('from sos.runtime import *', None)
-    # update it with variables passed from master process
-    env.sos_dict.quick_update(proc_vars)
-    sig = None if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified() else RuntimeInfo(
-        step_md5, step_tokens,
-        env.sos_dict['_input'],
-        env.sos_dict['_output'],
-        env.sos_dict['_depends'],
-        env.sos_dict['__signature_vars__'],
-        shared_vars=shared_vars)
-    outmsg = ''
-    errmsg = ''
-    try:
-        if sig:
-            matched = validate_step_sig(sig)
-            if matched:
-                # avoid sig being released in the final statement
-                sig = None
-                # complete case: concurrent ignore without task
-                env.controller_push_socket.send_pyobj(['progress', 'substep_ignored', env.sos_dict['step_id']])
-                return {'ret_code': 0, 'sig_skipped': 1, 'output': matched['output'], 'shared': matched['vars']}
-            sig.lock()
-        verify_input()
-
-        if capture_output:
-            with stdoutIO() as (out, err):
-                SoS_exec(stmt, return_result=False)
-                outmsg = out.getvalue()
-                errmsg = err.getvalue()
-        else:
-            SoS_exec(stmt, return_result=False)
-        if env.sos_dict['step_output'].undetermined():
-            # the pool worker does not have __null_func__ defined
-            env.sos_dict.set('_output', reevaluate_output())
-        res = {'ret_code': 0}
-        if sig:
-            sig.set_output(env.sos_dict['_output'])
-            if sig.write():
-                res.update({'output': sig.content['output'], 'shared': sig.content['end_context']})
-        if capture_output:
-            res.update({'stdout': outmsg, 'stderr': errmsg})
-        # complete case: concurrent execution without task
-        env.controller_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
-        return res
-    except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks) as e:
-        clear_output()
-        res = {'ret_code': 1, 'exception': e}
-        if capture_output:
-            res.update({'stdout': outmsg, 'stderr': errmsg})
-        return res
-    except (KeyboardInterrupt, SystemExit) as e:
-        clear_output()
-        # Note that KeyboardInterrupt is not an instance of Exception so this piece is needed for
-        # the subprocesses to handle keyboard interrupt. We do not pass the exception
-        # back to the master process because the master process would handle KeyboardInterrupt
-        # as well and has no chance to handle the returned code.
-        procs = psutil.Process().children(recursive=True)
-        if procs:
-            if env.verbosity > 2:
-                env.logger.info(
-                    f'{os.getpid()} interrupted. Killing subprocesses {" ".join(str(x.pid) for x in procs)}')
-            for p in procs:
-                p.terminate()
-            gone, alive = psutil.wait_procs(procs, timeout=3)
-            if alive:
-                for p in alive:
-                    p.kill()
-            gone, alive = psutil.wait_procs(procs, timeout=3)
-            if alive:
-                for p in alive:
-                    env.logger.warning(f'Failed to kill subprocess {p.pid}')
-        elif env.verbosity > 2:
-            env.logger.info(f'{os.getpid()} interrupted. No subprocess.')
-        raise e
-    except subprocess.CalledProcessError as e:
-        clear_output()
-        # cannot pass CalledProcessError back because it is not pickleable
-        res = {'ret_code': e.returncode, 'exception': RuntimeError(e.stderr)}
-        if capture_output:
-            res.update({'stdout': outmsg, 'stderr': errmsg})
-        return res
-    except ArgumentError as e:
-        clear_output()
-        return {'ret_code': 1, 'exception': e}
-    except Exception as e:
-        clear_output()
-        error_class = e.__class__.__name__
-        cl, exc, tb = sys.exc_info()
-        msg = ''
-        for st in reversed(traceback.extract_tb(tb)):
-            if st.filename.startswith('script_'):
-                code = stmtHash.script(st.filename)
-                line_number = st.lineno
-                code = '\n'.join([f'{"---->" if i+1 == line_number else "     "} {x.rstrip()}' for i,
-                                  x in enumerate(code.splitlines())][max(line_number - 3, 0):line_number + 3])
-                msg += f'''\
-{st.filename} in {st.name}
-{code}
-'''
-        detail = e.args[0] if e.args else ''
-        res = {'ret_code': 1, 'exception': RuntimeError(f'''
----------------------------------------------------------------------------
-{error_class:42}Traceback (most recent call last)
-{msg}
-{error_class}: {detail}''') if msg else RuntimeError(f'{error_class}: {detail}')}
-        if capture_output:
-            res.update({'stdout': outmsg, 'stderr': errmsg})
-        return res
-    finally:
-        # release the lock even if the process becomes zombie? #871
-        if sig:
-            sig.release(quiet=True)
-
-def verify_input():
-    # now, if we are actually going to run the script, we
-    # need to check the input files actually exists, not just the signatures
-    for key in ('_input', '_depends'):
-        for target in env.sos_dict[key]:
-            if not target.target_exists('target'):
-                raise RemovedTarget(target)
 
 def expand_input_files(value, *args):
     # if unspecified, use __step_output__ as input (default)
@@ -564,12 +143,12 @@ def expand_input_files(value, *args):
     if not args:
         return env.sos_dict['step_input']
     else:
-        return _expand_file_list(False, *args)
+        return expand_file_list(False, *args)
 
 def expand_depends_files(*args, **kwargs):
     '''handle directive depends'''
     args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-    return _expand_file_list(False, *args)
+    return expand_file_list(False, *args)
 
 def expand_output_files(value, *args):
     '''Process output files (perhaps a pattern) to determine input files.
@@ -577,18 +156,8 @@ def expand_output_files(value, *args):
     if any(isinstance(x, dynamic) for x in args):
         return sos_targets(undetermined=value)
     else:
-        return _expand_file_list(True, *args)
+        return expand_file_list(True, *args)
 
-def reevaluate_output():
-    # re-process the output statement to determine output files
-    args, _ = SoS_eval(
-        f'__null_func__({env.sos_dict["step_output"]._undetermined})')
-    if args is True:
-        env.logger.error('Failed to resolve unspecified output')
-        return
-    # handle dynamic args
-    args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-    return expand_output_files('', *args)
 
 def parse_shared_vars(option):
     shared_vars = set()
@@ -1613,7 +1182,7 @@ class Base_Step_Executor:
                                        })
 
                                 self.proc_results.append(
-                                    self.worker_pool.apply_async(concurrent_execute,
+                                    self.worker_pool.apply_async(execute_substep,
                                                                  kwds=dict(stmt=statement[1],
                                                                            proc_vars=proc_vars,
                                                                            step_md5=self.step.md5,
@@ -1872,67 +1441,6 @@ class Base_Step_Executor:
                     except KeyboardInterrupt:
                         continue
 
-def _expand_file_list(ignore_unknown: bool, *args) -> sos_targets:
-    ifiles = []
-
-    for arg in args:
-        if arg is None:
-            continue
-        elif isinstance(arg, BaseTarget):
-            ifiles.append(arg)
-        elif isinstance(arg, (str, path)):
-            ifiles.append(os.path.expanduser(arg))
-        elif isinstance(arg, sos_targets):
-            ifiles.extend(arg.targets())
-        elif isinstance(arg, paths):
-            ifiles.extend(arg.paths())
-        elif isinstance(arg, Iterable):
-            # in case arg is a Generator, check its type will exhaust it
-            arg = list(arg)
-            if not all(isinstance(x, (str, path, BaseTarget)) for x in arg):
-                raise RuntimeError(f'Invalid target: {arg}')
-            ifiles.extend(arg)
-        else:
-            raise RuntimeError(
-                f'Unrecognized file: {arg} of type {type(arg).__name__}')
-
-    if ignore_unknown and all(isinstance(x, str) and '*' not in x for x in ifiles):
-        # we are exclusind a case with
-        #    output: *.txt, group_by
-        # here but that case is conceptually wrong anyway
-        return sos_targets(ifiles)
-    # expand files with wildcard characters and check if files exist
-    tmp = []
-    for ifile in ifiles:
-        if isinstance(ifile, BaseTarget):
-            if ignore_unknown or ifile.target_exists():
-                tmp.append(ifile)
-            else:
-                raise UnknownTarget(ifile)
-        elif file_target(ifile).target_exists('target'):
-            tmp.append(ifile)
-        elif file_target(ifile).target_exists('any'):
-            env.logger.debug(
-                f'``{ifile}`` exists in zapped form (actual target has been removed).')
-            tmp.append(ifile)
-        elif isinstance(ifile, sos_targets):
-            raise ValueError("sos_targets should not appear here")
-        else:
-            expanded = sorted(glob.glob(os.path.expanduser(ifile)))
-            # no matching file ... but this is not a problem at the
-            # inspection stage.
-            #
-            # NOTE: if a DAG is given, the input file can be output from
-            # a previous step..
-            #
-            if not expanded:
-                if ignore_unknown:
-                    tmp.append(ifile)
-                else:
-                    raise UnknownTarget(file_target(ifile))
-            else:
-                tmp.extend(expanded)
-    return sos_targets(tmp)
 
 
 class Step_Executor(Base_Step_Executor):

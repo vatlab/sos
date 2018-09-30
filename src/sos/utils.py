@@ -24,7 +24,7 @@ import urllib.request
 from collections import Sequence, Mapping, Set, defaultdict
 from html.parser import HTMLParser
 from io import FileIO, StringIO
-from typing import Optional, Any
+from typing import Optional
 
 import fasteners
 import yaml
@@ -1524,18 +1524,3 @@ def dot_to_gif(filename: str, warn=None):
                     warn(f'Failed to generate gif animation: {e}')
                 return b64_of(pngFiles[-1])
             return b64_of(gifFile)
-
-def __null_func__(*args, **kwargs) -> Any:
-    '''This function will be passed to SoS's namespace and be executed
-    to evaluate functions of input, output, and depends directives.'''
-    def _flatten(x):
-        if isinstance(x, str):
-            return [x]
-        elif isinstance(x, Sequence):
-            return sum((_flatten(k) for k in x), [])
-        elif hasattr(x, '__flattenable__'):
-            return _flatten(x.flatten())
-        else:
-            return [x]
-
-    return _flatten(args), kwargs

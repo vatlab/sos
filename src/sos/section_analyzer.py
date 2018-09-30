@@ -13,8 +13,8 @@ from typing import Any, Dict, Optional
 from .eval import SoS_eval, SoS_exec, accessed_vars
 from .parser import SoS_Step
 from .targets import (dynamic, remote, sos_targets, sos_step)
-from .utils import (env, get_traceback, __null_func__)
-from .step_executor import  _expand_file_list
+from .utils import env, get_traceback
+from .executor_utils import expand_file_list, __null_func__
 
 def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = None) -> Dict[str, Any]:
     '''Analyze a section for how it uses input and output, what variables
@@ -116,7 +116,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
                         if any(isinstance(x, (dynamic, remote)) for x in args):
                             step_depends = sos_targets()
                         else:
-                            step_depends = _expand_file_list(True, *args)
+                            step_depends = expand_file_list(True, *args)
                     except Exception as e:
                         env.logger.debug(
                             f"Args {value} cannot be determined: {e}")
@@ -138,7 +138,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
                 else:
                     step_input = default_input
             elif not any(isinstance(x, (dynamic, remote)) for x in args):
-                step_input = _expand_file_list(True, *args)
+                step_input = expand_file_list(True, *args)
             env.sos_dict.set('input', step_input)
 
             if 'paired_with' in kwargs:
@@ -207,9 +207,9 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
                 args, kwargs = SoS_eval(f'__null_func__({value})')
                 if not any(isinstance(x, (dynamic, remote)) for x in args):
                     if key == 'output':
-                        step_output = _expand_file_list(True, *args)
+                        step_output = expand_file_list(True, *args)
                     elif key == 'depends':
-                        step_depends = _expand_file_list(True, *args)
+                        step_depends = expand_file_list(True, *args)
             except Exception as e:
                 env.logger.debug(f"Args {value} cannot be determined: {e}")
         else:  # statement

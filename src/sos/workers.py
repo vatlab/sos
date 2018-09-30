@@ -10,8 +10,8 @@ from ._version import __version__
 from .eval import SoS_exec
 from .controller import connect_controllers, disconnect_controllers
 from .targets import sos_targets
-from .utils import (WorkflowDict, env, get_traceback, __null_func__,
-                    load_config_files, short_repr)
+from .utils import (WorkflowDict, env, get_traceback, load_config_files, short_repr)
+from .executor_utils import  __null_func__
 
 class SoS_Worker(mp.Process):
     '''

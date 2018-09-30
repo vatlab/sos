@@ -13,10 +13,11 @@ from collections import OrderedDict, Mapping, Sequence
 from .eval import SoS_eval, SoS_exec, interpolate, stmtHash
 from .monitor import ProcessMonitor
 from .targets import (InMemorySignature, UnknownTarget, file_target,
-                      remote, sos_step, sos_targets)
+                      remote, sos_step, dynamic, sos_targets)
 from .utils import StopInputGroup, env, short_repr, pickleable
 from .tasks import TaskFile, remove_task_files
 from .step_executor import parse_shared_vars
+from .executor_utils import __null_func__, expand_file_list
 
 def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
     shared = {}
@@ -81,9 +82,6 @@ def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
     if env.sos_dict['_output'] is None:
         output = {}
     elif env.sos_dict['_output'].undetermined():
-        from .workflow_executor import __null_func__
-        from .targets import dynamic
-        from .step_executor import _expand_file_list
         env.sos_dict.set('__null_func__', __null_func__)
         # re-process the output statement to determine output files
         args, _ = SoS_eval(
@@ -91,7 +89,7 @@ def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
         # handle dynamic args
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
         output = {x: file_target(x).target_signature()
-                  for x in _expand_file_list(True, *args)}
+                  for x in expand_file_list(True, *args)}
     elif sos_dict['_output'] is None:
         output = {}
     else:
