@@ -1,8 +1,13 @@
+#!/usr/bin/env python3
+#
+# Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
+# Distributed under the terms of the 3-clause BSD License.
 
-import multiprocessing as mp
+import os
 import subprocess
 import sys
 import zmq
+import multiprocessing as mp
 
 from typing import Any, Dict, Optional
 
@@ -159,3 +164,37 @@ class SoS_Worker(mp.Process):
         executor = Step_Executor(
             section, env.master_socket, mode=env.config['run_mode'])
         executor.run()
+
+
+class SoS_SubStep_Worker(mp.Process):
+    '''
+    Worker process to process SoS step or workflow in separate process.
+    '''
+    LRU_READY = b"\x01"
+
+    def __init__(self, config={}, **kwargs) -> None:
+        # the worker process knows configuration file, command line argument etc
+        super(SoS_SubStep_Worker, self).__init__(**kwargs)
+        self.config = config
+
+    def run(self):
+        env.config.update(self.config)
+        env.zmq_context = connect_controllers()
+
+        from .substep_executor import execute_substep
+        env.master_socket = env.zmq_context.socket(zmq.REQ)
+        env.master_socket.connect(f'tcp://127.0.0.1:{self.config["sockets"]["substep_backend"]}')
+
+        while True:
+            env.master_socket.send(self.LRU_READY)
+            msg = env.master_socket.recv_pyobj()
+            if not msg:
+                env.logger.debug(f'stop substep worker {os.getpid()}')
+                break
+
+            env.logger.debug(f'Substep worker receives request {msg}')
+            execute_substep(**msg)
+
+        env.master_socket.LINGER = 0
+        env.master_socket.close()
+        disconnect_controllers(env.zmq_context)

@@ -10,16 +10,15 @@ import sys
 import traceback
 import contextlib
 import psutil
+import zmq
 
 from io import StringIO
 
 from .eval import SoS_exec, stmtHash
-from .controller import connect_controllers
 from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
                       UnknownTarget)
-from .executor_utils import (__null_func__, clear_output,
-                      verify_input, reevaluate_output,
-                     validate_step_sig)
+from .executor_utils import (prepare_env, clear_output, verify_input,
+        reevaluate_output, validate_step_sig)
 
 from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env)
 
@@ -50,30 +49,46 @@ def execute_substep(stmt, proc_vars={}, step_md5=None, step_tokens=[],
     been executed and the signature matches.
 
     The executor accepts connections to the controller, and a socket using
-    which the results will be returned. The ports of the sockets should be
-    specified in `config['sockets']` as a dictionary.
+    which the results will be returned. However, the calling process should
+    take care of the connection and disconnection of controller sockets and
+    this function only takes care of the connection and disconnection of
+    result socket.
 
     The return value should be a dictionary with the following keys:
 
-    stdout:  if capture_output is True (in interactive mode)
-    stderr:  if capture_output is True (in interactive mode)
-
-
+    index: index of the substep within the step
+    ret_code: (all) return code, 0 for successful
+    sig_skipped: (optional) return if the step is skipped due to signature
+    shared: (optional) shared variable as specified by 'shared_vars'
+    stdout: (optional) if capture_output is True (in interactive mode)
+    stderr: (optional) if capture_output is True (in interactive mode)
+    exception: (optional) if an exception occures
     '''
-    assert 'sockets' in config
-    assert 'ctl_push_socket' in config['sockets']
-    assert 'ctl_req_socket' in config['sockets']
+    assert not env.zmq_context.closed
+    assert not env.controller_push_socket.closed
+    assert not env.controller_req_socket.closed
+    assert not env.signature_push_socket.closed
+    assert not env.signature_req_socket.closed
+    assert 'step_id' in proc_vars
+    assert '_index' in proc_vars
+    assert 'result_push_socket' in config["sockets"]
 
+    try:
+        res_socket = env.zmq_context.socket(zmq.PUSH)
+        res_socket.connect(f'tcp://127.0.0.1:{config["sockets"]["result_push_socket"]}')
+        res = _execute_substep(stmt=stmt, proc_vars=proc_vars, step_md5=step_md5, step_tokens=step_tokens,
+            shared_vars=shared_vars, config=config, capture_output=capture_output)
+        res_socket.send_pyobj(res)
+    finally:
+        res_socket.close()
+
+def _execute_substep(stmt, proc_vars, step_md5, step_tokens,
+    shared_vars, config, capture_output):
     # passing configuration and port numbers to the subprocess
     env.config.update(config)
-    connect_controllers()
     # prepare a working environment with sos symbols and functions
-    from ._version import __version__
-    env.sos_dict.set('__null_func__', __null_func__)
-    # initial values
-    env.sos_dict.set('SOS_VERSION', __version__)
-    SoS_exec('import os, sys, glob', None)
-    SoS_exec('from sos.runtime import *', None)
+    prepare_env()
+
     # update it with variables passed from master process
     env.sos_dict.quick_update(proc_vars)
     sig = None if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified() else RuntimeInfo(
@@ -93,8 +108,11 @@ def execute_substep(stmt, proc_vars={}, step_md5=None, step_tokens=[],
                 sig = None
                 # complete case: concurrent ignore without task
                 env.controller_push_socket.send_pyobj(['progress', 'substep_ignored', env.sos_dict['step_id']])
-                return {'ret_code': 0, 'sig_skipped': 1, 'output': matched['output'], 'shared': matched['vars']}
+                return {'index': env.sos_dict['_index'], 'ret_code': 0, 'sig_skipped': 1, 'output': matched['output'],
+                    'shared': matched['vars']}
             sig.lock()
+
+        # check if input and depends targets actually exist
         verify_input()
 
         if capture_output:
@@ -107,9 +125,10 @@ def execute_substep(stmt, proc_vars={}, step_md5=None, step_tokens=[],
         if env.sos_dict['step_output'].undetermined():
             # the pool worker does not have __null_func__ defined
             env.sos_dict.set('_output', reevaluate_output())
-        res = {'ret_code': 0}
+        res = {'index': env.sos_dict['_index'], 'ret_code': 0}
         if sig:
             sig.set_output(env.sos_dict['_output'])
+            # sig.write will use env.signature_push_socket
             if sig.write():
                 res.update({'output': sig.content['output'], 'shared': sig.content['end_context']})
         if capture_output:
@@ -119,7 +138,7 @@ def execute_substep(stmt, proc_vars={}, step_md5=None, step_tokens=[],
         return res
     except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock) as e:
         clear_output()
-        res = {'ret_code': 1, 'exception': e}
+        res = {'index': env.sos_dict['_index'], 'ret_code': 1, 'exception': e}
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res
@@ -150,13 +169,13 @@ def execute_substep(stmt, proc_vars={}, step_md5=None, step_tokens=[],
     except subprocess.CalledProcessError as e:
         clear_output()
         # cannot pass CalledProcessError back because it is not pickleable
-        res = {'ret_code': e.returncode, 'exception': RuntimeError(e.stderr)}
+        res = {'index': env.sos_dict['_index'], 'ret_code': e.returncode, 'exception': RuntimeError(e.stderr)}
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res
     except ArgumentError as e:
         clear_output()
-        return {'ret_code': 1, 'exception': e}
+        return {'index': env.sos_dict['_index'], 'ret_code': 1, 'exception': e}
     except Exception as e:
         clear_output()
         error_class = e.__class__.__name__
@@ -173,7 +192,7 @@ def execute_substep(stmt, proc_vars={}, step_md5=None, step_tokens=[],
 {code}
 '''
         detail = e.args[0] if e.args else ''
-        res = {'ret_code': 1, 'exception': RuntimeError(f'''
+        res = {'index': env.sos_dict['_index'], 'ret_code': 1, 'exception': RuntimeError(f'''
 ---------------------------------------------------------------------------
 {error_class:42}Traceback (most recent call last)
 {msg}

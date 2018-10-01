@@ -993,8 +993,7 @@ class Base_Executor:
                             env.logger.debug(
                                 f'{i_am()} receives step request {step_id} with args {step_params[3]}')
                             self.step_queue[step_id] = step_params
-                            continue
-                            #
+                            continue                            
                         elif res.startswith('workflow'):
                             workflow_id = res.split(' ')[1]
                             # receive the real definition

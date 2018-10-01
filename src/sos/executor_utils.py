@@ -7,15 +7,13 @@
 # Utility functions used by various executors.
 #
 
-import os
+from typing import Any, List, Tuple
+from collections import Sequence
 
-from typing import Any
-from collections import Sequence, Iterable
-
-from .targets import (RemovedTarget, file_target, path, BaseTarget,
-    sos_targets, UnknownTarget, paths, dynamic)
+from .targets import (RemovedTarget, file_target, sos_targets, dynamic)
 from .utils import env
-from .eval import SoS_eval
+from .eval import SoS_eval, SoS_exec
+from ._version import __version__
 
 
 class PendingTasks(Exception):
@@ -51,6 +49,12 @@ def clear_output():
             except Exception as e:
                 env.logger.warning(f'Failed to remove {target}: {e}')
 
+def prepare_env():
+    env.sos_dict.set('__null_func__', __null_func__)
+    # initial values
+    env.sos_dict.set('SOS_VERSION', __version__)
+    SoS_exec('import os, sys', None)
+    SoS_exec('from sos.runtime import *', None)
 
 def reevaluate_output():
     # re-process the output statement to determine output files

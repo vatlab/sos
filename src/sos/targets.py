@@ -762,7 +762,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 matched = glob.glob(os.path.expanduser(arg))
                 if matched:
                     self._targets.extend([file_target(x) for x in matched])
-                elif verify_extenstence:
+                elif verify_existence:
                     raise UnknownTarget(arg)
                 else:
                     env.logger.debug(f'Pattern {arg} does not match any file')

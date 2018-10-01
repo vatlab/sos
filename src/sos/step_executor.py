@@ -11,14 +11,11 @@ import subprocess
 import sys
 import time
 import traceback
+import zmq
+
 from collections import Iterable, Mapping, Sequence, defaultdict
 from itertools import combinations, tee
-from typing import List, Tuple, Union
-
-if sys.platform == 'win32':
-    from multiprocessing import Pool
-else:
-    from billiard import Pool
+from typing import List, Union
 
 from .eval import SoS_eval, SoS_exec, stmtHash, accessed_vars
 from .pattern import extract_pattern
@@ -30,7 +27,6 @@ from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
 from .tasks import MasterTaskParams, TaskParams, TaskFile
 from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr)
-from .substep_executor import execute_substep
 from .executor_utils import (clear_output,  verify_input, reevaluate_output,
                     validate_step_sig, PendingTasks)
 
@@ -733,31 +729,7 @@ class Base_Step_Executor:
 
     def wait_for_results(self):
         if self.concurrent_substep:
-            env.controller_req_socket.send_pyobj(['nprocs'])
-            nProcs = env.controller_req_socket.recv_pyobj()
-            nMax = env.config.get(
-                'max_procs', max(int(os.cpu_count() / 2), 1))
-            # only billard version of pool can grow, but billiard is buggy under windows
-            if hasattr(self.worker_pool, 'grow') and nMax > self.worker_pool._processes - 1 and len(self._substeps) > nMax:
-                # use billiard pool, can expand pool if more slots are available
-                while True:
-                    nPending = [not x.ready()
-                                for x in self.proc_results].count(True)
-                    if nPending == 0:
-                        self.proc_results = [x.get()
-                                             for x in self.proc_results]
-                        break
-                    if nMax > nProcs:
-                        extra = max(min(nMax - nProcs, nPending), 0)
-                        if extra > 0:
-                            self.worker_pool.grow(extra)
-                            env.logger.debug(f'Expand pool by {extra} slots')
-                    time.sleep(1)
-            else:
-                self.proc_results = [x.get() for x in self.proc_results]
-            self.worker_pool.close()
-            self.worker_pool.join()
-            self.worker_pool = None
+            self.wait_for_substep()
             return
 
         if self.task_manager is None:
@@ -1066,13 +1038,7 @@ class Base_Step_Executor:
                 env.logger.debug(
                     'Input groups are executed sequentially because of existence of nested workflow.')
             else:
-                env.controller_req_socket.send_pyobj(['nprocs'])
-                nProcs = env.controller_req_socket.recv_pyobj()
-                nMax = env.config.get('max_procs', max(int(os.cpu_count() / 2), 1))
-                gotten = max(min(nMax - nProcs, len(self._substeps) - 1), 0)
-                env.logger.trace(
-                    f'Using process pool with size {gotten+1}')
-                self.worker_pool = Pool(gotten + 1)
+                self.prepare_substep()
 
         try:
             self.completed['__substep_skipped__'] = 0
@@ -1172,15 +1138,14 @@ class Base_Step_Executor:
                                        '__signature_vars__', '__step_context__'
                                        })
 
-                                self.proc_results.append(
-                                    self.worker_pool.apply_async(execute_substep,
-                                                                 kwds=dict(stmt=statement[1],
+                                self.proc_results.append({})
+                                self.submit_substep(dict(stmt=statement[1],
                                                                            proc_vars=proc_vars,
                                                                            step_md5=self.step.md5,
                                                                            step_tokens=self.step.tokens,
                                                                            shared_vars=self.vars_to_be_shared,
                                                                            config=env.config,
-                                                                           capture_output=self.run_mode == 'interactive')))
+                                                                           capture_output=self.run_mode == 'interactive'))
                             else:
                                 if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified():
                                     env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} without signature')
@@ -1416,21 +1381,9 @@ class Base_Step_Executor:
             env.signature_push_socket.send_pyobj([
                 'workflow', 'step', env.sos_dict["workflow_id"], repr(step_info)])
             return self.collect_result()
-        except KeyboardInterrupt:
-            # if the worker_pool is not properly shutdown (e.g. interrupted by KeyboardInterrupt #871)
-            # we try to kill all subprocesses. Because it takes time to shutdown all processes, impatient
-            # users might hit Ctrl-C again, interrupting the shutdown process again. In this case we
-            # simply catch the KeyboardInterrupt exception and try again.
-            #
-            if self.concurrent_substep and self.worker_pool:
-                if env.verbosity > 2:
-                    env.logger.info(f'{os.getpid()} terminating worker pool')
-                while self.worker_pool:
-                    try:
-                        self.worker_pool.terminate()
-                        self.worker_pool = None
-                    except KeyboardInterrupt:
-                        continue
+        finally:
+            if self.concurrent_substep:
+                self.result_pull_socket.close()
 
 
 
@@ -1448,6 +1401,23 @@ class Step_Executor(Base_Step_Executor):
         # __socket__ is available to all the actions that will be executed
         # in the step
         env.__socket__ = socket
+
+    def prepare_substep(self):
+        # socket to collect result
+        self.result_pull_socket = env.zmq_context.socket(zmq.PULL)
+        port = self.result_pull_socket.bind_to_random_port('tcp://127.0.0.1')
+        env.config['sockets']['result_push_socket'] = port
+
+    def submit_substep(self, substep):
+        env.substep_frontend_socket.send_pyobj(substep)
+
+    def wait_for_substep(self):
+        for ss in self.proc_results:
+            res = self.result_pull_socket.recv_pyobj()
+            #
+            if "index" not in res:
+                raise RuntimeError("Result received from substep does not have key index")
+            self.proc_results[res['index']] = res
 
     def submit_tasks(self, tasks):
         env.logger.debug(f'Send {tasks}')

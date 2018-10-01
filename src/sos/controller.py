@@ -28,6 +28,9 @@ def connect_controllers(context=None):
     env.controller_push_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["controller_push"]}')
     env.controller_req_socket = context.socket(zmq.REQ)
     env.controller_req_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["controller_req"]}')
+
+    env.substep_frontend_socket = context.socket(zmq.PUSH)
+    env.substep_frontend_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["substep_frontend"]}')
     return context
 
 def disconnect_controllers(context=None):
@@ -39,6 +42,9 @@ def disconnect_controllers(context=None):
     env.controller_push_socket.close()
     env.controller_req_socket.LINGER = 0
     env.controller_req_socket.close()
+    env.substep_frontend_socket.LINGER = 0
+    env.substep_frontend_socket.close()
+
     env.logger.trace(f'Disconnecting sockets from {os.getpid()}')
 
     if context:
@@ -47,6 +53,8 @@ def disconnect_controllers(context=None):
 
 
 class Controller(threading.Thread):
+    LRU_READY = b"\x01"
+
     def __init__(self, ready):
         threading.Thread.__init__(self)
         #self.daemon = True
@@ -184,6 +192,37 @@ class Controller(threading.Thread):
             env.logger.warning(f'Failed to respond controller {msg}: {e}')
             self.ctl_req_socket.send_pyobj(None)
 
+    def handle_substep_frontend_socket(self):
+        #  Get client request, route to first available worker
+        msg = self.substep_frontend_socket.recv()
+        self.frontend_requests.append(msg)
+
+        if not self.substep_workers or len(self.substep_workers) + self._nprocs < env.config['max_procs']:
+            env.logger.debug(f'Start a substep worker')
+            from .workers import SoS_SubStep_Worker
+            worker = SoS_SubStep_Worker(env.config)
+            worker.start()
+            self.substep_workers.append(worker)
+
+    def handle_substep_backend_socket(self):
+        # Use worker address for LRU routing
+
+        msg = self.substep_backend_socket.recv()
+        if not msg:
+            return False
+
+        # Forward message to client if it's not a READY
+        if msg != self.LRU_READY:
+            raise RuntimeError(f'substep worker should only send ready message: {msg} received')
+
+        # now see if we have any work to do
+        if self.frontend_requests:
+            msg = self.frontend_requests.pop()
+            self.substep_backend_socket.send(msg)
+        else:
+            # stop the worker
+            self.substep_backend_socket.send_pyobj(None)
+
     def run(self):
         # there are two sockets
         #
@@ -205,6 +244,15 @@ class Controller(threading.Thread):
         self.ctl_req_socket = self.context.socket(zmq.REP)
         env.config['sockets']['controller_req'] = self.ctl_req_socket.bind_to_random_port('tcp://127.0.0.1')
 
+        # broker to handle the execution of substeps
+        self.substep_frontend_socket = self.context.socket(zmq.PULL) # ROUTER
+        env.config['sockets']['substep_frontend'] = self.substep_frontend_socket.bind_to_random_port('tcp://127.0.0.1')
+        self.substep_backend_socket = self.context.socket(zmq.REP) # ROUTER
+        env.config['sockets']['substep_backend'] = self.substep_backend_socket.bind_to_random_port('tcp://127.0.0.1')
+        # substgep workers
+        self.frontend_requests = []
+        self.substep_workers = []
+
         #monitor_socket = self.sig_req_socket.get_monitor_socket()
         # tell others that the sockets are ready
         self.ready.set()
@@ -214,6 +262,9 @@ class Controller(threading.Thread):
         poller.register(self.sig_req_socket, zmq.POLLIN)
         poller.register(self.ctl_push_socket, zmq.POLLIN)
         poller.register(self.ctl_req_socket, zmq.POLLIN)
+        poller.register(self.substep_frontend_socket, zmq.POLLIN)
+        poller.register(self.substep_backend_socket, zmq.POLLIN)
+
         #poller.register(monitor_socket, zmq.POLLIN)
 
         if env.verbosity == 1 and env.config['run_mode'] != 'interactive':
@@ -238,6 +289,12 @@ class Controller(threading.Thread):
                     if not self.handle_ctl_req_msg(self.ctl_req_socket.recv_pyobj()):
                         break
 
+                if self.substep_frontend_socket in socks:
+                    self.handle_substep_frontend_socket()
+
+                if self.substep_backend_socket in socks:
+                    self.handle_substep_backend_socket()
+
                 # if monitor_socket in socks:
                 #     evt = recv_monitor_message(monitor_socket)
                 #     if evt['event'] == zmq.EVENT_ACCEPTED:
@@ -251,6 +308,9 @@ class Controller(threading.Thread):
         poller.unregister(self.sig_req_socket)
         poller.unregister(self.ctl_push_socket)
         poller.unregister(self.ctl_req_socket)
+        poller.unregister(self.substep_frontend_socket)
+        poller.unregister(self.substep_backend_socket)
+
         self.sig_push_socket.LINGER = 0
         self.sig_push_socket.close()
         self.sig_req_socket.LINGER = 0
@@ -259,5 +319,9 @@ class Controller(threading.Thread):
         self.ctl_push_socket.close()
         self.ctl_req_socket.LINGER = 0
         self.ctl_req_socket.close()
+        self.substep_frontend_socket.LINGER = 0
+        self.substep_frontend_socket.close()
+        self.substep_backend_socket.LINGER = 0
+        self.substep_backend_socket.close()
 
         env.logger.trace(f'controller stopped {os.getpid()}')
