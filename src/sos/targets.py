@@ -6,6 +6,7 @@
 import glob
 import os
 import pickle
+import re
 import shlex
 import shutil
 import subprocess
@@ -709,9 +710,15 @@ class paths(Sequence, os.PathLike):
 
 
 class sos_targets(BaseTarget, Sequence, os.PathLike):
-    '''A collection of targets'''
+    '''A collection of targets.
+    If verify_existence is True, an UnknownTarget exception
+    will be thrown if target does not exist.
+    '''
+    # check if string contains wildcard character
+    wildcard = re.compile('[*?\[]')
 
-    def __init__(self, *args, undetermined: Union[bool, str]=None):
+    def __init__(self, *args, undetermined: Union[bool, str]=None,
+        verify_existence=False):
         super(BaseTarget, self).__init__()
         self._targets = []
         if isinstance(undetermined, (bool, str)):
@@ -719,13 +726,17 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         else:
             self._undetermined = not bool(args)
         for arg in args:
-            self.__append__(arg)
+            self.__append__(arg, verify_existence=verify_existence)
         for t in self._targets:
             if isinstance(t, sos_targets):
                 raise RuntimeError(
                     f"Nested sos_targets {t} were introduced by {args}")
             if not isinstance(t, BaseTarget):
                 raise RuntimeError(f"Unrecognized target {t}")
+        if verify_existence:
+            for target in self._targets:
+                if not target.target_exists('any'):
+                    raise UnknownTarget(target)
 
     def is_external(self):
         if not self.valid():
@@ -741,11 +752,22 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def valid(self):
         return self._targets or self._undetermined is False
 
-    def __append__(self, arg):
+    def __append__(self, arg, verify_existence=False):
         if isinstance(arg, paths):
             self._targets.extend([file_target(x) for x in arg._paths])
-        elif isinstance(arg, (str, path)):
+        elif isinstance(arg, path):
             self._targets.append(file_target(arg))
+        elif isinstance(arg, str):
+            if self.wildcard.search(arg):
+                matched = glob.glob(os.path.expanduser(arg))
+                if matched:
+                    self._targets.extend([file_target(x) for x in matched])
+                elif verify_extenstence:
+                    raise UnknownTarget(arg)
+                else:
+                    env.logger.debug(f'Pattern {arg} does not match any file')
+            else:
+                self._targets.append(file_target(arg))
         elif isinstance(arg, sos_targets):
             if arg.valid() and not self.valid():
                 self._undetermined = False

@@ -78,8 +78,6 @@ class TestTarget(unittest.TestCase):
     def testExpandTargets(self):
         '''test wildcard expansion of sos_targets'''
         a = sos_targets('*.py')
-        self.assertEqual(len(a), 1)
-        a = a.expand_wildcard()
         self.assertGreater(len(a), 1)
 
     def resetDir(self, dirname):

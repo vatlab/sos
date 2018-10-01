@@ -134,8 +134,6 @@ class TaskManager:
         self._submitted_tasks = []
 
 
-
-
 def expand_input_files(value, *args):
     # if unspecified, use __step_output__ as input (default)
     # resolve dynamic input.
@@ -143,12 +141,12 @@ def expand_input_files(value, *args):
     if not args:
         return env.sos_dict['step_input']
     else:
-        return sos_targets(*args).expand_wildcard()
+        return sos_targets(*args, verify_existence=True)
 
 def expand_depends_files(*args, **kwargs):
     '''handle directive depends'''
     args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-    return sos_targets(*args).expand_wildcard()
+    return sos_targets(*args, verify_existence=True)
 
 def expand_output_files(value, *args):
     '''Process output files (perhaps a pattern) to determine input files.
