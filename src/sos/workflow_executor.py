@@ -24,7 +24,6 @@ from .parser import SoS_Step, SoS_Workflow
 from .pattern import extract_pattern
 from .workflow_report import render_report
 from .controller import Controller, connect_controllers, disconnect_controllers
-from .step_executor import PendingTasks
 from .section_analyzer import analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
                       UnknownTarget, file_target, path, paths,
@@ -39,7 +38,7 @@ __all__ = []
 
 try:
     # https://github.com/pytest-dev/pytest-cov/issues/139
-    from pytest_cov.embed import cleanup_on_sigterm
+    from pytest_cov.embed import cleanup_on_sigterm, PendingTasks
     cleanup_on_sigterm()
 except:
     pass

@@ -32,17 +32,10 @@ from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr)
 from .substep_executor import execute_substep
 from .executor_utils import (clear_output,  verify_input, reevaluate_output,
-                    validate_step_sig)
+                    validate_step_sig, PendingTasks)
 
 
 __all__ = []
-
-
-class PendingTasks(Exception):
-    def __init__(self, tasks: List[Tuple[str, str]], *args, **kwargs) -> None:
-        super(PendingTasks, self).__init__(*args, **kwargs)
-        self.tasks = tasks
-
 
 
 

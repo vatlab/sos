@@ -18,6 +18,12 @@ from .utils import env
 from .eval import SoS_eval
 
 
+class PendingTasks(Exception):
+    def __init__(self, tasks: List[Tuple[str, str]], *args, **kwargs) -> None:
+        super(PendingTasks, self).__init__(*args, **kwargs)
+        self.tasks = tasks
+
+
 def __null_func__(*args, **kwargs) -> Any:
     '''This function will be passed to SoS's namespace and be executed
     to evaluate functions of input, output, and depends directives.'''
