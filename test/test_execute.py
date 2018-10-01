@@ -717,11 +717,13 @@ touch {_input}.bak
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['test'], [os.path.join(
-            'temp', 'test_{}.txt.bak'.format(x)) for x in range(5)])
+            'temp', 'test_{}.txt.bak'.format(x)) for x in range(5)],
+            f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}")
         # this time we use th existing signature
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['test'], [os.path.join(
-            'temp', 'test_{}.txt.bak'.format(x)) for x in range(5)])
+            'temp', 'test_{}.txt.bak'.format(x)) for x in range(5)],
+            f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}")
         #
         shutil.rmtree('temp')
 

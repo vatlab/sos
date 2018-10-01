@@ -32,7 +32,7 @@ from .utils import (Error, WorkflowDict, env, get_traceback,
                     load_config_files, load_var, pickleable, save_var,
                     short_repr)
 from .workers import SoS_Worker
-from .executor_utils import __null_func__
+from .executor_utils import __null_func__, PendingTasks
 
 __all__ = []
 
@@ -993,7 +993,7 @@ class Base_Executor:
                             env.logger.debug(
                                 f'{i_am()} receives step request {step_id} with args {step_params[3]}')
                             self.step_queue[step_id] = step_params
-                            continue                            
+                            continue
                         elif res.startswith('workflow'):
                             workflow_id = res.split(' ')[1]
                             # receive the real definition
