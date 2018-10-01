@@ -24,9 +24,6 @@ from .executor_utils import (__null_func__, clear_output,
 from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env)
 
 
-# overwrite concurrent_execute defined in Base_Step_Executor because sos notebook
-# can only handle stdout/stderr from the master process
-#
 @contextlib.contextmanager
 def stdoutIO():
     oldout = sys.stdout
@@ -39,9 +36,34 @@ def stdoutIO():
     sys.stdout = oldout
     sys.stderr = olderr
 
+
 def execute_substep(stmt, proc_vars={}, step_md5=None, step_tokens=[],
     shared_vars=[], config={}, capture_output=False):
-    '''Execute statements in the passed dictionary'''
+    '''Execute a substep with specific input etc
+
+    Substep executed by this function should be self-contained.
+    That is to say, substep should not contain tasks or nested
+    workflows. Substeps containing those elements should be executed
+    with the step (not concurrently).
+
+    The executor checks step signatures and might skip the substep if it has
+    been executed and the signature matches.
+
+    The executor accepts connections to the controller, and a socket using
+    which the results will be returned. The ports of the sockets should be
+    specified in `config['sockets']` as a dictionary.
+
+    The return value should be a dictionary with the following keys:
+
+    stdout:  if capture_output is True (in interactive mode)
+    stderr:  if capture_output is True (in interactive mode)
+
+
+    '''
+    assert 'sockets' in config
+    assert 'ctl_push_socket' in config['sockets']
+    assert 'ctl_req_socket' in config['sockets']
+
     # passing configuration and port numbers to the subprocess
     env.config.update(config)
     connect_controllers()
