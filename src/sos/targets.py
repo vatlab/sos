@@ -617,6 +617,8 @@ class file_target(path, BaseTarget):
 
 class paths(Sequence, os.PathLike):
     '''A collection of targets'''
+    # check if string contains wildcard character
+    wildcard = re.compile('[*?\[]')
 
     def __init__(self, *args):
         self._paths = []
@@ -637,7 +639,14 @@ class paths(Sequence, os.PathLike):
         if isinstance(arg, paths):
             self._paths.extend(arg._paths)
         elif isinstance(arg, str):
-            self._paths.append(path(arg))
+            if self.wildcard.search(arg):
+                matched = glob.glob(os.path.expanduser(arg))
+                if matched:
+                    self._paths.extend([path(x) for x in matched])
+                else:
+                    env.logger.debug(f'Pattern {arg} does not match any file')
+            else:
+                self._paths.append(path(arg))
         elif isinstance(arg, sos_targets):
             if not all(isinstance(x, file_target) for x in arg._targets):
                 raise ValueError(
