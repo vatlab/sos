@@ -130,12 +130,12 @@ def expand_input_files(value, *args):
     if not args:
         return env.sos_dict['step_input']
     else:
-        return sos_targets(*args, verify_existence=True)
+        return sos_targets(*args, verify_existence=True, undetermined=False)
 
 def expand_depends_files(*args, **kwargs):
     '''handle directive depends'''
     args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-    return sos_targets(*args, verify_existence=True)
+    return sos_targets(*args, verify_existence=True, undetermined=False)
 
 def expand_output_files(value, *args):
     '''Process output files (perhaps a pattern) to determine input files.
@@ -143,7 +143,7 @@ def expand_output_files(value, *args):
     if any(isinstance(x, dynamic) for x in args):
         return sos_targets(undetermined=value)
     else:
-        return sos_targets(*args)
+        return sos_targets(*args, undetermined=False)
 
 
 def parse_shared_vars(option):
