@@ -3,7 +3,10 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
-import glob
+#
+# Utility functions used by various executors.
+#
+
 import os
 
 from typing import Any
@@ -13,14 +16,6 @@ from .targets import (RemovedTarget, file_target, path, BaseTarget,
     sos_targets, UnknownTarget, paths, dynamic)
 from .utils import env
 from .eval import SoS_eval
-
-def verify_input():
-    # now, if we are actually going to run the script, we
-    # need to check the input files actually exists, not just the signatures
-    for key in ('_input', '_depends'):
-        for target in env.sos_dict[key]:
-            if not target.target_exists('target'):
-                raise RemovedTarget(target)
 
 
 def __null_func__(*args, **kwargs) -> Any:
@@ -38,70 +33,10 @@ def __null_func__(*args, **kwargs) -> Any:
 
     return _flatten(args), kwargs
 
-
-def expand_file_list(ignore_unknown: bool, *args) -> sos_targets:
-    ifiles = []
-
-    for arg in args:
-        if arg is None:
-            continue
-        elif isinstance(arg, BaseTarget):
-            ifiles.append(arg)
-        elif isinstance(arg, (str, path)):
-            ifiles.append(os.path.expanduser(arg))
-        elif isinstance(arg, sos_targets):
-            ifiles.extend(arg.targets())
-        elif isinstance(arg, paths):
-            ifiles.extend(arg.paths())
-        elif isinstance(arg, Iterable):
-            # in case arg is a Generator, check its type will exhaust it
-            arg = list(arg)
-            if not all(isinstance(x, (str, path, BaseTarget)) for x in arg):
-                raise RuntimeError(f'Invalid target: {arg}')
-            ifiles.extend(arg)
-        else:
-            raise RuntimeError(
-                f'Unrecognized file: {arg} of type {type(arg).__name__}')
-
-    if ignore_unknown and all(isinstance(x, str) and '*' not in x for x in ifiles):
-        # we are exclusind a case with
-        #    output: *.txt, group_by
-        # here but that case is conceptually wrong anyway
-        return sos_targets(ifiles)
-    # expand files with wildcard characters and check if files exist
-    tmp = []
-    for ifile in ifiles:
-        if isinstance(ifile, BaseTarget):
-            if ignore_unknown or ifile.target_exists():
-                tmp.append(ifile)
-            else:
-                raise UnknownTarget(ifile)
-        elif file_target(ifile).target_exists('target'):
-            tmp.append(ifile)
-        elif file_target(ifile).target_exists('any'):
-            env.logger.debug(
-                f'``{ifile}`` exists in zapped form (actual target has been removed).')
-            tmp.append(ifile)
-        elif isinstance(ifile, sos_targets):
-            raise ValueError("sos_targets should not appear here")
-        else:
-            expanded = sorted(glob.glob(os.path.expanduser(ifile)))
-            # no matching file ... but this is not a problem at the
-            # inspection stage.
-            #
-            # NOTE: if a DAG is given, the input file can be output from
-            # a previous step..
-            #
-            if not expanded:
-                if ignore_unknown:
-                    tmp.append(ifile)
-                else:
-                    raise UnknownTarget(file_target(ifile))
-            else:
-                tmp.extend(expanded)
-    return sos_targets(tmp)
-
 def clear_output():
+    '''
+    Remove file targets in `_output` when a step fails to complete
+    '''
     for target in env.sos_dict['_output']:
         if isinstance(target, file_target) and target.exists():
             try:
@@ -110,6 +45,17 @@ def clear_output():
             except Exception as e:
                 env.logger.warning(f'Failed to remove {target}: {e}')
 
+
+def reevaluate_output():
+    # re-process the output statement to determine output files
+    args, _ = SoS_eval(
+        f'__null_func__({env.sos_dict["step_output"]._undetermined})')
+    if args is True:
+        env.logger.error('Failed to resolve unspecified output')
+        return
+    # handle dynamic args
+    args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
+    return sos_targets(*args).expand_wildcard()
 
 
 def validate_step_sig(sig):
@@ -156,13 +102,10 @@ def validate_step_sig(sig):
             f'Unrecognized signature mode {env.config["sig_mode"]}')
 
 
-def reevaluate_output():
-    # re-process the output statement to determine output files
-    args, _ = SoS_eval(
-        f'__null_func__({env.sos_dict["step_output"]._undetermined})')
-    if args is True:
-        env.logger.error('Failed to resolve unspecified output')
-        return
-    # handle dynamic args
-    args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-    return expand_file_list(True, *args)
+def verify_input():
+    # now, if we are actually going to run the script, we
+    # need to check the input files actually exists, not just the signatures
+    for key in ('_input', '_depends'):
+        for target in env.sos_dict[key]:
+            if not target.target_exists('target'):
+                raise RemovedTarget(target)

@@ -17,7 +17,7 @@ from .targets import (InMemorySignature, UnknownTarget, file_target,
 from .utils import StopInputGroup, env, short_repr, pickleable
 from .tasks import TaskFile, remove_task_files
 from .step_executor import parse_shared_vars
-from .executor_utils import __null_func__, expand_file_list
+from .executor_utils import __null_func__
 
 def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
     shared = {}
@@ -89,7 +89,7 @@ def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
         # handle dynamic args
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
         output = {x: file_target(x).target_signature()
-                  for x in expand_file_list(True, *args)}
+                  for x in sos_targets(*args)}
     elif sos_dict['_output'] is None:
         output = {}
     else:

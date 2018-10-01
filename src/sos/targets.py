@@ -3,6 +3,7 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
+import glob
 import os
 import pickle
 import shlex
@@ -758,6 +759,29 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         elif arg is not None:
             raise RuntimeError(
                 f'Unrecognized targets {arg} of type {arg.__class__.__name__}')
+
+    def expand_wildcard(self):
+        '''Check if targets exists, if not, try to expand wildcard character
+        If not, raise UnknownTarget exception.
+        '''
+        added = []
+        for idx, target in enumerate(self._targets):
+            if target.target_exists():
+                continue
+            if not isinstance(target, file_target):
+                raise UnknownTarget(target)
+            expanded = sorted(glob.glob(os.path.expanduser(str(target))))
+            if not expanded:
+                raise UnknownTarget(target)
+            if len(expanded) == 1:
+                self._targets[idx] = file_target(expanded[0])
+            else:
+                self._targets[idx] = None
+                added.extend(expanded)
+        if added:
+            self._targets = [x for x in self._targets if x is not None]
+            self.__append__(added)
+        return self
 
     def targets(self, file_only=False):
         if file_only:

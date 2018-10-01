@@ -32,7 +32,7 @@ from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr)
 from .substep_executor import execute_substep
 from .executor_utils import (clear_output,  verify_input, reevaluate_output,
-                    validate_step_sig, expand_file_list)
+                    validate_step_sig)
 
 
 __all__ = []
@@ -143,12 +143,12 @@ def expand_input_files(value, *args):
     if not args:
         return env.sos_dict['step_input']
     else:
-        return expand_file_list(False, *args)
+        return sos_targets(*args).expand_wildcard()
 
 def expand_depends_files(*args, **kwargs):
     '''handle directive depends'''
     args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-    return expand_file_list(False, *args)
+    return sos_targets(*args).expand_wildcard()
 
 def expand_output_files(value, *args):
     '''Process output files (perhaps a pattern) to determine input files.
@@ -156,7 +156,7 @@ def expand_output_files(value, *args):
     if any(isinstance(x, dynamic) for x in args):
         return sos_targets(undetermined=value)
     else:
-        return expand_file_list(True, *args)
+        return sos_targets(*args)
 
 
 def parse_shared_vars(option):
