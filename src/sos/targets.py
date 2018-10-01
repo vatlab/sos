@@ -640,7 +640,7 @@ class paths(Sequence, os.PathLike):
             self._paths.extend(arg._paths)
         elif isinstance(arg, str):
             if self.wildcard.search(arg):
-                matched = glob.glob(os.path.expanduser(arg))
+                matched = sorted(glob.glob(os.path.expanduser(arg)))
                 if matched:
                     self._paths.extend([path(x) for x in matched])
                 else:
@@ -768,7 +768,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             self._targets.append(file_target(arg))
         elif isinstance(arg, str):
             if self.wildcard.search(arg):
-                matched = glob.glob(os.path.expanduser(arg))
+                matched = sorted(glob.glob(os.path.expanduser(arg)))
                 if matched:
                     self._targets.extend([file_target(x) for x in matched])
                 elif verify_existence:
