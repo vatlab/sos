@@ -572,7 +572,7 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
                 from sos_notebook.workflow_executor import Interactive_Executor
                 executor = Interactive_Executor(
                     wf, args=args, shared=shared, config=env.config)
-                res = executor.run(targets=targets)
+                res = executor._run(targets=targets)
                 if shared and 'shared' in res:
                     env.sos_dict.quick_update(res['shared'])
                 # in interactive mode, we just return the __last_res__
