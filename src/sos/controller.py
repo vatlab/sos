@@ -74,6 +74,9 @@ class Controller(threading.Thread):
         self._subprogressbar_size = 25
         self._subprogressbar_last_updated = time.time()
 
+        # substgep workers
+        self.frontend_requests = []
+        self._nworkers = 0
         # self.event_map = {}
         # for name in dir(zmq):
         #     if name.startswith('EVENT_'):
@@ -195,14 +198,14 @@ class Controller(threading.Thread):
     def handle_substep_frontend_socket(self):
         #  Get client request, route to first available worker
         msg = self.substep_frontend_socket.recv()
-        self.frontend_requests.append(msg)
+        self.frontend_requests.insert(0, msg)
 
-        if not self.substep_workers or len(self.substep_workers) + self._nprocs < env.config['max_procs']:
+        if self._nworkers == 0 or self._nworkers + self._nprocs < env.config['max_procs']:
             env.logger.debug(f'Start a substep worker')
             from .workers import SoS_SubStep_Worker
             worker = SoS_SubStep_Worker(env.config)
             worker.start()
-            self.substep_workers.append(worker)
+            self._nworkers += 1
 
     def handle_substep_backend_socket(self):
         # Use worker address for LRU routing
@@ -222,6 +225,7 @@ class Controller(threading.Thread):
         else:
             # stop the worker
             self.substep_backend_socket.send_pyobj(None)
+            self._nworkers -= 1
 
     def run(self):
         # there are two sockets
@@ -249,9 +253,7 @@ class Controller(threading.Thread):
         env.config['sockets']['substep_frontend'] = self.substep_frontend_socket.bind_to_random_port('tcp://127.0.0.1')
         self.substep_backend_socket = self.context.socket(zmq.REP) # ROUTER
         env.config['sockets']['substep_backend'] = self.substep_backend_socket.bind_to_random_port('tcp://127.0.0.1')
-        # substgep workers
-        self.frontend_requests = []
-        self.substep_workers = []
+
 
         #monitor_socket = self.sig_req_socket.get_monitor_socket()
         # tell others that the sockets are ready
