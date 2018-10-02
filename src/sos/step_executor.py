@@ -855,6 +855,23 @@ class Base_Step_Executor:
             else:
                 raise RuntimeError(f'{error_class}: {detail}')
 
+    def prepare_substep(self):
+        # socket to collect result
+        self.result_pull_socket = env.zmq_context.socket(zmq.PULL)
+        port = self.result_pull_socket.bind_to_random_port('tcp://127.0.0.1')
+        env.config['sockets']['result_push_socket'] = port
+
+    def submit_substep(self, substep):
+        env.substep_frontend_socket.send_pyobj(substep)
+
+    def wait_for_substep(self):
+        for ss in self.proc_results:
+            res = self.result_pull_socket.recv_pyobj()
+            #
+            if "index" not in res:
+                raise RuntimeError("Result received from substep does not have key index")
+            self.proc_results[res['index']] = res
+
     def collect_result(self):
         # only results will be sent back to the master process
         #
@@ -1402,22 +1419,6 @@ class Step_Executor(Base_Step_Executor):
         # in the step
         env.__socket__ = socket
 
-    def prepare_substep(self):
-        # socket to collect result
-        self.result_pull_socket = env.zmq_context.socket(zmq.PULL)
-        port = self.result_pull_socket.bind_to_random_port('tcp://127.0.0.1')
-        env.config['sockets']['result_push_socket'] = port
-
-    def submit_substep(self, substep):
-        env.substep_frontend_socket.send_pyobj(substep)
-
-    def wait_for_substep(self):
-        for ss in self.proc_results:
-            res = self.result_pull_socket.recv_pyobj()
-            #
-            if "index" not in res:
-                raise RuntimeError("Result received from substep does not have key index")
-            self.proc_results[res['index']] = res
 
     def submit_tasks(self, tasks):
         env.logger.debug(f'Send {tasks}')
