@@ -68,16 +68,7 @@ class R_library(BaseTarget):
             if (!is.null(cur_version) && {version_satisfied}) {{
                 write(paste(package, cur_version, "AVAILABLE"), file={repr(output_file)})
             }} else {{
-                devtools::install_github(package_repo, force = TRUE)
-                if ({package_loaded}) cur_version <- packageVersion(package) else cur_version <- NULL
-                # if it still does not exist, write the package name to output
-                if (!is.null(cur_version)) {{
-                    if ({version_satisfied}) write(paste(package, cur_version, "INSTALLED"), file={repr(output_file)})
-                    else write(paste(package, cur_version, "VERSION_MISMATCH"), file={repr(output_file)})
-                }} else {{
-                    write(paste(package, "NA", "MISSING"), file={repr(output_file)})
-                    quit("no")
-                }}
+                write(paste(package, cur_version, "MISSING"), file={repr(output_file)})
             }}
             '''
         else:
@@ -89,20 +80,7 @@ class R_library(BaseTarget):
             if (!is.null(cur_version) && {version_satisfied}) {{
                 write(paste(package, cur_version, "AVAILABLE"), file={repr(output_file)})
             }} else {{
-                install.packages(package, repos="{repos}", quiet=FALSE)
-                # if the package still does not exist
-                if (!{package_loaded}) {{
-                    source("http://bioconductor.org/biocLite.R")
-                    biocLite(package, suppressUpdates=TRUE, suppressAutoUpdate=TRUE, ask=FALSE)
-                }}
-                if ({package_loaded}) cur_version <- packageVersion(package) else cur_version <- NULL
-                # if it still does not exist, write the package name to output
-                if (!is.null(cur_version)) {{
-                    if ({version_satisfied}) write(paste(package, cur_version, "INSTALLED"), file={repr(output_file)}) else write(paste(package, cur_version, "VERSION_MISMATCH"), file={repr(output_file)})
-                }} else {{
-                    write(paste(package, "NA", "MISSING"), file={repr(output_file)})
-                    quit("no")
-                }}
+                write(paste(package, cur_version, "MISSING"), file={repr(output_file)})
             }}
             '''
         # temporarily change the run mode to run to execute script
@@ -127,12 +105,9 @@ class R_library(BaseTarget):
                 lib, cur_version, status = line.split()
                 if status.strip() == "MISSING":
                     env.logger.warning(
-                        f'R Library {lib} is not available and cannot be installed.')
+                        f'R Library {lib} is not available.')
                 elif status.strip() == 'AVAILABLE':
                     env.logger.debug(f'R library {lib} ({cur_version}) is available')
-                    ret_val = True
-                elif status.strip() == 'INSTALLED':
-                    env.logger.debug(f'R library {lib} ({cur_version}) has been installed')
                     ret_val = True
                 elif status.strip() == 'VERSION_MISMATCH':
                     env.logger.warning(
