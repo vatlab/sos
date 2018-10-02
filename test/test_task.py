@@ -633,7 +633,7 @@ print('a')
 [10]
 task:
 import time
-time.sleep(15)
+time.sleep(25)
 ''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
