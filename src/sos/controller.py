@@ -75,8 +75,9 @@ class Controller(threading.Thread):
         self._subprogressbar_last_updated = time.time()
 
         # substgep workers
-        self.frontend_requests = []
-        self._nworkers = 0
+        self._frontend_requests = []
+        self._substep_workers = []
+        self._n_working_workers = 0
         # self.event_map = {}
         # for name in dir(zmq):
         #     if name.startswith('EVENT_'):
@@ -183,6 +184,14 @@ class Controller(threading.Thread):
                         self.handle_ctl_push_msg(self.ctl_push_socket.recv_pyobj())
                     else:
                         break
+
+                # handle all push request from substep, used to for example kill workers
+                while True:
+                    if self.substep_backend_socket.poll(0.01):
+                        self.handle_substep_backend_msg(self.substep_backend_socket.recv())
+                    else:
+                        break
+
                 if env.verbosity == 1 and env.config['run_mode'] != 'interactive':
                     nSteps = len(set(self._completed.keys()) | set(self._ignored.keys()))
                     nCompleted = sum(self._completed.values())
@@ -201,22 +210,21 @@ class Controller(threading.Thread):
             env.logger.warning(f'Failed to respond controller {msg}: {e}')
             self.ctl_req_socket.send_pyobj(None)
 
-    def handle_substep_frontend_socket(self):
+    def handle_substep_frontend_msg(self, msg):
         #  Get client request, route to first available worker
-        msg = self.substep_frontend_socket.recv()
-        self.frontend_requests.insert(0, msg)
+        self._frontend_requests.insert(0, msg)
 
-        if self._nworkers == 0 or self._nworkers + self._nprocs < env.config['max_procs']:
-            env.logger.debug(f'Start a substep worker')
+        if self._n_working_workers == 0 or self._n_working_workers + self._nprocs < env.config['max_procs']:
             from .workers import SoS_SubStep_Worker
             worker = SoS_SubStep_Worker(env.config)
             worker.start()
-            self._nworkers += 1
+            self._substep_workers.append(worker)
+            self._n_working_workers += 1
+            env.logger.debug(f'Start a substep worker, {self._n_working_workers} in total')
 
-    def handle_substep_backend_socket(self):
+
+    def handle_substep_backend_msg(self, msg):
         # Use worker address for LRU routing
-
-        msg = self.substep_backend_socket.recv()
         if not msg:
             return False
 
@@ -225,13 +233,14 @@ class Controller(threading.Thread):
             raise RuntimeError(f'substep worker should only send ready message: {msg} received')
 
         # now see if we have any work to do
-        if self.frontend_requests:
-            msg = self.frontend_requests.pop()
+        if self._frontend_requests:
+            msg = self._frontend_requests.pop()
             self.substep_backend_socket.send(msg)
         else:
             # stop the worker
             self.substep_backend_socket.send_pyobj(None)
-            self._nworkers -= 1
+            self._n_working_workers -= 1
+            env.logger.debug(f'Kill a substep worker. {self._n_working_workers} remains.')
 
     def run(self):
         # there are two sockets
@@ -298,10 +307,10 @@ class Controller(threading.Thread):
                         break
 
                 if self.substep_frontend_socket in socks:
-                    self.handle_substep_frontend_socket()
+                    self.handle_substep_frontend_msg(self.substep_frontend_socket.recv())
 
                 if self.substep_backend_socket in socks:
-                    self.handle_substep_backend_socket()
+                    self.handle_substep_backend_msg(self.substep_backend_socket.recv())
 
                 # if monitor_socket in socks:
                 #     evt = recv_monitor_message(monitor_socket)

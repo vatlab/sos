@@ -15,7 +15,7 @@ from ._version import __version__
 from .eval import SoS_exec
 from .controller import connect_controllers, disconnect_controllers
 from .targets import sos_targets
-from .utils import (WorkflowDict, env, get_traceback, load_config_files, short_repr)
+from .utils import WorkflowDict, env, get_traceback, load_config_files, short_repr
 from .executor_utils import  __null_func__
 
 class SoS_Worker(mp.Process):
@@ -176,14 +176,16 @@ class SoS_SubStep_Worker(mp.Process):
         # the worker process knows configuration file, command line argument etc
         super(SoS_SubStep_Worker, self).__init__(**kwargs)
         self.config = config
+        env.logger.trace('worker init')
 
     def run(self):
+        env.logger.trace(f'worker {os.getpid()} starts to run')
         env.config.update(self.config)
         env.zmq_context = connect_controllers()
-
         from .substep_executor import execute_substep
         env.master_socket = env.zmq_context.socket(zmq.REQ)
         env.master_socket.connect(f'tcp://127.0.0.1:{self.config["sockets"]["substep_backend"]}')
+        env.logger.trace(f'Substep worker {os.getpid()} started')
 
         while True:
             env.master_socket.send(self.LRU_READY)
@@ -192,7 +194,7 @@ class SoS_SubStep_Worker(mp.Process):
                 env.logger.debug(f'stop substep worker {os.getpid()}')
                 break
 
-            env.logger.debug(f'Substep worker receives request {msg}')
+            env.logger.debug(f'Substep worker {os.getpid()} receives request {short_repr(msg)}')
             execute_substep(**msg)
 
         env.master_socket.LINGER = 0
