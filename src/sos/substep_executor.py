@@ -113,7 +113,11 @@ def _execute_substep(stmt, proc_vars, step_md5, step_tokens,
             sig.lock()
 
         # check if input and depends targets actually exist
-        verify_input()
+        #
+        # if depends on a sos_variable but the variable is not actually used in
+        # the substep, it is ok to ignore it. If the variable is used in the substep
+        # it should have been included as part of the signature variables.
+        verify_input(ignore_sos_variable=True)
 
         if capture_output:
             with stdoutIO() as (out, err):

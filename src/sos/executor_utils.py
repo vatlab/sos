@@ -10,7 +10,7 @@
 from typing import Any, List, Tuple
 from collections import Sequence
 
-from .targets import (RemovedTarget, file_target, sos_targets, dynamic)
+from .targets import (RemovedTarget, file_target, sos_targets, dynamic, sos_variable)
 from .utils import env
 from .eval import SoS_eval, SoS_exec
 from ._version import __version__
@@ -112,10 +112,11 @@ def validate_step_sig(sig):
             f'Unrecognized signature mode {env.config["sig_mode"]}')
 
 
-def verify_input():
+def verify_input(ignore_sos_variable=False):
     # now, if we are actually going to run the script, we
     # need to check the input files actually exists, not just the signatures
     for key in ('_input', '_depends'):
         for target in env.sos_dict[key]:
-            if not target.target_exists('target'):
+            if not target.target_exists('target') and not \
+                (ignore_sos_variable and isinstance(target, sos_variable)):
                 raise RemovedTarget(target)
