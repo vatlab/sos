@@ -176,6 +176,7 @@ class SoS_SubStep_Worker(mp.Process):
         # the worker process knows configuration file, command line argument etc
         super(SoS_SubStep_Worker, self).__init__(**kwargs)
         self.config = config
+        self.daemon = True
         env.logger.trace('worker init')
 
     def run(self):
