@@ -32,7 +32,7 @@ class TestTarget(unittest.TestCase):
             file_target('report.md').unlink()
         script = SoS_Script(r'''
 [10]
-depends: Py_Module('tabulate')
+depends: Py_Module('tabulate', autoinstall=True)
 from tabulate import tabulate
 table = [["Sun",696000,1989100000],["Earth",6371,5973.6],
     ["Moon",1737,73.5],["Mars",3390,641.85]]

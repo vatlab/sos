@@ -15,13 +15,14 @@ class R_library(BaseTarget):
 
     LIB_STATUS_CACHE = {}
 
-    def __init__(self, library, version=None, repos='http://cran.us.r-project.org'):
+    def __init__(self, library, version=None, repos='http://cran.us.r-project.org', autoinstall=False):
         super(R_library, self).__init__()
         self._library = library
         if version is not None:
             version = (version, ) if isinstance(version, str) else tuple(version)
         self._version = version
         self._repos = repos
+        self._autoinstall = autoinstall
 
     def _install(self, name, version, repos):
         '''Check existence and version match of R library.
@@ -67,7 +68,7 @@ class R_library(BaseTarget):
             if ({package_loaded}) cur_version <- packageVersion(package) else cur_version <- NULL
             if (!is.null(cur_version) && {version_satisfied}) {{
                 write(paste(package, cur_version, "AVAILABLE"), file={repr(output_file)})
-            }} else {{
+            }} else if ({"TRUE" if self._autoinstall else "FALSE"}) {{
                 devtools::install_github(package_repo, force = TRUE)
                 if ({package_loaded}) cur_version <- packageVersion(package) else cur_version <- NULL
                 # if it still does not exist, write the package name to output
@@ -78,6 +79,8 @@ class R_library(BaseTarget):
                     write(paste(package, "NA", "MISSING"), file={repr(output_file)})
                     quit("no")
                 }}
+            }} else {{
+                write(paste(package, cur_version, "UNAVAILABLE"), file={repr(output_file)})
             }}
             '''
         else:
@@ -88,7 +91,7 @@ class R_library(BaseTarget):
             if ({package_loaded}) cur_version <- packageVersion(package) else cur_version <- NULL
             if (!is.null(cur_version) && {version_satisfied}) {{
                 write(paste(package, cur_version, "AVAILABLE"), file={repr(output_file)})
-            }} else {{
+            }} else if ({"TRUE" if self._autoinstall else "FALSE"}) {{
                 install.packages(package, repos="{repos}", quiet=FALSE)
                 # if the package still does not exist
                 if (!{package_loaded}) {{
@@ -103,6 +106,8 @@ class R_library(BaseTarget):
                     write(paste(package, "NA", "MISSING"), file={repr(output_file)})
                     quit("no")
                 }}
+            }} else {{
+                write(paste(package, cur_version, "UNAVAILABLE"), file={repr(output_file)})
             }}
             '''
         # temporarily change the run mode to run to execute script
@@ -128,6 +133,9 @@ class R_library(BaseTarget):
                 if status.strip() == "MISSING":
                     env.logger.warning(
                         f'R Library {lib} is not available and cannot be installed.')
+                elif status.strip() == "UNAVAILABLE":
+                    env.logger.warning(
+                        f'R Library {lib} is not available. Use autoinstall=True to try to install.')
                 elif status.strip() == 'AVAILABLE':
                     env.logger.debug(f'R library {lib} ({cur_version}) is available')
                     ret_val = True
@@ -146,15 +154,15 @@ class R_library(BaseTarget):
         return ret_val
 
     def target_exists(self, mode='any'):
-        if (self._library, self._version) in self.LIB_STATUS_CACHE:
-            return self.LIB_STATUS_CACHE[(self._library, self._version)]
+        if (self._library, self._version, self._autoinstall) in self.LIB_STATUS_CACHE:
+            return self.LIB_STATUS_CACHE[(self._library, self._version, self._autoinstall)]
         else:
             # check if R is installed
             if not shutil.which('Rscript'):
                 env.logger.warning(f'Rscript: command not found')
                 return False
             ret = self._install(self._library, self._version, self._repos)
-            self.LIB_STATUS_CACHE[(self._library, self._version)] = ret
+            self.LIB_STATUS_CACHE[(self._library, self._version, self._autoinstall)] = ret
             return ret
 
     def target_name(self):

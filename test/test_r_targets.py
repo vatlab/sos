@@ -33,7 +33,7 @@ class TestTarget(unittest.TestCase):
         '''Test target R_Library'''
         script = SoS_Script('''
 [default]
-depends: R_library("dplyr")
+depends: R_library("dplyr", autoinstall=True)
 R:
     library('dplyr')
 ''')
@@ -48,7 +48,7 @@ R:
         script = SoS_Script('''
 [0]
 
-depends: R_library('xtable')
+depends: R_library('xtable', autoinstall=True)
 R:
     library('xtable')
     ## Demonstrate data.frame
@@ -62,7 +62,7 @@ R:
         '''Test re-execution of steps with R_library'''
         script = SoS_Script('''
 [1]
-depends: R_library("ggplot2", "2.2+")
+depends: R_library("ggplot2", "2.2+", autoinstall=True)
 output: '1.txt'
 run: expand=True
     sleep 5
