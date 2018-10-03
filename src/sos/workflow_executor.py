@@ -211,41 +211,27 @@ class Base_Executor:
         env.config['workflow_id'] = self.md5
         env.sos_dict.set('workflow_id', self.md5)
 
-    def run(self, targets: Optional[List[str]]=None, parent_socket: None=None, my_workflow_id: None=None, mode=None) -> Dict[str, Any]:
-        #
+    def write_workflow_info(self):
         # if this is the outter most workflow, master)id should have =
         # not been set so we set it for all other workflows
         workflow_info = {
             'name': self.workflow.name,
             'start_time': time.time(),
         }
-        env.zmq_context = zmq.Context()
-
-        if not env.config['master_id']:
-            # if this is the executor for the master workflow, start controller
-            env.config['master_id'] = self.md5
-            #
-            # control panel in a separate thread, connected by zmq socket
-            if not parent_socket:
-                ready = Event()
-                self.controller = Controller(ready)
-                self.controller.start()
-                # wait for the thread to start with a signature_req saved to env.config
-                ready.wait()
+        # if this is the master ...
+        if env.config['master_id'] == self.md5:
             workflow_info['command_line'] = subprocess.list2cmdline(
                 [os.path.basename(sys.argv[0])] + sys.argv[1:])
             workflow_info['project_dir'] = os.getcwd()
             workflow_info['script'] = base64.b64encode(
                 self.workflow.content.text().encode()).decode('ascii')
-
-        if not parent_socket:
-            connect_controllers(env.zmq_context)
         workflow_info['master_id'] = env.config['master_id']
         if env.config['master_id'] == self.md5:
             env.signature_req_socket.send_pyobj(['workflow', 'clear'])
             env.signature_req_socket.recv_pyobj()
         env.signature_push_socket.send_pyobj(['workflow', 'workflow', self.md5, repr(workflow_info)])
-        #
+
+    def handle_resumed(self):
         env.config['resumed_tasks'] = set()
         wf_status = os.path.join(os.path.expanduser(
             '~'), '.sos', self.md5 + '.status')
@@ -265,6 +251,26 @@ class Base_Executor:
                 # overwrite previous file
                 for key, val in env.config.items():
                     wf.write(save_var(key, val))
+
+    def run(self, targets: Optional[List[str]]=None, parent_socket: None=None, my_workflow_id: None=None, mode=None) -> Dict[str, Any]:
+        #
+        env.zmq_context = zmq.Context()
+
+        if not env.config['master_id']:
+            # if this is the executor for the master workflow, start controller
+            env.config['master_id'] = self.md5
+            #
+            # control panel in a separate thread, connected by zmq socket
+            if not parent_socket:
+                ready = Event()
+                self.controller = Controller(ready)
+                self.controller.start()
+                # wait for the thread to start with a signature_req saved to env.config
+                ready.wait()
+        if not parent_socket:
+            connect_controllers(env.zmq_context)
+        self.write_workflow_info()
+        self.handle_resumed()
 
         # if this is a resumed task?
         if hasattr(env, 'accessed_vars'):

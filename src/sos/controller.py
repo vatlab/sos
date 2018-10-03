@@ -95,6 +95,12 @@ class Controller(threading.Thread):
 
     def handle_sig_req_msg(self, msg):
         try:
+            # make sure all records have been saved before returning information
+            while True:
+                if self.sig_push_socket.poll(0.01):
+                    self.handle_sig_push_msg(self.sig_push_socket.recv_pyobj())
+                else:
+                    break
             if msg[0] == 'workflow':
                 if msg[1] == 'clear':
                     self.workflow_signatures.clear()
