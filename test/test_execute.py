@@ -1345,5 +1345,25 @@ path('result.csv').touch()
         self.assertFalse(os.path.isfile('failed.csv'))
         self.assertFalse(os.path.isfile('result.csv'))
 
+    def testDependsToConcurrentSubstep(self):
+        '''Testing forward style example'''
+        # sos_variable('data') is passed to step [2]
+        # but it is not passed to concurrent substep because
+        # the variable is not used in the substep. This test
+        # should fail at least under windows
+        script = SoS_Script('''
+[1: shared={'data': 'step_output'}]
+output: 'a.txt'
+_output.touch()
+
+[2]
+depends: sos_variable('data')
+input: for_each={'i': range(2)}, group_by=1, concurrent=True
+print(1)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
+
 if __name__ == '__main__':
     unittest.main()
