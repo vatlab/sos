@@ -17,17 +17,22 @@ class Py_Module(BaseTarget):
         super(Py_Module, self).__init__()
         self._module = module
 
-    def _check(self, name):
+    def _install(self, name):
         '''Check existence of Python module and install it using command
         pip install if necessary.'''
         spam_spec = importlib.util.find_spec(name)
-        return spam_spec is not None:
+        if spam_spec is not None:
+            return True
+        # try to install it?
+        import subprocess
+        ret = subprocess.call(['pip', 'install', self._module])
+        return ret == 0
 
     def target_exists(self, mode='any'):
         if self._module in self.LIB_STATUS_CACHE:
             return self.LIB_STATUS_CACHE[self._module]
         else:
-            ret = self._check(self._module)
+            ret = self._install(self._module)
             self.LIB_STATUS_CACHE[self._module] = ret
             return ret
 
