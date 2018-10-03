@@ -177,10 +177,8 @@ class SoS_SubStep_Worker(mp.Process):
         super(SoS_SubStep_Worker, self).__init__(**kwargs)
         self.config = config
         self.daemon = True
-        env.logger.trace('worker init')
 
     def run(self):
-        env.logger.trace(f'worker {os.getpid()} starts to run')
         env.config.update(self.config)
         env.zmq_context = connect_controllers()
         from .substep_executor import execute_substep
