@@ -24,7 +24,7 @@ import urllib.request
 from collections import Sequence, Mapping, Set, defaultdict
 from html.parser import HTMLParser
 from io import FileIO, StringIO
-from typing import Optional, DefaultDict, Union
+from typing import Optional, DefaultDict, Union, List
 
 import fasteners
 import yaml
@@ -1524,3 +1524,35 @@ def dot_to_gif(filename: str, warn=None):
                     warn(f'Failed to generate gif animation: {e}')
                 return b64_of(pngFiles[-1])
             return b64_of(gifFile)
+
+
+def separate_options(options: str) -> List[str]:
+    pieces = options.split(',')
+    idx = 0
+    while True:
+        try:
+            # test current group
+            compile(pieces[idx].strip(), filename='<string>',
+                    mode='exec' if '=' in pieces[idx] else 'eval')
+            # if it is ok, go next
+            idx += 1
+            if idx == len(pieces):
+                break
+        except Exception:
+            # error happens merge the next piece
+            if idx < len(pieces) - 1:
+                pieces[idx] += ',' + pieces[idx + 1]
+                # error happens merge the next piece
+                pieces.pop(idx + 1)
+            else:
+                # if no next group, expand previously correct one
+                if idx == 0:
+                    raise ValueError('Invalid section option')
+                # break myself again
+                pieces = pieces[: idx] + \
+                    pieces[idx].split(',') + pieces[idx + 1:]
+                # go back
+                idx -= 1
+                pieces[idx] += '\n' + pieces[idx + 1]
+                pieces.pop(idx + 1)
+    return pieces

@@ -6,6 +6,7 @@
 
 import subprocess
 import sys
+import re
 
 from collections import Iterable, Mapping, Sequence
 from typing import Any, Dict, Optional
@@ -13,7 +14,7 @@ from typing import Any, Dict, Optional
 from .eval import SoS_eval, SoS_exec, accessed_vars
 from .parser import SoS_Step
 from .targets import (dynamic, remote, sos_targets, sos_step)
-from .utils import env, get_traceback
+from .utils import env, get_traceback, separate_options
 from .executor_utils import  __null_func__
 
 def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = None) -> Dict[str, Any]:
@@ -182,7 +183,31 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
                 else:
                     raise ValueError(
                         f'Unacceptable value for parameter fe: {fe}')
+
+            if 'from_steps' in kwargs:
+                if isinstance(kwargs['from_steps'], str):
+                    step_depends.extend(sos_step(kwargs['from_steps']))
+                elif isinstance(kwargs['from_steps'], Sequence):
+                    step_depends.extend([sos_step(x) for x in kwargs['from_steps']])
+                else:
+                    raise ValueError(f'Invalid value for input option from {kwargs["from"]}')
         except Exception as e:
+            # from parameter is very important so we will need to figure it out even
+            # if the statement cannot be parsed.
+            if 'from_steps' in stmt:
+                for piece in separate_options(stmt):
+                    mo = re.match('\s*from_steps\s*=\s*(?P<value>.*)', piece)
+                    if mo:
+                        try:
+                            opt_values = eval(mo.group('value'))
+                        except Exception as e:
+                            raise ValueError(f'Invalid value for input option from {piece}: {e}')
+                        if isinstance(opt_values, str):
+                            step_depends.extend(sos_step(opt_values))
+                        elif isinstance(opt_values, Sequence):
+                            step_depends.extend([sos_step(x) for x in opt_values])
+                        else:
+                            raise ValueError(f'Invalid value for input option from {opt_values}')
             # if anything is not evalutable, keep Undetermined
             env.logger.debug(
                 f'Input of step {section.name if section.index is None else f"{section.name}_{section.index}"} is set to Undertermined: {e}')
@@ -209,7 +234,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
                     if key == 'output':
                         step_output = sos_targets(*args)
                     elif key == 'depends':
-                        step_depends = sos_targets(*args)
+                        step_depends.extend(sos_targets(*args))
             except Exception as e:
                 env.logger.debug(f"Args {value} cannot be determined: {e}")
         else:  # statement
