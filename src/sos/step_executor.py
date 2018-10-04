@@ -130,12 +130,12 @@ def expand_input_files(value, *args):
     if not args:
         return env.sos_dict['step_input']
     else:
-        return sos_targets(*args, verify_existence=True, undetermined=False, source=env.sos_dict['step_name'])
+        return sos_targets(*args, verify_existence=True, undetermined=False)
 
 def expand_depends_files(*args, **kwargs):
     '''handle directive depends'''
     args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-    return sos_targets(*args, verify_existence=True, undetermined=False, source=env.sos_dict['step_name'])
+    return sos_targets(*args, verify_existence=True, undetermined=False)
 
 def expand_output_files(value, *args):
     '''Process output files (perhaps a pattern) to determine input files.
@@ -143,7 +143,7 @@ def expand_output_files(value, *args):
     if any(isinstance(x, dynamic) for x in args):
         return sos_targets(undetermined=value)
     else:
-        return sos_targets(*args, undetermined=False, source=env.sos_dict['step_name'])
+        return sos_targets(*args, undetermined=False)
 
 
 def parse_shared_vars(option):
@@ -258,10 +258,10 @@ class Base_Step_Executor:
     def handle_group_by(ifiles: sos_targets, group_by: Union[int, str]):
         '''Handle input option group_by'''
         if group_by == 'single':
-            return [ifiles.slice(x) for x in range(len(ifiles))]
+            return [sos_targets(x) for x in ifiles]
         elif group_by == 'all':
             # default option
-            return [ifiles]
+            return [sos_targets(ifiles)]
         elif group_by == 'pairs':
             if len(ifiles) % 2 != 0:
                 raise ValueError(
@@ -511,23 +511,30 @@ class Base_Step_Executor:
                 raise RuntimeError(f'Unrecognized input option {k}')
         #
         if 'filetype' in kwargs:
-            env.logger.warning('Input option filetype was deprecated')
-
-        assert isinstance(ifile, sos_targets)
-
+            env.logger.warning('Input option filetype is deprecated and will be removed from future versions of SoS.')
+            if isinstance(kwargs['filetype'], str):
+                ifiles = fnmatch.filter(ifiles.targets(
+                    file_only=True), kwargs['filetype'])
+            elif isinstance(kwargs['filetype'], Iterable):
+                ifiles = [x for x in ifiles.targets(file_only=True) if any(fnmatch.fnmatch(x, y)
+                                                                           for y in kwargs['filetype'])]
+            elif callable(kwargs['filetype']):
+                ifiles = [x for x in ifiles.targets(
+                    file_only=True) if kwargs['filetype'](x)]
+        #
         # input file is the filtered files
-        env.sos_dict.set('step_input', ifiles)
-        env.sos_dict.set('_input', ifiles)
+        env.sos_dict.set('step_input', sos_targets(ifiles))
+        env.sos_dict.set('_input', sos_targets(ifiles))
         #
         # handle group_by
         if 'group_by' in kwargs:
             _groups = Base_Step_Executor.handle_group_by(
-                ifiles, kwargs['group_by'])
+                sos_targets(ifiles), kwargs['group_by'])
             if not _groups:
                 env.logger.debug('No group defined because of no input file')
                 _groups = [sos_targets([])]
         else:
-            _groups = [ifiles]
+            _groups = [sos_targets(ifiles)]
         #
         _vars = [{} for x in _groups]
         # handle paired_with

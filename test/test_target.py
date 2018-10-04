@@ -60,11 +60,6 @@ class TestTarget(unittest.TestCase):
         self.assertEqual(c['here'].source, ['here', 'here'])
         self.assertEqual(c['here'], ['a1', 'b1'])
         self.assertTrue(isinstance(c['here'], sos_targets))
-        #
-        # function item
-        self.assertTrue(isinstance(c.slice(1), sos_targets))
-        self.assertEqual(c.slice(1).source, ['here'])
-        self.assertEqual(c.slice(1), ['b1'])
 
 
     def testTargetFormat(self):

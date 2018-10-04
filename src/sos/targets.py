@@ -762,20 +762,6 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def valid(self):
         return self._targets or self._undetermined is False
 
-    def slice(self, i):
-        # similar to [] but always returns a sos_targets object with appropriate source
-        if isinstance(i, str):
-            ret = sos_targets()
-            ret._undetermined = self._undetermined
-            ret._targets = [x for x,y in zip(self._targets, self._sources) if y == i]
-            ret._sources = [i]*len(ret._targets)
-            return ret
-        else:
-            ret = sos_targets()
-            ret._targets = [self._targets[i]] if isinstance(i, int) else self._targets[i]
-            ret._sources = [self._sources[i]] if isinstance(i, int) else self._sources[i]
-            return ret
-
     def __append__(self, arg, source='', verify_existence=False):
         if isinstance(arg, paths):
             self._targets.extend([file_target(x) for x in arg._paths])
