@@ -464,7 +464,7 @@ parameter: a_b = int
         Base_Executor(wf, args=['--a-b', '10']).run(mode='dryrun')
         self.assertEqual(env.sos_dict['a_b'], 10)
         env.sos_dict.pop('a_b')
-        # 
+        #
         # test support for type path, paths, file_target and sos_targets
         script = SoS_Script('''
 parameter: path_var = path
@@ -925,6 +925,7 @@ executed.append(_input)
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['executed'],  [
                          sos_targets('a1.txt', 'a2.txt', 'a3.txt', 'a4.txt')])
+        self.assertEqual(env.sos_dict['executed'][0].source, ['default_0']*4)
         # group_by = 'single'
         script = SoS_Script('''
 [0: shared='executed']

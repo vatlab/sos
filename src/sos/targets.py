@@ -727,15 +727,16 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     wildcard = re.compile('[*?\[]')
 
     def __init__(self, *args, undetermined: Union[bool, str]=None,
-        verify_existence=False):
+        source='', verify_existence=False):
         super(BaseTarget, self).__init__()
         self._targets = []
+        self._sources = []
         if isinstance(undetermined, (bool, str)):
             self._undetermined = undetermined
         else:
             self._undetermined = not bool(args)
         for arg in args:
-            self.__append__(arg, verify_existence=verify_existence)
+            self.__append__(arg, source=source, verify_existence=verify_existence)
         for t in self._targets:
             if isinstance(t, sos_targets):
                 raise RuntimeError(
@@ -761,58 +762,63 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def valid(self):
         return self._targets or self._undetermined is False
 
-    def __append__(self, arg, verify_existence=False):
+    def slice(self, i):
+        # similar to [] but always returns a sos_targets object with appropriate source
+        if isinstance(i, str):
+            ret = sos_targets()
+            ret._undetermined = self._undetermined
+            ret._targets = [x for x,y in zip(self._targets, self._sources) if y == i]
+            ret._sources = [i]*len(ret._targets)
+            return ret
+        elif isinstance(i, (tuple, list)):
+            ret = sos_targets()
+            ret._undetermined = self._undetermined
+            ret._targets = [self._targets[x] for x in i]
+            ret._sources = [self._sources[x] for x in i]
+            return ret
+        else:
+            ret = sos_targets()
+            ret._targets = [self._targets[i]] if isinstance(i, int) else self._targets[i]
+            ret._sources = [self._sources[i]] if isinstance(i, int) else self._sources[i]
+            return ret
+
+    def __append__(self, arg, source='', verify_existence=False):
         if isinstance(arg, paths):
             self._targets.extend([file_target(x) for x in arg._paths])
+            self._sources.extend([source]*len(arg._paths))
         elif isinstance(arg, path):
             self._targets.append(file_target(arg))
+            self._sources.append(source)
         elif isinstance(arg, str):
             if self.wildcard.search(arg):
                 matched = sorted(glob.glob(os.path.expanduser(arg)))
                 if matched:
                     self._targets.extend([file_target(x) for x in matched])
+                    self._sources.extend([source]*len(matched))
                 elif verify_existence:
                     raise UnknownTarget(arg)
                 else:
                     env.logger.debug(f'Pattern {arg} does not match any file')
             else:
                 self._targets.append(file_target(arg))
+                self._sources.append(source)
         elif isinstance(arg, sos_targets):
             if arg.valid() and not self.valid():
                 self._undetermined = False
             self._targets.extend(arg._targets)
+            self._sources.extend(arg._sources if hasattr(arg, '_sources') else [source]*len(arg._targets))
         elif isinstance(arg, BaseTarget):
             self._targets.append(arg)
+            self._sources.append(source)
         elif isinstance(arg, Iterable):
             # in case arg is a Generator, check its type will exhaust it
             for t in list(arg):
-                self.__append__(t)
+                self.__append__(t, source)
         elif arg is not None:
             raise RuntimeError(
                 f'Unrecognized targets {arg} of type {arg.__class__.__name__}')
 
-    def expand_wildcard(self):
-        '''Check if targets exists, if not, try to expand wildcard character
-        If not, raise UnknownTarget exception.
-        '''
-        added = []
-        for idx, target in enumerate(self._targets):
-            if target.target_exists():
-                continue
-            if not isinstance(target, file_target):
-                raise UnknownTarget(target)
-            expanded = sorted(glob.glob(os.path.expanduser(str(target))))
-            if not expanded:
-                raise UnknownTarget(target)
-            if len(expanded) == 1:
-                self._targets[idx] = file_target(expanded[0])
-            else:
-                self._targets[idx] = None
-                added.extend(expanded)
-        if added:
-            self._targets = [x for x in self._targets if x is not None]
-            self.__append__(added)
-        return self
+    source = property(lambda self: self._sources)
 
     def targets(self, file_only=False):
         if file_only:
@@ -822,6 +828,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
     def extend(self, another):
         self._targets.extend(sos_targets(another)._targets)
+        self._sources.extend(sos_targets(another)._sources)
 
     def zap(self):
         for target in self._targets:
@@ -831,22 +838,37 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 env.logger.debug(f'Ignore non-file target {target}')
 
     def __getstate__(self):
-        return (self._targets, self._undetermined)
+        return (self._targets, self._sources, self._undetermined)
 
     def __setstate__(self, state) -> None:
         if isinstance(state, tuple):
-            self._targets = state[0]
-            self._undetermined = state[1]
+            if len(state) == 2:
+                self._targets = state[0]
+                self._sources = [''] * len(self._targets)
+                self._undetermined = state[1]
+            else:
+                self._targets = state[0]
+                self._sources = state[1]
+                self._undetermined = state[2]
         else:
             # older version of sig file might only saved targets
             self._targets = state
+            self._sources = [''] * len(self._targets)
             self._undetermined = False
 
     def __len__(self):
         return len(self._targets)
 
     def __getitem__(self, i):
-        return self._targets[i]
+        if isinstance(i, str):
+            ret = sos_targets()
+            ret._undetermined = self._undetermined
+            ret._targets = [x for x,y in zip(self._targets, self._sources) if y == i]
+            ret._sources = [i]*len(ret._targets)
+            return ret
+        else:
+            return self._targets[i]
+
 
     def target_signature(self):
         if len(self._targets) == 1:
@@ -860,9 +882,6 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         else:
             raise ValueError(
                 f'Cannot test existense for group of {len(self)} targets {self!r}')
-
-    def __deepcopy__(self, memo):
-        return sos_targets(deepcopy(self._targets), undetermined=self._undetermined)
 
     def __getattr__(self, key):
         if len(self._targets) == 1:
