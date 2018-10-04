@@ -1364,6 +1364,44 @@ print(1)
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    def testPassOfTargetSource(self):
+        '''Test passing of source information from step_output'''
+        script = SoS_Script('''
+[1]
+output: 'a.txt'
+_output.touch()
+
+[2]
+assert step_input.source == ['default_1']
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        #
+        script = SoS_Script('''
+[1]
+input: for_each={'i': range(2)}
+output: 'a.txt', 'b.txt', group_by=1
+_output.touch()
+
+[2]
+assert step_input.source == ['default_1', 'default_1']
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        #
+        file_target('c.txt').touch()
+        script = SoS_Script('''
+[1]
+input: for_each={'i': range(2)}
+output: 'a.txt', 'b.txt', group_by=1
+_output.touch()
+
+[2]
+input: 'c.txt'
+assert step_input.source == ['default_2']
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
 
 if __name__ == '__main__':
     unittest.main()

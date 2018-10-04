@@ -818,7 +818,15 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             raise RuntimeError(
                 f'Unrecognized targets {arg} of type {arg.__class__.__name__}')
 
-    source = property(lambda self: self._sources)
+    def set_source(self, source):
+        if isinstance(source, str):
+            self._sources = [source] * len(self._targets)
+        elif len(source) == len(self._targets):
+            self._sources = source
+        else:
+            raise ValueError(f'Invalid source {src} for sos_target with {len(self)} targets.')
+
+    source = property(lambda self: self._sources, set_source)
 
     def targets(self, file_only=False):
         if file_only:
