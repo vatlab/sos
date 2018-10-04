@@ -43,7 +43,8 @@ class TestDAG(unittest.TestCase):
     def assertDAG(self, dag, content):
         if isinstance(dag, str):
             with open(dag) as d:
-                dot = d.read()
+                # only get the first DAG
+                dot = 'strict' + d.read().split('strict')[1]
         else:
             out = StringIO()
             dag.save(out)
@@ -1139,7 +1140,7 @@ depends: sos_step('a'), sos_step('b')
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={'output_dag': 'test.dot'}
-                      ).initialize_dag()
+                      ).run()
         # note that A2 is no longer mentioned
         self.assertDAG('test.dot',
                        '''

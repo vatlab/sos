@@ -266,8 +266,6 @@ class sos_step(BaseTarget):
     def target_exists(self, mode='any'):
         # the target exists only if it has been executed?
         # which is indicated by a variable
-        if not hasattr(env, 'controller_req_socket'):
-            return False
         env.controller_req_socket.send_pyobj(['sos_step', self._step_name])
         return env.controller_req_socket.recv_pyobj()
 
