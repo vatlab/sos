@@ -1039,6 +1039,34 @@ executed.append(_input)
 ''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run, mode="dryrun")
+        #
+        # group by source
+        file_target('c.txt').touch()
+        script = SoS_Script('''
+[A]
+output: 'a.txt'
+_output.touch()
+
+[B]
+input: for_each={'i': range(2)}
+output: 'b.txt', 'b1.txt', group_by=1
+_output.touch()
+
+[0: shared='executed']
+executed = []
+
+input: 'c.txt', from_steps=['A', 'B'], group_by='source'
+
+executed.append(_input)
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='run')
+        self.assertEqual(env.sos_dict['executed'], [
+                         sos_targets('c.txt'),
+                         sos_targets('a.txt'),
+                         sos_targets('b.txt', 'b1.txt')])
+
 
     def testOutputGroupBy(self):
         '''Test group_by parameter of step output'''

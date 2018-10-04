@@ -274,6 +274,9 @@ class Base_Step_Executor:
             return [ifiles.slice(x) for x in zip(f1, f2)]
         elif group_by == 'combinations':
             return [ifiles.slice(x) for x in combinations(range(len(ifiles)), 2)]
+        elif group_by == 'source':
+            sources = list(dict.fromkeys(ifiles.source))
+            return [ifiles.slice(x) for x in sources]
         elif isinstance(group_by, int) or group_by.isdigit():
             group_by = int(group_by)
             if len(ifiles) % group_by != 0 and len(ifiles) > group_by:
