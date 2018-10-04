@@ -269,14 +269,14 @@ class Base_Executor:
                 ready.wait()
         if not parent_socket:
             connect_controllers(env.zmq_context)
-        self.write_workflow_info()
-        self.handle_resumed()
-
-        # if this is a resumed task?
-        if hasattr(env, 'accessed_vars'):
-            delattr(env, 'accessed_vars')
 
         try:
+            self.write_workflow_info()
+            self.handle_resumed()
+
+            # if this is a resumed task?
+            if hasattr(env, 'accessed_vars'):
+                delattr(env, 'accessed_vars')
             return self._run(targets=targets, parent_socket=parent_socket,
                 my_workflow_id=my_workflow_id, mode=mode)
         finally:
