@@ -515,21 +515,20 @@ class Base_Step_Executor:
             env.logger.warning('Input option filetype was deprecated')
 
         assert isinstance(ifiles, sos_targets)
-
         #
-        if 'from' in kwargs:
-            if isinstance(kwargs['from'], str):
-                from_args = [kwargs['from']]
-            elif isinstance(kwargs['from'], Sequence):
-                from_args = list(kwargs['from'])
+        if 'from_steps' in kwargs:
+            if isinstance(kwargs['from_steps'], str):
+                from_args = [kwargs['from_steps']]
+            elif isinstance(kwargs['from_steps'], Sequence):
+                from_args = list(kwargs['from_steps'])
             else:
-                raise ValueError(f'Unacceptable value of input prameter from: {kwargs["from"]} provided')
+                raise ValueError(f'Unacceptable value of input prameter from: {kwargs["from_steps"]} provided')
             #
             for step in from_args:
                 env.controller_req_socket.send_pyobj(['step_output', step])
                 res = env.controller_req_socket.recv_pyobj()
                 if res is None or not isinstance(res, sos_targets):
-                    raise RuntimeError(f'Failed to obtain output of step {ste[]}')
+                    raise RuntimeError(f'Failed to obtain output of step {step}')
                 ifiles.extend(res)
 
         # input file is the filtered files

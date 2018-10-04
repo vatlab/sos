@@ -182,7 +182,7 @@ class Controller(threading.Thread):
             elif msg[0] == 'sos_step':
                 self.ctl_req_socket.send_pyobj(msg[1] in self._completed_steps
                     or msg[1] in [x.rsplit('_', 1)[0] for x in self._completed_steps.keys()])
-            elif msg[1] == 'step_output':
+            elif msg[0] == 'step_output':
                 self.ctl_req_socket.send_pyobj(self._completed_steps.get(msg[1], None))
             elif msg[0] == 'done':
                 # close all databses
