@@ -516,10 +516,25 @@ class Base_Step_Executor:
 
         assert isinstance(ifiles, sos_targets)
 
+        #
+        if 'from' in kwargs:
+            if isinstance(kwargs['from'], str):
+                from_args = [kwargs['from']]
+            elif isinstance(kwargs['from'], Sequence):
+                from_args = list(kwargs['from'])
+            else:
+                raise ValueError(f'Unacceptable value of input prameter from: {kwargs["from"]} provided')
+            #
+            for step in from_args:
+                env.controller_req_socket.send_pyobj(['step_output', step])
+                res = env.controller_req_socket.recv_pyobj()
+                if res is None or not isinstance(res, sos_targets):
+                    raise RuntimeError(f'Failed to obtain output of step {ste[]}')
+                ifiles.extend(res)
+
         # input file is the filtered files
         env.sos_dict.set('step_input', ifiles)
         env.sos_dict.set('_input', ifiles)
-        #
         # handle group_by
         if 'group_by' in kwargs:
             _groups = Base_Step_Executor.handle_group_by(
