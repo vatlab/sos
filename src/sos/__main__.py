@@ -545,9 +545,9 @@ def cmd_resume(args, workflow_args):
         sys.exit(0)
     elif len(workflows) > 1:
         workflows = sorted(workflows, key=os.path.getmtime)
-        for wf in workflows:
-            env.logger.info('{}\tstarted {} ago'.format(os.path.basename(wf)[:-7],
-                                                        format_duration(time.time() - os.path.getmtime(wf))))
+        #for wf in workflows:
+        #    env.logger.info('{}\tstarted {} ago'.format(os.path.basename(wf)[:-7],
+        #                                                format_duration(time.time() - os.path.getmtime(wf))))
     #
     # resume execution...
     if args.workflow_id and len(workflows) > 1:
