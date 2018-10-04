@@ -203,7 +203,7 @@ class SoS_Step:
         # it initially hold multiple names with/without wildcard characters
         self.names = [] if names is None else names
         # everything before step process
-        self.statements = []
+        self.statements: List = []
         self.global_parameters = {}
         self.parameters = {}
         # step processes
@@ -233,21 +233,23 @@ class SoS_Step:
 
     def step_name(self, alias: bool = False) -> str:
         # if the step is not part of any workflow and is not given a name
-        if not self.name:
+        if self.name is None:
             names = []
             for n, i, a in self.names:
                 if alias and a:
                     names.append(a)
+                elif n and i is not None:
+                    names.append(f'{n}_{i}')
                 else:
-                    names.append(f'{n}_{int(i)}' if isinstance(
-                        i, str) and i.isdigit() else n)
+                    names.append(n if n is not None else str(i))
             return ', '.join(names)
         else:
             if alias and self.alias:
                 return self.alias
+            elif self.name and self.index is not None:
+                return f'{self.name}_{self.index}'
             else:
-                return self.name + \
-                    (f'_{self.index}' if isinstance(self.index, int) else '')
+                return self.name if self.name else str(self.index)
 
     def match(self, step_name: str) -> bool:
         # if this step provides name...
@@ -584,20 +586,17 @@ class SoS_Workflow:
         #
         for section in sections:
             for name, index, alias in section.names:
-                # if 'provides' in section.options or 'shared' in section.options:
                 self.auxiliary_sections.append(section)
-                self.auxiliary_sections[-1].name = section.names[0][0]
-                self.auxiliary_sections[-1].index = None if index is None else int(
-                    index)
+                self.auxiliary_sections[-1].name = name
+                self.auxiliary_sections[-1].index = index
                 self.auxiliary_sections[-1].alias = alias
                 self.auxiliary_sections[-1].uuid = uuid4()
                 # an auxiliary step can also serve as a regular step
                 # as long as it matches workflow name.
-                if fnmatch.fnmatch(workflow_name, name):
+                if (name == '' and workflow_name == 'default') or fnmatch.fnmatch(workflow_name, name):
                     self.sections.append(copy.deepcopy(section))
-                    self.sections[-1].name = workflow_name
-                    self.sections[-1].index = None if index is None else int(
-                        index)
+                    self.sections[-1].name = name
+                    self.sections[-1].index = index
                     self.sections[-1].alias = alias
                     self.sections[-1].uuid = uuid4()
         #
@@ -606,7 +605,7 @@ class SoS_Workflow:
         #
         # disable some disallowed steps
         if allowed_steps:
-            all_steps = {x.index: False for x in self.sections if x.index >= 0}
+            all_steps = {x.index: False for x in self.sections if x.index and x.index >= 0}
             #
             for item in allowed_steps.split(','):
                 # remove space
@@ -1096,13 +1095,21 @@ for __n, __v in {repr(name_map)}.items():
                         if n == 'global' and i is not None:
                             parsing_errors.append(
                                 lineno, line, 'Invalid global section definition')
+                        if n == '':
+                            parsing_errors.append(
+                                lineno, line, 'Empty step name is not allowed')
+                        if i and str(int(i)) != i:
+                            # disallow cases such as a_01
+                            parsing_errors.appen(
+                                lineno, line, f'Invalid section index {i} (leading zero is not allowed)'
+                            )
                         if n:
                             if i is None and '*' in n:
                                 parsing_errors.append(
                                     lineno, line, 'Unindexed section name cannot contain wildcard character (*).')
-                            step_names.append([n, i, al])
+                            step_names.append([n, int(i) if i else i, al])
                         if di:
-                            step_names.append(['default', di, al])
+                            step_names.append(['', int(di), al])
                     else:
                         parsing_errors.append(
                             lineno, line, 'Invalid section name')
@@ -1338,15 +1345,15 @@ for __n, __v in {repr(name_map)}.items():
         if not wf_name:
             if len(self.workflows) == 1:
                 wf_name = list(self.workflows)[0]
-            elif 'default' in self.workflows:
-                wf_name = 'default'
             elif self.default_workflow:
                 wf_name = self.default_workflow
+            elif 'default' in self.workflows or '' in self.workflows:
+                wf_name = 'default'
             else:
                 raise ValueError('Name of workflow should be specified because '
                                  'the script defines more than one pipelines without a default one. '
                                  'Available pipelines are: {}.'.format(', '.join(self.workflows)))
-        elif wf_name not in self.workflows:
+        elif wf_name not in self.workflows and wf_name != 'default':
             raise ValueError(
                 f'Workflow {wf_name} is undefined. Available workflows are: {", ".join(self.workflows)}')
         # do not send extra parameters of ...

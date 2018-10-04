@@ -128,7 +128,7 @@ print(a)
 
 """)
         # alias should also be recovered.
-        wf = script.workflow('default')
+        wf = script.workflow()
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 2)
         # rerun
@@ -172,7 +172,7 @@ cp {_input} {_dest[0]}
                 file_target(f).unlink()
         #
         # only the first step
-        wf = script.workflow('default:0')
+        wf = script.workflow(':0')
         env.config['sig_mode'] = 'force'
         res = Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('temp/a.txt'))

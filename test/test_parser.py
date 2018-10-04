@@ -110,30 +110,30 @@ class TestParser(unittest.TestCase):
     def testWorkflows(self):
         '''Test workflows defined in SoS script'''
         script = SoS_Script('''[0]''')
-        self.assertEqual(sorted(script.workflows), ['default'])
+        self.assertEqual(sorted(script.workflows), [''])
         script = SoS_Script('''[0]\n[1]''')
-        self.assertEqual(sorted(script.workflows), ['default'])
+        self.assertEqual(sorted(script.workflows), [''])
         script = SoS_Script('''[0]\n[*_1]''')
-        self.assertEqual(sorted(script.workflows), ['default'])
+        self.assertEqual(sorted(script.workflows), [''])
         script = SoS_Script('''[0]\n[*_1]\n[auxiliary:provides='{a}.txt']''')
-        self.assertEqual(sorted(script.workflows), ['auxiliary', 'default'])
+        self.assertEqual(sorted(script.workflows), ['', 'auxiliary'])
         script = SoS_Script('''[0]\n[*_1]\n[human_1]''')
-        self.assertEqual(sorted(script.workflows), ['default', 'human'])
+        self.assertEqual(sorted(script.workflows), ['', 'human'])
         script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse_2]''')
         self.assertEqual(sorted(script.workflows), [
-                         'default', 'human', 'mouse'])
+                         '', 'human', 'mouse'])
         script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse_2]\n[s*_2]''')
         self.assertEqual(sorted(script.workflows), [
-                         'default', 'human', 'mouse'])
+                         '', 'human', 'mouse'])
         # skip option is not effective at parsing time
         script = SoS_Script(
             '''[0]\n[*_1]\n[human_1]\n[mouse_2:skip]\n[s*_2]''')
         self.assertEqual(sorted(script.workflows), [
-                         'default', 'human', 'mouse'])
+                         '', 'human', 'mouse'])
         # unnamed
         script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse]\n[s*_2]''')
         self.assertEqual(sorted(script.workflows), [
-                         'default', 'human', 'mouse'])
+                         '', 'human', 'mouse'])
         #
         # workflow name with -
         script = SoS_Script('''[proc-1]\n[test-case_2]''')
@@ -889,7 +889,7 @@ files = ['a.txt', 'b.txt']
 input: 'a.pdf', files
 
 ''')
-        wf = script.workflow('default')
+        wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
         #
         # test input types
@@ -925,7 +925,7 @@ executed.append(_input)
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['executed'],  [
                          sos_targets('a1.txt', 'a2.txt', 'a3.txt', 'a4.txt')])
-        self.assertEqual(env.sos_dict['executed'][0].source, ['default_0']*4)
+        self.assertEqual(env.sos_dict['executed'][0].source, ['0']*4)
         # group_by = 'single'
         script = SoS_Script('''
 [0: shared='executed']

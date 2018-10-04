@@ -162,8 +162,8 @@ _SUBWORKFLOW_TMPL = '''
     ^\s*                               # leading space
     (?P<name>                          # name
     ([a-zA-Z]+\.)*                     # optional name
-    [a-zA-Z*]                          # cannot start with _ etc
-    ([-\w\d_]*?))                      # can - have _ and digit
+    ([a-zA-Z*]                         # cannot start with _ etc
+    ([-\w\d_]*?))?)                    # can - have _ and digit
     (:(?P<steps>                       # index start from :
     [\d\s-]+))?                        # with - and digit
     \s*$                               # end

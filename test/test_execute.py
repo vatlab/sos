@@ -1372,7 +1372,7 @@ output: 'a.txt'
 _output.touch()
 
 [2]
-assert step_input.source == ['default_1']
+assert step_input.source == ['1']
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -1384,7 +1384,7 @@ output: 'a.txt', 'b.txt', group_by=1
 _output.touch()
 
 [2]
-assert step_input.source == ['default_1', 'default_1']
+assert step_input.source == ['1', '1']
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -1398,7 +1398,7 @@ _output.touch()
 
 [2]
 input: 'c.txt'
-assert step_input.source == ['default_2']
+assert step_input.source == ['2']
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
