@@ -799,8 +799,6 @@ class Base_Executor:
                     node._context['__signature_vars__'] | node._context['__environ_vars__']
                     | {'_input', '__step_output__', '__args__'}))
             node._context.update(svar)
-            node._context['__completed__'].append(
-                res['__step_name__'])
         dag.update_step(runnable,
                         env.sos_dict['__step_input__'],
                         env.sos_dict['__step_output__'],

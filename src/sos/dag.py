@@ -92,8 +92,6 @@ class SoS_Node(object):
         # env.logger.error('Note {}: Input: {} Depends: {} Output: {}'.format(self._node_id, self._input_targets,
         #      self._depends_targets,  self._output_targets))
         self._context = {} if context is None else copy.deepcopy(context)
-        if '__completed__' not in self._context:
-            self._context['__completed__'] = []
         self._status = None
         # unique ID to avoid add duplicate nodes ...
         self._node_uuid = textMD5(pickle.dumps((step_uuid, node_name, node_index,

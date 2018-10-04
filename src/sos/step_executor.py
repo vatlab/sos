@@ -891,7 +891,7 @@ class Base_Step_Executor:
             result['__signature_vars__'] = env.accessed_vars
         env.controller_push_socket.send_pyobj(['progress', 'step_completed',
             -1 if 'sos_run' in env.sos_dict['__signature_vars__'] else self.completed['__step_completed__'],
-            env.sos_dict['step_id']])
+            env.sos_dict['step_name'], env.sos_dict['step_output']])
         return result
 
     def run(self):

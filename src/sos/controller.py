@@ -74,6 +74,9 @@ class Controller(threading.Thread):
         self._subprogressbar_size = 25
         self._subprogressbar_last_updated = time.time()
 
+        # completed steps
+        self._completed_steps = {}
+
         # substgep workers
         self._frontend_requests = []
         self._substep_workers = []
@@ -133,6 +136,8 @@ class Controller(threading.Thread):
                     self._ignored[msg[2]] += 1
                 elif msg[1] == 'substep_completed':
                     self._completed[msg[2]] += 1
+                elif msg[1] == 'step_completed':
+                    self._completed_steps[msg[3]] = msg[4]
                 if env.verbosity == 1 and env.config['run_mode'] != 'interactive':
                     # remove existing subworkflow
                     if time.time() - self._subprogressbar_last_updated > 1:
@@ -166,15 +171,18 @@ class Controller(threading.Thread):
 
     def handle_ctl_req_msg(self, msg):
         try:
+            # handle all sig_push_msg
+            while True:
+                if self.sig_push_socket.poll(0.01):
+                    self.handle_sig_push_msg(self.sig_push_socket.recv_pyobj())
+                else:
+                    break
             if msg[0] == 'nprocs':
                 self.ctl_req_socket.send_pyobj(self._nprocs)
+            elif msg[0] == 'sos_step':
+                self.ctl_req_socket.send_pyobj(msg[1] in self._completed_steps
+                    or msg[1] in [x.rsplit('_', 1)[0] for x in self._completed_steps.keys()])
             elif msg[0] == 'done':
-                # handle all sig_push_msg
-                while True:
-                    if self.sig_push_socket.poll(0.01):
-                        self.handle_sig_push_msg(self.sig_push_socket.recv_pyobj())
-                    else:
-                        break
                 # close all databses
                 #self.step_signatures.close()
                 #self.workflow_signatures.close()

@@ -266,8 +266,8 @@ class sos_step(BaseTarget):
     def target_exists(self, mode='any'):
         # the target exists only if it has been executed?
         # which is indicated by a variable
-        return '__completed__' in env.sos_dict and (self._step_name in env.sos_dict['__completed__'] or
-                                                    self._step_name in [x.rsplit('_', 1)[0] for x in env.sos_dict['__completed__']])
+        env.controller_req_socket.send_pyobj(['sos_step', self._step_name])
+        return env.controller_req_socket.recv_pyobj()
 
     def target_name(self):
         return self._step_name
