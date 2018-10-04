@@ -513,7 +513,7 @@ class Base_Step_Executor:
         if 'filetype' in kwargs:
             env.logger.warning('Input option filetype was deprecated')
 
-        assert isinstance(ifile, sos_targets)
+        assert isinstance(ifiles, sos_targets)
 
         # input file is the filtered files
         env.sos_dict.set('step_input', ifiles)
