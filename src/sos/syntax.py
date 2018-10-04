@@ -7,7 +7,7 @@ import keyword
 import re
 
 from typing import Callable
-SOS_INPUT_OPTIONS = ['from', 'group_by', 'filetype', 'paired_with',
+SOS_INPUT_OPTIONS = ['from_steps', 'group_by', 'filetype', 'paired_with',
                      'group_with', 'for_each', 'pattern', 'concurrent']
 SOS_OUTPUT_OPTIONS = ['group_by']
 SOS_DEPENDS_OPTIONS = []

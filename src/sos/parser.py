@@ -25,7 +25,7 @@ from .syntax import (INDENTED, SOS_AS, SOS_CELL, SOS_DIRECTIVE, SOS_DIRECTIVES,
                      SOS_MAGIC, SOS_SECTION_HEADER, SOS_SECTION_NAME,
                      SOS_SECTION_OPTION, SOS_STRU, SOS_SUBWORKFLOW, SOS_ACTION_OPTIONS)
 from .targets import file_target, path, paths, sos_targets, textMD5
-from .utils import Error, env, locate_script, text_repr, format_par
+from .utils import Error, env, locate_script, text_repr, format_par, separate_options
 
 __all__ = ['SoS_Script']
 
@@ -150,37 +150,6 @@ def extract_option_from_arg_list(options: str, optname: str, default_value: None
         raise ValueError(
             f"Expect a list of keyword arguments: {options} provided")
 
-
-def separate_options(options: str) -> List[str]:
-    pieces = options.split(',')
-    idx = 0
-    while True:
-        try:
-            # test current group
-            compile(pieces[idx].strip(), filename='<string>',
-                    mode='exec' if '=' in pieces[idx] else 'eval')
-            # if it is ok, go next
-            idx += 1
-            if idx == len(pieces):
-                break
-        except Exception:
-            # error happens merge the next piece
-            if idx < len(pieces) - 1:
-                pieces[idx] += ',' + pieces[idx + 1]
-                # error happens merge the next piece
-                pieces.pop(idx + 1)
-            else:
-                # if no next group, expand previously correct one
-                if idx == 0:
-                    raise ValueError('Invalid section option')
-                # break myself again
-                pieces = pieces[: idx] + \
-                    pieces[idx].split(',') + pieces[idx + 1:]
-                # go back
-                idx -= 1
-                pieces[idx] += '\n' + pieces[idx + 1]
-                pieces.pop(idx + 1)
-    return pieces
 
 
 def replace_sigil(text: str, sigil: str) -> str:

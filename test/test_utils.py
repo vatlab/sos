@@ -11,7 +11,7 @@ import unittest
 from sos.eval import accessed_vars, on_demand_options
 from sos.parser import SoS_Script
 from sos.pattern import expand_pattern, extract_pattern
-from sos.targets import executable, sos_targets, file_target
+from sos.targets import executable, sos_targets, file_target, sos_step
 # these functions are normally not available but can be imported
 # using their names for testing purposes
 from sos.utils import WorkflowDict, env, logger, stable_repr
@@ -245,6 +245,23 @@ task:
                 self.assertTrue('output' in res['signature_vars'])
             elif section.names[0][1] == '5':
                 self.assertTrue('output' not in res['signature_vars'])
+
+    def testAnalyzeFromOption(self):
+        '''Test extracting of from=value option from input'''
+        script = SoS_Script('''
+[A_1]
+input:  from_steps='B'
+
+[A_2]
+input: something_unknown, from_steps=['B', 'C2'], group_by=1
+''')
+        wf = script.workflow('A')
+        for section in wf.sections:
+            res = analyze_section(section)
+            if section.names[0][1] == '1':
+                self.assertEqual(res['step_depends'], sos_targets(sos_step('B')))
+            if section.names[0][1] == '2':
+                self.assertTrue(res['step_depends'] == sos_targets(sos_step('B'), sos_step('C2')))
 
     def testOnDemandOptions(self):
         '''Test options that are evaluated upon request.'''
