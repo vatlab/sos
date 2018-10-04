@@ -45,23 +45,6 @@ class TestTarget(unittest.TestCase):
         #
         self.temp_files.extend(files)
 
-    def testTargetSource(self):
-        '''Test source of sos_targets'''
-        a = sos_targets('a')
-        self.assertEqual(a.source, [''])
-        b = sos_targets(['a', 'b'])
-        self.assertEqual(b.source, ['', ''])
-        c = sos_targets(['a1', 'b1'], source='here')
-        self.assertEqual(c.source, ['here', 'here'])
-        c.extend(b)
-        self.assertEqual(c.source, ['here', 'here', '', ''])
-        #
-        self.assertEqual(c[''].source, ['', ''])
-        self.assertEqual(c['here'].source, ['here', 'here'])
-        self.assertEqual(c['here'], ['a1', 'b1'])
-        self.assertTrue(isinstance(c['here'], sos_targets))
-
-
     def testTargetFormat(self):
         '''Test string interpolation of targets'''
         for target, fmt, res in [
