@@ -277,7 +277,7 @@ class Base_Step_Executor:
         elif group_by == 'source':
             sources = list(dict.fromkeys(ifiles.source))
             return [ifiles.slice(x) for x in sources]
-        elif isinstance(group_by, int) or group_by.isdigit():
+        elif isinstance(group_by, int) or (isinstance(group_by, str) and group_by.isdigit()):
             group_by = int(group_by)
             if len(ifiles) % group_by != 0 and len(ifiles) > group_by:
                 env.logger.warning(
@@ -286,6 +286,11 @@ class Base_Step_Executor:
                 raise ValueError(
                     'Value of paramter group_by should be a positive number.')
             return [ifiles.slice(slice(i,i + group_by)) for i in range(0, len(ifiles), group_by)]
+        elif callable(group_by):
+            try:
+                return [sos_targets(x) for x in group_by(ifiles)]
+            except Exception as e:
+                raise ValueError(f'Failed to apply group_by to step_input: {e}')
         else:
             raise ValueError(f'Unsupported group_by option ``{group_by}``!')
 

@@ -1061,11 +1061,49 @@ executed.append(_input)
 
 ''')
         wf = script.workflow()
-        Base_Executor(wf).run(mode='run')
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['executed'], [
                          sos_targets('c.txt'),
                          sos_targets('a.txt'),
                          sos_targets('b.txt', 'b1.txt')])
+        #
+        # group by function
+        file_target('c.txt').touch()
+        script = SoS_Script('''
+[0: shared='executed']
+executed = []
+
+def grp(x):
+    return  [x[:3], x[3:]]
+
+input: ['a{}.txt'.format(x) for x in range(5)], group_by=grp
+
+executed.append(_input)
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['executed'], [
+                         ['a0.txt', 'a1.txt', 'a2.txt'],
+                         ['a3.txt', 'a4.txt']])
+        #
+        # group by lambda function
+        file_target('c.txt').touch()
+        script = SoS_Script('''
+[0: shared='executed']
+executed = []
+
+input: ['a{}.txt'.format(x) for x in range(6)], group_by=lambda x: zip(x[:3], x[3:])
+
+executed.append(_input)
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['executed'], [
+                         ['a0.txt', 'a3.txt'],
+                         ['a1.txt', 'a4.txt'],
+                         ['a2.txt', 'a5.txt']])
 
 
     def testOutputGroupBy(self):
