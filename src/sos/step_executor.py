@@ -262,12 +262,52 @@ class Base_Step_Executor:
         elif group_by == 'all':
             # default option
             return [ifiles]
-        elif group_by == 'pairs':
+        elif isinstance(group_by, str) and group_by.startswith('pairsource'):
+            sources = list(dict.fromkeys(ifiles.source))
+            if len(sources) == 1:
+                raise ValueError(
+                    f'Cannot pairsource input with a single source.'
+                )
+            if group_by == 'pairsource':
+                grp_size = 1
+            else:
+                try:
+                    grp_size = int(group_by[10:])
+                except:
+                    raise ValueError(f'Invalid pairsource option {group_by}')
+            src_size = ifiles.source.count(sources[0])
+            if not all(ifiles.source.count(src) == src_size for src in sources):
+                szs = {x:ifiles.source.count(x) for x in sources}
+                raise ValueError(f'Input sources do not have equal size: {szs}')
+            if src_size % grp_size != 0:
+                raise ValueError(f'Cannot use group size {grp_size} (option {group_by}) for source of size {src_size}')
+            counts = {x: 0 for x in sources}
+            assigned = [None for x in ifiles.source]
+            for idx, src in enumerate(ifiles.source):
+                assigned[idx] = counts[src] // grp_size
+                counts[src] += 1
+            return list(ifiles.slice([idx for idx, val in enumerate(assigned) if val == x]) for x in range(src_size // grp_size))
+        elif isinstance(group_by, str) and group_by.startswith('pairs'):
             if len(ifiles) % 2 != 0:
                 raise ValueError(
                     f'Paired group_by has to have even number of input files: {len(ifiles)} provided')
-            return list(ifiles.slice(x) for x in zip(range(0, len(ifiles) // 2),
-                range(len(ifiles) // 2, len(ifiles))))
+            if group_by == 'pairs':
+                grp_size = 1
+            else:
+                try:
+                    grp_size = int(group_by[5:])
+                except:
+                    raise ValueError(f'Invalid pairs option {group_by}')
+            if grp_size == 1:
+                return list(ifiles.slice(x) for x in zip(range(0, len(ifiles) // 2),
+                    range(len(ifiles) // 2, len(ifiles))))
+            else:
+                if len(ifiles)//2 % grp_size != 0:
+                    raise ValueError(
+                        f'Paired group_by with group size {grp_size} is not possible with input of size {len(ifiles)}'
+                    )
+                return list(ifiles.slice(list(range(x[0], x[0] + grp_size)) + list(range(x[1], x[1] + grp_size)))
+                    for x in zip(range(0, len(ifiles) // 2, grp_size),  range(len(ifiles) // 2, len(ifiles), grp_size)))
         elif group_by == 'pairwise':
             f1, f2 = tee(range(len(ifiles)))
             next(f2, None)
