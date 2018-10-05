@@ -430,7 +430,7 @@ def get_resume_parser(interactive=False, with_workflow=True, desc_only=False):
     return parser
 
 
-def workflow_status(workflow):
+def workflow_status(workflow, info):
     import time
     from .utils import env, load_var, load_config_files, format_duration
     from .hosts import Host
@@ -440,30 +440,13 @@ def workflow_status(workflow):
     from contextlib import redirect_stdout
     from collections import defaultdict
     import re
-    pending_tasks = defaultdict(list)
-    res = {'task_status': []}
-    with open(workflow) as wf:
-        config_file = None
-        for line in wf:
-            if line.startswith('#') or not line.strip():
-                continue
-            try:
-                k, v = load_var(line)
-                res[k] = v
-                if k == 'config_file':
-                    config_file = v
-                elif k == 'pending_task':
-                    pending_tasks[v[0]].append(v[1])
-            except Exception as e:
-                raise ValueError(
-                    'Unrecognizable status line {}: {}'.format(line, e))
-    if 'script' not in res:
+    if 'script' not in info:
         env.logger.error(
             'Cannot resume a workflow with script file (it must have been started programmatically with content of a script).')
         sys.exit(1)
     #
     env.logger.info('{:15s} \t{}'.format(
-        'Workflow ID:', os.path.basename(workflow)[:-7]))
+        'Workflow ID:', info['workflow_id']))
     env.logger.info('{:15s} \t{}'.format('Command:', re.sub(r'\s+', ' ', interpolate(
         'sos run {script} {workflow if workflow else ""} '
         '{("-c " + config_file) if config_file else ""} '
@@ -475,19 +458,18 @@ def workflow_status(workflow):
         '{("-j " + str(max_procs)) if max_procs != 4 else ""} '
         '{("-J " + str(max_running_jobs)) if max_running_jobs else ""} '
         '{("-t " + " ".join(targets)) if targets else ""} '
-        '{" ".join(workflow_args)} ', res))))
-    env.logger.info('{:15s} \t{} ago'.format('Started:',
-                                             format_duration(time.time() - os.path.getmtime(workflow))))
-    env.logger.info('{:15s} \t{}'.format('Working dir:', res['workdir']))
+        '{" ".join(workflow_args)} ', info))))
+    env.logger.info('{:15s} \t{}'.format('Working dir:', info['workdir']))
     #
-    for k, v in pending_tasks.items():
+    info['task_status'] = []
+    for k, v in info["pending_tasks"].items():
         if k in ('', 'localhost'):
             with StringIO() as buf, redirect_stdout(buf):
                 print_task_status(v, check_all=False, verbosity=0, html=False)
                 status = buf.getvalue().strip().split('\n')
         else:
             # remote host?
-            load_config_files(config_file)
+            load_config_files(info.get('config_file', None))
             try:
                 host = Host(k)
                 status = host._task_engine.query_tasks(
@@ -499,8 +481,8 @@ def workflow_status(workflow):
         for v, s in zip(v, status):
             env.logger.info('{:15s} \t{} at {}, currently ``{}``'.format(
                 'Pending task:', v, k, s))
-        res['task_status'].extend(status)
-    return res
+        info['task_status'].extend(status)
+    return info
 
 
 def cmd_resume(args, workflow_args):
@@ -533,60 +515,57 @@ def cmd_resume(args, workflow_args):
     from .utils import env, format_duration
     env.verbosity = args.verbosity
 
-    workflows = glob.glob(os.path.join(os.path.expanduser('~'), '.sos',
-                                       '{}*.status').format(args.workflow_id if args.workflow_id else ''))
+    from .signatures import WorkflowStatus
+    status = WorkflowStatus()
+    workflows = status.list()
     if not workflows:
         env.logger.info('No resumable workflow')
         sys.exit(0)
-    #
-    if args.status:
-        for wf in workflows:
-            workflow_status(wf)
+
+    if args.workflow_id:
+        workflows = [x for x in workflows if x.startswith(args.workflow_id)]
+
+    if not workflows:
+        env.logger.info(f'No resumable workflow that matches ID {args.workflow_id}')
         sys.exit(0)
     elif len(workflows) > 1:
-        workflows = sorted(workflows, key=os.path.getmtime)
-        #for wf in workflows:
-        #    env.logger.info('{}\tstarted {} ago'.format(os.path.basename(wf)[:-7],
-        #                                                format_duration(time.time() - os.path.getmtime(wf))))
-    #
-    # resume execution...
-    if args.workflow_id and len(workflows) > 1:
-        env.logger.error('{} matches more than one resumable workflows {}'.format(args.workflow_id,
-                                                                                  ', '.join([os.path.basename(x)[:-4] for x in workflows])))
+        env.logger.error(f'{args.workflow_id} matches more than one resumable workflows: {", ".join(workflows)}')
         sys.exit(1)
-    else:
-        workflow = workflows[-1]
     #
-    res = workflow_status(workflow)
-    if not res['task_status']:
-        env.logger.warn('Removing workflow {} because it does not have any pending task. The workflow might have been interrupted.'.format(
-            os.path.basename(workflow)[:-4]))
-        os.remove(workflow)
+    wf = workflows[0]
+    info = status.get(wf)
+    info = workflow_status(wf, info)
+    if args.status:
+        sys.exit(0)
+
+    if not info['task_status']:
+        env.logger.error('Failed to get status of pending tasks')
         sys.exit(1)
-    if all(x == 'running' for x in res['task_status']) and args.__wait__ is not True:
-        env.logger.info('Cannot resume workflow {} because all tasks are still running'.format(
-            os.path.basename(workflow)[:-7]))
+
+    if all(x == 'running' for x in info['task_status']) and args.__wait__ is not True:
+        env.logger.info(f'Cannot resume workflow {wf} because all tasks are still running')
         sys.exit(0)
     #
-    args.__config__ = res['config_file']
-    args.__sig_mode__ = res['sig_mode']
-    args.__max_procs__ = args.__max_procs__ if args.__max_procs__ != 4 else res['max_procs']
+    args.__config__ = info['config_file']
+    args.__sig_mode__ = info['sig_mode']
+    args.__max_procs__ = args.__max_procs__ if args.__max_procs__ != 4 else info['max_procs']
     args.__resume__ = True
-    args.__max_running_jobs__ = args.__max_running_jobs__ if args.__max_running_jobs__ is not None else res[
+    args.__max_running_jobs__ = args.__max_running_jobs__ if args.__max_running_jobs__ is not None else info[
         'max_running_jobs']
     args.dryrun = False
     args.__wait__ = args.__wait__ if args.__wait__ is True else None
     args.__no_wait__ = args.__no_wait__ if args.__no_wait__ is True else None
-    args.__bin_dirs__ = res['bin_dirs']
-    args.__queue__ = None if res['default_queue'] == '' else res['default_queue']
-    args.__dag__ = '' if res['output_dag'] is None else res['output_dag']
-    args.__report__ = '' if res['output_report'] is None else res['output_report']
-    args.__targets__ = res['targets']
-    args.script = res['script']
-    args.workflow = res['workflow']
-    if 'workdir' in res:
-        os.chdir(res['workdir'])
-    cmd_run(args, res['workflow_args'])
+    args.__bin_dirs__ = info['bin_dirs']
+    args.__queue__ = None if info['default_queue'] == '' else info['default_queue']
+    args.__dag__ = '' if info['output_dag'] is None else info['output_dag']
+    args.__report__ = '' if info['output_report'] is None else info['output_report']
+    args.__targets__ = info['targets']
+    args.script = info['script']
+    args.workflow = info['workflow']
+    if 'workdir' in info:
+        os.chdir(info['workdir'])
+    env.logger.info(f'Resumming {wf}')
+    cmd_run(args, info['workflow_args'])
 
 #
 # subcommand dryrun

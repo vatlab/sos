@@ -3,6 +3,7 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
+import copy
 import base64
 import os
 import subprocess
@@ -232,25 +233,13 @@ class Base_Executor:
         env.signature_push_socket.send_pyobj(['workflow', 'workflow', self.md5, repr(workflow_info)])
 
     def handle_resumed(self):
-        env.config['resumed_tasks'] = set()
-        wf_status = os.path.join(os.path.expanduser(
-            '~'), '.sos', self.md5 + '.status')
         if env.config['resume_mode']:
-            if os.path.isfile(wf_status):
-                with open(wf_status) as status:
-                    for line in status:
-                        if line.startswith('pending_task'):
-                            _, v = load_var(line)
-                            env.config['resumed_tasks'].add(v[1])
+            status = env.signature_req_socket.send_pyobj(['workflow_status', 'get', self.md5])
+            if status:
+                env.config['resumed_tasks'] = status['pending_tasks']
             else:
                 env.logger.info(f'Workflow {self.md5} has been completed.')
                 sys.exit(0)
-        # wait is None or True, and there is task
-        elif env.config['wait_for_task'] is not True and self.workflow.has_external_task():
-            with open(wf_status, 'w') as wf:
-                # overwrite previous file
-                for key, val in env.config.items():
-                    wf.write(save_var(key, val))
 
     def run(self, targets: Optional[List[str]]=None, parent_socket: None=None, my_workflow_id: None=None, mode=None) -> Dict[str, Any]:
         #
@@ -280,7 +269,7 @@ class Base_Executor:
             return self._run(targets=targets, parent_socket=parent_socket,
                 my_workflow_id=my_workflow_id, mode=mode)
         finally:
-            if not parent_socket and env.sos_dict['master_id'] == env.sos_dict['workflow_id']:
+            if not parent_socket and env.config['master_id'] == env.sos_dict['workflow_id']:
                 # end progress bar when the master workflow stops
                 env.logger.trace(f'Stop controller from {os.getpid()}')
                 env.controller_req_socket.send_pyobj(['done'])
@@ -294,11 +283,10 @@ class Base_Executor:
 
 
     def record_quit_status(self, tasks: List[Tuple[str, str]]) -> None:
-        if not self.md5:
-            return
-        with open(os.path.join(os.path.expanduser('~'), '.sos', self.md5 + '.status'), 'a') as status:
-            for q, t in tasks:
-                status.write(save_var('pending_task', [q, t]))
+        status_info = dict(env.config.items())
+        queues = set([x[0] for x in tasks])
+        status_info['pending_tasks'] = {x:[k[1] for k in tasks if k[0] == x] for x in queues}
+        env.signature_push_socket.send_pyobj(['workflow_status', 'save', status_info])
 
     def calculate_md5(self) -> str:
         with StringIO() as sig:
@@ -849,14 +837,7 @@ class Base_Executor:
 
     def finalize_and_report(self):
         # remove task pending status if the workflow is completed normally
-        try:
-            wf_status = os.path.join(os.path.expanduser(
-                '~'), '.sos', self.md5 + '.status')
-            if os.path.isfile(wf_status):
-                os.remove(wf_status)
-        except Exception as e:
-            env.logger.warning(
-                f'Failed to clear workflow status file: {e}')
+        env.signature_push_socket.send_pyobj(['workflow_status', 'completed'])
         if self.workflow.name != 'scratch':
             if self.completed["__step_completed__"] == 0:
                 sts = 'ignored'
@@ -1138,7 +1119,6 @@ class Base_Executor:
 
                 # step 3: check if there is room and need for another job
                 while True:
-                    # env.logger.error('{} {}'.format(i_am(), [x.status() for x in procs]))
                     if manager.all_busy():
                         break
                     #

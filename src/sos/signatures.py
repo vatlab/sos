@@ -199,3 +199,64 @@ class WorkflowSignatures(object):
     def close(self):
         self.commit()
         self.conn.close()
+
+
+class WorkflowStatus(object):
+    def __init__(self):
+        self.db_file = os.path.join(
+            env.exec_dir, '.sos', 'workflow_status.db')
+        self._conn = None
+
+    def _get_conn(self):
+        # there is a possibility that the _conn is copied with a process
+        # and we would better have a fresh conn
+        if self._conn is None:
+            self._conn = sqlite3.connect(self.db_file, timeout=60)
+            self._conn.execute('''CREATE TABLE IF NOT EXISTS workflow_status (
+                    workflow_id text,
+                    info text
+            )''')
+        return self._conn
+
+    conn = property(_get_conn)
+
+    def set(self, info: str) -> None:
+        try:
+            self.conn.execute('INSERT INTO workflow_status VALUES (?, ?)',
+                      (env.config["master_id"], repr(info)))
+        except sqlite3.DatabaseError as e:
+            env.logger.warning(f'Failed to write workflow status: {e}')
+            return None
+
+    def list(self):
+        try:
+            cur = self.conn.cursor()
+            cur.execute('SELECT DISTINCT workflow_id FROM workflow_status')
+            return [x[0] for x in cur.fetchall()]
+        except sqlite3.DatabaseError as e:
+            env.logger.warning(f'Failed to get workflows from signature database: {e}')
+            return []
+
+    def get(self, id: str):
+        try:
+            cur = self.conn.cursor()
+            cur.execute('SELECT info FROM workflow_status WHERE workflow_id = ?', (id,))
+            return eval(cur.fetchone()[0])
+        except sqlite3.DatabaseError as e:
+            env.logger.warning(f'Failed to get workflows from signature database: {e}')
+            return []
+
+    def clear(self, id: str):
+        try:
+            self.conn.execute(
+                f'DELETE FROM workflow_status WHERE workflow_id = ?', (id,))
+        except sqlite3.DatabaseError as e:
+            env.logger.warning(f'Failed to clear workflow database: {e}')
+            return []
+
+    def commit(self):
+        self.conn.commit()
+
+    def close(self):
+        self.commit()
+        self.conn.close()
