@@ -66,7 +66,6 @@ class StepSignatures:
             conn.cursor().execute(
                 'INSERT OR REPLACE INTO steps VALUES (?, ?)',
                 (step_id, lzma.compress(pickle.dumps(signature))))
-            conn.commit()
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to set step signature for step {step_id}: {e}')
 
@@ -86,7 +85,6 @@ class StepSignatures:
             cur.executemany(
                     'DELETE FROM steps WHERE step_id=?',
                     [(x,) for x in steps])
-            conn.commit()
             return cnt - self._num_records(cur)
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to remove signature for {len(steps)} substeps: {e}')
@@ -96,11 +94,15 @@ class StepSignatures:
         try:
             conn = self.get_conn(global_sig)
             conn.execute('DELETE FROM steps')
-            conn.commit()
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to clear step signature database: {e}')
 
+    def commit(self):
+        self.get_conn(True).commit()
+        self.get_conn(False).commit()
+
     def close(self):
+        self.commit()
         self.get_conn(True).close()
         self.get_conn(False).close()
 
@@ -129,7 +131,6 @@ class WorkflowSignatures(object):
         try:
             self.conn.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
                       (env.config["master_id"], entry_type, id, item))
-            self.conn.commit()
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to write workflow signature of type {entry_type} and id {id}: {e}')
             return None
@@ -188,10 +189,13 @@ class WorkflowSignatures(object):
         try:
             self.conn.execute(
                 f'DELETE FROM workflows WHERE master_id = ?', (env.config["master_id"],))
-            self.conn.commit()
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to clear workflow database: {e}')
             return []
 
+    def commit(self):
+        self.conn.commit()
+
     def close(self):
+        self.commit()
         self.conn.close()

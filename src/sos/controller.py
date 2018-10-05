@@ -185,9 +185,6 @@ class Controller(threading.Thread):
             elif msg[0] == 'step_output':
                 self.ctl_req_socket.send_pyobj(self._completed_steps.get(msg[1], None))
             elif msg[0] == 'done':
-                # close all databses
-                #self.step_signatures.close()
-                #self.workflow_signatures.close()
                 # handle all ctl_push_msgs #1062
                 while True:
                     if self.ctl_push_socket.poll(0.01):
@@ -299,8 +296,8 @@ class Controller(threading.Thread):
             sys.stderr.write('\033[32m[\033[0m')
             sys.stderr.flush()
 
-        while True:
-            try:
+        try:
+            while True:
                 socks = dict(poller.poll())
 
                 if self.sig_push_socket in socks:
@@ -328,27 +325,31 @@ class Controller(threading.Thread):
                 #         self._num_clients += 1
                 #     elif evt['event'] == zmq.EVENT_DISCONNECTED:
                 #         self._num_clients -= 1
-            except KeyboardInterrupt:
-                break
+        except:
+            return
+        finally:
+            # close all databses
+            self.step_signatures.close()
+            self.workflow_signatures.close()
 
-        poller.unregister(self.sig_push_socket)
-        poller.unregister(self.sig_req_socket)
-        poller.unregister(self.ctl_push_socket)
-        poller.unregister(self.ctl_req_socket)
-        poller.unregister(self.substep_frontend_socket)
-        poller.unregister(self.substep_backend_socket)
+            poller.unregister(self.sig_push_socket)
+            poller.unregister(self.sig_req_socket)
+            poller.unregister(self.ctl_push_socket)
+            poller.unregister(self.ctl_req_socket)
+            poller.unregister(self.substep_frontend_socket)
+            poller.unregister(self.substep_backend_socket)
 
-        self.sig_push_socket.LINGER = 0
-        self.sig_push_socket.close()
-        self.sig_req_socket.LINGER = 0
-        self.sig_req_socket.close()
-        self.ctl_push_socket.LINGER = 0
-        self.ctl_push_socket.close()
-        self.ctl_req_socket.LINGER = 0
-        self.ctl_req_socket.close()
-        self.substep_frontend_socket.LINGER = 0
-        self.substep_frontend_socket.close()
-        self.substep_backend_socket.LINGER = 0
-        self.substep_backend_socket.close()
+            self.sig_push_socket.LINGER = 0
+            self.sig_push_socket.close()
+            self.sig_req_socket.LINGER = 0
+            self.sig_req_socket.close()
+            self.ctl_push_socket.LINGER = 0
+            self.ctl_push_socket.close()
+            self.ctl_req_socket.LINGER = 0
+            self.ctl_req_socket.close()
+            self.substep_frontend_socket.LINGER = 0
+            self.substep_frontend_socket.close()
+            self.substep_backend_socket.LINGER = 0
+            self.substep_backend_socket.close()
 
-        env.logger.trace(f'controller stopped {os.getpid()}')
+            env.logger.trace(f'controller stopped {os.getpid()}')
