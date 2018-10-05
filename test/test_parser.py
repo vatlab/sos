@@ -910,7 +910,7 @@ output: (f"a{x}" for x in _input)
     def testGroupBy(self):
         '''Test group_by parameter of step input'''
         # group_by = 'all'
-        self.touch(['a{}.txt'.format(x) for x in range(11)])
+        self.touch(['a{}.txt'.format(x) for x in range(15)])
         #
         script = SoS_Script('''
 [0: shared='executed']
@@ -954,6 +954,39 @@ executed.append(_input)
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['executed'],  [sos_targets(
             'a1.txt', 'a3.txt'), sos_targets('a2.txt', 'a4.txt')])
+        # group_by = 'pairs2'
+        script = SoS_Script('''
+[0: shared='executed']
+
+executed = []
+input: [f'a{x}.txt' for x in range(1, 9)], group_by='pairs2'
+
+executed.append(_input)
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['executed'],  [
+                sos_targets('a1.txt', 'a2.txt', 'a5.txt', 'a6.txt'),
+                sos_targets('a3.txt', 'a4.txt', 'a7.txt', 'a8.txt')
+                ])
+        # group_by = 'pairs3'
+        script = SoS_Script('''
+[0: shared='executed']
+
+executed = []
+input: [f'a{x}.txt' for x in range(1, 13)], group_by='pairs3'
+
+executed.append(_input)
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['executed'],  [
+                sos_targets('a1.txt', 'a2.txt', 'a3.txt', 'a7.txt', 'a8.txt', 'a9.txt'),
+                sos_targets('a4.txt', 'a5.txt', 'a6.txt', 'a10.txt', 'a11.txt', 'a12.txt')
+                ])
+        
         # group_by = 'pairwise'
         script = SoS_Script('''
 [0: shared='executed']
@@ -1066,6 +1099,60 @@ executed.append(_input)
                          sos_targets('c.txt'),
                          sos_targets('a.txt'),
                          sos_targets('b.txt', 'b1.txt')])
+        # 
+        # group_by='pairsource'
+        file_target('c.txt').touch()
+        script = SoS_Script('''
+[A]
+input: for_each={'i': range(2)}
+output: 'a1.txt', 'a2.txt', group_by=1
+_output.touch()
+
+[B]
+input: for_each={'i': range(2)}
+output: 'b1.txt', 'b2.txt', group_by=1
+_output.touch()
+
+[0: shared='executed']
+executed = []
+
+input: from_steps=['A', 'B'], group_by='pairsource'
+
+executed.append(_input)
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['executed'], [
+                         sos_targets('a1.txt', 'b1.txt'),
+                         sos_targets('a2.txt', 'b2.txt')])
+        # group_by='pairsource3'
+        self.touch(['c{}.txt'.format(x) for x in range(1, 7)])
+        
+        script = SoS_Script('''
+[A]
+input: for_each={'i': range(6)}
+output: [f'a{x}.txt' for x in range(1, 7)], group_by=1
+_output.touch()
+
+[B]
+input: for_each={'i': range(6)}
+output: [f'b{x}.txt' for x in range(1, 7)], group_by=1
+_output.touch()
+
+[0: shared='executed']
+executed = []
+
+input: [f'c{x}.txt' for x in range(1, 7)], from_steps=['A', 'B'], group_by='pairsource3'
+
+executed.append(_input)
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['executed'], [
+                         sos_targets('c1.txt', 'c2.txt', 'c3.txt', 'a1.txt', 'a2.txt', 'a3.txt', 'b1.txt', 'b2.txt', 'b3.txt'),
+                         sos_targets('c4.txt', 'c5.txt', 'c6.txt', 'a4.txt', 'a5.txt', 'a6.txt', 'b4.txt', 'b5.txt', 'b6.txt')])
         #
         # group by function
         file_target('c.txt').touch()
