@@ -472,6 +472,9 @@ run: expand=True
     sleep 2
 ''')
         wf = SoS_Script(filename='test_trunksize.sos').workflow()
+        for i in range(10):
+            if os.path.isfile(f'{i}.txt'):
+                file_target(f'{i}.txt').unlink()
         res = Base_Executor(wf, config={
             'wait_for_task': False,
             'sig_mode': 'force',
@@ -489,7 +492,6 @@ run: expand=True
         }).run()
         self.assertEqual(len(res['pending_tasks']), 2)
         subprocess.call('sos resume -w', shell=True)
-        return
         for i in range(10):
             self.assertTrue(os.path.isfile(f'{i}.txt'))
             file_target(f'{i}.txt').unlink()

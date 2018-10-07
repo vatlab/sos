@@ -529,8 +529,11 @@ def cmd_resume(args, workflow_args):
         env.logger.info(f'No resumable workflow that matches ID {args.workflow_id}')
         sys.exit(0)
     elif len(workflows) > 1:
-        env.logger.error(f'{args.workflow_id} matches more than one resumable workflows: {", ".join(workflows)}')
-        sys.exit(1)
+        if args.workflow_id is None:
+            env.logger.warning(f'More than one resumable workflows exist: {", ".join(workflows)}')
+        else:
+            env.logger.warning(f'{args.workflow_id} matches more than one resumable workflows: {", ".join(workflows)}')
+        workflows = [workflows[-1]]
     #
     wf = workflows[0]
     info = status.get(wf)
