@@ -1006,13 +1006,14 @@ class Base_Step_Executor:
             env.sos_dict.set('step_output', sos_targets([]))
             # output is said to be unspecified until output: is used
             env.sos_dict.set('_output', sos_targets(undetermined=True))
+
         env.sos_dict.set('step_depends', sos_targets([]))
         env.sos_dict.set('_depends', sos_targets([]))
         # _index is needed for pre-input action's active option and for debug output of scripts
         env.sos_dict.set('_index', 0)
 
         env.logger.trace(
-            f'Executing {env.sos_dict["step_name"]} with step_input {env.sos_dict["step_input"]} and step_output {env.sos_dict["step_output"]}')
+            f'Executing step {env.sos_dict["step_name"]} with step_input {env.sos_dict["step_input"]} and step_output {env.sos_dict["step_output"]}')
 
         # look for input statement.
         input_statement_idx = [idx for idx, x in enumerate(
@@ -1097,13 +1098,7 @@ class Base_Step_Executor:
         self.output_groups = [[] for x in self._substeps]
 
         if self.concurrent_substep:
-            if self.step.task:
-                # and 'concurrent' in env.sos_dict['_runtime'] and \
-                #env.sos_dict['_runtime']['concurrent'] is False:
-                self.concurrent_substep = False
-                env.logger.debug(
-                    'Input groups are executed sequentially because of existence of tasks')
-            elif len([
+            if len([
                     x for x in self.step.statements[input_statement_idx:] if x[0] != ':']) > 1:
                 self.concurrent_substep = False
                 env.logger.debug(
