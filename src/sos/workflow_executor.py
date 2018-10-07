@@ -234,7 +234,8 @@ class Base_Executor:
 
     def handle_resumed(self):
         if env.config['resume_mode']:
-            status = env.signature_req_socket.send_pyobj(['workflow_status', 'get', self.md5])
+            env.signature_req_socket.send_pyobj(['workflow_status', 'get', self.md5])
+            status = env.signature_req_socket.recv_pyobj()
             if status:
                 env.config['resumed_tasks'] = status['pending_tasks']
             else:

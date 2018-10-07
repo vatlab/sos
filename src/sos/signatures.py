@@ -244,7 +244,7 @@ class WorkflowStatus(object):
             return eval(cur.fetchone()[0])
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to get workflows from signature database: {e}')
-            return []
+            return {}
 
     def clear(self, id: str):
         try:
