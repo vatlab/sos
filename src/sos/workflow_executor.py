@@ -3,7 +3,6 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
-import copy
 import base64
 import os
 import subprocess
@@ -30,8 +29,7 @@ from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
                       UnknownTarget, file_target, path, paths,
                       sos_step, sos_targets, sos_variable, textMD5)
 from .utils import (Error, WorkflowDict, env, get_traceback,
-                    load_config_files, load_var, pickleable, save_var,
-                    short_repr)
+                    load_config_files, pickleable, short_repr)
 from .workers import SoS_Worker
 from .executor_utils import __null_func__, PendingTasks
 
@@ -39,7 +37,7 @@ __all__ = []
 
 try:
     # https://github.com/pytest-dev/pytest-cov/issues/139
-    from pytest_cov.embed import cleanup_on_sigterm, PendingTasks
+    from pytest_cov.embed import cleanup_on_sigterm
     cleanup_on_sigterm()
 except:
     pass

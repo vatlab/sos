@@ -8,15 +8,16 @@
 #
 import os
 import copy
+import re
 from typing import Any, List, Tuple
 from collections import Sequence
 
 from .targets import RemovedTarget, file_target, sos_targets, sos_step, dynamic, sos_variable, RuntimeInfo
-from .utils import env
+from .utils import env, short_repr
 from .eval import SoS_eval, SoS_exec
 from ._version import __version__
 from .tasks import TaskParams
-
+from .syntax import SOS_TAG
 
 class PendingTasks(Exception):
     def __init__(self, tasks: List[Tuple[str, str]], *args, **kwargs) -> None:

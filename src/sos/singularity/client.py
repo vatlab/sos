@@ -4,14 +4,13 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import os
-import platform
 import shutil
 import subprocess
 import sys
 import tempfile
 
 from sos.eval import interpolate
-from sos.targets import sos_targets, path
+from sos.targets import  path
 from sos.utils import env, pexpect_run
 
 #
@@ -216,7 +215,7 @@ class SoS_SingularityClient:
         # if image is specified, check if it is available locally. If not, pull it
         try:
             print(f'HINT: Pulling image {image} to {image_file}')
-            output = subprocess.check_output(
+            subprocess.check_output(
                 'singularity pull --name {} {}'.format(image_file, image), stderr=subprocess.STDOUT, shell=True,
                 universal_newlines=True)
             self.pulled_images.add(image)

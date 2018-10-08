@@ -431,14 +431,12 @@ def get_resume_parser(interactive=False, with_workflow=True, desc_only=False):
 
 
 def workflow_status(workflow, info):
-    import time
-    from .utils import env, load_var, load_config_files, format_duration
+    from .utils import env, load_config_files
     from .hosts import Host
     from .tasks import print_task_status
     from .eval import interpolate
     from io import StringIO
     from contextlib import redirect_stdout
-    from collections import defaultdict
     import re
     if 'script' not in info:
         env.logger.error(
@@ -510,9 +508,7 @@ def cmd_resume(args, workflow_args):
         # execute the command on remote host
         sys.exit(host._host_agent.check_call(argv))
 
-    import glob
-    import time
-    from .utils import env, format_duration
+    from .utils import env
     env.verbosity = args.verbosity
 
     from .signatures import WorkflowStatus

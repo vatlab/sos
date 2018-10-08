@@ -4,9 +4,7 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import copy
-import fnmatch
 import os
-import re
 import subprocess
 import sys
 import time
@@ -20,11 +18,11 @@ from typing import List, Union
 from .eval import SoS_eval, SoS_exec, stmtHash, accessed_vars
 from .pattern import extract_pattern
 from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
-                     SOS_OUTPUT_OPTIONS, SOS_RUNTIME_OPTIONS, SOS_TAG)
+                     SOS_OUTPUT_OPTIONS, SOS_RUNTIME_OPTIONS)
 from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
                       UnknownTarget, dynamic, file_target,
                       sos_targets, sos_step)
-from .tasks import MasterTaskParams, TaskParams, TaskFile
+from .tasks import MasterTaskParams, TaskFile
 from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr)
 from .executor_utils import (clear_output, create_task, verify_input, reevaluate_output,

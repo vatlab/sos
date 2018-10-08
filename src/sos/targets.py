@@ -824,7 +824,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         elif len(source) == len(self._targets):
             self._sources = source
         else:
-            raise ValueError(f'Invalid source {src} for sos_target with {len(self)} targets.')
+            raise ValueError(f'Invalid source {source} for sos_target with {len(self)} targets.')
 
     source = property(lambda self: self._sources, set_source)
 
