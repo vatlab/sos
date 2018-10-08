@@ -6,14 +6,16 @@
 #
 # Utility functions used by various executors.
 #
-
+import os
+import copy
 from typing import Any, List, Tuple
 from collections import Sequence
 
-from .targets import RemovedTarget, file_target, sos_targets, sos_step, dynamic, sos_variable
+from .targets import RemovedTarget, file_target, sos_targets, sos_step, dynamic, sos_variable, RuntimeInfo
 from .utils import env
 from .eval import SoS_eval, SoS_exec
 from ._version import __version__
+from .tasks import TaskParams
 
 
 class PendingTasks(Exception):
@@ -49,12 +51,100 @@ def clear_output():
             except Exception as e:
                 env.logger.warning(f'Failed to remove {target}: {e}')
 
-def prepare_env():
+def prepare_env(global_def):
     env.sos_dict.set('__null_func__', __null_func__)
     # initial values
     env.sos_dict.set('SOS_VERSION', __version__)
-    SoS_exec('import os, sys', None)
-    SoS_exec('from sos.runtime import *', None)
+    try:
+        # global def could fail due to execution on remote host...
+        # we also execute global_def way before others and allows variables set by
+        # global_def be overwritten by other passed variables
+        #
+        # note that we do not handle parameter in tasks because values should already be
+        # in sos_task dictionary
+        SoS_exec('''\
+import os, sys
+from sos.runtime import *
+CONFIG = {}
+del sos_handle_parameter_
+''' + global_def, None)
+    except Exception as e:
+        env.logger.trace(
+            f'Failed to execute global definition {short_repr(global_def)}: {e}')
+
+def create_task(global_def, task_stmt, step_md5):
+    # prepare task variables
+    env.sos_dict['_runtime']['cur_dir'] = os.getcwd()
+    # we need to record the verbosity and sigmode of task during creation because
+    # they might be changed while the task is in the queue waiting to be
+    # submitted (this happens when tasks are submitted from Jupyter)
+    env.sos_dict['_runtime']['verbosity'] = env.verbosity
+    env.sos_dict['_runtime']['sig_mode'] = env.config.get(
+        'sig_mode', 'default')
+    env.sos_dict['_runtime']['run_mode'] = env.config.get(
+        'run_mode', 'run')
+    env.sos_dict['_runtime']['home_dir'] = os.path.expanduser('~')
+    if 'workdir' in env.sos_dict['_runtime'] and not os.path.isdir(os.path.expanduser(env.sos_dict['_runtime']['workdir'])):
+        try:
+            os.makedirs(os.path.expanduser(
+                env.sos_dict['_runtime']['workdir']))
+        except Exception:
+            raise RuntimeError(
+                f'Failed to create workdir {env.sos_dict["_runtime"]["workdir"]}')
+
+    # NOTE: we do not explicitly include 'step_input', 'step_output',
+    # 'step_depends' and 'CONFIG'
+    # because they will be included by env.sos_dict['__signature_vars__'] if they are actually
+    # used in the task. (issue #752)
+    task_vars = env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__']
+                                                 | {'_input', '_output', '_depends', '_index', '__args__', 'step_name', '_runtime',
+                                                    '__signature_vars__', '__step_context__'
+                                                    })
+
+    task_tags = [env.sos_dict['step_name'], env.sos_dict['workflow_id']]
+    if 'tags' in env.sos_dict['_runtime']:
+        if isinstance(env.sos_dict['_runtime']['tags'], str):
+            tags = [env.sos_dict['_runtime']['tags']]
+        elif isinstance(env.sos_dict['_runtime']['tags'], Sequence):
+            tags = list(env.sos_dict['_runtime']['tags'])
+        else:
+            env.logger.warning(
+                f'Unacceptable value for parameter tags: {env.sos_dict["_runtime"]["tags"]}')
+        #
+        for tag in tags:
+            if not tag.strip():
+                continue
+            if not SOS_TAG.match(tag):
+                new_tag = re.sub(r'[^\w_.-]', '', tag)
+                if new_tag:
+                    env.logger.warning(
+                        f'Invalid tag "{tag}" is added as "{new_tag}"')
+                    task_tags.append(new_tag)
+                else:
+                    env.logger.warning(f'Invalid tag "{tag}" is ignored')
+            else:
+                task_tags.append(tag)
+
+    # save task to a file
+    task_vars['__task_vars__'] = copy.copy(task_vars)
+    taskdef = TaskParams(
+        name='{} (index={})'.format(
+            env.sos_dict['step_name'], env.sos_dict['_index']),
+        global_def=global_def,
+        task=task_stmt,          # task
+        sos_dict=task_vars,
+        tags=task_tags
+    )
+    # if no output (thus no signature)
+    # temporarily create task signature to obtain sig_id
+    task_id = RuntimeInfo(step_md5, task_stmt, task_vars['_input'],
+                          task_vars['_output'], task_vars['_depends'],
+                          task_vars['__signature_vars__'], task_vars).sig_id
+
+    # workflow ID should be included but not part of the signature, this is why it is included
+    # after task_id is created.
+    task_vars['workflow_id'] = env.sos_dict['workflow_id']
+    return task_id, taskdef, task_vars
 
 def reevaluate_output():
     # re-process the output statement to determine output files

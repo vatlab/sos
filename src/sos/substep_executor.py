@@ -18,7 +18,7 @@ from .eval import SoS_exec, stmtHash
 from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
                       UnknownTarget)
 from .executor_utils import (prepare_env, clear_output, verify_input,
-        reevaluate_output, validate_step_sig)
+        reevaluate_output, validate_step_sig, create_task)
 
 from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env)
 
@@ -36,13 +36,13 @@ def stdoutIO():
     sys.stderr = olderr
 
 
-def execute_substep(stmt, proc_vars={}, step_md5=None, step_tokens=[],
+def execute_substep(stmt, global_def='', task='', proc_vars={}, step_md5=None, step_tokens=[],
     shared_vars=[], config={}, capture_output=False):
     '''Execute a substep with specific input etc
 
     Substep executed by this function should be self-contained.
-    That is to say, substep should not contain tasks or nested
-    workflows. Substeps containing those elements should be executed
+    That is to say, substep should not contain nested workflows.
+    Substeps containing nested workflow should be executed
     with the step (not concurrently).
 
     The executor checks step signatures and might skip the substep if it has
@@ -76,19 +76,18 @@ def execute_substep(stmt, proc_vars={}, step_md5=None, step_tokens=[],
     try:
         res_socket = env.zmq_context.socket(zmq.PUSH)
         res_socket.connect(f'tcp://127.0.0.1:{config["sockets"]["result_push_socket"]}')
-        res = _execute_substep(stmt=stmt, proc_vars=proc_vars, step_md5=step_md5, step_tokens=step_tokens,
+        res = _execute_substep(stmt=stmt, global_def=global_def, task=task, proc_vars=proc_vars, step_md5=step_md5, step_tokens=step_tokens,
             shared_vars=shared_vars, config=config, capture_output=capture_output)
         res_socket.send_pyobj(res)
     finally:
         res_socket.close()
 
-def _execute_substep(stmt, proc_vars, step_md5, step_tokens,
+def _execute_substep(stmt, global_def, task, proc_vars, step_md5, step_tokens,
     shared_vars, config, capture_output):
     # passing configuration and port numbers to the subprocess
     env.config.update(config)
     # prepare a working environment with sos symbols and functions
-    prepare_env()
-
+    prepare_env(global_def)
     # update it with variables passed from master process
     env.sos_dict.quick_update(proc_vars)
     sig = None if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified() else RuntimeInfo(
@@ -119,26 +118,32 @@ def _execute_substep(stmt, proc_vars, step_md5, step_tokens,
         # it should have been included as part of the signature variables.
         verify_input(ignore_internal_targets=True)
 
-        if capture_output:
-            with stdoutIO() as (out, err):
+        if stmt:
+            # statement can be empty for task only substep
+            if capture_output:
+                with stdoutIO() as (out, err):
+                    SoS_exec(stmt, return_result=False)
+                    outmsg = out.getvalue()
+                    errmsg = err.getvalue()
+            else:
                 SoS_exec(stmt, return_result=False)
-                outmsg = out.getvalue()
-                errmsg = err.getvalue()
+        if task:
+            task_id, taskdef, task_vars = create_task(global_def, task, step_md5)
+            res = {'index': env.sos_dict['_index'], 'task_id': task_id, 'task_def': taskdef, 'task_vars': task_vars}
         else:
-            SoS_exec(stmt, return_result=False)
-        if env.sos_dict['step_output'].undetermined():
-            # the pool worker does not have __null_func__ defined
-            env.sos_dict.set('_output', reevaluate_output())
-        res = {'index': env.sos_dict['_index'], 'ret_code': 0}
-        if sig:
-            sig.set_output(env.sos_dict['_output'])
-            # sig.write will use env.signature_push_socket
-            if sig.write():
-                res.update({'output': sig.content['output'], 'shared': sig.content['end_context']})
-        if capture_output:
-            res.update({'stdout': outmsg, 'stderr': errmsg})
-        # complete case: concurrent execution without task
-        env.controller_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
+            if env.sos_dict['step_output'].undetermined():
+                # the pool worker does not have __null_func__ defined
+                env.sos_dict.set('_output', reevaluate_output())
+            res = {'index': env.sos_dict['_index'], 'ret_code': 0}
+            if sig:
+                sig.set_output(env.sos_dict['_output'])
+                # sig.write will use env.signature_push_socket
+                if sig.write():
+                    res.update({'output': sig.content['output'], 'shared': sig.content['end_context']})
+            if capture_output:
+                res.update({'stdout': outmsg, 'stderr': errmsg})
+            # complete case: concurrent execution without task
+            env.controller_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
         return res
     except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock) as e:
         clear_output()

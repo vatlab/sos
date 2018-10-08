@@ -27,7 +27,7 @@ from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
 from .tasks import MasterTaskParams, TaskParams, TaskFile
 from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr)
-from .executor_utils import (clear_output,  verify_input, reevaluate_output,
+from .executor_utils import (clear_output, create_task, verify_input, reevaluate_output,
                     validate_step_sig, PendingTasks)
 
 
@@ -669,78 +669,7 @@ class Base_Step_Executor:
                 v = expand_size(v)
             env.sos_dict['_runtime'][k] = v
 
-    def prepare_task(self):
-        env.sos_dict['_runtime']['cur_dir'] = os.getcwd()
-        # we need to record the verbosity and sigmode of task during creation because
-        # they might be changed while the task is in the queue waiting to be
-        # submitted (this happens when tasks are submitted from Jupyter)
-        env.sos_dict['_runtime']['verbosity'] = env.verbosity
-        env.sos_dict['_runtime']['sig_mode'] = env.config.get(
-            'sig_mode', 'default')
-        env.sos_dict['_runtime']['run_mode'] = env.config.get(
-            'run_mode', 'run')
-        env.sos_dict['_runtime']['home_dir'] = os.path.expanduser('~')
-        if 'workdir' in env.sos_dict['_runtime'] and not os.path.isdir(os.path.expanduser(env.sos_dict['_runtime']['workdir'])):
-            try:
-                os.makedirs(os.path.expanduser(
-                    env.sos_dict['_runtime']['workdir']))
-            except Exception:
-                raise RuntimeError(
-                    f'Failed to create workdir {env.sos_dict["_runtime"]["workdir"]}')
-
-        # NOTE: we do not explicitly include 'step_input', 'step_output',
-        # 'step_depends' and 'CONFIG'
-        # because they will be included by env.sos_dict['__signature_vars__'] if they are actually
-        # used in the task. (issue #752)
-        task_vars = env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__']
-                                                     | {'_input', '_output', '_depends', '_index', '__args__', 'step_name', '_runtime',
-                                                        '__signature_vars__', '__step_context__'
-                                                        })
-
-        task_tags = [env.sos_dict['step_name'], env.sos_dict['workflow_id']]
-        if 'tags' in env.sos_dict['_runtime']:
-            if isinstance(env.sos_dict['_runtime']['tags'], str):
-                tags = [env.sos_dict['_runtime']['tags']]
-            elif isinstance(env.sos_dict['_runtime']['tags'], Sequence):
-                tags = list(env.sos_dict['_runtime']['tags'])
-            else:
-                env.logger.warning(
-                    f'Unacceptable value for parameter tags: {env.sos_dict["_runtime"]["tags"]}')
-            #
-            for tag in tags:
-                if not tag.strip():
-                    continue
-                if not SOS_TAG.match(tag):
-                    new_tag = re.sub(r'[^\w_.-]', '', tag)
-                    if new_tag:
-                        env.logger.warning(
-                            f'Invalid tag "{tag}" is added as "{new_tag}"')
-                        task_tags.append(new_tag)
-                    else:
-                        env.logger.warning(f'Invalid tag "{tag}" is ignored')
-                else:
-                    task_tags.append(tag)
-
-        # save task to a file
-        task_vars['__task_vars__'] = copy.copy(task_vars)
-        taskdef = TaskParams(
-            name='{} (index={})'.format(
-                self.step.step_name(), env.sos_dict['_index']),
-            global_def=self.step.global_def,
-            task=self.step.task,          # task
-            sos_dict=task_vars,
-            tags=task_tags
-        )
-        # if no output (thus no signature)
-        # temporarily create task signature to obtain sig_id
-        task_id = RuntimeInfo(self.step.md5, self.step.task, task_vars['_input'],
-                              task_vars['_output'], task_vars['_depends'],
-                              task_vars['__signature_vars__'], task_vars).sig_id
-
-        # workflow ID should be included but not part of the signature, this is why it is included
-        # after task_id is created.
-        task_vars['workflow_id'] = env.sos_dict['workflow_id']
-
+    def submit_task(self, task_id, taskdef, task_vars):
         if self.task_manager is None:
             if 'trunk_size' in env.sos_dict['_runtime']:
                 if not isinstance(env.sos_dict['_runtime']['trunk_size'], int):
@@ -786,7 +715,6 @@ class Base_Step_Executor:
     def wait_for_results(self):
         if self.concurrent_substep:
             self.wait_for_substep()
-            return
 
         if self.task_manager is None:
             return {}
@@ -926,7 +854,12 @@ class Base_Step_Executor:
             #
             if "index" not in res:
                 raise RuntimeError("Result received from substep does not have key index")
-            self.proc_results[res['index']] = res
+            if 'task_id' in res:
+                # if substep returns tasks, ...
+                task = self.submit_task(res['task_id'], res['task_def'], res['task_vars'])
+                self.proc_results[res['index']] = task
+            else:
+                self.proc_results[res['index']] = res
 
     def collect_result(self):
         # only results will be sent back to the master process
@@ -1143,9 +1076,13 @@ class Base_Step_Executor:
                     pre_statement = [[':', 'output', '_output']]
 
                 # if there is no statement, no task, claim success
-                if not any(st[0] == '!' for st in self.step.statements) and not self.step.task:
-                    # complete case: no step, no statement
-                    env.controller_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
+                if not any(st[0] == '!' for st in self.step.statements):
+                    if self.step.task:
+                        # if there is only task, we insert a fake statement so that it can be executed by the executor
+                        pre_statement = [['!', '']]
+                    else:
+                        # complete case: no step, no statement
+                        env.controller_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
 
                 for statement in pre_statement + self.step.statements[input_statement_idx:]:
                     # if input is undertermined, we can only process output:
@@ -1209,7 +1146,8 @@ class Base_Step_Executor:
                                        })
 
                                 self.proc_results.append({})
-                                self.submit_substep(dict(stmt=statement[1],
+                                self.submit_substep(dict(stmt=statement[1], global_def=self.step.global_def,
+                                                                           task=self.step.task,
                                                                            proc_vars=proc_vars,
                                                                            step_md5=self.step.md5,
                                                                            step_tokens=self.step.tokens,
@@ -1295,7 +1233,7 @@ class Base_Step_Executor:
 
                 # if there is no statement , but there are tasks, we should
                 # check signature here.
-                if not any(x[0] == '!' for x in self.step.statements[input_statement_idx:]) and self.step.task \
+                if not any(x[0] == '!' for x in self.step.statements[input_statement_idx:]) and self.step.task and not self.concurrent_substep \
                     and env.config['sig_mode'] != 'ignore' and not env.sos_dict['_output'].unspecified():
                     sig = RuntimeInfo(
                         self.step.md5, self.step.tokens,
@@ -1322,11 +1260,8 @@ class Base_Step_Executor:
                     skip_index = False
                     continue
 
-                # if concurrent input group, there is no task
-                if self.concurrent_substep:
-                    continue
-                # finally, tasks..
-                if not self.step.task:
+                # if concurrent input group, tasks are handled in substep
+                if self.concurrent_substep or not self.step.task:
                     continue
 
                 if env.config['run_mode'] == 'dryrun' and env.sos_dict['_index'] != 0:
@@ -1361,7 +1296,8 @@ class Base_Step_Executor:
                 #
                 self.log('task')
                 try:
-                    task = self.prepare_task()
+                    task_id, taskdef, task_vars = create_task(self.step.global_def, self.step.task, self.step.md5)
+                    task = self.submit_task(task_id, taskdef, task_vars)
                     self.proc_results.append(task)
                 except Exception as e:
                     # FIXME: cannot catch exception from subprocesses
