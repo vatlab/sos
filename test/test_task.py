@@ -397,6 +397,26 @@ run: expand=True
             taskstatus = [x.split()[1] for x in subprocess.check_output('sos status -v1', shell=True).decode().splitlines()]
             self.assertTrue(all(x == 'completed' for x in taskstatus))
 
+    def testConcurrentTask(self):
+        '''Test submitting tasks from concurrent substeps'''
+        for f in [f'con_{x}.txt' for x in range(5)]:
+            if file_target(f).exists():
+                file_target(f).unlink()
+        script = SoS_Script('''
+[10]
+input: for_each={'i': range(5)}, concurrent=True
+output: f'con_{i}.txt'
+
+task:
+run: expand=True
+  echo {i} > {_output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={'sig_mode': 'force'}).run()
+        for f in [f'con_{x}.txt' for x in range(5)]:
+            self.assertTrue(file_target(f).exists())
+
+
     def testSharedOption(self):
         '''Test shared option of task'''
         for f in ('a.txt', 'a100.txt'):

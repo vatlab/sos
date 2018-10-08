@@ -1074,15 +1074,16 @@ class Base_Step_Executor:
                     pre_statement = [[':', 'output', '_output']]
 
                 # if there is no statement, no task, claim success
+                post_statement = []
                 if not any(st[0] == '!' for st in self.step.statements):
                     if self.step.task:
                         # if there is only task, we insert a fake statement so that it can be executed by the executor
-                        pre_statement = [['!', '']]
+                        post_statement = [['!', '']]
                     else:
                         # complete case: no step, no statement
                         env.controller_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
 
-                for statement in pre_statement + self.step.statements[input_statement_idx:]:
+                for statement in pre_statement + self.step.statements[input_statement_idx:] + post_statement:
                     # if input is undertermined, we can only process output:
                     if not g.valid() and statement[0] != ':':
                         raise RuntimeError('Undetermined input encountered')
