@@ -1247,8 +1247,8 @@ class Base_Executor:
                 env.logger.info(task[1])
             # close all processes
         except Exception as e:
+            exec_error.append(self.workflow.name, e)
             manager.terminate(brutal=True)
-            raise e
         finally:
             if not nested:
                 manager.terminate()
