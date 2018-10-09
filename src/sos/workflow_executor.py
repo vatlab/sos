@@ -1206,7 +1206,8 @@ class Base_Executor:
                 if manager.all_done():
                     break
                 if manager.all_failed():
-                    raise RuntimeError('Workflow failed due to error')
+                    steps = list(dict.fromkeys([str(x.step) for x in manager.procs]))
+                    raise RuntimeError(f'Workflow exited due to failed step{"s" if len(steps) > 1 else ""} {", ".join(steps)}.')
 
                 # if -W is specified, or all task queues are not wait
                 elif all(x.in_status('task_pending') for x in manager.procs) and \
