@@ -1103,15 +1103,7 @@ class Base_Executor:
                                     proc.step._pending_tasks)
                                 proc.socket.send_pyobj(task_status)
                                 proc.set_status('failed')
-                                status = [('completed', len([x for x in res if x == 'completed'])),
-                                          ('failed', len(
-                                              [x for x in res if x == 'failed'])),
-                                          ('aborted', len(
-                                              [x for x in res if x == 'aborted']))
-                                          ]
-                                raise RuntimeError(
-                                    ', '.join([f'{y} job{"s" if y > 1 else ""} {x}' for x, y in status if y > 0]))
-                        if any(x in ('new', 'pending', 'submitted', 'running') for x in res):
+                        elif any(x in ('new', 'pending', 'submitted', 'running') for x in res):
                             continue
                         elif all(x == 'completed' for x in res):
                             env.logger.debug(
