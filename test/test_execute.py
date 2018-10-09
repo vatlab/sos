@@ -1036,7 +1036,7 @@ run: expand = True
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    def testNonExistentDepedentTarget(self):
+    def testNonExistentDependentTarget(self):
         '''Test non existent dependent targets'''
         script = SoS_Script(r"""
 [1]
@@ -1045,7 +1045,7 @@ run: expand = True
 depends: sos_step('wrong')
 """)
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf).run)
         #
         script = SoS_Script(r"""
 [1]
@@ -1054,7 +1054,7 @@ depends: sos_step('wrong')
 depends: 'non-existent.txt'
 """)
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf).run)
 
     def testExecuteIPynb(self):
         '''Test extracting and executing workflow from .ipynb files'''
