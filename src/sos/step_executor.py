@@ -1075,7 +1075,7 @@ class Base_Step_Executor:
 
                 # if there is no statement, no task, claim success
                 post_statement = []
-                if not any(st[0] == '!' for st in self.step.statements):
+                if not any(st[0] == '!' for st in self.step.statements[input_statement_idx:]):
                     if self.step.task:
                         # if there is only task, we insert a fake statement so that it can be executed by the executor
                         post_statement = [['!', '']]
