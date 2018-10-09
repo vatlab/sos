@@ -958,17 +958,22 @@ class Base_Executor:
                                     host = env.config['default_queue']
                                 else:
                                     host = 'localhost'
-                            runnable._host = Host(host)
-                            new_tasks = res.split(' ')[2:]
-                            if hasattr(runnable, '_pending_tasks'):
-                                runnable._pending_tasks.extend(new_tasks)
-                            else:
-                                runnable._pending_tasks = new_tasks
-                            for task in new_tasks:
-                                runnable._host.submit_task(task)
-                            runnable._status = 'task_pending'
-                            dag.save(env.config['output_dag'])
-                            env.logger.trace('Step becomes task_pending')
+                            try:
+                                new_tasks = res.split(' ')[2:]
+                                runnable._host = Host(host)
+                                if hasattr(runnable, '_pending_tasks'):
+                                    runnable._pending_tasks.extend(new_tasks)
+                                else:
+                                    runnable._pending_tasks = new_tasks
+                                for task in new_tasks:
+                                    runnable._host.submit_task(task)
+                                runnable._status = 'task_pending'
+                                dag.save(env.config['output_dag'])
+                                env.logger.trace('Step becomes task_pending')
+                            except Exception as e:
+                                proc.socket.send_pyobj(
+                                    {x: {'ret_code': 1, 'task': x, 'output': {}, 'exception': e} for x in new_tasks})
+                                proc.set_status('failed')
                             continue
                         elif res.startswith('step'):
                             # step sent from nested workflow

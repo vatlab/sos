@@ -856,5 +856,14 @@ sleep 2
             self.assertLess(tf.tags_created_start_and_duration()[3], 1)
 
 
+    def testWrongHost(self):
+        script = SoS_Script('''
+[10]
+task: walltime='1:00:00', queue='undefined'
+print('a')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+
 if __name__ == '__main__':
     unittest.main()

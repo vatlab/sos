@@ -762,6 +762,8 @@ class Base_Step_Executor:
                 for _, mres in results.items():
                     if 'subtasks' in mres and task in mres['subtasks']:
                         self.proc_results[idx] = mres['subtasks'][task]
+                    elif 'exception' in mres:
+                        self.proc_results[idx] = mres
         #
         # check if all have results?
         if any(isinstance(x, str) for x in self.proc_results):
