@@ -1228,8 +1228,8 @@ class Base_Step_Executor:
                                 env.logger.info(e)
                             skip_index = True
                             break
-                        except:
-                            clear_output()
+                        except Exception as e:
+                            clear_output(e)
                             raise
 
                 # if there is no statement , but there are tasks, we should
@@ -1429,6 +1429,7 @@ class Step_Executor(Base_Step_Executor):
             if res is None:
                 sys.exit(0)
             results.update(res)
+
             # all results have been obtained.
             if len(results) == len(tasks):
                 break
@@ -1444,7 +1445,7 @@ class Step_Executor(Base_Step_Executor):
             else:
                 return res
         except Exception as e:
-            clear_output()
+            clear_output(e)
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
             if self.socket is not None:

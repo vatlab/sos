@@ -140,7 +140,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     return res['ret_code']
 
 
-def _validate_task_signature(sig, saved_sig):
+def _validate_task_signature(sig, saved_sig, task_id):
     idx = env.sos_dict['_index']
     if env.config['sig_mode'] == 'default':
         matched = sig.validate(saved_sig)
@@ -152,7 +152,7 @@ def _validate_task_signature(sig, saved_sig):
             env.sos_dict.set('_output', sos_targets(matched['output']))
             env.sos_dict.update(matched['vars'])
             env.logger.info(
-                f'Task ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` due to saved signature')
+                f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` due to saved signature')
             return True
     elif env.config['sig_mode'] == 'assert':
         matched = sig.validate(saved_sig)
@@ -164,18 +164,18 @@ def _validate_task_signature(sig, saved_sig):
             env.sos_dict.set('_output', sos_targets(matched['output']))
             env.sos_dict.update(matched['vars'])
             env.logger.info(
-                f'Step ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with matching signature')
+                f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with matching signature')
             sig.content = saved_sig
             return True
     elif env.config['sig_mode'] == 'build':
         # The signature will be write twice
         if sig.write(rebuild=True):
             env.logger.info(
-                f'Task ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with signature constructed')
+                f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with signature constructed')
             return True
         else:
             env.logger.info(
-                f'Task ``{env.sos_dict["step_name"]}`` (index={idx}) is ``executed`` with failed signature constructed')
+                f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``executed`` with failed signature constructed')
             return False
     elif env.config['sig_mode'] == 'force':
         return False
@@ -393,8 +393,8 @@ del sos_handle_parameter_
         env.sos_dict['_depends'], env.sos_dict['__signature_vars__'],
         shared_vars=parse_shared_vars(env.sos_dict['_runtime'].get('shared', None)))
 
-    if sig and _validate_task_signature(sig, sig_content.get(task_id, {})):
-        env.logger.info(f'{task_id} ``skipped``')
+    if sig and _validate_task_signature(sig, sig_content.get(task_id, {}), task_id):
+        #env.logger.info(f'{task_id} ``skipped``')
         return collect_task_result(task_id, sos_dict, skipped=True, signature=sig)
 
     # if we are to really execute the task, touch the task file so that sos status shows correct
