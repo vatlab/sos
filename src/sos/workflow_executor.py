@@ -143,8 +143,11 @@ class ExecutionManager(object):
     def all_busy(self) -> bool:
         return self.num_active() >= self.max_workers
 
-    def all_done_or_failed(self) -> bool:
-        return not self.procs or all(x.in_status('failed') for x in self.procs)
+    def all_done(self) -> bool:
+        return not self.procs or all(x is None for x in self.procs)
+
+    def all_failed(self) -> bool:
+        return all(x.in_status('failed') for x in self.procs)
 
     def mark_idle(self, idx: int) -> None:
         self.pool.append(self.procs[idx])
@@ -973,6 +976,7 @@ class Base_Executor:
                             except Exception as e:
                                 proc.socket.send_pyobj(
                                     {x: {'ret_code': 1, 'task': x, 'output': {}, 'exception': e} for x in new_tasks})
+                                env.logger.error(e)
                                 proc.set_status('failed')
                             continue
                         elif res.startswith('step'):
@@ -1207,8 +1211,10 @@ class Base_Executor:
                         # this is a real step
                         manager.add_placeholder_worker(runnable, socket)
 
-                if manager.all_done_or_failed():
+                if manager.all_done():
                     break
+                if manager.all_failed():
+                    raise RuntimeError('Workflow failed due to error')
 
                 # if -W is specified, or all task queues are not wait
                 elif all(x.in_status('task_pending') for x in manager.procs) and \
