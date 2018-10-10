@@ -107,7 +107,7 @@ class Controller(threading.Thread):
         try:
             # make sure all records have been saved before returning information
             while True:
-                if self.sig_push_socket.poll(0.01):
+                if self.sig_push_socket.poll(100):
                     self.handle_sig_push_msg(self.sig_push_socket.recv_pyobj())
                 else:
                     break
@@ -184,8 +184,14 @@ class Controller(threading.Thread):
         try:
             # handle all sig_push_msg
             while True:
-                if self.sig_push_socket.poll(0.01):
+                if self.sig_push_socket.poll(100):
                     self.handle_sig_push_msg(self.sig_push_socket.recv_pyobj())
+                else:
+                    break
+            # also handle ctrl push, which includes progress info
+            while True:
+                if self.ctl_push_socket.poll(100):
+                    self.handle_ctl_push_msg(self.ctl_push_socket.recv_pyobj())
                 else:
                     break
             if msg[0] == 'nprocs':
@@ -198,14 +204,14 @@ class Controller(threading.Thread):
             elif msg[0] == 'done':
                 # handle all ctl_push_msgs #1062
                 while True:
-                    if self.ctl_push_socket.poll(0.01):
+                    if self.ctl_push_socket.poll(100):
                         self.handle_ctl_push_msg(self.ctl_push_socket.recv_pyobj())
                     else:
                         break
 
                 # handle all push request from substep, used to for example kill workers
                 while True:
-                    if self.substep_backend_socket.poll(0.01):
+                    if self.substep_backend_socket.poll(100):
                         self.handle_substep_backend_msg(self.substep_backend_socket.recv())
                     else:
                         break
