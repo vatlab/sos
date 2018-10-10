@@ -1142,7 +1142,7 @@ class Base_Step_Executor:
                                 proc_vars = env.sos_dict.clone_selected_vars(
                                     env.sos_dict['__signature_vars__']
                                     | {'step_output', '_input', '_output', '_depends', '_index', '__args__',
-                                       'step_name', '_runtime', 'step_id',
+                                       'step_name', '_runtime', 'step_id', 'workflow_id',
                                        '__signature_vars__', '__step_context__'
                                        })
 
