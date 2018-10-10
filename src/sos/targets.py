@@ -1121,8 +1121,6 @@ class RuntimeInfo(InMemorySignature):
                                           dependent_files, signature_vars,
                                           shared_vars=shared_vars)
 
-        # if all output files are external
-        self.external_sig = self.output_files.is_external() and self.input_files.is_external()
         self.sig_id = textMD5(
             f'{self.script} {self.input_files} {self.output_files} {self.dependent_files} {stable_repr(self.init_signature)}{sdict["_index"] if self.output_files.undetermined() else ""}')
 
@@ -1134,8 +1132,7 @@ class RuntimeInfo(InMemorySignature):
                 'signature_vars': self.signature_vars,
                 'init_signature': self.init_signature,
                 'script': self.script,
-                'sig_id': self.sig_id,
-                'external': self.external_sig}
+                'sig_id': self.sig_id}
 
     def __setstate__(self, sdict: Dict[str, Any]):
         self.step_md5 = sdict['step_md5']
@@ -1146,7 +1143,6 @@ class RuntimeInfo(InMemorySignature):
         self.init_signature = sdict['init_signature']
         self.script = sdict['script']
         self.sig_id = sdict['sig_id']
-        self.external_sig = sdict['external']
 
     def lock(self):
         # we will need to lock on a file that we do not really write to
@@ -1196,7 +1192,7 @@ class RuntimeInfo(InMemorySignature):
         if ret is False:
             env.logger.debug(f'Failed to write signature {self.sig_id}')
             return ret
-        env.signature_push_socket.send_pyobj(['step', self.sig_id, ret, self.external_sig])
+        env.signature_push_socket.send_pyobj(['step', self.sig_id, ret])
         env.signature_push_socket.send_pyobj(['workflow', 'tracked_files', self.sig_id, repr({
             'input_files': [str(f.resolve()) for f in self.input_files if isinstance(f, file_target)],
             'dependent_files': [str(f.resolve()) for f in self.dependent_files if isinstance(f, file_target)],
@@ -1215,7 +1211,7 @@ class RuntimeInfo(InMemorySignature):
             if not x.target_exists('any'):
                 return f'Missing target {x}'
         #
-        env.signature_req_socket.send_pyobj(['step', 'get', self.sig_id, self.external_sig])
+        env.signature_req_socket.send_pyobj(['step', 'get', self.sig_id])
         sig = env.signature_req_socket.recv_pyobj()
         if not sig:
             return f"No signature found for {self.sig_id}"

@@ -10,40 +10,46 @@ import sqlite3
 
 from .utils import env
 
-class StepSignatures:
-    def __init__(self):
-        self.global_db_file = os.path.join(
-            os.path.expanduser('~'), '.sos', 'step_signatures.db')
-        self.local_db_file = os.path.join(
-            env.exec_dir, '.sos', 'step_signatures.db')
-        self._global_conn = None
-        self._local_conn = None
+class SignatureDB:
+    '''Base class for signature DB using sqlite'''
 
-    def get_conn(self, global_sig=False):
+    def __init__(self):
+        self.db_file = os.path.join(
+            env.exec_dir, '.sos', self._db_name)
+        self._conn = None
+
+    def _get_conn(self):
         # there is a possibility that the _conn is copied with a process
         # and we would better have a fresh conn
-        if global_sig:
-            if self._global_conn is None:
-                self._global_conn = sqlite3.connect(
-                    self.global_db_file, timeout=60)
-                self._global_conn.execute('''CREATE TABLE IF NOT EXISTS steps (
-                    step_id text PRIMARY KEY,
-                    signature BLOB
-                    )''')
-            return self._global_conn
-        else:
-            if self._local_conn is None:
-                self._local_conn = sqlite3.connect(
-                    self.local_db_file, timeout=60)
-                self._local_conn.execute('''CREATE TABLE IF NOT EXISTS steps (
-                    step_id text PRIMARY KEY,
-                    signature BLOB
-                    )''')
-            return self._local_conn
+        if self._conn is None:
+            self._conn = sqlite3.connect(self.db_file, timeout=60)
+            self._conn.execute(self._db_structure)
+        return self._conn
 
-    def get(self, step_id: str, global_sig: bool):
+    conn = property(_get_conn)
+
+    def commit(self):
+        self.conn.commit()
+
+    def close(self):
+        self.commit()
+        self.conn.close()
+
+class StepSignatures(SignatureDB):
+    '''Step signature that stores runtime signatures of substeps'''
+
+    _db_name = 'step_signatures.db'
+    _db_structure = '''CREATE TABLE IF NOT EXISTS steps (
+        step_id text PRIMARY KEY,
+        signature BLOB
+    )'''
+
+    def __init__(self):
+        super(StepSignatures, self).__init__()
+
+    def get(self, step_id: str):
         try:
-            cur = self.get_conn(global_sig).cursor()
+            cur = self.conn.cursor()
             cur.execute(
                 'SELECT signature FROM steps WHERE step_id=? ', (step_id,))
             res = cur.fetchone()
@@ -60,10 +66,9 @@ class StepSignatures:
         else:
             return None
 
-    def set(self, step_id: str, signature: dict, global_sig: bool):
+    def set(self, step_id: str, signature: dict):
         try:
-            conn = self.get_conn(global_sig)
-            conn.cursor().execute(
+            self.conn.cursor().execute(
                 'INSERT OR REPLACE INTO steps VALUES (?, ?)',
                 (step_id, lzma.compress(pickle.dumps(signature))))
         except sqlite3.DatabaseError as e:
@@ -77,10 +82,9 @@ class StepSignatures:
             env.logger.warning(f'Failed to number of records for steps: {e}')
             return 0
 
-    def remove_many(self, steps: list, global_sig: bool):
+    def remove_many(self, steps: list):
         try:
-            conn = self.get_conn(global_sig)
-            cur = conn.cursor()
+            cur = self.conn.cursor()
             cnt = self._num_records(cur)
             cur.executemany(
                     'DELETE FROM steps WHERE step_id=?',
@@ -90,42 +94,25 @@ class StepSignatures:
             env.logger.warning(f'Failed to remove signature for {len(steps)} substeps: {e}')
             return 0
 
-    def clear(self, global_sig: bool):
+    def clear(self):
         try:
-            conn = self.get_conn(global_sig)
-            conn.execute('DELETE FROM steps')
+            self.conn.execute('DELETE FROM steps')
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to clear step signature database: {e}')
 
-    def commit(self):
-        self.get_conn(True).commit()
-        self.get_conn(False).commit()
 
-    def close(self):
-        self.commit()
-        self.get_conn(True).close()
-        self.get_conn(False).close()
+class WorkflowSignatures(SignatureDB):
+    '''Workflow signature to store runtime information for workflows'''
+    _db_name = 'workflow_signatures.db'
+    _db_structure = '''CREATE TABLE IF NOT EXISTS workflows (
+            master_id text,
+            entry_type text,
+            id text,
+            item text
+    )'''
 
-class WorkflowSignatures(object):
     def __init__(self):
-        self.db_file = os.path.join(
-            env.exec_dir, '.sos', 'workflow_signatures.db')
-        self._conn = None
-
-    def _get_conn(self):
-        # there is a possibility that the _conn is copied with a process
-        # and we would better have a fresh conn
-        if self._conn is None:
-            self._conn = sqlite3.connect(self.db_file, timeout=60)
-            self._conn.execute('''CREATE TABLE IF NOT EXISTS workflows (
-                    master_id text,
-                    entry_type text,
-                    id text,
-                    item text
-            )''')
-        return self._conn
-
-    conn = property(_get_conn)
+        super(WorkflowSignatures, self).__init__()
 
     def write(self, entry_type: str, id: str, item: str):
         try:
@@ -193,32 +180,17 @@ class WorkflowSignatures(object):
             env.logger.warning(f'Failed to clear workflow database: {e}')
             return []
 
-    def commit(self):
-        self.conn.commit()
 
-    def close(self):
-        self.commit()
-        self.conn.close()
+class WorkflowStatus(SignatureDB):
+    '''Status database to store information of hibernated workflows'''
+    _db_name = 'workflow_status.db'
+    _db_structure = '''CREATE TABLE IF NOT EXISTS workflow_status (
+            workflow_id text,
+            info text
+    )'''
 
-
-class WorkflowStatus(object):
     def __init__(self):
-        self.db_file = os.path.join(
-            env.exec_dir, '.sos', 'workflow_status.db')
-        self._conn = None
-
-    def _get_conn(self):
-        # there is a possibility that the _conn is copied with a process
-        # and we would better have a fresh conn
-        if self._conn is None:
-            self._conn = sqlite3.connect(self.db_file, timeout=60)
-            self._conn.execute('''CREATE TABLE IF NOT EXISTS workflow_status (
-                    workflow_id text,
-                    info text
-            )''')
-        return self._conn
-
-    conn = property(_get_conn)
+        super(WorkflowStatus, self).__init__()
 
     def set(self, info: str) -> None:
         try:
@@ -253,10 +225,3 @@ class WorkflowStatus(object):
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to clear workflow database: {e}')
             return []
-
-    def commit(self):
-        self.conn.commit()
-
-    def close(self):
-        self.commit()
-        self.conn.close()

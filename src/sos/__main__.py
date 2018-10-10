@@ -1400,15 +1400,12 @@ def cmd_remove(args, unknown_args):
         if sig_files:
             sig_ids = list(set([x[0] for x in sig_files]))
             step_signatures = StepSignatures()
-            num_removed_local_steps = step_signatures.remove_many(
-                sig_ids, global_sig=False)
-            num_removed_global_steps = step_signatures.remove_many(
-                sig_ids, global_sig=True)
-            if not (num_removed_local_steps + num_removed_global_steps):
+            num_removed_steps = step_signatures.remove_many(sig_ids)
+            if not num_removed_steps:
                 env.logger.info('No signature is found from workflows executed under the current directory.')
             else:
                 env.logger.info(
-                    f'Signatures from {num_removed_local_steps + num_removed_global_steps} substeps are removed.')
+                    f'Signatures from {num_removed_steps} substeps are removed.')
         else:
             env.logger.info(
                 'No signatures is found from workflows executed under the current directory.')
