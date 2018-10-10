@@ -581,7 +581,7 @@ _output.touch()
 counter += 1
 """)
         wf = script.workflow()
-        Base_Executor(wf, config={'run_mode': 'force'}).run(mode='run')
+        Base_Executor(wf, config={'sig_mode': 'force'}).run(mode='run')
         self.assertEqual(env.sos_dict['counter'], 2)
         self.assertEqual(env.sos_dict['step'], ['a.txt.bak', 'b.txt.bak'])
 
