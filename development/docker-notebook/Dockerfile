@@ -67,6 +67,10 @@ RUN     julia -e 'Pkg.add("NamedArrays")'
 RUN     conda create -n ipykernel_py2 python=2 ipykernel
 RUN     /bin/bash -c "source activate ipykernel_py2; python -m ipykernel install --user; source deactivate"
 
+#       Markdown kernel
+RUN     pip install markdown-kernel
+RUN     python -m markdown_kernel.install
+
 # Bioinfo
 RUN     pip install pysam
 
@@ -82,7 +86,7 @@ RUN     pip install markdown wand graphviz imageio pillow
 RUN     conda install -y feather-format -c conda-forge
 RUN     pip install nbformat --upgrade
 ## trigger rerun for sos updates
-ARG	DUMMY=unknown
+ARG	    DUMMY=unknown
 RUN     DUMMY=${DUMMY} pip install sos sos-notebook sos-r sos-julia sos-python sos-matlab sos-javascript sos-bash sos-bioinfo --upgrade
 RUN     python -m sos_notebook.install
 RUN     pip install jupyterlab
