@@ -986,7 +986,7 @@ executed.append(_input)
                 sos_targets('a1.txt', 'a2.txt', 'a3.txt', 'a7.txt', 'a8.txt', 'a9.txt'),
                 sos_targets('a4.txt', 'a5.txt', 'a6.txt', 'a10.txt', 'a11.txt', 'a12.txt')
                 ])
-        
+
         # group_by = 'pairwise'
         script = SoS_Script('''
 [0: shared='executed']
@@ -1001,6 +1001,24 @@ executed.append(_input)
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['executed'],  [sos_targets('a1.txt', 'a2.txt'), sos_targets(
             'a2.txt', 'a3.txt'), sos_targets('a3.txt', 'a4.txt')])
+        # group_by = 'pairwiseN'
+        script = SoS_Script('''
+[0: shared='executed']
+
+executed = []
+input: ['a{}.txt'.format(x) for x in range(1, 7)], group_by='pairwise2'
+
+executed.append(_input)
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['executed'],  [
+            sos_targets('a1.txt', 'a2.txt', 'a3.txt', 'a4.txt'),
+            sos_targets('a3.txt', 'a4.txt', 'a5.txt', 'a6.txt')
+            ],
+            f'obtained {env.sos_dict["executed"]}')
+
         # group_by = 'combinations'
         script = SoS_Script('''
 [0: shared='executed']
@@ -1015,6 +1033,26 @@ executed.append(_input)
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['executed'],  [sos_targets('a1.txt', 'a2.txt'), sos_targets('a1.txt', 'a3.txt'),
                                                      sos_targets('a1.txt', 'a4.txt'), sos_targets('a2.txt', 'a3.txt'), sos_targets('a2.txt', 'a4.txt'), sos_targets('a3.txt', 'a4.txt')])
+
+        # group_by = 'combinations3'
+        script = SoS_Script('''
+[0: shared='executed']
+
+executed = []
+input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='combinations3'
+
+executed.append(_input)
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['executed'],
+            [
+            sos_targets(['a1.txt', 'a2.txt', 'a3.txt']),
+            sos_targets(['a1.txt', 'a2.txt', 'a4.txt']),
+            sos_targets(['a1.txt', 'a3.txt', 'a4.txt']),
+            sos_targets(['a2.txt', 'a3.txt', 'a4.txt'])
+            ], f'obtained {env.sos_dict["executed"]}')
         # group_by chunks specified as integers
         script = SoS_Script('''
 [0: shared='executed']
@@ -1099,7 +1137,7 @@ executed.append(_input)
                          sos_targets('c.txt'),
                          sos_targets('a.txt'),
                          sos_targets('b.txt', 'b1.txt')])
-        # 
+        #
         # group_by='pairsource'
         file_target('c.txt').touch()
         script = SoS_Script('''
@@ -1128,7 +1166,7 @@ executed.append(_input)
                          sos_targets('a2.txt', 'b2.txt')])
         # group_by='pairsource3'
         self.touch(['c{}.txt'.format(x) for x in range(1, 7)])
-        
+
         script = SoS_Script('''
 [A]
 input: for_each={'i': range(6)}

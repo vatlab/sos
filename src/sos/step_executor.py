@@ -300,18 +300,42 @@ class Base_Step_Executor:
                 return list(ifiles.slice(x) for x in zip(range(0, len(ifiles) // 2),
                     range(len(ifiles) // 2, len(ifiles))))
             else:
-                if len(ifiles)//2 % grp_size != 0:
+                if len(ifiles) % grp_size != 0:
                     raise ValueError(
                         f'Paired group_by with group size {grp_size} is not possible with input of size {len(ifiles)}'
                     )
                 return list(ifiles.slice(list(range(x[0], x[0] + grp_size)) + list(range(x[1], x[1] + grp_size)))
                     for x in zip(range(0, len(ifiles) // 2, grp_size),  range(len(ifiles) // 2, len(ifiles), grp_size)))
-        elif group_by == 'pairwise':
-            f1, f2 = tee(range(len(ifiles)))
-            next(f2, None)
-            return [ifiles.slice(x) for x in zip(f1, f2)]
-        elif group_by == 'combinations':
-            return [ifiles.slice(x) for x in combinations(range(len(ifiles)), 2)]
+        elif isinstance(group_by, str) and group_by.startswith('pairwise'):
+            if group_by == 'pairwise':
+                grp_size = 1
+            else:
+                try:
+                    grp_size = int(group_by[8:])
+                except:
+                    raise ValueError(f'Invalid pairs option {group_by}')
+            if grp_size == 1:
+                f1, f2 = tee(range(len(ifiles)))
+                next(f2, None)
+                return [ifiles.slice(x) for x in zip(f1, f2)]
+            else:
+                if len(ifiles) % grp_size != 0:
+                    raise ValueError(
+                        f'Paired group_by with group size {grp_size} is not possible with input of size {len(ifiles)}'
+                    )
+                f1, f2 = tee(range(len(ifiles) // grp_size))
+                next(f2, None)
+                return [ifiles.slice(list(range(x[0]*grp_size, (x[0]+1)*grp_size)) +
+                    list(range(x[1]*grp_size, (x[1]+1)*grp_size))) for x in zip(f1, f2)]
+        elif isinstance(group_by, str) and group_by.startswith('combinations'):
+            if group_by == 'combinations':
+                grp_size = 2
+            else:
+                try:
+                    grp_size = int(group_by[12:])
+                except:
+                    raise ValueError(f'Invalid pairs option {group_by}')
+            return [ifiles.slice(x) for x in combinations(range(len(ifiles)), grp_size)]
         elif group_by == 'source':
             sources = list(dict.fromkeys(ifiles.source))
             return [ifiles.slice(x) for x in sources]

@@ -759,6 +759,11 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def undetermined(self):
         return not self._targets and isinstance(self._undetermined, str)
 
+    def touch(self):
+        for x in self._targets:
+            if isinstance(x, file_target):
+                x.touch()
+
     def valid(self):
         return self._targets or self._undetermined is False
 
