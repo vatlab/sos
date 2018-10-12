@@ -56,10 +56,10 @@ class TestTarget(unittest.TestCase):
         c.extend(b)
         self.assertEqual(c.source, ['here', 'here', '', ''])
         #
-        self.assertEqual(c[''].source, ['', ''])
-        self.assertEqual(c['here'].source, ['here', 'here'])
-        self.assertEqual(c['here'], ['a1', 'b1'])
-        self.assertTrue(isinstance(c['here'], sos_targets))
+        self.assertEqual(c.slice('').source, ['', ''])
+        self.assertEqual(c.slice('here').source, ['here', 'here'])
+        self.assertEqual(c['here'], [file_target('a1'), file_target('b1')])
+        self.assertTrue(isinstance(c['here'], list))
         #
         # function item
         self.assertTrue(isinstance(c.slice(1), sos_targets))
