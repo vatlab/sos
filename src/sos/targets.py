@@ -874,11 +874,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
     def __getitem__(self, i):
         if isinstance(i, str):
-            ret = sos_targets()
-            ret._undetermined = self._undetermined
-            ret._targets = [x for x,y in zip(self._targets, self._sources) if y == i]
-            ret._sources = [i]*len(ret._targets)
-            return ret
+            return [x for x,y in zip(self._targets, self._sources) if y == i]
         else:
             return self._targets[i]
 
