@@ -1212,7 +1212,6 @@ executed.append(_input)
         self.assertEqual(env.sos_dict['executed'], [
                          sos_targets('c1.txt', 'a1.txt', 'b1.txt', 'b2.txt', 'b3.txt'),
                          sos_targets('c2.txt', 'a1.txt', 'b4.txt', 'b5.txt', 'b6.txt')])
-
         #
         # group by function
         file_target('c.txt').touch()

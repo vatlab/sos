@@ -277,25 +277,21 @@ class Base_Step_Executor:
             if max(src_sizes.values()) % grp_size != 0:
                 raise ValueError(f'Cannot use group size {grp_size} (option {group_by}) for source of size {src_sizes}')
             n_groups = max(src_sizes.values()) // grp_size
-            grp_sizes = {}
+            indexes = [[] for x in range(n_groups)]
             for s in sources:
-                if src_sizes[s] == n_groups * grp_size:
-                    grp_sizes[s] = grp_size
-                elif src_sizes[s] == n_groups:
-                    grp_sizes[s] = 1
-                elif src_sizes[s] == 1:
-                    grp_sizes[s] = 0
+                lookup = [idx for idx,src in enumerate(ifiles.source) if src == s]
+                if src_sizes[s] > n_groups and src_sizes[s] % n_groups == 0:
+                    gs = src_sizes[s] // n_groups
+                    for i in range(n_groups):
+                        # (0, 1, 2), (3, 4, 5), (6, 7, 8) ...
+                        indexes[i].extend(lookup[i*gs:(i+1)*gs])
+                elif n_groups >= src_sizes[s] and n_groups % src_sizes[s] == 0:
+                    for i in range(n_groups):
+                        # (0 ), (0, ), (1, ), (1, ) ...
+                        indexes[i].append(lookup[i  // (n_groups // src_sizes[s])])
                 else:
-                    raise ValueError(f'Cannot use group size {grp_size} (group_by="{group_by}") for source of size {src_sizes} {n_groups}')
-            counts = {x: 0 for x in sources}
-            assigned = [None for x in ifiles.source]
-            for idx, src in enumerate(ifiles.source):
-                if grp_sizes[src] == 0:
-                    assigned[idx] = -1
-                else:
-                    assigned[idx] = counts[src] // grp_sizes[src]
-                    counts[src] += 1
-            return list(ifiles.slice([idx for idx, val in enumerate(assigned) if val == x or val == -1]) for x in range(n_groups))
+                    raise ValueError(f'Cannot use group size {grp_size} (group_by="{group_by}") for source of size {src_sizes}')
+            return list(ifiles.slice(indexes[x]) for x in range(n_groups))
         elif isinstance(group_by, str) and group_by.startswith('pairs'):
             if len(ifiles) % 2 != 0:
                 raise ValueError(
