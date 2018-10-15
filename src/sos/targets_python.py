@@ -28,7 +28,7 @@ class Py_Module(BaseTarget):
             return False
         # try to install it?
         import subprocess
-        ret = subprocess.call(['pip', 'install', self._module])
+        ret = subprocess.call(['pip', 'install', self._module if self._autoinstall is True else self._autoinstall])
         return ret == 0
 
     def target_exists(self, mode='any'):
