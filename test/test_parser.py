@@ -1648,6 +1648,25 @@ _output.touch()
         Base_Executor(wf, args=['--n', '5']).run()
         self.assertTrue(os.path.isfile('0914.txt'))
 
+    def testNamedInput(self):
+        '''Test named input'''
+        for filename in ('a.txt', 'b.txt'):
+            with open(filename, 'w') as out:
+                out.write(filename + '\n')
+        script = SoS_Script('''
+[1]
+input: {'A': 'a.txt', 'B': 'b.txt'}, group_by='pairsource'
+output: 'c.txt'
+assert _input['A'] == [file_target('a.txt')]
+assert _input['B'] == [file_target('b.txt')]
+with open(_output, 'w') as out:
+    out.write(open(_input['A']).read())
+    out.write(open(_input['B']).read())
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertTrue(open('c.txt').read(), 'a.txt\nb.txt\n')
+
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)

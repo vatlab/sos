@@ -156,8 +156,8 @@ def short_repr(obj, noneAsNA=False):
         else:
             first_key = list(obj.keys())[0]
             return f'{short_repr(first_key)}:{short_repr(obj[first_key])}, ... ({len(obj)} items)'
-    elif hasattr(obj, 'target_name'):
-        return obj.target_name()
+    #elif hasattr(obj, 'target_name'):
+    #    return obj.target_name()
     else:
         ret = repr(obj)
         if len(ret) > 40:
