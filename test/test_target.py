@@ -48,22 +48,22 @@ class TestTarget(unittest.TestCase):
     def testTargetSource(self):
         '''Test source of sos_targets'''
         a = sos_targets('a')
-        self.assertEqual(a.source, [''])
+        self.assertEqual(a.sources, [''])
         b = sos_targets(['a', 'b'])
-        self.assertEqual(b.source, ['', ''])
+        self.assertEqual(b.sources, ['', ''])
         c = sos_targets(['a1', 'b1'], source='here')
-        self.assertEqual(c.source, ['here', 'here'])
+        self.assertEqual(c.sources, ['here', 'here'])
         c.extend(b)
-        self.assertEqual(c.source, ['here', 'here', '', ''])
+        self.assertEqual(c.sources, ['here', 'here', '', ''])
         #
-        self.assertEqual(c.slice('').source, ['', ''])
-        self.assertEqual(c.slice('here').source, ['here', 'here'])
+        self.assertEqual(c.slice('').sources, ['', ''])
+        self.assertEqual(c.slice('here').sources, ['here', 'here'])
         self.assertEqual(c['here'], [file_target('a1'), file_target('b1')])
-        self.assertTrue(isinstance(c['here'], list))
+        self.assertTrue(isinstance(c['here'], sos_targets))
         #
         # function item
         self.assertTrue(isinstance(c.slice(1), sos_targets))
-        self.assertEqual(c.slice(1).source, ['here'])
+        self.assertEqual(c.slice(1).sources, ['here'])
         self.assertEqual(c.slice(1), ['b1'])
 
 
