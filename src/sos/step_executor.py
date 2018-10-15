@@ -273,18 +273,29 @@ class Base_Step_Executor:
                     grp_size = int(group_by[10:])
                 except:
                     raise ValueError(f'Invalid pairsource option {group_by}')
-            src_size = ifiles.source.count(sources[0])
-            if not all(ifiles.source.count(src) == src_size for src in sources):
-                szs = {x:ifiles.source.count(x) for x in sources}
-                raise ValueError(f'Input sources do not have equal size: {szs}')
-            if src_size % grp_size != 0:
-                raise ValueError(f'Cannot use group size {grp_size} (option {group_by}) for source of size {src_size}')
+            src_sizes = {s:ifiles.source.count(s) for s in sources}
+            if max(src_sizes.values()) % grp_size != 0:
+                raise ValueError(f'Cannot use group size {grp_size} (option {group_by}) for source of size {src_sizes}')
+            n_groups = max(src_sizes.values()) // grp_size
+            grp_sizes = {}
+            for s in sources:
+                if src_sizes[s] == n_groups * grp_size:
+                    grp_sizes[s] = grp_size
+                elif src_sizes[s] == n_groups:
+                    grp_sizes[s] = 1
+                elif src_sizes[s] == 1:
+                    grp_sizes[s] = 0
+                else:
+                    raise ValueError(f'Cannot use group size {grp_size} (group_by="{group_by}") for source of size {src_sizes} {n_groups}')
             counts = {x: 0 for x in sources}
             assigned = [None for x in ifiles.source]
             for idx, src in enumerate(ifiles.source):
-                assigned[idx] = counts[src] // grp_size
-                counts[src] += 1
-            return list(ifiles.slice([idx for idx, val in enumerate(assigned) if val == x]) for x in range(src_size // grp_size))
+                if grp_sizes[src] == 0:
+                    assigned[idx] = -1
+                else:
+                    assigned[idx] = counts[src] // grp_sizes[src]
+                    counts[src] += 1
+            return list(ifiles.slice([idx for idx, val in enumerate(assigned) if val == x or val == -1]) for x in range(n_groups))
         elif isinstance(group_by, str) and group_by.startswith('pairs'):
             if len(ifiles) % 2 != 0:
                 raise ValueError(
@@ -587,6 +598,10 @@ class Base_Step_Executor:
         assert isinstance(ifiles, sos_targets)
         #
         if 'from_steps' in kwargs:
+            # first if from_steps is set, then the default from_step will have to be
+            # cleared.
+            if len(ifiles) > 0 and ifiles.source[0] != self.step.step_name():
+                ifiles = sos_targets([])
             if isinstance(kwargs['from_steps'], str):
                 from_args = [kwargs['from_steps']]
             elif isinstance(kwargs['from_steps'], Sequence):
