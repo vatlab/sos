@@ -655,7 +655,7 @@ class Base_Step_Executor:
         if env.sos_dict['step_depends'] is None:
             env.sos_dict.set('step_depends', dfiles)
         # dependent files can overlap
-        elif env.sos_dict['step_depends'].targets() != dfiles:
+        elif env.sos_dict['step_depends'] != dfiles:
             env.sos_dict['step_depends'].extend(dfiles)
 
     def process_output_args(self, ofiles: sos_targets, **kwargs):
@@ -739,7 +739,7 @@ class Base_Step_Executor:
         # if no trunk_size, the job will be submitted immediately
         # otherwise tasks will be accumulated and submitted in batch
         self.task_manager.append(
-            (task_id, taskdef, task_vars['_output'].targets()))
+            (task_id, taskdef, task_vars['_output']))
         tasks = self.task_manager.get_job()
         if tasks:
             self.submit_tasks(tasks)
@@ -1143,8 +1143,7 @@ class Base_Step_Executor:
                                             f'Overlapping input and output files: {", ".join(repr(x) for x in ofiles if x in g)}')
                                 # set variable _output and output
                                 self.process_output_args(ofiles, **kwargs)
-                                self.output_groups[idx] = env.sos_dict['_output'].targets(
-                                )
+                                self.output_groups[idx] = env.sos_dict['_output']
                             elif key == 'depends':
                                 try:
                                     dfiles = expand_depends_files(*args)

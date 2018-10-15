@@ -816,13 +816,12 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         else:
             raise ValueError(f'Invalid source {source} for sos_target with {len(self)} targets.')
 
-    source = property(lambda self: self._sources, set_source)
+    sources = property(lambda self: self._sources, set_source)
 
-    def targets(self, file_only=False):
-        if file_only:
-            return [x.target_name() for x in self._targets if isinstance(x, file_target)]
-        else:
-            return [x.target_name() if isinstance(x, file_target) else x for x in self._targets]
+    targets = property(lambda self: self._targets)
+
+    #def targets(self):
+    #    return [x.target_name() if isinstance(x, file_target) else x for x in self._targets]
 
     def extend(self, another):
         self._targets.extend(sos_targets(another)._targets)
