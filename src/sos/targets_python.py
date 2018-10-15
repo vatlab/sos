@@ -6,7 +6,8 @@
 import importlib
 import pkg_resources
 
-from sos.targets import BaseTarget, textMD5
+from .targets import BaseTarget, textMD5
+from .utils import env
 
 
 class Py_Module(BaseTarget):
@@ -34,7 +35,6 @@ class Py_Module(BaseTarget):
                     except Exception as e:
                         env.logger.debug(f'Failed to get version of {name}: {e}')
                         return True
-                from .utils import env
                 if pkg_resources.parse_version(ver) >= pkg_resources.parse_version(self._version):
                     return True
                 else:
@@ -46,8 +46,9 @@ class Py_Module(BaseTarget):
             return False
         # try to install it?
         import subprocess
-        env.logger.info(f'Installing {name}')
-        ret = subprocess.call(['pip', 'install', self._module if self._autoinstall is True else self._autoinstall])
+        cmd = ['pip', 'install', self._module if self._autoinstall is True else self._autoinstall]
+        env.logger.info(f'Installing python module {name} with command {" ".join(cmd)}')
+        ret = subprocess.call(cmd)
         # try to check version
         return ret == 0 and self._install(name, False)
 
