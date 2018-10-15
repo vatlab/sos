@@ -16,7 +16,7 @@ else:
     from sos.workflow_executor import Base_Executor
 
 
-class TestTarget(unittest.TestCase):
+class TestPython3Target(unittest.TestCase):
     def setUp(self):
         env.reset()
         self.temp_files = []
@@ -52,6 +52,14 @@ Mars     3390   641.85
 -----  ------  -------------
 '''.strip())
 
+    def testPy_ModuleWithVersion(self):
+        '''Test target Py_Module'''
+        script = SoS_Script(r'''
+[10]
+depends: Py_Module('tabulate', version='2.0', autoinstall=True)
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
 
 if __name__ == '__main__':
     unittest.main()
