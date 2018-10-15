@@ -138,6 +138,8 @@ def short_repr(obj, noneAsNA=False):
         return '{}...{}'.format(obj[:60].replace('\n', '\\n'), obj[-20:].replace('\n', '\\n'))
     elif isinstance(obj, (str, int, float, bool)):
         return repr(obj)
+    elif hasattr(obj, '__short_repr__'):
+        return obj.__short_repr__()
     elif isinstance(obj, Sequence):  # should be a list or tuple
         if len(obj) == 0:
             return '[]'
@@ -615,6 +617,8 @@ class ProgressFileObj(FileIO):
 def stable_repr(obj):
     if isinstance(obj, str):
         return repr(obj)
+    elif hasattr(obj, '__stable_repr__'):
+        return obj.__stable_repr__()
     elif isinstance(obj, Mapping):
         items = [stable_repr(k) + ':' + stable_repr(obj[k])
                  for k in obj.keys()]

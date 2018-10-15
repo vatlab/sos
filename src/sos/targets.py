@@ -767,27 +767,6 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def valid(self):
         return self._targets or self._undetermined is False
 
-    def slice(self, i):
-        # similar to [] but always returns a sos_targets object with appropriate source
-        if isinstance(i, str):
-            ret = sos_targets()
-            ret._undetermined = self._undetermined
-            ret._targets = [x for x,y in zip(self._targets, self._sources) if y == i]
-            ret._sources = [i]*len(ret._targets)
-            return ret
-        elif isinstance(i, (tuple, list)):
-            ret = sos_targets()
-            ret._undetermined = self._undetermined
-            ret._targets = [self._targets[x] for x in i]
-            ret._sources = [self._sources[x] for x in i]
-            return ret
-        else:
-            ret = sos_targets()
-            ret._undetermined = self._undetermined
-            ret._targets = [self._targets[i]] if isinstance(i, int) else self._targets[i]
-            ret._sources = [self._sources[i]] if isinstance(i, int) else self._sources[i]
-            return ret
-
     def __append__(self, arg, source='', verify_existence=False):
         if isinstance(arg, paths):
             self._targets.extend([file_target(x) for x in arg._paths])
@@ -878,6 +857,27 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def __len__(self):
         return len(self._targets)
 
+    def slice(self, i):
+        # similar to [] but always returns a sos_targets object with appropriate source
+        if isinstance(i, str):
+            ret = sos_targets()
+            ret._undetermined = self._undetermined
+            ret._targets = [x for x,y in zip(self._targets, self._sources) if y == i]
+            ret._sources = [i]*len(ret._targets)
+            return ret
+        elif isinstance(i, (tuple, list)):
+            ret = sos_targets()
+            ret._undetermined = self._undetermined
+            ret._targets = [self._targets[x] for x in i]
+            ret._sources = [self._sources[x] for x in i]
+            return ret
+        else:
+            ret = sos_targets()
+            ret._undetermined = self._undetermined
+            ret._targets = [self._targets[i]] if isinstance(i, int) else self._targets[i]
+            ret._sources = [self._sources[i]] if isinstance(i, int) else self._sources[i]
+            return ret
+
     def __getitem__(self, i):
         if isinstance(i, str):
             ret = sos_targets()
@@ -887,7 +887,6 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             return ret
         else:
             return self._targets[i]
-
 
     def target_signature(self):
         if len(self._targets) == 1:
@@ -952,6 +951,18 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
     def __repr__(self):
         return ('[' + ', '.join(repr(x) for x in self._targets) + ']') if self.valid() else ('Unspecified' if self.unspecified() else self._undetermined)
+
+    def __short_repr__(self):
+        if self.valid():
+            if len(self._targets) <= 2:
+                return ' '.join([x.target_name() for x in self._targets])
+            else:
+                return ' '.join([x.target_name() for x in self._targets[:2]]) + f'... ({len(self._targets)} items)'
+        else:
+            return 'Unspecified' if self.unspecified() else self._undetermined
+
+    def __stable_repr__(self):
+        return repr(self)
 
     def __str__(self):
         return self.__format__('') if self.valid() else ('Unspecified' if self.unspecified() else self._undetermined)
