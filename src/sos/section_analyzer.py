@@ -49,6 +49,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
 
+    env.sos_dict.set('step_name', section.step_name())
     env.logger.trace(
         f'Analyzing {section.step_name()} with step_output {step_output}')
 
@@ -199,7 +200,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
                     mo = re.match('\s*from_steps\s*=\s*(?P<value>.*)', piece)
                     if mo:
                         try:
-                            opt_values = eval(mo.group('value'))
+                            opt_values = SoS_eval(mo.group('value'))
                         except Exception as e:
                             raise ValueError(f'Invalid value for input option from {piece}: {e}')
                         if isinstance(opt_values, str):

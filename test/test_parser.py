@@ -1251,6 +1251,21 @@ executed.append(_output)
         self.assertEqual(env.sos_dict['executed'], [sos_targets(
             'a0.txt.bak', 'a1.txt.bak'), sos_targets('a2.txt.bak', 'a3.txt.bak')])
 
+    def testStepsWithStepName(self):
+        '''Test from steps'''
+        script = SoS_Script('''
+[step_10]
+
+output: 'a.txt'
+_output.touch()
+
+[step_20]
+input: from_steps=step_name.split('_')[0] + '_10'
+print(_input)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
     def testSectionActions(self):
         '''Test actions of sections'''
         SoS_Script(
