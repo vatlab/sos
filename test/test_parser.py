@@ -925,7 +925,7 @@ executed.append(_input)
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['executed'],  [
                          sos_targets('a1.txt', 'a2.txt', 'a3.txt', 'a4.txt')])
-        self.assertEqual(env.sos_dict['executed'][0].source, ['0']*4)
+        self.assertEqual(env.sos_dict['executed'][0].sources, ['0']*4)
         # group_by = 'single'
         script = SoS_Script('''
 [0: shared='executed']

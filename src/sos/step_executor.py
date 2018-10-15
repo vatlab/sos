@@ -261,7 +261,7 @@ class Base_Step_Executor:
             # default option
             return [ifiles]
         elif isinstance(group_by, str) and group_by.startswith('pairsource'):
-            sources = list(dict.fromkeys(ifiles.source))
+            sources = list(dict.fromkeys(ifiles.sources))
             if len(sources) == 1:
                 raise ValueError(
                     f'Cannot pairsource input with a single source.'
@@ -273,13 +273,13 @@ class Base_Step_Executor:
                     grp_size = int(group_by[10:])
                 except:
                     raise ValueError(f'Invalid pairsource option {group_by}')
-            src_sizes = {s:ifiles.source.count(s) for s in sources}
+            src_sizes = {s:ifiles.sources.count(s) for s in sources}
             if max(src_sizes.values()) % grp_size != 0:
                 raise ValueError(f'Cannot use group size {grp_size} (option {group_by}) for source of size {src_sizes}')
             n_groups = max(src_sizes.values()) // grp_size
             indexes = [[] for x in range(n_groups)]
             for s in sources:
-                lookup = [idx for idx,src in enumerate(ifiles.source) if src == s]
+                lookup = [idx for idx,src in enumerate(ifiles.sources) if src == s]
                 if src_sizes[s] > n_groups and src_sizes[s] % n_groups == 0:
                     gs = src_sizes[s] // n_groups
                     for i in range(n_groups):
@@ -344,7 +344,7 @@ class Base_Step_Executor:
                     raise ValueError(f'Invalid pairs option {group_by}')
             return [ifiles.slice(x) for x in combinations(range(len(ifiles)), grp_size)]
         elif group_by == 'source':
-            sources = list(dict.fromkeys(ifiles.source))
+            sources = list(dict.fromkeys(ifiles.sources))
             return [ifiles.slice(x) for x in sources]
         elif isinstance(group_by, int) or (isinstance(group_by, str) and group_by.isdigit()):
             group_by = int(group_by)
@@ -596,7 +596,7 @@ class Base_Step_Executor:
         if 'from_steps' in kwargs:
             # first if from_steps is set, then the default from_step will have to be
             # cleared.
-            if len(ifiles) > 0 and ifiles.source[0] != self.step.step_name():
+            if len(ifiles) > 0 and ifiles.sources[0] != self.step.step_name():
                 ifiles = sos_targets([])
             if isinstance(kwargs['from_steps'], str):
                 from_args = [kwargs['from_steps']]
@@ -902,7 +902,7 @@ class Base_Step_Executor:
         # __step_input__:    input of this step
         # __steo_output__:   output of this step
         # __step_depends__:  dependent files of this step
-        env.sos_dict['step_output'].source = env.sos_dict['step_name']
+        env.sos_dict['step_output'].sources = env.sos_dict['step_name']
 
         result = {
             '__step_input__': env.sos_dict['step_input'],
