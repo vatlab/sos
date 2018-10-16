@@ -24,7 +24,7 @@ import urllib.request
 from collections import Sequence, Mapping, Set, defaultdict
 from html.parser import HTMLParser
 from io import FileIO, StringIO
-from typing import Optional, DefaultDict, Union, List
+from typing import Optional, List
 
 import fasteners
 import yaml

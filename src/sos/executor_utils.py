@@ -7,14 +7,18 @@
 # Utility functions used by various executors.
 #
 import os
+import sys
 import copy
 import re
+import psutil
+import traceback
+
 from typing import Any, List, Tuple
 from collections import Sequence
 
 from .targets import RemovedTarget, file_target, sos_targets, sos_step, dynamic, sos_variable, RuntimeInfo
 from .utils import env, short_repr
-from .eval import SoS_eval, SoS_exec
+from .eval import SoS_eval, SoS_exec, stmtHash
 from ._version import __version__
 from .tasks import TaskParams
 from .syntax import SOS_TAG
@@ -53,6 +57,30 @@ def clear_output(err=None):
                     env.logger.debug(err)
             except Exception as e:
                 env.logger.warning(f'Failed to remove {target}: {e}')
+
+def get_traceback_msg(e):
+    error_class = e.__class__.__name__
+    cl, exc, tb = sys.exc_info()
+    msg = ''
+    for st in reversed(traceback.extract_tb(tb)):
+        if st.filename.startswith('script_'):
+            code = stmtHash.script(st.filename)
+            line_number = st.lineno
+            code = '\n'.join([f'{"---->" if i+1 == line_number else "     "} {x.rstrip()}' for i,
+                              x in enumerate(code.splitlines())][max(line_number - 3, 0):line_number + 3])
+            msg += f'''\
+{st.filename} in {st.name}
+{code}
+'''
+    detail = e.args[0] if e.args else ''
+    if msg:
+        return f'''
+---------------------------------------------------------------------------
+{error_class:42}Traceback (most recent call last)
+{msg}
+{error_class}: {detail}'''
+    else:
+        return f'{error_class}: {detail}'
 
 def prepare_env(global_def):
     env.sos_dict.set('__null_func__', __null_func__)
@@ -148,6 +176,22 @@ def create_task(global_def, task_stmt, step_md5):
     # after task_id is created.
     task_vars['workflow_id'] = env.sos_dict['workflow_id']
     return task_id, taskdef, task_vars
+
+
+def kill_all_subprocesses():
+    # kill all subprocesses that could have been spawn from the current process
+    procs = psutil.Process().children(recursive=True)
+    if procs:
+        for p in procs:
+            p.terminate()
+        gone, alive = psutil.wait_procs(procs, timeout=3)
+        if alive:
+            for p in alive:
+                p.kill()
+        gone, alive = psutil.wait_procs(procs, timeout=3)
+        if alive:
+            for p in alive:
+                env.logger.warning(f'Failed to kill subprocess {p.pid}')
 
 def reevaluate_output():
     # re-process the output statement to determine output files

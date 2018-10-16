@@ -1175,19 +1175,19 @@ class Base_Step_Executor:
 
                                 proc_vars = env.sos_dict.clone_selected_vars(
                                     env.sos_dict['__signature_vars__']
-                                    | {'step_output', '_input', '_output', '_depends', '_index', '__args__',
-                                       'step_name', '_runtime', 'step_id', 'workflow_id',
-                                       '__signature_vars__', '__step_context__'
-                                       })
+                                    | {'step_output', '_input', '_output', '_depends', '_index',
+                                     '__args__', 'step_name', '_runtime', 'step_id', 'workflow_id',
+                                     '__signature_vars__', '__step_context__' })
 
                                 self.proc_results.append({})
-                                self.submit_substep(dict(stmt=statement[1], global_def=self.step.global_def,
-                                                                           task=self.step.task,
-                                                                           proc_vars=proc_vars,
-                                                                           step_md5=self.step.md5,
-                                                                           shared_vars=self.vars_to_be_shared,
-                                                                           config=env.config,
-                                                                           capture_output=self.run_mode == 'interactive'))
+                                self.submit_substep(dict(stmt=statement[1],
+                                    global_def=self.step.global_def,
+                                    task=self.step.task,
+                                    proc_vars=proc_vars,
+                                    step_md5=self.step.md5,
+                                    shared_vars=self.vars_to_be_shared,
+                                    config=env.config,
+                                    capture_output=self.run_mode == 'interactive'))
                             else:
                                 if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified():
                                     env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} without signature')

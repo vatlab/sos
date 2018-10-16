@@ -3,22 +3,18 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
-
-import os
 import subprocess
 import sys
-import traceback
 import contextlib
-import psutil
 import zmq
 
 from io import StringIO
 
-from .eval import SoS_exec, stmtHash
+from .eval import SoS_exec
 from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
                       UnknownTarget)
-from .executor_utils import (prepare_env, clear_output, verify_input,
-        reevaluate_output, validate_step_sig, create_task)
+from .executor_utils import (prepare_env, clear_output, verify_input, kill_all_subprocesses,
+        reevaluate_output, validate_step_sig, create_task, get_traceback_msg)
 
 from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env)
 
@@ -40,10 +36,8 @@ def execute_substep(stmt, global_def='', task='', proc_vars={}, step_md5=None,
     shared_vars=[], config={}, capture_output=False):
     '''Execute a substep with specific input etc
 
-    Substep executed by this function should be self-contained.
-    That is to say, substep should not contain nested workflows.
-    Substeps containing nested workflow should be executed
-    with the step (not concurrently).
+    Substep executed by this function should be self-contained. It can contain
+    tasks (which will be sent to the master process) but not nested workflows.
 
     The executor checks step signatures and might skip the substep if it has
     been executed and the signature matches.
@@ -89,13 +83,16 @@ def _execute_substep(stmt, global_def, task, proc_vars, step_md5,
     prepare_env(global_def)
     # update it with variables passed from master process
     env.sos_dict.quick_update(proc_vars)
-    sig = None if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified() else RuntimeInfo(
-        step_md5,
-        env.sos_dict['_input'],
-        env.sos_dict['_output'],
-        env.sos_dict['_depends'],
-        env.sos_dict['__signature_vars__'],
-        shared_vars=shared_vars)
+    if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified():
+        sig = None
+    else:
+        sig = RuntimeInfo(
+            step_md5,
+            env.sos_dict['_input'],
+            env.sos_dict['_output'],
+            env.sos_dict['_depends'],
+            env.sos_dict['__signature_vars__'],
+            shared_vars=shared_vars)
     outmsg = ''
     errmsg = ''
     try:
@@ -152,27 +149,7 @@ def _execute_substep(stmt, global_def, task, proc_vars, step_md5,
         return res
     except (KeyboardInterrupt, SystemExit) as e:
         clear_output()
-        # Note that KeyboardInterrupt is not an instance of Exception so this piece is needed for
-        # the subprocesses to handle keyboard interrupt. We do not pass the exception
-        # back to the master process because the master process would handle KeyboardInterrupt
-        # as well and has no chance to handle the returned code.
-        procs = psutil.Process().children(recursive=True)
-        if procs:
-            if env.verbosity > 2:
-                env.logger.info(
-                    f'{os.getpid()} interrupted. Killing subprocesses {" ".join(str(x.pid) for x in procs)}')
-            for p in procs:
-                p.terminate()
-            gone, alive = psutil.wait_procs(procs, timeout=3)
-            if alive:
-                for p in alive:
-                    p.kill()
-            gone, alive = psutil.wait_procs(procs, timeout=3)
-            if alive:
-                for p in alive:
-                    env.logger.warning(f'Failed to kill subprocess {p.pid}')
-        elif env.verbosity > 2:
-            env.logger.info(f'{os.getpid()} interrupted. No subprocess.')
+        kill_all_subprocesses()
         raise e
     except subprocess.CalledProcessError as e:
         clear_output()
@@ -186,25 +163,8 @@ def _execute_substep(stmt, global_def, task, proc_vars, step_md5,
         return {'index': env.sos_dict['_index'], 'ret_code': 1, 'exception': e}
     except Exception as e:
         clear_output()
-        error_class = e.__class__.__name__
-        cl, exc, tb = sys.exc_info()
-        msg = ''
-        for st in reversed(traceback.extract_tb(tb)):
-            if st.filename.startswith('script_'):
-                code = stmtHash.script(st.filename)
-                line_number = st.lineno
-                code = '\n'.join([f'{"---->" if i+1 == line_number else "     "} {x.rstrip()}' for i,
-                                  x in enumerate(code.splitlines())][max(line_number - 3, 0):line_number + 3])
-                msg += f'''\
-{st.filename} in {st.name}
-{code}
-'''
-        detail = e.args[0] if e.args else ''
-        res = {'index': env.sos_dict['_index'], 'ret_code': 1, 'exception': RuntimeError(f'''
----------------------------------------------------------------------------
-{error_class:42}Traceback (most recent call last)
-{msg}
-{error_class}: {detail}''') if msg else RuntimeError(f'{error_class}: {detail}')}
+        res = {'index': env.sos_dict['_index'], 'ret_code': 1,
+            'exception': RuntimeError(get_traceback_msg())}
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res
