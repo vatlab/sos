@@ -47,6 +47,24 @@ def execute_substep(stmt, global_def='', task='', proc_vars={}, shared_vars=[], 
     this function only takes care of the connection and disconnection of
     result socket.
 
+    stmt:
+        Main statement of the substep
+
+    global_def:
+        Global definitions, might define functions useful to the substep
+
+    task:
+        External task
+
+    proc_vars:
+        Environmental variables, signature variables etc
+
+    shared_vars:
+        Variables that should be returned after the execution
+
+    config:
+        Runmode, signature mode, verbosity, etc.
+
     The return value should be a dictionary with the following keys:
 
     index: index of the substep within the step
@@ -63,6 +81,10 @@ def execute_substep(stmt, global_def='', task='', proc_vars={}, shared_vars=[], 
     assert not env.signature_push_socket.closed
     assert not env.signature_req_socket.closed
     assert 'step_id' in proc_vars
+    assert '_input' in proc_vars
+    assert '_output' in proc_vars
+    assert '_depends' in proc_vars
+    assert 'step_output' in proc_vars
     assert '_index' in proc_vars
     assert 'result_push_socket' in config["sockets"]
 

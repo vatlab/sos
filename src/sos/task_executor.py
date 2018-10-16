@@ -5,19 +5,17 @@
 import copy
 import os
 import subprocess
-import sys
 import time
-import traceback
 from collections import OrderedDict, Mapping, Sequence
 
-from .eval import SoS_eval, SoS_exec, interpolate, stmtHash
+from .eval import SoS_eval, SoS_exec, interpolate
 from .monitor import ProcessMonitor
 from .targets import (InMemorySignature, UnknownTarget, file_target,
                       remote, sos_step, dynamic, sos_targets)
 from .utils import StopInputGroup, env, short_repr, pickleable
 from .tasks import TaskFile, remove_task_files
 from .step_executor import parse_shared_vars
-from .executor_utils import __null_func__
+from .executor_utils import __null_func__, get_traceback_msg
 
 def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
     shared = {}
@@ -502,31 +500,9 @@ del sos_handle_parameter_
         return {'ret_code': e.returncode, 'task': task_id, 'shared': {},
                 'exception': RuntimeError(e.stderr)}
     except Exception as e:
-
-        error_class = e.__class__.__name__
-        cl, exc, tb = sys.exc_info()
-        msg = ''
-        for st in reversed(traceback.extract_tb(tb)):
-            if st.filename.startswith('script_'):
-                code = stmtHash.script(st.filename)
-                line_number = st.lineno
-                code = '\n'.join([f'{"---->" if i+1 == line_number else "     "} {x.rstrip()}' for i,
-                                  x in enumerate(code.splitlines())][max(line_number - 3, 0):line_number + 3])
-                msg += f'''\
-{st.filename} in {st.name}
-{code}
-'''
-        detail = e.args[0] if e.args else ''
-        if msg:
-            env.logger.debug(f'''
----------------------------------------------------------------------------
-{error_class:42}Traceback (most recent call last)
-{msg}
-{error_class}: {detail}''')
-            env.logger.debug(f'{error_class}: {detail}')
-
-        env.logger.error(f'{task_id} ``failed``: {error_class} {detail}')
-        return {'ret_code': 1, 'exception': e, 'task': task_id, 'shared': {}}
+        msg = get_traceback_msg(e)
+        env.logger.error(f'{task_id} ``failed``: {msg}')
+        return {'ret_code': 1, 'exception': RuntimeError(msg), 'task': task_id, 'shared': {}}
     finally:
         os.chdir(orig_dir)
 

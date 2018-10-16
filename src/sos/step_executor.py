@@ -1173,11 +1173,22 @@ class Base_Step_Executor:
                             if self.concurrent_substep:
                                 env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} concurrently')
 
+                                #
+                                # step_output: needed only when it is undetermined
+                                # step_input: not needed
+                                # _input, _output, _depends, _index: needed
+                                # __args__ for the processing of parameters
+                                # step_name: for debug scripts
+                                # step_id: for reporting to controller
+                                # '__signature_vars__' to be used for signature creation
+                                #
+                                # __step_context__ is not needed because substep
+                                # executor does not support nested workflow
                                 proc_vars = env.sos_dict.clone_selected_vars(
                                     env.sos_dict['__signature_vars__']
-                                    | {'step_output', '_input', '_output', '_depends', '_index',
-                                     '__args__', 'step_name', '_runtime', 'step_id', 'workflow_id',
-                                     '__signature_vars__', '__step_context__' })
+                                    | {'_input', '_output', '_depends', '_index',
+                                     'step_output', '__args__', 'step_name',
+                                      '_runtime', 'step_id', '__signature_vars__'})
 
                                 self.proc_results.append({})
                                 self.submit_substep(dict(stmt=statement[1],
