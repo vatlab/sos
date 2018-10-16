@@ -314,7 +314,7 @@ class SoS_DAG(nx.DiGraph):
                         if j != i:
                             self.add_edge(j, i)
 
-    def save(self, dest=None, init=False):
+    def save(self, dest=None):
         if not dest:
             return
 
@@ -348,5 +348,5 @@ class SoS_DAG(nx.DiGraph):
         if hasattr(dest, 'write'):
             dest.write(out)
         else:
-            with open(dest, 'w' if init else 'a') as dfile:
+            with open(dest, 'a') as dfile:
                 dfile.write(out)

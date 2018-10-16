@@ -120,7 +120,7 @@ class SoS_Worker(mp.Process):
         # everything directly to the master process, so we do not
         # have to collect result here
         try:
-            executer.run(targets=targets, parent_socket=env.master_socket,
+            executer.run_as_nested(targets=targets, parent_socket=env.master_socket,
                          my_workflow_id=workflow_id)
         except Exception as e:
             env.master_socket.send_pyobj(e)

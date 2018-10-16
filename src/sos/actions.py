@@ -544,39 +544,40 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
                                  'no args' if not args_output else args_output))
 
         if not hasattr(env, '__socket__'):
-            # if env has no __socket__, this means the nested workflow is executed from
-            # within a task, and we can just use an executor to execute it.
-            #         # tell the master process to receive a workflow
-            shared = {
-                x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
-            if env.config['run_mode'] == 'run':
-                from .workflow_executor import Base_Executor
-                old_dict = env.sos_dict._dict
-                env.sos_dict._dict = {}
-                executor = Base_Executor(
-                    wf, args=args, shared=shared, config=env.config)
-                res = executor.run(targets=targets, my_workflow_id=None)
-                env.sos_dict._dict = old_dict
-                if shared:
-                    if res is None:
-                        # worker is killed
-                        sys.exit(0)
-                    elif isinstance(res, Exception):
-                        raise res
-                    env.sos_dict.quick_update(res['shared'])
-                else:
-                    res = None
-                return res
-            else:
-                # run workflows from notebook or in dryrun mode
-                from sos_notebook.workflow_executor import Interactive_Executor
-                executor = Interactive_Executor(
-                    wf, args=args, shared=shared, config=env.config)
-                res = executor._run(targets=targets)
-                if shared and 'shared' in res:
-                    env.sos_dict.quick_update(res['shared'])
-                # in interactive mode, we just return the __last_res__
-                return res.get('__last_res__', None)
+            # # if env has no __socket__, this means the nested workflow is executed from
+            # # within a task, and we can just use an executor to execute it.
+            # #         # tell the master process to receive a workflow
+            # shared = {
+            #     x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
+            # if env.config['run_mode'] == 'run':
+            #     from .workflow_executor import Base_Executor
+            #     old_dict = env.sos_dict._dict
+            #     env.sos_dict._dict = {}
+            #     executor = Base_Executor(
+            #         wf, args=args, shared=shared, config=env.config)
+            #     res = executor.run(targets=targets, my_workflow_id=None)
+            #     env.sos_dict._dict = old_dict
+            #     if shared:
+            #         if res is None:
+            #             # worker is killed
+            #             sys.exit(0)
+            #         elif isinstance(res, Exception):
+            #             raise res
+            #         env.sos_dict.quick_update(res['shared'])
+            #     else:
+            #         res = None
+            #     return res
+            # else:
+            #     # run workflows from notebook or in dryrun mode
+            #     from sos_notebook.workflow_executor import Interactive_Executor
+            #     executor = Interactive_Executor(
+            #         wf, args=args, shared=shared, config=env.config)
+            #     res = executor._run(targets=targets)
+            #     if shared and 'shared' in res:
+            #         env.sos_dict.quick_update(res['shared'])
+            #     # in interactive mode, we just return the __last_res__
+            #     return res.get('__last_res__', None)
+            raise RuntimeError('Running nested workflow without a master is not acceptable')
         else:
             # tell the master process to receive a workflow
             env.__socket__.send_pyobj(f'workflow {uuid.uuid4()}')
