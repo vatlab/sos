@@ -876,7 +876,6 @@ class Base_Step_Executor:
 
     def prepare_substep(self):
         # socket to collect result
-        env.logger.error(f'prepare substep at {os.getpid()}')
         self.result_pull_socket = env.zmq_context.socket(zmq.PULL)
         port = self.result_pull_socket.bind_to_random_port('tcp://127.0.0.1')
         env.config['sockets']['result_push_socket'] = port
