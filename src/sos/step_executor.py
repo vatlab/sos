@@ -8,14 +8,13 @@ import os
 import subprocess
 import sys
 import time
-import traceback
 import zmq
 
 from collections import Iterable, Mapping, Sequence, defaultdict
 from itertools import combinations, tee
 from typing import List, Union
 
-from .eval import SoS_eval, SoS_exec, stmtHash, accessed_vars
+from .eval import SoS_eval, SoS_exec, accessed_vars
 from .pattern import extract_pattern
 from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
                      SOS_OUTPUT_OPTIONS, SOS_RUNTIME_OPTIONS)
@@ -26,7 +25,7 @@ from .tasks import MasterTaskParams, TaskFile
 from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr)
 from .executor_utils import (clear_output, create_task, verify_input, reevaluate_output,
-                    validate_step_sig, PendingTasks, statementMD5)
+                    validate_step_sig, PendingTasks, statementMD5, get_traceback_msg)
 
 
 __all__ = []
@@ -851,28 +850,7 @@ class Base_Step_Executor:
         except ArgumentError:
             raise
         except Exception as e:
-            error_class = e.__class__.__name__
-            cl, exc, tb = sys.exc_info()
-            msg = ''
-            for st in reversed(traceback.extract_tb(tb)):
-                if st.filename.startswith('script_'):
-                    code = stmtHash.script(st.filename)
-                    line_number = st.lineno
-                    code = '\n'.join([f'{"---->" if i+1 == line_number else "     "} {x.rstrip()}' for i,
-                                      x in enumerate(code.splitlines())][max(line_number - 3, 0):line_number + 3])
-                    msg += f'''\
-{st.filename} in {st.name}
-{code}
-'''
-            detail = e.args[0] if e.args else ''
-            if msg:
-                raise RuntimeError(f'''
----------------------------------------------------------------------------
-{error_class:42}Traceback (most recent call last)
-{msg}
-{error_class}: {detail}''')
-            else:
-                raise RuntimeError(f'{error_class}: {detail}')
+            raise RuntimeError(get_traceback_msg(e))
 
     def prepare_substep(self):
         # socket to collect result
