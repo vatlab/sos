@@ -14,7 +14,7 @@ from .eval import SoS_exec
 from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
                       UnknownTarget)
 from .executor_utils import (prepare_env, clear_output, verify_input, kill_all_subprocesses,
-        reevaluate_output, validate_step_sig, create_task, get_traceback_msg)
+        reevaluate_output, validate_step_sig, create_task, get_traceback_msg, statementMD5)
 
 from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env)
 
@@ -32,8 +32,7 @@ def stdoutIO():
     sys.stderr = olderr
 
 
-def execute_substep(stmt, global_def='', task='', proc_vars={}, step_md5=None,
-    shared_vars=[], config={}, capture_output=False):
+def execute_substep(stmt, global_def='', task='', proc_vars={}, shared_vars=[], config={}):
     '''Execute a substep with specific input etc
 
     Substep executed by this function should be self-contained. It can contain
@@ -54,8 +53,8 @@ def execute_substep(stmt, global_def='', task='', proc_vars={}, step_md5=None,
     ret_code: (all) return code, 0 for successful
     sig_skipped: (optional) return if the step is skipped due to signature
     shared: (optional) shared variable as specified by 'shared_vars'
-    stdout: (optional) if capture_output is True (in interactive mode)
-    stderr: (optional) if capture_output is True (in interactive mode)
+    stdout: (optional) if in interactive mode
+    stderr: (optional) if in interactive mode
     exception: (optional) if an exception occures
     '''
     assert not env.zmq_context.closed
@@ -70,13 +69,13 @@ def execute_substep(stmt, global_def='', task='', proc_vars={}, step_md5=None,
     try:
         res_socket = env.zmq_context.socket(zmq.PUSH)
         res_socket.connect(f'tcp://127.0.0.1:{config["sockets"]["result_push_socket"]}')
-        res = _execute_substep(stmt=stmt, global_def=global_def, task=task, proc_vars=proc_vars, step_md5=step_md5, shared_vars=shared_vars, config=config, capture_output=capture_output)
+        res = _execute_substep(stmt=stmt, global_def=global_def, task=task, proc_vars=proc_vars,
+            shared_vars=shared_vars, config=config)
         res_socket.send_pyobj(res)
     finally:
         res_socket.close()
 
-def _execute_substep(stmt, global_def, task, proc_vars, step_md5,
-    shared_vars, config, capture_output):
+def _execute_substep(stmt, global_def, task, proc_vars, shared_vars, config):
     # passing configuration and port numbers to the subprocess
     env.config.update(config)
     # prepare a working environment with sos symbols and functions
@@ -87,7 +86,7 @@ def _execute_substep(stmt, global_def, task, proc_vars, step_md5,
         sig = None
     else:
         sig = RuntimeInfo(
-            step_md5,
+            statementMD5([stmt, task]),
             env.sos_dict['_input'],
             env.sos_dict['_output'],
             env.sos_dict['_depends'],
@@ -95,6 +94,7 @@ def _execute_substep(stmt, global_def, task, proc_vars, step_md5,
             shared_vars=shared_vars)
     outmsg = ''
     errmsg = ''
+    capture_output = env.config['run_mode'] == 'interactive'
     try:
         if sig:
             matched = validate_step_sig(sig)
@@ -124,7 +124,7 @@ def _execute_substep(stmt, global_def, task, proc_vars, step_md5,
             else:
                 SoS_exec(stmt, return_result=False)
         if task:
-            task_id, taskdef, task_vars = create_task(global_def, task, step_md5)
+            task_id, taskdef, task_vars = create_task(global_def, task)
             res = {'index': env.sos_dict['_index'], 'task_id': task_id, 'task_def': taskdef, 'task_vars': task_vars}
         else:
             if env.sos_dict['step_output'].undetermined():
@@ -164,7 +164,7 @@ def _execute_substep(stmt, global_def, task, proc_vars, step_md5,
     except Exception as e:
         clear_output()
         res = {'index': env.sos_dict['_index'], 'ret_code': 1,
-            'exception': RuntimeError(get_traceback_msg())}
+            'exception': RuntimeError(get_traceback_msg(e))}
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res

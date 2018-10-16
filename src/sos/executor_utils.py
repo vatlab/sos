@@ -15,8 +15,11 @@ import traceback
 
 from typing import Any, List, Tuple
 from collections import Sequence
+from io import StringIO
+from tokenize import generate_tokens
 
-from .targets import RemovedTarget, file_target, sos_targets, sos_step, dynamic, sos_variable, RuntimeInfo
+from .targets import (RemovedTarget, file_target, sos_targets, sos_step,
+    dynamic, sos_variable, RuntimeInfo, textMD5)
 from .utils import env, short_repr
 from .eval import SoS_eval, SoS_exec, stmtHash
 from ._version import __version__
@@ -103,7 +106,17 @@ del sos_handle_parameter_
         env.logger.trace(
             f'Failed to execute global definition {short_repr(global_def)}: {e}')
 
-def create_task(global_def, task_stmt, step_md5):
+def statementMD5(stmts):
+    def _get_tokens(statement):
+        return [x[1] for x in generate_tokens(StringIO(statement).readline) if x[1] not in ('', '\n')]
+
+    tokens = []
+    for stmt in stmts:
+        if stmt:
+            tokens.extend(_get_tokens(stmt))
+    return textMD5(' '.join(tokens))
+
+def create_task(global_def, task_stmt):
     # prepare task variables
     env.sos_dict['_runtime']['cur_dir'] = os.getcwd()
     # we need to record the verbosity and sigmode of task during creation because
@@ -168,7 +181,7 @@ def create_task(global_def, task_stmt, step_md5):
     )
     # if no output (thus no signature)
     # temporarily create task signature to obtain sig_id
-    task_id = RuntimeInfo(step_md5 + task_stmt, task_vars['_input'],
+    task_id = RuntimeInfo(statementMD5([task_stmt]), task_vars['_input'],
                           task_vars['_output'], task_vars['_depends'],
                           task_vars['__signature_vars__'], task_vars).sig_id
 

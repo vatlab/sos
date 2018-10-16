@@ -321,8 +321,7 @@ class RuntimeEnvironments(object):
         #
         # run mode, this mode controls how SoS actions behave
         #
-        self.config: DefaultDict[str,
-                                 Union[None, bool, str]] = defaultdict(str)
+        self.config = defaultdict(str)
         self.config.update({
             'config_file': None,
             'output_dag': None,

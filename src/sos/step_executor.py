@@ -26,7 +26,7 @@ from .tasks import MasterTaskParams, TaskFile
 from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr)
 from .executor_utils import (clear_output, create_task, verify_input, reevaluate_output,
-                    validate_step_sig, PendingTasks)
+                    validate_step_sig, PendingTasks, statementMD5)
 
 
 __all__ = []
@@ -1184,10 +1184,8 @@ class Base_Step_Executor:
                                     global_def=self.step.global_def,
                                     task=self.step.task,
                                     proc_vars=proc_vars,
-                                    step_md5=self.step.md5,
                                     shared_vars=self.vars_to_be_shared,
-                                    config=env.config,
-                                    capture_output=self.run_mode == 'interactive'))
+                                    config=env.config))
                             else:
                                 if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified():
                                     env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} without signature')
@@ -1208,7 +1206,7 @@ class Base_Step_Executor:
                                             raise ValueError(f'Missing shared variable {e}.')
                                 else:
                                     sig = RuntimeInfo(
-                                        self.step.md5,
+                                        statementMD5([statement[1], self.step.task]),
                                         env.sos_dict['_input'],
                                         env.sos_dict['_output'],
                                         env.sos_dict['_depends'],
@@ -1270,7 +1268,7 @@ class Base_Step_Executor:
                 if not any(x[0] == '!' for x in self.step.statements[input_statement_idx:]) and self.step.task and not self.concurrent_substep \
                     and env.config['sig_mode'] != 'ignore' and not env.sos_dict['_output'].unspecified():
                     sig = RuntimeInfo(
-                        self.step.md5,
+                        statementMD5([self.step.task]),
                         env.sos_dict['_input'],
                         env.sos_dict['_output'],
                         env.sos_dict['_depends'],
@@ -1330,7 +1328,7 @@ class Base_Step_Executor:
                 #
                 self.log('task')
                 try:
-                    task_id, taskdef, task_vars = create_task(self.step.global_def, self.step.task, self.step.md5)
+                    task_id, taskdef, task_vars = create_task(self.step.global_def, self.step.task)
                     task = self.submit_task(task_id, taskdef, task_vars)
                     self.proc_results.append(task)
                 except Exception as e:

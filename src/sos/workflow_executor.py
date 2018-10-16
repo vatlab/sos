@@ -94,6 +94,7 @@ class ProcInfo(object):
     def is_pending(self) -> bool:
         return self.step._status.endswith('_pending')
 
+
 class ExecutionManager(object):
     # this class managers workers and their status ...
     def __init__(self, max_workers: int, master: bool = True) -> None:

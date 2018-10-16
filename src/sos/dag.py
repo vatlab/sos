@@ -110,8 +110,7 @@ class SoS_DAG(nx.DiGraph):
     def __init__(self, *args, **kwargs):
         nx.DiGraph.__init__(self, *args, **kwargs)
         # all_dependent files includes input and depends files
-        self._all_dependent_files: DefaultDict[BaseTarget, List] = defaultdict(
-            list)
+        self._all_dependent_files = defaultdict(list)
         self._all_output_files = defaultdict(list)
         # index of mini
         self._forward_workflow_id = 0
