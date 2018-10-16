@@ -1154,7 +1154,7 @@ class Base_Step_Executor:
                                 # _input, _output, _depends, _index: needed
                                 # __args__ for the processing of parameters
                                 # step_name: for debug scripts
-                                # step_id: for reporting to controller
+                                # step_id, workflow_id: for reporting to controller
                                 # '__signature_vars__' to be used for signature creation
                                 #
                                 # __step_context__ is not needed because substep
@@ -1163,7 +1163,8 @@ class Base_Step_Executor:
                                     env.sos_dict['__signature_vars__']
                                     | {'_input', '_output', '_depends', '_index',
                                      'step_output', '__args__', 'step_name',
-                                      '_runtime', 'step_id', '__signature_vars__'})
+                                      '_runtime', 'step_id', 'workflow_id',
+                                      '__signature_vars__'})
 
                                 self.proc_results.append({})
                                 self.submit_substep(dict(stmt=statement[1],

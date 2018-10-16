@@ -80,6 +80,7 @@ def execute_substep(stmt, global_def='', task='', proc_vars={}, shared_vars=[], 
     assert not env.controller_req_socket.closed
     assert not env.signature_push_socket.closed
     assert not env.signature_req_socket.closed
+    assert 'workflow_id' in proc_vars
     assert 'step_id' in proc_vars
     assert '_input' in proc_vars
     assert '_output' in proc_vars
