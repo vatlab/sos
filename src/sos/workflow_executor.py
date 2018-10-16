@@ -209,7 +209,8 @@ class Base_Executor:
         if env.config['sig_mode'] is None:
             env.config['sig_mode'] = 'default'
         # interactive mode does not pass workflow
-        self.md5 = self.calculate_md5()
+        self.md5 = self.calculate_md5() if self.workflow else '0'
+
         env.config['workflow_id'] = self.md5
         env.sos_dict.set('workflow_id', self.md5)
 
