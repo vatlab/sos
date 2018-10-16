@@ -1185,7 +1185,6 @@ class Base_Step_Executor:
                                                                            task=self.step.task,
                                                                            proc_vars=proc_vars,
                                                                            step_md5=self.step.md5,
-                                                                           step_tokens=self.step.tokens,
                                                                            shared_vars=self.vars_to_be_shared,
                                                                            config=env.config,
                                                                            capture_output=self.run_mode == 'interactive'))
@@ -1209,7 +1208,7 @@ class Base_Step_Executor:
                                             raise ValueError(f'Missing shared variable {e}.')
                                 else:
                                     sig = RuntimeInfo(
-                                        self.step.md5, self.step.tokens,
+                                        self.step.md5,
                                         env.sos_dict['_input'],
                                         env.sos_dict['_output'],
                                         env.sos_dict['_depends'],
@@ -1271,7 +1270,7 @@ class Base_Step_Executor:
                 if not any(x[0] == '!' for x in self.step.statements[input_statement_idx:]) and self.step.task and not self.concurrent_substep \
                     and env.config['sig_mode'] != 'ignore' and not env.sos_dict['_output'].unspecified():
                     sig = RuntimeInfo(
-                        self.step.md5, self.step.tokens,
+                        self.step.md5,
                         env.sos_dict['_input'],
                         env.sos_dict['_output'],
                         env.sos_dict['_depends'],

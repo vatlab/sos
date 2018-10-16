@@ -1307,8 +1307,7 @@ for __n, __v in {repr(name_map)}.items():
                 section.global_parameters = global_parameters
                 section.parameters.update(global_parameters)
             #
-            section.tokens = section.get_tokens()
-            section.md5 = textMD5(section.tokens)
+            section.md5 = textMD5(section.get_tokens())
 
     def workflow(self, workflow_name: Optional[str] = None, use_default: bool = True) -> SoS_Workflow:
         '''Return a workflow with name_step+name_step specified in wf_name

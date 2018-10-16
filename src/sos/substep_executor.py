@@ -36,7 +36,7 @@ def stdoutIO():
     sys.stderr = olderr
 
 
-def execute_substep(stmt, global_def='', task='', proc_vars={}, step_md5=None, step_tokens=[],
+def execute_substep(stmt, global_def='', task='', proc_vars={}, step_md5=None,
     shared_vars=[], config={}, capture_output=False):
     '''Execute a substep with specific input etc
 
@@ -76,13 +76,12 @@ def execute_substep(stmt, global_def='', task='', proc_vars={}, step_md5=None, s
     try:
         res_socket = env.zmq_context.socket(zmq.PUSH)
         res_socket.connect(f'tcp://127.0.0.1:{config["sockets"]["result_push_socket"]}')
-        res = _execute_substep(stmt=stmt, global_def=global_def, task=task, proc_vars=proc_vars, step_md5=step_md5, step_tokens=step_tokens,
-            shared_vars=shared_vars, config=config, capture_output=capture_output)
+        res = _execute_substep(stmt=stmt, global_def=global_def, task=task, proc_vars=proc_vars, step_md5=step_md5, shared_vars=shared_vars, config=config, capture_output=capture_output)
         res_socket.send_pyobj(res)
     finally:
         res_socket.close()
 
-def _execute_substep(stmt, global_def, task, proc_vars, step_md5, step_tokens,
+def _execute_substep(stmt, global_def, task, proc_vars, step_md5,
     shared_vars, config, capture_output):
     # passing configuration and port numbers to the subprocess
     env.config.update(config)
@@ -91,7 +90,7 @@ def _execute_substep(stmt, global_def, task, proc_vars, step_md5, step_tokens,
     # update it with variables passed from master process
     env.sos_dict.quick_update(proc_vars)
     sig = None if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified() else RuntimeInfo(
-        step_md5, step_tokens,
+        step_md5,
         env.sos_dict['_input'],
         env.sos_dict['_output'],
         env.sos_dict['_depends'],

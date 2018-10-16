@@ -1129,7 +1129,7 @@ class RuntimeInfo(InMemorySignature):
     .exe_info files are used.
     '''
 
-    def __init__(self, step_md5: str, script: str, input_files: sos_targets, output_files: sos_targets,
+    def __init__(self, step_md5: str, input_files: sos_targets, output_files: sos_targets,
                  dependent_files: sos_targets, signature_vars: set=set(), sdict: dict={},
                  shared_vars: list=[]):
         '''Runtime information for specified output files
@@ -1137,13 +1137,12 @@ class RuntimeInfo(InMemorySignature):
         if not sdict:
             sdict = env.sos_dict
         self.step_md5 = step_md5
-        self.script = script
         super(RuntimeInfo, self).__init__(input_files, output_files,
                                           dependent_files, signature_vars,
                                           shared_vars=shared_vars)
 
         self.sig_id = textMD5(
-            f'{self.script} {self.input_files} {self.output_files} {self.dependent_files} {stable_repr(self.init_signature)}{sdict["_index"] if self.output_files.undetermined() else ""}')
+            f'{self.step_md5} {self.input_files} {self.output_files} {self.dependent_files} {stable_repr(self.init_signature)}{sdict["_index"] if self.output_files.undetermined() else ""}')
 
     def __getstate__(self):
         return {'step_md5': self.step_md5,
@@ -1152,7 +1151,6 @@ class RuntimeInfo(InMemorySignature):
                 'dependent_files': self.dependent_files,
                 'signature_vars': self.signature_vars,
                 'init_signature': self.init_signature,
-                'script': self.script,
                 'sig_id': self.sig_id}
 
     def __setstate__(self, sdict: Dict[str, Any]):
@@ -1162,7 +1160,6 @@ class RuntimeInfo(InMemorySignature):
         self.dependent_files = sdict['dependent_files']
         self.signature_vars = sdict['signature_vars']
         self.init_signature = sdict['init_signature']
-        self.script = sdict['script']
         self.sig_id = sdict['sig_id']
 
     def lock(self):
