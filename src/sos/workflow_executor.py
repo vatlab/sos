@@ -264,12 +264,6 @@ class Base_Executor:
             connect_controllers(env.zmq_context)
 
         try:
-            self.write_workflow_info()
-            self.handle_resumed()
-
-            # if this is a resumed task?
-            if hasattr(env, 'accessed_vars'):
-                delattr(env, 'accessed_vars')
             return self._run(targets=targets, parent_socket=parent_socket,
                 my_workflow_id=my_workflow_id, mode=mode)
         finally:
@@ -890,6 +884,9 @@ class Base_Executor:
         #
         nested = parent_socket is not None and my_workflow_id is not None
         self.completed = defaultdict(int)
+
+        self.write_workflow_info()
+        self.handle_resumed()
 
         def i_am():
             return 'Nested' if nested else 'Master'

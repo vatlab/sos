@@ -894,9 +894,6 @@ class Base_Step_Executor:
         result['__shared__'] = {}
         if 'shared' in self.step.options:
             result['__shared__'] = self.shared_vars
-        if hasattr(env, 'accessed_vars'):
-            result['__environ_vars__'] = self.environ_vars
-            result['__signature_vars__'] = env.accessed_vars
         env.controller_push_socket.send_pyobj(['progress', 'step_completed',
             -1 if 'sos_run' in env.sos_dict['__signature_vars__'] else self.completed['__step_completed__'],
             env.sos_dict['step_name'], env.sos_dict['step_output']])
@@ -1420,8 +1417,6 @@ class Step_Executor(Base_Step_Executor):
     def __init__(self, step, socket, mode='run'):
         self.run_mode = mode
         env.config['run_mode'] = mode
-        if hasattr(env, 'accessed_vars'):
-            delattr(env, 'accessed_vars')
         super(Step_Executor, self).__init__(step)
         self.socket = socket
         # because step is executed in a separate SoS_Worker process, this
