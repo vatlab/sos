@@ -55,33 +55,7 @@ class TestUtils(unittest.TestCase):
                 'Verbosity {}:warning message with ``empahsized text`` in between'.format(env.verbosity))
             logger.error(
                 'Verbosity {}:error message with ``empahsized text`` in between'.format(env.verbosity))
-        # log
-        if os.path.isfile('test.log'):
-            os.remove('test.log')
-        env.logfile = 'test.log'
-        for verbosity in ['0', '1', '2', '3', '4']:
-            env.verbosity = verbosity
-            logger.trace(
-                'Verbosity {}:trace message with ``empahsized text`` in between'.format(env.verbosity))
-            logger.debug(
-                'Verbosity {}:debug message with ``empahsized text`` in between'.format(env.verbosity))
-            logger.info(
-                'Verbosity {}:info message with ``empahsized text`` in between'.format(env.verbosity))
-            logger.warning(
-                'Verbosity {}:warning message with ``empahsized text`` in between'.format(env.verbosity))
-            logger.error(
-                'Verbosity {}:error message with ``empahsized text`` in between'.format(env.verbosity))
-        # log file should not have any color codes
-        with open('test.log') as logfile:
-            line_count = 0
-            for line in logfile:
-                line_count += 1
-                self.assertFalse('\033[' in line)
-            # 4 lines for all logging level (logging level of logfile is fixed to DEBUG)
-            self.assertEqual(line_count, 20)
-        import logging
-        logging.shutdown()
-        os.remove('test.log')
+
 
     def testWorkflowDict(self):
         '''Test workflow dict with attribute access'''
