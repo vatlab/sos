@@ -259,6 +259,8 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             "assert" for validating existing files against their signatures.
             Please refer to online documentation for details about the
             use of runtime signatures.''')
+    # run in tapping mode etc
+    runmode.add_argument('-m', nargs='+', dest='exec_mode', help=argparse.SUPPRESS)
     output = parser.add_argument_group(title='Output options',
                                        description='''Output of workflow''')
     output.add_argument('-d', nargs='?', default='', metavar='DAG', dest='__dag__',
@@ -359,7 +361,7 @@ def cmd_run(args, workflow_args):
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(
             args.workflow, use_default=not args.__targets__)
-        executor = Base_Executor(workflow, args=workflow_args, config={
+        config = {
             'config_file': args.__config__,
             'output_dag': args.__dag__,
             'output_report': args.__report__,
@@ -379,9 +381,30 @@ def cmd_run(args, workflow_args):
             'targets': args.__targets__,
             'bin_dirs': args.__bin_dirs__,
             'workflow_args': workflow_args,
-            # for debugging of tapping mode
-            # 'tapping': 'both'
-        })
+            # tapping etc
+            'exec_mode': args.exec_mode
+        }
+        if args.exec_mode:
+            if args.exec_mode[0] != 'tapping' or len(args.exec_mode) == 1:
+                raise ValueError(f'Unsupported exec_mode (option -m). {args.exec_mode} provided')
+            if args.exec_mode[1] not in ('both', 'master', 'slave'):
+                raise ValueError(f'Unsupported exec_mode (option -m). {args.exec_mode} provided')
+            if args.exec_mode[1] == 'slave':
+                if len(args.exec_mode) != 4:
+                    raise ValueError(f'Unsupported exec_mode (option -m). {args.exec_mode} provided')
+                try:
+                    config['sockets'] = {
+                        'tapping_logging': int(args.exec_mode[1]),
+                        'tapping_controller': int(args.exec_mode[2]),
+                    }
+                except Exception as e:
+                    raise ValueError(f'Unsupported exec_mode (option -m). {args.exec_mode} provided: {e}')
+                env.logger.debug(f'Process being tapped at {config["sockets"]["tapping_logging"]} (logger) and {config["sockets"]["tapping_controller"]} (controller)')
+            else:
+                env.logger.debug(f'Process is running in both master and slave tapping mode')
+            config['exec_mode'] = args.exec_mode[1]
+
+        executor = Base_Executor(workflow, args=workflow_args, config=config)
         # start controller
         executor.run(args.__targets__, mode='dryrun' if args.dryrun else 'run')
     except Exception as e:

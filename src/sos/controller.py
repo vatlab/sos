@@ -36,7 +36,7 @@ def connect_controllers(context=None):
 
     # if this instance of sos is being tapped. It should connect to a few sockets
     #
-    if env.config['tapping'] in ('slave', 'both'):
+    if env.config['exec_mode'] in ('slave', 'both'):
         env.tapping_logging_socket = context.socket(zmq.PUSH)
         env.tapping_logging_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["tapping_logging"]}')
         # change logging to socket
@@ -59,7 +59,7 @@ def disconnect_controllers(context=None):
     env.substep_frontend_socket.LINGER = 0
     env.substep_frontend_socket.close()
 
-    if env.config['tapping'] in ('slave', 'both'):
+    if env.config['exec_mode'] in ('slave', 'both'):
         env.tapping_logging_socket.LINGER = 0
         env.tapping_logging_socket.close()
         env.tapping_controller_socket.LINGER = 0
@@ -245,11 +245,12 @@ class Controller(threading.Thread):
                     else:
                         break
                 # handle all push request from logging
-                while True:
-                    if self.tapping_logging_socket.poll(100):
-                        self.handle_tapping_logging_msg(self.tapping_logging_socket.recv_multipart())
-                    else:
-                        break
+                if env.config['exec_mode'] in ('master', 'both'):
+                    while True:
+                        if self.tapping_logging_socket.poll(100):
+                            self.handle_tapping_logging_msg(self.tapping_logging_socket.recv_multipart())
+                        else:
+                            break
 
                 if env.verbosity == 1 and env.config['run_mode'] != 'interactive':
                     nSteps = len(set(self._completed.keys()) | set(self._ignored.keys()))
@@ -261,7 +262,7 @@ class Controller(threading.Thread):
                     sys.stderr.write('\b \b'*self._subprogressbar_cnt + f'\033[32m]\033[0m {steps_text} ({completed_text}{", " if nCompleted and nIgnored else ""}{ignored_text})\n')
                     sys.stderr.flush()
 
-                if env.config['tapping'] in ('slave', 'both'):
+                if env.config['exec_mode'] in ('slave', 'both'):
                     # slave must ask master to quit
                     env.tapping_controller_socket.send('done')
                     env.tapping_controller_socket.recv()
@@ -309,9 +310,10 @@ class Controller(threading.Thread):
             env.logger.debug(f'Kill a substep worker. {self._n_working_workers} remains.')
 
     def handle_tapping_logging_msg(self, msg):
-        if env.config['tapping'] == 'both':
+        if env.config['exec_mode'] == 'both':
             log_to_file(msg[1].decode())
         else:
+            log_to_file(msg[1].decode())
             self.logger_mapper[msg[0]](msg[1])
 
     def handle_tapping_controller_msg(self, msg):
@@ -348,7 +350,7 @@ class Controller(threading.Thread):
         env.config['sockets']['substep_backend'] = self.substep_backend_socket.bind_to_random_port('tcp://127.0.0.1')
 
         # tapping
-        if env.config['tapping'] in ('master', 'both'):
+        if env.config['exec_mode'] in ('master', 'both'):
             self.tapping_logging_socket = self.context.socket(zmq.PULL)
             env.config['sockets']['tapping_logging'] = self.tapping_logging_socket.bind_to_random_port('tcp://127.0.0.1')
 
@@ -367,7 +369,7 @@ class Controller(threading.Thread):
         poller.register(self.ctl_req_socket, zmq.POLLIN)
         poller.register(self.substep_frontend_socket, zmq.POLLIN)
         poller.register(self.substep_backend_socket, zmq.POLLIN)
-        if env.config['tapping'] in ('master', 'both'):
+        if env.config['exec_mode'] in ('master', 'both'):
             poller.register(self.tapping_logging_socket, zmq.POLLIN)
             poller.register(self.tapping_controller_socket, zmq.POLLIN)
 
@@ -402,7 +404,7 @@ class Controller(threading.Thread):
                     self.handle_substep_backend_msg(self.substep_backend_socket.recv())
 
 
-                if env.config['tapping'] == 'master':
+                if env.config['exec_mode'] in ('master', 'both'):
 
                     if self.tapping_logging_socket in socks:
                         self.handle_tapping_logging_msg(self.tapping_logging_socket.recv_multipart())
@@ -430,7 +432,7 @@ class Controller(threading.Thread):
             poller.unregister(self.ctl_req_socket)
             poller.unregister(self.substep_frontend_socket)
             poller.unregister(self.substep_backend_socket)
-            if env.config['tapping'] in ('master', 'both'):
+            if env.config['exec_mode'] == ('master', 'both'):
                 poller.unregister(self.tapping_logging_socket)
                 poller.unregister(self.tapping_controller_socket)
 
@@ -446,7 +448,7 @@ class Controller(threading.Thread):
             self.substep_frontend_socket.close()
             self.substep_backend_socket.LINGER = 0
             self.substep_backend_socket.close()
-            if env.config['tapping'] in ('master', 'both'):
+            if env.config['exec_mode'] in ('master', 'both'):
                 self.tapping_logging_socket.LINGER = 0
                 self.tapping_logging_socket.close()
                 self.tapping_controller_socket.LINGER = 0

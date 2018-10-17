@@ -1351,7 +1351,12 @@ def remove_arg(argv, arg):
     return argv
 
 
-def pexpect_run(cmd, shell=False, win_width=None):
+def pexpect_run(cmd, shell=False, win_width=None, stdout_socket=None):
+    def send_output(output):
+        if stdout_socket:
+            stdout_socket.send(output.encode())
+        else:
+            sys.stdout.write(output)
     if sys.platform == 'win32':
         import pexpect
         import pexpect.popen_spawn as ps
@@ -1360,7 +1365,7 @@ def pexpect_run(cmd, shell=False, win_width=None):
             try:
                 child.expect('\n')
                 if env.verbosity > 0:
-                    sys.stdout.write(child.before.decode() + '\n')
+                    send_output(child.before.decode() + '\n')
             except pexpect.EOF:
                 break
         return child.wait()
@@ -1389,7 +1394,7 @@ def pexpect_run(cmd, shell=False, win_width=None):
                 try:
                     child.expect('\r\n')
                     if env.verbosity > 0:
-                        sys.stdout.write(child.before.decode() + '\n')
+                        send_output(child.before.decode() + '\n')
                 except pexpect.EOF:
                     break
             child.wait()
