@@ -73,14 +73,6 @@ def disconnect_controllers(context=None):
 
 class Controller(threading.Thread):
     LRU_READY = b"\x01"
-    logger_mapper =  {
-        b'ERROR': env.logger.error,
-        b'WARNING': env.logger.warning,
-        b'INFO': env.logger.info,
-        b'DEBUG': env.logger.debug,
-        b'TRACE': env.logger.trace,
-        b'STDOUT': env.logger.stdout
-        }
 
     def __init__(self, ready):
         threading.Thread.__init__(self)
@@ -305,13 +297,28 @@ class Controller(threading.Thread):
             env.logger.debug(f'Kill a substep worker. {self._n_working_workers} remains.')
 
     def handle_tapping_logging_msg(self, msg):
+        from .utils import log_to_file
+        log_to_file(msg)
         if env.config['exec_mode'] == 'both':
-            print(f'{msg[0].decode()} {msg[1].decode()}')
+            print(' '.join(x.decode() for x in msg))
+        elif msg[0] == b'ERROR':
+            env.logger.error(msg[1].decode())
+        elif msg[0] == b'WARNING':
+            env.logger.warning(msg[1].decode())
+        elif msg[0] == b'INFO':
+            env.logger.info(msg[1].decode())
+        elif msg[0] == b'DEBUG':
+            env.logger.debug(msg[1].decode())
+        elif msg[0] == b'TRACE':
+            env.logger.trace(msg[1].decode())
+        elif msg[0] == b'PRINT':
+            if hasattr(env.logger, 'print'):
+                env.logger.print(*[x.decode() for x in msg[1:]])
+            else:
+                env.logger.info(' '.join(x.decode() for x in msg[1:]))
         else:
-            try:
-                self.logger_mapper[msg[0]](msg[1].decode())
-            except Exception as e:
-                print(f'{msg[0].decode()} {msg[1].decode()}')
+            print(' '.join(x.decode() for x in msg))
+
 
     def handle_tapping_controller_msg(self, msg):
         self.tapping_controller_socket.send(b'ok')

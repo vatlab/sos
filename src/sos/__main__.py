@@ -390,18 +390,17 @@ def cmd_run(args, workflow_args):
             if args.exec_mode[1] not in ('both', 'master', 'slave'):
                 raise ValueError(f'Unsupported exec_mode (option -m). {args.exec_mode} provided')
             if args.exec_mode[1] == 'slave':
-                if len(args.exec_mode) != 4:
+                if len(args.exec_mode) != 5:
                     raise ValueError(f'Unsupported exec_mode (option -m). {args.exec_mode} provided')
                 try:
+                    config['slave_id'] = args.exec_mode[2]
                     config['sockets'] = {
-                        'tapping_logging': int(args.exec_mode[2]),
-                        'tapping_controller': int(args.exec_mode[3]),
+                        'tapping_logging': int(args.exec_mode[3]),
+                        'tapping_controller': int(args.exec_mode[4]),
                     }
                 except Exception as e:
                     raise ValueError(f'Unsupported exec_mode (option -m). {args.exec_mode} provided: {e}')
-                env.logger.debug(f'Process being tapped at {config["sockets"]["tapping_logging"]} (logger) and {config["sockets"]["tapping_controller"]} (controller)')
-            else:
-                env.logger.debug(f'Process is running in both master and slave tapping mode')
+                #env.logger.debug(f'Process being tapped as slave {config["slave_id"]} at {config["sockets"]["tapping_logging"]} (logger) and {config["sockets"]["tapping_controller"]} (controller)')
             config['exec_mode'] = args.exec_mode[1]
 
         executor = Base_Executor(workflow, args=workflow_args, config=config)

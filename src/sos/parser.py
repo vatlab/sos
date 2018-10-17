@@ -632,11 +632,7 @@ class SoS_Workflow:
             # keep only selected steps (and the global section)
             self.sections = [
                 x for x in self.sections if x.index < 0 or all_steps[x.index]]
-        #
-        env.logger.debug('Workflow {} created with {} sections: {}'
-                         .format(workflow_name, len(self.sections),
-                                 ', '.join(f'{section.name}_{"global" if section.index == -2 else section.index}'
-                                           for section in self.sections)))
+
 
     def section_by_id(self, uuid: UUID) -> SoS_Step:
         for section in self.sections:
