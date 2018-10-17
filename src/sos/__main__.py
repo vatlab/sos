@@ -378,8 +378,11 @@ def cmd_run(args, workflow_args):
             'workflow': args.workflow,
             'targets': args.__targets__,
             'bin_dirs': args.__bin_dirs__,
-            'workflow_args': workflow_args
+            'workflow_args': workflow_args,
+            # for debugging of tapping mode
+            # 'tapping': 'both'
         })
+        # start controller
         executor.run(args.__targets__, mode='dryrun' if args.dryrun else 'run')
     except Exception as e:
         if args.verbosity and args.verbosity > 2:

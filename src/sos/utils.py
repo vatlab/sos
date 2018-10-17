@@ -19,6 +19,8 @@ import time
 import traceback
 import types
 import urllib
+from zmq.log.handlers import PUBHandler
+
 import urllib.parse
 import urllib.request
 from collections import Sequence, Mapping, Set, defaultdict
@@ -316,7 +318,7 @@ class RuntimeEnvironments(object):
         # logger
         self._logger = None
         self._verbosity: int = 2
-        self._logfile = None
+        self._logging_socket = None
         self._set_logger()
         #
         # run mode, this mode controls how SoS actions behave
@@ -368,8 +370,8 @@ class RuntimeEnvironments(object):
         while self._logger.hasHandlers():
             self._logger.removeHandler(self._logger.handlers[0])
         self._logger.setLevel(logging.DEBUG)
-        # output to standard output
-        cout = logging.StreamHandler()
+        self._logger.trace = lambda msg, * \
+            args: self._logger._log(logging.TRACE, msg, args)
         levels = {
             0: logging.ERROR,
             1: logging.WARNING,
@@ -378,21 +380,28 @@ class RuntimeEnvironments(object):
             4: logging.TRACE,
             None: logging.INFO
         }
-        #
-        cout.setLevel(levels[self._verbosity])
-        cout.setFormatter(ColoredFormatter(
-            '%(color_levelname)s: %(color_msg)s'))
-        self._logger.addHandler(cout)
-        self._logger.trace = lambda msg, * \
-            args: self._logger._log(logging.TRACE, msg, args)
-        # output to a log file
-        if self._logfile is not None:
-            ch = logging.FileHandler(self._logfile, mode='a')
+
+        if self._logging_socket:
+            socket_handler = PUBHandler(self._logging_socket)
             # debug informaiton and time is always written to the log file
-            ch.setLevel(logging.DEBUG)
+            socket_handler.setLevel(levels[self._verbosity])
+            #ch.setFormatter(logging.Formatter(
+            #    '%(asctime)s: %(levelname)s: %(message)s'))
+            self._logger.addHandler(socket_handler)
+            # also log to file for debugging purposes
+            ch = logging.FileHandler(os.path.join(os.path.expanduser('~'), 'sos_debug.log'), mode='a')
+            # debug informaiton and time is always written to the log file
+            ch.setLevel(logging.TRACE)
             ch.setFormatter(logging.Formatter(
                 '%(asctime)s: %(levelname)s: %(message)s'))
             self._logger.addHandler(ch)
+        else:
+            # output to standard output
+            cout = logging.StreamHandler()
+            cout.setLevel(levels[self._verbosity])
+            cout.setFormatter(ColoredFormatter(
+                '%(color_levelname)s: %(color_msg)s'))
+            self._logger.addHandler(cout)
     #
     # attribute exec_dir
 
@@ -439,12 +448,10 @@ class RuntimeEnvironments(object):
     # attribute logfile
     #
 
-    def _set_logfile(self, f):
-        self._logfile = f
+    def set_socket_logger(self, socket):
+        self._logging_socket = socket
         # reset logger to include log file
         self._set_logger()
-    #
-    logfile = property(lambda self: self._logfile, _set_logfile)
 
 
 # set up environment variable and a default logger
