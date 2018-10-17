@@ -394,8 +394,8 @@ def cmd_run(args, workflow_args):
                     raise ValueError(f'Unsupported exec_mode (option -m). {args.exec_mode} provided')
                 try:
                     config['sockets'] = {
-                        'tapping_logging': int(args.exec_mode[1]),
-                        'tapping_controller': int(args.exec_mode[2]),
+                        'tapping_logging': int(args.exec_mode[2]),
+                        'tapping_controller': int(args.exec_mode[3]),
                     }
                 except Exception as e:
                     raise ValueError(f'Unsupported exec_mode (option -m). {args.exec_mode} provided: {e}')

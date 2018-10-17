@@ -1354,7 +1354,7 @@ def remove_arg(argv, arg):
 def pexpect_run(cmd, shell=False, win_width=None, stdout_socket=None):
     def send_output(output):
         if stdout_socket:
-            stdout_socket.send(output.encode())
+            stdout_socket.send_multipart([b'STDOUT', output.encode()])
         else:
             sys.stdout.write(output)
     if sys.platform == 'win32':

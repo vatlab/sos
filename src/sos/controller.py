@@ -11,7 +11,6 @@ from collections import defaultdict
 from .utils import env
 from .signatures import StepSignatures, WorkflowSignatures, WorkflowStatus
 
-from .utils import log_to_file
 
 # from zmq.utils.monitor import recv_monitor_message
 
@@ -79,7 +78,8 @@ class Controller(threading.Thread):
         b'WARNING': env.logger.warning,
         b'INFO': env.logger.info,
         b'DEBUG': env.logger.debug,
-        b'TRACE': env.logger.trace
+        b'TRACE': env.logger.trace,
+        b'STDOUT': env.logger.stdout
         }
 
     def __init__(self, ready):
@@ -262,11 +262,6 @@ class Controller(threading.Thread):
                     sys.stderr.write('\b \b'*self._subprogressbar_cnt + f'\033[32m]\033[0m {steps_text} ({completed_text}{", " if nCompleted and nIgnored else ""}{ignored_text})\n')
                     sys.stderr.flush()
 
-                if env.config['exec_mode'] in ('slave', 'both'):
-                    # slave must ask master to quit
-                    env.tapping_controller_socket.send('done')
-                    env.tapping_controller_socket.recv()
-
                 self.ctl_req_socket.send_pyobj('bye')
 
                 return False
@@ -311,13 +306,14 @@ class Controller(threading.Thread):
 
     def handle_tapping_logging_msg(self, msg):
         if env.config['exec_mode'] == 'both':
-            log_to_file(msg[1].decode())
+            print(f'{msg[0].decode()} {msg[1].decode()}')
         else:
-            log_to_file(msg[1].decode())
-            self.logger_mapper[msg[0]](msg[1])
+            try:
+                self.logger_mapper[msg[0]](msg[1].decode())
+            except Exception as e:
+                print(f'{msg[0].decode()} {msg[1].decode()}')
 
     def handle_tapping_controller_msg(self, msg):
-        log_to_file(f"Obtain controller message {msg}")
         self.tapping_controller_socket.send(b'ok')
 
     def run(self):
@@ -361,6 +357,7 @@ class Controller(threading.Thread):
         #monitor_socket = self.sig_req_socket.get_monitor_socket()
         # tell others that the sockets are ready
         self.ready.set()
+
         # Process messages from receiver and controller
         poller = zmq.Poller()
         poller.register(self.sig_push_socket, zmq.POLLIN)
@@ -383,7 +380,6 @@ class Controller(threading.Thread):
         try:
             while True:
                 socks = dict(poller.poll())
-
                 if self.sig_push_socket in socks:
                     self.handle_sig_push_msg(self.sig_push_socket.recv_pyobj())
 
@@ -418,7 +414,8 @@ class Controller(threading.Thread):
                 #         self._num_clients += 1
                 #     elif evt['event'] == zmq.EVENT_DISCONNECTED:
                 #         self._num_clients -= 1
-        except:
+        except Exception as e:
+            sys.stderr.write(f'{env.config["exec_mode"]} get an error {e}')
             return
         finally:
             # close all databses
