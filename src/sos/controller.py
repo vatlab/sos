@@ -482,7 +482,8 @@ class Controller(threading.Thread):
                 self.tapping_listener_socket.LINGER = 0
                 self.tapping_listener_socket.close()
             # both master and slave has it
-            self.tapping_controller_socket.LINGER = 0
-            self.tapping_controller_socket.close()
+            if env.config['exec_mode'] in ('master', 'slave'):
+              self.tapping_controller_socket.LINGER = 0
+              self.tapping_controller_socket.close()
 
             env.logger.trace(f'controller stopped {os.getpid()}')
