@@ -29,6 +29,8 @@ class ProcessMonitor(threading.Thread):
             self.max_walltime = expand_time(self.max_walltime)
         self.max_mem = max_mem
         self.max_procs = max_procs
+        self.task_file = os.path.join(os.path.expanduser(
+            '~'), '.sos', 'tasks', task_id + '.task')
         self.pulse_file = os.path.join(os.path.expanduser(
             '~'), '.sos', 'tasks', task_id + '.pulse')
         # remove previous status file, which could be readonly if the job is killed
@@ -73,6 +75,10 @@ class ProcessMonitor(threading.Thread):
         task_mtime = os.stat(self.pulse_file[:-6] + '.task').st_mtime
         while True:
             try:
+                if not os.path.isfile(self.task_file):
+                    # the job should be removed
+                    p = psutil.Process(self.pid)
+                    p.kill()
                 if not os.access(self.pulse_file, os.W_OK):
                     # the pulse_file is not available, it can be either killed (no res),
                     # or absorbed by the task file (with .task)

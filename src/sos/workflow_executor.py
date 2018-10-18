@@ -832,7 +832,6 @@ class Base_Executor:
 
     def finalize_and_report(self):
         # remove task pending status if the workflow is completed normally
-        env.signature_push_socket.send_pyobj(['workflow_status', 'completed'])
         if self.workflow.name != 'scratch':
             if self.completed["__step_completed__"] == 0:
                 sts = 'ignored'
@@ -1083,9 +1082,11 @@ class Base_Executor:
                             proc.socket.send_pyobj(res)
                             proc.step._pending_tasks = []
                             proc.set_status('running')
+                        elif 'missing' in res:
+                            raise RuntimeError(f'Task no longer exists: {" ".join(x for x,y in zip(proc.step._pending_tasks, res) if y == "missing")}')
                         else:
                             raise RuntimeError(
-                                f'Job returned with status {res}')
+                                f'Task {" ".join(proc.step._pending_tasks)} returned with status {" ".join(res)}')
 
                 # step 3: check if there is room and need for another job
                 while True:

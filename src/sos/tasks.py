@@ -226,6 +226,9 @@ class TaskFile(object):
                 self._write_header(fh, header)
                 fh.write(params_block)
 
+    def exists(self):
+        return os.path.isfile(self.task_file)
+
     def update(self, params):
         params_block = lzma.compress(pickle.dumps(params))
         with fasteners.InterProcessLock(os.path.join(env.temp_dir, self.task_id + '.lck')):

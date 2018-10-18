@@ -482,6 +482,10 @@ del sos_handle_parameter_
         # step process
         SoS_exec(task)
 
+        if not TaskFile(task_id).exists():
+            # if task has been removed
+            return {'ret_code': 1, 'exception': RuntimeError('Task removed.'), 'task': task_id, 'shared': {}}
+
         if subtask:
             env.logger.debug(f'{task_id} ``completed``')
         else:

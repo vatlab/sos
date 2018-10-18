@@ -579,7 +579,7 @@ class SoS_Workflow:
     def __init__(self, content: 'SoS_ScriptContent', workflow_name: str, allowed_steps: Optional[str], sections: List[SoS_Step], global_def: str) -> None:
         '''create a workflow from its name and a list of SoS_Sections (using name matching)'''
         self.content = content
-        self.name = workflow_name
+        self.name = workflow_name if workflow_name else 'default'
         self.sections = []
         self.auxiliary_sections = []
         self.global_def = global_def
