@@ -9,7 +9,7 @@ import time
 import threading
 from collections import defaultdict
 from .utils import env
-from .signatures import StepSignatures, WorkflowSignatures, WorkflowStatus
+from .signatures import StepSignatures, WorkflowSignatures
 
 
 # from zmq.utils.monitor import recv_monitor_message
