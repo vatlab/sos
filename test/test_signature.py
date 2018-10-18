@@ -14,13 +14,7 @@ from sos.hosts import Host
 from sos.parser import SoS_Script
 from sos.targets import file_target, sos_targets
 from sos.utils import env
-# if the test is imported under sos/test, test interacive executor
-if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
-    from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
-    test_interactive = True
-else:
-    from sos.workflow_executor import Base_Executor
-    test_interactive = False
+from sos.workflow_executor import Base_Executor
 
 
 class TestSignature(unittest.TestCase):
@@ -109,7 +103,6 @@ echo cp {_input} {_dest[0]}
 cp {_input} {_dest[0]}
 """, 2)
 
-    @unittest.skipIf('TRAVIS' in os.environ and test_interactive, 'This test fails for unknown reason under travis and interactive mode')
     def testSignatureWithSharedVariable(self):
         '''Test restoration of signature from variables.'''
         if file_target('a.txt').exists():

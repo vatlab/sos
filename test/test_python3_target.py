@@ -9,11 +9,7 @@ import unittest
 from sos.parser import SoS_Script
 from sos.targets import file_target
 from sos.utils import env
-# if the test is imported under sos/test, test interacive executor
-if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
-    from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
-else:
-    from sos.workflow_executor import Base_Executor
+from sos.workflow_executor import Base_Executor
 
 
 class TestPython3Target(unittest.TestCase):

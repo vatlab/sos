@@ -13,13 +13,7 @@ from sos.eval import interpolate
 from sos.parser import SoS_Script
 from sos.targets import file_target, path, paths, sos_targets
 from sos.utils import env
-# if the test is imported under sos/test, test interacive executor
-if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
-    from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
-    test_interactive = True
-else:
-    from sos.workflow_executor import Base_Executor
-    test_interactive = False
+from sos.workflow_executor import Base_Executor
 
 
 class TestTarget(unittest.TestCase):
@@ -123,7 +117,7 @@ res = 3
 """)
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['res'], 3 if test_interactive else 1)
+        self.assertEqual(env.sos_dict['res'], 1)
         #
         env.sos_dict.pop('res', None)
         script = SoS_Script(r"""
@@ -137,7 +131,7 @@ res = 3
 """)
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['res'], 3 if test_interactive else 2)
+        self.assertEqual(env.sos_dict['res'], 2)
         #
         env.sos_dict.pop('res', None)
         script = SoS_Script(r"""
@@ -155,7 +149,7 @@ a = 5
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'], 3)
-        self.assertEqual(env.sos_dict['a'], 5 if test_interactive else 30)
+        self.assertEqual(env.sos_dict['a'], 30)
         # test multiple vars
         env.sos_dict.pop('res', None)
         script = SoS_Script(r"""

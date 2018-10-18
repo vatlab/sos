@@ -20,13 +20,7 @@ from sos.targets import file_target
 from sos.utils import env
 from sos.tasks import TaskParams, TaskFile
 
-# if the test is imported under sos/test, test interacive executor
-if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
-    from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
-    test_interactive = True
-else:
-    from sos.workflow_executor import Base_Executor
-    test_interactive = False
+from sos.workflow_executor import Base_Executor
 
 has_docker = sys.platform != 'win32'
 try:
@@ -203,8 +197,6 @@ print('I am {}, done'.format(_index))
         '''Test concurrency option for runtime environment'''
         env.max_jobs = 5
         env.config['sig_mode'] = 'force'
-        if test_interactive:
-            env.config['wait_for_task'] = True
         script = SoS_Script(r"""
 [0]
 
@@ -242,8 +234,6 @@ run:
     temp_cmd
 """)
         wf = script.workflow()
-        if test_interactive:
-            env.config['wait_for_task'] = True
         env.config['sig_mode'] = 'force'
         #self.assertRaises(Exception, Base_Executor(wf).run)
         #
@@ -322,7 +312,6 @@ run: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')
     def testKillAndPurge(self):
         '''Test no wait'''
         subprocess.call(['sos', 'purge'])
@@ -434,8 +423,6 @@ run: expand=True
     touch a{a}.txt
 ''')
         wf = script.workflow()
-        if test_interactive:
-            env.config['wait_for_task'] = True
         Base_Executor(wf, config={'sig_mode': 'force'}).run()
         self.assertTrue(os.path.isfile("a100.txt"))
         # sequence of var or mapping
@@ -479,7 +466,6 @@ rng = random.randint(1, 1000)
 
 
 
-    @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')
     def testTrunkSizeOption(self):
         '''Test option trunk_size'''
         with open('test_trunksize.sos', 'w') as tt:
@@ -517,7 +503,6 @@ run: expand=True
             file_target(f'{i}.txt').unlink()
         file_target('test_trunksize.sos').unlink()
 
-    @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')
     def testTrunkWorkersOption(self):
         '''Test option trunk_workers'''
         with open('test_trunkworker.sos', 'w') as tt:
@@ -552,7 +537,6 @@ run: expand=True
             file_target('{}.txt'.format(i)).unlink()
         file_target('test_trunkworker.sos').unlink()
 
-    @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')
     def testTaskTags(self):
         '''Test option tags of tasks'''
         import random
@@ -632,7 +616,6 @@ print('a')
             'sig_mode': 'force',
         }).run)
 
-    @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')
     def testLocalMaxMem(self):
         '''Test server restriction max_mem'''
         script = SoS_Script('''
@@ -649,7 +632,6 @@ print('a')
             'sig_mode': 'force',
         }).run)
 
-    @unittest.skipIf(not has_docker or test_interactive, "Docker container not usable")
     def testRuntimeMaxWalltime(self):
         '''Test server max_walltime option'''
         script = SoS_Script('''
@@ -667,7 +649,6 @@ time.sleep(25)
             'sig_mode': 'force',
         }).run)
 
-    @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')
     def testLocalRuntimeMaxWalltime(self):
         '''Test server max_walltime option'''
         script = SoS_Script('''
@@ -702,7 +683,6 @@ print('a')
             'sig_mode': 'force',
         }).run)
 
-    @unittest.skipIf(test_interactive, 'Interactive mode handles tasks differently')
     def testLocalMaxCores(self):
         '''Test server restriction max_cores'''
         script = SoS_Script('''

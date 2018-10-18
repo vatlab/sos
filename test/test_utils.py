@@ -16,11 +16,7 @@ from sos.targets import executable, sos_targets, file_target, sos_step
 # using their names for testing purposes
 from sos.utils import WorkflowDict, env, logger, stable_repr
 from sos.workflow_executor import analyze_section
-# if the test is imported under sos/test, test interacive executor
-if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
-    from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
-else:
-    from sos.workflow_executor import Base_Executor
+from sos.workflow_executor import Base_Executor
 
 
 def internet_on(host='8.8.8.8', port=80, timeout=3):

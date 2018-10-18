@@ -10,13 +10,7 @@ import unittest
 from sos.parser import SoS_Script
 from sos.targets import file_target
 from sos.utils import env
-# if the test is imported under sos/test, test interacive executor
-if 'sos-notebook' in os.path.abspath(__file__).split(os.sep):
-    from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
-    interactive_test = True
-else:
-    from sos.workflow_executor import Base_Executor
-    interactive_test = False
+from sos.workflow_executor import Base_Executor
 
 
 class TestNested(unittest.TestCase):
@@ -598,10 +592,7 @@ sos_run('mse')
         Base_Executor(wf).run(mode='dryrun')
         #
         # Names defined in subworkflow is not returned to the master dict
-        if interactive_test:
-            self.assertTrue('test' in env.sos_dict)
-        else:
-            self.assertTrue('test' not in env.sos_dict)
+        self.assertTrue('test' not in env.sos_dict)
 
     def testSearchPath(self):
         '''Test if any action should exit in five seconds in dryrun mode'''

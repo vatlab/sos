@@ -10,11 +10,7 @@ import unittest
 from sos.parser import ParsingError, SoS_Script
 from sos.targets import file_target, sos_targets, path, paths
 from sos.utils import ArgumentError, env
-# if the test is imported under sos/test, test interacive executor
-if 'sos-notebook' in __file__.split(os.sep):
-    from sos_notebook.workflow_executor import Interactive_Executor as Base_Executor
-else:
-    from sos.workflow_executor import Base_Executor
+from sos.workflow_executor import Base_Executor
 from sos.converter import extract_workflow
 
 
