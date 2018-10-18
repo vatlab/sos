@@ -68,7 +68,6 @@ class ExecuteError(Error):
         self.message += f'{newline}[{short_line}]: {error}'
 
 
-
 class dummy_node:
     # a dummy node object to store information of node passed
     # from nested workflow
@@ -128,10 +127,12 @@ class ExecutionManager(object):
             socket = pi.socket
 
         # we need to report number of active works, plus master process itself
-        env.controller_push_socket.send_pyobj(['nprocs', self.num_active() + 1])
+        env.controller_push_socket.send_pyobj(
+            ['nprocs', self.num_active() + 1])
 
         socket.send_pyobj(spec)
-        self.procs.append(ProcInfo(worker=worker, socket=socket, step=runnable))
+        self.procs.append(
+            ProcInfo(worker=worker, socket=socket, step=runnable))
 
     def add_placeholder_worker(self, runnable, socket):
         runnable._status = 'step_pending'
@@ -139,7 +140,7 @@ class ExecutionManager(object):
 
     def num_active(self) -> int:
         return len([x for x in self.procs if x and not x.is_pending()
-                 and not x.in_status('failed')])
+                    and not x.in_status('failed')])
 
     def all_busy(self) -> bool:
         return self.num_active() >= self.max_workers
@@ -230,20 +231,20 @@ class Base_Executor:
         workflow_info['master_id'] = env.config['master_id']
         env.signature_req_socket.send_pyobj(['workflow', 'clear'])
         env.signature_req_socket.recv_pyobj()
-        env.signature_push_socket.send_pyobj(['workflow', 'workflow', self.md5, repr(workflow_info)])
+        env.signature_push_socket.send_pyobj(
+            ['workflow', 'workflow', self.md5, repr(workflow_info)])
         if env.config['exec_mode'] == 'slave':
             env.tapping_listener_socket.send_pyobj(
                 {'msg_type': 'workflow_status',
-                'data': {
-                    'cell_id': env.config['slave_id'],
-                    'workflow_id': self.md5,
-                    'workflow_name': self.workflow.name,
-                    'start_time': time.time() * 1000,
-                    'status': 'running'
-                    }
-                }
+                 'data': {
+                     'cell_id': env.config['slave_id'],
+                     'workflow_id': self.md5,
+                     'workflow_name': self.workflow.name,
+                     'start_time': time.time() * 1000,
+                     'status': 'running'
+                 }
+                 }
             )
-
 
     def run(self, targets: Optional[List[str]]=None, mode=None) -> Dict[str, Any]:
         #
@@ -836,10 +837,10 @@ class Base_Executor:
                     svars.extend(x.keys())
                 else:
                     raise ValueError(
-                        f'Unacceptable value for parameter shared: {section.options["shared"]}')
+                        f'Unacceptable value for parameter shared: {option}')
         else:
             raise ValueError(
-                f'Unacceptable value for parameter shared: {section.options["shared"]}')
+                f'Unacceptable value for parameter shared: {option}')
         return {x: env.sos_dict[x] for x in svars if x in env.sos_dict and pickleable(env.sos_dict[x], x)}
 
     def finalize_and_report(self):
@@ -862,20 +863,23 @@ class Base_Executor:
         }
         if env.config['output_dag'] and env.config['master_id'] == self.md5:
             workflow_info['dag'] = env.config['output_dag']
-        env.signature_push_socket.send_pyobj(['workflow', 'workflow', self.md5, repr(workflow_info)])
+        env.signature_push_socket.send_pyobj(
+            ['workflow', 'workflow', self.md5, repr(workflow_info)])
         if env.config['master_id'] == env.sos_dict['workflow_id'] and env.config['output_report']:
             # if this is the outter most workflow
             render_report(env.config['output_report'],
                           env.sos_dict['workflow_id'])
         if env.config['run_mode'] == 'dryrun':
-            env.signature_req_socket.send_pyobj(['workflow', 'placeholders', env.sos_dict['workflow_id']])
+            env.signature_req_socket.send_pyobj(
+                ['workflow', 'placeholders', env.sos_dict['workflow_id']])
             for filename in env.signature_req_socket.recv_pyobj():
                 try:
                     if os.path.getsize(file_target(filename)) == 0:
                         file_target(filename).unlink()
                         env.logger.debug(f'Remove placeholder {filename}')
                 except Exception as e:
-                    env.logger.trace(f'Failed to remove placeholder {filename}: {e}')
+                    env.logger.trace(
+                        f'Failed to remove placeholder {filename}: {e}')
 
     def run_as_master(self, targets=None, mode=None) -> Dict[str, Any]:
         self.completed = defaultdict(int)
@@ -887,7 +891,8 @@ class Base_Executor:
 
         self.reset_dict()
 
-        env.config['run_mode'] = env.config.get('run_mode', 'run') if mode is None else mode
+        env.config['run_mode'] = env.config.get(
+            'run_mode', 'run') if mode is None else mode
         # passing run_mode to SoS dict so that users can execute blocks of
         # python statements in different run modes.
         env.sos_dict.set('run_mode', env.config['run_mode'])
@@ -904,7 +909,8 @@ class Base_Executor:
             if env.config['output_dag'] and os.path.isfile(env.config['output_dag']):
                 os.unlink(env.config['output_dag'])
         except Exception as e:
-            env.logger.warning(f'Failed to remove existing DAG file {env.config["output_dag"]}')
+            env.logger.warning(
+                f'Failed to remove existing DAG file {env.config["output_dag"]}: {e}')
 
         # process step of the pipelinp
         dag = self.initialize_dag(targets=targets)
@@ -1095,7 +1101,8 @@ class Base_Executor:
                             proc.step._pending_tasks = []
                             proc.set_status('running')
                         elif 'missing' in res:
-                            raise RuntimeError(f'Task no longer exists: {" ".join(x for x,y in zip(proc.step._pending_tasks, res) if y == "missing")}')
+                            raise RuntimeError(
+                                f'Task no longer exists: {" ".join(x for x,y in zip(proc.step._pending_tasks, res) if y == "missing")}')
                         else:
                             raise RuntimeError(
                                 f'Task {" ".join(proc.step._pending_tasks)} returned with status {" ".join(res)}')
@@ -1115,8 +1122,10 @@ class Base_Executor:
                         runnable._status = 'running'
                         dag.save(env.config['output_dag'])
                         runnable._from_nested = True
-                        runnable._child_socket = env.zmq_context.socket(zmq.PAIR)
-                        runnable._child_socket.connect(f'tcp://127.0.0.1:{port}')
+                        runnable._child_socket = env.zmq_context.socket(
+                            zmq.PAIR)
+                        runnable._child_socket.connect(
+                            f'tcp://127.0.0.1:{port}')
 
                         env.logger.debug(
                             f'{i_am()} sends {section.step_name()} from step queue with args {args} and context {context}')
@@ -1143,7 +1152,8 @@ class Base_Executor:
                     shared = {x: env.sos_dict[x] for x in self.shared.keys(
                     ) if x in env.sos_dict and pickleable(env.sos_dict[x], x)}
                     if 'shared' in section.options:
-                        shared.update(self.get_shared_vars(section.options['shared']))
+                        shared.update(self.get_shared_vars(
+                            section.options['shared']))
 
                     if 'workflow_id' in env.sos_dict:
                         runnable._context['workflow_id'] = env.sos_dict['workflow_id']
@@ -1157,8 +1167,10 @@ class Base_Executor:
                 if manager.all_done():
                     break
                 if manager.all_failed():
-                    steps = list(dict.fromkeys([str(x.step) for x in manager.procs]))
-                    raise RuntimeError(f'Workflow exited due to failed step{"s" if len(steps) > 1 else ""} {", ".join(steps)}.')
+                    steps = list(dict.fromkeys(
+                        [str(x.step) for x in manager.procs]))
+                    raise RuntimeError(
+                        f'Workflow exited due to failed step{"s" if len(steps) > 1 else ""} {", ".join(steps)}.')
                 else:
                     time.sleep(0.1)
         except KeyboardInterrupt:
@@ -1205,7 +1217,6 @@ class Base_Executor:
         wf_result['__completed__'] = self.completed
         return wf_result
 
-
     def run_as_nested(self, parent_socket, targets=None, my_workflow_id='', mode=None) -> Dict[str, Any]:
         #
         # run a nested workflow, it simply send all steps and tasks to the master to execute
@@ -1218,7 +1229,8 @@ class Base_Executor:
             return 'Nested'
 
         self.reset_dict()
-        env.config['run_mode'] = env.config.get('run_mode', 'run') if mode is None else mode
+        env.config['run_mode'] = env.config.get(
+            'run_mode', 'run') if mode is None else mode
         env.sos_dict.set('run_mode', env.config['run_mode'])
 
         wf_result = {'__workflow_id__': my_workflow_id, 'shared': {}}
@@ -1327,7 +1339,8 @@ class Base_Executor:
                     shared = {x: env.sos_dict[x] for x in self.shared.keys(
                     ) if x in env.sos_dict and pickleable(env.sos_dict[x], x)}
                     if 'shared' in section.options:
-                        shared.update(self.get_shared_vars(section.options['shared']))
+                        shared.update(self.get_shared_vars(
+                            section.options['shared']))
 
                     if 'workflow_id' in env.sos_dict:
                         runnable._context['workflow_id'] = env.sos_dict['workflow_id']
@@ -1341,15 +1354,17 @@ class Base_Executor:
                     socket = env.zmq_context.socket(zmq.PAIR)
                     port = socket.bind_to_random_port('tcp://127.0.0.1')
                     parent_socket.send_pyobj((section, runnable._context, shared, self.args,
-                                      env.config, env.verbosity, port))
+                                              env.config, env.verbosity, port))
                     # this is a real step
                     manager.add_placeholder_worker(runnable, socket)
 
                 if manager.all_done():
                     break
                 if manager.all_failed():
-                    steps = list(dict.fromkeys([str(x.step) for x in manager.procs]))
-                    raise RuntimeError(f'Workflow exited due to failed step{"s" if len(steps) > 1 else ""} {", ".join(steps)}.')
+                    steps = list(dict.fromkeys(
+                        [str(x.step) for x in manager.procs]))
+                    raise RuntimeError(
+                        f'Workflow exited due to failed step{"s" if len(steps) > 1 else ""} {", ".join(steps)}.')
                 else:
                     time.sleep(0.1)
         except KeyboardInterrupt:

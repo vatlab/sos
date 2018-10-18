@@ -87,7 +87,7 @@ class TaskEngine(threading.Thread):
             msg['cell_id'] = env.config.get('slave_id', '')
             env.tapping_listener_socket.send_pyobj({
                 'msg_type': 'task_status',
-                'data': msg })
+                'data': msg})
         elif isinstance(msg, str):
             env.logger.info(msg)
         # text mode does not provide detailed message change information
@@ -188,27 +188,27 @@ class TaskEngine(threading.Thread):
                                 for tid in k:
                                     if tid in self.canceled_tasks:
                                         # task is canceled while being prepared
-                                        self.notify( {
+                                        self.notify({
                                             'queue': self.agent.alias,
                                             'task_id': tid,
                                             'status': 'aborted'
-                                        } )
+                                        })
                                     else:
                                         self.running_tasks.append(tid)
                                         self.notify(
-                                        {
-                                            'queue': self.agent.alias,
-                                            'task_id': tid,
-                                            'status': 'submitted'
-                                        })
+                                            {
+                                                'queue': self.agent.alias,
+                                                'task_id': tid,
+                                                'status': 'submitted'
+                                            })
                             else:
                                 for tid in k:
                                     self.notify(
-                                    {
-                                        'queue': self.agent.alias,
-                                        'task_id': tid,
-                                        'status': 'failed'
-                                    })
+                                        {
+                                            'queue': self.agent.alias,
+                                            'task_id': tid,
+                                            'status': 'failed'
+                                        })
                                     self.task_status[tid] = 'failed'
                         # else:
                         #    env.logger.trace('{} is still being submitted.'.format(k))
@@ -270,7 +270,7 @@ class TaskEngine(threading.Thread):
                         'queue': self.agent.alias,
                         'task_id': task_id,
                         'status': 'running'
-                    }                    )
+                    })
                     return 'running'
                 # there is a case when the job is already completed (complete-old), but
                 # because we do not know if the user asks to rerun (-s force), we have to
@@ -331,11 +331,11 @@ class TaskEngine(threading.Thread):
             if status != 'missing':
                 if task_id in self.task_status and self.task_status[task_id] == status:
                     self.notify(
-                    {
-                        'queue': self.agent.alias,
-                        'task_id': task_id,
-                        'status': status
-                    })
+                        {
+                            'queue': self.agent.alias,
+                            'task_id': task_id,
+                            'status': status
+                        })
                 else:
                     if status == 'running':
                         if task_id not in self.task_date:
@@ -344,11 +344,11 @@ class TaskEngine(threading.Thread):
                         else:
                             self.task_date[task_id][1] = time.time()
                     self.notify(
-                    {
-                        'queue': self.agent.alias,
-                        'task_id': task_id,
-                        'status': status
-                    })
+                        {
+                            'queue': self.agent.alias,
+                            'task_id': task_id,
+                            'status': status
+                        })
             self.task_status[task_id] = status
             if status == 'pening' and task_id not in self.pending_tasks:
                 self.pending_tasks.append(task_id)
