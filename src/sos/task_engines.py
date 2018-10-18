@@ -80,11 +80,14 @@ class TaskEngine(threading.Thread):
     def notify(self, msg):
         # GUI ...
         if env.config['exec_mode'] == 'slave':
-            if not isinstance(msg, str):
-                env.tapping_listener_socket.send_pyobj(
-                    {'msg_type': 'task_status',
-                     'slave_id': env.config.get('slave_id', ''),
-                    'data': msg })
+            if isinstance(msg, str):
+                return
+            # set cell_id to slave_id so that the frontend knows which
+            # cell this task belong to
+            msg['cell_id'] = env.config.get('slave_id', '')
+            env.tapping_listener_socket.send_pyobj({
+                'msg_type': 'task_status',
+                'data': msg })
         elif isinstance(msg, str):
             env.logger.info(msg)
         # text mode does not provide detailed message change information
@@ -185,19 +188,27 @@ class TaskEngine(threading.Thread):
                                 for tid in k:
                                     if tid in self.canceled_tasks:
                                         # task is canceled while being prepared
-                                        self.notify(
-                                            ['change-status', self.agent.alias, tid, 'aborted',
-                                             self.task_date.get(tid, (None, None, None))])
+                                        self.notify( {
+                                            'queue': self.agent.alias,
+                                            'task_id': tid,
+                                            'status': 'aborted'
+                                        } )
                                     else:
                                         self.running_tasks.append(tid)
                                         self.notify(
-                                            ['change-status', self.agent.alias, tid, 'submitted',
-                                             self.task_date.get(tid, (None, None, None))])
+                                        {
+                                            'queue': self.agent.alias,
+                                            'task_id': tid,
+                                            'status': 'submitted'
+                                        })
                             else:
                                 for tid in k:
                                     self.notify(
-                                        ['change-status', self.agent.alias, tid, 'failed',
-                                         self.task_date.get(tid, (None, None, None))])
+                                    {
+                                        'queue': self.agent.alias,
+                                        'task_id': tid,
+                                        'status': 'failed'
+                                    })
                                     self.task_status[tid] = 'failed'
                         # else:
                         #    env.logger.trace('{} is still being submitted.'.format(k))
@@ -255,8 +266,11 @@ class TaskEngine(threading.Thread):
                 if self.task_status[task_id] == 'running':
                     self.running_tasks.append(task_id)
                     self.notify(f'{task_id} ``already runnng``')
-                    self.notify(['new-status', self.agent.alias, task_id, 'running',
-                                 self.task_date.get(task_id, (None, time.time(), None))])
+                    self.notify({
+                        'queue': self.agent.alias,
+                        'task_id': task_id,
+                        'status': 'running'
+                    }                    )
                     return 'running'
                 # there is a case when the job is already completed (complete-old), but
                 # because we do not know if the user asks to rerun (-s force), we have to
@@ -282,8 +296,11 @@ class TaskEngine(threading.Thread):
             if task_id in self.canceled_tasks:
                 self.canceled_tasks.remove(task_id)
             self.task_status[task_id] = 'pending'
-            self.notify(['new-status', self.agent.alias, task_id, 'pending',
-                         self.task_date.get(task_id, (time.time(), None, None))])
+            self.notify({
+                'queue': self.agent.alias,
+                'task_id': task_id,
+                'status': 'pending'
+            })
             return 'pending'
 
     def summarize_status(self):
@@ -314,8 +331,11 @@ class TaskEngine(threading.Thread):
             if status != 'missing':
                 if task_id in self.task_status and self.task_status[task_id] == status:
                     self.notify(
-                        ['pulse-status', self.agent.alias, task_id, status,
-                         self.task_date.get(task_id, (None, None, None))])
+                    {
+                        'queue': self.agent.alias,
+                        'task_id': task_id,
+                        'status': status
+                    })
                 else:
                     if status == 'running':
                         if task_id not in self.task_date:
@@ -324,8 +344,11 @@ class TaskEngine(threading.Thread):
                         else:
                             self.task_date[task_id][1] = time.time()
                     self.notify(
-                        ['change-status', self.agent.alias, task_id, status,
-                            self.task_date.get(task_id, (None, None, None))])
+                    {
+                        'queue': self.agent.alias,
+                        'task_id': task_id,
+                        'status': status
+                    })
             self.task_status[task_id] = status
             if status == 'pening' and task_id not in self.pending_tasks:
                 self.pending_tasks.append(task_id)
@@ -334,15 +357,6 @@ class TaskEngine(threading.Thread):
             # terminal states, remove tasks from task list
             if status in ('completed', 'failed', 'aborted') and task_id in self.running_tasks:
                 self.running_tasks.remove(task_id)
-
-    def remove_tasks(self, tasks):
-        with threading.Lock():
-            for task in tasks:
-                self.notify(['remove-task', self.agent.alias, task])
-                # if task in self.task_status:
-                #    self.task_status.pop(task)
-                # if task in self.running_tasks:
-                #    self.running_tasks.remove(task)
 
     def query_tasks(self, tasks=None, check_all=False, verbosity=1, html=False, numeric_times=False, age=None, tags=None, status=None):
         try:

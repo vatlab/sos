@@ -308,14 +308,12 @@ class Controller(threading.Thread):
         else:
             print(' '.join(x.decode() for x in msg))
 
-    def handle_tapping_listener_msg(self, ret):
+    def handle_tapping_listener_msg(self, msg):
         try:
-            if ret['msg_type'] == 'workflow_status':
-                self.kernel.send_frontend_msg('workflow_status', ret['data'])
-            elif ret['msg_type'] == 'task_status':
-                self.kernel.notify_task_status(ret['data'])
+            #env.log_to_file(f'listener got {msg}')
+            self.kernel.send_frontend_msg(msg['msg_type'], msg['data'])
         except Exception as e:
-            env.log_to_file(f'Failed to handle tapping listerner message {ret}: {e}')
+            env.log_to_file(f'Failed to handle tapping listerner message {msg}: {e}')
 
     def handle_tapping_controller_msg(self, msg):
         self.tapping_controller_socket.send(b'ok')
