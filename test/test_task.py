@@ -335,27 +335,6 @@ run:
             ['sos', 'status', '-v', '3']).decode())
         # purge by all is not tested because it is dangerous
 
-    def testNoWait(self):
-        '''Test no wait'''
-        with cd_new('temp_nowait'):
-            with open('test.sos', 'w') as tst:
-                tst.write(r'''
-[10]
-input: for_each=[{'a': range(1)}]
-
-task: concurrent=True
-run: expand=True
-    echo "a = {a}"
-    sleep 15
-''')
-            subprocess.call('sos run test -s force -W', shell=True)
-            tasks = get_tasks()
-            taskstatus = [x.split()[1] for x in subprocess.check_output('sos status -v1', shell=True).decode().splitlines()]
-            self.assertTrue(all(x == 'running' for x in taskstatus))
-            time.sleep(20)
-            taskstatus = [x.split()[1] for x in subprocess.check_output('sos status -v1', shell=True).decode().splitlines()]
-            self.assertTrue(all(x == 'completed' for x in taskstatus))
-
     def testConcurrentTask(self):
         '''Test submitting tasks from concurrent substeps'''
         for f in [f'con_{x}.txt' for x in range(5)]:
