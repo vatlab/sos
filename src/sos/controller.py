@@ -35,14 +35,14 @@ def connect_controllers(context=None):
 
     # if this instance of sos is being tapped. It should connect to a few sockets
     #
-    if env.config['exec_mode'] in ('slave', 'both'):
+    if env.config['exec_mode'] == 'slave':
         env.tapping_logging_socket = context.socket(zmq.PUSH)
         env.tapping_logging_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["tapping_logging"]}')
         # change logging to socket
         env.set_socket_logger(env.tapping_logging_socket)
         #
-        env.tapping_controller_socket = context.socket(zmq.REP)
-        env.tapping_controller_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["tapping_controller"]}')
+        env.tapping_listener_socket = context.socket(zmq.PUSH)
+        env.tapping_listener_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["tapping_listener"]}')
 
     return context
 
@@ -58,11 +58,11 @@ def disconnect_controllers(context=None):
     env.substep_frontend_socket.LINGER = 0
     env.substep_frontend_socket.close()
 
-    if env.config['exec_mode'] in ('slave', 'both'):
+    if env.config['exec_mode'] == 'slave':
         env.tapping_logging_socket.LINGER = 0
         env.tapping_logging_socket.close()
-        env.tapping_controller_socket.LINGER = 0
-        env.tapping_controller_socket.close()
+        env.tapping_listener_socket.LINGER = 0
+        env.tapping_listener_socket.close()
 
     env.logger.trace(f'Disconnecting sockets from {os.getpid()}')
 
@@ -70,11 +70,16 @@ def disconnect_controllers(context=None):
         env.logger.trace(f'terminate context at {os.getpid()}')
         context.term()
 
-
 class Controller(threading.Thread):
+    '''This controller is used by both sos and sos-notebook, and there
+    can be two controllers one as a slave (sos) and one as a master
+    (notebook). We shared the same code base because step executors need
+    need to talk to the same controller (signature, controller etc) when
+    they are executed in sos or sos notebook.
+    '''
     LRU_READY = b"\x01"
 
-    def __init__(self, ready):
+    def __init__(self, ready, kernel=None):
         threading.Thread.__init__(self)
         #self.daemon = True
 
@@ -83,7 +88,7 @@ class Controller(threading.Thread):
         self.workflow_status = WorkflowStatus()
 
         self.ready = ready
-
+        self.kernel = kernel
         # number of active running master processes
         self._nprocs = 0
 
@@ -312,13 +317,20 @@ class Controller(threading.Thread):
         elif msg[0] == b'TRACE':
             env.logger.trace(msg[1].decode())
         elif msg[0] == b'PRINT':
-            if hasattr(env.logger, 'print'):
-                env.logger.print(*[x.decode() for x in msg[1:]])
-            else:
-                env.logger.info(' '.join(x.decode() for x in msg[1:]))
+            env.logger.print(*[x.decode() for x in msg[1:]])
         else:
             print(' '.join(x.decode() for x in msg))
 
+    def handle_tapping_listener_msg(self, ret):
+        try:
+            if ret['ret_code'] == 0:
+                self.kernel.send_frontend_msg('workflow_status',
+                    [ret_code['slave_id'], 'completed'])
+            else:
+                self.kernel.send_frontend_msg('workflow_status',
+                    [ret_code['slave_id'], 'failed'])
+        except Exception as e:
+            print('Failed to handle tapping listerner message {ret}')
 
     def handle_tapping_controller_msg(self, msg):
         self.tapping_controller_socket.send(b'ok')
@@ -353,13 +365,19 @@ class Controller(threading.Thread):
         env.config['sockets']['substep_backend'] = self.substep_backend_socket.bind_to_random_port('tcp://127.0.0.1')
 
         # tapping
-        if env.config['exec_mode'] in ('master', 'both'):
+        if env.config['exec_mode'] == 'master':
             self.tapping_logging_socket = self.context.socket(zmq.PULL)
             env.config['sockets']['tapping_logging'] = self.tapping_logging_socket.bind_to_random_port('tcp://127.0.0.1')
 
-            self.tapping_controller_socket = self.context.socket(zmq.REQ)
+            self.tapping_listener_socket = self.context.socket(zmq.PULL)
+            env.config['sockets']['tapping_listener'] = self.tapping_listener_socket.bind_to_random_port('tcp://127.0.0.1')
+
+            self.tapping_controller_socket = self.context.socket(zmq.PUSH)
             env.config['sockets']['tapping_controller'] = self.tapping_controller_socket.bind_to_random_port('tcp://127.0.0.1')
 
+        if env.config['exec_mode'] == 'slave':
+            self.tapping_controller_socket = self.context.socket(zmq.PULL)
+            self.tapping_controller_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["tapping_controller"]}')
 
         #monitor_socket = self.sig_req_socket.get_monitor_socket()
         # tell others that the sockets are ready
@@ -373,12 +391,13 @@ class Controller(threading.Thread):
         poller.register(self.ctl_req_socket, zmq.POLLIN)
         poller.register(self.substep_frontend_socket, zmq.POLLIN)
         poller.register(self.substep_backend_socket, zmq.POLLIN)
-        if env.config['exec_mode'] in ('master', 'both'):
+        if env.config['exec_mode'] == 'master':
             poller.register(self.tapping_logging_socket, zmq.POLLIN)
+            poller.register(self.tapping_listener_socket, zmq.POLLIN)
+        if env.config['exec_mode'] == 'slave':
             poller.register(self.tapping_controller_socket, zmq.POLLIN)
 
         #poller.register(monitor_socket, zmq.POLLIN)
-
         if env.verbosity == 1 and env.config['run_mode'] != 'interactive':
             # leading progress bar
             sys.stderr.write('\033[32m[\033[0m')
@@ -407,11 +426,13 @@ class Controller(threading.Thread):
                     self.handle_substep_backend_msg(self.substep_backend_socket.recv())
 
 
-                if env.config['exec_mode'] in ('master', 'both'):
-
+                if env.config['exec_mode'] == 'master':
                     if self.tapping_logging_socket in socks:
                         self.handle_tapping_logging_msg(self.tapping_logging_socket.recv_multipart())
+                    if self.tapping_listener_socket in socks:
+                        self.handle_tapping_listener_msg(self.tapping_listener_socket.recv_pyobj())
 
+                if env.config['exec_mode'] == 'slave':
                     if self.tapping_controller_socket in socks:
                         self.handle_tapping_controller_msg(self.tapping_controller_socket.recv_pyobj())
 
@@ -436,8 +457,10 @@ class Controller(threading.Thread):
             poller.unregister(self.ctl_req_socket)
             poller.unregister(self.substep_frontend_socket)
             poller.unregister(self.substep_backend_socket)
-            if env.config['exec_mode'] == ('master', 'both'):
+            if env.config['exec_mode'] == 'master':
                 poller.unregister(self.tapping_logging_socket)
+                poller.unregister(self.tapping_listener_socket)
+            if env.config['exec_mode'] == 'slave':
                 poller.unregister(self.tapping_controller_socket)
 
             self.sig_push_socket.LINGER = 0
@@ -452,9 +475,13 @@ class Controller(threading.Thread):
             self.substep_frontend_socket.close()
             self.substep_backend_socket.LINGER = 0
             self.substep_backend_socket.close()
-            if env.config['exec_mode'] in ('master', 'both'):
+            if env.config['exec_mode'] == 'master':
                 self.tapping_logging_socket.LINGER = 0
                 self.tapping_logging_socket.close()
-                self.tapping_controller_socket.LINGER = 0
-                self.tapping_controller_socket.close()
+                self.tapping_listener_socket.LINGER = 0
+                self.tapping_listener_socket.close()
+            # both master and slave has it
+            self.tapping_controller_socket.LINGER = 0
+            self.tapping_controller_socket.close()
+
             env.logger.trace(f'controller stopped {os.getpid()}')

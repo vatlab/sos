@@ -389,13 +389,14 @@ def cmd_run(args, workflow_args):
                 raise ValueError(f'Unsupported exec_mode (option -m). {args.exec_mode} provided')
             if args.exec_mode[1] != 'slave':
                 raise ValueError(f'Unsupported exec_mode (option -m). {args.exec_mode} provided')
-            if len(args.exec_mode) != 5:
+            if len(args.exec_mode) != 6:
                 raise ValueError(f'Unsupported exec_mode (option -m). {args.exec_mode} provided')
             try:
                 config['slave_id'] = args.exec_mode[2]
                 config['sockets'] = {
                     'tapping_logging': int(args.exec_mode[3]),
-                    'tapping_controller': int(args.exec_mode[4]),
+                    'tapping_listener': int(args.exec_mode[4]),
+                    'tapping_controller': int(args.exec_mode[5]),
                 }
             except Exception as e:
                 raise ValueError(f'Unsupported exec_mode (option -m). {args.exec_mode} provided: {e}')
