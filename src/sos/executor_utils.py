@@ -192,9 +192,13 @@ def create_task(global_def, task_stmt):
     return task_id, taskdef, task_vars
 
 
-def kill_all_subprocesses():
+def kill_all_subprocesses(pid=None, include_self=False):
     # kill all subprocesses that could have been spawn from the current process
-    procs = psutil.Process().children(recursive=True)
+    if pid is None:
+        proc = psutil.Process()
+    else:
+        proc = psutil.Process(pid)
+    procs = proc.children(recursive=True) + ([proc] if include_self else [])
     if procs:
         for p in procs:
             p.terminate()
@@ -206,6 +210,7 @@ def kill_all_subprocesses():
         if alive:
             for p in alive:
                 env.logger.warning(f'Failed to kill subprocess {p.pid}')
+
 
 def reevaluate_output():
     # re-process the output statement to determine output files
