@@ -660,6 +660,7 @@ def cmd_dryrun(args, workflow_args):
     args.__no_wait__ = False
     args.__bin_dirs__ = []
     args.__remote__ = None
+    args.exec_mode = None
     cmd_run(args, workflow_args)
 
 #

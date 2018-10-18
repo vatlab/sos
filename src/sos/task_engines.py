@@ -81,9 +81,12 @@ class TaskEngine(threading.Thread):
 
     def notify(self, msg):
         # GUI ...
-        if hasattr(env, '__task_notifier__'):
+        if env.config['exec_mode'] == 'slave':
             if not isinstance(msg, str):
-                env.__task_notifier__(msg)
+                env.tapping_listener_socket.send_pyobj(
+                    {'msg_type': 'task_status',
+                     'slave_id': env.config.get('slave_id', ''),
+                    'data': msg })
         elif isinstance(msg, str):
             env.logger.info(msg)
         # text mode does not provide detailed message change information
