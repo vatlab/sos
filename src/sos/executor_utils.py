@@ -26,12 +26,6 @@ from ._version import __version__
 from .tasks import TaskParams
 from .syntax import SOS_TAG
 
-class PendingTasks(Exception):
-    def __init__(self, tasks: List[Tuple[str, str]], *args, **kwargs) -> None:
-        super(PendingTasks, self).__init__(*args, **kwargs)
-        self.tasks = tasks
-
-
 def __null_func__(*args, **kwargs) -> Any:
     '''This function will be passed to SoS's namespace and be executed
     to evaluate functions of input, output, and depends directives.'''

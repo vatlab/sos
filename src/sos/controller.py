@@ -85,7 +85,6 @@ class Controller(threading.Thread):
 
         self.step_signatures = StepSignatures()
         self.workflow_signatures = WorkflowSignatures()
-        self.workflow_status = WorkflowStatus()
 
         self.ready = ready
         self.kernel = kernel
@@ -119,11 +118,6 @@ class Controller(threading.Thread):
                 self.workflow_signatures.write(*msg[1:])
             elif msg[0] == 'step':
                 self.step_signatures.set(*msg[1:])
-            elif msg[0] == 'workflow_status':
-                if msg[1] == 'completed':
-                    self.workflow_status.clear(env.sos_dict['master_id'])
-                elif msg[1] == 'save':
-                    self.workflow_status.set(msg[2])
             else:
                 env.logger.warning(f'Unknown message passed {msg}')
         except Exception as e:
@@ -150,11 +144,6 @@ class Controller(threading.Thread):
             elif msg[0] == 'step':
                 if msg[1] == 'get':
                     self.sig_req_socket.send_pyobj(self.step_signatures.get(*msg[2:]))
-                else:
-                    env.logger.warning(f'Unknown signature request {msg}')
-            elif msg[0] == 'workflow_status':
-                if msg[1] == 'get':
-                    self.sig_req_socket.send_pyobj(self.workflow_status.get(msg[2]))
                 else:
                     env.logger.warning(f'Unknown signature request {msg}')
             else:
@@ -450,7 +439,6 @@ class Controller(threading.Thread):
             # close all databses
             self.step_signatures.close()
             self.workflow_signatures.close()
-            self.workflow_status.close()
 
             poller.unregister(self.sig_push_socket)
             poller.unregister(self.sig_req_socket)

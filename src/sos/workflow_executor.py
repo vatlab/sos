@@ -31,7 +31,7 @@ from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
 from .utils import (Error, WorkflowDict, env, get_traceback,
                     load_config_files, pickleable, short_repr)
 from .workers import SoS_Worker
-from .executor_utils import __null_func__, PendingTasks
+from .executor_utils import __null_func__
 
 __all__ = []
 
@@ -232,15 +232,6 @@ class Base_Executor:
         env.signature_req_socket.recv_pyobj()
         env.signature_push_socket.send_pyobj(['workflow', 'workflow', self.md5, repr(workflow_info)])
 
-    def handle_resumed(self):
-        if env.config['resume_mode']:
-            env.signature_req_socket.send_pyobj(['workflow_status', 'get', self.md5])
-            status = env.signature_req_socket.recv_pyobj()
-            if status:
-                env.config['resumed_tasks'] = status['pending_tasks']
-            else:
-                env.logger.info(f'Workflow {self.md5} has been completed.')
-                sys.exit(0)
 
     def run(self, targets: Optional[List[str]]=None, mode=None) -> Dict[str, Any]:
         #
@@ -271,13 +262,6 @@ class Base_Executor:
             # when the run() function is called again, the controller
             # thread will be start again.
             env.config['master_id'] = None
-
-
-    def record_quit_status(self, tasks: List[Tuple[str, str]]) -> None:
-        status_info = dict(env.config.items())
-        queues = set([x[0] for x in tasks])
-        status_info['pending_tasks'] = {x:[k[1] for k in tasks if k[0] == x] for x in queues}
-        env.signature_push_socket.send_pyobj(['workflow_status', 'save', status_info])
 
     def calculate_md5(self) -> str:
         with StringIO() as sig:
@@ -886,7 +870,6 @@ class Base_Executor:
         self.completed = defaultdict(int)
 
         self.write_workflow_info()
-        self.handle_resumed()
 
         def i_am():
             return 'Master'
@@ -1163,22 +1146,6 @@ class Base_Executor:
                 if manager.all_failed():
                     steps = list(dict.fromkeys([str(x.step) for x in manager.procs]))
                     raise RuntimeError(f'Workflow exited due to failed step{"s" if len(steps) > 1 else ""} {", ".join(steps)}.')
-
-                # if -W is specified, or all task queues are not wait
-                elif all(x.in_status('task_pending') for x in manager.procs) and \
-                        (env.config['wait_for_task'] is False or
-                         (env.config['wait_for_task'] is None and Host.not_wait_for_tasks())):
-                    # if all jobs are pending, let us check if all jbos have been submitted.
-                    pending_tasks = []
-                    running_tasks = []
-                    for n in [x.step for x in manager.procs]:
-                        p, r = n._host._task_engine.get_tasks()
-                        pending_tasks.extend(p)
-                        running_tasks.extend([(n._host.alias, x) for x in r])
-                    if not pending_tasks and running_tasks:
-                        env.logger.trace(
-                            f'Exit with {len(running_tasks)} running tasks: {running_tasks}')
-                        raise PendingTasks(running_tasks)
                 else:
                     time.sleep(0.1)
         except KeyboardInterrupt:
@@ -1193,14 +1160,7 @@ class Base_Executor:
                     raise exec_error
             else:
                 raise
-        except PendingTasks as e:
-            self.record_quit_status(e.tasks)
-            wf_result['pending_tasks'] = [x[1] for x in running_tasks]
-            env.logger.info(
-                f'Workflow {self.workflow.name} (ID={self.md5}) exits with {len(e.tasks)} running tasks')
-            for task in e.tasks:
-                env.logger.info(task[1])
-            # close all processes
+        # close all processes
         except Exception as e:
             exec_error.append(self.workflow.name, e)
             manager.terminate(brutal=True)
@@ -1377,22 +1337,6 @@ class Base_Executor:
                 if manager.all_failed():
                     steps = list(dict.fromkeys([str(x.step) for x in manager.procs]))
                     raise RuntimeError(f'Workflow exited due to failed step{"s" if len(steps) > 1 else ""} {", ".join(steps)}.')
-
-                # if -W is specified, or all task queues are not wait
-                elif all(x.in_status('task_pending') for x in manager.procs) and \
-                        (env.config['wait_for_task'] is False or
-                         (env.config['wait_for_task'] is None and Host.not_wait_for_tasks())):
-                    # if all jobs are pending, let us check if all jbos have been submitted.
-                    pending_tasks = []
-                    running_tasks = []
-                    for n in [x.step for x in manager.procs]:
-                        p, r = n._host._task_engine.get_tasks()
-                        pending_tasks.extend(p)
-                        running_tasks.extend([(n._host.alias, x) for x in r])
-                    if not pending_tasks and running_tasks:
-                        env.logger.trace(
-                            f'Exit with {len(running_tasks)} running tasks: {running_tasks}')
-                        raise PendingTasks(running_tasks)
                 else:
                     time.sleep(0.1)
         except KeyboardInterrupt:
@@ -1407,14 +1351,6 @@ class Base_Executor:
                     raise exec_error
             else:
                 raise
-        except PendingTasks as e:
-            self.record_quit_status(e.tasks)
-            wf_result['pending_tasks'] = [x[1] for x in running_tasks]
-            env.logger.info(
-                f'Workflow {self.workflow.name} (ID={self.md5}) exits with {len(e.tasks)} running tasks')
-            for task in e.tasks:
-                env.logger.info(task[1])
-            # close all processes
         except Exception as e:
             exec_error.append(self.workflow.name, e)
             manager.terminate(brutal=True)

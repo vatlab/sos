@@ -25,7 +25,7 @@ from .tasks import MasterTaskParams, TaskFile
 from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr)
 from .executor_utils import (clear_output, create_task, verify_input, reevaluate_output,
-                    validate_step_sig, PendingTasks, statementMD5, get_traceback_msg)
+                    validate_step_sig, statementMD5, get_traceback_msg)
 
 
 __all__ = []
@@ -843,7 +843,7 @@ class Base_Step_Executor:
         try:
             self.last_res = SoS_exec(
                 stmt, return_result=self.run_mode == 'interactive')
-        except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks):
+        except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock):
             raise
         except subprocess.CalledProcessError as e:
             raise RuntimeError(e.stderr)
