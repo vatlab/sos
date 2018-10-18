@@ -302,8 +302,6 @@ class Controller(threading.Thread):
             env.logger.debug(f'Kill a substep worker. {self._n_working_workers} remains.')
 
     def handle_tapping_logging_msg(self, msg):
-        from .utils import log_to_file
-        log_to_file(msg)
         if env.config['exec_mode'] == 'both':
             print(' '.join(x.decode() for x in msg))
         elif msg[0] == b'ERROR':
@@ -325,12 +323,12 @@ class Controller(threading.Thread):
         try:
             if ret['ret_code'] == 0:
                 self.kernel.send_frontend_msg('workflow_status',
-                    [ret_code['slave_id'], 'completed'])
+                    [ret['slave_id'], 'completed'])
             else:
                 self.kernel.send_frontend_msg('workflow_status',
-                    [ret_code['slave_id'], 'failed'])
+                    [ret['slave_id'], 'failed'])
         except Exception as e:
-            print('Failed to handle tapping listerner message {ret}')
+            env.log_to_file(f'Failed to handle tapping listerner message {ret}: {e}')
 
     def handle_tapping_controller_msg(self, msg):
         self.tapping_controller_socket.send(b'ok')

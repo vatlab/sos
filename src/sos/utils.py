@@ -314,6 +314,10 @@ class RuntimeEnvironments(object):
     _exec_dir = None
     _temp_dir = os.path.join(tempfile.gettempdir(), getpass.getuser(), '.sos')
 
+    def log_to_file(self, msg):
+        with open(os.path.join(os.path.expanduser('~'), 'sos_debug.txt'), 'a') as log:
+            log.write(f'{msg}\n')
+
     def reset(self):
         # logger
         self._logger = None
@@ -1329,11 +1333,6 @@ def convertAnsi2html(txt):
         replace('\n', '<br>')
 
 # log to file for debugging purpose only
-
-
-def log_to_file(msg):
-    with open(os.path.join(os.path.expanduser('~'), 'jupyter_debug.txt'), 'a') as log:
-        log.write(f'{msg}\n')
 
 
 def remove_arg(argv, arg):
