@@ -226,13 +226,6 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             assumed to be a remote machine with process type if no configuration
             is found. If this option is specified without value, SoS will list
             all configured queues and exit.''')
-    parser.add_argument('-w', dest='__wait__', action='store_true',
-                        help='''Wait for the completion of external tasks regardless of the
-            setting of individual task queue.''')
-    parser.add_argument('-W', dest='__no_wait__', action='store_true',
-                        help='''Do not wait for the completion of external tasks and quit SoS
-            if all tasks are being executed by external task queues. This option
-            overrides the default wait setting of task queues.''')
     parser.add_argument('-r', dest='__remote__', metavar='HOST', nargs='?', const='',
                         help='''Execute the workflow in specified remote host, which should
             be defined under key host of sos configuration files (preferrably
@@ -293,8 +286,6 @@ def cmd_run(args, workflow_args):
     from .utils import env, get_traceback, load_config_files
     from .parser import SoS_Script
 
-    if args.__wait__ and args.__no_wait__:
-        sys.exit('Please specify only one of -w (wait) or -W (no-wait)')
 
     if args.__remote__ is not None:
         # if executing on a remote host...
@@ -365,16 +356,13 @@ def cmd_run(args, workflow_args):
             'config_file': args.__config__,
             'output_dag': args.__dag__,
             'output_report': args.__report__,
-            # wait if -w or in dryrun mode, not wait if -W, otherwise use queue default
-            'wait_for_task': True if args.__wait__ is True or args.dryrun else (False if args.__no_wait__ else None),
             'default_queue': '' if args.__queue__ is None else args.__queue__,
             'max_procs': args.__max_procs__,
             'max_running_jobs': args.__max_running_jobs__,
             'sig_mode': 'ignore' if args.dryrun else args.__sig_mode__,
             'run_mode': 'dryrun' if args.dryrun else 'run',
-            'resume_mode': getattr(args, '__resume__', False),
             'verbosity': args.verbosity,
-            # for infomration and resume only
+            # for infomration only
             'workdir': os.getcwd(),
             'script': args.script,
             'workflow': args.workflow,
@@ -412,184 +400,6 @@ def cmd_run(args, workflow_args):
         env.logger.error(e)
         sys.exit(1)
 
-
-def get_resume_parser(interactive=False, with_workflow=True, desc_only=False):
-    parser = argparse.ArgumentParser(prog='resume',
-                                     description='''Resume the execution or list status of suspended workflows''')
-    parser.short_description = 'Resume the execution of a suspended workflow'
-    if desc_only:
-        return parser
-    parser.add_argument('workflow_id', nargs='?',
-                        help='''First few characters of the ID of a workflow as long as it
-            uniquely identifies the workflow. The last executed workflow will
-            be resumed if no workflow is specified.''')
-    parser.add_argument('-s', '--status', action='store_true',
-                        help='''Return the status of all or specified workflows without
-            resuming them. This option will list status of all pending
-            tasks.''')
-    parser.add_argument('-w', dest='__wait__', action='store_true',
-                        help='''Wait for the completion of external tasks regardless of the
-            setting of individual task queue.''')
-    parser.add_argument('-W', dest='__no_wait__', action='store_true',
-                        help='''Do not wait for the completion of external tasks and quit SoS
-            if all tasks are being executed by external task queues. This option
-            overrides the default wait setting of task queues.''')
-    parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
-                        help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
-            information to standard output (default to 2).''')
-    parser.add_argument('-j', type=int, metavar='JOBS',
-                        default=4, dest='__max_procs__',
-                        help='''Maximum number of worker processes for the execution of the
-            workflow if the workflow can be executed in parallel (namely
-            having multiple starting points or execution branches).''')
-    parser.add_argument('-J', type=int, metavar='EXTERNAL_JOBS',
-                        dest='__max_running_jobs__',
-                        help='''Maximum number of externally running tasks. This option
-            overrides option "max_running_jobs" of a task queue (option -q)
-            so that you can, for example, submit one job at a time (with
-            -J 1) to test the task queue.''')
-    parser.add_argument('-r', dest='__remote__',
-                        help='''Resume workflow that was executed on remote host (sos run with
-            option -r)''')
-    parser.set_defaults(func=cmd_resume)
-    return parser
-
-
-def workflow_status(workflow, info):
-    from .utils import env, load_config_files
-    from .hosts import Host
-    from .tasks import print_task_status
-    from .eval import interpolate
-    from io import StringIO
-    from contextlib import redirect_stdout
-    import re
-    if 'script' not in info:
-        env.logger.error(
-            'Cannot resume a workflow with script file (it must have been started programmatically with content of a script).')
-        sys.exit(1)
-    #
-    env.logger.info('{:15s} \t{}'.format(
-        'Workflow ID:', info['workflow_id']))
-    env.logger.info('{:15s} \t{}'.format('Command:', re.sub(r'\s+', ' ', interpolate(
-        'sos run {script} {workflow if workflow else ""} '
-        '{("-c " + config_file) if config_file else ""} '
-        '{("-s " + sig_mode) if sig_mode not in ("", "default") else ""} '
-        '{("-q " + default_queue) if default_queue else ""} '
-        '{("-d " + output_dag) if output_dag not in ("", None) else ""} '
-        '{("-p " + output_report) if output_report not in ("", None) else ""} '
-        '{("-b " + " ".join(bin_dirs)) if bin_dirs and bin_dirs != ["~/.sos/bin"] else ""} '
-        '{("-j " + str(max_procs)) if max_procs != 4 else ""} '
-        '{("-J " + str(max_running_jobs)) if max_running_jobs else ""} '
-        '{("-t " + " ".join(targets)) if targets else ""} '
-        '{" ".join(workflow_args)} ', info))))
-    env.logger.info('{:15s} \t{}'.format('Working dir:', info['workdir']))
-    #
-    info['task_status'] = []
-    for k, v in info["pending_tasks"].items():
-        if k in ('', 'localhost'):
-            with StringIO() as buf, redirect_stdout(buf):
-                print_task_status(v, check_all=False, verbosity=0, html=False)
-                status = buf.getvalue().strip().split('\n')
-        else:
-            # remote host?
-            load_config_files(info.get('config_file', None))
-            try:
-                host = Host(k)
-                status = host._task_engine.query_tasks(
-                    v, check_all=False, verbosity=0).strip().split('\n')
-            except Exception as e:
-                env.logger.warning(
-                    f'Failed to check status of task {v} at host {k}: {e}')
-                status = ['unknown'] * len(v)
-        for v, s in zip(v, status):
-            env.logger.info('{:15s} \t{} at {}, currently ``{}``'.format(
-                'Pending task:', v, k, s))
-        info['task_status'].extend(status)
-    return info
-
-
-def cmd_resume(args, workflow_args):
-    if workflow_args:
-        sys.exit('No additional parameter is allowed for command resume: {} provided'.format(
-            workflow_args))
-
-    if args.__remote__ is not None:
-        # resume executing on a remote host...
-        from .hosts import Host
-        host = Host(args.__remote__)
-        #
-        r_idx = [idx for idx, x in enumerate(
-            sys.argv) if x.startswith('-r')][0]
-        if sys.argv[r_idx] == '-r':
-            # in case of -r host
-            argv = sys.argv[:r_idx] + sys.argv[r_idx + 2:]
-        else:
-            # in case of -r=host...
-            argv = sys.argv[:r_idx] + sys.argv[r_idx + 1:]
-        # replace absolute path with relative one because remote sos might have
-        # a different path.
-        if os.path.basename(argv[0]) == 'sos':
-            argv[0] = 'sos'
-        # execute the command on remote host
-        sys.exit(host._host_agent.check_call(argv))
-
-    from .utils import env
-    env.verbosity = args.verbosity
-
-    from .signatures import WorkflowStatus
-    status = WorkflowStatus()
-    workflows = status.list()
-    if not workflows:
-        env.logger.info('No resumable workflow')
-        sys.exit(0)
-
-    if args.workflow_id:
-        workflows = [x for x in workflows if x.startswith(args.workflow_id)]
-
-    if not workflows:
-        env.logger.info(f'No resumable workflow that matches ID {args.workflow_id}')
-        sys.exit(0)
-    elif len(workflows) > 1:
-        if args.workflow_id is None:
-            env.logger.warning(f'More than one resumable workflows exist: {", ".join(workflows)}')
-        else:
-            env.logger.warning(f'{args.workflow_id} matches more than one resumable workflows: {", ".join(workflows)}')
-        workflows = [workflows[-1]]
-    #
-    wf = workflows[0]
-    info = status.get(wf)
-    info = workflow_status(wf, info)
-    if args.status:
-        sys.exit(0)
-
-    if not info['task_status']:
-        env.logger.error('Failed to get status of pending tasks')
-        sys.exit(1)
-
-    if all(x == 'running' for x in info['task_status']) and args.__wait__ is not True:
-        env.logger.info(f'Cannot resume workflow {wf} because all tasks are still running')
-        sys.exit(0)
-    #
-    args.__config__ = info['config_file']
-    args.__sig_mode__ = info['sig_mode']
-    args.__max_procs__ = args.__max_procs__ if args.__max_procs__ != 4 else info['max_procs']
-    args.__resume__ = True
-    args.__max_running_jobs__ = args.__max_running_jobs__ if args.__max_running_jobs__ is not None else info[
-        'max_running_jobs']
-    args.dryrun = False
-    args.__wait__ = args.__wait__ if args.__wait__ is True else None
-    args.__no_wait__ = args.__no_wait__ if args.__no_wait__ is True else None
-    args.__bin_dirs__ = info['bin_dirs']
-    args.__queue__ = None if info['default_queue'] == '' else info['default_queue']
-    args.__dag__ = '' if info['output_dag'] is None else info['output_dag']
-    args.__report__ = '' if info['output_report'] is None else info['output_report']
-    args.__targets__ = info['targets']
-    args.script = info['script']
-    args.workflow = info['workflow']
-    if 'workdir' in info:
-        os.chdir(info['workdir'])
-    env.logger.info(f'Resumming {wf}')
-    cmd_run(args, info['workflow_args'])
 
 #
 # subcommand dryrun
@@ -656,8 +466,6 @@ def cmd_dryrun(args, workflow_args):
     args.__max_procs__ = 1
     args.__max_running_jobs__ = 1
     args.dryrun = True
-    args.__wait__ = True
-    args.__no_wait__ = False
     args.__bin_dirs__ = []
     args.__remote__ = None
     args.exec_mode = None
@@ -1884,7 +1692,7 @@ def main():
         master_parser.add_argument('--version', action='version',
                                    version='%(prog)s {}'.format(SOS_FULL_VERSION))
         subparsers = master_parser.add_subparsers(title='subcommands',
-                                                  metavar='{install,run,resume,dryrun,status,push,pull,execute,kill,purge,config,convert,remove}')
+                                                  metavar='{install,run,dryrun,status,push,pull,execute,kill,purge,config,convert,remove}')
 
         # command install
         # add_sub_parser(subparsers, get_install_parser(desc_only='install'!=subcommand))
@@ -1892,10 +1700,6 @@ def main():
         # command run
         add_sub_parser(subparsers, get_run_parser(
             desc_only='run' != subcommand))
-        #
-        # command resume
-        add_sub_parser(subparsers, get_resume_parser(
-            desc_only='resume' != subcommand))
         #
         # command dryrun
         add_sub_parser(subparsers, get_dryrun_parser(
