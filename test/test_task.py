@@ -313,14 +313,12 @@ run: expand=True
         with open('test_purge.sos', 'w') as script:
             script.write(r'''
 [10]
-input: for_each=[{'a': range(2)}]
-
 task:
-run: expand=True
-    echo Try to kill "a = {a}"
+run:
+    echo Try to kill
     sleep 20
 ''')
-        subprocess.Popen('sos run test_purge.sos -s force -j 4', shell=True)
+        subprocess.Popen('sos run test_purge.sos -s force', shell=True)
         time.sleep(5)
         subprocess.call(['sos', 'kill', '--all'])
         for i in range(20):
