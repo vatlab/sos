@@ -764,10 +764,6 @@ class Host:
             del host._task_engine
         cls.host_instances = {}
 
-    @classmethod
-    def not_wait_for_tasks(cls) -> bool:
-        return all(host._task_engine.wait_for_task is False for host in cls.host_instances.values())
-
     def _get_local_host(self) -> str:
         if 'CONFIG' not in env.sos_dict:
             from .utils import load_config_files

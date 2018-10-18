@@ -66,9 +66,7 @@ class TaskEngine(threading.Thread):
             max_workers=1)
         self._status_checker = None
         #
-        if env.config['wait_for_task'] is not None:
-            self.wait_for_task = env.config['wait_for_task']
-        elif 'wait_for_task' in self.config:
+        if 'wait_for_task' in self.config:
             self.wait_for_task = self.config['wait_for_task']
         else:
             # default
