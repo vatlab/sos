@@ -46,7 +46,9 @@ def connect_controllers(context=None):
             f'tcp://127.0.0.1:{env.config["sockets"]["tapping_logging"]}')
         # change logging to socket
         env.set_socket_logger(env.tapping_logging_socket)
-        #
+
+    # master also need to update task status from interactive runner.
+    if env.config['exec_mode'] in ('master', 'slave'):
         env.tapping_listener_socket = context.socket(zmq.PUSH)
         env.tapping_listener_socket.connect(
             f'tcp://127.0.0.1:{env.config["sockets"]["tapping_listener"]}')
@@ -69,6 +71,7 @@ def disconnect_controllers(context=None):
     if env.config['exec_mode'] == 'slave':
         env.tapping_logging_socket.LINGER = 0
         env.tapping_logging_socket.close()
+    if env.config['exec_mode'] in ('master', 'slave'):
         env.tapping_listener_socket.LINGER = 0
         env.tapping_listener_socket.close()
 
