@@ -311,12 +311,7 @@ class Controller(threading.Thread):
     def handle_tapping_listener_msg(self, ret):
         try:
             if ret['msg_type'] == 'workflow_status':
-                if ret['ret_code'] == 0:
-                    self.kernel.send_frontend_msg('workflow_status',
-                        [ret['slave_id'], 'completed'])
-                else:
-                    self.kernel.send_frontend_msg('workflow_status',
-                        [ret['slave_id'], 'failed'])
+                self.kernel.send_frontend_msg('workflow_status', ret['data'])
             elif ret['msg_type'] == 'task_status':
                 self.kernel.notify_task_status(ret['data'])
         except Exception as e:

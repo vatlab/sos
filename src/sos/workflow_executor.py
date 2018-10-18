@@ -231,6 +231,18 @@ class Base_Executor:
         env.signature_req_socket.send_pyobj(['workflow', 'clear'])
         env.signature_req_socket.recv_pyobj()
         env.signature_push_socket.send_pyobj(['workflow', 'workflow', self.md5, repr(workflow_info)])
+        if env.config['exec_mode'] == 'slave':
+            env.tapping_listener_socket.send_pyobj(
+                {'msg_type': 'workflow_status',
+                'data': {
+                    'cell_id': env.config['slave_id'],
+                    'workflow_id': self.md5,
+                    'workflow_name': self.workflow.name,
+                    'start_time': time.time() * 1000,
+                    'status': 'running'
+                    }
+                }
+            )
 
 
     def run(self, targets: Optional[List[str]]=None, mode=None) -> Dict[str, Any]:
