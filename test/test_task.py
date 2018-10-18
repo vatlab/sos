@@ -163,7 +163,6 @@ with open(os.path.join({1!r}, 'result.txt'), 'w') as res:
 """.format(os.path.split(tdir)[0], os.path.split(tdir)[1])
         wf = SoS_Script(script).workflow()
         env.config['sig_mode'] = 'force'
-        env.config['wait_for_task'] = True
         Base_Executor(wf).run()
         with open(os.path.join(tdir, 'result.txt')) as res:
             content = [x.strip() for x in res.readlines()]
@@ -173,7 +172,6 @@ with open(os.path.join({1!r}, 'result.txt'), 'w') as res:
         '''Test concurrency option for runtime environment'''
         env.max_jobs = 5
         env.config['sig_mode'] = 'force'
-        env.config['wait_for_task'] = True
         script = SoS_Script(r"""
 import time
 [0]
@@ -187,7 +185,6 @@ print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
 time.sleep(_repeat + 1)
 print('I am {}, done'.format(_index))
 """)
-        env.config['wait_for_task'] = True
         wf = script.workflow()
         start = time.time()
         Base_Executor(wf).run()
@@ -287,7 +284,6 @@ run: expand=True
 ''')
         wf = script.workflow()
         env.max_jobs = 4
-        env.config['wait_for_task'] = True
         Base_Executor(wf).run()
         for t in range(10, 13):
             with open(f'myfile_{t}.txt') as tmp:
@@ -307,7 +303,6 @@ task:
 run: expand=True
     echo "a = {a}, b = {b}"
 ''')
-        env.config['wait_for_task'] = True
         env.config['max_running_jobs'] = 2
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -315,7 +310,8 @@ run: expand=True
     def testKillAndPurge(self):
         '''Test no wait'''
         subprocess.call(['sos', 'purge'])
-        script = SoS_Script(r'''
+        with open('test_purge.sos', 'w') as script:
+            script.write(r'''
 [10]
 input: for_each=[{'a': range(2)}]
 
@@ -324,45 +320,21 @@ run: expand=True
     echo Try to kill "a = {a}"
     sleep 20
 ''')
-        wf = script.workflow()
-        env.config['sig_mode'] = 'force'
-        env.config['max_running_jobs'] = 4
-        env.config['wait_for_task'] = False
-        ret = Base_Executor(wf).run()
-        # sos should quit
-        self.assertGreater(len(ret['pending_tasks']), 1)
-        # wait for the task to start
-        time.sleep(3)
-        print('Running sos kill {}'.format(ret['pending_tasks'][0]))
-        subprocess.call(['sos', 'kill', ret['pending_tasks'][0]])
-        for i in range(20):
-            output = subprocess.check_output(
-                ['sos', 'status', ret['pending_tasks'][0], '-v', '1']).decode()
-            if 'killed' in output or 'aborted' in output or 'completed' in output:
-                break
-            self.assertFalse(
-                i > 10, 'Task should be killed within 10 seconds, got {}'.format(output))
-            time.sleep(1)
-        #
+        subprocess.Popen('sos run test_purge.sos -s force -j 4', shell=True)
+        time.sleep(5)
         subprocess.call(['sos', 'kill', '--all'])
         for i in range(20):
             output = subprocess.check_output(
-                ['sos', 'status', ret['pending_tasks'][1], '-v', '1']).decode()
+                ['sos', 'status', '-v', '1']).decode()
             if 'killed' in output or 'aborted' in output or 'completed' in output:
                 break
             self.assertFalse(
                 i > 10, 'Task should be killed within 10 seconds, got {}'.format(output))
             time.sleep(1)
-        # test purge task
-        subprocess.call(['sos', 'purge', ret['pending_tasks'][0]])
-        self.assertFalse(ret['pending_tasks'][0]
-                         in subprocess.check_output(['sos', 'status']).decode())
         # test purge by status
         subprocess.call(['sos', 'purge', '--status', 'aborted'])
         self.assertFalse('killed' in subprocess.check_output(
             ['sos', 'status', '-v', '3']).decode())
-        # test purge by age
-        subprocess.call(['sos', 'purge', '--age=-20s'])
         # purge by all is not tested because it is dangerous
 
     def testNoWait(self):
@@ -482,7 +454,6 @@ run: expand=True
             if os.path.isfile(f'{i}.txt'):
                 file_target(f'{i}.txt').unlink()
         res = Base_Executor(wf, config={
-            'wait_for_task': False,
             'sig_mode': 'force',
             'script': 'test_trunksize.sos',
             'max_running_jobs': 10,
@@ -496,12 +467,9 @@ run: expand=True
             'workflow': 'default',
             'workdir': '.',
         }).run()
-        self.assertEqual(len(res['pending_tasks']), 2)
-        subprocess.call('sos resume -w', shell=True)
+
         for i in range(10):
             self.assertTrue(os.path.isfile(f'{i}.txt'))
-            file_target(f'{i}.txt').unlink()
-        file_target('test_trunksize.sos').unlink()
 
     def testTrunkWorkersOption(self):
         '''Test option trunk_workers'''
@@ -516,7 +484,6 @@ run: expand=True
 ''')
         wf = SoS_Script(filename='test_trunkworker.sos').workflow()
         res = Base_Executor(wf, config={
-            'wait_for_task': False,
             'sig_mode': 'force',
             'script': 'test_trunkworker.sos',
             'max_running_jobs': 10,
@@ -530,12 +497,8 @@ run: expand=True
             'workflow': 'default',
             'workdir': '.',
         }).run()
-        self.assertEqual(len(res['pending_tasks']), 2)
-        subprocess.call('sos resume -w', shell=True)
         for i in range(10):
             self.assertTrue(os.path.isfile('{}.txt'.format(i)))
-            file_target('{}.txt'.format(i)).unlink()
-        file_target('test_trunkworker.sos').unlink()
 
     def testTaskTags(self):
         '''Test option tags of tasks'''
@@ -551,7 +514,6 @@ sh: expand=True
 '''.format(tag, tag))
         wf = SoS_Script(filename='test_tags.sos').workflow()
         Base_Executor(wf, config={
-            'wait_for_task': False,
             'sig_mode': 'force',
             'script': 'test_trunkworker.sos',
             'max_running_jobs': 10,
@@ -581,7 +543,6 @@ sh: expand=True
 '''.format(tag1, tag2, tag1))
         wf = SoS_Script(filename='test_tags.sos').workflow()
         Base_Executor(wf, config={
-            'wait_for_task': False,
             'sig_mode': 'force',
             'script': 'test_trunkworker.sos',
             'max_running_jobs': 10,
@@ -610,8 +571,6 @@ print('a')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
             'config_file': '~/docker.yml',
-            # do not wait for jobs
-            'wait_for_task': True,
             'default_queue': 'docker_limited',
             'sig_mode': 'force',
         }).run)
@@ -626,8 +585,6 @@ print('a')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
             'config_file': '~/docker.yml',
-            # do not wait for jobs
-            'wait_for_task': True,
             'default_queue': 'local_limited',
             'sig_mode': 'force',
         }).run)
@@ -643,8 +600,6 @@ time.sleep(25)
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
             'config_file': '~/docker.yml',
-            # do not wait for jobs
-            'wait_for_task': True,
             'default_queue': 'docker_limited',
             'sig_mode': 'force',
         }).run)
@@ -660,8 +615,6 @@ time.sleep(15)
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
             'config_file': '~/docker.yml',
-            # do not wait for jobs
-            'wait_for_task': True,
             'default_queue': 'local_limited',
             'sig_mode': 'force',
         }).run)
@@ -677,8 +630,6 @@ print('a')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
             'config_file': '~/docker.yml',
-            # do not wait for jobs
-            'wait_for_task': True,
             'default_queue': 'docker_limited',
             'sig_mode': 'force',
         }).run)
@@ -693,8 +644,6 @@ print('a')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
             'config_file': '~/docker.yml',
-            # do not wait for jobs
-            'wait_for_task': True,
             'default_queue': 'local_limited',
             'sig_mode': 'force',
         }).run)
@@ -717,8 +666,6 @@ print('a')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
             'config_file': '~/docker.yml',
-            # do not wait for jobs
-            'wait_for_task': True,
             'default_queue': 'docker_limited',
             'sig_mode': 'force',
         }).run)

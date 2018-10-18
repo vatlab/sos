@@ -158,7 +158,6 @@ cp {_input} {_dest[0]}
 
     def _testSignature(self, text, steps):
         '''Test recognizing the format of SoS script'''
-        env.config['wait_for_task'] = True
         script = SoS_Script(text)
         for f in ['temp/a.txt', 'temp/b.txt']:
             if file_target(f).exists():
@@ -637,4 +636,3 @@ sh: expand=True
 
 if __name__ == '__main__':
     unittest.main()
-
