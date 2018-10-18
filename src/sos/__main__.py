@@ -1049,8 +1049,6 @@ def cmd_purge(args, workflow_args):
 # command kill
 #
 #
-
-
 def get_kill_parser(desc_only=False):
     parser = argparse.ArgumentParser('kill',
                                      description='''Stop the execution of running task''')

@@ -11,7 +11,7 @@ from datetime import datetime
 import psutil
 
 from .utils import env, expand_time, format_HHMMSS
-
+from .tasks import TaskFile
 
 class ProcessMonitor(threading.Thread):
     def __init__(self, task_id, monitor_interval,
@@ -72,18 +72,19 @@ class ProcessMonitor(threading.Thread):
     def run(self):
         counter = 0
         start_time = time.time()
-        task_mtime = os.stat(self.pulse_file[:-6] + '.task').st_mtime
         while True:
             try:
-                if not os.path.isfile(self.task_file):
+                tf = TaskFile(self.task_id)
+                if not tf.exists():
+                    env.logger.warning(f'Task {self.task_id} ``removed``')
                     # the job should be removed
                     p = psutil.Process(self.pid)
                     p.kill()
-                if not os.access(self.pulse_file, os.W_OK):
-                    # the pulse_file is not available, it can be either killed (no res),
-                    # or absorbed by the task file (with .task)
-                    if os.stat(self.pulse_file[:-6] + '.task').st_mtime != task_mtime:
-                        break
+                sts = tf.status
+                if sts in ('completed', 'failed'):
+                    break
+                if sts == 'aborted' or not os.path.isfile(self.pulse_file):
+                    env.logger.warning(f'Task {self.task_id} ``aborted``')
                     # the job should be killed
                     p = psutil.Process(self.pid)
                     p.kill()
