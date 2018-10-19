@@ -744,7 +744,7 @@ class Base_Step_Executor:
             self.submit_tasks(tasks)
         return task_id
 
-    def wait_for_results(self):
+    def wait_for_results(self, all_submitted):
         if self.concurrent_substep:
             self.wait_for_substep()
 
@@ -757,7 +757,7 @@ class Base_Step_Executor:
             self.submit_tasks(tasks)
 
         # waiting for results of specified IDs
-        results = self.wait_for_tasks(self.task_manager._submitted_tasks)
+        results = self.wait_for_tasks(self.task_manager._submitted_tasks, all_submitted)
         #
         # report task
         # what we should do here is to get the alias of the Host
@@ -1327,11 +1327,11 @@ class Base_Step_Executor:
                 #
                 # if not concurrent, we have to wait for the completion of the task
                 if 'concurrent' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['concurrent'] is False:
-                    self.wait_for_results()
+                    self.wait_for_results(all_submitted=False)
                 #
                 # endfor loop for each input group
                 #
-            self.wait_for_results()
+            self.wait_for_results(all_submitted=True)
             for idx, res in enumerate(self.proc_results):
                 if 'sig_skipped' in res:
                     self.completed['__substep_skipped__'] += 1
@@ -1435,7 +1435,7 @@ class Step_Executor(Base_Step_Executor):
             host = '__default__'
         self.socket.send_pyobj(f'tasks {host} {" ".join(tasks)}')
 
-    def wait_for_tasks(self, tasks):
+    def wait_for_tasks(self, tasks, all_submitted):
         if not tasks:
             return {}
         # wait till the executor responde
