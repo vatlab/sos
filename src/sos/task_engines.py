@@ -79,7 +79,7 @@ class TaskEngine(threading.Thread):
 
     def notify(self, msg):
         # GUI ...
-        if env.config['exec_mode'] is not None:
+        if env.config['exec_mode']:
             if isinstance(msg, str):
                 return
             # set cell_id to slave_id so that the frontend knows which
