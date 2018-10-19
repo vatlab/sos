@@ -77,20 +77,14 @@ class TaskEngine(threading.Thread):
         # allow stacking.
         self.batch_size = 1
 
-    def notify(self, msg):
-        # GUI ...
+    def notify_controller(self, msg):
         if env.config['exec_mode']:
-            if isinstance(msg, str):
-                return
             # set cell_id to slave_id so that the frontend knows which
             # cell this task belong to
             msg['cell_id'] = env.config.get('slave_id', '')
             env.tapping_listener_socket.send_pyobj({
                 'msg_type': 'task_status',
                 'data': msg})
-        elif isinstance(msg, str):
-            env.logger.info(msg)
-        # text mode does not provide detailed message change information
 
     def monitor_tasks(self, tasks=None, status=None, age=None):
         '''Start monitoring specified or all tasks'''
@@ -188,14 +182,14 @@ class TaskEngine(threading.Thread):
                                 for tid in k:
                                     if tid in self.canceled_tasks:
                                         # task is canceled while being prepared
-                                        self.notify({
+                                        self.notify_controller({
                                             'queue': self.agent.alias,
                                             'task_id': tid,
                                             'status': 'aborted'
                                         })
                                     else:
                                         self.running_tasks.append(tid)
-                                        self.notify(
+                                        self.notify_controller(
                                             {
                                                 'queue': self.agent.alias,
                                                 'task_id': tid,
@@ -203,7 +197,7 @@ class TaskEngine(threading.Thread):
                                             })
                             else:
                                 for tid in k:
-                                    self.notify(
+                                    self.notify_controller(
                                         {
                                             'queue': self.agent.alias,
                                             'task_id': tid,
@@ -228,10 +222,10 @@ class TaskEngine(threading.Thread):
                 random.shuffle(sample_slots)
                 for i, tid in enumerate(self.pending_tasks[:self.batch_size * self.max_running_jobs]):
                     if self.task_status[tid] == 'running':
-                        self.notify(f'{tid} ``runnng``')
+                        env.logger.info(f'{tid} ``runnng``')
                     elif tid in self.canceled_tasks:
                         # the job is canceled while being prepared to run
-                        self.notify(f'{tid} ``canceled``')
+                        env.logger.info(f'{tid} ``canceled``')
                     else:
                         # randomly spread to tasks, but at most one.
                         slots[sample_slots[i %
@@ -258,15 +252,15 @@ class TaskEngine(threading.Thread):
         with threading.Lock():
             # if already in
             # if task_id in self.running_tasks or task_id in self.pending_tasks:
-            #    self.notify('{} ``{}``'.format(task_id, self.task_status[task_id]))
-            #    self.notify(['new-status', task_id, self.task_status[task_id]])
+            #    self.notify_controller('{} ``{}``'.format(task_id, self.task_status[task_id]))
+            #    self.notify_controller(['new-status', task_id, self.task_status[task_id]])
             #    return self.task_status[task_id]
             #
             if task_id in self.task_status and self.task_status[task_id]:
                 if self.task_status[task_id] == 'running':
                     self.running_tasks.append(task_id)
-                    self.notify(f'{task_id} ``already runnng``')
-                    self.notify({
+                    env.logger.info(f'{task_id} ``already runnng``')
+                    self.notify_controller({
                         'queue': self.agent.alias,
                         'task_id': task_id,
                         'status': 'running'
@@ -282,21 +276,21 @@ class TaskEngine(threading.Thread):
                         # executed but quit in no-wait mode (or canceled by user). More
                         # importantly, the Jupyter notebook would re-run complted workflow
                         # even if it has "-s force" signature.
-                        # self.notify(['new-status', task_id, 'completed'])
-                        self.notify(f'{task_id} ``resume with completed``')
+                        # self.notify_controller(['new-status', task_id, 'completed'])
+                        env.logger.info(f'{task_id} ``resume with completed``')
                         return 'completed'
                     else:
-                        self.notify(f'{task_id} ``re-execute completed``')
+                        env.logger.info(f'{task_id} ``re-execute completed``')
                 elif self.task_status[task_id] != 'new':
-                    self.notify(
+                    env.logger.info(
                         f'{task_id} ``restart`` from status ``{self.task_status[task_id]}``')
 
-            # self.notify('{} ``queued``'.format(task_id))
+            # self.notify_controller('{} ``queued``'.format(task_id))
             self.pending_tasks.append(task_id)
             if task_id in self.canceled_tasks:
                 self.canceled_tasks.remove(task_id)
             self.task_status[task_id] = 'pending'
-            self.notify({
+            self.notify_controller({
                 'queue': self.agent.alias,
                 'task_id': task_id,
                 'status': 'pending'
@@ -330,7 +324,7 @@ class TaskEngine(threading.Thread):
                 status = 'aborted'
             if status != 'missing':
                 if task_id in self.task_status and self.task_status[task_id] == status:
-                    self.notify(
+                    self.notify_controller(
                         {
                             'queue': self.agent.alias,
                             'task_id': task_id,
@@ -343,7 +337,7 @@ class TaskEngine(threading.Thread):
                                 time.time(), time.time(), 0]
                         else:
                             self.task_date[task_id][1] = time.time()
-                    self.notify(
+                    self.notify_controller(
                         {
                             'queue': self.agent.alias,
                             'task_id': task_id,
