@@ -194,7 +194,6 @@ def kill_all_subprocesses(pid=None, include_self=False):
         # if no such process
         return
     procs = proc.children(recursive=True) + ([proc] if include_self else [])
-    env.log_to_file(f'kill {[p.pid for p in procs]}')
     if not procs:
         return
     for p in procs:
@@ -206,7 +205,6 @@ def kill_all_subprocesses(pid=None, include_self=False):
     gone, alive = psutil.wait_procs(procs, timeout=3)
     if alive:
         for p in alive:
-            env.log_to_file(f'Failed to kill {p.pid}')
             env.logger.warning(f'Failed to kill subprocess {p.pid}')
 
 
