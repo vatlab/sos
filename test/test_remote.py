@@ -66,7 +66,7 @@ run:
 
 ''')
         self.assertEqual(subprocess.call(
-            'sos run test_remote.sos -c ~/docker.yml -r docker -s force -w', shell=True), 0)
+            'sos run test_remote.sos -c ~/docker.yml -r docker -s force', shell=True), 0)
         self.assertFalse(file_target('result_remote.txt').target_exists())
         #self.assertEqual(subprocess.call('sos preview result_remote.txt -c ~/docker.yml -r docker', shell=True), 0)
         #self.assertNotEqual(subprocess.call('sos preview result_remote.txt', shell=True), 0)
