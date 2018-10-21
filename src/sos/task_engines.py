@@ -143,7 +143,8 @@ class TaskEngine(threading.Thread):
             if self.running_tasks and time.time() - self._last_status_check > self.status_check_interval:
                 if self._status_checker is None:
                     self._status_checker = self._thread_workers.submit(
-                        self.query_tasks, self.running_tasks, check_all=False, verbosity=1)
+                        self.query_tasks, self.running_tasks, check_all=False,
+                        verbosity=3, numeric_times=True)
                     continue
                 elif self._status_checker.running():
                     time.sleep(0.01)
@@ -156,11 +157,13 @@ class TaskEngine(threading.Thread):
                     if not line.strip():
                         continue
                     try:
-                        tid, tst = line.split('\t')
+                        tid, _, ct, st, dr, tst = line.split('\t')
                         if tid not in self.running_tasks:
                             env.logger.trace(
                                 f'Task {tid} removed since status check.')
                             continue
+                        self.task_date[tid] = [float(ct), float(
+                            st) if st.strip() else 0, float(dr) if dr.strip() else 0]
                         self.update_task_status(tid, tst)
                     except Exception as e:
                         env.logger.warning(
@@ -323,25 +326,29 @@ class TaskEngine(threading.Thread):
                     f'Task {task_id} is still not killed (status {status})')
                 status = 'aborted'
             if status != 'missing':
+                if task_id not in self.task_date:
+                    self.task_date[task_id] = [None, None, None]
                 if task_id in self.task_status and self.task_status[task_id] == status:
                     self.notify_controller(
                         {
                             'queue': self.agent.alias,
                             'task_id': task_id,
-                            'status': status
+                            'status': status,
+                            'start_time': self.task_date[task_id][1]
                         })
                 else:
                     if status == 'running':
                         if task_id not in self.task_date:
                             self.task_date[task_id] = [
                                 time.time(), time.time(), 0]
-                        else:
+                        elif not self.task_date[task_id][1]:
                             self.task_date[task_id][1] = time.time()
                     self.notify_controller(
                         {
                             'queue': self.agent.alias,
                             'task_id': task_id,
-                            'status': status
+                            'status': status,
+                            'start_time': self.task_date[task_id][1]
                         })
             self.task_status[task_id] = status
             if status == 'pening' and task_id not in self.pending_tasks:

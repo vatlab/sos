@@ -240,7 +240,7 @@ class Base_Executor:
                      'cell_id': env.config['slave_id'],
                      'workflow_id': self.md5,
                      'workflow_name': self.workflow.name,
-                     'start_time': time.time() * 1000,
+                     'start_time': time.time(),
                      'status': 'running'
                  }
                  }
