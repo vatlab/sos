@@ -326,6 +326,8 @@ class TaskEngine(threading.Thread):
                     f'Task {task_id} is still not killed (status {status})')
                 status = 'aborted'
             if status != 'missing':
+                if task_id not in self.task_date:
+                    self.task_date[task_id] = [None, None, None]
                 if task_id in self.task_status and self.task_status[task_id] == status:
                     self.notify_controller(
                         {
