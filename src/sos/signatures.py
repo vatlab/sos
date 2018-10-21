@@ -17,6 +17,7 @@ class SignatureDB:
         self.db_file = os.path.join(
             env.exec_dir, '.sos', self._db_name)
         self._conn = None
+        self._cache = []
 
     def _get_conn(self):
         # there is a possibility that the _conn is copied with a process
@@ -24,15 +25,23 @@ class SignatureDB:
         if self._conn is None:
             self._conn = sqlite3.connect(self.db_file, timeout=60)
             self._conn.execute(self._db_structure)
+            self._conn.commit()
+        if self._cache:
+            self._conn.executemany(self._write_query, self._cache)
+            self._cache = []
+            self._conn.commit()
         return self._conn
+
+    def _write(self, record):
+        self._cache.append(record)
+        if len(self._cache) > 1000:
+            self._conn.executemany(self._write_query, self._cache)
+            self._cache = []
+            self._conn.commit()
 
     conn = property(_get_conn)
 
-    def commit(self):
-        self.conn.commit()
-
     def close(self):
-        self.commit()
         self.conn.close()
 
 class StepSignatures(SignatureDB):
@@ -43,6 +52,7 @@ class StepSignatures(SignatureDB):
         step_id text PRIMARY KEY,
         signature BLOB
     )'''
+    _write_query = 'INSERT OR REPLACE INTO steps VALUES (?, ?)'
 
     def __init__(self):
         super(StepSignatures, self).__init__()
@@ -68,9 +78,7 @@ class StepSignatures(SignatureDB):
 
     def set(self, step_id: str, signature: dict):
         try:
-            self.conn.cursor().execute(
-                'INSERT OR REPLACE INTO steps VALUES (?, ?)',
-                (step_id, lzma.compress(pickle.dumps(signature))))
+            self._write((step_id, lzma.compress(pickle.dumps(signature))))
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to set step signature for step {step_id}: {e}')
 
@@ -89,6 +97,7 @@ class StepSignatures(SignatureDB):
             cur.executemany(
                     'DELETE FROM steps WHERE step_id=?',
                     [(x,) for x in steps])
+            sllf.conn.commit()
             return cnt - self._num_records(cur)
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to remove signature for {len(steps)} substeps: {e}')
@@ -97,6 +106,7 @@ class StepSignatures(SignatureDB):
     def clear(self):
         try:
             self.conn.execute('DELETE FROM steps')
+            self.conn.commit()
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to clear step signature database: {e}')
 
@@ -110,14 +120,14 @@ class WorkflowSignatures(SignatureDB):
             id text,
             item text
     )'''
+    _write_query = 'INSERT INTO workflows VALUES (?, ?, ?, ?)'
 
     def __init__(self):
         super(WorkflowSignatures, self).__init__()
 
     def write(self, entry_type: str, id: str, item: str):
         try:
-            self.conn.execute('INSERT INTO workflows VALUES (?, ?, ?, ?)',
-                      (env.config["master_id"], entry_type, id, item))
+            self._write((env.config["master_id"], entry_type, id, item))
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to write workflow signature of type {entry_type} and id {id}: {e}')
             return None
@@ -176,6 +186,7 @@ class WorkflowSignatures(SignatureDB):
         try:
             self.conn.execute(
                 f'DELETE FROM workflows WHERE master_id = ?', (env.config["master_id"],))
+            self.conn.commit()
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to clear workflow database: {e}')
             return []
