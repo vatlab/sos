@@ -45,26 +45,47 @@ def get_previewers():
         [x for x in result if x[0] == '*']
 
 
+def _preview_img_parser():
+    parser = argparse.ArgumentParser(prog='%preview *.pdf')
+    parser.add_argument('--width',
+        help='Width of the previewed image, can be in any HTML units such as px, em.')
+    parser.add_argument('--height',
+        help='Height of the previewed image, can be in any HTML units such as px, em.')
+    parser.error = lambda msg: env.logger.warning(msg)
+    return parser
+
 def preview_img(filename, kernel=None, style=None):
     with open(filename, 'rb') as f:
         image = f.read()
-
     import imghdr
     image_type = imghdr.what(None, image)
     image_data = base64.b64encode(image).decode('ascii')
+
+    args = None
+    meta = {}
+    if style is not None and 'options' in style:
+        parser = _preview_img_parser()
+        try:
+            args = parser.parse_args(style['options'])
+            meta.update({'image/png':
+                dict(([['width', args.width]] if args.width else []) +
+                    ([['height', args.height]] if args.height else []))})
+        except SystemExit:
+            return
+
     if image_type != 'png':
         try:
             if image_type == 'gif':
-                return {'image/png': image_data}
+                return {'image/png': image_data}, meta
             else:
                 from wand.image import Image
                 img = Image(filename=filename)
                 return {'image/' + image_type: image_data,
-                        'image/png': base64.b64encode(img._repr_png_()).decode('ascii')}
+                        'image/png': base64.b64encode(img._repr_png_()).decode('ascii')}, meta
         except Exception:
-            return {'image/' + image_type: image_data}
+            return {'image/' + image_type: image_data}, meta
     else:
-        return {'image/' + image_type: image_data}
+        return {'image/' + image_type: image_data}, meta
 
 
 def preview_svg(filename, kernel=None, style=None):
