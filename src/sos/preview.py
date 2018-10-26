@@ -98,6 +98,10 @@ def _preview_pdf_parser():
     parser = argparse.ArgumentParser(prog='%preview *.pdf')
     parser.add_argument('--pages', nargs='+', type=int,
                         help='Pages of the PDF to preview.')
+    parser.add_argument('--width',
+        help='Width of the previewed image, can be in any HTML units such as px, em.')
+    parser.add_argument('--height',
+        help='Height of the previewed image, can be in any HTML units such as px, em.')
     parser.error = lambda msg: env.logger.warning(msg)
     return parser
 
@@ -112,6 +116,7 @@ def preview_pdf(filename, kernel=None, style=None):
                     f'Option --style of PDF preview only accept parameter png: {style["style"]} provided')
         else:
             use_png = True
+    meta = {}
     if use_png:
         try:
             # this import will fail even if wand is installed
@@ -128,6 +133,9 @@ def preview_pdf(filename, kernel=None, style=None):
                 parser = _preview_pdf_parser()
                 try:
                     args = parser.parse_args(style['options'])
+                    meta.update({'image/png':
+                        dict(([['width', args.width]] if args.width else []) +
+                            ([['height', args.height]] if args.height else []))})
                 except SystemExit:
                     return
                 if args.pages is not None:
@@ -141,11 +149,11 @@ def preview_pdf(filename, kernel=None, style=None):
             # single page PDF
             if len(pages) == 1 and pages[0] == 0:
                 return {
-                    'image/png': base64.b64encode(img._repr_png_()).decode('ascii')}
+                    'image/png': base64.b64encode(img._repr_png_()).decode('ascii')}, meta
             elif len(pages) == 1:
                 # if only one page
                 return {
-                    'image/png': base64.b64encode(Image(img.sequence[pages[0]])._repr_png_()).decode('ascii')}
+                    'image/png': base64.b64encode(Image(img.sequence[pages[0]])._repr_png_()).decode('ascii')}, meta
             else:
                 image = Image(width=img.width, height=img.height * len(pages))
                 for i, p in enumerate(pages):
@@ -155,11 +163,11 @@ def preview_pdf(filename, kernel=None, style=None):
                         left=0
                     )
                 return {
-                    'image/png': base64.b64encode(image._repr_png_()).decode('ascii')}
+                    'image/png': base64.b64encode(image._repr_png_()).decode('ascii')}, meta
         except Exception as e:
             warn(e)
             return {'text/html':
-                    f'<iframe src={filename} width="100%"></iframe>'}
+                    f'<iframe src={filename} width="100%"></iframe>'}, meta
     else:
         # by default use iframe, because PDF figure can have multiple pages (#693)
         # try to get width and height
