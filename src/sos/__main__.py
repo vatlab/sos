@@ -712,7 +712,7 @@ def preview_file(previewers, filename, style=None):
         elif isinstance(result, dict):
             msg.append(['display_data',
                         {'source': filename, 'data': result, 'metadata': {}}])
-        elif isinstance(result, [list, tuple]) and len(result) == 2:
+        elif isinstance(result, (list, tuple)) and len(result) == 2:
             msg.append(['display_data',
                         {'source': filename, 'data': result[0], 'metadata': result[1]}])
         else:
@@ -744,7 +744,7 @@ def cmd_preview(args, unknown_args):
         previewers = get_previewers()
         msgs = []
         style = {'style': args.style,
-                 'options': unknown_args} if args.style else None
+                 'options': unknown_args} if args.style or unknown_args else None
         for filename in args.items:
             msgs.extend(preview_file(previewers, filename, style))
     if args.html:
