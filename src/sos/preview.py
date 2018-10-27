@@ -116,7 +116,21 @@ def preview_pdf(filename, kernel=None, style=None):
                     f'Option --style of PDF preview only accept parameter png: {style["style"]} provided')
         else:
             use_png = True
+    args = None
+    if style is not None and 'options' in style:
+        parser = _preview_pdf_parser()
+        try:
+            args = parser.parse_args(style['options'])
+        except SystemExit:
+            return
     meta = {}
+    wh = ''
+    if args and (args.width or args.height):
+        meta.update({'image/png':
+            dict(([['width', args.width]] if args.width else []) +
+                ([['height', args.height]] if args.height else []))})
+        wh = (f'width="{args.width}" ' if args.width else ' ') + \
+            (f'height="{args.height}" ' if args.height else ' ')
     if use_png:
         try:
             # this import will fail even if wand is installed
@@ -129,23 +143,14 @@ def preview_pdf(filename, kernel=None, style=None):
             nPages = len(img.sequence)
             pages = list(range(nPages))
 
-            if style is not None and 'options' in style:
-                parser = _preview_pdf_parser()
-                try:
-                    args = parser.parse_args(style['options'])
-                    meta.update({'image/png':
-                        dict(([['width', args.width]] if args.width else []) +
-                            ([['height', args.height]] if args.height else []))})
-                except SystemExit:
-                    return
-                if args.pages is not None:
-                    pages = [x - 1 for x in args.pages]
-                    for p in pages:
-                        if p >= nPages:
-                            warn(
-                                f'Page {p} out of range of the pdf file ({nPages} pages)')
-                            pages = list(range(nPages))
-                            break
+            if args and args.pages is not None:
+                pages = [x - 1 for x in args.pages]
+                for p in pages:
+                    if p >= nPages:
+                        warn(
+                            f'Page {p} out of range of the pdf file ({nPages} pages)')
+                        pages = list(range(nPages))
+                        break
             # single page PDF
             if len(pages) == 1 and pages[0] == 0:
                 return {
@@ -167,7 +172,7 @@ def preview_pdf(filename, kernel=None, style=None):
         except Exception as e:
             warn(e)
             return {'text/html':
-                    f'<iframe src={filename} width="100%"></iframe>'}, meta
+                    f'<iframe src={filename} {wh}></iframe>'}
     else:
         # by default use iframe, because PDF figure can have multiple pages (#693)
         # try to get width and height
@@ -177,11 +182,11 @@ def preview_pdf(filename, kernel=None, style=None):
             if img.width == 0 or img.height == 0:
                 raise ValueError('Image appears to have zero width or height')
             return {'text/html':
-                    f'<iframe src={filename} width="800px" height="{img.height/img.width * 800}px"></iframe>'}
+                    f'<iframe src={filename} {wh}></iframe>'}
         except Exception as e:
             warn(e)
             return {'text/html':
-                    f'<iframe src={filename} width="100%"></iframe>'}
+                    f'<iframe src={filename} {wh}></iframe>'}
 
 
 def preview_html(filename, kernel=None, style=None):
