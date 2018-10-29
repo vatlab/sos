@@ -124,12 +124,12 @@ def preview_pdf(filename, kernel=None, style=None):
         except SystemExit:
             return
     meta = {}
-    wh = ''
+    embed_options = ''
     if args and (args.width or args.height):
         meta.update({'image/png':
             dict(([['width', args.width]] if args.width else []) +
                 ([['height', args.height]] if args.height else []))})
-        wh = (f'width="{args.width}" ' if args.width else ' ') + \
+        embed_options += (f'width="{args.width}" ' if args.width else ' ') + \
             (f'height="{args.height}" ' if args.height else ' ')
     if use_png:
         try:
@@ -172,21 +172,11 @@ def preview_pdf(filename, kernel=None, style=None):
         except Exception as e:
             warn(e)
             return {'text/html':
-                    f'<iframe src={filename} {wh}></iframe>'}
+                    f'<embed src="{filename}" {embed_options} type="application/pdf" />'}
     else:
         # by default use iframe, because PDF figure can have multiple pages (#693)
-        # try to get width and height
-        try:
-            from wand.image import Image
-            img = Image(filename=filename)
-            if img.width == 0 or img.height == 0:
-                raise ValueError('Image appears to have zero width or height')
-            return {'text/html':
-                    f'<iframe src={filename} {wh}></iframe>'}
-        except Exception as e:
-            warn(e)
-            return {'text/html':
-                    f'<iframe src={filename} {wh}></iframe>'}
+        return {'text/html':
+                f'<embed src="{filename}" {embed_options} type="application/pdf" />'}
 
 
 def preview_html(filename, kernel=None, style=None):
