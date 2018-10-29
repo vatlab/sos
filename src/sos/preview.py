@@ -102,6 +102,8 @@ def _preview_pdf_parser():
         help='Width of the previewed image, can be in any HTML units such as px, em.')
     parser.add_argument('--height',
         help='Height of the previewed image, can be in any HTML units such as px, em.')
+    parser.add_argument('--dpi', type=int, default=150,
+        help='resolution of the converted png preview')
     parser.error = lambda msg: env.logger.warning(msg)
     return parser
 
@@ -136,7 +138,7 @@ def preview_pdf(filename, kernel=None, style=None):
             # this import will fail even if wand is installed
             # if imagemagick is not installed properly.
             from wand.image import Image
-            img = Image(filename=filename)
+            img = Image(filename=filename, resolution=args.dpi)
 
             if img.width == 0 or img.height == 0:
                 raise ValueError('Image appears to have zero width or height')
