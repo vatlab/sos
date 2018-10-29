@@ -27,8 +27,9 @@ class Py_Module(BaseTarget):
         spam_spec = importlib.util.find_spec(name)
         if spam_spec is not None:
             if self._version:
-                if hasattr(spam_spec, '__version__'):
-                    ver = spam_spec.__version__
+                mod = importlib.__import__(name)
+                if hasattr(mod, '__version__'):
+                    ver = mod.__version__
                 else:
                     try:
                         ver = pkg_resources.get_distribution(name).version
