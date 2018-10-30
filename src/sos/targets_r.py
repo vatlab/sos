@@ -43,7 +43,7 @@ class R_library(BaseTarget):
             if opt in name:
                 if version is not None:
                     raise ValueError(f"Specifying 'version=' option in addition to '{name}' is not allowed")
-                name, version = name.split(opt)
+                name, version = [x.strip() for x in name.split(opt, 1)]
                 version = (opt + version,)
                 break
         if version is not None:

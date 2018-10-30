@@ -23,6 +23,8 @@ class Py_Module(BaseTarget):
         self._version = version.strip() if isinstance(version, str) else version
         for opt in ('==', '>=', '>', '<=', '<', '!='):
             if opt in self._module:
+                if self._version is not None:
+                    raise ValueError(f"Specifying 'version=' option in addition to '{module}' is not allowed")
                 self._module, self._version = [x.strip() for x in self._module.split(opt, 1)]
                 if ',' in self._version:
                     raise ValueError(f'SoS does not yet support multiple version comparisons. {self._mdoule} provided')
@@ -59,7 +61,7 @@ class Py_Module(BaseTarget):
                     return True
                 elif self._version.startswith('!=') and pkg_resources.parse_version(ver) != pkg_resources.parse_version(self._version[2:]):
                     return True
-                elif self._version[0] not in ('=', '>', '<', '!') and pkg_resources.parse_version(ver) >= pkg_resources.parse_version(self._version):
+                elif self._version[0] not in ('=', '>', '<', '!') and pkg_resources.parse_version(ver) == pkg_resources.parse_version(self._version):
                     return True
                 env.logger.error(f'Version {ver} of installed {name} does not match specified version {self._version}')
                 return False
