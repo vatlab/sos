@@ -19,6 +19,11 @@ class Py_Module(BaseTarget):
         super(Py_Module, self).__init__()
         self._module = module
         self._version = version
+        for opt in ('==', '>=', '>', '<=', '<', '!='):
+            if opt in self._module:
+                self._module, self._version = self._module.split(opt)
+                self._version = opt + self._version
+                break
         self._autoinstall = autoinstall
 
     def _install(self, name, autoinstall):
