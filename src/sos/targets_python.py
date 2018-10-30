@@ -36,7 +36,19 @@ class Py_Module(BaseTarget):
                     except Exception as e:
                         env.logger.debug(f'Failed to get version of {name}: {e}')
                         return True
-                if pkg_resources.parse_version(ver) >= pkg_resources.parse_version(self._version):
+                if self._version.startswith('==') and pkg_resources.parse_version(ver) == pkg_resources.parse_version(self._version[2:]):
+                    return True
+                elif self._version.startswith('<=') and pkg_resources.parse_version(ver) <= pkg_resources.parse_version(self._version[2:]):
+                    return True
+                elif self._version.startswith('<') and pkg_resources.parse_version(ver) < pkg_resources.parse_version(self._version[1:]):
+                    return True
+                elif self._version.startswith('>=') and pkg_resources.parse_version(ver) >= pkg_resources.parse_version(self._version[2:]):
+                    return True
+                elif self._version.startswith('>') and pkg_resources.parse_version(ver) > pkg_resources.parse_version(self._version[1:]):
+                    return True
+                elif self._version.startswith('!=') and pkg_resources.parse_version(ver) != pkg_resources.parse_version(self._version[2:]):
+                    return True
+                elif self._version[0] not in ('=', '>', '<', '!') and pkg_resources.parse_version(ver) >= pkg_resources.parse_version(self._version[1:]):
                     return True
                 else:
                     env.logger.error(f'Version {ver} of installed {name} does not match specified version {self._version}')
