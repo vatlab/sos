@@ -39,17 +39,36 @@ class R_library(BaseTarget):
         #
         package_loaded = 'suppressMessages(require(package, character.only=TRUE, quietly=TRUE))'
         version_satisfied = 'TRUE'
+        for opt in ('==', '>=', '>', '<=', '<', '!='):
+            if opt in name:
+                if version is not None:
+                    raise ValueError(f"Specifying 'version=' option in addition to '{name}' is not allowed")
+                name, version = [x.strip() for x in name.split(opt, 1)]
+                version = (opt + version,)
+                break
         if version is not None:
             version = list(version)
             operators = []
             for idx, value in enumerate(version):
                 value = str(value)
-                if value.endswith('+'):
+                if value.startswith('>='):
                     operators.append('>=')
-                    version[idx] = value[:-1]
-                elif value.endswith('-'):
+                    version[idx] = value[2:]
+                elif  value.startswith('>'):
+                    operators.append('>')
+                    version[idx] = value[1:]
+                elif value.startswith('<='):
+                    operators.append('<=')
+                    version[idx] = value[2:]
+                elif  value.startswith('<'):
                     operators.append('<')
-                    version[idx] = value[:-1]
+                    version[idx] = value[1:]
+                elif value.startswith('=='):
+                    operators.append('==')
+                    version[idx] = value[2:]
+                elif value.startswith('!='):
+                    operators.append('!=')
+                    version[idx] = value[2:]
                 else:
                     operators.append('==')
             # check version and mark version mismatch
@@ -107,7 +126,7 @@ class R_library(BaseTarget):
                     quit("no")
                 }}
             }} else {{
-                write(paste(package, cur_version, "UNAVAILABLE"), file={repr(output_file)})
+                if (!is.null(cur_version)) write(paste(package, cur_version, "VERSION_MISMATCH"), file={repr(output_file)}) else write(paste(package, cur_version, "UNAVAILABLE"), file={repr(output_file)})
             }}
             '''
         # temporarily change the run mode to run to execute script

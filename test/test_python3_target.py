@@ -56,6 +56,27 @@ depends: Py_Module('tabulate', version='2.0', autoinstall=True)
 ''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
+        #
+        script = SoS_Script(r'''
+[10]
+depends: Py_Module('tabulate>=2.0')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+        #
+        script = SoS_Script(r'''
+[10]
+depends: Py_Module('tabulate==20.0')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+        #
+        script = SoS_Script(r'''
+[10]
+depends: Py_Module('tabulate<2.0')
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
 
 if __name__ == '__main__':
     unittest.main()

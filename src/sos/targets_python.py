@@ -17,11 +17,17 @@ class Py_Module(BaseTarget):
 
     def __init__(self, module, version=None, autoinstall=False):
         super(Py_Module, self).__init__()
-        self._module = module
-        self._version = version
+        if not isinstance(module, str):
+            raise ValueError('A string is expected for module name.')
+        self._module = module.strip()
+        self._version = version.strip() if isinstance(version, str) else version
         for opt in ('==', '>=', '>', '<=', '<', '!='):
             if opt in self._module:
-                self._module, self._version = self._module.split(opt)
+                if self._version is not None:
+                    raise ValueError(f"Specifying 'version=' option in addition to '{module}' is not allowed")
+                self._module, self._version = [x.strip() for x in self._module.split(opt, 1)]
+                if ',' in self._version:
+                    raise ValueError(f'SoS does not yet support multiple version comparisons. {self._mdoule} provided')
                 self._version = opt + self._version
                 break
         self._autoinstall = autoinstall
@@ -41,23 +47,24 @@ class Py_Module(BaseTarget):
                     except Exception as e:
                         env.logger.debug(f'Failed to get version of {name}: {e}')
                         return True
+                env.logger.debug(f'Comparing exiting version {ver} against requested version {self._version}')
                 if self._version.startswith('==') and pkg_resources.parse_version(ver) == pkg_resources.parse_version(self._version[2:]):
                     return True
                 elif self._version.startswith('<=') and pkg_resources.parse_version(ver) <= pkg_resources.parse_version(self._version[2:]):
                     return True
-                elif self._version.startswith('<') and pkg_resources.parse_version(ver) < pkg_resources.parse_version(self._version[1:]):
+                elif self._version.startswith('<') and not self._version.startswith('<=') and pkg_resources.parse_version(ver) < pkg_resources.parse_version(self._version[1:]):
                     return True
                 elif self._version.startswith('>=') and pkg_resources.parse_version(ver) >= pkg_resources.parse_version(self._version[2:]):
                     return True
-                elif self._version.startswith('>') and pkg_resources.parse_version(ver) > pkg_resources.parse_version(self._version[1:]):
+                # the case of >
+                elif self._version.startswith('>') and not self._version.startswith('>=') and pkg_resources.parse_version(ver) > pkg_resources.parse_version(self._version[1:]):
                     return True
                 elif self._version.startswith('!=') and pkg_resources.parse_version(ver) != pkg_resources.parse_version(self._version[2:]):
                     return True
-                elif self._version[0] not in ('=', '>', '<', '!') and pkg_resources.parse_version(ver) >= pkg_resources.parse_version(self._version):
+                elif self._version[0] not in ('=', '>', '<', '!') and pkg_resources.parse_version(ver) == pkg_resources.parse_version(self._version):
                     return True
-                else:
-                    env.logger.error(f'Version {ver} of installed {name} does not match specified version {self._version}')
-                    return False
+                env.logger.error(f'Version {ver} of installed {name} does not match specified version {self._version}')
+                return False
             return True
 
         if not autoinstall:
