@@ -1399,12 +1399,12 @@ assert step_input.sources == ['2']
     def testRerunWithZap(self):
         script = SoS_Script('''
 [step_10]
-output: 'a.txt'
+output: 'zapped_example.txt'
 sh:
-  echo "hellp" > a.txt
+  echo "hellp" > zapped_example.txt
 
 [step_20]
-input: 'a.txt'
+input: 'zapped_example.txt'
 output: _input.with_suffix('.bak')
 sh: expand=True
    cp {_input} {_output}
@@ -1416,12 +1416,12 @@ _input.zap()
         #
         script = SoS_Script('''
 [step_10]
-output: 'a.txt'
+output: 'zapped_example.txt'
 sh:
-  echo "hellp" > a.txt
+  echo "hellp" > zapped_example.txt
 
 [step_20]
-input: 'a.txt'
+input: 'zapped_example.txt'
 output: _input.with_suffix('.bak')
 print(_input)
 sh: expand=True
@@ -1431,6 +1431,7 @@ _input.zap()
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
+        os.remove('zapped_example.txt.zapped')
 
 
 
