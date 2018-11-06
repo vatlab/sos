@@ -787,6 +787,9 @@ class Base_Executor:
         dag.save(env.config['output_dag'])
         target = res.target
 
+        if isinstance(target, file_target) and (target + '.zapped').exists():
+            (target + '.zapped').unlink()
+
         if dag.regenerate_target(target):
             # runnable._depends_targets.append(target)
             # dag._all_dependent_files[target].append(runnable)

@@ -1396,5 +1396,43 @@ assert step_input.sources == ['2']
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    def testRerunWithZap(self):
+        script = SoS_Script('''
+[step_10]
+output: 'a.txt'
+sh:
+  echo "hellp" > a.txt
+
+[step_20]
+input: 'a.txt'
+output: _input.with_suffix('.bak')
+sh: expand=True
+   cp {_input} {_output}
+
+_input.zap()
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        #
+        script = SoS_Script('''
+[step_10]
+output: 'a.txt'
+sh:
+  echo "hellp" > a.txt
+
+[step_20]
+input: 'a.txt'
+output: _input.with_suffix('.bak')
+print(_input)
+sh: expand=True
+   cp {_input} {_output}
+
+_input.zap()
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
+
+
 if __name__ == '__main__':
     unittest.main()

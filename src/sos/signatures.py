@@ -97,7 +97,7 @@ class StepSignatures(SignatureDB):
             cur.executemany(
                     'DELETE FROM steps WHERE step_id=?',
                     [(x,) for x in steps])
-            sllf.conn.commit()
+            self.conn.commit()
             return cnt - self._num_records(cur)
         except sqlite3.DatabaseError as e:
             env.logger.warning(f'Failed to remove signature for {len(steps)} substeps: {e}')
