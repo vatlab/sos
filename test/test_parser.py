@@ -1282,6 +1282,19 @@ print(_input)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
+        #
+        script = SoS_Script('''
+[step_10]
+
+output: 'a.txt'
+_output.touch()
+
+[step_20]
+input: from_steps=10
+print(_input)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()        
 
     def testSectionActions(self):
         '''Test actions of sections'''

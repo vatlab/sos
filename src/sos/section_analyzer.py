@@ -205,8 +205,10 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
                             raise ValueError(f'Invalid value for input option from {piece}: {e}')
                         if isinstance(opt_values, str):
                             step_depends.extend(sos_step(opt_values))
+                        elif isinstance(opt_values, int):
+                            step_depends.extend(sos_step(f'{section.name}_{opt_values}'))
                         elif isinstance(opt_values, Sequence):
-                            step_depends.extend([sos_step(x) for x in opt_values])
+                            step_depends.extend([sos_step(f'{section.name}_{x}') if isinstance(x, int) else sos_step(x) for x in opt_values])
                         else:
                             raise ValueError(f'Invalid value for input option from {opt_values}')
             # if anything is not evalutable, keep Undetermined
