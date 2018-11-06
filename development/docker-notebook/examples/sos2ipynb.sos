@@ -1,0 +1,5 @@
+[1]
+input: '*.sos',group_by=1,concurrent=True
+output: f'WP2018_{_input:n}.ipynb'
+bash: expand = True
+  sos convert {_input} {_output}
