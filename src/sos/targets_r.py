@@ -180,7 +180,7 @@ class R_library(BaseTarget):
         else:
             # check if R is installed
             if not shutil.which('Rscript'):
-                env.logger.warning(f'Rscript: command not found')
+                env.logger.debug(f'Target R_Library("{self._library}") does not exist because command Rscript is not found.')
                 return False
             ret = self._install(self._library, self._version, self._repos)
             self.LIB_STATUS_CACHE[(self._library, self._version, self._autoinstall)] = ret
