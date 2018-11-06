@@ -597,7 +597,8 @@ class Base_Step_Executor:
             # cleared.
             if len(ifiles) > 0 and ifiles.sources[0] != self.step.step_name():
                 ifiles = sos_targets([])
-            if isinstance(kwargs['from_steps'], str):
+
+            if isinstance(kwargs['from_steps'], (int, str)):
                 from_args = [kwargs['from_steps']]
             elif isinstance(kwargs['from_steps'], Sequence):
                 from_args = list(kwargs['from_steps'])
@@ -605,7 +606,11 @@ class Base_Step_Executor:
                 raise ValueError(f'Unacceptable value of input prameter from: {kwargs["from_steps"]} provided')
             #
             for step in from_args:
-                env.controller_req_socket.send_pyobj(['step_output', step])
+                if isinstance(step, int):
+                    env.controller_req_socket.send_pyobj(['step_output',
+                        f"{self.step.step_name().rsplit('_', 1)[0]}_{step}"])
+                else:
+                    env.controller_req_socket.send_pyobj(['step_output', step])
                 res = env.controller_req_socket.recv_pyobj()
                 if res is None or not isinstance(res, sos_targets):
                     raise RuntimeError(f'Failed to obtain output of step {step}')
