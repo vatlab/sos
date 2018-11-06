@@ -333,6 +333,10 @@ def cmd_run(args, workflow_args):
         except ImportError as e:
             raise RuntimeError(f'Python packages graphviz, pillow, and imageio are required for the generation of DAG animation in workflow report (options -p with -d): {e}')
 
+        import shutil
+        if not shutil.which('dot'):
+            raise RuntimeError(f'Command dot from package graphviz is required for the generation of DAG animation in workflow report (options -p with -d)')
+
     from .workflow_executor import Base_Executor
 
     if args.__bin_dirs__:
