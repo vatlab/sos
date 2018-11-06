@@ -335,7 +335,7 @@ def cmd_run(args, workflow_args):
 
         import shutil
         if not shutil.which('dot'):
-            raise RuntimeError(f'Command dot from package graphviz is required for the generation of DAG animation in workflow report (options -p with -d): {e}')
+            raise RuntimeError(f'Command dot from package graphviz is required for the generation of DAG animation in workflow report (options -p with -d)')
 
     from .workflow_executor import Base_Executor
 
