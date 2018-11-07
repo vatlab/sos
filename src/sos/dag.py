@@ -146,7 +146,7 @@ class SoS_DAG(nx.DiGraph):
                     self._all_output_files[sos_variable(x)].append(node)
         self.add_node(node)
 
-    def update_step(self, node, input_targets: sos_targets, depends_targets: sos_targets, output_targets: sos_targets):
+    def update_step(self, node, input_targets: sos_targets, output_targets: sos_targets, depends_targets: sos_targets):
         for x in input_targets:
             if node not in self._all_dependent_files[x]:
                 self._all_dependent_files[x].append(node)
