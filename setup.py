@@ -86,11 +86,13 @@ setup(name="sos",
           'Intended Audience :: Information Technology',
           'Intended Audience :: Science/Research',
           'Programming Language :: Python :: 3 :: Only',
+          'Programming Language :: Python :: 3.6',
           'Programming Language :: Python :: Implementation :: CPython',
       ],
       packages=find_packages('src'),
       cmdclass=cmdclass,
       package_dir={'': 'src'},
+      python_requires='>=3.6',
       install_requires=[
           'psutil',
           # progress bar
