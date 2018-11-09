@@ -315,7 +315,7 @@ class RuntimeEnvironments(object):
     _temp_dir = os.path.join(tempfile.gettempdir(), getpass.getuser(), '.sos')
 
     def log_to_file(self, msg):
-        with open(os.path.join(os.path.expanduser('~'), 'sos_debug.txt'), 'a') as log:
+        with open(os.path.join(os.path.expanduser('~'), 'sos_debug.log'), 'a') as log:
             log.write(f'{msg}\n')
 
     def reset(self):
