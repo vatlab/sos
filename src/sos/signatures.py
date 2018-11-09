@@ -35,9 +35,8 @@ class SignatureDB:
     def _write(self, record):
         self._cache.append(record)
         if len(self._cache) > 1000:
-            self._conn.executemany(self._write_query, self._cache)
-            self._cache = []
-            self._conn.commit()
+            # this will tricky the action to clear cache
+            self._get_conn()
 
     conn = property(_get_conn)
 
