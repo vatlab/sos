@@ -58,8 +58,11 @@ class TaskManager:
     def tags(self, task_id):
         return self._tags.get(task_id, [])
 
-    def has_task(self, task_id):
-        return task_id in self._all_ids
+    def index_of(self, task_id):
+        if task_id in self._all_ids:
+            return self._all_ids.index(task_id)
+        else:
+            return -1
 
     def has_output(self, output):
         if not isinstance(output, Sequence) or not self._unsubmitted_tasks:
@@ -734,9 +737,9 @@ class Base_Step_Executor:
         # 618
         # it is possible that identical tasks are executed (with different underlying random numbers)
         # we should either give a warning or produce different ids...
-        if self.task_manager.has_task(task_id):
+        if self.task_manager.index_of(task_id) >= 0:
             raise RuntimeError(
-                f'Identical task {task_id} generated from _index={env.sos_dict["_index"]}.')
+                f'Task {task_id} generated for (_index={env.sos_dict["_index"]}) is identical to a previous one (_index={self.task_manager.index_of(task_id)}).')
         elif self.task_manager.has_output(task_vars['_output']):
             raise RuntimeError(
                 f'Task produces output files {", ".join(task_vars["_output"])} that are output of other tasks.')
