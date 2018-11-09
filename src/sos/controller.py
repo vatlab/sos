@@ -71,6 +71,8 @@ def disconnect_controllers(context=None):
     if env.config['exec_mode'] == 'slave':
         env.tapping_logging_socket.LINGER = 0
         env.tapping_logging_socket.close()
+        env.set_socket_logger(None)
+
     if env.config['exec_mode'] in ('master', 'slave'):
         env.tapping_listener_socket.LINGER = 0
         env.tapping_listener_socket.close()
