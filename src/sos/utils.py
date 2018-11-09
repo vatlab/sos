@@ -393,12 +393,12 @@ class RuntimeEnvironments(object):
             #    '%(asctime)s: %(levelname)s: %(message)s'))
             self._logger.addHandler(socket_handler)
             # also log to file for debugging purposes
-            ch = logging.FileHandler(os.path.join(os.path.expanduser('~'), 'sos_debug.log'), mode='a')
+            #ch = logging.FileHandler(os.path.join(os.path.expanduser('~'), 'sos_debug.log'), mode='a')
             # debug informaiton and time is always written to the log file
-            ch.setLevel(logging.TRACE)
-            ch.setFormatter(logging.Formatter(
-                '%(asctime)s: %(levelname)s: %(message)s'))
-            self._logger.addHandler(ch)
+            #ch.setLevel(logging.TRACE)
+            #ch.setFormatter(logging.Formatter(
+            #    '%(asctime)s: %(levelname)s: %(message)s'))
+            #self._logger.addHandler(ch)
         else:
             # output to standard output
             cout = logging.StreamHandler()
