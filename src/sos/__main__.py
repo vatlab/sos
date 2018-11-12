@@ -300,6 +300,8 @@ def cmd_run(args, workflow_args):
         argv = remove_arg(sys.argv, '-r')
         # -c only point to local config file.
         argv = remove_arg(argv, '-c')
+        # remove --slave mode because the master cannot reach remote slave
+        argv = remove_arg(argv, '-m')
         # replace absolute path with relative one because remote sos might have
         # a different path.
         if os.path.basename(argv[0]) == 'sos':

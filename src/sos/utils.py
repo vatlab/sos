@@ -1341,12 +1341,12 @@ def remove_arg(argv, arg):
         return argv
     else:
         r_idx = r_idx[0]
-    if argv[r_idx] == arg:
-        # in case of -r host
-        argv = argv[:r_idx] + argv[r_idx + 2:]
+    # find next option
+    r_next = [idx for idx, x in enumerate(argv[r_idx+1:]) if x.startswith('-')]
+    if r_next:
+        argv = argv[:r_idx] + argv[r_idx + 1 + r_next[0]:]
     else:
-        # in case of -r=host...
-        argv = argv[:r_idx] + argv[r_idx + 1:]
+        argv = argv[:r_idx]
     return argv
 
 
