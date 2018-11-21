@@ -765,7 +765,7 @@ class Host:
         cls.host_instances = {}
 
     def _get_local_host(self) -> str:
-        if 'CONFIG' not in env.sos_dict:
+        if 'CONFIG' not in env.sos_dict or 'hosts' not in env.sos_dict['CONFIG']:
             from .utils import load_config_files
             load_config_files()
         # look for an entry with gethost
@@ -812,7 +812,7 @@ class Host:
 
     def _get_remote_host(self, alias: Optional[str]) -> str:
         # get a remote host specified by Alias
-        if 'CONFIG' not in env.sos_dict:
+        if 'CONFIG' not in env.sos_dict or 'hosts' not in env.sos_dict['CONFIG']:
             from .utils import load_config_files
             load_config_files()
         if not alias or alias == 'localhost':
