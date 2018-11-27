@@ -106,10 +106,6 @@ setup(name="sos",
           'pydot',
           'pydotplus',
           'pexpect',
-          #
-          'sos-pbs',
-          'sos-rq',
-          'sos-bioinfo',
           # for report regeneration
           'jinja2',
           # to execute workflow embedded in .ipynb files
