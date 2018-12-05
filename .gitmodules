@@ -4,6 +4,3 @@
 [submodule "src/sos-pbs"]
 	path = src/sos-pbs
 	url = https://github.com/vatlab/sos-pbs.git
-[submodule "src/sos-bioinfo"]
-	path = src/sos-bioinfo
-	url = https://github.com/vatlab/sos-bioinfo.git
