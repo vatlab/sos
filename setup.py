@@ -78,7 +78,7 @@ setup(name="sos",
       classifiers=[
           'Development Status :: 4 - Beta',
           'Environment :: Console',
-          'License :: OSI Approved :: GNU General Public License (GPL)',
+          'License :: OSI Approved :: BSD License',
           'Natural Language :: English',
           'Operating System :: POSIX :: Linux',
           'Operating System :: MacOS :: MacOS X',
@@ -106,10 +106,6 @@ setup(name="sos",
           'pydot',
           'pydotplus',
           'pexpect',
-          #
-          'sos-pbs',
-          'sos-rq',
-          'sos-bioinfo',
           # for report regeneration
           'jinja2',
           # to execute workflow embedded in .ipynb files

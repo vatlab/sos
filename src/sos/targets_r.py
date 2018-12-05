@@ -150,7 +150,7 @@ class R_library(BaseTarget):
         ret_val = False
         with open(output_file) as tmp:
             for line in tmp:
-                lib, cur_version, status = line.split()
+                lib, cur_version, status = line.split(' ', 2)
                 if status.strip() == "MISSING":
                     env.logger.warning(
                         f'R Library {lib} is not available and cannot be installed.')
