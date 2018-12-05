@@ -1,3 +1,0 @@
-[submodule "src/sos-pbs"]
-	path = src/sos-pbs
-	url = https://github.com/vatlab/sos-pbs.git
