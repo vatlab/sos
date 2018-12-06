@@ -1,9 +1,0 @@
-[submodule "src/sos-rq"]
-	path = src/sos-rq
-	url = https://github.com/vatlab/sos-rq.git
-[submodule "src/sos-pbs"]
-	path = src/sos-pbs
-	url = https://github.com/vatlab/sos-pbs.git
-[submodule "src/sos-bioinfo"]
-	path = src/sos-bioinfo
-	url = https://github.com/vatlab/sos-bioinfo.git
