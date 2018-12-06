@@ -9,11 +9,11 @@ import random
 import subprocess
 import threading
 import time
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 from .eval import cfg_interpolate
 from .utils import env, expand_time
-
+from .tasks import TaskFile
 
 class TaskEngine(threading.Thread):
     def __init__(self, agent):
@@ -39,7 +39,7 @@ class TaskEngine(threading.Thread):
         self.resuming_tasks = set()
 
         self.task_status = OrderedDict()
-        self.task_date = {}
+        self.task_info = defaultdict(dict)
         self.last_checked = None
         if 'status_check_interval' not in self.config:
             self.status_check_interval = 10
@@ -103,11 +103,11 @@ class TaskEngine(threading.Thread):
         #
         if age is not None:
             age = expand_time(age, default_unit='d')
-        return sorted([(x, self.task_status[x], self.task_date.get(x, (time.time(), None, None))) for x in tasks
+        return sorted([(x, self.task_status[x], self.task_info[x].get('data', (time.time(), None, None))) for x in tasks
                        if (status is None or self.task_status[x] in status) and
                        (age is None or
-                        ((age > 0 and time.time() - self.task_date.get(x, (time.time(), None, None))[0] > age)
-                         or (age < 0 and time.time() - self.task_date.get(x, (time.time(), None, None))[0] < -age)))],
+                        ((age > 0 and time.time() - self.task_info[x].get('date', (time.time(), None, None))[0] > age)
+                         or (age < 0 and time.time() - self.task_info[x].get('date', (time.time(), None, None))[0] < -age)))],
                       key=lambda x: -x[2][0])
 
     def get_tasks(self):
@@ -128,11 +128,12 @@ class TaskEngine(threading.Thread):
                     continue
                 try:
                     # return creation time, start time, and duration
-                    tid, _, ct, st, dr, tst = line.split('\t')
+                    tid, tags, ct, st, dr, tst = line.split('\t')
                     # for some reason on windows there can be a \r at the end
                     self.task_status[tid] = tst.strip()
-                    self.task_date[tid] = [float(ct), float(
+                    self.task_info[tid]['date'] = [float(ct), float(
                         st) if st.strip() else 0, float(dr) if dr.strip() else 0]
+                    self.task_info[tid]['tags'] = tags
                 except Exception as e:
                     env.logger.warning(
                         f'Unrecognized response "{line}" ({e.__class__.__name__}): {e}')
@@ -157,13 +158,14 @@ class TaskEngine(threading.Thread):
                     if not line.strip():
                         continue
                     try:
-                        tid, _, ct, st, dr, tst = line.split('\t')
+                        tid, tags, ct, st, dr, tst = line.split('\t')
                         if tid not in self.running_tasks:
                             env.logger.trace(
                                 f'Task {tid} removed since status check.')
                             continue
-                        self.task_date[tid] = [float(ct), float(
+                        self.task_info[tid]['date'] = [float(ct), float(
                             st) if st.strip() else 0, float(dr) if dr.strip() else 0]
+                        self.task_info[tid]['tags'] = tags
                         self.update_task_status(tid, tst)
                     except Exception as e:
                         env.logger.warning(
@@ -188,7 +190,8 @@ class TaskEngine(threading.Thread):
                                         self.notify_controller({
                                             'queue': self.agent.alias,
                                             'task_id': tid,
-                                            'status': 'aborted'
+                                            'status': 'aborted',
+                                            'tags': self.task_info['tid'].get('tags', '')
                                         })
                                     else:
                                         self.running_tasks.append(tid)
@@ -196,7 +199,8 @@ class TaskEngine(threading.Thread):
                                             {
                                                 'queue': self.agent.alias,
                                                 'task_id': tid,
-                                                'status': 'submitted'
+                                                'status': 'submitted',
+                                                'tags': self.task_info['tid'].get('tags', '')
                                             })
                             else:
                                 for tid in k:
@@ -204,7 +208,8 @@ class TaskEngine(threading.Thread):
                                         {
                                             'queue': self.agent.alias,
                                             'task_id': tid,
-                                            'status': 'failed'
+                                            'status': 'failed',
+                                            'tags': self.task_info['tid'].get('tags', '')
                                         })
                                     self.task_status[tid] = 'failed'
                         # else:
@@ -266,7 +271,8 @@ class TaskEngine(threading.Thread):
                     self.notify_controller({
                         'queue': self.agent.alias,
                         'task_id': task_id,
-                        'status': 'running'
+                        'status': 'running',
+                        'tags': self.task_info['tid'].get('tags', '')
                     })
                     return 'running'
                 # there is a case when the job is already completed (complete-old), but
@@ -293,10 +299,16 @@ class TaskEngine(threading.Thread):
             if task_id in self.canceled_tasks:
                 self.canceled_tasks.remove(task_id)
             self.task_status[task_id] = 'pending'
+            try:
+                self.task_info['tid']['tags'] = TaskFile(task_id).tags
+            except:
+                # if task file does not exist, it is ok
+                pass
             self.notify_controller({
                 'queue': self.agent.alias,
                 'task_id': task_id,
-                'status': 'pending'
+                'status': 'pending',
+                'tags': self.task_info['tid'].get('tags', '')
             })
             return 'pending'
 
@@ -326,29 +338,31 @@ class TaskEngine(threading.Thread):
                     f'Task {task_id} is still not killed (status {status})')
                 status = 'aborted'
             if status != 'missing':
-                if task_id not in self.task_date:
-                    self.task_date[task_id] = [None, None, None]
+                if task_id not in self.task_info:
+                    self.task_info[task_id]['date'] = [None, None, None]
                 if task_id in self.task_status and self.task_status[task_id] == status:
                     self.notify_controller(
                         {
                             'queue': self.agent.alias,
                             'task_id': task_id,
                             'status': status,
-                            'start_time': self.task_date[task_id][1]
+                            'start_time': self.task_info[task_id]['date'][1],
+                            'tags': self.task_info['tid'].get('tags', '')
                         })
                 else:
                     if status == 'running':
-                        if task_id not in self.task_date:
-                            self.task_date[task_id] = [
+                        if task_id not in self.task_info:
+                            self.task_info[task_id]['date'] = [
                                 time.time(), time.time(), 0]
-                        elif not self.task_date[task_id][1]:
-                            self.task_date[task_id][1] = time.time()
+                        elif not self.task_info[task_id]['date'][1]:
+                            self.task_info[task_id]['date'][1] = time.time()
                     self.notify_controller(
                         {
                             'queue': self.agent.alias,
                             'task_id': task_id,
                             'status': status,
-                            'start_time': self.task_date[task_id][1]
+                            'start_time': self.task_info[task_id]['date'][1],
+                            'tags': self.task_info['tid'].get('tags', '')
                         })
             self.task_status[task_id] = status
             if status == 'pening' and task_id not in self.pending_tasks:
