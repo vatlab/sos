@@ -838,7 +838,6 @@ def print_task_status(tasks, check_all=False, verbosity: int=1, html: bool=False
                 all_tasks.append((t, None))
             else:
                 all_tasks.extend(matched)
-
     if age is not None:
         age = expand_time(age, default_unit='d')
         if age > 0:
@@ -851,7 +850,7 @@ def print_task_status(tasks, check_all=False, verbosity: int=1, html: bool=False
 
     if tags:
         all_tasks = [x for x in all_tasks if any(
-            x in tags for x in TaskFile(x[0]).tags.split())]
+            y in tags for y in TaskFile(x[0]).tags.split())]
 
     if not all_tasks:
         env.logger.info('No matching tasks are identified.')
