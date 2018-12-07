@@ -131,8 +131,8 @@ class TaskEngine(threading.Thread):
                     tid, tags, ct, st, dr, tst = line.split('\t')
                     # for some reason on windows there can be a \r at the end
                     self.task_status[tid] = tst.strip()
-                    self.task_info[tid]['date'] = [float(ct), float(
-                        st) if st.strip() else 0, float(dr) if dr.strip() else 0]
+                    self.task_info[tid]['date'] = [float(ct) if ct.strip() else None,
+                        float(st) if st.strip() else None, float(dr) if dr.strip() else None]
                     self.task_info[tid]['tags'] = tags
                 except Exception as e:
                     env.logger.warning(
@@ -163,8 +163,9 @@ class TaskEngine(threading.Thread):
                             env.logger.trace(
                                 f'Task {tid} removed since status check.')
                             continue
-                        self.task_info[tid]['date'] = [float(ct), float(
-                            st) if st.strip() else 0, float(dr) if dr.strip() else 0]
+                        self.task_info[tid]['date'] = [float(ct) if ct.strip() else None,
+                            float(st) if st.strip() else None,
+                            float(dr) if dr.strip() else None]
                         self.task_info[tid]['tags'] = tags
                         self.update_task_status(tid, tst)
                     except Exception as e:

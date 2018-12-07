@@ -1261,6 +1261,8 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
                                              '.sos', 'tasks', f'{t}*.task'))
             matched = [(os.path.basename(x)[:-5], os.path.getmtime(x))
                        for x in matched]
+            if not matched:
+                print(f'{t}\tmissing')
             all_tasks.extend(matched)
         is_all = False
     elif purge_all:
@@ -1325,12 +1327,12 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
                         env.logger.warning(f'Failed to purge task {task[0]}: {e}')
             status_cache.pop(task, None)
             if removed and verbosity > 1:
-                env.logger.info(f'Task ``{task}`` removed.')
+                print(f'{task}\tpurged')
         with fasteners.InterProcessLock(cache_file + '_'):
             with open(cache_file, 'wb') as cache:
                 pickle.dump(status_cache, cache)
     elif verbosity > 1:
-        env.logger.info('No matching tasks')
+        env.logger.debug('No matching tasks')
     if purge_all and age is None and status is None and tags is None:
         matched = glob.glob(os.path.join(
             os.path.expanduser('~'), '.sos', 'tasks', '*'))
