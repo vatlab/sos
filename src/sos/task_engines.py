@@ -36,7 +36,6 @@ class TaskEngine(threading.Thread):
         self.pending_tasks = []
         self.submitting_tasks = {}
         self.canceled_tasks = []
-        self.resuming_tasks = set()
 
         self.task_status = OrderedDict()
         self.task_info = defaultdict(dict)
@@ -436,43 +435,13 @@ class TaskEngine(threading.Thread):
             return ''
         return ret
 
-    def resume_task(self, task):
-        # we wait for the engine to start
-        self.engine_ready.wait()
-        with threading.Lock():
-            # it is possible that a task is aborted from an opened notebook with aborted status
-            if task not in self.task_status or \
-                    self.task_status[task] not in ('completed', 'failed', 'aborted'):
-                env.logger.warning(
-                    f'Resume task called for non-canceled or non-completed/failed task {task}')
-                return
-            # the function might have been used multiple times (frontend multiple clicks)
-            if task in self.canceled_tasks:
-                self.canceled_tasks.remove(task)
-            if task not in self.pending_tasks:
-                self.pending_tasks.append(task)
-            # tells the engine that preparation of task can fail
-            self.resuming_tasks.add(task)
-            self.task_status[task] = 'pending'
-
     def execute_tasks(self, task_ids):
         # we wait for the engine to start
         self.engine_ready.wait()
         # this is base class, the derived class will actually submit the tasks
-
-        # if the task is being resumed, perhaps from another local host,
-        # the preparation process can fail (e.g. no def file), but this
-        # does not really matter. #587
         for task_id in task_ids:
-            if task_id in self.resuming_tasks:
-                self.resuming_tasks.remove(task_id)
-                try:
-                    self.agent.prepare_task(task_id)
-                except Exception:
-                    pass
-            else:
-                if not self.agent.prepare_task(task_id):
-                    return False
+            if not self.agent.prepare_task(task_id):
+                return False
         return True
 
     def purge_tasks(self, tasks, purge_all=False, age=None, status=None, tags=None, verbosity=2):
