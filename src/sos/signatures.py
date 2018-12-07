@@ -40,6 +40,10 @@ class SignatureDB:
 
     conn = property(_get_conn)
 
+    def commit(self):
+        # getting conn will commit all cached records
+        self._get_conn()
+
     def close(self):
         self.conn.close()
 

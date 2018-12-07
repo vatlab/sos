@@ -132,6 +132,9 @@ class Controller(threading.Thread):
                 self.workflow_signatures.write(*msg[1:])
             elif msg[0] == 'step':
                 self.step_signatures.set(*msg[1:])
+            elif msg[0] == 'commit':
+                self.workflow_signatures.commit()
+                self.step_signatures.commit()
             else:
                 env.logger.warning(f'Unknown message passed {msg}')
         except Exception as e:
