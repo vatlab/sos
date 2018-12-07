@@ -820,7 +820,7 @@ def check_tasks(tasks, is_all: bool):
 def print_task_status(tasks, check_all=False, verbosity: int=1, html: bool=False, numeric_times=False, age=None, tags=None, status=None):
     # verbose is ignored for now
     import glob
-    if check_all or tags:
+    if check_all:
         tasks = glob.glob(os.path.join(
             os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
         all_tasks = [(os.path.basename(x)[:-5], os.path.getmtime(x))
