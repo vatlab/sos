@@ -191,6 +191,7 @@ class TaskEngine(threading.Thread):
                                             'queue': self.agent.alias,
                                             'task_id': tid,
                                             'status': 'aborted',
+                                            'update_only': True,
                                             'tags': self.task_info['tid'].get('tags', '')
                                         })
                                     else:
@@ -200,6 +201,7 @@ class TaskEngine(threading.Thread):
                                                 'queue': self.agent.alias,
                                                 'task_id': tid,
                                                 'status': 'submitted',
+                                                'update_only': True,
                                                 'tags': self.task_info['tid'].get('tags', '')
                                             })
                             else:
@@ -209,6 +211,7 @@ class TaskEngine(threading.Thread):
                                             'queue': self.agent.alias,
                                             'task_id': tid,
                                             'status': 'failed',
+                                            'update_only': True,
                                             'tags': self.task_info['tid'].get('tags', '')
                                         })
                                     self.task_status[tid] = 'failed'
@@ -272,6 +275,7 @@ class TaskEngine(threading.Thread):
                         'queue': self.agent.alias,
                         'task_id': task_id,
                         'status': 'running',
+                        'update_only': False,
                         'tags': self.task_info['tid'].get('tags', '')
                     })
                     return 'running'
@@ -308,6 +312,7 @@ class TaskEngine(threading.Thread):
                 'queue': self.agent.alias,
                 'task_id': task_id,
                 'status': 'pending',
+                'update_only': False,
                 'tags': self.task_info['tid'].get('tags', '')
             })
             return 'pending'
@@ -346,6 +351,7 @@ class TaskEngine(threading.Thread):
                             'queue': self.agent.alias,
                             'task_id': task_id,
                             'status': status,
+                            'update_only': True,
                             'start_time': self.task_info[task_id]['date'][1],
                             'tags': self.task_info['tid'].get('tags', '')
                         })
@@ -361,6 +367,7 @@ class TaskEngine(threading.Thread):
                             'queue': self.agent.alias,
                             'task_id': task_id,
                             'status': status,
+                            'update_only': True,
                             'start_time': self.task_info[task_id]['date'][1],
                             'tags': self.task_info['tid'].get('tags', '')
                         })
