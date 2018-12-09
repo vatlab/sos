@@ -849,7 +849,7 @@ def print_task_status(tasks, check_all=False, verbosity: int=1, html: bool=False
                        key=lambda x: 0 if x[1] is None else x[1])
 
     if tags:
-        all_tasks = [x for x in all_tasks if any(
+        all_tasks = [x for x in all_tasks if TaskFile(x[0]).exists() and any(
             y in tags for y in TaskFile(x[0]).tags.split())]
 
     if not all_tasks:

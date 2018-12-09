@@ -394,7 +394,7 @@ class TaskEngine(threading.Thread):
         except subprocess.CalledProcessError as e:
             if verbosity >= 3:
                 env.logger.warning(
-                    f'Failed to query status of tasks on {self.alias}: {e.stderr.decode()}')
+                    f'Failed to query status of tasks on {self.alias}: {"" if e.stderr is None else e.stderr.decode()}')
             return ''
 
     def kill_tasks(self, tasks, tags=None, all_tasks=False):
