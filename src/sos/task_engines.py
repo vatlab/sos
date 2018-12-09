@@ -382,6 +382,11 @@ class TaskEngine(threading.Thread):
 
     def query_tasks(self, tasks=None, check_all=False, verbosity=1, html=False, numeric_times=False, age=None, tags=None, status=None):
         try:
+            if not check_all and not tasks:
+                from .signatures import WorkflowSignatures
+                workflow_signatures = WorkflowSignatures()
+                tasks = [x for x in workflow_signatures.tasks() if os.path.isfile(
+                    os.path.join(os.path.expanduser('~'), '.sos', 'tasks', x + '.task'))]
             return self.agent.check_output("sos status {} -v {} {} {} {} {} {} {}".format(
                 '' if tasks is None else ' '.join(tasks), verbosity,
                 '--all' if check_all else '',
@@ -453,6 +458,12 @@ class TaskEngine(threading.Thread):
 
     def purge_tasks(self, tasks, purge_all=False, age=None, status=None, tags=None, verbosity=2):
         try:
+            if not tasks and not purge_all:
+                # if not --all and no task is specified, find all tasks in the current directory
+                from .signatures import WorkflowSignatures
+                workflow_signatures = WorkflowSignatures()
+                tasks = [x for x in workflow_signatures.tasks() if os.path.isfile(
+                    os.path.join(os.path.expanduser('~'), '.sos', 'tasks', x + '.task'))]
             return self.agent.check_output("sos purge {} {} {} {} {} -v {}".format(
                 ' '.join(tasks), '--all' if purge_all else '',
                 f'--age {age}' if age is not None else '',

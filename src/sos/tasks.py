@@ -819,6 +819,11 @@ def check_tasks(tasks, is_all: bool):
 
 def print_task_status(tasks, check_all=False, verbosity: int=1, html: bool=False, numeric_times=False, age=None, tags=None, status=None):
     # verbose is ignored for now
+    if not check_all and not tasks:
+        from .signatures import WorkflowSignatures
+        workflow_signatures = WorkflowSignatures()
+        tasks = [x for x in workflow_signatures.tasks() if os.path.isfile(
+            os.path.join(os.path.expanduser('~'), '.sos', 'tasks', x + '.task'))]
     import glob
     if check_all:
         tasks = glob.glob(os.path.join(
@@ -1253,6 +1258,12 @@ def kill_task(task):
 
 def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbosity=2):
     # verbose is ignored for now
+    if not tasks and not purge_all:
+        # if not --all and no task is specified, find all tasks in the current directory
+        from .signatures import WorkflowSignatures
+        workflow_signatures = WorkflowSignatures()
+        tasks = [x for x in workflow_signatures.tasks() if os.path.isfile(
+            os.path.join(os.path.expanduser('~'), '.sos', 'tasks', x + '.task'))]
     import glob
     if tasks:
         all_tasks = []
