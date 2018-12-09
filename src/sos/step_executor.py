@@ -1446,6 +1446,9 @@ class Step_Executor(Base_Step_Executor):
     def wait_for_tasks(self, tasks, all_submitted):
         if not tasks:
             return {}
+        # when we wait, the "outsiders" also need to see the tags etc
+        # of the tasks so we have to write to the database. #156
+        env.signature_push_socket.send_pyobj(['commit'])
         # wait till the executor responde
         results = {}
         while True:
