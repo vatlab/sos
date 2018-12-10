@@ -685,52 +685,29 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                     task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
                 return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
                                                      pulse_file: 0})
-            start_stamp = os.stat(pulse_file).st_mtime
-            elapsed = time.time() - start_stamp
-            if elapsed < 0:
-                env.logger.debug(
-                    f'{pulse_file} is created in the future. Your system time might be problematic')
-            # if the file is within 5 seconds
-            if elapsed < monitor_interval:
-                # if running, we return old hint files even if the timestamp has been changed
-                # because we will check the status of running jobs anyway.
+
+            if not hint or pulse_file not in hint['files'] or 'last_checked' not in hint:
+                # if this is the first time checking the status of task with
+                # pulse file, we have to assume that it is running with a
+                # pulse file. The status of the pulse file will be checked later
                 if status != 'running':
                     # the first obserged running status
                     tf.status = 'running'
-                if hint and hint['status'] == 'running':
-                    return {}
-                else:
-                    return dict(status='running', files=status_files)
-            elif elapsed > 2 * monitor_interval:
-                if task_changed():
-                    # result file appears during sos tatus run
-                    return check_task(task)
-                else:
-                    remove_task_files(
-                        task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
-                    if status != 'aborted':
-                        tf.status = 'aborted'
-                    return dict(status='aborted', files=status_files)
-            # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
-            time.sleep(2 * monitor_interval)
-            end_stamp = os.stat(pulse_file).st_mtime
-            # the process is still alive
-            if task_changed():
-                return check_task(task)
-            elif start_stamp != end_stamp:
-                if hint and hint['status'] == 'running':
-                    return {}
-                else:
-                    if status != 'running':
-                        # the first obserged running status
-                        tf.status = 'running'
-                    return dict(status='running', files=status_files)
+                return dict(status='running', files=status_files, last_checked=time.time())
             else:
+                # if we have hint, we know the time stamp of last
+                # status file.
+                if status_files[pulse_file] != hint['files'][pulse_file] or \
+                    time.time() - hint['last_checked'] < 2 * monitor_interval:
+                    return dict(status='running', files=status_files, last_checked=time.time())
+                # now, if the time has not been changed since last_checked...
+                # assume aborted
+                tf.status = 'aborted'
+                tf.add_outputs()
                 remove_task_files(
                     task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
-                if status != 'aborted':
-                    tf.status = 'aborted'
-                return dict(status='aborted', files=status_files)
+                return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
+                        pulse_file: 0})
         except:
             # the pulse file could disappear when the job is completed.
             if task_changed():
