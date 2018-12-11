@@ -502,6 +502,8 @@ del sos_handle_parameter_
     except Exception as e:
         msg = get_traceback_msg(e)
         env.logger.error(f'{task_id} ``failed``: {msg}')
+        with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'), 'a') as err:
+            err.write(msg + '\n')        
         return {'ret_code': 1, 'exception': RuntimeError(msg), 'task': task_id, 'shared': {}}
     finally:
         os.chdir(orig_dir)
