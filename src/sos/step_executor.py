@@ -253,11 +253,6 @@ class Base_Step_Executor:
                         raise RuntimeError(
                             f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]}')
 
-    # Nested functions to handle different parameters of input directive
-    @staticmethod
-    def handle_group_by(ifiles: sos_targets, group_by: Union[int, str]):
-        '''Handle input option group_by'''
-        return ifiles.group_by(group_by).groups
 
     @staticmethod
     def handle_paired_with(paired_with, ifiles: sos_targets, _groups: List[sos_targets], _vars: List[dict]):
@@ -519,16 +514,12 @@ class Base_Step_Executor:
         env.sos_dict.set('_input', ifiles)
         # handle group_by
         if 'group_by' in kwargs:
-            _groups = Base_Step_Executor.handle_group_by(
-                ifiles, kwargs['group_by'])
-            if not _groups:
-                env.logger.debug('No group defined because of no input file')
-                _groups = [sos_targets([])]
-        elif ifiles._groups:
+            ifiles.group_by(kwargs['group_by'])
+        env.logger.error(f'GROUPS {ifiles.groups}')
+
+        if ifiles.groups:
             # the groups are defined by
-            # step_input, group_by(1),
-            env.logger.error(f'GROUPS {ifiles.groups}')
-            _groups = ifiles.groups['']
+            _groups = ifiles.groups
         else:
             _groups = [ifiles]
         #
@@ -570,8 +561,8 @@ class Base_Step_Executor:
             if k not in SOS_OUTPUT_OPTIONS:
                 raise RuntimeError(f'Unrecognized output option {k}')
         if 'group_by' in kwargs:
-            _ogroups = Base_Step_Executor.handle_group_by(
-                ofiles, kwargs['group_by'])
+            ofiles.group_by(kwargs['group_by'])
+            _ogroups = ofiles.groups
             if len(_ogroups) != len(self._substeps):
                 raise RuntimeError(
                     f'Output option group_by produces {len(_ogroups)} output groups which is different from the number of input groups ({len(self._substeps)}).')

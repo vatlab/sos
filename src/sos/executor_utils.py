@@ -32,6 +32,8 @@ def __null_func__(*args, **kwargs) -> Any:
     def _flatten(x):
         if isinstance(x, str):
             return [x]
+        elif isinstance(x, sos_targets):
+            return [x]
         elif isinstance(x, Sequence):
             return sum((_flatten(k) for k in x), [])
         elif hasattr(x, '__flattenable__'):
@@ -44,7 +46,7 @@ def __null_func__(*args, **kwargs) -> Any:
 def __group_by__(group_by):
     '''A dedicated group_by function (not called from sos_targets)
     will be applied to step_input.'''
-    return env.sos_dict['step_input'].group_by(group_by)
+    return _sos_grouper(group_by)
 
 def clear_output(err=None):
     '''
