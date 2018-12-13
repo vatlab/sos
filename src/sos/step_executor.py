@@ -514,7 +514,7 @@ class Base_Step_Executor:
         env.sos_dict.set('_input', ifiles)
         # handle group_by
         if 'group_by' in kwargs:
-            ifiles.group_by(kwargs['group_by'])
+            ifiles.group(by=kwargs['group_by'])
 
         if ifiles.groups:
             # the groups are defined by
@@ -560,7 +560,7 @@ class Base_Step_Executor:
             if k not in SOS_OUTPUT_OPTIONS:
                 raise RuntimeError(f'Unrecognized output option {k}')
         if 'group_by' in kwargs:
-            ofiles.group_by(kwargs['group_by'])
+            ofiles.group(by=kwargs['group_by'])
             _ogroups = ofiles.groups
             if len(_ogroups) != len(self._substeps):
                 raise RuntimeError(
