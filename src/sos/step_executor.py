@@ -24,7 +24,8 @@ from .tasks import MasterTaskParams, TaskFile
 from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr)
 from .executor_utils import (clear_output, create_task, verify_input, reevaluate_output,
-                    validate_step_sig, statementMD5, get_traceback_msg, __null_func__)
+                    validate_step_sig, statementMD5, get_traceback_msg, __null_func__,
+                    __group_by__)
 
 
 __all__ = []
@@ -523,6 +524,11 @@ class Base_Step_Executor:
             if not _groups:
                 env.logger.debug('No group defined because of no input file')
                 _groups = [sos_targets([])]
+        elif ifiles._groups:
+            # the groups are defined by
+            # step_input, group_by(1),
+            env.logger.error(f'GROUPS {ifiles.groups}')
+            _groups = ifiles.groups['']
         else:
             _groups = [ifiles]
         #
@@ -884,7 +890,8 @@ class Base_Step_Executor:
                     try:
                         args, kwargs = SoS_eval(f'__null_func__({value})',
                             extra_dict={
-                                '__null_func__': __null_func__
+                                '__null_func__': __null_func__,
+                                'group_by': __group_by__
                                 }
                             )
                         dfiles = expand_depends_files(*args)
@@ -908,7 +915,8 @@ class Base_Step_Executor:
             try:
                 args, kwargs = SoS_eval(f"__null_func__({stmt})",
                             extra_dict={
-                                '__null_func__': __null_func__
+                                '__null_func__': __null_func__,
+                                'group_by': __group_by__
                                 }
                 )
                 # Files will be expanded differently with different running modes
@@ -1016,7 +1024,8 @@ class Base_Step_Executor:
                         try:
                             args, kwargs = SoS_eval(f'__null_func__({value})',
                                 extra_dict={
-                                    '__null_func__': __null_func__
+                                    '__null_func__': __null_func__,
+                                    'group_by': __group_by__
                                     })
                             # dynamic output or dependent files
                             if key == 'output':

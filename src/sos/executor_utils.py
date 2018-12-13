@@ -41,6 +41,11 @@ def __null_func__(*args, **kwargs) -> Any:
 
     return _flatten(args), kwargs
 
+def __group_by__(group_by):
+    '''A dedicated group_by function (not called from sos_targets)
+    will be applied to step_input.'''
+    return env.sos_dict['step_input'].group_by(group_by)
+
 def clear_output(err=None):
     '''
     Remove file targets in `_output` when a step fails to complete
@@ -212,7 +217,8 @@ def reevaluate_output():
     args, _ = SoS_eval(
         f'__null_func__({env.sos_dict["step_output"]._undetermined})',
         extra_dict={
-            '__null_func__': __null_func__
+            '__null_func__': __null_func__,
+            'group_by': __group_by__
         })
     if args is True:
         env.logger.error('Failed to resolve unspecified output')

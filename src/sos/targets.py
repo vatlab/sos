@@ -731,6 +731,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         super(BaseTarget, self).__init__()
         self._targets = []
         self._sources = []
+        self._groups = {}
         if isinstance(undetermined, (bool, str)):
             self._undetermined = undetermined
         else:
@@ -800,6 +801,12 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         elif isinstance(arg, BaseTarget):
             self._targets.append(arg)
             self._sources.append(source)
+        elif isinstance(arg, _SoS_TargetGroups):
+            # add the targets from a group_by() object
+            self.__append__(arg.targets)
+            if '' in self._groups:
+                raise ValueError('Only one unnamed group_by() object is allowed.')
+            self._groups[''] = arg.groups
         elif isinstance(arg, Iterable):
             # in case arg is a Generator, check its type will exhaust it
             for t in list(arg):
@@ -820,12 +827,15 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
     targets = property(lambda self: self._targets)
 
+    groups = property(lambda self: self._groups)
+
     #def targets(self):
     #    return [x.target_name() if isinstance(x, file_target) else x for x in self._targets]
 
     def extend(self, another):
         self._targets.extend(sos_targets(another)._targets)
         self._sources.extend(sos_targets(another)._sources)
+        self._groups.update(sos_targets(another)._groups)
 
     def zap(self):
         for target in self._targets:
@@ -835,7 +845,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 env.logger.debug(f'Ignore non-file target {target}')
 
     def __getstate__(self):
-        return (self._targets, self._sources, self._undetermined)
+        return (self._targets, self._sources, self._undetermined, self._groups)
 
     def __setstate__(self, state) -> None:
         if isinstance(state, tuple):
@@ -843,15 +853,23 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 self._targets = state[0]
                 self._sources = [''] * len(self._targets)
                 self._undetermined = state[1]
-            else:
+                self._groups = {}
+            elif len(state) == 3:
                 self._targets = state[0]
                 self._sources = state[1]
                 self._undetermined = state[2]
+                self._groups = {}
+            elif len(state) == 4:
+                self._targets = state[0]
+                self._sources = state[1]
+                self._undetermined = state[2]
+                self._groups = state[3]
         else:
             # older version of sig file might only saved targets
             self._targets = state
             self._sources = [''] * len(self._targets)
             self._undetermined = False
+            self._groups = {}
 
     def __len__(self):
         return len(self._targets)
@@ -990,6 +1008,9 @@ class _SoS_TargetGroups(object):
     def _group_targets(self):
         group_by = self._group_by
         ifiles = self.targets
+
+        if ifiles._groups:
+            raise ValueError('Mixing group_by function and group_by paramter is currently not supported')
 
         if group_by == 'single':
             return [ifiles.slice(x) for x in range(len(ifiles))]

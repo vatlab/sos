@@ -15,7 +15,7 @@ from .targets import (InMemorySignature, UnknownTarget, file_target,
 from .utils import StopInputGroup, env, short_repr, pickleable
 from .tasks import TaskFile, remove_task_files
 from .step_executor import parse_shared_vars
-from .executor_utils import __null_func__, get_traceback_msg
+from .executor_utils import __null_func__, __group_by__, get_traceback_msg
 
 def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
     shared = {}
@@ -84,7 +84,8 @@ def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
         args, _ = SoS_eval(
             f'__null_func__({env.sos_dict["_output"]._undetermined})',
             extra_dict={
-                    '__null_func__': __null_func__
+                    '__null_func__': __null_func__,
+                    'group_by': __group_by__
             })
         # handle dynamic args
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
