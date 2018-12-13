@@ -44,9 +44,9 @@ def accessed_vars(statement: str, filename: str = '<string>', mode: str = 'exec'
             raise RuntimeError(f'Failed to parse statement: {statement}')
 
 
-def SoS_eval(expr: str) -> Any:
+def SoS_eval(expr: str, extra_dict: dict = {}) -> Any:
     '''Evaluate an expression with sos dict.'''
-    return eval(expr, env.sos_dict._dict)
+    return eval(expr, env.sos_dict._dict, extra_dict)
 
 
 def _is_expr(expr):

@@ -42,8 +42,6 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
         if '__default_output__' in env.sos_dict:
             step_output = env.sos_dict['__default_output__']
     else:
-        # env.sos_dict = WorkflowDict()
-        env.sos_dict.set('__null_func__', __null_func__)
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
         SoS_exec('import os, sys, glob', None)
@@ -114,7 +112,11 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
                     environ_vars |= accessed_vars(statement[2])
                     key, value = statement[1:3]
                     try:
-                        args, kwargs = SoS_eval(f'__null_func__({value})')
+                        args, kwargs = SoS_eval(f'__null_func__({value})',
+                            extra_dict={
+                                '__null_func__': __null_func__
+                                }
+                        )
                         if any(isinstance(x, (dynamic, remote)) for x in args):
                             step_depends = sos_targets()
                         else:
@@ -132,7 +134,11 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
         stmt = section.statements[input_statement_idx][2]
         try:
             environ_vars |= accessed_vars(stmt)
-            args, kwargs = SoS_eval(f'__null_func__({stmt})')
+            args, kwargs = SoS_eval(f'__null_func__({stmt})',
+                extra_dict={
+                    '__null_func__': __null_func__,
+                    'group_by': __sos_group_by__
+                    })
 
             if not args:
                 if default_input is None:
@@ -232,7 +238,11 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
             environ_vars |= accessed_vars(value)
             # output, depends, and process can be processed multiple times
             try:
-                args, kwargs = SoS_eval(f'__null_func__({value})')
+                args, kwargs = SoS_eval(f'__null_func__({value})',
+                    extra_dict={
+                        '__null_func__': __null_func__,
+                        'group_by': __sos_group_by__
+                        })
                 if not any(isinstance(x, (dynamic, remote)) for x in args):
                     if key == 'output':
                         step_output = sos_targets(*args)

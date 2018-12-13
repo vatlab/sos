@@ -25,7 +25,7 @@ from .tasks import MasterTaskParams, TaskFile
 from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr)
 from .executor_utils import (clear_output, create_task, verify_input, reevaluate_output,
-                    validate_step_sig, statementMD5, get_traceback_msg)
+                    validate_step_sig, statementMD5, get_traceback_msg, __null_func__)
 
 
 __all__ = []
@@ -883,7 +883,11 @@ class Base_Step_Executor:
                         raise ValueError(
                             f'Step input should be specified before {key}')
                     try:
-                        args, kwargs = SoS_eval(f'__null_func__({value})')
+                        args, kwargs = SoS_eval(f'__null_func__({value})',
+                            extra_dict={
+                                '__null_func__': __null_func__
+                                }
+                            )
                         dfiles = expand_depends_files(*args)
                         # dfiles can be Undetermined
                         self.process_depends_args(dfiles, **kwargs)
@@ -903,7 +907,11 @@ class Base_Step_Executor:
             stmt = self.step.statements[input_statement_idx][2]
             self.log('input statement', stmt)
             try:
-                args, kwargs = SoS_eval(f"__null_func__({stmt})")
+                args, kwargs = SoS_eval(f"__null_func__({stmt})",
+                            extra_dict={
+                                '__null_func__': __null_func__
+                                }
+                )
                 # Files will be expanded differently with different running modes
                 input_files: sos_targets = expand_input_files(stmt, *args)
                 self._substeps, self._vars = self.process_input_args(
@@ -1007,7 +1015,10 @@ class Base_Step_Executor:
                         key, value = statement[1:3]
                         # output, depends, and process can be processed multiple times
                         try:
-                            args, kwargs = SoS_eval(f'__null_func__({value})')
+                            args, kwargs = SoS_eval(f'__null_func__({value})',
+                                extra_dict={
+                                    '__null_func__': __null_func__
+                                    })
                             # dynamic output or dependent files
                             if key == 'output':
                                 # if output is defined, its default value needs to be cleared

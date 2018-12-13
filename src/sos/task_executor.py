@@ -80,10 +80,12 @@ def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
     if env.sos_dict['_output'] is None:
         output = {}
     elif env.sos_dict['_output'].undetermined():
-        env.sos_dict.set('__null_func__', __null_func__)
         # re-process the output statement to determine output files
         args, _ = SoS_eval(
-            f'__null_func__({env.sos_dict["_output"]._undetermined})')
+            f'__null_func__({env.sos_dict["_output"]._undetermined})',
+            extra_dict={
+                    '__null_func__': __null_func__
+            })
         # handle dynamic args
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
         output = {x: file_target(x).target_signature()
@@ -503,7 +505,7 @@ del sos_handle_parameter_
         msg = get_traceback_msg(e)
         env.logger.error(f'{task_id} ``failed``: {msg}')
         with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'), 'a') as err:
-            err.write(msg + '\n')        
+            err.write(msg + '\n')
         return {'ret_code': 1, 'exception': RuntimeError(msg), 'task': task_id, 'shared': {}}
     finally:
         os.chdir(orig_dir)

@@ -31,7 +31,6 @@ from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
 from .utils import (Error, WorkflowDict, env, get_traceback,
                     load_config_files, pickleable, short_repr)
 from .workers import SoS_Worker
-from .executor_utils import __null_func__
 
 __all__ = []
 
@@ -292,7 +291,6 @@ class Base_Executor:
 
         env.sos_dict.set('workflow_id', self.md5)
         env.sos_dict.set('master_id', env.config['master_id'])
-        env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('__args__', self.args)
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)

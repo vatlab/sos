@@ -151,7 +151,6 @@ def _execute_substep(stmt, global_def, task, proc_vars, shared_vars, config):
             res = {'index': env.sos_dict['_index'], 'task_id': task_id, 'task_def': taskdef, 'task_vars': task_vars}
         else:
             if env.sos_dict['step_output'].undetermined():
-                # the pool worker does not have __null_func__ defined
                 env.sos_dict.set('_output', reevaluate_output())
             res = {'index': env.sos_dict['_index'], 'ret_code': 0}
             if sig:

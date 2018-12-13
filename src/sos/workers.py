@@ -16,7 +16,6 @@ from .eval import SoS_exec
 from .controller import connect_controllers, disconnect_controllers
 from .targets import sos_targets
 from .utils import WorkflowDict, env, get_traceback, load_config_files, short_repr
-from .executor_utils import  __null_func__
 
 class SoS_Worker(mp.Process):
     '''
@@ -54,7 +53,6 @@ class SoS_Worker(mp.Process):
     def init_dict(self):
         env.parameter_vars.clear()
 
-        env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('__args__', self.args)
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)

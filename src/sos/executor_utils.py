@@ -80,7 +80,6 @@ def get_traceback_msg(e):
         return f'{error_class}: {detail}'
 
 def prepare_env(global_def):
-    env.sos_dict.set('__null_func__', __null_func__)
     # initial values
     env.sos_dict.set('SOS_VERSION', __version__)
     try:
@@ -211,7 +210,10 @@ def kill_all_subprocesses(pid=None, include_self=False):
 def reevaluate_output():
     # re-process the output statement to determine output files
     args, _ = SoS_eval(
-        f'__null_func__({env.sos_dict["step_output"]._undetermined})')
+        f'__null_func__({env.sos_dict["step_output"]._undetermined})',
+        extra_dict={
+            '__null_func__': __null_func__
+        })
     if args is True:
         env.logger.error('Failed to resolve unspecified output')
         return
