@@ -828,7 +828,6 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             arg = another
         else:
             arg = sos_targets(another)
-        env.logger.error(f'extending with {arg.groups}')
         if arg.valid() and not self.valid():
             self._undetermined = False
         self._targets.extend(arg._targets)
@@ -949,32 +948,32 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def dedup(self):
         self._targets = list(dict.fromkeys(self._targets))
 
-    def group_by(self, group_by):
+    def group(self, by):
         if self._groups:
             self.debug('Multiple group_by actions applied, now by {group_by}')
             self._groups = []
 
-        if group_by == 'single':
+        if by == 'single':
             self._groups = [self.slice(x) for x in range(len(self))]
-        elif group_by == 'all':
+        elif by == 'all':
             # default option
             self._groups = [sos_targets(self)]
-        elif isinstance(group_by, str) and group_by.startswith('pairsource'):
+        elif isinstance(by, str) and by.startswith('pairsource'):
             sources = list(dict.fromkeys(self.sources))
             if len(sources) == 1:
                 raise ValueError(
                     f'Cannot pairsource input with a single source.'
                 )
-            if group_by == 'pairsource':
+            if by == 'pairsource':
                 grp_size = 1
             else:
                 try:
-                    grp_size = int(group_by[10:])
+                    grp_size = int(by[10:])
                 except:
-                    raise ValueError(f'Invalid pairsource option {group_by}')
+                    raise ValueError(f'Invalid pairsource option {by}')
             src_sizes = {s:self.sources.count(s) for s in sources}
             if max(src_sizes.values()) % grp_size != 0:
-                raise ValueError(f'Cannot use group size {grp_size} (option {group_by}) for source of size {src_sizes}')
+                raise ValueError(f'Cannot use group size {grp_size} (option {by}) for source of size {src_sizes}')
             n_groups = max(src_sizes.values()) // grp_size
             indexes = [[] for x in range(n_groups)]
             for s in sources:
@@ -989,37 +988,37 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                         # (0 ), (0, ), (1, ), (1, ) ...
                         indexes[i].append(lookup[i  // (n_groups // src_sizes[s])])
                 else:
-                    raise ValueError(f'Cannot use group size {grp_size} (group_by="{group_by}") for source of size {src_sizes}')
+                    raise ValueError(f'Cannot use group size {grp_size} (by="{by}") for source of size {src_sizes}')
             self._groups = list(self.slice(indexes[x]) for x in range(n_groups))
-        elif isinstance(group_by, str) and group_by.startswith('pairs'):
+        elif isinstance(by, str) and by.startswith('pairs'):
             if len(self) % 2 != 0:
                 raise ValueError(
-                    f'Paired group_by has to have even number of input files: {len(self)} provided')
-            if group_by == 'pairs':
+                    f'Paired by has to have even number of input files: {len(self)} provided')
+            if by == 'pairs':
                 grp_size = 1
             else:
                 try:
-                    grp_size = int(group_by[5:])
+                    grp_size = int(by[5:])
                 except:
-                    raise ValueError(f'Invalid pairs option {group_by}')
+                    raise ValueError(f'Invalid pairs option {by}')
             if grp_size == 1:
                 self._groups = list(self.slice(x) for x in zip(range(0, len(self) // 2),
                     range(len(self) // 2, len(self))))
             else:
                 if len(self) % grp_size != 0:
                     raise ValueError(
-                        f'Paired group_by with group size {grp_size} is not possible with input of size {len(self)}'
+                        f'Paired by with group size {grp_size} is not possible with input of size {len(self)}'
                     )
                 self._groups = list(self.slice(list(range(x[0], x[0] + grp_size)) + list(range(x[1], x[1] + grp_size)))
                     for x in zip(range(0, len(self) // 2, grp_size),  range(len(self) // 2, len(self), grp_size)))
-        elif isinstance(group_by, str) and group_by.startswith('pairwise'):
-            if group_by == 'pairwise':
+        elif isinstance(by, str) and by.startswith('pairwise'):
+            if by == 'pairwise':
                 grp_size = 1
             else:
                 try:
-                    grp_size = int(group_by[8:])
+                    grp_size = int(by[8:])
                 except:
-                    raise ValueError(f'Invalid pairs option {group_by}')
+                    raise ValueError(f'Invalid pairs option {by}')
             if grp_size == 1:
                 f1, f2 = tee(range(len(self)))
                 next(f2, None)
@@ -1027,40 +1026,40 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             else:
                 if len(self) % grp_size != 0:
                     raise ValueError(
-                        f'Paired group_by with group size {grp_size} is not possible with input of size {len(self)}'
+                        f'Paired by with group size {grp_size} is not possible with input of size {len(self)}'
                     )
                 f1, f2 = tee(range(len(self) // grp_size))
                 next(f2, None)
                 self._groups = [self.slice(list(range(x[0]*grp_size, (x[0]+1)*grp_size)) +
                     list(range(x[1]*grp_size, (x[1]+1)*grp_size))) for x in zip(f1, f2)]
-        elif isinstance(group_by, str) and group_by.startswith('combinations'):
-            if group_by == 'combinations':
+        elif isinstance(by, str) and by.startswith('combinations'):
+            if by == 'combinations':
                 grp_size = 2
             else:
                 try:
-                    grp_size = int(group_by[12:])
+                    grp_size = int(by[12:])
                 except:
-                    raise ValueError(f'Invalid pairs option {group_by}')
+                    raise ValueError(f'Invalid pairs option {by}')
             self._groups = [self.slice(x) for x in combinations(range(len(self)), grp_size)]
-        elif group_by == 'source':
+        elif by == 'source':
             sources = list(dict.fromkeys(self.sources))
             self._groups = [self.slice(x) for x in sources]
-        elif isinstance(group_by, int) or (isinstance(group_by, str) and group_by.isdigit()):
-            group_by = int(group_by)
-            if len(self) % group_by != 0 and len(self) > group_by:
+        elif isinstance(by, int) or (isinstance(by, str) and by.isdigit()):
+            by = int(by)
+            if len(self) % by != 0 and len(self) > by:
                 env.logger.warning(
-                    f'Number of samples ({len(self)}) is not a multiple of group_by ({group_by}). The last group would have less files than the other groups.')
-            if group_by < 1:
+                    f'Number of samples ({len(self)}) is not a multiple of by ({by}). The last group would have less files than the other groups.')
+            if by < 1:
                 raise ValueError(
-                    'Value of paramter group_by should be a positive number.')
-            self._groups = [self.slice(slice(i,i + group_by)) for i in range(0, len(self), group_by)]
-        elif callable(group_by):
+                    'Value of paramter by should be a positive number.')
+            self._groups = [self.slice(slice(i,i + by)) for i in range(0, len(self), by)]
+        elif callable(by):
             try:
-                self._groups = [sos_targets(x) for x in group_by(self)]
+                self._groups = [sos_targets(x) for x in by(self)]
             except Exception as e:
-                raise ValueError(f'Failed to apply group_by to step_input: {e}')
+                raise ValueError(f'Failed to apply by to step_input: {e}')
         else:
-            raise ValueError(f'Unsupported group_by option ``{group_by}``!')
+            raise ValueError(f'Unsupported by option ``{by}``!')
         return self
 
     def __hash__(self):
