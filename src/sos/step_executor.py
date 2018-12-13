@@ -610,10 +610,11 @@ class Base_Step_Executor:
             #
             for step in from_args:
                 if isinstance(step, int):
-                    env.controller_req_socket.send_pyobj(['step_output',
-                        f"{self.step.step_name().rsplit('_', 1)[0]}_{step}"])
-                else:
-                    env.controller_req_socket.send_pyobj(['step_output', step])
+                    if '_' in self.step.step_name():
+                        step = f"{self.step.step_name().rsplit('_', 1)[0]}_{step}"
+                    else:
+                        step = str(step)
+                env.controller_req_socket.send_pyobj(['step_output', step])
                 res = env.controller_req_socket.recv_pyobj()
                 if res is None or not isinstance(res, sos_targets):
                     raise RuntimeError(f'Failed to obtain output of step {step}')
