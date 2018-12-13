@@ -232,7 +232,7 @@ def reevaluate_output():
         return
     # handle dynamic args
     args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-    return sos_targets(*args, verify_existence=True)
+    return sos_targets(*args, _verify_existence=True)
 
 
 def validate_step_sig(sig):

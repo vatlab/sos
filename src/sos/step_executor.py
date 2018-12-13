@@ -130,20 +130,20 @@ def expand_input_files(value, *args):
     if not args:
         return env.sos_dict['step_input']
     else:
-        return sos_targets(*args, verify_existence=True, undetermined=False, source=env.sos_dict['step_name'])
+        return sos_targets(*args, _verify_existence=True, _undetermined=False, _source=env.sos_dict['step_name'])
 
 def expand_depends_files(*args, **kwargs):
     '''handle directive depends'''
     args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-    return sos_targets(*args, verify_existence=True, undetermined=False, source=env.sos_dict['step_name'])
+    return sos_targets(*args, _verify_existence=True, _undetermined=False, _source=env.sos_dict['step_name'])
 
 def expand_output_files(value, *args):
     '''Process output files (perhaps a pattern) to determine input files.
     '''
     if any(isinstance(x, dynamic) for x in args):
-        return sos_targets(undetermined=value)
+        return sos_targets(_undetermined=value)
     else:
-        return sos_targets(*args, undetermined=False, source=env.sos_dict['step_name'])
+        return sos_targets(*args, _undetermined=False, _source=env.sos_dict['step_name'])
 
 
 def parse_shared_vars(option):
@@ -846,7 +846,7 @@ class Base_Step_Executor:
         else:
             env.sos_dict.set('step_output', sos_targets([]))
             # output is said to be unspecified until output: is used
-            env.sos_dict.set('_output', sos_targets(undetermined=True))
+            env.sos_dict.set('_output', sos_targets(_undetermined=True))
 
         env.sos_dict.set('step_depends', sos_targets([]))
         env.sos_dict.set('_depends', sos_targets([]))

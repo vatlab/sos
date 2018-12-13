@@ -726,25 +726,25 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     # check if string contains wildcard character
     wildcard = re.compile('[*?\[]')
 
-    def __init__(self, *args, undetermined: Union[bool, str]=None,
-        source='', verify_existence=False):
+    def __init__(self, *args, _undetermined: Union[bool, str]=None,
+        _source='', _verify_existence=False):
         super(BaseTarget, self).__init__()
         self._targets = []
         self._sources = []
         self._groups = []
-        if isinstance(undetermined, (bool, str)):
-            self._undetermined = undetermined
+        if isinstance(_undetermined, (bool, str)):
+            self._undetermined = _undetermined
         else:
             self._undetermined = not bool(args)
         for arg in args:
-            self.__append__(arg, source=source, verify_existence=verify_existence)
+            self.__append__(arg, source=_source, verify_existence=_verify_existence)
         for t in self._targets:
             if isinstance(t, sos_targets):
                 raise RuntimeError(
                     f"Nested sos_targets {t} were introduced by {args}")
             if not isinstance(t, BaseTarget):
                 raise RuntimeError(f"Unrecognized target {t}")
-        if verify_existence:
+        if _verify_existence:
             for target in self._targets:
                 if not target.target_exists('any'):
                     raise UnknownTarget(target)

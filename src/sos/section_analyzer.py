@@ -222,7 +222,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
             env.logger.debug(
                 f'Input of step {section.name if section.index is None else f"{section.name}_{section.index}"} is set to Undertermined: {e}')
             # expression ...
-            step_input = sos_targets(undetermined=stmt)
+            step_input = sos_targets(_undetermined=stmt)
         input_statement_idx += 1
     else:
         # assuming everything starts from 0 is after input
