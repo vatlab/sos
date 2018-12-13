@@ -136,8 +136,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
             environ_vars |= accessed_vars(stmt)
             args, kwargs = SoS_eval(f'__null_func__({stmt})',
                 extra_dict={
-                    '__null_func__': __null_func__,
-                    'group_by': __sos_group_by__
+                    '__null_func__': __null_func__
                     })
 
             if not args:
@@ -240,8 +239,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
             try:
                 args, kwargs = SoS_eval(f'__null_func__({value})',
                     extra_dict={
-                        '__null_func__': __null_func__,
-                        'group_by': __sos_group_by__
+                        '__null_func__': __null_func__
                         })
                 if not any(isinstance(x, (dynamic, remote)) for x in args):
                     if key == 'output':

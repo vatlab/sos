@@ -11,7 +11,6 @@ import time
 import zmq
 
 from collections import Iterable, Mapping, Sequence, defaultdict
-from itertools import combinations, tee
 from typing import List, Union
 
 from .eval import SoS_eval, SoS_exec, accessed_vars
