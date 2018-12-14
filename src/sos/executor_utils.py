@@ -53,27 +53,26 @@ def __sos_groups__(*args, **kwargs):
     else:
         return sos_targets(env.sos_dict['step_input']).group(by)
 
-def __output_from__(*args):
+def __output_from__(steps):
     targets = sos_targets()
-    for arg in args:
-        if isinstance(arg, (int, str)):
-            steps = [arg]
-        elif isinstance(arg, Sequence):
-            steps = list(arg)
-        else:
-            raise ValueError(f'Unacceptable value of input prameter from: {arg} provided')
-        #
-        for step in steps:
-            if isinstance(step, int):
-                if '_' in env.sos_dict['step_name']:
-                    step = f"{env.sos_dict['step_name'].rsplit('_', 1)[0]}_{step}"
-                else:
-                    step = str(step)
-            env.controller_req_socket.send_pyobj(['step_output', step])
-            res = env.controller_req_socket.recv_pyobj()
-            if res is None or not isinstance(res, sos_targets):
-                raise RuntimeError(f'Failed to obtain output of step {step}')
-            targets.extend(res)
+    if isinstance(steps, (int, str)):
+        steps = [steps]
+    elif isinstance(steps, Sequence):
+        steps = list(steps)
+    else:
+        raise ValueError(f'Unacceptable value of input prameter from: {steps} provided')
+    #
+    for step in steps:
+        if isinstance(step, int):
+            if '_' in env.sos_dict['step_name']:
+                step = f"{env.sos_dict['step_name'].rsplit('_', 1)[0]}_{step}"
+            else:
+                step = str(step)
+        env.controller_req_socket.send_pyobj(['step_output', step])
+        res = env.controller_req_socket.recv_pyobj()
+        if res is None or not isinstance(res, sos_targets):
+            raise RuntimeError(f'Failed to obtain output of step {step}')
+        targets.extend(res)
     return targets
 
 def clear_output(err=None):
