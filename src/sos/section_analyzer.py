@@ -207,7 +207,7 @@ def get_step_input(section):
     # look for input statement.
     input_idx = find_statement(section, 'input')
     if input_idx is None:
-        return input_idx
+        return step_input
 
     # input statement
     stmt = section.statements[input_idx][2]
@@ -231,7 +231,7 @@ def get_step_input(section):
             f'Input of step {section.name if section.index is None else f"{section.name}_{section.index}"} is set to Undertermined: {e}')
         # expression ...
         step_input = sos_targets(_undetermined=stmt)
-
+    return step_input
 
 def get_step_output(section):
     '''determine step output'''
