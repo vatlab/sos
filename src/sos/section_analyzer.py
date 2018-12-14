@@ -48,16 +48,15 @@ def get_value_of_param(name, param_list, extra_dict={}):
     return values
 
 
-def find_input_statement(section):
-    input_statement_idx = [idx for idx, x in enumerate(
-        section.statements) if x[0] == ':' and x[1] == 'input']
-    if not input_statement_idx:
-        input_statement_idx = None
-    elif len(input_statement_idx) == 1:
-        input_statement_idx = input_statement_idx[0]
+def find_statement(section, name):
+    stmt_idx = [idx for idx, x in enumerate(section.statements) if x[0] == ':' and x[1] == name]
+    if not stmt_idx:
+        stmt_idx = None
+    elif len(stmt_idx) == 1:
+        stmt_idx = stmt_idx[0]
     else:
         raise RuntimeError(
-            f'More than one step input are specified in step {section.name if section.index is None else f"{section.name}_{section.index}"}')
+            f'More than one step {name} statement are specified in step {section.step_name()}')
 
 
 def get_changed_vars(section: SoS_Step):
@@ -161,7 +160,7 @@ def get_signature_vars(section):
     saved with step signatures'''
     signature_vars = set()
 
-    input_idx = find_input_statement(section)
+    input_idx = find_statement(section, 'input')
     after_input_idx = 0 if input_idx is None else input_idx + 1
 
     for statement in section.statements[after_input_idx:]:
@@ -173,6 +172,33 @@ def get_signature_vars(section):
     if section.task:
         signature_vars |= accessed_vars(section.task)
     return {x for x in signature_vars if not x.startswith('__')}
+
+def get_step_depends(section):
+    step_depends: sos_targets = sos_targets([])
+
+    input_idx = find_statement(section, 'input')
+    if input_idx is not None:
+        # input statement
+        stmt = section.statements[input_idx][2]
+        if 'output_from' in stmt:
+            step_depends.extend([sos_step(x) for x in get_output_from_steps(stmt)])
+
+    depends_idx = find_statement(section, 'depends')
+    if depends_idx is not None:
+        value = section.statements[depends_idx][2]
+        try:
+            args, kwargs = SoS_eval(f'__null_func__({value})',
+                extra_dict={
+                    '__null_func__': __null_func__
+                    }
+            )
+            if any(isinstance(x, (dynamic, remote)) for x in args):
+                step_depends = sos_targets()
+            else:
+                step_depends.extends(sos_targets(*args))
+        except Exception as e:
+            env.logger.debug(f"Args {value} cannot be determined: {e}")
+    return step_depends
 
 def get_output_from_steps(stmt):
     '''
@@ -216,7 +242,6 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     # at this stage because something cannot be determined now.
     step_input: sos_targets = sos_targets()
     step_output: sos_targets = sos_targets()
-    step_depends: sos_targets = sos_targets([])
     #
     # 1. execute global definition to get a basic environment
     #
@@ -254,40 +279,13 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
             SoS_exec('from sos.runtime import sos_handle_parameter_', None)
 
     # look for input statement.
-    input_statement_idx = find_input_statement(section)
+    input_statement_idx = find_statement(section, 'input')
 
     # if there is an input statement, analyze the statements before it, and then the input statement
     if input_statement_idx is not None:
-        # execute before input stuff
-        for statement in section.statements[:input_statement_idx]:
-            if statement[0] == ':':
-                if statement[1] == 'depends':
-                    key, value = statement[1:3]
-                    try:
-                        args, kwargs = SoS_eval(f'__null_func__({value})',
-                            extra_dict={
-                                '__null_func__': __null_func__,
-                                'sos_groups': __sos_groups__,
-                                'output_from': __output_from__
-                                }
-                        )
-                        if any(isinstance(x, (dynamic, remote)) for x in args):
-                            step_depends = sos_targets()
-                        else:
-                            step_depends = sos_targets(*args)
-                    except Exception as e:
-                        env.logger.debug(
-                            f"Args {value} cannot be determined: {e}")
-                else:
-                    raise RuntimeError(
-                        f'Step input should be specified before {statement[1]}')
-        #
         # input statement
         stmt = section.statements[input_statement_idx][2]
         try:
-            if 'output_from' in stmt:
-                step_depends.extend([sos_step(x) for x in get_output_from_steps(stmt)])
-
             args, kwargs = SoS_eval(f'__null_func__({stmt})',
                 extra_dict={
                     '__null_func__': __null_func__,
@@ -330,11 +328,8 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
                 if not any(isinstance(x, (dynamic, remote)) for x in args):
                     if key == 'output':
                         step_output = sos_targets(*args)
-                    elif key == 'depends':
-                        step_depends.extend(sos_targets(*args))
             except Exception as e:
                 env.logger.debug(f"Args {value} cannot be determined: {e}")
-
 
     if 'provides' in section.options and '__default_output__' in env.sos_dict and step_output.valid():
         for out in env.sos_dict['__default_output__']:
@@ -344,10 +339,10 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
                     f'Defined output fail to produce expected output: {step_output} generated, {env.sos_dict["__default_output__"]} expected.')
 
     return {
-        'step_name': f'{section.name}_{section.index}' if isinstance(section.index, int) else section.name,
+        'step_name': section.step_name(),
         'step_input': step_input,
         'step_output': step_output,
-        'step_depends': step_depends,
+        'step_depends': get_step_depends(section),
         # variables starting with __ are internals...
         'environ_vars': get_environ_vars(section),
         'signature_vars': get_signature_vars(section),
