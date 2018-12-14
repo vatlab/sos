@@ -17,6 +17,33 @@ from .targets import (dynamic, remote, sos_targets, sos_step)
 from .utils import env, get_traceback, separate_options
 from .executor_utils import  __null_func__, __sos_groups__, __output_from__
 
+def get_changed_vars(section: SoS_Step):
+    '''changed vars are variables that are "shared" and therefore "provides"
+    to others '''
+    if 'shared' not in section.options:
+        return set()
+
+    changed_vars = set()
+    svars = section.options['shared']
+    if isinstance(svars, str):
+        changed_vars.add(svars)
+        svars = {svars: svars}
+    elif isinstance(svars, Sequence):
+        for item in svars:
+            if isinstance(item, str):
+                changed_vars.add(item)
+            elif isinstance(item, Mapping):
+                changed_vars |= set(item.keys())
+            else:
+                raise ValueError(
+                    f'Option shared should be a string, a mapping of expression, or list of string or mappings. {svars} provided')
+    elif isinstance(svars, Mapping):
+        changed_vars |= set(svars.keys())
+    else:
+        raise ValueError(
+            f'Option shared should be a string, a mapping of expression, or list of string or mappings. {svars} provided')
+    return changed_vars
+
 def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = None) -> Dict[str, Any]:
     '''Analyze a section for how it uses input and output, what variables
     it uses, and input, output, etc.'''
@@ -33,7 +60,6 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     step_depends: sos_targets = sos_targets([])
     environ_vars = set()
     signature_vars = set()
-    changed_vars = set()
     #
     # 1. execute global definition to get a basic environment
     #
@@ -69,28 +95,6 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
                 f'Failed to execute statements\n"{section.global_def}"\n{e}')
         finally:
             SoS_exec('from sos.runtime import sos_handle_parameter_', None)
-
-    #
-    # 2. look for input statement
-    if 'shared' in section.options:
-        svars = section.options['shared']
-        if isinstance(svars, str):
-            changed_vars.add(svars)
-            svars = {svars: svars}
-        elif isinstance(svars, Sequence):
-            for item in svars:
-                if isinstance(item, str):
-                    changed_vars.add(item)
-                elif isinstance(item, Mapping):
-                    changed_vars |= set(item.keys())
-                else:
-                    raise ValueError(
-                        f'Option shared should be a string, a mapping of expression, or list of string or mappings. {svars} provided')
-        elif isinstance(svars, Mapping):
-            changed_vars |= set(svars.keys())
-        else:
-            raise ValueError(
-                f'Option shared should be a string, a mapping of expression, or list of string or mappings. {svars} provided')
 
     # look for input statement.
     input_statement_idx = [idx for idx, x in enumerate(
@@ -274,5 +278,5 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
         # variables starting with __ are internals...
         'environ_vars': {x for x in environ_vars if not x.startswith('__')},
         'signature_vars': {x for x in signature_vars if not x.startswith('__')},
-        'changed_vars': changed_vars
+        'changed_vars': get_changed_vars(section)
     }

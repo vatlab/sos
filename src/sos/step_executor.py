@@ -761,7 +761,6 @@ class Base_Step_Executor:
             '__completed__': self.completed,
         }
         result['__last_res__'] = self.last_res
-        result['__changed_vars__'] = set()
         result['__shared__'] = {}
         if 'shared' in self.step.options:
             result['__shared__'] = self.shared_vars
