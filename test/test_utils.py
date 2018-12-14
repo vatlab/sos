@@ -216,22 +216,22 @@ task:
             elif section.names[0][1] == '5':
                 self.assertTrue('output' not in res['signature_vars'])
 
-    def testAnalyzeFromOption(self):
+    def testAnalyzeOutputFrom(self):
         '''Test extracting of from=value option from input'''
         script = SoS_Script('''
 [A_1]
-input:  from_steps='B'
+input:  output_from('B')
 
 [A_2]
-input: something_unknown, from_steps=['B', 'C2'], group_by=1
+input: something_unknown, sos_groups(output_from(['C1', 'C2'])), group_by=1
 ''')
         wf = script.workflow('A')
         for section in wf.sections:
             res = analyze_section(section)
-            if section.names[0][1] == '1':
+            if section.names[0][1] == 1:
                 self.assertEqual(res['step_depends'], sos_targets(sos_step('B')))
-            if section.names[0][1] == '2':
-                self.assertTrue(res['step_depends'] == sos_targets(sos_step('B'), sos_step('C2')))
+            if section.names[0][1] == 2:
+                self.assertTrue(res['step_depends'] == sos_targets(sos_step('C1'), sos_step('C2')))
 
     def testOnDemandOptions(self):
         '''Test options that are evaluated upon request.'''

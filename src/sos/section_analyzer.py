@@ -3,7 +3,7 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
-
+import ast
 import subprocess
 import sys
 import re
@@ -16,6 +16,19 @@ from .parser import SoS_Step
 from .targets import (dynamic, remote, sos_targets, sos_step)
 from .utils import env, get_traceback, separate_options
 from .executor_utils import  __null_func__, __sos_groups__, __output_from__
+
+
+def get_param_of(name, stmt, extra_dict={}):
+    tree = ast.parse(stmt)
+    funcs = [x for x in ast.walk(tree) if x.__class__.__name__ == 'Call' and x.func.id == name]
+    params = []
+    for func in funcs:
+        for arg in func.args:
+           params.append(eval(compile(ast.Expression(body=arg), filename='<string>', mode="eval"), extra_dict))
+        for kwarg in func.keywords:
+            params.append(eval(compile(ast.Expression(body=kwarg.value), filename='<string>', mode="eval"), extra_dict))
+    return params
+
 
 def get_changed_vars(section: SoS_Step):
     '''changed vars are variables that are "shared" and therefore "provides"
@@ -43,6 +56,35 @@ def get_changed_vars(section: SoS_Step):
         raise ValueError(
             f'Option shared should be a string, a mapping of expression, or list of string or mappings. {svars} provided')
     return changed_vars
+
+def get_output_from_steps(stmt):
+    '''
+    Extract output_from(1), output_from('step_1'), and output_from([1, 2])
+    to determine dependent steps
+    '''
+    opt_values = get_param_of('output_from', f'null_func({stmt})', extra_dict=env.sos_dict._dict)
+
+    def step_name(val):
+        if isinstance(val, str):
+            return val
+        elif isinstance(val, int):
+            if '_' in env.sos_dict['step_name']:
+                return f"{env.sos_dict['step_name'].rsplit('_',1)[0]}_{val}"
+            else:
+                return str(val)
+        else:
+            raise ValueError(f'Invalid value {val} for output_from() function')
+
+    res = []
+    for value in opt_values:
+        if isinstance(value, (int, str)):
+            res.append(step_name(value))
+        elif isinstance(value, Sequence):
+            res.extend([step_name(x) for x in value])
+        else:
+            raise ValueError(f'Invalid value for input option from {value}')
+    return res
+
 
 def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = None) -> Dict[str, Any]:
     '''Analyze a section for how it uses input and output, what variables
@@ -139,6 +181,9 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
         # input statement
         stmt = section.statements[input_statement_idx][2]
         try:
+            if 'output_from' in stmt:
+                step_depends.extend([sos_step(x) for x in get_output_from_steps(stmt)])
+
             environ_vars |= accessed_vars(stmt)
             args, kwargs = SoS_eval(f'__null_func__({stmt})',
                 extra_dict={
@@ -198,32 +243,8 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
                     raise ValueError(
                         f'Unacceptable value for parameter fe: {fe}')
 
-            if 'from_steps' in kwargs:
-                if isinstance(kwargs['from_steps'], str):
-                    step_depends.extend(sos_step(kwargs['from_steps']))
-                elif isinstance(kwargs['from_steps'], Sequence):
-                    step_depends.extend([sos_step(x) for x in kwargs['from_steps']])
-                else:
-                    raise ValueError(f'Invalid value for input option from {kwargs["from"]}')
+
         except Exception as e:
-            # from parameter is very important so we will need to figure it out even
-            # if the statement cannot be parsed.
-            if 'from_steps' in stmt:
-                for piece in separate_options(stmt):
-                    mo = re.match('\s*from_steps\s*=\s*(?P<value>.*)', piece)
-                    if mo:
-                        try:
-                            opt_values = SoS_eval(mo.group('value'))
-                        except Exception as e:
-                            raise ValueError(f'Invalid value for input option from {piece}: {e}')
-                        if isinstance(opt_values, str):
-                            step_depends.extend(sos_step(opt_values))
-                        elif isinstance(opt_values, int):
-                            step_depends.extend(sos_step(f'{section.name}_{opt_values}'))
-                        elif isinstance(opt_values, Sequence):
-                            step_depends.extend([sos_step(f'{section.name}_{x}') if isinstance(x, int) else sos_step(x) for x in opt_values])
-                        else:
-                            raise ValueError(f'Invalid value for input option from {opt_values}')
             # if anything is not evalutable, keep Undetermined
             env.logger.debug(
                 f'Input of step {section.name if section.index is None else f"{section.name}_{section.index}"} is set to Undertermined: {e}')

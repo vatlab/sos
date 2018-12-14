@@ -1122,7 +1122,7 @@ _output.touch()
 [0: shared='executed']
 executed = []
 
-input: 'c.txt', from_steps=['A', 'B'], group_by='source'
+input: 'c.txt', output_from(['A', 'B']), group_by='source'
 
 executed.append(_input)
 
@@ -1148,7 +1148,7 @@ _output.touch()
 [0: shared='executed']
 executed = []
 
-input: from_steps=['A', 'B'], group_by='pairsource'
+input: output_from(['A', 'B']), group_by='pairsource'
 
 executed.append(_input)
 
@@ -1173,7 +1173,7 @@ _output.touch()
 [0: shared='executed']
 executed = []
 
-input: [f'c{x}.txt' for x in range(1, 7)], from_steps=['A', 'B'], group_by='pairsource3'
+input: [f'c{x}.txt' for x in range(1, 7)], output_from(['A', 'B']), group_by='pairsource3'
 
 executed.append(_input)
 
@@ -1198,7 +1198,7 @@ _output.touch()
 [0: shared='executed']
 executed = []
 
-input: [f'c{x}.txt' for x in range(1, 3)], from_steps=['A', 'B'], group_by='pairsource3'
+input: [f'c{x}.txt' for x in range(1, 3)], output_from(['A', 'B']), group_by='pairsource3'
 
 executed.append(_input)
 
@@ -1277,7 +1277,7 @@ output: 'a.txt'
 _output.touch()
 
 [step_20]
-input: from_steps=step_name.split('_')[0] + '_10'
+input: output_from(step_name.split('_')[0] + '_10')
 print(_input)
 ''')
         wf = script.workflow()
@@ -1290,7 +1290,7 @@ output: 'a.txt'
 _output.touch()
 
 [step_20]
-input: from_steps=10
+input: output_from(10)
 print(_input)
 ''')
         wf = script.workflow()
