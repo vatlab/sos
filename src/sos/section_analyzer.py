@@ -24,9 +24,15 @@ def get_param_of(name, stmt, extra_dict={}):
     params = []
     for func in funcs:
         for arg in func.args:
-           params.append(eval(compile(ast.Expression(body=arg), filename='<string>', mode="eval"), extra_dict))
+            try:
+                params.append(ast.literal_eval(arg))
+            except Exception as e:
+                params.append(eval(compile(ast.Expression(body=arg), filename='<string>', mode="eval"), extra_dict))
         for kwarg in func.keywords:
-            params.append(eval(compile(ast.Expression(body=kwarg.value), filename='<string>', mode="eval"), extra_dict))
+            try:
+                params.append(ast.literal_eval(kwarg.value))
+            except Exception as e:
+                params.append(eval(compile(ast.Expression(body=kwarg.value), filename='<string>', mode="eval"), extra_dict))
     return params
 
 
