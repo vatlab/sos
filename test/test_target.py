@@ -45,7 +45,7 @@ class TestTarget(unittest.TestCase):
         self.assertEqual(a.sources, [''])
         b = sos_targets(['a', 'b'])
         self.assertEqual(b.sources, ['', ''])
-        c = sos_targets(['a1', 'b1'], source='here')
+        c = sos_targets(['a1', 'b1'], _source='here')
         self.assertEqual(c.sources, ['here', 'here'])
         c.extend(b)
         self.assertEqual(c.sources, ['here', 'here', '', ''])
