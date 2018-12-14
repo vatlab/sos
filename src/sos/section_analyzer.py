@@ -200,6 +200,75 @@ def get_step_depends(section):
             env.logger.debug(f"Args {value} cannot be determined: {e}")
     return step_depends
 
+def get_step_input(section):
+    '''Find step input
+    '''
+    step_input: sos_targets = sos_targets()
+    # look for input statement.
+    input_idx = find_statement(section, 'input')
+    if input_idx is None:
+        return input_idx
+
+    # input statement
+    stmt = section.statements[input_idx][2]
+    try:
+        args, kwargs = SoS_eval(f'__null_func__({stmt})',
+            extra_dict={
+                '__null_func__': __null_func__,
+                'sos_groups': __sos_groups__,
+                'output_from': __output_from__
+                })
+        if not args:
+            if default_input is None:
+                step_input = sos_targets()
+            else:
+                step_input = default_input
+        elif not any(isinstance(x, (dynamic, remote)) for x in args):
+            step_input = sos_targets(*args)
+    except Exception as e:
+        # if anything is not evalutable, keep Undetermined
+        env.logger.debug(
+            f'Input of step {section.name if section.index is None else f"{section.name}_{section.index}"} is set to Undertermined: {e}')
+        # expression ...
+        step_input = sos_targets(_undetermined=stmt)
+
+
+def get_step_output(section):
+    '''determine step output'''
+    step_output: sos_targets = sos_targets()
+    #
+    if 'provides' in section.options:
+        if '__default_output__' in env.sos_dict:
+            step_output = env.sos_dict['__default_output__']
+
+    # look for input statement.
+    output_idx = find_statement(section, 'output')
+    if output_idx is None:
+        return step_output
+
+    # output statement
+    value = section.statements[input_idx][2]
+    # output, depends, and process can be processed multiple times
+    try:
+        args, kwargs = SoS_eval(f'__null_func__({value})',
+            extra_dict={
+                '__null_func__': __null_func__,
+                'sos_groups': __sos_groups__,
+                'output_from': __output_from__
+                })
+        if not any(isinstance(x, (dynamic, remote)) for x in args):
+            step_output = sos_targets(*args)
+    except Exception as e:
+        env.logger.debug(f"Args {value} cannot be determined: {e}")
+
+    if 'provides' in section.options and '__default_output__' in env.sos_dict and step_output.valid():
+        for out in env.sos_dict['__default_output__']:
+            # 981
+            if not isinstance(out, sos_step) and out not in step_output:
+                raise ValueError(
+                    f'Defined output fail to produce expected output: {step_output} generated, {env.sos_dict["__default_output__"]} expected.')
+    return step_output
+
 def get_output_from_steps(stmt):
     '''
     Extract output_from(1), output_from('step_1'), and output_from([1, 2])
@@ -234,30 +303,13 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     it uses, and input, output, etc.'''
     from ._version import __version__
 
-    # these are the information we need to build a DAG, by default
-    # input and output and undetermined, and there are no variables.
-    #
-    # step input and output can be true "Undetermined", namely unspecified,
-    # can be dynamic and has to be determined at run time, or undetermined
-    # at this stage because something cannot be determined now.
-    step_input: sos_targets = sos_targets()
-    step_output: sos_targets = sos_targets()
-    #
-    # 1. execute global definition to get a basic environment
-    #
-    # FIXME: this could be made much more efficient
-    if 'provides' in section.options:
-        if '__default_output__' in env.sos_dict:
-            step_output = env.sos_dict['__default_output__']
-    else:
-        # initial values
-        env.sos_dict.set('SOS_VERSION', __version__)
-        SoS_exec('import os, sys, glob', None)
-        SoS_exec('from sos.runtime import *', None)
+    # initial values
+    env.sos_dict.set('SOS_VERSION', __version__)
+    SoS_exec('import os, sys, glob', None)
+    SoS_exec('from sos.runtime import *', None)
 
     env.sos_dict.set('step_name', section.step_name())
-    env.logger.trace(
-        f'Analyzing {section.step_name()} with step_output {step_output}')
+    env.logger.trace(f'Analyzing {section.step_name()}')
 
     #
     # Here we need to get "contant" values from the global section
@@ -278,70 +330,10 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
         finally:
             SoS_exec('from sos.runtime import sos_handle_parameter_', None)
 
-    # look for input statement.
-    input_statement_idx = find_statement(section, 'input')
-
-    # if there is an input statement, analyze the statements before it, and then the input statement
-    if input_statement_idx is not None:
-        # input statement
-        stmt = section.statements[input_statement_idx][2]
-        try:
-            args, kwargs = SoS_eval(f'__null_func__({stmt})',
-                extra_dict={
-                    '__null_func__': __null_func__,
-                    'sos_groups': __sos_groups__,
-                    'output_from': __output_from__
-                    })
-
-            if not args:
-                if default_input is None:
-                    step_input = sos_targets()
-                else:
-                    step_input = default_input
-            elif not any(isinstance(x, (dynamic, remote)) for x in args):
-                step_input = sos_targets(*args)
-            env.sos_dict.set('input', step_input)
-        except Exception as e:
-            # if anything is not evalutable, keep Undetermined
-            env.logger.debug(
-                f'Input of step {section.name if section.index is None else f"{section.name}_{section.index}"} is set to Undertermined: {e}')
-            # expression ...
-            step_input = sos_targets(_undetermined=stmt)
-        input_statement_idx += 1
-    else:
-        # assuming everything starts from 0 is after input
-        input_statement_idx = 0
-
-    # other variables
-    for statement in section.statements[input_statement_idx:]:
-        # if input is undertermined, we can only process output:
-        if statement[0] == ':':
-            key, value = statement[1:3]
-            # output, depends, and process can be processed multiple times
-            try:
-                args, kwargs = SoS_eval(f'__null_func__({value})',
-                    extra_dict={
-                        '__null_func__': __null_func__,
-                        'sos_groups': __sos_groups__,
-                        'output_from': __output_from__
-                        })
-                if not any(isinstance(x, (dynamic, remote)) for x in args):
-                    if key == 'output':
-                        step_output = sos_targets(*args)
-            except Exception as e:
-                env.logger.debug(f"Args {value} cannot be determined: {e}")
-
-    if 'provides' in section.options and '__default_output__' in env.sos_dict and step_output.valid():
-        for out in env.sos_dict['__default_output__']:
-            # 981
-            if not isinstance(out, sos_step) and out not in step_output:
-                raise ValueError(
-                    f'Defined output fail to produce expected output: {step_output} generated, {env.sos_dict["__default_output__"]} expected.')
-
     return {
         'step_name': section.step_name(),
-        'step_input': step_input,
-        'step_output': step_output,
+        'step_input': get_step_input(section),
+        'step_output': get_step_output(section),
         'step_depends': get_step_depends(section),
         # variables starting with __ are internals...
         'environ_vars': get_environ_vars(section),
