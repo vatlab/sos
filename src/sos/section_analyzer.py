@@ -18,7 +18,7 @@ from .utils import env, get_traceback, separate_options
 from .executor_utils import  __null_func__, __sos_groups__, __output_from__
 
 
-def get_param_of(name, stmt, extra_dict={}):
+def get_param_of_function(name, stmt, extra_dict={}):
     tree = ast.parse(stmt)
     funcs = [x for x in ast.walk(tree) if x.__class__.__name__ == 'Call' and x.func.id == name]
     params = []
@@ -35,6 +35,17 @@ def get_param_of(name, stmt, extra_dict={}):
                 params.append(eval(compile(ast.Expression(body=kwarg.value), filename='<string>', mode="eval"), extra_dict))
     return params
 
+def get_value_of_param(name, param_list, extra_dict={}):
+    tree = ast.parse(f'__null_func__({param_list})')
+    kwargs = [x for x in ast.walk(tree) if x.__class__.__name__ == 'keyword' and x.arg == name]
+
+    values = []
+    for kwarg in kwargs:
+        try:
+            values.append(ast.literal_eval(kwarg.value))
+        except Exception as e:
+            values.append(eval(compile(ast.Expression(body=kwarg.value), filename='<string>', mode="eval"), extra_dict))
+    return values
 
 def get_changed_vars(section: SoS_Step):
     '''changed vars are variables that are "shared" and therefore "provides"
@@ -63,12 +74,81 @@ def get_changed_vars(section: SoS_Step):
             f'Option shared should be a string, a mapping of expression, or list of string or mappings. {svars} provided')
     return changed_vars
 
+def get_environ_vars(section):
+    # environ variables are variables that are needed in the step
+    # and should be passed to the step, but it should not trigger
+    # dependency. The reason why it is needed is because if an environ
+    # var is "shared" by another step, then this step should be dependent
+    # upon that step. However, this is only implement for "forward-steps"
+    environ_vars = set()
+    for statement in section.statements:
+        if statement[0] in ('!', '='):
+            environ_vars != accessed_vars(statement[1])
+            continue
+        environ_vars |= accessed_vars(statement[2])
+        # there is only nasty problem here. With the old paird_with etc
+        # they accept parameter name, not parameter, so we will need to
+        # get the value of the parameters
+        if statement[1] != 'input':
+            continue
+        if 'paired_with' in statement[2]:
+            try:
+                pw = get_value_of_param('paired_with', statement[2], extra_dict=env.sos_dict._dict)
+            except Exception as e:
+                raise ValueError(f'Failed to parse parameter paired_with: {e}')
+            if pw is None or not pw:
+                pass
+            elif isinstance(pw, str):
+                environ_vars.add(pw)
+            elif isinstance(pw, Iterable):
+                environ_vars |= set(pw)
+            elif isinstance(pw, Iterable):
+                # value supplied, no environ var
+                environ_vars |= set()
+            else:
+                raise ValueError(
+                    f'Unacceptable value for parameter paired_with: {pw}')
+        if 'group_with' in statement[2]:
+            try:
+                pw = get_value_of_param('group_with', statement[2], extra_dict=env.sos_dict._dict)
+            except Exception as e:
+                raise ValueError(f'Failed to parse parameter group_with: {e}')
+            if pw is None or not pw:
+                pass
+            elif isinstance(pw, str):
+                environ_vars.add(pw)
+            elif isinstance(pw, Iterable):
+                environ_vars |= set(pw)
+            elif isinstance(pw, Iterable):
+                # value supplied, no environ var
+                environ_vars |= set()
+            else:
+                raise ValueError(
+                    f'Unacceptable value for parameter group_with: {pw}')
+        if 'for_each' in statement[2]:
+            try:
+                fe = get_value_of_param('for_each', statement[2], extra_dict=env.sos_dict._dict)
+            except Exception as e:
+                raise ValueError(f'Failed to parse parameter for_each: {e}')
+            if fe is None or not fe:
+                pass
+            elif isinstance(fe, str):
+                environ_vars |= set([x.strip() for x in fe.split(',')])
+            elif isinstance(fe, Sequence):
+                for fei in fe:
+                    environ_vars |= set([x.strip()
+                                         for x in fei.split(',')])
+            else:
+                raise ValueError(
+                    f'Unacceptable value for parameter fe: {fe}')
+    return {x for x in environ_vars if not x.startswith('__')}
+
 def get_output_from_steps(stmt):
     '''
     Extract output_from(1), output_from('step_1'), and output_from([1, 2])
     to determine dependent steps
     '''
-    opt_values = get_param_of('output_from', f'null_func({stmt})', extra_dict=env.sos_dict._dict)
+    opt_values = get_param_of_function('output_from', f'null_func({stmt})', extra_dict=env.sos_dict._dict)
 
     def step_name(val):
         if isinstance(val, str):
@@ -106,7 +186,6 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     step_input: sos_targets = sos_targets()
     step_output: sos_targets = sos_targets()
     step_depends: sos_targets = sos_targets([])
-    environ_vars = set()
     signature_vars = set()
     #
     # 1. execute global definition to get a basic environment
@@ -161,7 +240,6 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
         for statement in section.statements[:input_statement_idx]:
             if statement[0] == ':':
                 if statement[1] == 'depends':
-                    environ_vars |= accessed_vars(statement[2])
                     key, value = statement[1:3]
                     try:
                         args, kwargs = SoS_eval(f'__null_func__({value})',
@@ -181,8 +259,6 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
                 else:
                     raise RuntimeError(
                         f'Step input should be specified before {statement[1]}')
-            else:
-                environ_vars |= accessed_vars(statement[1])
         #
         # input statement
         stmt = section.statements[input_statement_idx][2]
@@ -190,7 +266,6 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
             if 'output_from' in stmt:
                 step_depends.extend([sos_step(x) for x in get_output_from_steps(stmt)])
 
-            environ_vars |= accessed_vars(stmt)
             args, kwargs = SoS_eval(f'__null_func__({stmt})',
                 extra_dict={
                     '__null_func__': __null_func__,
@@ -207,47 +282,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
                 step_input = sos_targets(*args)
             env.sos_dict.set('input', step_input)
 
-            if 'paired_with' in kwargs:
-                pw = kwargs['paired_with']
-                if pw is None or not pw:
-                    pass
-                elif isinstance(pw, str):
-                    environ_vars.add(pw)
-                elif isinstance(pw, Iterable):
-                    environ_vars |= set(pw)
-                elif isinstance(pw, Iterable):
-                    # value supplied, no environ var
-                    environ_vars |= set()
-                else:
-                    raise ValueError(
-                        f'Unacceptable value for parameter paired_with: {pw}')
-            if 'group_with' in kwargs:
-                pw = kwargs['group_with']
-                if pw is None or not pw:
-                    pass
-                elif isinstance(pw, str):
-                    environ_vars.add(pw)
-                elif isinstance(pw, Iterable):
-                    environ_vars |= set(pw)
-                elif isinstance(pw, Iterable):
-                    # value supplied, no environ var
-                    environ_vars |= set()
-                else:
-                    raise ValueError(
-                        f'Unacceptable value for parameter group_with: {pw}')
-            if 'for_each' in kwargs:
-                fe = kwargs['for_each']
-                if fe is None or not fe:
-                    pass
-                elif isinstance(fe, str):
-                    environ_vars |= set([x.strip() for x in fe.split(',')])
-                elif isinstance(fe, Sequence):
-                    for fei in fe:
-                        environ_vars |= set([x.strip()
-                                             for x in fei.split(',')])
-                else:
-                    raise ValueError(
-                        f'Unacceptable value for parameter fe: {fe}')
+
 
 
         except Exception as e:
@@ -268,8 +303,6 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
             signature_vars |= accessed_vars('='.join(statement[1:3]))
         elif statement[0] == ':':
             key, value = statement[1:3]
-            # if key == 'depends':
-            environ_vars |= accessed_vars(value)
             # output, depends, and process can be processed multiple times
             try:
                 args, kwargs = SoS_eval(f'__null_func__({value})',
@@ -303,7 +336,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
         'step_output': step_output,
         'step_depends': step_depends,
         # variables starting with __ are internals...
-        'environ_vars': {x for x in environ_vars if not x.startswith('__')},
+        'environ_vars': get_environ_vars(section),
         'signature_vars': {x for x in signature_vars if not x.startswith('__')},
         'changed_vars': get_changed_vars(section)
     }
