@@ -25,11 +25,10 @@ from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr)
 from .executor_utils import (clear_output, create_task, verify_input, reevaluate_output,
                     validate_step_sig, statementMD5, get_traceback_msg, __null_func__,
-                    __sos_groups__)
+                    __sos_groups__, __output_from__)
 
 
 __all__ = []
-
 
 
 class TaskManager:
@@ -482,31 +481,6 @@ class Base_Step_Executor:
             env.logger.warning('Input option filetype was deprecated')
 
         assert isinstance(ifiles, sos_targets)
-        #
-        if 'from_steps' in kwargs:
-            # first if from_steps is set, then the default from_step will have to be
-            # cleared.
-            if len(ifiles) > 0 and ifiles.sources[0] != self.step.step_name():
-                ifiles = sos_targets([])
-
-            if isinstance(kwargs['from_steps'], (int, str)):
-                from_args = [kwargs['from_steps']]
-            elif isinstance(kwargs['from_steps'], Sequence):
-                from_args = list(kwargs['from_steps'])
-            else:
-                raise ValueError(f'Unacceptable value of input prameter from: {kwargs["from_steps"]} provided')
-            #
-            for step in from_args:
-                if isinstance(step, int):
-                    if '_' in self.step.step_name():
-                        step = f"{self.step.step_name().rsplit('_', 1)[0]}_{step}"
-                    else:
-                        step = str(step)
-                env.controller_req_socket.send_pyobj(['step_output', step])
-                res = env.controller_req_socket.recv_pyobj()
-                if res is None or not isinstance(res, sos_targets):
-                    raise RuntimeError(f'Failed to obtain output of step {step}')
-                ifiles.extend(res)
 
         # input file is the filtered files
         env.sos_dict.set('step_input', ifiles)
@@ -880,7 +854,8 @@ class Base_Step_Executor:
                         args, kwargs = SoS_eval(f'__null_func__({value})',
                             extra_dict={
                                 '__null_func__': __null_func__,
-                                'sos_groups': __sos_groups__
+                                'sos_groups': __sos_groups__,
+                                'output_from': __output_from__
                                 }
                             )
                         dfiles = expand_depends_files(*args)
@@ -905,7 +880,8 @@ class Base_Step_Executor:
                 args, kwargs = SoS_eval(f"__null_func__({stmt})",
                             extra_dict={
                                 '__null_func__': __null_func__,
-                                'sos_groups': __sos_groups__
+                                'sos_groups': __sos_groups__,
+                                'output_from': __output_from__
                                 }
                 )
                 # Files will be expanded differently with different running modes
@@ -1015,7 +991,8 @@ class Base_Step_Executor:
                             args, kwargs = SoS_eval(f'__null_func__({value})',
                                 extra_dict={
                                     '__null_func__': __null_func__,
-                                    'sos_groups': __sos_groups__
+                                    'sos_groups': __sos_groups__,
+                                    'output_from': __output_from__
                                     })
                             # dynamic output or dependent files
                             if key == 'output':

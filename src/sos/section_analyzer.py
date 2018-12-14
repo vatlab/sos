@@ -15,7 +15,7 @@ from .eval import SoS_eval, SoS_exec, accessed_vars
 from .parser import SoS_Step
 from .targets import (dynamic, remote, sos_targets, sos_step)
 from .utils import env, get_traceback, separate_options
-from .executor_utils import  __null_func__, __sos_groups__
+from .executor_utils import  __null_func__, __sos_groups__, __output_from__
 
 def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = None) -> Dict[str, Any]:
     '''Analyze a section for how it uses input and output, what variables
@@ -115,7 +115,8 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
                         args, kwargs = SoS_eval(f'__null_func__({value})',
                             extra_dict={
                                 '__null_func__': __null_func__,
-                                'sos_groups': __sos_groups__
+                                'sos_groups': __sos_groups__,
+                                'output_from': __output_from__
                                 }
                         )
                         if any(isinstance(x, (dynamic, remote)) for x in args):
@@ -139,6 +140,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
                 extra_dict={
                     '__null_func__': __null_func__,
                     'sos_groups': __sos_groups__,
+                    'output_from': __output_from__
                     })
 
             if not args:
@@ -242,7 +244,8 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
                 args, kwargs = SoS_eval(f'__null_func__({value})',
                     extra_dict={
                         '__null_func__': __null_func__,
-                        'sos_groups': __sos_groups__
+                        'sos_groups': __sos_groups__,
+                        'output_from': __output_from__
                         })
                 if not any(isinstance(x, (dynamic, remote)) for x in args):
                     if key == 'output':
