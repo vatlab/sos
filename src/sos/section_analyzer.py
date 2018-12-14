@@ -47,6 +47,19 @@ def get_value_of_param(name, param_list, extra_dict={}):
             values.append(eval(compile(ast.Expression(body=kwarg.value), filename='<string>', mode="eval"), extra_dict))
     return values
 
+
+def find_input_statement(section):
+    input_statement_idx = [idx for idx, x in enumerate(
+        section.statements) if x[0] == ':' and x[1] == 'input']
+    if not input_statement_idx:
+        input_statement_idx = None
+    elif len(input_statement_idx) == 1:
+        input_statement_idx = input_statement_idx[0]
+    else:
+        raise RuntimeError(
+            f'More than one step input are specified in step {section.name if section.index is None else f"{section.name}_{section.index}"}')
+
+
 def get_changed_vars(section: SoS_Step):
     '''changed vars are variables that are "shared" and therefore "provides"
     to others '''
@@ -143,6 +156,24 @@ def get_environ_vars(section):
                     f'Unacceptable value for parameter fe: {fe}')
     return {x for x in environ_vars if not x.startswith('__')}
 
+def get_signature_vars(section):
+    '''Get signature variables which are variables that will be
+    saved with step signatures'''
+    signature_vars = set()
+
+    input_idx = find_input_statement(section)
+    after_input_idx = 0 if input_idx is None else input_idx + 1
+
+    for statement in section.statements[after_input_idx:]:
+        if statement[0] == '=':
+            signature_vars |= accessed_vars('='.join(statement[1:3]))
+        elif statement[1] == '!':
+            signature_vars |= accessed_vars(statement[1])
+    # finally, tasks..
+    if section.task:
+        signature_vars |= accessed_vars(section.task)
+    return {x for x in signature_vars if not x.startswith('__')}
+
 def get_output_from_steps(stmt):
     '''
     Extract output_from(1), output_from('step_1'), and output_from([1, 2])
@@ -186,7 +217,6 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     step_input: sos_targets = sos_targets()
     step_output: sos_targets = sos_targets()
     step_depends: sos_targets = sos_targets([])
-    signature_vars = set()
     #
     # 1. execute global definition to get a basic environment
     #
@@ -224,15 +254,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
             SoS_exec('from sos.runtime import sos_handle_parameter_', None)
 
     # look for input statement.
-    input_statement_idx = [idx for idx, x in enumerate(
-        section.statements) if x[0] == ':' and x[1] == 'input']
-    if not input_statement_idx:
-        input_statement_idx = None
-    elif len(input_statement_idx) == 1:
-        input_statement_idx = input_statement_idx[0]
-    else:
-        raise RuntimeError(
-            f'More than one step input are specified in step {section.name if section.index is None else f"{section.name}_{section.index}"}')
+    input_statement_idx = find_input_statement(section)
 
     # if there is an input statement, analyze the statements before it, and then the input statement
     if input_statement_idx is not None:
@@ -281,10 +303,6 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
             elif not any(isinstance(x, (dynamic, remote)) for x in args):
                 step_input = sos_targets(*args)
             env.sos_dict.set('input', step_input)
-
-
-
-
         except Exception as e:
             # if anything is not evalutable, keep Undetermined
             env.logger.debug(
@@ -299,9 +317,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     # other variables
     for statement in section.statements[input_statement_idx:]:
         # if input is undertermined, we can only process output:
-        if statement[0] == '=':
-            signature_vars |= accessed_vars('='.join(statement[1:3]))
-        elif statement[0] == ':':
+        if statement[0] == ':':
             key, value = statement[1:3]
             # output, depends, and process can be processed multiple times
             try:
@@ -318,11 +334,8 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
                         step_depends.extend(sos_targets(*args))
             except Exception as e:
                 env.logger.debug(f"Args {value} cannot be determined: {e}")
-        else:  # statement
-            signature_vars |= accessed_vars(statement[1])
-    # finally, tasks..
-    if section.task:
-        signature_vars |= accessed_vars(section.task)
+
+
     if 'provides' in section.options and '__default_output__' in env.sos_dict and step_output.valid():
         for out in env.sos_dict['__default_output__']:
             # 981
@@ -337,6 +350,6 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
         'step_depends': step_depends,
         # variables starting with __ are internals...
         'environ_vars': get_environ_vars(section),
-        'signature_vars': {x for x in signature_vars if not x.startswith('__')},
+        'signature_vars': get_signature_vars(section),
         'changed_vars': get_changed_vars(section)
     }
