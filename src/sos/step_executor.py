@@ -123,27 +123,30 @@ class TaskManager:
         self._submitted_tasks = []
 
 
-def expand_input_files(value, *args):
+def expand_input_files(value, *args, **kwargs):
     # if unspecified, use __step_output__ as input (default)
     # resolve dynamic input.
     args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-    if not args:
+    kwargs = {x:(y.resolve() if isinstance(y, dynamic) else y) for x,y in kwargs.items()}
+
+    if not args and not kwargs:
         return env.sos_dict['step_input']
     else:
-        return sos_targets(*args, _verify_existence=True, _undetermined=False, _source=env.sos_dict['step_name'])
+        return sos_targets(*args, **kwargs, _verify_existence=True, _undetermined=False, _source=env.sos_dict['step_name'])
 
 def expand_depends_files(*args, **kwargs):
     '''handle directive depends'''
     args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-    return sos_targets(*args, _verify_existence=True, _undetermined=False, _source=env.sos_dict['step_name'])
+    kwargs = {x:(y.resolve() if isinstance(y, dynamic) else y) for x,y in kwargs.items()}
+    return sos_targets(*args, **kwargs, _verify_existence=True, _undetermined=False, _source=env.sos_dict['step_name'])
 
-def expand_output_files(value, *args):
+def expand_output_files(value, *args, **kwargs):
     '''Process output files (perhaps a pattern) to determine input files.
     '''
-    if any(isinstance(x, dynamic) for x in args):
+    if any(isinstance(x, dynamic) for x in args) or any(isinstance(y, dynamic) for y in kwargs.values()):
         return sos_targets(_undetermined=value)
     else:
-        return sos_targets(*args, _undetermined=False, _source=env.sos_dict['step_name'])
+        return sos_targets(*args, **kwargs, _undetermined=False, _source=env.sos_dict['step_name'])
 
 
 def parse_shared_vars(option):
@@ -474,10 +477,6 @@ class Base_Step_Executor:
             env.sos_dict.set('_input', sos_targets([]))
             env.sos_dict.set('step_output', sos_targets())
             return [sos_targets([])], [{}]
-
-        for k in kwargs.keys():
-            if k not in SOS_INPUT_OPTIONS:
-                raise RuntimeError(f'Unrecognized input option {k}')
         #
         if 'filetype' in kwargs:
             env.logger.warning('Input option filetype was deprecated')
@@ -910,9 +909,10 @@ class Base_Step_Executor:
                                 }
                 )
                 # Files will be expanded differently with different running modes
-                input_files: sos_targets = expand_input_files(stmt, *args)
+                input_files: sos_targets = expand_input_files(stmt, *args,
+                    **{k:v for k,v in kwargs.items() if k not in SOS_INPUT_OPTIONS})
                 self._substeps, self._vars = self.process_input_args(
-                    input_files, **kwargs)
+                    input_files, **{k:v for k,v in kwargs.items() if k in SOS_INPUT_OPTIONS})
                 #
                 # if shared is true, we have to disable concurrent because we
                 # do not yet return anything from shared.

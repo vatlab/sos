@@ -727,7 +727,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     wildcard = re.compile('[*?\[]')
 
     def __init__(self, *args, _undetermined: Union[bool, str]=None,
-        _source='', _verify_existence=False):
+        _source='', _verify_existence=False, **kwargs):
         super(BaseTarget, self).__init__()
         self._targets = []
         self._sources = []
@@ -738,6 +738,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             self._undetermined = not bool(args)
         for arg in args:
             self.__append__(arg, source=_source, verify_existence=_verify_existence)
+        for src, value in kwargs.items():
+            self.__append__(value, source=src, verify_existence=_verify_existence)
         for t in self._targets:
             if isinstance(t, sos_targets):
                 raise RuntimeError(
