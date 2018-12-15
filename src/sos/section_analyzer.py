@@ -108,54 +108,61 @@ def get_environ_vars(section):
             before_input = False
         if 'paired_with' in statement[2]:
             try:
-                pw = get_value_of_param('paired_with', statement[2], extra_dict=env.sos_dict._dict)
+                pws = get_value_of_param('paired_with', statement[2], extra_dict=env.sos_dict._dict)
             except Exception as e:
                 raise ValueError(f'Failed to parse parameter paired_with: {e}')
-            if pw is None or not pw:
-                pass
-            elif isinstance(pw, str):
-                environ_vars.add(pw)
-            elif isinstance(pw, Iterable):
-                environ_vars |= set(pw)
-            elif isinstance(pw, Iterable):
-                # value supplied, no environ var
-                environ_vars |= set()
-            else:
-                raise ValueError(
-                    f'Unacceptable value for parameter paired_with: {pw}')
+            for pw in pws:
+                if pw is None or not pw:
+                    pass
+                elif isinstance(pw, str):
+                    environ_vars.add(pw)
+                elif isinstance(pw, Iterable):
+                    environ_vars |= set(pw)
+                elif isinstance(pw, Iterable):
+                    # value supplied, no environ var
+                    environ_vars |= set()
+                else:
+                    raise ValueError(
+                        f'Unacceptable value for parameter paired_with: {pw}')
         if 'group_with' in statement[2]:
             try:
-                pw = get_value_of_param('group_with', statement[2], extra_dict=env.sos_dict._dict)
+                pws = get_value_of_param('group_with', statement[2], extra_dict=env.sos_dict._dict)
             except Exception as e:
                 raise ValueError(f'Failed to parse parameter group_with: {e}')
-            if pw is None or not pw:
-                pass
-            elif isinstance(pw, str):
-                environ_vars.add(pw)
-            elif isinstance(pw, Iterable):
-                environ_vars |= set(pw)
-            elif isinstance(pw, Iterable):
-                # value supplied, no environ var
-                environ_vars |= set()
-            else:
-                raise ValueError(
-                    f'Unacceptable value for parameter group_with: {pw}')
+            for pw in pws:
+                if pw is None or not pw:
+                    pass
+                elif isinstance(pw, str):
+                    environ_vars.add(pw)
+                elif isinstance(pw, Iterable):
+                    environ_vars |= set(pw)
+                elif isinstance(pw, Iterable):
+                    # value supplied, no environ var
+                    environ_vars |= set()
+                else:
+                    raise ValueError(
+                        f'Unacceptable value for parameter group_with: {pw}')
         if 'for_each' in statement[2]:
             try:
-                fe = get_value_of_param('for_each', statement[2], extra_dict=env.sos_dict._dict)
+                fes = get_value_of_param('for_each', statement[2], extra_dict=env.sos_dict._dict)
             except Exception as e:
                 raise ValueError(f'Failed to parse parameter for_each: {e}')
-            if fe is None or not fe:
-                pass
-            elif isinstance(fe, str):
-                environ_vars |= set([x.strip() for x in fe.split(',')])
-            elif isinstance(fe, Sequence):
-                for fei in fe:
-                    environ_vars |= set([x.strip()
-                                         for x in fei.split(',')])
-            else:
-                raise ValueError(
-                    f'Unacceptable value for parameter fe: {fe}')
+            # can there be multiple for_each?
+            for fe in fes:
+                if fe is None or not fe:
+                    pass
+                elif isinstance(fe, str):
+                    environ_vars |= set([x.strip() for x in fe.split(',')])
+                elif isinstance(fe, Sequence):
+                    for fei in fe:
+                        environ_vars |= set([x.strip()
+                                             for x in fei.split(',')])
+                elif isinstance(fe, dict):
+                    for fei in fe.keys():
+                        environ_vars |= set([x.strip() for x in fei.split(',')])
+                else:
+                    raise ValueError(
+                        f'Unacceptable value for parameter fe: {fe}')
     return {x for x in environ_vars if not x.startswith('__')}
 
 def get_signature_vars(section):
