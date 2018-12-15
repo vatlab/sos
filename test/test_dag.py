@@ -1060,6 +1060,7 @@ depends: ['{}.txt'.format(i) for i in range(10, 20)]
         with open('test.dot') as dot:
             lc = len(dot.readlines())
         self.assertTrue(lc, 6)
+        file_target('test.dot').unlink()
 
     def testAuxiliarySosStep(self):
         '''Testing the use of sos_step with auxiliary step. #736'''
@@ -1163,6 +1164,7 @@ c_2 -> c_20;
 c_20 -> b_20;
 }
 ''')
+    file_target('test.dot').unlink()
 
 
 if __name__ == '__main__':

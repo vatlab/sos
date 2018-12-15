@@ -51,13 +51,12 @@ def get_value_of_param(name, param_list, extra_dict={}):
 def find_statement(section, name):
     stmt_idx = [idx for idx, x in enumerate(section.statements) if x[0] == ':' and x[1] == name]
     if not stmt_idx:
-        stmt_idx = None
+        return None
     elif len(stmt_idx) == 1:
-        stmt_idx = stmt_idx[0]
+        return stmt_idx[0]
     else:
         raise RuntimeError(
             f'More than one step {name} statement are specified in step {section.step_name()}')
-
 
 def get_changed_vars(section: SoS_Step):
     '''changed vars are variables that are "shared" and therefore "provides"
@@ -93,9 +92,11 @@ def get_environ_vars(section):
     # var is "shared" by another step, then this step should be dependent
     # upon that step. However, this is only implement for "forward-steps"
     environ_vars = set()
+    before_input = True
     for statement in section.statements:
         if statement[0] in ('!', '='):
-            environ_vars != accessed_vars(statement[1])
+            if before_input:
+                environ_vars |= accessed_vars(statement[1])
             continue
         environ_vars |= accessed_vars(statement[2])
         # there is only nasty problem here. With the old paird_with etc
@@ -103,6 +104,8 @@ def get_environ_vars(section):
         # get the value of the parameters
         if statement[1] != 'input':
             continue
+        else:
+            before_input = False
         if 'paired_with' in statement[2]:
             try:
                 pw = get_value_of_param('paired_with', statement[2], extra_dict=env.sos_dict._dict)
@@ -166,7 +169,7 @@ def get_signature_vars(section):
     for statement in section.statements[after_input_idx:]:
         if statement[0] == '=':
             signature_vars |= accessed_vars('='.join(statement[1:3]))
-        elif statement[1] == '!':
+        elif statement[0] == '!':
             signature_vars |= accessed_vars(statement[1])
     # finally, tasks..
     if section.task:
@@ -195,7 +198,7 @@ def get_step_depends(section):
             if any(isinstance(x, (dynamic, remote)) for x in args):
                 step_depends = sos_targets()
             else:
-                step_depends.extends(sos_targets(*args))
+                step_depends.extend(sos_targets(*args))
         except Exception as e:
             env.logger.debug(f"Args {value} cannot be determined: {e}")
     return step_depends
@@ -247,7 +250,7 @@ def get_step_output(section):
         return step_output
 
     # output statement
-    value = section.statements[input_idx][2]
+    value = section.statements[output_idx][2]
     # output, depends, and process can be processed multiple times
     try:
         args, kwargs = SoS_eval(f'__null_func__({value})',
