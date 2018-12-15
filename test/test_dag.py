@@ -1164,7 +1164,7 @@ c_2 -> c_20;
 c_20 -> b_20;
 }
 ''')
-    file_target('test.dot').unlink()
+        file_target('test.dot').unlink()
 
 
 if __name__ == '__main__':
