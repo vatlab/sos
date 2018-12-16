@@ -35,16 +35,13 @@ def get_param_of_function(name, stmt, extra_dict={}):
                 params.append(eval(compile(ast.Expression(body=kwarg.value), filename='<string>', mode="eval"), extra_dict))
     return params
 
-def get_value_of_param(name, param_list, extra_dict={}):
+def get_names_of_param(name, param_list, extra_dict={}):
     tree = ast.parse(f'__null_func__({param_list})')
     kwargs = [x for x in ast.walk(tree) if x.__class__.__name__ == 'keyword' and x.arg == name]
 
     values = []
     for kwarg in kwargs:
-        try:
-            values.append(ast.literal_eval(kwarg.value))
-        except Exception as e:
-            values.append(eval(compile(ast.Expression(body=kwarg.value), filename='<string>', mode="eval"), extra_dict))
+        values.extend([x.s for x in ast.walk(kwarg.value) if x.__class__.__name__ == 'Str'])
     return values
 
 
@@ -108,54 +105,23 @@ def get_environ_vars(section):
             before_input = False
         if 'paired_with' in statement[2]:
             try:
-                pw = get_value_of_param('paired_with', statement[2], extra_dict=env.sos_dict._dict)
+                pws = get_names_of_param('paired_with', statement[2],  extra_dict=env.sos_dict._dict)
+                environ_vars |= set(pws)
             except Exception as e:
                 raise ValueError(f'Failed to parse parameter paired_with: {e}')
-            if pw is None or not pw:
-                pass
-            elif isinstance(pw, str):
-                environ_vars.add(pw)
-            elif isinstance(pw, Iterable):
-                environ_vars |= set(pw)
-            elif isinstance(pw, Iterable):
-                # value supplied, no environ var
-                environ_vars |= set()
-            else:
-                raise ValueError(
-                    f'Unacceptable value for parameter paired_with: {pw}')
         if 'group_with' in statement[2]:
             try:
-                pw = get_value_of_param('group_with', statement[2], extra_dict=env.sos_dict._dict)
+                pws = get_names_of_param('group_with', statement[2], extra_dict=env.sos_dict._dict)
+                environ_vars |= set(pws)
             except Exception as e:
                 raise ValueError(f'Failed to parse parameter group_with: {e}')
-            if pw is None or not pw:
-                pass
-            elif isinstance(pw, str):
-                environ_vars.add(pw)
-            elif isinstance(pw, Iterable):
-                environ_vars |= set(pw)
-            elif isinstance(pw, Iterable):
-                # value supplied, no environ var
-                environ_vars |= set()
-            else:
-                raise ValueError(
-                    f'Unacceptable value for parameter group_with: {pw}')
         if 'for_each' in statement[2]:
             try:
-                fe = get_value_of_param('for_each', statement[2], extra_dict=env.sos_dict._dict)
+                pws = get_names_of_param('for_each', statement[2], extra_dict=env.sos_dict._dict)
+                for pw in pws:
+                    environ_vars |= set(pw.split(','))
             except Exception as e:
                 raise ValueError(f'Failed to parse parameter for_each: {e}')
-            if fe is None or not fe:
-                pass
-            elif isinstance(fe, str):
-                environ_vars |= set([x.strip() for x in fe.split(',')])
-            elif isinstance(fe, Sequence):
-                for fei in fe:
-                    environ_vars |= set([x.strip()
-                                         for x in fei.split(',')])
-            else:
-                raise ValueError(
-                    f'Unacceptable value for parameter fe: {fe}')
     return {x for x in environ_vars if not x.startswith('__')}
 
 def get_signature_vars(section):
