@@ -203,7 +203,7 @@ def get_step_depends(section):
             env.logger.debug(f"Args {value} cannot be determined: {e}")
     return step_depends
 
-def get_step_input(section):
+def get_step_input(section, default_input):
     '''Find step input
     '''
     step_input: sos_targets = sos_targets()
@@ -335,7 +335,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
 
     return {
         'step_name': section.step_name(),
-        'step_input': get_step_input(section),
+        'step_input': get_step_input(section, default_input),
         'step_output': get_step_output(section),
         'step_depends': get_step_depends(section),
         # variables starting with __ are internals...
