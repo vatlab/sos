@@ -20,7 +20,8 @@ from .executor_utils import  __null_func__, __sos_groups__, __output_from__
 
 def get_param_of_function(name, stmt, extra_dict={}):
     tree = ast.parse(stmt)
-    funcs = [x for x in ast.walk(tree) if x.__class__.__name__ == 'Call' and x.func.id == name]
+    # x.func can be an attribute (e.g. a.b()) and do not have id
+    funcs = [x for x in ast.walk(tree) if x.__class__.__name__ == 'Call' and hasattr(x.func, 'id') and x.func.id == name]
     params = []
     for func in funcs:
         for arg in func.args:
