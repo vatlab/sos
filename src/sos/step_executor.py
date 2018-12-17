@@ -999,13 +999,14 @@ class Base_Step_Executor:
                                 if idx == 0:
                                     env.sos_dict.set(
                                         'step_output', sos_targets())
-                                ofiles: sos_targets = expand_output_files(value, *args)
+                                ofiles: sos_targets = expand_output_files(value, *args,
+                                    **{k:v for k,v in kwargs.items() if k not in SOS_OUTPUT_OPTIONS})
                                 if g.valid() and ofiles.valid():
                                     if any(x in g._targets for x in ofiles if not isinstance(x, sos_step)):
                                         raise RuntimeError(
                                             f'Overlapping input and output files: {", ".join(repr(x) for x in ofiles if x in g)}')
                                 # set variable _output and output
-                                self.process_output_args(ofiles, **kwargs)
+                                self.process_output_args(ofiles, **{k:v for k,v in kwargs.items() if k in SOS_OUTPUT_OPTIONS})
                                 self.output_groups[idx] = env.sos_dict['_output']
                             elif key == 'depends':
                                 try:

@@ -737,7 +737,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         else:
             self._undetermined = not bool(args)
         for arg in args:
-            self.__append__(arg, source=_source, verify_existence=_verify_existence)
+            self.__append__(arg, default_source=_source, verify_existence=_verify_existence)
         for src, value in kwargs.items():
             self.__append__(value, source=src, verify_existence=_verify_existence)
         for t in self._targets:
@@ -770,40 +770,45 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def valid(self):
         return self._targets or self._undetermined is False
 
-    def __append__(self, arg, source='', verify_existence=False):
+    def __append__(self, arg, source='', default_source='', verify_existence=False):
+        src = source if source else default_source
         if isinstance(arg, paths):
             self._targets.extend([file_target(x) for x in arg._paths])
-            self._sources.extend([source]*len(arg._paths))
+            self._sources.extend([src]*len(arg._paths))
         elif isinstance(arg, path):
             self._targets.append(file_target(arg))
-            self._sources.append(source)
+            self._sources.append(src)
         elif isinstance(arg, str):
             if self.wildcard.search(arg):
                 matched = sorted(glob.glob(os.path.expanduser(arg)))
                 if matched:
                     self._targets.extend([file_target(x) for x in matched])
-                    self._sources.extend([source]*len(matched))
+                    self._sources.extend([src]*len(matched))
                 elif verify_existence:
                     raise UnknownTarget(arg)
                 else:
                     env.logger.debug(f'Pattern {arg} does not match any file')
             else:
                 self._targets.append(file_target(arg))
-                self._sources.append(source)
+                self._sources.append(src)
         elif isinstance(arg, dict):
             for k, v in arg.items():
                 if not isinstance(k, str):
                     raise ValueError(f'Source of sos_targets can only be a string: {k} specified')
-                self.__append__(v, source=k, verify_existence=verify_existence)
+                self.__append__(v, src=k, verify_existence=verify_existence)
         elif isinstance(arg, sos_targets):
-            self.extend(arg)
+            if source:
+                self.extend(arg, source=source)
+            else:
+                # use the source from sos_target, not from default
+                self.extend(arg)
         elif isinstance(arg, BaseTarget):
             self._targets.append(arg)
-            self._sources.append(source)
+            self._sources.append(src)
         elif isinstance(arg, Iterable):
             # in case arg is a Generator, check its type will exhaust it
             for t in list(arg):
-                self.__append__(t, source)
+                self.__append__(t, src)
         elif arg is not None:
             raise RuntimeError(
                 f'Unrecognized targets {arg} of type {arg.__class__.__name__}')
@@ -825,7 +830,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     #def targets(self):
     #    return [x.target_name() if isinstance(x, file_target) else x for x in self._targets]
 
-    def extend(self, another):
+    def extend(self, another, source=''):
         if isinstance(another, sos_targets):
             arg = another
         else:
@@ -833,7 +838,13 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         if arg.valid() and not self.valid():
             self._undetermined = False
         self._targets.extend(arg._targets)
-        self._sources.extend(arg._sources if hasattr(arg, '_sources') else [source]*len(arg._targets))
+        # if source is specified, override the default
+        if source:
+            self._sources.extend([source]*len(arg._targets))
+        elif hasattr(arg, '_sources'):
+            self._sources.extend(arg._sources)
+        else:
+            self._sources.extend(['']*len(arg._targets))
         # it is possible to merge groups from multiple...
         if arg._groups:
             if not self._groups:
