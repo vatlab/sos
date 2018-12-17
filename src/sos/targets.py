@@ -834,6 +834,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         if isinstance(another, sos_targets):
             arg = another
         else:
+            # this only applies when users call this function directly
+            # with non-sos_targets objects as we only extend sos_target
+            # directly.
             arg = sos_targets(another)
         if arg.valid() and not self.valid():
             self._undetermined = False
