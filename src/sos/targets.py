@@ -775,15 +775,24 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         if isinstance(arg, paths):
             self._targets.extend([file_target(x) for x in arg._paths])
             self._sources.extend([src]*len(arg._paths))
+            for g in self._groups:
+                g._targets.extend([file_target(x) for x in arg._paths])
+                g._sources.extend([src]*len(arg._paths))
         elif isinstance(arg, path):
             self._targets.append(file_target(arg))
             self._sources.append(src)
+            for g in self._groups:
+                g._targets.append(file_target(arg))
+                g._sources.extend(src)
         elif isinstance(arg, str):
             if self.wildcard.search(arg):
                 matched = sorted(glob.glob(os.path.expanduser(arg)))
                 if matched:
                     self._targets.extend([file_target(x) for x in matched])
                     self._sources.extend([src]*len(matched))
+                    for g in self._groups:
+                        g._targets.extend([file_target(x) for x in matched])
+                        g._sources.extend([src]*len(matched))
                 elif verify_existence:
                     raise UnknownTarget(arg)
                 else:
@@ -791,12 +800,17 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             else:
                 self._targets.append(file_target(arg))
                 self._sources.append(src)
+                for g in self._groups:
+                    g._targets.append(file_target(arg))
+                    g._sources.append(src)
         elif isinstance(arg, dict):
             for k, v in arg.items():
                 if not isinstance(k, str):
                     raise ValueError(f'Source of sos_targets can only be a string: {k} specified')
-                self.__append__(v, src=k, verify_existence=verify_existence)
+                self.__append__(v, source=k, verify_existence=verify_existence)
         elif isinstance(arg, sos_targets):
+            # group handling if tricker here because arg can have
+            # its own groups.
             if source:
                 self.extend(arg, source=source)
             else:
@@ -805,10 +819,13 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         elif isinstance(arg, BaseTarget):
             self._targets.append(arg)
             self._sources.append(src)
+            for g in self._groups:
+                g._targets.append(arg)
+                g._sources.append(src)
         elif isinstance(arg, Iterable):
             # in case arg is a Generator, check its type will exhaust it
             for t in list(arg):
-                self.__append__(t, src)
+                self.__append__(t, source=src)
         elif arg is not None:
             raise RuntimeError(
                 f'Unrecognized targets {arg} of type {arg.__class__.__name__}')
@@ -834,20 +851,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         if isinstance(another, sos_targets):
             arg = another
         else:
-            # this only applies when users call this function directly
-            # with non-sos_targets objects as we only extend sos_target
-            # directly.
-            arg = sos_targets(another)
+            arg = sos_targets(another, source=source)
         if arg.valid() and not self.valid():
             self._undetermined = False
-        self._targets.extend(arg._targets)
-        # if source is specified, override the default
-        if source:
-            self._sources.extend([source]*len(arg._targets))
-        elif hasattr(arg, '_sources'):
-            self._sources.extend(arg._sources)
-        else:
-            self._sources.extend(['']*len(arg._targets))
         # it is possible to merge groups from multiple...
         if arg._groups:
             # if source is specified, it will override sources of all groups
@@ -860,7 +866,15 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             else:
                 ag = arg._groups
             if not self._groups:
-                self._groups = ag
+                # if I do not have group, the other guy has it, merge myself with them
+                if self._targets:
+                    for i in range(len(ag)):
+                        t = sos_targets()
+                        t._targets = [x for x in self._targets] + ag[i]._targets
+                        t._sources = [x for x in self._sources] + ag[i]._sources
+                        self._groups.append(t)
+                else:
+                    self._groups = ag
             elif len(self._groups) ==1 and len(ag) > 1:
                 # 1 vs more, we duplicate itself
                 self._groups = [self._groups[0]] * len(ag)
@@ -874,7 +888,20 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     self._groups[i].extend(ag[i])
             else:
                 raise ValueError(f'Cannot merge a sos_targets objects with {len(self._groups)} groups with another sos_targets object with {len(ag)} groups.')
-
+        elif self._groups:
+            # if the RHS has no _group but myself has groups...
+            for i in range(len(self._groups)):
+                self._groups[i]._targets.extend(arg._targets)
+                self._groups[i]._sources.extend(arg._sources)
+        #
+        self._targets.extend(arg._targets)
+        # if source is specified, override the default
+        if source:
+            self._sources.extend([source]*len(arg._targets))
+        elif hasattr(arg, '_sources'):
+            self._sources.extend(arg._sources)
+        else:
+            self._sources.extend(['']*len(arg._targets))
 
 
     def zap(self):
