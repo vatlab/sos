@@ -193,7 +193,10 @@ class WorkflowDict(object):
     def set(self, key, value):
         '''A short cut to set value to key without triggering any logging
         or warning message.'''
-        env.logger.trace(f"Set {key} to {short_repr(value)} of type {value.__class__.__name__}")
+        if hasattr(value, 'sources'):
+            env.logger.trace(f"Set {key} to {short_repr(value)} with sources {value.sources}")
+        else:
+            env.logger.trace(f"Set {key} to {short_repr(value)} of type {value.__class__.__name__}")
         self._dict[key] = value
         # if self._change_all_cap_vars is not None and key.isupper():
         #    self._check_readonly(key, value)

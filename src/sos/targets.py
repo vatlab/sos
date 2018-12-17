@@ -847,13 +847,31 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             self._sources.extend(['']*len(arg._targets))
         # it is possible to merge groups from multiple...
         if arg._groups:
-            if not self._groups:
-                self._groups = arg._groups
-            elif len(self._groups) != len(arg._groups):
-                raise ValueError(f'Cannot merge a sos_targets objects with {len(self._groups)} groups with another sos_targets object with {len(arg._groups)} groups.')
+            # if source is specified, it will override sources of all groups
+            if source:
+                ag = []
+                for g in arg._groups:
+                    t = sos_targets(g)
+                    t._sources = [source] * len(t._targets)
+                    ag.append(t)
             else:
-                for i in range(len(arg._groups)):
-                    self._groups[i].extend(arg._groups[i])
+                ag = arg._groups
+            if not self._groups:
+                self._groups = ag
+            elif len(self._groups) ==1 and len(ag) > 1:
+                # 1 vs more, we duplicate itself
+                self._groups = [self._groups[0]] * len(ag)
+                for i in range(len(ag)):
+                    self._groups[i].extend(ag[i])
+            elif len(self._groups) > 1 and len(ag) == 1:
+                for i in range(len(self._groups)):
+                    self._groups[i].extend(ag[0])
+            elif len(self._groups) == len(ag):
+                for i in range(len(ag)):
+                    self._groups[i].extend(ag[i])
+            else:
+                raise ValueError(f'Cannot merge a sos_targets objects with {len(self._groups)} groups with another sos_targets object with {len(ag)} groups.')
+
 
 
     def zap(self):

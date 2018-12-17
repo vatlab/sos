@@ -751,7 +751,6 @@ class Base_Step_Executor:
         # __step_input__:    input of this step
         # __steo_output__:   output of this step
         # __step_depends__:  dependent files of this step
-        env.sos_dict['step_output'].sources = env.sos_dict['step_name']
 
         result = {
             '__step_input__': env.sos_dict['step_input'],
