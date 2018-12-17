@@ -959,16 +959,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 f'Cannot test existense for group of {len(self)} targets {self!r}')
 
     def __getattr__(self, key):
-        if key in self._sources:
-            return self.slice(key)
-        elif len(self._targets) == 1:
+        if len(self._targets) == 1:
             return getattr(self._targets[0], key)
         elif len(self._targets) == 0:
             raise AttributeError(
                 f"Cannot get attribute {key} from empty target list")
         else:
             raise AttributeError(
-                f'Cannot get attribute {key} or subtargets with source {key} from sos_targets of size {len(self)}.')
+                f'Unknown attribute {key} from sos_targets of size {len(self)}.')
 
     def target_name(self):
         if len(self._targets) == 1:
