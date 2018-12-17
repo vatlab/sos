@@ -49,9 +49,9 @@ def __sos_groups__(*args, **kwargs):
         raise ValueError('Keyword argument by is required for function sos_groups')
     by = kwargs.pop('by')
     if args or kwargs:
-        return sos_targets(*args, **kwargs).group(by)
+        return sos_targets(*args, **kwargs, _source=env.sos_dict['step_name']).group(by)
     else:
-        return sos_targets(env.sos_dict['step_input']).group(by)
+        return sos_targets(env.sos_dict['step_input'], _source=env.sos_dict['step_name']).group(by)
 
 def __output_from__(steps):
     targets = sos_targets()
