@@ -151,7 +151,7 @@ def get_step_depends(section):
         # input statement
         stmt = section.statements[input_idx][2]
         if 'output_from' in stmt:
-            step_depends.extend([sos_step(x) for x in get_output_from_steps(stmt)])
+            step_depends.extend([sos_step(x) for x in get_output_from_steps(stmt, section.last_step)])
 
     depends_idx = find_statement(section, 'depends')
     if depends_idx is not None:
@@ -239,7 +239,7 @@ def get_step_output(section):
                     f'Defined output fail to produce expected output: {step_output} generated, {env.sos_dict["__default_output__"]} expected.')
     return step_output
 
-def get_output_from_steps(stmt):
+def get_output_from_steps(stmt, last_step):
     '''
     Extract output_from(1), output_from('step_1'), and output_from([1, 2])
     to determine dependent steps
@@ -250,6 +250,13 @@ def get_output_from_steps(stmt):
         if isinstance(val, str):
             return val
         elif isinstance(val, int):
+            if val == -1:
+                if last_step is None:
+                    # there is a case where a regular step is checked as auxiliary step.
+                    # we will postpone the decision later because the step might not be
+                    # used as such
+                    return None
+                return last_step
             if '_' in env.sos_dict['step_name']:
                 return f"{env.sos_dict['step_name'].rsplit('_',1)[0]}_{val}"
             else:
@@ -265,7 +272,7 @@ def get_output_from_steps(stmt):
             res.extend([step_name(x) for x in value])
         else:
             raise ValueError(f'Invalid value for input option from {value}')
-    return res
+    return [x for x in res if x is not None]
 
 
 def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = None) -> Dict[str, Any]:

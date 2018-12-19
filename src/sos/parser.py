@@ -209,6 +209,7 @@ class SoS_Step:
         # step processes
         self.global_def = ''
         self.task = ''
+        self.last_step = None
         self.comment = comment
         # is it global section? This is a temporary indicator because the global section
         # will be inserted to each step of the workflow.
@@ -632,6 +633,11 @@ class SoS_Workflow:
             # keep only selected steps (and the global section)
             self.sections = [
                 x for x in self.sections if x.index < 0 or all_steps[x.index]]
+        # assign 'last_step' to each section
+        last_step = None
+        for section in self.sections:
+            section.last_step = last_step
+            last_step = section.step_name()
 
 
     def section_by_id(self, uuid: UUID) -> SoS_Step:
