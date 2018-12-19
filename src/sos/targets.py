@@ -3,6 +3,7 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
+import copy
 import glob
 import os
 import pickle
@@ -118,8 +119,22 @@ def fileMD5(filename, partial=True):
 class BaseTarget(object):
     '''A base class for all targets (e.g. a file)'''
 
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         self._sigfile = None
+        self._dict = kwargs
+
+    def set(self, name, value):
+        if not isinstance(value, (bool, int, float, str, list, tuple, dict)):
+            raise ValueError('Target properties can only be of basic types: {value.__class__.__names__} provided')
+        if isinstance(value, (list, tuple)) and not all(isinstance(x, (bool, int, float, str)) for x in value):
+            raise ValueError(f'Target properties can only be sequence of basic types: {value} provided.')
+        if isinstance(value, dict) and not all(isinstance(x, (bool, int, float, str)) and isinstance(y, (bool, int, float, str)) for x,y in values.items()):
+            raise ValueError(f'Target properties can only be sequence of basic types: {value} provided.')
+        self._dict[name] = value
+        return self
+
+    def get(self, name, default=None):
+        return self._dict.get(name, default)
 
     def target_exists(self, mode='any'):
         # mode should be 'any', 'target', or 'signature'
@@ -254,8 +269,8 @@ class system_resource(BaseTarget):
 class sos_step(BaseTarget):
     '''A target for a step of sos.'''
 
-    def __init__(self, step_name):
-        super(sos_step, self).__init__()
+    def __init__(self, step_name, **kwargs):
+        super(sos_step, self).__init__(**kwargs)
         if step_name.isdigit():
             self._step_name = 'default_' + step_name.lstrip('0')
         elif '_' in step_name and step_name.rsplit('_', 1)[-1].isdigit():
@@ -517,9 +532,9 @@ class file_target(path, BaseTarget):
     '''A regular target for files.
     '''
 
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         # this is path segments
-        super(file_target, self).__init__(*args)
+        super(file_target, self).__init__(*args, **kwargs)
         if len(args) == 1 and isinstance(args[0], file_target):
             self._md5 = args[0]._md5
         else:
@@ -615,6 +630,10 @@ class file_target(path, BaseTarget):
     def __eq__(self, obj):
         return isinstance(obj, file_target) and os.path.abspath(self) == os.path.abspath(obj)
 
+    def __deepcopy__(self, memo):
+        ft = file_target(self)
+        ft._dict = copy.deepcopy(self._dict)
+        return ft
 
 class paths(Sequence, os.PathLike):
     '''A collection of targets'''
@@ -1007,6 +1026,19 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def dedup(self):
         self._targets = list(dict.fromkeys(self._targets))
 
+    def set_each(self, name, properties):
+        if isinstance(properties, (bool, int, float, str)):
+            for target in self._targets:
+                target.set(name, properties)
+        elif isinstance(properties, Sequence):
+            if len(properties) != len(self._targets):
+                raise ValueError(f'Length of provided properties ({len(properties)}) does not match length of sos_targets ({len(self._targets)})')
+            for target, property in zip(self._targets, properties):
+                target.set(name, property)
+        else:
+            raise ValueError('Unacceptable properties {properties} of type {properties.__class__.__name__} for function set_each')
+        return self
+
     def group(self, by):
         if self._groups:
             self.debug('Multiple group_by actions applied, now by {group_by}')
@@ -1177,6 +1209,13 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         else:
             return ' '.join(x.__format__(format_spec) for x in self._targets)
 
+    def __deepcopy__(self, memo):
+        ret = sos_targets()
+        ret._targets = copy.deepcopy(self._targets)
+        ret._groups = copy.deepcopy(self._groups)
+        ret._sources = copy.deepcopy(self._sources)
+        ret._undetermined = self._undetermined
+        return ret
 
 class InMemorySignature:
     def __init__(self, input_files: sos_targets, output_files: sos_targets,
