@@ -851,7 +851,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         if isinstance(another, sos_targets):
             arg = another
         else:
-            arg = sos_targets(another, source=source)
+            arg = sos_targets(another, _source=source)
         if arg.valid() and not self.valid():
             self._undetermined = False
         # it is possible to merge groups from multiple...
