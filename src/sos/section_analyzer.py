@@ -45,6 +45,12 @@ def get_names_of_param(name, param_list, extra_dict={}):
         values.extend([x.s for x in ast.walk(kwarg.value) if x.__class__.__name__ == 'Str'])
     return values
 
+def get_num_of_args_and_names_of_kwargs(name, param_list):
+    tree = ast.parse(f'__null_func__({param_list})')
+    res = []
+    for func in [x for x in ast.walk(tree) if x.__class__.__name__ == 'Call' and hasattr(x.func, 'id') and x.func.id == name]:
+        res.append([len(func.args), [x.arg for x in func.keywords]])
+    return res
 
 def find_statement(section, name):
     stmt_idx = [idx for idx, x in enumerate(section.statements) if x[0] == ':' and x[1] == name]
@@ -152,6 +158,15 @@ def get_step_depends(section):
         stmt = section.statements[input_idx][2]
         if 'output_from' in stmt:
             step_depends.extend([sos_step(x) for x in get_output_from_steps(stmt, section.last_step)])
+        elif 'sos_groups' in stmt and section.last_step is not None:
+            # #1112, if sos_groups has no argument except for by, add previous step
+            # as dependency
+            for n_args, name_kwargs in get_num_of_args_and_names_of_kwargs('sos_groups', stmt):
+                if 'by' not in name_kwargs:
+                    raise ValueError('keyword argument by is required for function sos_groups')
+                if n_args == 0 and len(name_kwargs) == 1:
+                    step_depends.extend(sos_step(section.last_step))
+                    break
 
     depends_idx = find_statement(section, 'depends')
     if depends_idx is not None:
