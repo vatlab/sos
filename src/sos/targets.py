@@ -33,6 +33,15 @@ except ImportError:
 __all__ = ['dynamic', 'executable', 'env_variable', 'sos_variable']
 
 
+def is_basic_type(obj):
+    if isinstance(obj, (bool, int, float, str, bytes)):
+        return True
+    if isinstance(obj, (tuple, list, set)):
+        return all(is_basic_type(x) for x in obj)
+    if isinstance(obj, dict):
+        return all(is_basic_type(x) for x in obj.keys()) and all(is_basic_type(x) for x in obj.values())
+    return False
+
 class UnknownTarget(Error):
     def __init__(self, target: 'BaseTarget'):
         Error.__init__(self, 'Target unavailable: %s' % target)
@@ -124,12 +133,8 @@ class BaseTarget(object):
         self._dict = kwargs
 
     def set(self, name, value):
-        if not isinstance(value, (bool, int, float, str, list, tuple, dict)):
+        if not is_basic_type(value):
             raise ValueError('Target properties can only be of basic types: {value.__class__.__names__} provided')
-        if isinstance(value, (list, tuple)) and not all(isinstance(x, (bool, int, float, str)) for x in value):
-            raise ValueError(f'Target properties can only be sequence of basic types: {value} provided.')
-        if isinstance(value, dict) and not all(isinstance(x, (bool, int, float, str)) and isinstance(y, (bool, int, float, str)) for x,y in values.items()):
-            raise ValueError(f'Target properties can only be sequence of basic types: {value} provided.')
         self._dict[name] = value
         return self
 
@@ -1065,26 +1070,30 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         self._targets = list(dict.fromkeys(self._targets))
 
     def set_to_targets(self, name, properties):
-        if isinstance(properties, (bool, int, float, str)):
+        if not is_basic_type(properties):
+            raise ValueError('Unacceptable properties {properties} for function set_to_targets')
+        if isinstance(properties, (bool, int, float, str, bytes)):
             for target in self._targets:
                 target.set(name, properties)
-        elif isinstance(properties, Sequence):
+        elif isinstance(properties, (list, tuple)):
             if len(properties) != len(self._targets):
                 raise ValueError(f'Length of provided properties ({len(properties)}) does not match length of sos_targets ({len(self._targets)})')
             for target, property in zip(self._targets, properties):
                 target.set(name, property)
         else:
-            raise ValueError('Unacceptable properties {properties} of type {properties.__class__.__name__} for function set_to_targets')
+            raise ValueError('Unacceptable properties {properties} for function set_to_targets')
         return self
 
     def set_to_groups(self, name, properties):
         if not self._groups:
             env.logger.warning(f'set_to_group on sos_targets without group information')
             return self
-        if isinstance(properties, (bool, int, float, str)):
+        if not is_basic_type(properties):
+            raise ValueError('Unacceptable properties {properties} for function set_to_targets')
+        if isinstance(properties, (bool, int, float, str, bytes)):
             for group in self._groups:
                 group.set(name, properties)
-        elif isinstance(properties, Sequence):
+        elif isinstance(properties, (list, tuple)):
             if len(properties) != len(self._groups):
                 raise ValueError(f'Length of provided properties ({len(properties)}) does not match number of groups ({len(self._groups)})')
             for group, property in zip(self._groups, properties):
