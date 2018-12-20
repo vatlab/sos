@@ -128,8 +128,12 @@ def expand_input_files(value, *args, **kwargs):
     args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
     kwargs = {x:(y.resolve() if isinstance(y, dynamic) else y) for x,y in kwargs.items()}
 
+    # if no input,
     if not args and not kwargs:
         return env.sos_dict['step_input']
+    # if only group_by ...
+    elif not args and len(kwargs) == 1 and list(kwargs.keys())[0] == 'group_by':
+        return sos_targets(env.sos_dict['step_input'], **kwargs)
     else:
         return sos_targets(*args, **kwargs, _verify_existence=True, _undetermined=False, _source=env.sos_dict['step_name'])
 
