@@ -240,6 +240,16 @@ class Controller(threading.Thread):
             elif msg[0] == 'step_output':
                 self.ctl_req_socket.send_pyobj(
                     self._completed_steps.get(msg[1], None))
+            elif msg[0] == 'named_output':
+                name = msg[1]
+                found = False
+                for step_output in self._completed_steps.values():
+                    if name in step_output.sources:
+                        found = True
+                        self.ctl_req_socket.send_pyobj(step_output[name])
+                        break
+                if not found:
+                    self.ctl_req_socket.send_pyobj(None)
             elif msg[0] == 'done':
                 # handle all ctl_push_msgs #1062
                 while True:

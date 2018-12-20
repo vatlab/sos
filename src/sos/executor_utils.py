@@ -82,6 +82,14 @@ def __output_from__(steps):
         targets.extend(res)
     return targets
 
+def __named_output__(name):
+    env.controller_req_socket.send_pyobj(['named_output', name])
+    res = env.controller_req_socket.recv_pyobj()
+    if res is None:
+        env.logger.warning(f'named_output("name") is not found')
+        return sos_targets([])
+    return res
+
 def clear_output(err=None):
     '''
     Remove file targets in `_output` when a step fails to complete
@@ -255,7 +263,8 @@ def reevaluate_output():
         extra_dict={
             '__null_func__': __null_func__,
             'sos_groups': __sos_groups__,
-            'output_from': __output_from__
+            'output_from': __output_from__,
+            'named_output': __named_output__
         })
     if args is True:
         env.logger.error('Failed to resolve unspecified output')

@@ -305,6 +305,33 @@ class sos_step(BaseTarget):
             return str(self).__format__(format_spec)
 
 
+
+class named_output(BaseTarget):
+    '''A target for a named output'''
+
+    def __init__(self, output_name):
+        super(named_output, self).__init__()
+        if not isinstance(output_name, str):
+            raise ValueError('named_output() only accept one output name')
+        self._output_name = output_name
+
+    def target_exists(self, mode='any'):
+        # this target is handled specifically and will not be used directly
+        return False
+
+    def target_name(self):
+        return self._output_name
+
+    def target_signature(self, mode='any'):
+        return textMD5(f'named_output({self._output_name})')
+
+    def __eq__(self, other):
+        return isinstance(other, named_output) and self._output_name == other._output_name
+
+    def __hash__(self):
+        return hash(repr(self))
+
+
 class dynamic(BaseTarget):
     '''A dynamic executable that only handles input files when
     it is available. This target is handled directly with its `resolve`

@@ -184,6 +184,9 @@ def replace_sigil(text: str, sigil: str) -> str:
     # finally, replace LSIGIL etc
     return final_text
 
+def get_names_of_kwargs(param_list):
+    tree = ast.parse(f'__null_func__({param_list})')
+    return [x.arg for x in tree.body[0].value.keywords]
 
 class SoS_Step:
     '''Parser of a SoS step. This class accepts strings sent by the parser, determine
@@ -537,6 +540,10 @@ class SoS_Step:
                 # if otuput has options and rely on anything, it cannot be treated as
                 # auto output
                 pass
+            #
+            output_names = get_names_of_kwargs(output_stmt)
+            self.options['namedprovides'] = repr(output_names)
+
         if 'provides' in self.options:
             # let us check if provides is a "plain output"
             try:

@@ -27,7 +27,8 @@ from .controller import Controller, connect_controllers, disconnect_controllers
 from .section_analyzer import analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
                       UnknownTarget, file_target, path, paths,
-                      sos_step, sos_targets, sos_variable, textMD5)
+                      sos_step, sos_targets, sos_variable, textMD5,
+                      named_output)
 from .utils import (Error, WorkflowDict, env, get_traceback,
                     load_config_files, pickleable, short_repr)
 from .workers import SoS_Worker
@@ -344,7 +345,9 @@ class Base_Executor:
         # for sos_step, we need to match step name
         if isinstance(target, sos_step):
             return step.match(target.target_name())
-        if not 'provides' in step.options and 'autoprovides' not in step.options:
+        if isinstance(target, named_output):
+            return 'namedprovides' in step.options and target.target_name() in step.options['namedprovides']
+        if not any(x in step.options for x in ('provides', 'autoprovides')):
             return False
         patterns = step.options['provides'] if 'provides' in step.options else step.options['autoprovides']
         if isinstance(patterns, (str, BaseTarget, path)):
@@ -520,6 +523,8 @@ class Base_Executor:
                     # ensure that the target is outputted from the "name_10" step.
                     # This has been done in a more advanced case when an entire workflow is
                     # added
+                    res['step_output'].extend(target)
+                elif isinstance(target, named_output):
                     res['step_output'].extend(target)
                 #
                 # build DAG with input and output files of step
@@ -705,7 +710,6 @@ class Base_Executor:
         if cycle:
             raise RuntimeError(
                 f'Circular dependency detected {cycle}. It is likely a later step produces input of a previous step.')
-
         dag.save(env.config['output_dag'])
         return dag
 

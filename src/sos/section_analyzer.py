@@ -13,13 +13,13 @@ from typing import Any, Dict, Optional
 
 from .eval import SoS_eval, SoS_exec, accessed_vars
 from .parser import SoS_Step
-from .targets import (dynamic, remote, sos_targets, sos_step)
+from .targets import (dynamic, remote, sos_targets, sos_step, named_output)
 from .utils import env, get_traceback, separate_options
-from .executor_utils import  __null_func__, __sos_groups__, __output_from__
+from .executor_utils import  __null_func__
 
 
-def get_param_of_function(name, stmt, extra_dict={}):
-    tree = ast.parse(stmt)
+def get_param_of_function(name, param_list, extra_dict={}):
+    tree = ast.parse(f'__null_func__({param_list})')
     # x.func can be an attribute (e.g. a.b()) and do not have id
     funcs = [x for x in ast.walk(tree) if x.__class__.__name__ == 'Call' and hasattr(x.func, 'id') and x.func.id == name]
     params = []
@@ -158,7 +158,7 @@ def get_step_depends(section):
         stmt = section.statements[input_idx][2]
         if 'output_from' in stmt:
             step_depends.extend([sos_step(x) for x in get_output_from_steps(stmt, section.last_step)])
-        elif 'sos_groups' in stmt and section.last_step is not None:
+        if 'sos_groups' in stmt and section.last_step is not None:
             # #1112, if sos_groups has no argument except for by, add previous step
             # as dependency
             for n_args, name_kwargs in get_num_of_args_and_names_of_kwargs('sos_groups', stmt):
@@ -167,6 +167,12 @@ def get_step_depends(section):
                 if n_args == 0 and len(name_kwargs) == 1:
                     step_depends.extend(sos_step(section.last_step))
                     break
+        if 'named_output' in stmt:
+            # there can be multiple named_output calls
+            step_depends.extend(named_output(x) for x in get_param_of_function('named_output', stmt,
+                extra_dict=env.sos_dict._dict)
+            )
+
 
     depends_idx = find_statement(section, 'depends')
     if depends_idx is not None:
@@ -200,8 +206,9 @@ def get_step_input(section, default_input):
         args, kwargs = SoS_eval(f'__null_func__({stmt})',
             extra_dict={
                 '__null_func__': __null_func__,
-                'sos_groups': __sos_groups__,
-                'output_from': __output_from__
+                'sos_groups': lambda *args, **kwargs: sos_targets(*args, **{x:y for x,y in kwargs.items() if x != 'by'}),
+                'output_from': lambda *args, **kwargs: None,
+                'named_output': lambda *args, **kwargs: None
                 })
         if not args:
             if default_input is None:
@@ -237,9 +244,7 @@ def get_step_output(section):
     try:
         args, kwargs = SoS_eval(f'__null_func__({value})',
             extra_dict={
-                '__null_func__': __null_func__,
-                'sos_groups': __sos_groups__,
-                'output_from': __output_from__
+                '__null_func__': __null_func__
                 })
         if not any(isinstance(x, (dynamic, remote)) for x in args):
             step_output = sos_targets(*args)
@@ -259,7 +264,7 @@ def get_output_from_steps(stmt, last_step):
     Extract output_from(1), output_from('step_1'), and output_from([1, 2])
     to determine dependent steps
     '''
-    opt_values = get_param_of_function('output_from', f'null_func({stmt})', extra_dict=env.sos_dict._dict)
+    opt_values = get_param_of_function('output_from', stmt, extra_dict=env.sos_dict._dict)
 
     def step_name(val):
         if isinstance(val, str):

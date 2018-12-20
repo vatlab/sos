@@ -25,7 +25,7 @@ from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr)
 from .executor_utils import (clear_output, create_task, verify_input, reevaluate_output,
                     validate_step_sig, statementMD5, get_traceback_msg, __null_func__,
-                    __sos_groups__, __output_from__)
+                    __sos_groups__, __output_from__, __named_output__)
 
 
 __all__ = []
@@ -853,7 +853,8 @@ class Base_Step_Executor:
                             extra_dict={
                                 '__null_func__': __null_func__,
                                 'sos_groups': __sos_groups__,
-                                'output_from': __output_from__
+                                'output_from': __output_from__,
+                                'named_output': __named_output__
                                 }
                             )
                         dfiles = expand_depends_files(*args)
@@ -879,7 +880,8 @@ class Base_Step_Executor:
                             extra_dict={
                                 '__null_func__': __null_func__,
                                 'sos_groups': __sos_groups__,
-                                'output_from': __output_from__
+                                'output_from': __output_from__,
+                                'named_output': __named_output__
                                 }
                 )
                 # Files will be expanded differently with different running modes
@@ -990,7 +992,8 @@ class Base_Step_Executor:
                                 extra_dict={
                                     '__null_func__': __null_func__,
                                     'sos_groups': __sos_groups__,
-                                    'output_from': __output_from__
+                                    'output_from': __output_from__,
+                                    'named_output': __named_output__
                                     })
                             # dynamic output or dependent files
                             if key == 'output':
