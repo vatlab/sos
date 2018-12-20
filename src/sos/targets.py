@@ -948,7 +948,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             self._sources.extend(arg._sources)
         else:
             self._sources.extend(['']*len(arg._targets))
-
+        # merge dictionaries
+        self._dict.update(arg._dict)
 
     def zap(self):
         for target in self._targets:
