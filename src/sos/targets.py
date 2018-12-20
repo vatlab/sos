@@ -1092,6 +1092,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             raise ValueError('Unacceptable properties {properties} of type {properties.__class__.__name__} for function set_to_groups')
         return self
 
+    def get(self, name, default=None):
+        if name in self._dict:
+            return self._dict[name]
+        elif len(self._targets) == 1:
+            return self._targets[0].get(name, default)
+        else:
+            return default
+
     def group(self, by):
         if self._groups:
             self.debug('Multiple group_by actions applied, now by {group_by}')
