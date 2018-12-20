@@ -777,7 +777,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     # check if string contains wildcard character
     wildcard = re.compile('[*?\[]')
 
-    def __init__(self, *args, _undetermined: Union[bool, str]=None,
+    def __init__(self, *args, group_by=None, _undetermined: Union[bool, str]=None,
         _source='', _verify_existence=False, **kwargs):
         super(sos_targets, self).__init__()
         self._targets = []
@@ -801,6 +801,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             for target in self._targets:
                 if not target.target_exists('any'):
                     raise UnknownTarget(target)
+        if group_by:
+            self._group(group_by)
 
     def is_external(self):
         if not self.valid():
@@ -1110,7 +1112,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         else:
             return default
 
-    def group(self, by):
+    def _group(self, by):
         if self._groups:
             self.debug('Multiple group_by actions applied, now by {group_by}')
             self._groups = []
