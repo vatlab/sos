@@ -223,7 +223,7 @@ task:
 input:  output_from('B')
 
 [A_2]
-input: something_unknown, sos_groups(output_from(['C1', 'C2'])), group_by=1
+input: something_unknown, sos_groups(output_from(['C1', 'C2']), by=2), group_by=1
 ''')
         wf = script.workflow('A')
         for section in wf.sections:
