@@ -1063,7 +1063,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def dedup(self):
         self._targets = list(dict.fromkeys(self._targets))
 
-    def set_each(self, name, properties):
+    def set_to_targets(self, name, properties):
         if isinstance(properties, (bool, int, float, str)):
             for target in self._targets:
                 target.set(name, properties)
@@ -1073,7 +1073,23 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             for target, property in zip(self._targets, properties):
                 target.set(name, property)
         else:
-            raise ValueError('Unacceptable properties {properties} of type {properties.__class__.__name__} for function set_each')
+            raise ValueError('Unacceptable properties {properties} of type {properties.__class__.__name__} for function set_to_targets')
+        return self
+
+    def set_to_groups(self, name, properties):
+        if not self._groups:
+            env.logger.warning(f'set_to_group on sos_targets without group information')
+            return self
+        if isinstance(properties, (bool, int, float, str)):
+            for group in self._groups:
+                group.set(name, properties)
+        elif isinstance(properties, Sequence):
+            if len(properties) != len(self._groups):
+                raise ValueError(f'Length of provided properties ({len(properties)}) does not match number of groups ({len(self._groups)})')
+            for group, property in zip(self._groups, properties):
+                group.set(name, property)
+        else:
+            raise ValueError('Unacceptable properties {properties} of type {properties.__class__.__name__} for function set_to_groups')
         return self
 
     def group(self, by):
