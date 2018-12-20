@@ -25,7 +25,7 @@ from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
                     expand_size, format_HHMMSS, get_traceback, short_repr)
 from .executor_utils import (clear_output, create_task, verify_input, reevaluate_output,
                     validate_step_sig, statementMD5, get_traceback_msg, __null_func__,
-                    __sos_groups__, __output_from__, __named_output__)
+                    __output_from__, __named_output__)
 
 
 __all__ = []
@@ -852,7 +852,6 @@ class Base_Step_Executor:
                         args, kwargs = SoS_eval(f'__null_func__({value})',
                             extra_dict={
                                 '__null_func__': __null_func__,
-                                'sos_groups': __sos_groups__,
                                 'output_from': __output_from__,
                                 'named_output': __named_output__
                                 }
@@ -879,7 +878,6 @@ class Base_Step_Executor:
                 args, kwargs = SoS_eval(f"__null_func__({stmt})",
                             extra_dict={
                                 '__null_func__': __null_func__,
-                                'sos_groups': __sos_groups__,
                                 'output_from': __output_from__,
                                 'named_output': __named_output__
                                 }
@@ -991,7 +989,6 @@ class Base_Step_Executor:
                             args, kwargs = SoS_eval(f'__null_func__({value})',
                                 extra_dict={
                                     '__null_func__': __null_func__,
-                                    'sos_groups': __sos_groups__,
                                     'output_from': __output_from__,
                                     'named_output': __named_output__
                                     })

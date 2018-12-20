@@ -43,16 +43,6 @@ def __null_func__(*args, **kwargs) -> Any:
 
     return _flatten(args), kwargs
 
-def __sos_groups__(*args, **kwargs):
-    '''A function that groups input sos_targets and group them'''
-    if 'by' not in kwargs:
-        raise ValueError('Keyword argument by is required for function sos_groups')
-    by = kwargs.pop('by')
-    if args or kwargs:
-        return sos_targets(*args, **kwargs, _source=env.sos_dict['step_name']).group(by)
-    else:
-        return sos_targets(env.sos_dict['step_input'], _source=env.sos_dict['step_name']).group(by)
-
 def __output_from__(steps):
     targets = sos_targets()
     if isinstance(steps, (int, str)):
@@ -262,7 +252,6 @@ def reevaluate_output():
         f'__null_func__({env.sos_dict["step_output"]._undetermined})',
         extra_dict={
             '__null_func__': __null_func__,
-            'sos_groups': __sos_groups__,
             'output_from': __output_from__,
             'named_output': __named_output__
         })

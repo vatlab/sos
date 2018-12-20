@@ -158,15 +158,6 @@ def get_step_depends(section):
         stmt = section.statements[input_idx][2]
         if 'output_from' in stmt:
             step_depends.extend([sos_step(x) for x in get_output_from_steps(stmt, section.last_step)])
-        if 'sos_groups' in stmt and section.last_step is not None:
-            # #1112, if sos_groups has no argument except for by, add previous step
-            # as dependency
-            for n_args, name_kwargs in get_num_of_args_and_names_of_kwargs('sos_groups', stmt):
-                if 'by' not in name_kwargs:
-                    raise ValueError('keyword argument by is required for function sos_groups')
-                if n_args == 0 and len(name_kwargs) == 1:
-                    step_depends.extend(sos_step(section.last_step))
-                    break
         if 'named_output' in stmt:
             # there can be multiple named_output calls
             step_depends.extend(named_output(x) for x in get_param_of_function('named_output', stmt,
@@ -206,7 +197,6 @@ def get_step_input(section, default_input):
         args, kwargs = SoS_eval(f'__null_func__({stmt})',
             extra_dict={
                 '__null_func__': __null_func__,
-                'sos_groups': lambda *args, **kwargs: sos_targets(*args, **{x:y for x,y in kwargs.items() if x != 'by'}),
                 'output_from': lambda *args, **kwargs: None,
                 'named_output': lambda *args, **kwargs: None
                 })
