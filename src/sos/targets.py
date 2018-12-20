@@ -774,7 +774,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
     def __init__(self, *args, _undetermined: Union[bool, str]=None,
         _source='', _verify_existence=False, **kwargs):
-        super(BaseTarget, self).__init__()
+        super(sos_targets, self).__init__()
         self._targets = []
         self._sources = []
         self._groups = []
@@ -958,7 +958,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 env.logger.debug(f'Ignore non-file target {target}')
 
     def __getstate__(self):
-        return (self._targets, self._sources, self._undetermined, self._groups)
+        return (self._targets, self._sources, self._undetermined, self._groups, self._dict)
 
     def __setstate__(self, state) -> None:
         if isinstance(state, tuple):
@@ -967,22 +967,32 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 self._sources = [''] * len(self._targets)
                 self._undetermined = state[1]
                 self._groups = []
+                self._dict = {}
             elif len(state) == 3:
                 self._targets = state[0]
                 self._sources = state[1]
                 self._undetermined = state[2]
                 self._groups = []
+                self._dict = {}
             elif len(state) == 4:
                 self._targets = state[0]
                 self._sources = state[1]
                 self._undetermined = state[2]
                 self._groups = state[3]
+                self._dict = {}
+            elif len(state) == 5:
+                self._targets = state[0]
+                self._sources = state[1]
+                self._undetermined = state[2]
+                self._groups = state[3]
+                self._dict = state[4]
         else:
             # older version of sig file might only saved targets
             self._targets = state
             self._sources = [''] * len(self._targets)
             self._undetermined = False
             self._groups = []
+            self._dict = {}
 
     def __len__(self):
         return len(self._targets)
@@ -1241,6 +1251,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         ret._targets = copy.deepcopy(self._targets)
         ret._groups = copy.deepcopy(self._groups)
         ret._sources = copy.deepcopy(self._sources)
+        ret._dict = copy.deepcopy(self._dict)
         ret._undetermined = self._undetermined
         return ret
 
