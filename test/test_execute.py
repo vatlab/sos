@@ -943,7 +943,7 @@ run: expand=True
     touch {_output}
 
 [test_2]
-assert(len(_input) == 5)
+assert(len(step_input) == 5) 
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
