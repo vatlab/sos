@@ -1130,9 +1130,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def dedup(self):
         self._targets = list(dict.fromkeys(self._targets))
 
-    def set_to_targets(self, name, properties):
+    def paired_with(self, name, properties):
         if not is_basic_type(properties):
-            env.logger.debug(f'Unacceptable properties {properties} for function set_to_targets')
+            env.logger.debug(f'Unacceptable properties {properties} for function paired_with')
             return self
         if isinstance(properties, (bool, int, float, str, bytes)):
             for target in self._targets:
@@ -1143,15 +1143,15 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             for target, property in zip(self._targets, properties):
                 target.set(name, property)
         else:
-            raise ValueError('Unacceptable properties {properties} for function set_to_targets')
+            raise ValueError('Unacceptable properties {properties} for function paired_with')
         return self
 
-    def set_to_groups(self, name, properties):
+    def group_with(self, name, properties):
         if not self._groups:
-            env.logger.warning(f'set_to_group on sos_targets without group information')
+            env.logger.warning(f'group_with on sos_targets without group information')
             return self
         if not is_basic_type(properties):
-            env.logger.debug('Unacceptable properties {properties} for function set_to_targets')
+            env.logger.debug('Unacceptable properties {properties} for function group_with')
             return self
         if isinstance(properties, (bool, int, float, str, bytes)):
             for group in self._groups:
@@ -1162,7 +1162,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             for group, property in zip(self._groups, properties):
                 group.set(name, property)
         else:
-            raise ValueError('Unacceptable properties {properties} of type {properties.__class__.__name__} for function set_to_groups')
+            raise ValueError('Unacceptable properties {properties} of type {properties.__class__.__name__} for function group_with')
         return self
 
     def get(self, name, default=None):
