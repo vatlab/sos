@@ -299,6 +299,8 @@ class Base_Step_Executor:
             if len(vv) != len(ifiles):
                 raise ValueError(
                     f'Length of variable {vn} (length {len(vv)}) should match the number of input files (length {len(ifiles)}).')
+            # set paired with values to step_input
+            env.sos_dict['step_input'].paired_with(vn, vv)
             file_map = {x: y for x, y in zip(ifiles, vv)}
             for idx, grp in enumerate(_groups):
                 mapped_vars = [file_map[x] for x in grp]
@@ -953,7 +955,7 @@ class Base_Step_Executor:
                 env.sos_dict.update(v)
                 env.sos_dict.set('_input', copy.deepcopy(g))
                 # set vars to _input
-                env.sos_dict['_input']._update_dict(v)
+                #env.sos_dict['_input']._update_dict(v)
 
                 self.log('_input')
                 env.sos_dict.set('_index', idx)

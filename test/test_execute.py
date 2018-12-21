@@ -465,6 +465,65 @@ run: expand=True
             self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).unlink()
 
+
+    def testPairedWithAsTargetProperty(self):
+        '''Test option paired_with with values accessed by individual target '''
+        self.touch(['a.txt', 'b.txt'])
+        for ofile in ['a.txt1', 'b.txt2']:
+            if file_target(ofile).exists():
+                file_target(ofile).unlink()
+        #
+        # string input
+        script = SoS_Script(r'''
+[0]
+files = ['a.txt', 'b.txt']
+vars = [1, 2]
+
+input: files, paired_with='vars', group_by=1
+output: f"{_input}{_input.get('_vars')}"
+run: expand=True
+    touch {_output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for ofile in ['a.txt1', 'b.txt2']:
+            self.assertTrue(file_target(ofile).target_exists('target'))
+            file_target(ofile).unlink()
+        #
+        # list input
+        script = SoS_Script(r'''
+[0]
+files = ['a.txt', 'b.txt']
+vars = [1, 2]
+vars2 = ['a', 'b']
+
+input: files, paired_with=('vars', 'vars2'), group_by=1
+output: f"{_input}{_input.get('_vars')}"
+run: expand=True
+    touch {_output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for ofile in ['a.txt1', 'b.txt2']:
+            self.assertTrue(file_target(ofile).target_exists('target'))
+            file_target(ofile).unlink()
+        #
+        # dict input
+        script = SoS_Script(r'''
+[0]
+files = ['a.txt', 'b.txt']
+input: files, paired_with={'var': [1,2], 'var2': ['a', 'b']}, group_by=1
+output: f"{_input}{_input.get('var')}"
+run: expand=True
+    touch {_output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for ofile in ['a.txt1', 'b.txt2']:
+            self.assertTrue(file_target(ofile).target_exists('target'))
+            file_target(ofile).unlink()
+
+
     def testGroupWith(self):
         '''Test option group_with '''
         self.touch(['a.txt', 'b.txt'])
@@ -943,7 +1002,7 @@ run: expand=True
     touch {_output}
 
 [test_2]
-assert(len(step_input) == 5) 
+assert(len(step_input) == 5)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
