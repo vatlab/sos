@@ -1454,5 +1454,76 @@ assert(step_input.groups[4] == 'a_4.txt')
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    def testOutputFrom(self):
+        '''Testing output_from input function'''
+        script = SoS_Script('''\
+[A]
+input: for_each=dict(i=range(5))
+output: f'a_{i}.txt'
+_output.touch()
+
+[A1]
+input: for_each=dict(i=range(4))
+output: aa=f'a_{i}.txt'
+_output.touch()
+
+[B]
+input: output_from('A')
+assert(len(step_input.groups) == 5)
+assert(len(step_input) == 5)
+assert(step_input.sources == ['A']*5)
+assert(step_input.groups[0] == 'a_0.txt')
+assert(step_input.groups[4] == 'a_4.txt')
+
+[C]
+input: K=output_from('A')
+assert(len(step_input.groups) == 5)
+assert(step_input.sources == ['K']*5)
+
+[D]
+input: K=output_from('A', group_by='all')
+assert(len(step_input) == 5)
+assert(len(step_input.groups) == 1)
+assert(step_input.sources == ['K']*5)
+
+[E]
+input: output_from('A1', group_by='all')
+assert(len(step_input) == 4)
+assert(len(step_input.groups) == 1)
+assert(step_input.sources == ['aa']*4)
+
+[F]
+input: K=output_from('A1', group_by='all')['aa']
+assert(len(step_input) == 4)
+assert(len(step_input.groups) == 0)
+assert(step_input.sources == ['K']*4)
+
+[G_0]
+input: for_each=dict(i=range(4))
+output: f'g_{i}.txt'
+_output.touch()
+
+[G_100]
+input: K=output_from(-1, group_by=2)
+assert(len(step_input) == 4)
+assert(len(step_input.groups) == 2)
+assert(step_input.sources == ['K']*4)
+
+[H_0]
+input: for_each=dict(i=range(4))
+output: f'g_{i}.txt'
+_output.touch()
+
+[H_100]
+input: K=output_from([-1, 'A1'], group_by=2)
+assert(len(step_input) == 8)
+assert(len(step_input.groups) == 4)
+assert(step_input.sources == ['K']*8)
+
+''')
+        for wf in ('B', 'C', 'D', 'E', 'F', 'G', 'H'):
+            wf = script.workflow(wf)
+            Base_Executor(wf).run()
+
 if __name__ == '__main__':
     unittest.main()

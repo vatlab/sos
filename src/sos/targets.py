@@ -1113,6 +1113,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             return default
 
     def _group(self, by):
+        if by is None:
+            return self
+
         if self._groups:
             self._groups = []
 

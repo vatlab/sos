@@ -43,7 +43,7 @@ def __null_func__(*args, **kwargs) -> Any:
 
     return _flatten(args), kwargs
 
-def __output_from__(steps):
+def __output_from__(steps, group_by=None):
     targets = sos_targets()
     if isinstance(steps, (int, str)):
         steps = [steps]
@@ -70,15 +70,15 @@ def __output_from__(steps):
         if res is None or not isinstance(res, sos_targets):
             raise RuntimeError(f'Failed to obtain output of step {step}')
         targets.extend(res)
-    return targets
+    return targets._group(group_by)
 
-def __named_output__(name):
+def __named_output__(name, group_by=None):
     env.controller_req_socket.send_pyobj(['named_output', name])
     res = env.controller_req_socket.recv_pyobj()
     if res is None:
         env.logger.warning(f'named_output("name") is not found')
         return sos_targets([])
-    return res
+    return res._group(group_by)
 
 def clear_output(err=None):
     '''
