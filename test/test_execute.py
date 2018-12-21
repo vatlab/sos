@@ -1436,7 +1436,23 @@ _input.zap()
         for i in range(3):
             os.remove(f'zapped_example_{i}.txt.zapped')
 
+    def testReturn_OutputInStepOutput(self):
+        '''Testing the return of _output as groups of step_output'''
+        script = SoS_Script('''\
+[1]
+input: for_each=dict(i=range(5))
+output: f'a_{i}.txt'
+_output.touch()
 
+[2]
+assert(len(step_input.groups) == 5)
+assert(len(step_input) == 5)
+assert(step_input.groups[0] == 'a_0.txt')
+assert(step_input.groups[4] == 'a_4.txt')
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
 
 if __name__ == '__main__':
     unittest.main()
