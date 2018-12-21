@@ -160,9 +160,23 @@ def get_step_depends(section):
             step_depends.extend([sos_step(x) for x in get_output_from_steps(stmt, section.last_step)])
         if 'named_output' in stmt:
             # there can be multiple named_output calls
-            step_depends.extend(named_output(x[-1]) for x in get_param_of_function('named_output', stmt,
+            pars = get_param_of_function('named_output', stmt,
                 extra_dict=env.sos_dict._dict)
-            )
+            for par in pars:
+                # a single argument
+                if len(par) == 1:
+                    if not isinstance(par[0], str):
+                        raise ValueError(f'Value for named_output can only be a name (str): {par[0]} provided')
+                    step_depends.extend(named_output(par[0]))
+                else:
+                    if par[0] == 'group_by':
+                        continue
+                    elif par[0] == 'name':
+                        if not isinstance(par[1], str):
+                            raise ValueError(f'Value for named_output can only be a name (str): {par[1]} provided')
+                        step_depends.extend(named_output(par[1]))
+                    else:
+                        raise ValueError(f'Unacceptable keyword argument {par[0]} for named_output()')
 
 
     depends_idx = find_statement(section, 'depends')

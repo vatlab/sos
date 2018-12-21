@@ -1453,6 +1453,24 @@ assert(step_input.groups[4] == 'a_4.txt')
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
+        #
+        # test accumulation of named output
+        script = SoS_Script('''\
+[1]
+input: for_each=dict(i=range(5))
+output: a=f'a_{i}.txt', b=f'b_{i}.txt'
+_output.touch()
+
+[2]
+assert(len(step_input.groups) == 5)
+assert(len(step_input) == 10)
+assert(step_input.groups[0] == ['a_0.txt', 'b_0.txt'])
+assert(step_input.groups[0].sources == ['a', 'b'])
+assert(step_input.groups[4] == ['a_4.txt', 'b_4.txt'])
+assert(step_input.groups[4].sources == ['a', 'b'])
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
 
     def testOutputFrom(self):
         '''Testing output_from input function'''
@@ -1522,6 +1540,44 @@ assert(step_input.sources == ['K']*8)
 
 ''')
         for wf in ('B', 'C', 'D', 'E', 'F', 'G', 'H'):
+            wf = script.workflow(wf)
+            Base_Executor(wf).run()
+
+
+    def testNamedOutput(self):
+        '''Testing named_output input function'''
+        script = SoS_Script('''\
+
+[A]
+input: for_each=dict(i=range(4))
+output: aa=f'a_{i}.txt', bb=f'b_{i}.txt'
+_output.touch()
+
+[B]
+input: named_output('aa')
+assert(len(step_input.groups) == 4)
+assert(len(step_input) == 4)
+assert(step_input.sources == ['aa']*4)
+assert(step_input.groups[0] == 'a_0.txt')
+assert(step_input.groups[3] == 'a_3.txt')
+
+[C]
+input: K=named_output('bb')
+assert(len(step_input.groups) == 4)
+assert(len(step_input) == 4)
+assert(step_input.sources == ['K']*4)
+assert(step_input.groups[0] == 'b_0.txt')
+assert(step_input.groups[3] == 'b_3.txt')
+
+[D]
+input: K=named_output('bb', group_by=2)
+assert(len(step_input.groups) == 2)
+assert(len(step_input) == 4)
+assert(step_input.sources == ['K']*4)
+assert(step_input.groups[1] == ['b_2.txt', 'b_3.txt'])
+
+''')
+        for wf in ('B', 'C', 'D'):
             wf = script.workflow(wf)
             Base_Executor(wf).run()
 
