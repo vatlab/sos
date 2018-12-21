@@ -64,7 +64,6 @@ class TestTarget(unittest.TestCase):
         res = sos_targets(a=['a.txt', 'b.txt'], b=['c.txt', 'd.txt'], group_by=1)
         self.assertEqual(len(res.groups), 4)
         self.assertEqual(res.sources, ['a', 'a', 'b', 'b'])
-        print(res)
         res_a = res['a']
         self.assertEqual(len(res_a), 2)
         self.assertEqual(res_a.sources, ['a', 'a'])
@@ -74,7 +73,14 @@ class TestTarget(unittest.TestCase):
         self.assertEqual(len(res_a.groups[2]), 0)
         self.assertEqual(len(res_a.groups[3]), 0)
 
-
+    def testTargetGroupBy(self):
+        '''Test new option group_by to sos_targets'''
+        res = sos_targets('e.txt', 'f.ext', a=['a.txt', 'b.txt'], b=['c.txt', 'd.txt'], group_by=1)
+        self.assertEqual(len(res.groups), 6)
+        self.assertEqual(res.sources, ['', '', 'a', 'a', 'b', 'b'])
+        #
+        res = sos_targets(res, group_by=2)
+        self.assertEqual(len(res.groups), 3)
 
     def testTargetFormat(self):
         '''Test string interpolation of targets'''
