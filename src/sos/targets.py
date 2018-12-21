@@ -134,7 +134,7 @@ class BaseTarget(object):
 
     def set(self, name, value):
         if not is_basic_type(value):
-            env.logger.debug(f'Target properties can only be of basic types: {value.__class__.__names__} provided')
+            env.logger.warning(f'Target properties can only be of basic types: {value} of type {value.__class__.__name__} provided')
             return self
         self._dict[name] = value
         return self
@@ -1186,6 +1186,18 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             env.logger.warning(f'Failed to add group {targets}: {e}')
             self._groups.append(_sos_group([], sources=[]))
         return self._groups[-1]
+
+    def _duplicate_groups(self, n):
+        n_grps = len(self._groups)
+        for _ in range(n-1):
+            for grp in self._groups[:n_grps]:
+                self._groups.append(
+                    _sos_group(grp._indexes, grp._sources)._update_dict(grp._dict)
+                )
+        return self
+
+    def _num_groups(self):
+        return len(self._groups)
 
     def _group(self, by):
         if by is None:

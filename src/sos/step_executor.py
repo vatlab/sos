@@ -261,7 +261,7 @@ class Base_Step_Executor:
 
 
     @staticmethod
-    def handle_paired_with(paired_with, ifiles: sos_targets, _groups: List[sos_targets], _vars: List[dict]):
+    def handle_paired_with(paired_with, ifiles: sos_targets, _vars: List[dict]):
         '''Handle input option paired_with'''
         if paired_with is None or not paired_with:
             var_name = []
@@ -301,15 +301,15 @@ class Base_Step_Executor:
                     f'Length of variable {vn} (length {len(vv)}) should match the number of input files (length {len(ifiles)}).')
             # set paired with values to step_input
             env.sos_dict['step_input'].paired_with(vn, vv)
-            file_map = {x: y for x, y in zip(ifiles, vv)}
-            for idx, grp in enumerate(_groups):
-                mapped_vars = [file_map[x] for x in grp]
+            file_map = {x: y for x, y in zip(range(len(ifiles)), vv)}
+            for idx, grp in enumerate(ifiles._groups):
+                mapped_vars = [file_map[x] for x in grp._indexes]
                 # 862. we make the paired variable the same type so that if the input is a paths or sos_targets,
                 # the returned value is of the same type
                 _vars[idx][vn] = type(vv)(mapped_vars)
 
     @staticmethod
-    def handle_group_with(group_with, ifiles: sos_targets, _groups: List[sos_targets], _vars: List[dict]):
+    def handle_group_with(group_with, ifiles: sos_targets, _vars: List[dict]):
         '''Handle input option group_with'''
         if group_with is None or not group_with:
             var_name = []
@@ -345,14 +345,14 @@ class Base_Step_Executor:
             if isinstance(vv, str) or not isinstance(vv, Iterable):
                 raise ValueError(
                     f'group_with variable {vn} is not a sequence ("{vv}")')
-            if len(vv) != len(_groups):
+            if len(vv) != ifiles._num_groups():
                 raise ValueError(
-                    f'Length of variable {vn} (length {len(vv)}) should match the number of input groups (length {len(_groups)}).')
-            for idx, grp in enumerate(_groups):
+                    f'Length of variable {vn} (length {len(vv)}) should match the number of input groups (length {ifiles._num_groups()}).')
+            for idx in range(ifiles._num_groups()):
                 _vars[idx][vn] = vv[idx]
 
     @staticmethod
-    def handle_extract_pattern(pattern, ifiles: sos_targets, _groups: List[sos_targets], _vars: List[dict]):
+    def handle_extract_pattern(pattern, ifiles: sos_targets, _vars: List[dict]):
         '''Handle input option pattern'''
         if pattern is None or not pattern:
             patterns = []
@@ -374,10 +374,10 @@ class Base_Step_Executor:
                 env.sos_dict[k] = v
             # also make k, v pair with _input
             Base_Step_Executor.handle_paired_with(
-                res.keys(), ifiles, _groups, _vars)
+                res.keys(), ifiles, _vars)
 
     @staticmethod
-    def handle_for_each(for_each, _groups: List[sos_targets], _vars: List[dict]):
+    def handle_for_each(for_each, ifiles: sos_targets, _vars: List[dict]):
         if for_each is None or not for_each:
             for_each = []
         elif isinstance(for_each, (str, dict)):
@@ -445,11 +445,9 @@ class Base_Step_Executor:
                 elif loop_size != len(values):
                     raise ValueError(
                         f'Length of variable {name} (length {len(values)}) should match the length of other variables (length {loop_size}).')
-            # expand
-            _tmp_groups = copy.deepcopy(_groups)
-            _groups.clear()
-            for _ in range(loop_size):
-                _groups.extend(_tmp_groups)
+
+            n_grps = ifiles._num_groups()
+            ifiles._duplicate_groups(loop_size)
             #
             _tmp_vars = copy.deepcopy(_vars)
             _vars.clear()
@@ -458,10 +456,16 @@ class Base_Step_Executor:
                     for var_name, values in zip(fe_iter_names, fe_values):
                         if isinstance(values, Sequence):
                             _tmp_vars[idx][var_name] = values[vidx]
-                        elif isinstance(values, (pd.DataFrame, pd.Series)):
+                            ifiles._groups[n_grps*vidx+idx].set(var_name, values[vidx])
+                        elif isinstance(values, pd.DataFrame):
                             _tmp_vars[idx][var_name] = values.iloc[vidx]
+                            ifiles._groups[n_grps*vidx+idx].set(var_name, values.iloc[vidx].to_dict())
+                        elif isinstance(values, pd.Series):
+                            _tmp_vars[idx][var_name] = values.iloc[vidx]
+                            ifiles._groups[n_grps*vidx+idx].set(var_name, values.iloc[vidx])
                         elif isinstance(values, pd.Index):
                             _tmp_vars[idx][var_name] = values[vidx]
+                            ifiles._groups[n_grps*vidx+idx].set(var_name, values[vidx])
                         else:
                             raise ValueError(
                                 f'Failed to iterate through for_each variable {short_repr(values)}')
@@ -493,30 +497,27 @@ class Base_Step_Executor:
         env.sos_dict.set('step_input', ifiles)
         env.sos_dict.set('_input', ifiles)
 
-        if ifiles.groups:
-            # the groups are defined by
-            _groups = ifiles.groups
-        else:
-            _groups = [ifiles]
+        if ifiles._num_groups() == 0:
+            ifiles._group('all')
         #
-        _vars = [{} for x in _groups]
+        _vars = [{} for x in range(ifiles._num_groups())]
         # handle paired_with
         if 'paired_with' in kwargs:
             Base_Step_Executor.handle_paired_with(
-                kwargs['paired_with'], ifiles,  _groups, _vars)
+                kwargs['paired_with'], ifiles,  _vars)
         # handle pattern
         if 'pattern' in kwargs:
             Base_Step_Executor.handle_extract_pattern(
-                kwargs['pattern'], ifiles, _groups, _vars)
+                kwargs['pattern'], ifiles, _vars)
         # handle group_with
         if 'group_with' in kwargs:
             Base_Step_Executor.handle_group_with(
-                kwargs['group_with'], ifiles,  _groups, _vars)
+                kwargs['group_with'], ifiles,  _vars)
         # handle for_each
         if 'for_each' in kwargs:
             Base_Step_Executor.handle_for_each(
-                kwargs['for_each'], _groups, _vars)
-        return _groups, _vars
+                kwargs['for_each'], ifiles, _vars)
+        return ifiles.groups, _vars
 
     def process_depends_args(self, dfiles: sos_targets, **kwargs):
         for k in kwargs.keys():
@@ -1265,9 +1266,9 @@ class Base_Step_Executor:
             # internal api, sorry
             env.sos_dict['step_output']._clear_groups()
             try:
-                for og, ov in zip(self.output_groups, self._vars):
+                for og, ov in zip(self.output_groups, self._substeps):
                     env.sos_dict['step_output']._add_group(
-                         sos_targets(og, _source=env.sos_dict['step_name']))._update_dict(ov)
+                         sos_targets(og, _source=env.sos_dict['step_name']))._update_dict(ov._dict)
             except Exception as e:
                 env.logger.error(f'Failed to add _output to step_output: {e}. Please contact SoS developer with a bug report.')
                 env.sos_dict['step_output']._clear_groups()
