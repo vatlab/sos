@@ -134,12 +134,17 @@ class BaseTarget(object):
 
     def set(self, name, value):
         if not is_basic_type(value):
-            raise ValueError('Target properties can only be of basic types: {value.__class__.__names__} provided')
+            env.logger.debug(f'Target properties can only be of basic types: {value.__class__.__names__} provided')
+            return self
         self._dict[name] = value
         return self
 
     def get(self, name, default=None):
         return self._dict.get(name, default)
+
+    def _update_dict(self, val):
+        self._dict.update({x:y for x,y in val.items() if is_basic_type(y)})
+        return self
 
     def target_exists(self, mode='any'):
         # mode should be 'any', 'target', or 'signature'
@@ -915,6 +920,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 for g in arg._groups:
                     t = sos_targets(g)
                     t._sources = [source] * len(t._targets)
+                    t._dict = g._dict
                     ag.append(t)
             else:
                 ag = arg._groups
@@ -925,6 +931,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                         t = sos_targets()
                         t._targets = [x for x in self._targets] + ag[i]._targets
                         t._sources = [x for x in self._sources] + ag[i]._sources
+                        t._dict.update(ag[i]._dict)
                         self._groups.append(t)
                 else:
                     self._groups = ag
@@ -946,6 +953,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             for i in range(len(self._groups)):
                 self._groups[i]._targets.extend(arg._targets)
                 self._groups[i]._sources.extend(arg._sources)
+                self._groups[i]._dict.update(arg._dict)
         #
         self._targets.extend(arg._targets)
         # if source is specified, override the default
@@ -1073,7 +1081,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
     def set_to_targets(self, name, properties):
         if not is_basic_type(properties):
-            raise ValueError('Unacceptable properties {properties} for function set_to_targets')
+            env.logger.debug(f'Unacceptable properties {properties} for function set_to_targets')
+            return self
         if isinstance(properties, (bool, int, float, str, bytes)):
             for target in self._targets:
                 target.set(name, properties)
@@ -1091,7 +1100,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             env.logger.warning(f'set_to_group on sos_targets without group information')
             return self
         if not is_basic_type(properties):
-            raise ValueError('Unacceptable properties {properties} for function set_to_targets')
+            env.logger.debug('Unacceptable properties {properties} for function set_to_targets')
+            return self
         if isinstance(properties, (bool, int, float, str, bytes)):
             for group in self._groups:
                 group.set(name, properties)
@@ -1113,6 +1123,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             return default
 
     def _group(self, by):
+        if by is None:
+            return self
+
         if self._groups:
             self._groups = []
 

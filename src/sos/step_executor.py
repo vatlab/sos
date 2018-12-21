@@ -801,7 +801,6 @@ class Base_Step_Executor:
             env.sos_dict.set('step_input', sos_targets([]))
         else:
             env.sos_dict.set('step_input', env.sos_dict['__step_output__'])
-
         # input can be Undetermined from undetermined output from last step
         env.sos_dict.set('_input', copy.deepcopy(env.sos_dict['step_input']))
 
@@ -900,6 +899,13 @@ class Base_Step_Executor:
                     f'Failed to process input statement {stmt}: {e}')
 
             input_statement_idx += 1
+        elif env.sos_dict['step_input'].groups:
+            # if default has groups...
+            # default case
+            self._substeps = env.sos_dict['step_input'].groups
+            self._vars = [{}] * len(self._substeps)
+            # assuming everything starts from 0 is after input
+            input_statement_idx = 0
         else:
             # default case
             self._substeps = [env.sos_dict['step_input']]
@@ -946,6 +952,8 @@ class Base_Step_Executor:
                 #
                 env.sos_dict.update(v)
                 env.sos_dict.set('_input', copy.deepcopy(g))
+                # set vars to _input
+                env.sos_dict['_input']._update_dict(v)
 
                 self.log('_input')
                 env.sos_dict.set('_index', idx)
@@ -1247,13 +1255,14 @@ class Base_Step_Executor:
             # during the execution of step, for compatibility.
             env.sos_dict.set(
                 'step_output', sos_targets(self.output_groups[0]))
-            env.sos_dict['step_output']._groups = [sos_targets(self.output_groups[0])]
+
             for og in self.output_groups[1:]:
                 env.sos_dict['step_output'].extend(og)
-                env.sos_dict['step_output']._groups.append(sos_targets(og))
             env.sos_dict['step_output'].dedup()
 
-
+            env.sos_dict['step_output']._groups = [
+                sos_targets(x)._update_dict(v) for x,v in
+                    zip(self.output_groups, self._vars)]
             # now that output is settled, we can write remaining signatures
             for idx, res in enumerate(self.proc_results):
                 if pending_signatures[idx] is not None:

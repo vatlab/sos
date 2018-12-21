@@ -26,14 +26,14 @@ def get_param_of_function(name, param_list, extra_dict={}):
     for func in funcs:
         for arg in func.args:
             try:
-                params.append(ast.literal_eval(arg))
+                params.append([ast.literal_eval(arg)])
             except Exception as e:
-                params.append(eval(compile(ast.Expression(body=arg), filename='<string>', mode="eval"), extra_dict))
+                params.append([eval(compile(ast.Expression(body=arg), filename='<string>', mode="eval"), extra_dict)])
         for kwarg in func.keywords:
             try:
-                params.append(ast.literal_eval(kwarg.value))
+                params.append([kwarg.arg, ast.literal_eval(kwarg.value)])
             except Exception as e:
-                params.append(eval(compile(ast.Expression(body=kwarg.value), filename='<string>', mode="eval"), extra_dict))
+                params.append([kwarg.arg, eval(compile(ast.Expression(body=kwarg.value), filename='<string>', mode="eval"), extra_dict)])
     return params
 
 def get_names_of_param(name, param_list, extra_dict={}):
@@ -160,9 +160,23 @@ def get_step_depends(section):
             step_depends.extend([sos_step(x) for x in get_output_from_steps(stmt, section.last_step)])
         if 'named_output' in stmt:
             # there can be multiple named_output calls
-            step_depends.extend(named_output(x) for x in get_param_of_function('named_output', stmt,
+            pars = get_param_of_function('named_output', stmt,
                 extra_dict=env.sos_dict._dict)
-            )
+            for par in pars:
+                # a single argument
+                if len(par) == 1:
+                    if not isinstance(par[0], str):
+                        raise ValueError(f'Value for named_output can only be a name (str): {par[0]} provided')
+                    step_depends.extend(named_output(par[0]))
+                else:
+                    if par[0] == 'group_by':
+                        continue
+                    elif par[0] == 'name':
+                        if not isinstance(par[1], str):
+                            raise ValueError(f'Value for named_output can only be a name (str): {par[1]} provided')
+                        step_depends.extend(named_output(par[1]))
+                    else:
+                        raise ValueError(f'Unacceptable keyword argument {par[0]} for named_output()')
 
 
     depends_idx = find_statement(section, 'depends')
@@ -276,6 +290,15 @@ def get_output_from_steps(stmt, last_step):
 
     res = []
     for value in opt_values:
+        if len(value) == 1:
+            # regular argument
+            value = value[0]
+        elif value[0] == 'steps':
+            value = value[1]
+        elif value[0] == 'group_by':
+            continue
+        else:
+            raise ValueError(f'Unacceptable keyword argument {value[0]} for function output_from')
         if isinstance(value, (int, str)):
             res.append(step_name(value))
         elif isinstance(value, Sequence):
