@@ -1446,7 +1446,6 @@ _output.touch()
 assert(_input.get('i') == i)
 
 [2]
-input:
 assert(len(step_input.groups) == 5)
 assert(len(step_input) == 5)
 assert(step_input.groups[0] == 'a_0.txt')

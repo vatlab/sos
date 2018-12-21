@@ -899,6 +899,13 @@ class Base_Step_Executor:
                     f'Failed to process input statement {stmt}: {e}')
 
             input_statement_idx += 1
+        elif env.sos_dict['step_input'].groups:
+            # if default has groups...
+            # default case
+            self._substeps = env.sos_dict['step_input'].groups
+            self._vars = [{}] * len(self._substeps)
+            # assuming everything starts from 0 is after input
+            input_statement_idx = 0
         else:
             # default case
             self._substeps = [env.sos_dict['step_input']]
