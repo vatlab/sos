@@ -1247,11 +1247,13 @@ class Base_Step_Executor:
             # during the execution of step, for compatibility.
             env.sos_dict.set(
                 'step_output', sos_targets(self.output_groups[0]))
-            env.sos_dict['step_output']._groups = [sos_targets(self.output_groups[0])]
+
             for og in self.output_groups[1:]:
                 env.sos_dict['step_output'].extend(og)
-                env.sos_dict['step_output']._groups.append(sos_targets(og))
             env.sos_dict['step_output'].dedup()
+
+            env.sos_dict['step_output']._groups = [
+                sos_targets(x) for x in self.output_groups]
 
 
             # now that output is settled, we can write remaining signatures
