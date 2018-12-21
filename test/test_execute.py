@@ -1443,13 +1443,15 @@ _input.zap()
 input: for_each=dict(i=range(5))
 output: f'a_{i}.txt'
 _output.touch()
+assert(_input.get('i') == i)
 
 [2]
+input:
 assert(len(step_input.groups) == 5)
 assert(len(step_input) == 5)
 assert(step_input.groups[0] == 'a_0.txt')
 assert(step_input.groups[4] == 'a_4.txt')
-
+assert(_input.get('i') == _index)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()

@@ -142,6 +142,10 @@ class BaseTarget(object):
     def get(self, name, default=None):
         return self._dict.get(name, default)
 
+    def _update_dict(self, val):
+        self._dict.update({x:y for x,y in val.items() if is_basic_type(y)})
+        return self
+
     def target_exists(self, mode='any'):
         # mode should be 'any', 'target', or 'signature'
         raise RuntimeError('Undefined base function')
@@ -916,6 +920,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 for g in arg._groups:
                     t = sos_targets(g)
                     t._sources = [source] * len(t._targets)
+                    t._dict = g._dict
                     ag.append(t)
             else:
                 ag = arg._groups
@@ -926,6 +931,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                         t = sos_targets()
                         t._targets = [x for x in self._targets] + ag[i]._targets
                         t._sources = [x for x in self._sources] + ag[i]._sources
+                        t._dict.update(ag[i]._dict)
                         self._groups.append(t)
                 else:
                     self._groups = ag
@@ -947,6 +953,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             for i in range(len(self._groups)):
                 self._groups[i]._targets.extend(arg._targets)
                 self._groups[i]._sources.extend(arg._sources)
+                self._groups[i]._dict.update(arg._dict)
         #
         self._targets.extend(arg._targets)
         # if source is specified, override the default
