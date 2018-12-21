@@ -774,6 +774,50 @@ class paths(Sequence, os.PathLike):
     def __str__(self):
         return self.__format__('')
 
+class _sos_group(BaseTarget):
+    '''A type that is similar to sos_targets but saves index of objects '''
+    def __init__(self, indexes, sources=None, parent=None):
+        super(_sos_group, self).__init__()
+        self._indexes = list(indexes)
+        if sources:
+            self._sources = sources
+            if len(self._indexes) != len(self._sources):
+                raise ValueError('Index and source have different length')
+        elif parent:
+            self._sources = [parent._sources[x] for x in indexes]
+        else:
+            raise ValueError('Either sources or indexes should be specified')
+
+    def add_last(self, n, parent):
+        # add the last n elements of parent to group
+        # this has to be called after the elements have been appended
+        self._indexes.extend(range(len(parent._targets) - n, len(parent._targets)))
+        self._sources.extend(parent._sources[len(parent._targets) - n : len(parent._targets)])
+        return self
+
+    def extend(self, grp, start, parent):
+        self._indexes.extend([x + start for x in grp._indexes])
+        self._sources.extend([parent._sources[x + start] for x in grp._indexes])
+        self._dict.update(grp._dict)
+        return self
+
+    def idx_to_targets(self, parent):
+        ret = sos_targets()
+        ret._targets = [parent._targets[x] for x in self._indexes]
+        ret._sources = self._sources
+        ret._dict = self._dict
+        return ret
+
+    def __getstate__(self):
+        return dict(indexes=self._indexes,
+            sources=self._sources,
+            properties=self._dict)
+
+    def __setstate__(self, sdict):
+        self._index = sdict['indexes']
+        self._sources = sdict['sources']
+        self._dict = sdict['properties']
+
 class sos_targets(BaseTarget, Sequence, os.PathLike):
     '''A collection of targets.
     If verify_existence is True, an UnknownTarget exception
@@ -834,14 +878,12 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             self._targets.extend([file_target(x) for x in arg._paths])
             self._sources.extend([src]*len(arg._paths))
             for g in self._groups:
-                g._targets.extend([file_target(x) for x in arg._paths])
-                g._sources.extend([src]*len(arg._paths))
+                g.add_last(len(arg._paths), parent=self)
         elif isinstance(arg, path):
             self._targets.append(file_target(arg))
             self._sources.append(src)
             for g in self._groups:
-                g._targets.append(file_target(arg))
-                g._sources.extend(src)
+                g.add_last(1, parent=self)
         elif isinstance(arg, str):
             if self.wildcard.search(arg):
                 matched = sorted(glob.glob(os.path.expanduser(arg)))
@@ -849,8 +891,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     self._targets.extend([file_target(x) for x in matched])
                     self._sources.extend([src]*len(matched))
                     for g in self._groups:
-                        g._targets.extend([file_target(x) for x in matched])
-                        g._sources.extend([src]*len(matched))
+                        g.add_last(len(matched), parent=self)
                 elif verify_existence:
                     raise UnknownTarget(arg)
                 else:
@@ -859,8 +900,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 self._targets.append(file_target(arg))
                 self._sources.append(src)
                 for g in self._groups:
-                    g._targets.append(file_target(arg))
-                    g._sources.append(src)
+                    g.add_last(1, parent=self)
         elif isinstance(arg, dict):
             for k, v in arg.items():
                 if not isinstance(k, str):
@@ -878,8 +918,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             self._targets.append(arg)
             self._sources.append(src)
             for g in self._groups:
-                g._targets.append(arg)
-                g._sources.append(src)
+                g.add_last(1, parent=self)
         elif isinstance(arg, Iterable):
             # in case arg is a Generator, check its type will exhaust it
             for t in list(arg):
@@ -900,7 +939,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
     targets = property(lambda self: self._targets)
 
-    groups = property(lambda self: self._groups)
+    groups = property(lambda self: [x.idx_to_targets(self) for x in self._groups])
 
     #def targets(self):
     #    return [x.target_name() if isinstance(x, file_target) else x for x in self._targets]
@@ -912,55 +951,10 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             arg = sos_targets(another, _source=source)
         if arg.valid() and not self.valid():
             self._undetermined = False
-        # it is possible to merge groups from multiple...
-        if arg._groups:
-            # if source is specified, it will override sources of all groups
-            if source:
-                ag = []
-                for g in arg._groups:
-                    t = sos_targets(g)
-                    t._sources = [source] * len(t._targets)
-                    t._dict = g._dict
-                    ag.append(t)
-            else:
-                ag = arg._groups
-            if not self._groups:
-                # if I do not have group, the other guy has it, merge myself with them
-                if self._targets:
-                    for i in range(len(ag)):
-                        t = sos_targets()
-                        t._targets = [x for x in self._targets] + ag[i]._targets
-                        t._sources = [x for x in self._sources] + ag[i]._sources
-                        t._dict.update(ag[i]._dict)
-                        self._groups.append(t)
-                else:
-                    self._groups = ag
-            elif len(self._groups) ==1 and len(ag) > 1:
-                # 1 vs more, we duplicate itself
-                self._groups = [copy.deepcopy(self._groups[0]) for g in ag]
-                for i in range(len(ag)):
-                    self._groups[i]._targets.extend(ag[i]._targets)
-                    self._groups[i]._sources.extend(ag[i]._sources)
-                    self._groups[i]._dict.update(ag[i]._dict)
-            elif len(self._groups) > 1 and len(ag) == 1:
-                for i in range(len(self._groups)):
-                    self._groups[i]._targets.extend(ag[0]._targets)
-                    self._groups[i]._sources.extend(ag[0]._sources)
-                    self._groups[i]._dict.update(ag[0]._dict)
-            elif len(self._groups) == len(ag):
-                for i in range(len(ag)):
-                    self._groups[i]._targets.extend(ag[i]._targets)
-                    self._groups[i]._sources.extend(ag[i]._sources)
-                    self._groups[i]._dict.update(ag[i]._dict)
-            else:
-                raise ValueError(f'Cannot merge a sos_targets objects with {len(self._groups)} groups with another sos_targets object with {len(ag)} groups.')
-        elif self._groups:
-            # if the RHS has no _group but myself has groups...
-            for i in range(len(self._groups)):
-                self._groups[i]._targets.extend(arg._targets)
-                self._groups[i]._sources.extend(arg._sources)
-                self._groups[i]._dict.update(arg._dict)
         #
+        n_old = len(self._targets)
+        n_added = len(arg._targets)
+
         self._targets.extend(arg._targets)
         # if source is specified, override the default
         if source:
@@ -971,6 +965,36 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             self._sources.extend(['']*len(arg._targets))
         # merge dictionaries
         self._dict.update(arg._dict)
+        #
+        # it is possible to merge groups from multiple...
+        if arg._groups:
+            # if source is specified, it will override sources of all groups
+            if not self._groups:
+                self._groups = [_sos_group(range(n_old), parent=self)
+                        for g in arg._groups
+                    ]
+            if len(self._groups) == 1 and len(arg._groups) > 1:
+                # 1 vs more, we duplicate itself
+                self._groups = [_sos_group(self._groups[0]._indexes,
+                    self._groups[0]._sources)._update_dict(self._groups[0]._dict)
+                    for ag in arg._groups]
+                for g, ag in zip(self._groups, arg._groups):
+                    g.extend(ag, start=n_old, parent=self)
+            elif len(self._groups) > 1 and len(arg._groups) == 1:
+                for g in self._groups:
+                    g.extend(arg._groups[0], start=n_old, parent=self)
+            elif len(self._groups) == len(arg._groups):
+                for g, ag in zip(self._groups, arg._groups):
+                    g.extend(ag, start=n_old, parent=self)
+            else:
+                raise ValueError(f'Cannot merge a sos_targets objects with {len(self._groups)} groups with another sos_targets object with {len(ag)} groups.')
+        elif self._groups:
+            # if the RHS has no _group but myself has groups...
+            # source will be figured out during extend
+            ag = _sos_group(range(n_added), sources=['']*n_added)
+            for g in self._groups:
+                g.extend(ag, start=n_old, parent=self)
+
 
     def zap(self):
         for target in self._targets:
@@ -1028,8 +1052,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             ret._sources = [i]*len(ret._targets)
             ret._groups = []
             for grp in self._groups:
-                ret._groups.append(sos_targets(
-                    [x for x,y in zip(grp._targets, grp._sources) if y == i],
+                ret._groups.append(_sos_group(
+                    [x for x,y in zip(grp._indexes, grp._sources) if y == i],
                     _source=i)._update_dict(grp._dict))
             return ret
         elif isinstance(i, (tuple, list)):
@@ -1055,8 +1079,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             ret._sources = [i]*len(ret._targets)
             ret._groups = []
             for grp in self._groups:
-                ret._groups.append(sos_targets(
-                    [x for x,y in zip(grp._targets, grp._sources) if y == i],
+                ret._groups.append(_sos_group(
+                    [x for x,y in zip(grp._indexes, grp._sources) if y == i],
                     _source=i)._update_dict(grp._dict))
             return ret
         else:
@@ -1145,10 +1169,10 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             self._groups = []
 
         if by == 'single':
-            self._groups = [self.slice(x) for x in range(len(self))]
+            self._groups = [_sos_group([x], parent=self) for x in range(len(self))]
         elif by == 'all':
             # default option
-            self._groups = [sos_targets(self)]
+            self._groups = [_sos_group(range(len(self)), self._sources)]
         elif isinstance(by, str) and by.startswith('pairsource'):
             sources = list(dict.fromkeys(self.sources))
             if len(sources) == 1:
@@ -1180,7 +1204,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                         indexes[i].append(lookup[i  // (n_groups // src_sizes[s])])
                 else:
                     raise ValueError(f'Cannot use group size {grp_size} (by="{by}") for source of size {src_sizes}')
-            self._groups = list(self.slice(indexes[x]) for x in range(n_groups))
+            self._groups = [_sos_group(indexes[x], parent=self) for x in range(n_groups)]
         elif isinstance(by, str) and by.startswith('pairs'):
             if len(self) % 2 != 0:
                 raise ValueError(
@@ -1193,15 +1217,16 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 except:
                     raise ValueError(f'Invalid pairs option {by}')
             if grp_size == 1:
-                self._groups = list(self.slice(x) for x in zip(range(0, len(self) // 2),
-                    range(len(self) // 2, len(self))))
+                self._groups = [_sos_group(x, parent=self) for x in zip(range(0, len(self) // 2),
+                    range(len(self) // 2, len(self)))]
             else:
                 if len(self) % grp_size != 0:
                     raise ValueError(
                         f'Paired by with group size {grp_size} is not possible with input of size {len(self)}'
                     )
-                self._groups = list(self.slice(list(range(x[0], x[0] + grp_size)) + list(range(x[1], x[1] + grp_size)))
-                    for x in zip(range(0, len(self) // 2, grp_size),  range(len(self) // 2, len(self), grp_size)))
+                self._groups = [_sos_group(list(range(x[0], x[0] + grp_size)) + list(range(x[1], x[1] + grp_size)),
+                    parent=self)
+                    for x in zip(range(0, len(self) // 2, grp_size),  range(len(self) // 2, len(self), grp_size))]
         elif isinstance(by, str) and by.startswith('pairwise'):
             if by == 'pairwise':
                 grp_size = 1
@@ -1213,7 +1238,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             if grp_size == 1:
                 f1, f2 = tee(range(len(self)))
                 next(f2, None)
-                self._groups = [self.slice(x) for x in zip(f1, f2)]
+                self._groups = [_sos_group(x, parent=self) for x in zip(f1, f2)]
             else:
                 if len(self) % grp_size != 0:
                     raise ValueError(
@@ -1221,8 +1246,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     )
                 f1, f2 = tee(range(len(self) // grp_size))
                 next(f2, None)
-                self._groups = [self.slice(list(range(x[0]*grp_size, (x[0]+1)*grp_size)) +
-                    list(range(x[1]*grp_size, (x[1]+1)*grp_size))) for x in zip(f1, f2)]
+                self._groups = [_sos_group(list(range(x[0]*grp_size, (x[0]+1)*grp_size)) +
+                    list(range(x[1]*grp_size, (x[1]+1)*grp_size)), parent=self) for x in zip(f1, f2)]
         elif isinstance(by, str) and by.startswith('combinations'):
             if by == 'combinations':
                 grp_size = 2
@@ -1231,10 +1256,10 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     grp_size = int(by[12:])
                 except:
                     raise ValueError(f'Invalid pairs option {by}')
-            self._groups = [self.slice(x) for x in combinations(range(len(self)), grp_size)]
+            self._groups = [_sos_group(x, parent=self) for x in combinations(range(len(self)), grp_size)]
         elif by == 'source':
             sources = list(dict.fromkeys(self.sources))
-            self._groups = [self.slice(x) for x in sources]
+            self._groups = [_sos_group([i for i,x in enumerate(self._sources) if x == src], parent=self) for src in sources]
         elif isinstance(by, int) or (isinstance(by, str) and by.isdigit()):
             by = int(by)
             if len(self) % by != 0 and len(self) > by:
@@ -1243,12 +1268,30 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             if by < 1:
                 raise ValueError(
                     'Value of paramter by should be a positive number.')
-            self._groups = [self.slice(slice(i,i + by)) for i in range(0, len(self), by)]
+            self._groups = [_sos_group(range(i, i + by), parent=self) for i in range(0, len(self), by)]
         elif callable(by):
             try:
-                self._groups = [sos_targets(x) for x in by(self)]
+                self._groups = []
+                idx = by(self)
+                if not isinstance(idx, list):
+                    raise ValueError('Customized grouping method should return a list')
+                for grp in by(self):
+                    if isinstance(grp, list) and all(isinstance(x, int) for x in grp):
+                        if any(x<0 or x>=len(self._targets) for x in grp):
+                            raise ValueError(f'Index out of range (< {len(self._targets)}): {grp}')
+                        self._groups.append(_sos_group(grp, parent=source))
+                    elif isinstance(grp, (list, sos_gargets)) and all(isinstance(x, BaseTarget) for x in grp):
+                        index = []
+                        for x in grp:
+                            try:
+                                index.append(self._targets.index(x))
+                            except:
+                                raise ValueError(f'Returned target is not one of the targets. {x}')
+                        self._groups.append(_sos_group(index, parent=source))
+                    else:
+                        raise ValueError(f'Customized grouping method should return a list of indexes or targets: {grp} returned')
             except Exception as e:
-                raise ValueError(f'Failed to apply by to step_input: {e}')
+                raise ValueError(f'Failed to apply customized grouping method: {e}')
         else:
             raise ValueError(f'Unsupported by option ``{by}``!')
         return self
