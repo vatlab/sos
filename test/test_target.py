@@ -59,6 +59,21 @@ class TestTarget(unittest.TestCase):
         self.assertTrue(isinstance(c.slice(1), sos_targets))
         self.assertEqual(c.slice(1).sources, ['here'])
         self.assertEqual(c.slice(1), ['b1'])
+        #
+        # test slice of groups
+        res = sos_targets(a=['a.txt', 'b.txt'], b=['c.txt', 'd.txt'], group_by=1)
+        self.assertEqual(len(res.groups), 4)
+        self.assertEqual(res.sources, ['a', 'a', 'b', 'b'])
+        print(res)
+        res_a = res['a']
+        self.assertEqual(len(res_a), 2)
+        self.assertEqual(res_a.sources, ['a', 'a'])
+        self.assertEqual(len(res_a.groups), 4)
+        self.assertEqual(len(res_a.groups[0]), 1)
+        self.assertEqual(len(res_a.groups[1]), 1)
+        self.assertEqual(len(res_a.groups[2]), 0)
+        self.assertEqual(len(res_a.groups[3]), 0)
+
 
 
     def testTargetFormat(self):
