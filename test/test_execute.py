@@ -1514,7 +1514,7 @@ assert(step_input.sources == ['aa']*4)
 [F]
 input: K=output_from('A1', group_by='all')['aa']
 assert(len(step_input) == 4)
-assert(len(step_input.groups) == 0)
+assert(len(step_input.groups) == 1)
 assert(step_input.sources == ['K']*4)
 
 [G_0]
