@@ -1021,6 +1021,10 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             ret._targets = [x for x,y in zip(self._targets, self._sources) if y == i]
             ret._sources = [i]*len(ret._targets)
             ret._groups = []
+            for grp in self._groups:
+                ret._groups.append(sos_targets(
+                    [x for x,y in zip(grp._targets, grp._sources) if y == i],
+                    _source=i)._update_dict(grp._dict))
             return ret
         elif isinstance(i, (tuple, list)):
             ret = sos_targets()
@@ -1043,6 +1047,11 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             ret._undetermined = self._undetermined
             ret._targets = [x for x,y in zip(self._targets, self._sources) if y == i]
             ret._sources = [i]*len(ret._targets)
+            ret._groups = []
+            for grp in self._groups:
+                ret._groups.append(sos_targets(
+                    [x for x,y in zip(grp._targets, grp._sources) if y == i],
+                    _source=i)._update_dict(grp._dict))
             return ret
         else:
             return self._targets[i]

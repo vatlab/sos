@@ -246,10 +246,7 @@ class Controller(threading.Thread):
                 for step_output in self._completed_steps.values():
                     if name in step_output.sources:
                         found = True
-                        res = step_output[name]
-                        # we also alice the groups to be the groups of res
-                        res._groups = [x[name] for x in step_output._groups]
-                        self.ctl_req_socket.send_pyobj(res)
+                        self.ctl_req_socket.send_pyobj(step_output[name])
                         break
                 if not found:
                     self.ctl_req_socket.send_pyobj(None)
