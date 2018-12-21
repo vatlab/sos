@@ -808,7 +808,7 @@ class _sos_group(BaseTarget):
         return f'_sos_group(indexes={self._indexes}, sources={self._sources})'
 
     def idx_to_targets(self, parent):
-        ret = sos_targets()
+        ret = sos_targets([])
         ret._targets = [parent._targets[x] for x in self._indexes]
         ret._sources = self._sources
         ret._dict = self._dict
