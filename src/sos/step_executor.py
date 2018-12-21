@@ -1259,10 +1259,16 @@ class Base_Step_Executor:
             for og in self.output_groups[1:]:
                 env.sos_dict['step_output'].extend(og)
             env.sos_dict['step_output'].dedup()
+            # internal api, sorry
+            env.sos_dict['step_output']._clear_groups()
+            try:
+                for og, ov in zip(self.output_groups, self._vars):
+                    env.sos_dict['step_output']._add_group(
+                         sos_targets(og, _source=env.sos_dict['step_name']))._update_dict(ov)
+            except Exception as e:
+                env.logger.error(f'Failed to add _output to step_output: {e}. Please contact SoS developer with a bug report.')
+                env.sos_dict['step_output']._clear_groups()
 
-            env.sos_dict['step_output']._groups = [
-                sos_targets(x)._update_dict(v) for x,v in
-                    zip(self.output_groups, self._vars)]
             # now that output is settled, we can write remaining signatures
             for idx, res in enumerate(self.proc_results):
                 if pending_signatures[idx] is not None:

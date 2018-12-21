@@ -148,17 +148,17 @@ class BaseTarget(object):
 
     def target_exists(self, mode='any'):
         # mode should be 'any', 'target', or 'signature'
-        raise RuntimeError('Undefined base function')
+        raise RuntimeError('Undefined base function target_exists')
 
     def target_name(self):
         # name of the target, which should be able to differentiate
         # this object with other targets of the same type.
-        raise RuntimeError('Undefined base function')
+        raise RuntimeError('Undefined base function target_name')
 
     def target_signature(self):
         # signature of the content of the target, which should be
         # able to detect changes of the content of target
-        raise RuntimeError('Undefined base function')
+        raise RuntimeError('Undefined base function target_signature')
 
     def create_placeholder(self):
         pass
@@ -779,10 +779,13 @@ class _sos_group(BaseTarget):
     def __init__(self, indexes, sources=None, parent=None):
         super(_sos_group, self).__init__()
         self._indexes = list(indexes)
-        if sources:
-            self._sources = sources
-            if len(self._indexes) != len(self._sources):
-                raise ValueError('Index and source have different length')
+        if sources is not None:
+            if isinstance(sources, str):
+                self._sources = [sources] * len(indexes)
+            else:
+                self._sources = sources
+                if len(self._indexes) != len(self._sources):
+                    raise ValueError('Index and source have different length')
         elif parent:
             self._sources = [parent._sources[x] for x in indexes]
         else:
@@ -801,6 +804,9 @@ class _sos_group(BaseTarget):
         self._dict.update(grp._dict)
         return self
 
+    def __repr__(self):
+        return f'_sos_group(indexes={self._indexes}, sources={self._sources})'
+
     def idx_to_targets(self, parent):
         ret = sos_targets()
         ret._targets = [parent._targets[x] for x in self._indexes]
@@ -814,7 +820,7 @@ class _sos_group(BaseTarget):
             properties=self._dict)
 
     def __setstate__(self, sdict):
-        self._index = sdict['indexes']
+        self._indexes = sdict['indexes']
         self._sources = sdict['sources']
         self._dict = sdict['properties']
 
@@ -1054,7 +1060,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             for grp in self._groups:
                 ret._groups.append(_sos_group(
                     [x for x,y in zip(grp._indexes, grp._sources) if y == i],
-                    _source=i)._update_dict(grp._dict))
+                    source=i)._update_dict(grp._dict))
             return ret
         elif isinstance(i, (tuple, list)):
             ret = sos_targets()
@@ -1081,7 +1087,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             for grp in self._groups:
                 ret._groups.append(_sos_group(
                     [x for x,y in zip(grp._indexes, grp._sources) if y == i],
-                    _source=i)._update_dict(grp._dict))
+                    sources=i)._update_dict(grp._dict))
             return ret
         else:
             return self._targets[i]
@@ -1160,6 +1166,20 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             return self._targets[0].get(name, default)
         else:
             return default
+
+    def _clear_groups(self):
+        self._groups = []
+
+    def _add_group(self, targets):
+        try:
+            idx = [self._targets.index(x) for x in targets]
+            self._groups.append(
+                _sos_group(idx, sources=targets.sources)
+            )
+        except Exception as e:
+            env.logger.warning(f'Failed to add group {targets}: {e}')
+            self._groups.append(_sos_group([], sources=[]))
+        return self._groups[-1]
 
     def _group(self, by):
         if by is None:
