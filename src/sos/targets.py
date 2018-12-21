@@ -134,7 +134,8 @@ class BaseTarget(object):
 
     def set(self, name, value):
         if not is_basic_type(value):
-            raise ValueError('Target properties can only be of basic types: {value.__class__.__names__} provided')
+            env.logger.debug(f'Target properties can only be of basic types: {value.__class__.__names__} provided')
+            return self
         self._dict[name] = value
         return self
 
@@ -1073,7 +1074,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
     def set_to_targets(self, name, properties):
         if not is_basic_type(properties):
-            raise ValueError('Unacceptable properties {properties} for function set_to_targets')
+            env.logger.debug(f'Unacceptable properties {properties} for function set_to_targets')
+            return self
         if isinstance(properties, (bool, int, float, str, bytes)):
             for target in self._targets:
                 target.set(name, properties)
@@ -1091,7 +1093,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             env.logger.warning(f'set_to_group on sos_targets without group information')
             return self
         if not is_basic_type(properties):
-            raise ValueError('Unacceptable properties {properties} for function set_to_targets')
+            env.logger.debug('Unacceptable properties {properties} for function set_to_targets')
+            return self
         if isinstance(properties, (bool, int, float, str, bytes)):
             for group in self._groups:
                 group.set(name, properties)
