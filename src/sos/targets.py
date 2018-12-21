@@ -1055,11 +1055,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             ret = sos_targets()
             ret._undetermined = self._undetermined
             ret._targets = [x for x,y in zip(self._targets, self._sources) if y == i]
+            index_map = {o_idx:n_idx for n_idx,o_idx in zip(
+                    range(len(ret._targets)),
+                    [x for x,y in enumerate(self._sources) if y == i])}
             ret._sources = [i]*len(ret._targets)
             ret._groups = []
             for grp in self._groups:
                 ret._groups.append(_sos_group(
-                    [x for x,y in zip(grp._indexes, grp._sources) if y == i],
+                    [index_map[x] for x,y in zip(grp._indexes, grp._sources) if y == i],
                     source=i)._update_dict(grp._dict))
             return ret
         elif isinstance(i, (tuple, list)):
@@ -1082,11 +1085,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             ret = sos_targets()
             ret._undetermined = self._undetermined
             ret._targets = [x for x,y in zip(self._targets, self._sources) if y == i]
+            index_map = {o_idx:n_idx for n_idx,o_idx in zip(
+                    range(len(ret._targets)),
+                    [x for x,y in enumerate(self._sources) if y == i])}
             ret._sources = [i]*len(ret._targets)
             ret._groups = []
             for grp in self._groups:
                 ret._groups.append(_sos_group(
-                    [x for x,y in zip(grp._indexes, grp._sources) if y == i],
+                    [index_map[x] for x,y in zip(grp._indexes, grp._sources) if y == i],
                     sources=i)._update_dict(grp._dict))
             return ret
         else:
