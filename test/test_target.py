@@ -82,6 +82,41 @@ class TestTarget(unittest.TestCase):
         res = sos_targets(res, group_by=2)
         self.assertEqual(len(res.groups), 3)
 
+    def testMergingOfSoSTargets(self):
+        '''Test merging of multiple sos targets'''
+        # merge 0 to 0
+        res = sos_targets('a.txt', 'b.txt', sos_targets('c.txt', 'd.txt', group_by=1))
+        self.assertEqual(len(res), 4)
+        self.assertEqual(len(res.groups), 2)
+        self.assertEqual(res.groups[0], ['a.txt', 'b.txt', 'c.txt'])
+        self.assertEqual(res.groups[1], ['a.txt', 'b.txt', 'd.txt'])
+        # merge N to N
+        N1 = sos_targets('c.txt', 'd.txt', group_by=1)
+        N2 = sos_targets('a1.txt', 'a2.txt', 'a3.txt', 'a4.txt', group_by=2)
+        res = sos_targets(N1, N2)
+        self.assertEqual(len(res), 6)
+        self.assertEqual(len(res.groups), 2)
+        self.assertEqual(res.groups[0], ['c.txt', 'a1.txt', 'a2.txt'])
+        self.assertEqual(res.groups[1], ['d.txt', 'a3.txt', 'a4.txt'])
+        # test N to M
+        N1 = sos_targets('c.txt', 'd.txt', group_by=1)
+        N2 = sos_targets('a1.txt', 'a2.txt', 'a3.txt', 'a4.txt', group_by=1)
+        self.assertRaises(Exception, sos_targets, N1, N2)
+        # merge 1 to N
+        N1 = sos_targets('c.txt', 'd.txt', group_by='all')
+        N2 = sos_targets('a1.txt', 'a2.txt', 'a3.txt', 'a4.txt', group_by=2)
+        res = sos_targets(N1, N2)
+        self.assertEqual(len(res), 6)
+        self.assertEqual(len(res.groups), 2)
+        self.assertEqual(res.groups[0], ['c.txt', 'd.txt', 'a1.txt', 'a2.txt'])
+        self.assertEqual(res.groups[1], ['c.txt', 'd.txt', 'a3.txt', 'a4.txt'])
+        # merge N to 1
+        res = sos_targets(N2, N1)
+        self.assertEqual(len(res), 6)
+        self.assertEqual(len(res.groups), 2)
+        self.assertEqual(res.groups[0], ['a1.txt', 'a2.txt', 'c.txt', 'd.txt'])
+        self.assertEqual(res.groups[1], ['a3.txt', 'a4.txt', 'c.txt', 'd.txt'])
+
     def testTargetFormat(self):
         '''Test string interpolation of targets'''
         for target, fmt, res in [

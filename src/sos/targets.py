@@ -937,15 +937,21 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     self._groups = ag
             elif len(self._groups) ==1 and len(ag) > 1:
                 # 1 vs more, we duplicate itself
-                self._groups = [self._groups[0]] * len(ag)
+                self._groups = [copy.deepcopy(self._groups[0]) for g in ag]
                 for i in range(len(ag)):
-                    self._groups[i].extend(ag[i])
+                    self._groups[i]._targets.extend(ag[i]._targets)
+                    self._groups[i]._sources.extend(ag[i]._sources)
+                    self._groups[i]._dict.update(ag[i]._dict)
             elif len(self._groups) > 1 and len(ag) == 1:
                 for i in range(len(self._groups)):
-                    self._groups[i].extend(ag[0])
+                    self._groups[i]._targets.extend(ag[0]._targets)
+                    self._groups[i]._sources.extend(ag[0]._sources)
+                    self._groups[i]._dict.update(ag[0]._dict)
             elif len(self._groups) == len(ag):
                 for i in range(len(ag)):
-                    self._groups[i].extend(ag[i])
+                    self._groups[i]._targets.extend(ag[i]._targets)
+                    self._groups[i]._sources.extend(ag[i]._sources)
+                    self._groups[i]._dict.update(ag[i]._dict)
             else:
                 raise ValueError(f'Cannot merge a sos_targets objects with {len(self._groups)} groups with another sos_targets object with {len(ag)} groups.')
         elif self._groups:
