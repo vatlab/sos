@@ -1114,7 +1114,6 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
     def _group(self, by):
         if self._groups:
-            self.debug('Multiple group_by actions applied, now by {group_by}')
             self._groups = []
 
         if by == 'single':
