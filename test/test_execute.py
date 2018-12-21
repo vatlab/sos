@@ -581,6 +581,65 @@ run: expand=True
             self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).unlink()
 
+
+    def testGroupWithAsTargetProperty(self):
+        '''Test option group_with '''
+        self.touch(['a.txt', 'b.txt'])
+        for ofile in ['a.txt1', 'b.txt2']:
+            if file_target(ofile).exists():
+                file_target(ofile).unlink()
+        #
+        # string input
+        script = SoS_Script(r'''
+[0]
+files = ['a.txt', 'b.txt']
+vars = [1, 2]
+
+input: files, group_with='vars', group_by=1
+output: f"{_input}{_input.get('_vars')}"
+run: expand=True
+    touch {_output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for ofile in ['a.txt1', 'b.txt2']:
+            self.assertTrue(file_target(ofile).target_exists('target'))
+            file_target(ofile).unlink()
+        #
+        # list input
+        script = SoS_Script(r'''
+[0]
+files = ['a.txt', 'b.txt']
+vars = [1]
+vars2 = ['a']
+
+input: files, group_with=('vars', 'vars2'), group_by=2
+output: f"{_input[0]}{_input.get('_vars')}"
+run: expand=True
+    touch {_output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for ofile in ['a.txt1']:
+            self.assertTrue(file_target(ofile).target_exists('target'))
+            file_target(ofile).unlink()
+        #
+        # dict input
+        script = SoS_Script(r'''
+[0]
+files = ['a.txt', 'b.txt']
+input: files, group_with={'var': [1], 'var2': ['a']}, group_by=2
+output: f"{_input[0]}{_input.get('var')}"
+run: expand=True
+    touch {_output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for ofile in ['a.txt1']:
+            self.assertTrue(file_target(ofile).target_exists('target'))
+            file_target(ofile).unlink()
+
+
     def testInputPattern(self):
         '''Test option pattern of step input '''
         #env.verbosity = 4

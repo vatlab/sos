@@ -341,6 +341,7 @@ class Base_Step_Executor:
                 f'Unacceptable value for parameter group_with: {group_with}')
         #
         for vn, vv in zip(var_name, var_value):
+            env.sos_dict['step_input'].group_with(vn, vv)
             if isinstance(vv, str) or not isinstance(vv, Iterable):
                 raise ValueError(
                     f'group_with variable {vn} is not a sequence ("{vv}")')
