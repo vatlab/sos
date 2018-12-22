@@ -49,10 +49,7 @@ before_install:
     - conda update -q conda
     # Useful for debugging any issues with conda
     #- conda info -a
-
-    # downgrade python if needed
-    - conda create --quiet -n python_test python=$TRAVIS_PYTHON_VERSION anaconda
-    - source activate python_test
+    - source activate base
 
     # R
     - conda install --quiet -c r r-markdown r-rmarkdown r-base64enc  pandoc pandas numpy gxx_linux-64
