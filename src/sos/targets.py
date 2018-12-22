@@ -1203,7 +1203,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         except:
             if len(self._targets) == 1:
                 try:
-                    return self._targets[0]._dict[name]
+                    return getattr(self._targets[0], name)
                 except:
                     raise AttributeError(f'{self.__class__.__name__} object or its first child has no attribute {name}')
             else:
@@ -1453,8 +1453,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         #
         for pattern in patterns:
             res = extract_pattern(pattern, self._targets)
+            self._update_dict(res)
             # also make k, v pair with _input
-            self._handle_paired_with(res)
+            self._handle_paired_with({'_' + x:y for x,y in res.items()})
 
     def _handle_for_each(self, for_each):
         if for_each is None or not for_each:

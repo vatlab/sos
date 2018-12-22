@@ -857,7 +857,7 @@ output: ['{}-{}-{}.txt'.format(x,y,z) for x,y,z in zip(_base, _name, _par)]
 
 files = ['a-20.txt', 'b-10.txt']
 input: files, pattern=['{name}-{par}.txt', '{base}.txt']
-output: [f'{x.base}-{x.name}-{x.par}.txt' for x in _input]
+output: [f'{x._base}-{x._name}-{x._par}.txt' for x in _input]
 
 """)
         wf = script.workflow()

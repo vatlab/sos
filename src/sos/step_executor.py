@@ -289,49 +289,21 @@ class Base_Step_Executor:
             ifiles._group('all')
         #
         _vars = [{} for x in range(ifiles._num_groups())]
-        # # handle paired_with
-        # file_map = {x: y for x, y in zip(range(len(ifiles)), vv)}
-        # for idx, grp in enumerate(ifiles._groups):
-        #     mapped_vars = [file_map[x] for x in grp._indexes]
-        #     # 862. we make the paired variable the same type so that if the input is a paths or sos_targets,
-        #     # the returned value is of the same type
-        #     _vars[idx][vn] = type(vv)(mapped_vars)
 
-        # # group_with
-        # for idx in range(ifiles._num_groups()):
-        #         _vars[idx][vn] = vv[idx]
-        #
-        # # for extract pattern
-        # for k, v in res.items():
-        #     if k in ('step_input', 'step_output', 'step_depends') or k.startswith('_'):
-        #         raise RuntimeError(
-        #             f'Pattern defined variable {k} is not allowed')
-        #     env.sos_dict[k] = v
-        #
-        # # for_ech
-        # _tmp_vars = copy.deepcopy(_vars)
-        # _vars.clear()
-        # for vidx in range(loop_size):
-        #     for idx, _ in enumerate(_tmp_vars):
-        #         for var_name, values in zip(fe_iter_names, fe_values):
-        #             if isinstance(values, Sequence):
-        #                 _tmp_vars[idx][var_name] = values[vidx]
-        #                 ifiles._groups[n_grps*vidx+idx].set(var_name, values[vidx])
-        #             elif isinstance(values, pd.DataFrame):
-        #                 _tmp_vars[idx][var_name] = values.iloc[vidx]
-        #                 ifiles._groups[n_grps*vidx+idx].set(var_name, values.iloc[vidx].to_dict())
-        #             elif isinstance(values, pd.Series):
-        #                 _tmp_vars[idx][var_name] = values.iloc[vidx]
-        #                 ifiles._groups[n_grps*vidx+idx].set(var_name, values.iloc[vidx])
-        #             elif isinstance(values, pd.Index):
-        #                 _tmp_vars[idx][var_name] = values[vidx]
-        #                 ifiles._groups[n_grps*vidx+idx].set(var_name, values[vidx])
-        #             else:
-        #                 raise ValueError(
-        #                     f'Failed to iterate through for_each variable {short_repr(values)}')
-        #     _vars.extend(copy.deepcopy(_tmp_vars))
-
-        return ifiles.groups, _vars
+        groups = ifiles.groups
+        # now, let us expose target level variables as lists
+        if len(ifiles) > 1:
+            names = set.union(*[set(x._dict.keys()) for x in ifiles._targets])
+        elif len(ifiles) == 1:
+            names = set(ifiles._targets[0]._dict.keys())
+        else:
+            names = set()
+        for idx,grp in enumerate(groups):
+            for name in names:
+                _vars[idx][name] = [x.get(name) for x in grp._targets]
+            # then we expose all group level variables
+            _vars[idx].update(grp._dict)
+        return groups, _vars
 
     def process_depends_args(self, dfiles: sos_targets, **kwargs):
         for k in kwargs.keys():
@@ -769,6 +741,8 @@ class Base_Step_Executor:
                 # other variables
                 #
                 env.sos_dict.update(v)
+                env.sos_dict.update(env.sos_dict['step_input']._dict)
+
                 env.sos_dict.set('_input', copy.deepcopy(g))
                 # set vars to _input
                 #env.sos_dict['_input']._update_dict(v)
