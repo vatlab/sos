@@ -88,11 +88,11 @@ class TestTarget(unittest.TestCase):
         '''Test paired_with targets with vars'''
         res = sos_targets('e.txt', 'f.ext', a=['a.txt', 'b.txt'], b=['c.txt', 'd.txt'], group_by=1).paired_with('name', ['e', 'f', 'a', 'b', 'c', 'd'])
         for i,n in enumerate(['e', 'f', 'a', 'b', 'c', 'd']):
-            self.assertEqual(res[i].get('name'), n)
+            self.assertEqual(res[i].name, n)
         #
         res = copy.deepcopy(res)
         for i,n in enumerate(['e', 'f', 'a', 'b', 'c', 'd']):
-            self.assertEqual(res[i].get('name'), n)
+            self.assertEqual(res[i].name, n)
         #
         # test assert for length difference
         self.assertRaises(Exception, sos_targets('e.txt', 'f.ext').paired_with,
@@ -102,11 +102,11 @@ class TestTarget(unittest.TestCase):
         '''Test group_with targets with vars'''
         res = sos_targets('e.txt', 'f.ext', a=['a.txt', 'b.txt'], b=['c.txt', 'd.txt'], group_by=2).group_with('name', ['a1', 'a2', 'a3'])
         for i,n in enumerate(['a1', 'a2', 'a3']):
-            self.assertEqual(res.groups[i].get('name'), n)
+            self.assertEqual(res.groups[i].name, n)
         #
         res = copy.deepcopy(res)
         for i,n in enumerate(['a1', 'a2', 'a3']):
-            self.assertEqual(res.groups[i].get('name'), n)
+            self.assertEqual(res.groups[i].name, n)
         #
         # test assert for length difference
         self.assertRaises(Exception, sos_targets('e.txt', 'f.ext', group_by=1).group_with,
