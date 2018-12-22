@@ -32,8 +32,8 @@ addons:
       - graphviz
       - octave
       - ruby-full
-      - awscli==1.16.80
-      - botocore==1.12.70
+      - awscli-1.16.80
+      - botocore-1.12.70
 
 before_install:
     # singularity
