@@ -74,6 +74,14 @@ class TestTarget(unittest.TestCase):
         self.assertEqual(len(res_a.groups[2]), 0)
         self.assertEqual(len(res_a.groups[3]), 0)
 
+    def testTargetSetGet(self):
+        '''Test set and get attributes from targets'''
+        a = file_target('a')
+        a.set('b', 1)
+        self.assertEqual(a.b, 1)
+        self.assertEqual(a.get('b'), 1)
+        self.assertRaises(Exception, a.set, 'touch', 1)
+
     def testTargetGroupBy(self):
         '''Test new option group_by to sos_targets'''
         res = sos_targets('e.txt', 'f.ext', a=['a.txt', 'b.txt'], b=['c.txt', 'd.txt'], group_by=1)

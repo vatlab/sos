@@ -141,6 +141,8 @@ class BaseTarget(object):
         if not is_basic_type(value):
             env.logger.warning(f'Target properties can only be of basic types: {value} of type {value.__class__.__name__} provided')
             return self
+        if hasattr(self, name):
+            raise ValueError(f'Cannot set attribute {name} to {value.__class__.__name__} because it conflicts with an existing attribute.')
         self._dict[name] = value
         return self
 
