@@ -288,22 +288,7 @@ class Base_Step_Executor:
         if ifiles._num_groups() == 0:
             ifiles._group('all')
         #
-        _vars = [{} for x in range(ifiles._num_groups())]
-
-        groups = ifiles.groups
-        # now, let us expose target level variables as lists
-        if len(ifiles) > 1:
-            names = set.union(*[set(x._dict.keys()) for x in ifiles._targets])
-        elif len(ifiles) == 1:
-            names = set(ifiles._targets[0]._dict.keys())
-        else:
-            names = set()
-        for idx,grp in enumerate(groups):
-            for name in names:
-                _vars[idx][name] = [x.get(name) for x in grp._targets]
-            # then we expose all group level variables
-            _vars[idx].update(grp._dict)
-        return groups, _vars
+        return ifiles.groups
 
     def process_depends_args(self, dfiles: sos_targets, **kwargs):
         for k in kwargs.keys():
@@ -675,7 +660,7 @@ class Base_Step_Executor:
                 # Files will be expanded differently with different running modes
                 input_files: sos_targets = expand_input_files(stmt, *args,
                     **{k:v for k,v in kwargs.items() if k not in SOS_INPUT_OPTIONS})
-                self._substeps, self._vars = self.process_input_args(
+                self._substeps = self.process_input_args(
                     input_files, **{k:v for k,v in kwargs.items() if k in SOS_INPUT_OPTIONS})
                 #
                 # if shared is true, we have to disable concurrent because we
@@ -693,13 +678,11 @@ class Base_Step_Executor:
             # if default has groups...
             # default case
             self._substeps = env.sos_dict['step_input'].groups
-            self._vars = [{}] * len(self._substeps)
             # assuming everything starts from 0 is after input
             input_statement_idx = 0
         else:
             # default case
             self._substeps = [env.sos_dict['step_input']]
-            self._vars = [{}]
             # assuming everything starts from 0 is after input
             input_statement_idx = 0
 
@@ -737,11 +720,23 @@ class Base_Step_Executor:
             self.completed['__substep_completed__'] = len(self._substeps)
             # pending signatures are signatures for steps with external tasks
             pending_signatures = [None for x in self._substeps]
-            for idx, (g, v) in enumerate(zip(self._substeps, self._vars)):
+            for idx, g in enumerate(self._substeps):
                 # other variables
                 #
-                env.sos_dict.update(v)
-                env.sos_dict.update(env.sos_dict['step_input']._dict)
+                _vars = {}
+                # now, let us expose target level variables as lists
+                if len(g) > 1:
+                    names = set.union(*[set(x._dict.keys()) for x in g._targets])
+                elif len(g) == 1:
+                    names = set(g._targets[0]._dict.keys())
+                else:
+                    names = set()
+                for name in names:
+                    _vars[name] = [x.get(name) for x in g._targets]
+                # then we expose all group level variables
+                _vars.update(g._dict)
+                _vars.update(env.sos_dict['step_input']._dict)
+                env.sos_dict.update(_vars)
 
                 env.sos_dict.set('_input', copy.deepcopy(g))
                 # set vars to _input
