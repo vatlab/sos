@@ -8,7 +8,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/vatlab/SOS/badge.svg)](https://coveralls.io/github/vatlab/SOS)
 
 **Script of Scripts (SoS)** is a Jupyter-based **polyglot notebook** that allows the use of multiple Jupyter kernels in one notebook, and
-a **workflow engine** for the execution of workflows in both process- and outcome-oriented styles. It is designed for data scienticists and bioinformatics who routinely work with scripts in different languages such as R, Python, Perl, and bash.
+a **workflow engine** for the execution of workflows in both process- and outcome-oriented styles. It is designed for data scientists and bioinformatics who routinely work with scripts in different languages such as R, Python, Perl, and bash.
 
 Please refer to the [SoS homepage](http://vatlab.github.io/SOS) for more information. 
 
@@ -18,7 +18,7 @@ if you have helped fixing bugs or making improvements to the source code.
 
 # Installing SoS 
 
-With Python 3.6 and above intalled ([anaconda python](https://www.continuum.io/downloads) is recommended), you can install the SoS Workflow System and its extensions with command
+With Python 3.6 and above installed ([anaconda python](https://www.continuum.io/downloads) is recommended), you can install the SoS Workflow System and its extensions with command
 
 ```
 % pip install sos
@@ -34,7 +34,7 @@ You can install the latest git version of SoS with commands
 although the development version can be less stable than the released
 version.
 
-You can install SoS Notebook and all language moduels, and register the sos kernel with Jupyter using the following commands
+You can install SoS Notebook and all language modules, and register the sos kernel with Jupyter using the following commands
 
 ```
 % pip install sos-notebook
