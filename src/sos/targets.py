@@ -1195,6 +1195,18 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         else:
             return default
 
+    def __getattr__(self, name):
+        try:
+            return self._dict[name]
+        except:
+            if len(self._targets) == 1:
+                try:
+                    return self._targets[0]._dict[name]
+                except:
+                    raise AttributeError(f'{self.__class__.__name__} object or its first child has no attribute {name}')
+            else:
+                raise AttributeError(f'{self.__class__.__name__} object has no attribute {name}')
+
     def _clear_groups(self):
         self._groups = []
 

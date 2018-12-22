@@ -413,8 +413,8 @@ all_loop = ''
 
 input: 'a.pdf', files, group_by='single', paired_with='names', for_each='c'
 
-all_names += str(_input.get('_names')) + " "
-all_loop += str(_input.get('_c')) + " "
+all_names += str(_input._names) + " "
+all_loop += str(_input._c) + " "
 
 counter = counter + 1
 """)
@@ -436,7 +436,7 @@ input: files, for_each='par,res'
 output: res, group_by=1
 
 print([x._dict for x in step_input._groups])
-processed.append((_input.get('_par'), _input.get('_res')))
+processed.append((_input._par, _input._res))
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
@@ -451,7 +451,7 @@ data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
 
 input: for_each='data'
 print([x._dict for x in step_input._groups])
-output: f"{_input.get('_data')['A']}_{_input.get('_data')['B']}_{_input.get('_data')['C']}.txt"
+output: f"{_input._data['A']}_{_input._data['B']}_{_input._data['C']}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
@@ -470,8 +470,8 @@ all_loop = ''
 
 input: 'a.pdf', files, group_by='single', paired_with='names', for_each={'c':  ['1', '2']}
 
-all_names += str(_input.get('_names')) + " "
-all_loop += _input.get('c') + " "
+all_names += str(_input._names) + " "
+all_loop += _input.c + " "
 
 counter = counter + 1
 """)
@@ -495,7 +495,7 @@ all_loop = ''
 input: 'a.txt', group_by='single', for_each={'_n,_p': [(_n,_p) for _n,_p in itertools.product(n,p) if _n > _p]}
 
 all_names += outfile[_index] + " "
-all_loop += '{} {} '.format(_input.get('_n'), _input.get('_p'))
+all_loop += '{} {} '.format(_input._n, _input._p)
 counter = counter + 1
 """)
         wf = script.workflow()
@@ -512,9 +512,9 @@ files = ['a.txt', 'b.txt']
 processed = []
 
 input: files, for_each={'par':[(1, 2), (1, 3), (2, 3)], 'res': ['p1.txt', 'p2.txt', 'p3.txt']}
-output: _input.get('res')
+output: _input.res
 
-processed.append((_input.get('par'), _input.get('res')))
+processed.append((_input.par, _input.res))
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
@@ -526,7 +526,7 @@ processed.append((_input.get('par'), _input.get('res')))
 [0: shared={'res':'step_output'}]
 import pandas as pd
 input: for_each={'data': pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])}
-output: f"{_input.get('data')['A']}_{_input.get('data')['B']}_{_input.get('data')['C']}.txt"
+output: f"{_input.data['A']}_{_input.data['B']}_{_input.data['C']}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
@@ -539,7 +539,7 @@ output: f"{_input.get('data')['A']}_{_input.get('data')['B']}_{_input.get('data'
 import pandas as pd
 data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
 input: for_each={'A': data['A']}
-output: f"a_{_input.get('A')}.txt"
+output: f"a_{_input.A}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
@@ -551,7 +551,7 @@ import pandas as pd
 data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
 data.set_index('C', inplace=True)
 input: for_each={'A': data.index}
-output: f"{_input.get('A')}.txt"
+output: f"{_input.A}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
@@ -566,7 +566,7 @@ data = pd.DataFrame([(0, 1, 'Ha'), (1, 2, 'Hello'), (2, 4, 'World')], columns=['
 data.set_index('A', inplace=True)
 data = data.tail(2)
 input: for_each={'A': data['B']}
-output: f"{_input.get('A')}.txt"
+output: f"{_input.A}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
@@ -581,7 +581,7 @@ data = pd.DataFrame([(0, 1, 'Ha'), (1, 2, 'Hello'), (2, 4, 'World')], columns=['
 data.set_index('A', inplace=True)
 data = data.tail(2)
 input: for_each={'A,B': zip(data['B'],data['C'])}
-output: f"{_input._get('A')}.txt"
+output: f"{_input.A}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
@@ -668,7 +668,7 @@ files = ['a.txt', 'b.txt']
 vars = [1, 2]
 
 input: files, paired_with='vars', group_by=1
-output: f"{_input}{_input.get('_vars')}"
+output: f"{_input}{_input._vars}"
 run: expand=True
     touch {_output}
 ''')
@@ -686,7 +686,7 @@ vars = [1, 2]
 vars2 = ['a', 'b']
 
 input: files, paired_with=('vars', 'vars2'), group_by=1
-output: f"{_input}{_input.get('_vars')}"
+output: f"{_input}{_input._vars}"
 run: expand=True
     touch {_output}
 ''')
@@ -701,7 +701,7 @@ run: expand=True
 [0]
 files = ['a.txt', 'b.txt']
 input: files, paired_with={'var': [1,2], 'var2': ['a', 'b']}, group_by=1
-output: f"{_input}{_input.get('var')}"
+output: f"{_input}{_input.var}"
 run: expand=True
     touch {_output}
 ''')
@@ -784,7 +784,7 @@ files = ['a.txt', 'b.txt']
 vars = [1, 2]
 
 input: files, group_with='vars', group_by=1
-output: f"{_input}{_input.get('_vars')}"
+output: f"{_input}{_input._vars}"
 run: expand=True
     touch {_output}
 ''')
@@ -802,7 +802,7 @@ vars = [1]
 vars2 = ['a']
 
 input: files, group_with=('vars', 'vars2'), group_by=2
-output: f"{_input[0]}{_input.get('_vars')}"
+output: f"{_input[0]}{_input._vars}"
 run: expand=True
     touch {_output}
 ''')
@@ -817,7 +817,7 @@ run: expand=True
 [0]
 files = ['a.txt', 'b.txt']
 input: files, group_with={'var': [1], 'var2': ['a']}, group_by=2
-output: f"{_input[0]}{_input.get('var')}"
+output: f"{_input[0]}{_input.var}"
 run: expand=True
     touch {_output}
 ''')
@@ -857,7 +857,7 @@ output: ['{}-{}-{}.txt'.format(x,y,z) for x,y,z in zip(_base, _name, _par)]
 
 files = ['a-20.txt', 'b-10.txt']
 input: files, pattern=['{name}-{par}.txt', '{base}.txt']
-output: [f'{x.get("base")}-{x.get("name")}-{x.get("par")}.txt' for x in _input]
+output: [f'{x.base}-{x.name}-{x.par}.txt' for x in _input]
 
 """)
         wf = script.workflow()
@@ -1766,14 +1766,14 @@ _input.zap()
 input: for_each=dict(i=range(5))
 output: f'a_{i}.txt'
 _output.touch()
-assert(_input.get('i') == i)
+assert(_input.i == i)
 
 [2]
 assert(len(step_input.groups) == 5)
 assert(len(step_input) == 5)
 assert(step_input.groups[0] == 'a_0.txt')
 assert(step_input.groups[4] == 'a_4.txt')
-assert(_input.get('i') == _index)
+assert(_input.i == _index)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
