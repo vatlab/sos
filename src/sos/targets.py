@@ -147,6 +147,14 @@ class BaseTarget(object):
     def get(self, name, default=None):
         return self._dict.get(name, default)
 
+    def __getattr__(self, name):
+        try:
+            return self._dict[name]
+        except:
+            # if name in self._dict:
+                # return self._dict.get(name)
+            raise AttributeError(f'{self.__class__.__name__} object has no attribute {name}')
+
     def _update_dict(self, val):
         self._dict.update({x:y for x,y in val.items() if is_basic_type(y)})
         return self
