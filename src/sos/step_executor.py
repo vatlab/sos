@@ -1049,9 +1049,9 @@ class Base_Step_Executor:
             # internal api, sorry
             env.sos_dict['step_output']._clear_groups()
             try:
-                for og, ov in zip(self.output_groups, self._substeps):
+                for og in self.output_groups:
                     env.sos_dict['step_output']._add_group(
-                         sos_targets(og, _source=env.sos_dict['step_name']))._update_dict(ov._dict)
+                         sos_targets(og, _source=env.sos_dict['step_name']))
             except Exception as e:
                 env.logger.error(f'Failed to add _output to step_output: {e}. Please contact SoS developer with a bug report.')
                 env.sos_dict['step_output']._clear_groups()
