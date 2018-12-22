@@ -43,7 +43,8 @@ def __null_func__(*args, **kwargs) -> Any:
 
     return _flatten(args), kwargs
 
-def __output_from__(steps, group_by=None):
+def __output_from__(steps, group_by=None, paired_with=None, pattern=None,
+    group_with=None, for_each=None):
     targets = sos_targets()
     if isinstance(steps, (int, str)):
         steps = [steps]
@@ -70,15 +71,26 @@ def __output_from__(steps, group_by=None):
         if res is None or not isinstance(res, sos_targets):
             raise RuntimeError(f'Failed to obtain output of step {step}')
         targets.extend(res)
-    return targets._group(group_by)
 
-def __named_output__(name, group_by=None):
+    if group_by or paired_with or pattern or group_with or for_each:
+        return sos_targets(targets, group_by=group_by, paired_with=paired_with,
+            pattern=pattern, group_with=group_with, for_each=for_each)
+    else:
+        return targets
+
+def __named_output__(name, group_by=None, paired_with=None, pattern=None,
+    group_with=None, for_each=None):
     env.controller_req_socket.send_pyobj(['named_output', name])
-    res = env.controller_req_socket.recv_pyobj()
+    targets = env.controller_req_socket.recv_pyobj()
     if res is None:
         env.logger.warning(f'named_output("name") is not found')
         return sos_targets([])
-    return res._group(group_by)
+
+    if group_by or paired_with or pattern or group_with or for_each:
+        return sos_targets(targets, group_by=group_by, paired_with=paired_with,
+            pattern=pattern, group_with=group_with, for_each=for_each)
+    else:
+        return targets
 
 def clear_output(err=None):
     '''
