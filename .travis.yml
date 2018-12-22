@@ -32,6 +32,8 @@ addons:
       - graphviz
       - octave
       - ruby-full
+      - awscli==1.16.80
+      - botocore==1.12.70
 
 before_install:
     # singularity
@@ -51,7 +53,7 @@ before_install:
     #- conda info -a
 
     # downgrade python if needed
-    - sudo conda create --quiet -n python_test python=$TRAVIS_PYTHON_VERSION anaconda
+    - conda create --quiet -n python_test python=$TRAVIS_PYTHON_VERSION anaconda
     - source activate python_test
 
     # R
