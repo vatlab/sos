@@ -49,7 +49,7 @@ before_install:
     - conda update -q conda
     # Useful for debugging any issues with conda
     #- conda info -a
-    - source activate base
+    - source activate 
 
     # R
     - conda install --quiet -c r r-markdown r-rmarkdown r-base64enc  pandoc pandas numpy gxx_linux-64
