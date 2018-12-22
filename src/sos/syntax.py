@@ -7,8 +7,7 @@ import keyword
 import re
 
 from typing import Callable
-SOS_INPUT_OPTIONS = ['filetype', 'paired_with',
-                     'group_with', 'for_each', 'pattern', 'concurrent']
+SOS_INPUT_OPTIONS = ['filetype', 'concurrent']
 SOS_OUTPUT_OPTIONS = ['group_by']
 SOS_DEPENDS_OPTIONS = []
 SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'active', 'walltime', 'nodes',

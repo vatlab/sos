@@ -14,7 +14,6 @@ from collections import Iterable, Mapping, Sequence, defaultdict
 from typing import List, Union
 
 from .eval import SoS_eval, SoS_exec, accessed_vars
-from .pattern import extract_pattern
 from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
                      SOS_OUTPUT_OPTIONS, SOS_RUNTIME_OPTIONS)
 from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
@@ -260,217 +259,6 @@ class Base_Step_Executor:
                             f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]}')
 
 
-    @staticmethod
-    def handle_paired_with(paired_with, ifiles: sos_targets, _vars: List[dict]):
-        '''Handle input option paired_with'''
-        if paired_with is None or not paired_with:
-            var_name = []
-            var_value = []
-        elif isinstance(paired_with, str):
-            var_name = ['_' + paired_with]
-            if paired_with not in env.sos_dict:
-                raise ValueError(f'Variable {paired_with} does not exist.')
-            var_value = [env.sos_dict[paired_with]]
-        elif isinstance(paired_with, dict):
-            var_name = []
-            var_value = []
-            for k, v in paired_with.items():
-                var_name.append(k)
-                var_value.append(v)
-        elif isinstance(paired_with, Iterable):
-            try:
-                var_name = ['_' + x for x in paired_with]
-            except Exception:
-                raise ValueError(
-                    f'Invalud value for option paired_with {paired_with}')
-            var_value = []
-            for vn in var_name:
-                if vn[1:] not in env.sos_dict:
-                    raise ValueError(f'Variable {vn[1:]} does not exist.')
-                var_value.append(env.sos_dict[vn[1:]])
-        else:
-            raise ValueError(
-                f'Unacceptable value for parameter paired_with: {paired_with}')
-        #
-        for vn, vv in zip(var_name, var_value):
-            if isinstance(vv, str) or not isinstance(vv, Iterable):
-                raise ValueError(
-                    f'paired_with variable {vn} is not a sequence ("{vv}")')
-            if len(vv) != len(ifiles):
-                raise ValueError(
-                    f'Length of variable {vn} (length {len(vv)}) should match the number of input files (length {len(ifiles)}).')
-            # set paired with values to step_input
-            env.sos_dict['step_input'].paired_with(vn, vv)
-            file_map = {x: y for x, y in zip(range(len(ifiles)), vv)}
-            for idx, grp in enumerate(ifiles._groups):
-                mapped_vars = [file_map[x] for x in grp._indexes]
-                # 862. we make the paired variable the same type so that if the input is a paths or sos_targets,
-                # the returned value is of the same type
-                _vars[idx][vn] = type(vv)(mapped_vars)
-
-    @staticmethod
-    def handle_group_with(group_with, ifiles: sos_targets, _vars: List[dict]):
-        '''Handle input option group_with'''
-        if group_with is None or not group_with:
-            var_name = []
-            var_value = []
-        elif isinstance(group_with, str):
-            var_name = ['_' + group_with]
-            if group_with not in env.sos_dict:
-                raise ValueError(f'Variable {group_with} does not exist.')
-            var_value = [env.sos_dict[group_with]]
-        elif isinstance(group_with, dict):
-            var_name = []
-            var_value = []
-            for k, v in group_with.items():
-                var_name.append(k)
-                var_value.append(v)
-        elif isinstance(group_with, Iterable):
-            try:
-                var_name = ['_' + x for x in group_with]
-            except Exception:
-                raise ValueError(
-                    f'Invalud value for option group_with {group_with}')
-            var_value = []
-            for vn in var_name:
-                if vn[1:] not in env.sos_dict:
-                    raise ValueError(f'Variable {vn[1:]} does not exist.')
-                var_value.append(env.sos_dict[vn[1:]])
-        else:
-            raise ValueError(
-                f'Unacceptable value for parameter group_with: {group_with}')
-        #
-        for vn, vv in zip(var_name, var_value):
-            env.sos_dict['step_input'].group_with(vn, vv)
-            if isinstance(vv, str) or not isinstance(vv, Iterable):
-                raise ValueError(
-                    f'group_with variable {vn} is not a sequence ("{vv}")')
-            if len(vv) != ifiles._num_groups():
-                raise ValueError(
-                    f'Length of variable {vn} (length {len(vv)}) should match the number of input groups (length {ifiles._num_groups()}).')
-            for idx in range(ifiles._num_groups()):
-                _vars[idx][vn] = vv[idx]
-
-    @staticmethod
-    def handle_extract_pattern(pattern, ifiles: sos_targets, _vars: List[dict]):
-        '''Handle input option pattern'''
-        if pattern is None or not pattern:
-            patterns = []
-        elif isinstance(pattern, str):
-            patterns = [pattern]
-        elif isinstance(pattern, Iterable):
-            patterns = pattern
-        else:
-            raise ValueError(
-                f'Unacceptable value for parameter pattern: {pattern}')
-        #
-        for pattern in patterns:
-            res = extract_pattern(pattern, ifiles)
-            # now, assign the variables to env
-            for k, v in res.items():
-                if k in ('step_input', 'step_output', 'step_depends') or k.startswith('_'):
-                    raise RuntimeError(
-                        f'Pattern defined variable {k} is not allowed')
-                env.sos_dict[k] = v
-            # also make k, v pair with _input
-            Base_Step_Executor.handle_paired_with(
-                res.keys(), ifiles, _vars)
-
-    @staticmethod
-    def handle_for_each(for_each, ifiles: sos_targets, _vars: List[dict]):
-        if for_each is None or not for_each:
-            for_each = []
-        elif isinstance(for_each, (str, dict)):
-            for_each = [for_each]
-        elif isinstance(for_each, Sequence):
-            for_each = for_each
-        else:
-            raise ValueError(
-                f'Unacceptable value for parameter for_each: {for_each}')
-        #
-        for fe_all in for_each:
-            if isinstance(fe_all, dict):
-                # in the format of {'name': value}
-                fe_iter_names = []
-                fe_values = []
-                for k, v in fe_all.items():
-                    if ',' in k:
-                        names = [x.strip() for x in k.split(',')]
-                        if isinstance(v, Iterable):
-                            v = list(v)
-                        if any(len(_v) != len(names) for _v in v):
-                            raise ValueError(
-                                f'Unable to unpack object {short_repr(v)} for variables {k} (of length {len(names)})')
-                        fe_iter_names.extend(names)
-                        fe_values.extend(list(zip(*v)))
-                    else:
-                        fe_iter_names.append(k)
-                        fe_values.append(v)
-            else:
-                if ',' in fe_all:
-                    fe_var_names = [x.strip() for x in fe_all.split(',')]
-                    fe_iter_names = ['_' + x for x in fe_var_names]
-                else:
-                    fe_var_names = [fe_all]
-                    fe_iter_names = ['_' + fe_all]
-                # check iterator variable name
-                for name in fe_iter_names:
-                    if '.' in name:
-                        raise ValueError(f'Invalid iterator variable {name}')
-                # check variables
-                fe_values = []
-                for name in fe_var_names:
-                    if name.split('.')[0] not in env.sos_dict:
-                        raise ValueError(f'Variable {name} does not exist.')
-                    if '.' in name:
-                        fe_values.append(
-                            getattr(env.sos_dict[name.split('.')[0]], name.split('.', 1)[-1]))
-                    else:
-                        fe_values.append(env.sos_dict[name])
-
-            # get loop size
-            loop_size = None
-            for name, values in zip(fe_iter_names, fe_values):
-                if not isinstance(values, Sequence):
-                    try:
-                        import pandas as pd
-                        if not isinstance(values, (pd.DataFrame, pd.Series, pd.Index)):
-                            raise ValueError(
-                                f'Unacceptable for_each data type {values.__class__.__name__}')
-                    except Exception as e:
-                        raise ValueError(
-                            f'Cannot iterate through variable {name}: {e}')
-                if loop_size is None:
-                    loop_size = len(values)
-                elif loop_size != len(values):
-                    raise ValueError(
-                        f'Length of variable {name} (length {len(values)}) should match the length of other variables (length {loop_size}).')
-
-            n_grps = ifiles._num_groups()
-            ifiles._duplicate_groups(loop_size)
-            #
-            _tmp_vars = copy.deepcopy(_vars)
-            _vars.clear()
-            for vidx in range(loop_size):
-                for idx, _ in enumerate(_tmp_vars):
-                    for var_name, values in zip(fe_iter_names, fe_values):
-                        if isinstance(values, Sequence):
-                            _tmp_vars[idx][var_name] = values[vidx]
-                            ifiles._groups[n_grps*vidx+idx].set(var_name, values[vidx])
-                        elif isinstance(values, pd.DataFrame):
-                            _tmp_vars[idx][var_name] = values.iloc[vidx]
-                            ifiles._groups[n_grps*vidx+idx].set(var_name, values.iloc[vidx].to_dict())
-                        elif isinstance(values, pd.Series):
-                            _tmp_vars[idx][var_name] = values.iloc[vidx]
-                            ifiles._groups[n_grps*vidx+idx].set(var_name, values.iloc[vidx])
-                        elif isinstance(values, pd.Index):
-                            _tmp_vars[idx][var_name] = values[vidx]
-                            ifiles._groups[n_grps*vidx+idx].set(var_name, values[vidx])
-                        else:
-                            raise ValueError(
-                                f'Failed to iterate through for_each variable {short_repr(values)}')
-                _vars.extend(copy.deepcopy(_tmp_vars))
-
     # directive input
     def process_input_args(self, ifiles: sos_targets, **kwargs):
         """This function handles directive input and all its parameters.
@@ -501,22 +289,48 @@ class Base_Step_Executor:
             ifiles._group('all')
         #
         _vars = [{} for x in range(ifiles._num_groups())]
-        # handle paired_with
-        if 'paired_with' in kwargs:
-            Base_Step_Executor.handle_paired_with(
-                kwargs['paired_with'], ifiles,  _vars)
-        # handle pattern
-        if 'pattern' in kwargs:
-            Base_Step_Executor.handle_extract_pattern(
-                kwargs['pattern'], ifiles, _vars)
-        # handle group_with
-        if 'group_with' in kwargs:
-            Base_Step_Executor.handle_group_with(
-                kwargs['group_with'], ifiles,  _vars)
-        # handle for_each
-        if 'for_each' in kwargs:
-            Base_Step_Executor.handle_for_each(
-                kwargs['for_each'], ifiles, _vars)
+        # # handle paired_with
+        # file_map = {x: y for x, y in zip(range(len(ifiles)), vv)}
+        # for idx, grp in enumerate(ifiles._groups):
+        #     mapped_vars = [file_map[x] for x in grp._indexes]
+        #     # 862. we make the paired variable the same type so that if the input is a paths or sos_targets,
+        #     # the returned value is of the same type
+        #     _vars[idx][vn] = type(vv)(mapped_vars)
+
+        # # group_with
+        # for idx in range(ifiles._num_groups()):
+        #         _vars[idx][vn] = vv[idx]
+        #
+        # # for extract pattern
+        # for k, v in res.items():
+        #     if k in ('step_input', 'step_output', 'step_depends') or k.startswith('_'):
+        #         raise RuntimeError(
+        #             f'Pattern defined variable {k} is not allowed')
+        #     env.sos_dict[k] = v
+        #
+        # # for_ech
+        # _tmp_vars = copy.deepcopy(_vars)
+        # _vars.clear()
+        # for vidx in range(loop_size):
+        #     for idx, _ in enumerate(_tmp_vars):
+        #         for var_name, values in zip(fe_iter_names, fe_values):
+        #             if isinstance(values, Sequence):
+        #                 _tmp_vars[idx][var_name] = values[vidx]
+        #                 ifiles._groups[n_grps*vidx+idx].set(var_name, values[vidx])
+        #             elif isinstance(values, pd.DataFrame):
+        #                 _tmp_vars[idx][var_name] = values.iloc[vidx]
+        #                 ifiles._groups[n_grps*vidx+idx].set(var_name, values.iloc[vidx].to_dict())
+        #             elif isinstance(values, pd.Series):
+        #                 _tmp_vars[idx][var_name] = values.iloc[vidx]
+        #                 ifiles._groups[n_grps*vidx+idx].set(var_name, values.iloc[vidx])
+        #             elif isinstance(values, pd.Index):
+        #                 _tmp_vars[idx][var_name] = values[vidx]
+        #                 ifiles._groups[n_grps*vidx+idx].set(var_name, values[vidx])
+        #             else:
+        #                 raise ValueError(
+        #                     f'Failed to iterate through for_each variable {short_repr(values)}')
+        #     _vars.extend(copy.deepcopy(_tmp_vars))
+
         return ifiles.groups, _vars
 
     def process_depends_args(self, dfiles: sos_targets, **kwargs):

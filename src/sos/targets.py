@@ -22,6 +22,7 @@ import fasteners
 import pkg_resources
 
 from .utils import (Error, env, pickleable, short_repr, stable_repr)
+from .pattern import extract_pattern
 
 
 try:
@@ -40,6 +41,10 @@ def is_basic_type(obj):
         return all(is_basic_type(x) for x in obj)
     if isinstance(obj, dict):
         return all(is_basic_type(x) for x in obj.keys()) and all(is_basic_type(x) for x in obj.values())
+    # we support types defined in numpy and pandas, but not others
+    module = obj.__class__.__module__
+    if 'pandas' in module or 'numpy' in module:
+        return True
     return False
 
 class UnknownTarget(Error):
@@ -832,7 +837,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     # check if string contains wildcard character
     wildcard = re.compile('[*?\[]')
 
-    def __init__(self, *args, group_by=None, _undetermined: Union[bool, str]=None,
+    def __init__(self, *args, group_by=None, paired_with=None, pattern=None,
+        group_with=None, for_each=None, _undetermined: Union[bool, str]=None,
         _source='', _verify_existence=False, **kwargs):
         super(sos_targets, self).__init__()
         self._targets = []
@@ -858,6 +864,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     raise UnknownTarget(target)
         if group_by:
             self._group(group_by)
+        if paired_with:
+            self._handle_paired_with(paired_with)
+        if pattern:
+            self._handle_extract_pattern(pattern)
+        if group_with:
+            self._handle_group_with(group_with)
+        if for_each:
+            self._handle_for_each(for_each)
 
     def is_external(self):
         if not self.valid():
@@ -1132,7 +1146,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
     def paired_with(self, name, properties):
         if not is_basic_type(properties):
-            env.logger.debug(f'Unacceptable properties {properties} for function paired_with')
+            env.logger.warning(f'Failed to set {properties} as it is or contains unsupported data type')
             return self
         if isinstance(properties, (bool, int, float, str, bytes)):
             for target in self._targets:
@@ -1151,7 +1165,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             env.logger.warning(f'group_with on sos_targets without group information')
             return self
         if not is_basic_type(properties):
-            env.logger.debug('Unacceptable properties {properties} for function group_with')
+            env.logger.warning(f'Failed to set {properties} as it is or contains unsupported data type')
             return self
         if isinstance(properties, (bool, int, float, str, bytes)):
             for group in self._groups:
@@ -1333,6 +1347,182 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         else:
             raise ValueError(f'Unsupported by option ``{by}``!')
         return self
+
+    def _handle_paired_with(self, paired_with):
+        '''Handle input option paired_with'''
+        if paired_with is None or not paired_with:
+            var_name = []
+            var_value = []
+        elif isinstance(paired_with, str):
+            var_name = ['_' + paired_with]
+            if paired_with not in env.sos_dict:
+                raise ValueError(f'Variable {paired_with} does not exist.')
+            var_value = [env.sos_dict[paired_with]]
+        elif isinstance(paired_with, dict):
+            var_name = []
+            var_value = []
+            for k, v in paired_with.items():
+                var_name.append(k)
+                var_value.append(v)
+        elif isinstance(paired_with, Iterable):
+            try:
+                var_name = ['_' + x for x in paired_with]
+            except Exception:
+                raise ValueError(
+                    f'Invalud value for option paired_with {paired_with}')
+            var_value = []
+            for vn in var_name:
+                if vn[1:] not in env.sos_dict:
+                    raise ValueError(f'Variable {vn[1:]} does not exist.')
+                var_value.append(env.sos_dict[vn[1:]])
+        else:
+            raise ValueError(
+                f'Unacceptable value for parameter paired_with: {paired_with}')
+        #
+        for vn, vv in zip(var_name, var_value):
+            # set paired with values to step_input
+            self.paired_with(vn, vv)
+
+    def _handle_group_with(self, group_with):
+        '''Handle input option group_with'''
+        if group_with is None or not group_with:
+            var_name = []
+            var_value = []
+        elif isinstance(group_with, str):
+            var_name = ['_' + group_with]
+            if group_with not in env.sos_dict:
+                raise ValueError(f'Variable {group_with} does not exist.')
+            var_value = [env.sos_dict[group_with]]
+        elif isinstance(group_with, dict):
+            var_name = []
+            var_value = []
+            for k, v in group_with.items():
+                var_name.append(k)
+                var_value.append(v)
+        elif isinstance(group_with, Iterable):
+            try:
+                var_name = ['_' + x for x in group_with]
+            except Exception:
+                raise ValueError(
+                    f'Invalud value for option group_with {group_with}')
+            var_value = []
+            for vn in var_name:
+                if vn[1:] not in env.sos_dict:
+                    raise ValueError(f'Variable {vn[1:]} does not exist.')
+                var_value.append(env.sos_dict[vn[1:]])
+        else:
+            raise ValueError(
+                f'Unacceptable value for parameter group_with: {group_with}')
+        #
+        for vn, vv in zip(var_name, var_value):
+            self.group_with(vn, vv)
+
+    def _handle_extract_pattern(self, pattern):
+        '''Handle input option pattern'''
+        if pattern is None or not pattern:
+            patterns = []
+        elif isinstance(pattern, str):
+            patterns = [pattern]
+        elif isinstance(pattern, Iterable):
+            patterns = pattern
+        else:
+            raise ValueError(
+                f'Unacceptable value for parameter pattern: {pattern}')
+        #
+        for pattern in patterns:
+            res = extract_pattern(pattern, self._targets)
+            # also make k, v pair with _input
+            self._handle_paired_with(res)
+
+    def _handle_for_each(self, for_each):
+        if for_each is None or not for_each:
+            for_each = []
+        elif isinstance(for_each, (str, dict)):
+            for_each = [for_each]
+        elif isinstance(for_each, Sequence):
+            for_each = for_each
+        else:
+            raise ValueError(
+                f'Unacceptable value for parameter for_each: {for_each}')
+        #
+        for fe_all in for_each:
+            if isinstance(fe_all, dict):
+                # in the format of {'name': value}
+                fe_iter_names = []
+                fe_values = []
+                for k, v in fe_all.items():
+                    if ',' in k:
+                        names = [x.strip() for x in k.split(',')]
+                        if isinstance(v, Iterable):
+                            v = list(v)
+                        if any(len(_v) != len(names) for _v in v):
+                            raise ValueError(
+                                f'Unable to unpack object {short_repr(v)} for variables {k} (of length {len(names)})')
+                        fe_iter_names.extend(names)
+                        fe_values.extend(list(zip(*v)))
+                    else:
+                        fe_iter_names.append(k)
+                        fe_values.append(v)
+            else:
+                if ',' in fe_all:
+                    fe_var_names = [x.strip() for x in fe_all.split(',')]
+                    fe_iter_names = ['_' + x for x in fe_var_names]
+                else:
+                    fe_var_names = [fe_all]
+                    fe_iter_names = ['_' + fe_all]
+                # check iterator variable name
+                for name in fe_iter_names:
+                    if '.' in name:
+                        raise ValueError(f'Invalid iterator variable {name}')
+                # check variables
+                fe_values = []
+                for name in fe_var_names:
+                    if name.split('.')[0] not in env.sos_dict:
+                        raise ValueError(f'Variable {name} does not exist.')
+                    if '.' in name:
+                        fe_values.append(
+                            getattr(env.sos_dict[name.split('.')[0]], name.split('.', 1)[-1]))
+                    else:
+                        fe_values.append(env.sos_dict[name])
+
+            # get loop size
+            loop_size = None
+            for name, values in zip(fe_iter_names, fe_values):
+                if not isinstance(values, Sequence):
+                    try:
+                        import pandas as pd
+                        if not isinstance(values, (pd.DataFrame, pd.Series, pd.Index)):
+                            raise ValueError(
+                                f'Unacceptable for_each data type {values.__class__.__name__}')
+                    except Exception as e:
+                        raise ValueError(
+                            f'Cannot iterate through variable {name}: {e}')
+                if loop_size is None:
+                    loop_size = len(values)
+                elif loop_size != len(values):
+                    raise ValueError(
+                        f'Length of variable {name} (length {len(values)}) should match the length of other variables (length {loop_size}).')
+
+            n_grps = self._num_groups()
+            if n_grps == 0:
+                self._group('all')
+                n_grps = 1
+            self._duplicate_groups(loop_size)
+            #
+            for vidx in range(loop_size):
+                for idx in range(n_grps):
+                    for var_name, values in zip(fe_iter_names, fe_values):
+                        if isinstance(values, Sequence):
+                            self._groups[n_grps*vidx+idx].set(var_name, values[vidx])
+                        elif isinstance(values, pd.DataFrame):
+                            self._groups[n_grps*vidx+idx].set(var_name, values.iloc[vidx])
+                        elif isinstance(values, pd.Series):
+                            self._groups[n_grps*vidx+idx].set(var_name, values.iloc[vidx])
+                        elif isinstance(values, pd.Index):
+                            self._groups[n_grps*vidx+idx].set(var_name, values[vidx])
+                        else:
+                            raise ValueError(
+                                f'Failed to iterate through for_each variable {short_repr(values)}')
 
     def __hash__(self):
         return hash(repr(self))

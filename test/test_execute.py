@@ -413,7 +413,7 @@ all_loop = ''
 
 input: 'a.pdf', files, group_by='single', paired_with='names', for_each='c'
 
-all_names += str(_names[0]) + " "
+all_names += str(_input.get('_names')) + " "
 all_loop += str(_input.get('_c')) + " "
 
 counter = counter + 1
@@ -435,6 +435,7 @@ processed = []
 input: files, for_each='par,res'
 output: res, group_by=1
 
+print([x._dict for x in step_input._groups])
 processed.append((_input.get('_par'), _input.get('_res')))
 """)
         wf = script.workflow()
@@ -443,20 +444,19 @@ processed.append((_input.get('_par'), _input.get('_res')))
                          ((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
         #
         # test for each for pandas dataframe
-        # FIXME: does not work because the Series has numpy types and is not a basic type
-#         script = SoS_Script(r"""
-# [0: shared={'res':'step_output'}]
-# import pandas as pd
-# data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
-# 
-# input: for_each='data'
-# print([x._dict for x in step_input._groups])
-# output: f"{_input.get('_data')['A']}_{_input.get('_data')['B']}_{_input.get('_data')['C']}.txt"
-# """)
-#         wf = script.workflow()
-#         Base_Executor(wf).run(mode='dryrun')
-#         self.assertEqual(env.sos_dict['res'], [
-#                          '1_2_Hello.txt', '2_4_World.txt'])
+        script = SoS_Script(r"""
+[0: shared={'res':'step_output'}]
+import pandas as pd
+data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
+
+input: for_each='data'
+print([x._dict for x in step_input._groups])
+output: f"{_input.get('_data')['A']}_{_input.get('_data')['B']}_{_input.get('_data')['C']}.txt"
+""")
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['res'], [
+                         '1_2_Hello.txt', '2_4_World.txt'])
 
         # test dictionary format of for_each
         self.touch(['a.txt', 'b.txt', 'a.pdf'])
@@ -470,7 +470,7 @@ all_loop = ''
 
 input: 'a.pdf', files, group_by='single', paired_with='names', for_each={'c':  ['1', '2']}
 
-all_names += str(_names[0]) + " "
+all_names += str(_input.get('_names')) + " "
 all_loop += _input.get('c') + " "
 
 counter = counter + 1
@@ -512,7 +512,7 @@ files = ['a.txt', 'b.txt']
 processed = []
 
 input: files, for_each={'par':[(1, 2), (1, 3), (2, 3)], 'res': ['p1.txt', 'p2.txt', 'p3.txt']}
-output: res
+output: _input.get('res')
 
 processed.append((_input.get('par'), _input.get('res')))
 """)
@@ -521,71 +521,71 @@ processed.append((_input.get('par'), _input.get('res')))
         self.assertEqual(env.sos_dict['processed'], [
                          ((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
         #
-#         # test for each for pandas dataframe
-#         script = SoS_Script(r"""
-# [0: shared={'res':'step_output'}]
-# import pandas as pd
-# input: for_each={'data': pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])}
-# output: f"{data['A']}_{data['B']}_{data['C']}.txt"
-# """)
-#         wf = script.workflow()
-#         Base_Executor(wf).run(mode='dryrun')
-#         self.assertEqual(env.sos_dict['res'], [
-#                          '1_2_Hello.txt', '2_4_World.txt'])
+        # test for each for pandas dataframe
+        script = SoS_Script(r"""
+[0: shared={'res':'step_output'}]
+import pandas as pd
+input: for_each={'data': pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])}
+output: f"{_input.get('data')['A']}_{_input.get('data')['B']}_{_input.get('data')['C']}.txt"
+""")
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['res'], [
+                         '1_2_Hello.txt', '2_4_World.txt'])
         #
         # support for pands Series and Index types
-#         script = SoS_Script(r"""
-# [0: shared={'res':'step_output'}]
-# import pandas as pd
-# data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
-# input: for_each={'A': data['A']}
-# output: f"a_{A}.txt"
-# """)
-#         wf = script.workflow()
-#         Base_Executor(wf).run(mode='dryrun')
-#         self.assertEqual(env.sos_dict['res'], ['a_1.txt', 'a_2.txt'])
-#         #
-#         script = SoS_Script(r"""
-# [0: shared={'res':'step_output'}]
-# import pandas as pd
-# data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
-# data.set_index('C', inplace=True)
-# input: for_each={'A': data.index}
-# output: f"{A}.txt"
-# """)
-#         wf = script.workflow()
-#         Base_Executor(wf).run(mode='dryrun')
-#         self.assertEqual(env.sos_dict['res'], ['Hello.txt', 'World.txt'])
-# 
-#         # test for each of Series
-#         script = SoS_Script(r"""
-# [0: shared={'res':'step_output'}]
-# import pandas as pd
-# data = pd.DataFrame([(0, 1, 'Ha'), (1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
-# 
-# data.set_index('A', inplace=True)
-# data = data.tail(2)
-# input: for_each={'A': data['B']}
-# output: f"{A}.txt"
-# """)
-#         wf = script.workflow()
-#         Base_Executor(wf).run(mode='dryrun')
-#         self.assertEqual(env.sos_dict['res'], ['2.txt', '4.txt'])
+        script = SoS_Script(r"""
+[0: shared={'res':'step_output'}]
+import pandas as pd
+data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
+input: for_each={'A': data['A']}
+output: f"a_{_input.get('A')}.txt"
+""")
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['res'], ['a_1.txt', 'a_2.txt'])
+        #
+        script = SoS_Script(r"""
+[0: shared={'res':'step_output'}]
+import pandas as pd
+data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
+data.set_index('C', inplace=True)
+input: for_each={'A': data.index}
+output: f"{_input.get('A')}.txt"
+""")
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['res'], ['Hello.txt', 'World.txt'])
+
+        # test for each of Series
+        script = SoS_Script(r"""
+[0: shared={'res':'step_output'}]
+import pandas as pd
+data = pd.DataFrame([(0, 1, 'Ha'), (1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
+
+data.set_index('A', inplace=True)
+data = data.tail(2)
+input: for_each={'A': data['B']}
+output: f"{_input.get('A')}.txt"
+""")
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['res'], ['2.txt', '4.txt'])
 
         # test iterable
-#         script = SoS_Script(r"""
-# [0: shared={'res':'step_output'}]
-# import pandas as pd
-# data = pd.DataFrame([(0, 1, 'Ha'), (1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
-# 
-# data.set_index('A', inplace=True)
-# data = data.tail(2)
-# input: for_each={'A,B': zip(data['B'],data['C'])}
-# output: f"{A}.txt"
-# """)
-#         wf = script.workflow()
-#         Base_Executor(wf).run(mode='dryrun')
-#         self.assertEqual(env.sos_dict['res'], ['2.txt', '4.txt'])
+        script = SoS_Script(r"""
+[0: shared={'res':'step_output'}]
+import pandas as pd
+data = pd.DataFrame([(0, 1, 'Ha'), (1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
+
+data.set_index('A', inplace=True)
+data = data.tail(2)
+input: for_each={'A,B': zip(data['B'],data['C'])}
+output: f"{_input._get('A')}.txt"
+""")
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['res'], ['2.txt', '4.txt'])
 
     def testGroupByWithNoInput(self):
         '''Test group_by with no input file'''
@@ -845,6 +845,23 @@ output: ['{}-{}-{}.txt'.format(x,y,z) for x,y,z in zip(_base, _name, _par)]
         self.assertEqual(env.sos_dict['base'], ["a-20", 'b-10'])
         self.assertEqual(env.sos_dict['name'], ["a", 'b'])
         self.assertEqual(env.sos_dict['par'], ["20", '10'])
+        self.assertEqual(env.sos_dict['_output'], [
+                         "a-20-a-20.txt", 'b-10-b-10.txt'])
+
+    def testInputPatternAsTargetProperty(self):
+        '''Test option pattern of step input '''
+        #env.verbosity = 4
+        self.touch(['a-20.txt', 'b-10.txt'])
+        script = SoS_Script(r"""
+[0: shared=['_output']]
+
+files = ['a-20.txt', 'b-10.txt']
+input: files, pattern=['{name}-{par}.txt', '{base}.txt']
+output: [f'{x.get("base")}-{x.get("name")}-{x.get("par")}.txt' for x in _input]
+
+""")
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['_output'], [
                          "a-20-a-20.txt", 'b-10-b-10.txt'])
 
