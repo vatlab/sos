@@ -1385,16 +1385,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                         if any(x<0 or x>=len(self._targets) for x in grp):
                             raise ValueError(f'Index out of range (< {len(self._targets)}): {grp}')
                         self._groups.append(_sos_group(grp, parent=self))
-                    elif isinstance(grp, (Sequence, sos_targets)) and all(isinstance(x, BaseTarget) for x in grp):
+                    else:
                         index = []
-                        for x in grp:
+                        for x in sos_targets(grp):
                             try:
                                 index.append(self._targets.index(x))
                             except:
                                 raise ValueError(f'Returned target is not one of the targets. {x}')
                         self._groups.append(_sos_group(index, parent=self))
-                    else:
-                        raise ValueError(f'Customized grouping method should return a list of indexes or targets: {grp} returned')
             except Exception as e:
                 raise ValueError(f'Failed to apply customized grouping method: {e}')
         else:
