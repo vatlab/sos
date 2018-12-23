@@ -981,6 +981,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
     groups = property(lambda self: [x.idx_to_targets(self) for x in self._groups])
 
+    def _get_group(self, index):
+        return self._groups[index].idx_to_targets(self)
+
     #def targets(self):
     #    return [x.target_name() if isinstance(x, file_target) else x for x in self._targets]
 
@@ -1005,6 +1008,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             self._sources.extend(['']*len(arg._targets))
         # merge dictionaries
         self._dict.update(arg._dict)
+
         #
         # it is possible to merge groups from multiple...
         if arg._groups:
@@ -1592,11 +1596,12 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         return ('[' + ', '.join(repr(x) for x in self._targets) + ']') if self.valid() else ('Unspecified' if self.unspecified() else self._undetermined)
 
     def __short_repr__(self):
+        grp_info = '' if self._num_groups() <= 1 else f' in {self._num_groups()} groups'
         if self.valid():
             if len(self._targets) <= 2:
-                return ' '.join([x.target_name() for x in self._targets])
+                return ' '.join([x.target_name() for x in self._targets]) + grp_info
             else:
-                return ' '.join([x.target_name() for x in self._targets[:2]]) + f'... ({len(self._targets)} items)'
+                return ' '.join([x.target_name() for x in self._targets[:2]]) + f'... ({len(self._targets)} items{grp_info})'
         else:
             return 'Unspecified' if self.unspecified() else self._undetermined
 
