@@ -1347,21 +1347,23 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             try:
                 self._groups = []
                 idx = by(self)
-                if not isinstance(idx, list):
-                    raise ValueError('Customized grouping method should return a list')
+                try:
+                    idx = list(idx)
+                except:
+                    raise ValueError(f'Customized grouping method should return a list. {idx} of type {idx.__class__.__name__} is returned.')
                 for grp in by(self):
-                    if isinstance(grp, list) and all(isinstance(x, int) for x in grp):
+                    if isinstance(grp, Sequence) and all(isinstance(x, int) for x in grp):
                         if any(x<0 or x>=len(self._targets) for x in grp):
                             raise ValueError(f'Index out of range (< {len(self._targets)}): {grp}')
-                        self._groups.append(_sos_group(grp, parent=source))
-                    elif isinstance(grp, (list, sos_gargets)) and all(isinstance(x, BaseTarget) for x in grp):
+                        self._groups.append(_sos_group(grp, parent=self))
+                    elif isinstance(grp, (Sequence, sos_targets)) and all(isinstance(x, BaseTarget) for x in grp):
                         index = []
                         for x in grp:
                             try:
                                 index.append(self._targets.index(x))
                             except:
                                 raise ValueError(f'Returned target is not one of the targets. {x}')
-                        self._groups.append(_sos_group(index, parent=source))
+                        self._groups.append(_sos_group(index, parent=self))
                     else:
                         raise ValueError(f'Customized grouping method should return a list of indexes or targets: {grp} returned')
             except Exception as e:
