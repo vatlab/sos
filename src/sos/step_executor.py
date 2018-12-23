@@ -666,8 +666,7 @@ class Base_Step_Executor:
                 self._substeps = self.process_input_args(
                     input_files, **{k:v for k,v in kwargs.items() if k in SOS_INPUT_OPTIONS})
                 #
-                if ('concurrent' in kwargs and kwargs['concurrent'] is False) or \
-                    len(self._substeps) <= 1 or self.run_mode == 'dryrun':
+                if 'concurrent' in kwargs and kwargs['concurrent'] is False:
                     self.concurrent_substep = False
             except (UnknownTarget, RemovedTarget, UnavailableLock):
                 raise
@@ -705,6 +704,8 @@ class Base_Step_Executor:
         self.output_groups = [[] for x in self._substeps]
 
         if self.concurrent_substep:
+            if len(self._substeps) <= 1 or self.run_mode == 'dryrun':
+                self.concurrent_substep = False
             if len([
                     x for x in self.step.statements[input_statement_idx:] if x[0] != ':']) > 1:
                 self.concurrent_substep = False
