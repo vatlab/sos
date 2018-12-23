@@ -740,7 +740,7 @@ class Base_Step_Executor:
 
                 env.sos_dict.set('_input', copy.deepcopy(g))
                 # set vars to _input
-                #env.sos_dict['_input']._update_dict(v)
+                #env.sos_dict['_input'].set(**v)
 
                 self.log('_input')
                 env.sos_dict.set('_index', idx)

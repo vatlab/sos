@@ -77,7 +77,7 @@ class TestTarget(unittest.TestCase):
     def testTargetSetGet(self):
         '''Test set and get attributes from targets'''
         a = file_target('a')
-        a.set('b', 1)
+        a.set(b=1)
         self.assertEqual(a.b, 1)
         self.assertEqual(a.get('b'), 1)
         self.assertRaises(Exception, a.set, 'touch', 1)

@@ -139,13 +139,18 @@ class BaseTarget(object):
         self._sigfile = None
         self._dict = kwargs
 
-    def set(self, name, value):
-        if not is_basic_type(value):
-            env.logger.warning(f'Target properties can only be of basic types: {value} of type {value.__class__.__name__} provided')
-            return self
-        if hasattr(self, name):
-            raise ValueError(f'Cannot set attribute {name} to {value.__class__.__name__} because it conflicts with an existing attribute.')
-        self._dict[name] = value
+    def set(self, *args, **kwargs):
+        if args:
+            if len(args) != 2:
+                raise ValueError('set(name, value) or set(name=value) is expected.')
+            kwargs[args[0]] = args[1]
+        for name, value in kwargs.items():
+            if not is_basic_type(value):
+                env.logger.warning(f'Target properties can only be of basic types: {value} of type {value.__class__.__name__} provided')
+                return self
+            if hasattr(self, name):
+                raise ValueError(f'Cannot set attribute {name} to {value.__class__.__name__} because it conflicts with an existing attribute.')
+        self._dict.update(kwargs)
         return self
 
     def get(self, name, default=None):
@@ -158,10 +163,6 @@ class BaseTarget(object):
             # if name in self._dict:
                 # return self._dict.get(name)
             raise AttributeError(f'{self.__class__.__name__} object has no attribute {name}')
-
-    def _update_dict(self, val):
-        self._dict.update({x:y for x,y in val.items() if is_basic_type(y)})
-        return self
 
     def target_exists(self, mode='any'):
         # mode should be 'any', 'target', or 'signature'
@@ -1008,7 +1009,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             if len(self._groups) == 1 and len(arg._groups) > 1:
                 # 1 vs more, we duplicate itself
                 self._groups = [_sos_group(self._groups[0]._indexes,
-                    self._groups[0]._sources)._update_dict(self._groups[0]._dict)
+                    self._groups[0]._sources).set(**self._groups[0]._dict)
                     for ag in arg._groups]
                 for g, ag in zip(self._groups, arg._groups):
                     g.extend(ag, start=n_old, parent=self)
@@ -1089,7 +1090,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             for grp in self._groups:
                 ret._groups.append(_sos_group(
                     [index_map[x] for x,y in zip(grp._indexes, grp._sources) if y == i],
-                    source=i)._update_dict(grp._dict))
+                    source=i).set(**grp._dict))
             return ret
         elif isinstance(i, (tuple, list)):
             ret = sos_targets()
@@ -1119,7 +1120,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             for grp in self._groups:
                 ret._groups.append(_sos_group(
                     [index_map[x] for x,y in zip(grp._indexes, grp._sources) if y == i],
-                    sources=i)._update_dict(grp._dict))
+                    sources=i).set(**grp._dict))
             return ret
         else:
             return self._targets[i]
@@ -1230,7 +1231,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         for _ in range(n-1):
             for grp in self._groups[:n_grps]:
                 self._groups.append(
-                    _sos_group(grp._indexes, grp._sources)._update_dict(grp._dict)
+                    _sos_group(grp._indexes, grp._sources).set(**grp._dict)
                 )
         return self
 
@@ -1457,7 +1458,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         #
         for pattern in patterns:
             res = extract_pattern(pattern, self._targets)
-            self._update_dict(res)
+            self.set(**res)
             # also make k, v pair with _input
             self._handle_paired_with({'_' + x:y for x,y in res.items()})
 
