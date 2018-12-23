@@ -9,7 +9,7 @@ import re
 from typing import Callable
 SOS_TARGETS_OPTIONS = ['group_by', 'paired_with', 'pattern', 'group_with', 'for_each']
 SOS_INPUT_OPTIONS = ['filetype', 'concurrent']
-SOS_OUTPUT_OPTIONS = ['group_by']
+SOS_OUTPUT_OPTIONS = []
 SOS_DEPENDS_OPTIONS = []
 SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'active', 'walltime', 'nodes',
                        'cores', 'mem', 'shared', 'env', 'prepend_path', 'queue', 'to_host',
