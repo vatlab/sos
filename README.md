@@ -46,6 +46,15 @@ other kernels. Please refer to [the installation page of sos website](https://va
 
 ### Change Log of SoS and SoS Notebook
 
+SoS 0.18.0
+* [sos#1115](https://github.com/vatlab/SoS/issues/1115): Function `output_from` and `named_output` to support named inputs and outputs, among other new features summarized in this ticket.
+* [sos#1120](https://github.com/vatlab/SoS/issues/1120): Allow paremeters `group_by`, `paired_with` etc for functions `output_from` and `named_outptu`.
+* [sos#1125](https://github.com/vatlab/SoS/issues/1125): Set `concurrent=True` as default for substep execution.
+
+SoS Notebook 0.18.0
+* [sos-notebook#150](https://github.com/vatlab/sos-notebook/issues/150): A new side panel that works in the same fashion as JupyterLab's console window.
+* [sos-notebook#154](https://github.com/vatlab/sos-notebook/issues/154): New task status table that allows reporting status, killing, and purging multiple tasks with the same tags.
+
 SoS 0.9.16.10
 * [sos#786](https://github.com/vatlab/SoS/issues/786): Support singularity. See [SoS Singularity Guide](https://vatlab.github.io/sos-docs/doc/tutorials/Singularity.html) for details.
 
