@@ -616,7 +616,7 @@ class Base_Step_Executor:
                 f'More than one step input are specified in step {self.step.step_name()}')
 
         # if there is an input statement, execute the statements before it, and then the input statement
-        self.concurrent_substep = False
+        self.concurrent_substep = True
         if input_statement_idx is not None:
             # execute before input stuff
             for statement in self.step.statements[:input_statement_idx]:
@@ -667,8 +667,9 @@ class Base_Step_Executor:
                 #
                 # if shared is true, we have to disable concurrent because we
                 # do not yet return anything from shared.
-                self.concurrent_substep = 'concurrent' in kwargs and kwargs['concurrent'] and len(
-                    self._substeps) > 1 and self.run_mode != 'dryrun'
+                if ('concurrent' in kwargs and kwargs['concurrent'] is False) or \
+                    len(self._substeps) <= 1 or self.run_mode == 'dryrun':
+                    self.concurrent_substep = False
             except (UnknownTarget, RemovedTarget, UnavailableLock):
                 raise
             except Exception as e:
