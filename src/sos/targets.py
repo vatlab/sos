@@ -143,14 +143,21 @@ class BaseTarget(object):
         if args:
             if len(args) != 2:
                 raise ValueError('set(name, value) or set(name=value) is expected.')
-            kwargs[args[0]] = args[1]
-        for name, value in kwargs.items():
-            if not is_basic_type(value):
-                env.logger.warning(f'Target properties can only be of basic types: {value} of type {value.__class__.__name__} provided')
+            if not is_basic_type(args[1]):
+                env.logger.warning(f'Failed to set attribute: {args[1]} is or contains unsupported data type.')
                 return self
-            if hasattr(self, name):
-                raise ValueError(f'Cannot set attribute {name} to {value.__class__.__name__} because it conflicts with an existing attribute.')
-        self._dict.update(kwargs)
+            if hasattr(self, args[0]):
+                raise ValueError(f'Attribute {args[0]} conflicts with another attribute of {value.__class__.__name__}.')
+            self._dict[args[0]] = args[1]
+        #
+        if kwargs:
+            for name, value in kwargs.items():
+                if not is_basic_type(value):
+                    env.logger.warning(f'Failed to set attribute: {value} is or contains unsupported data type.')
+                    return self
+                if hasattr(self, name):
+                    raise ValueError(f'Attribute {name} conflicts with another attribute of {value.__class__.__name__}.')
+            self._dict.update(kwargs)
         return self
 
     def get(self, name, default=None):
