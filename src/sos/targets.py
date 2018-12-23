@@ -1342,7 +1342,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             if by < 1:
                 raise ValueError(
                     'Value of paramter by should be a positive number.')
-            self._groups = [_sos_group(range(i, i + by), parent=self) for i in range(0, len(self), by)]
+            self._groups = [_sos_group(range(i, min(i + by, len(self))), parent=self) for i in range(0, len(self), by)]
         elif callable(by):
             try:
                 self._groups = []
