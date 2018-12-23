@@ -1011,7 +1011,6 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             self._sources.extend(['']*len(arg._targets))
         # merge dictionaries
         self._dict.update(arg._dict)
-
         #
         if keep_groups:
             return self
@@ -1241,10 +1240,12 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     idx.append(index)
                 else:
                     self._targets.append(t)
+                    self._sources.append(arg._sources[i])
                     idx.append(len(self._targets) - 1)
             except:
                 # if none is found
                 self._targets.append(t)
+                self._sources.append(arg._sources[i])
                 idx.append(len(self._targets) - 1)
 
         self._groups.append(
