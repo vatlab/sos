@@ -987,7 +987,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     #def targets(self):
     #    return [x.target_name() if isinstance(x, file_target) else x for x in self._targets]
 
-    def extend(self, another, source=''):
+    def extend(self, another, source='', keep_groups=False):
         if isinstance(another, sos_targets):
             arg = another
         else:
@@ -1010,6 +1010,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         self._dict.update(arg._dict)
 
         #
+        if keep_groups:
+            return self
         # it is possible to merge groups from multiple...
         if arg._groups:
             # if source is specified, it will override sources of all groups
@@ -1038,6 +1040,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             ag = _sos_group(range(n_added), sources=['']*n_added)
             for g in self._groups:
                 g.extend(ag, start=n_old, parent=self)
+        return self
 
 
     def zap(self):
@@ -1226,16 +1229,28 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def _clear_groups(self):
         self._groups = []
 
-    def _add_group(self, targets):
-        try:
-            idx = [self._targets.index(x) for x in targets]
-            self._groups.append(
-                _sos_group(idx, sources=targets.sources)
-            )
-        except Exception as e:
-            env.logger.warning(f'Failed to add group {targets}: {e}')
-            self._groups.append(_sos_group([], sources=[]))
-        return self._groups[-1]
+    def _add_group(self, arg):
+        env.logger.error(f'adding {arg}')
+        #
+        idx = []
+        for i,t in enumerate(arg._targets):
+            try:
+                index = self._targets.index(t)
+                # if target and source both match
+                if arg._sources[index] == arg._sources[i]:
+                    idx.append(index)
+                else:
+                    self._targets.append(t)
+                    idx.append(len(self._targets) - 1)
+            except:
+                # if none is found
+                self._targets.append(t)
+                idx.append(len(self._targets) - 1)
+
+        self._groups.append(
+            _sos_group(idx, sources=arg.sources).set(**arg._dict)
+        )
+        env.logger.error(f'ends with {short_repr(self)}')
 
     def _duplicate_groups(self, n):
         n_grps = len(self._groups)
