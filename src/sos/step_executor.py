@@ -615,8 +615,9 @@ class Base_Step_Executor:
             raise ValueError(
                 f'More than one step input are specified in step {self.step.step_name()}')
 
-        # if there is an input statement, execute the statements before it, and then the input statement
-        self.concurrent_substep = True
+        # if shared is true, we have to disable concurrent because we
+        # do not yet return anything from shared.
+        self.concurrent_substep = 'shared' not in self.step.options
         if input_statement_idx is not None:
             # execute before input stuff
             for statement in self.step.statements[:input_statement_idx]:
@@ -665,8 +666,6 @@ class Base_Step_Executor:
                 self._substeps = self.process_input_args(
                     input_files, **{k:v for k,v in kwargs.items() if k in SOS_INPUT_OPTIONS})
                 #
-                # if shared is true, we have to disable concurrent because we
-                # do not yet return anything from shared.
                 if ('concurrent' in kwargs and kwargs['concurrent'] is False) or \
                     len(self._substeps) <= 1 or self.run_mode == 'dryrun':
                     self.concurrent_substep = False
@@ -851,7 +850,7 @@ class Base_Step_Executor:
                                     env.sos_dict['__signature_vars__']
                                     | {'_input', '_output', '_depends', '_index',
                                      'step_output', '__args__', 'step_name',
-                                      '_runtime', 'step_id', 'workflow_id',
+                                      '_runtime', 'step_id', 'workflow_id', '__num_groups__',
                                       '__signature_vars__'})
 
                                 self.proc_results.append({})
