@@ -7,6 +7,7 @@ import keyword
 import re
 
 from typing import Callable
+SOS_TARGETS_OPTIONS = ['group_by', 'paired_with', 'pattern', 'group_with', 'for_each']
 SOS_INPUT_OPTIONS = ['filetype', 'concurrent']
 SOS_OUTPUT_OPTIONS = ['group_by']
 SOS_DEPENDS_OPTIONS = []

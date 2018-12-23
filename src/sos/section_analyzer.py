@@ -16,7 +16,7 @@ from .parser import SoS_Step
 from .targets import (dynamic, remote, sos_targets, sos_step, named_output)
 from .utils import env, get_traceback, separate_options
 from .executor_utils import  __null_func__
-
+from .syntax import SOS_TARGETS_OPTIONS
 
 def get_param_of_function(name, param_list, extra_dict={}):
     tree = ast.parse(f'__null_func__({param_list})')
@@ -169,7 +169,7 @@ def get_step_depends(section):
                         raise ValueError(f'Value for named_output can only be a name (str): {par[0]} provided')
                     step_depends.extend(named_output(par[0]))
                 else:
-                    if par[0] in ('group_by', 'paired_with', 'pattern', 'group_with', 'for_each'):
+                    if par[0] in SOS_TARGETS_OPTIONS:
                         continue
                     elif par[0] == 'name':
                         if not isinstance(par[1], str):
@@ -295,7 +295,7 @@ def get_output_from_steps(stmt, last_step):
             value = value[0]
         elif value[0] == 'steps':
             value = value[1]
-        elif value[0] in ('group_by', 'paired_with', 'pattern', 'group_with', 'for_each'):
+        elif value[0] in SOS_TARGETS_OPTIONS:
             continue
         else:
             raise ValueError(f'Unacceptable keyword argument {value[0]} for function output_from')

@@ -1165,7 +1165,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 target.set(name, properties)
         elif isinstance(properties, (list, tuple)):
             if len(properties) != len(self._targets):
-                raise ValueError(f'Length of provided properties ({len(properties)}) does not match length of sos_targets ({len(self._targets)})')
+                raise ValueError(f'Length of provided attributes ({len(properties)}) does not match length of sos_targets ({len(self._targets)})')
             for target, property in zip(self._targets, properties):
                 target.set(name, property)
         else:

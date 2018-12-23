@@ -14,7 +14,7 @@ from collections import Iterable, Mapping, Sequence, defaultdict
 from typing import List, Union
 
 from .eval import SoS_eval, SoS_exec, accessed_vars
-from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
+from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS, SOS_TARGETS_OPTIONS,
                      SOS_OUTPUT_OPTIONS, SOS_RUNTIME_OPTIONS)
 from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
                       UnknownTarget, dynamic, file_target,
@@ -131,7 +131,7 @@ def expand_input_files(value, *args, **kwargs):
     if not args and not kwargs:
         return env.sos_dict['step_input']
     # if only group_by ...
-    elif not args and len(kwargs) == 1 and list(kwargs.keys())[0] == 'group_by':
+    elif not args and all(x in SOS_TARGETS_OPTIONS for x in kwargs.keys()):
         return sos_targets(env.sos_dict['step_input'], **kwargs)
     else:
         return sos_targets(*args, **kwargs, _verify_existence=True, _undetermined=False, _source=env.sos_dict['step_name'])
