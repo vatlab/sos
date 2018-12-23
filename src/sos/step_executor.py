@@ -1039,7 +1039,10 @@ class Base_Step_Executor:
                 if 'stderr' in proc_result and proc_result['stderr']:
                     sys.stderr.write(proc_result['stderr'])
                 if 'exception' in proc_result:
-                    raise proc_result['exception']
+                    if isinstance(proc_result['exception'], StopInputGroup):
+                        self.output_groups[proc_result['index']] = []
+                    else:
+                        raise proc_result['exception']
             # if output is Undetermined, re-evalulate it
             # finalize output from output_groups because some output might be skipped
             # this is the final version of the output but we do maintain output

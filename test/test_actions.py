@@ -191,7 +191,7 @@ stop_if(_rep == 1)
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('test_stop_if_0.txt'))
-        self.assertTrue(os.path.isfile('test_stop_if_1.txt'))
+        self.assertFalse(os.path.isfile('test_stop_if_1.txt'))
 
 
     def testRun(self):
