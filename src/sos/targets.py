@@ -41,6 +41,8 @@ def is_basic_type(obj):
         return all(is_basic_type(x) for x in obj)
     if isinstance(obj, dict):
         return all(is_basic_type(x) for x in obj.keys()) and all(is_basic_type(x) for x in obj.values())
+    if isinstance(obj, (file_target, path, paths)):
+        return True
     # we support types defined in numpy and pandas, but not others
     module = obj.__class__.__module__
     if 'pandas' in module or 'numpy' in module:

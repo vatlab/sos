@@ -94,13 +94,13 @@ class TestTarget(unittest.TestCase):
 
     def testTargetPairedWith(self):
         '''Test paired_with targets with vars'''
-        res = sos_targets('e.txt', 'f.ext', a=['a.txt', 'b.txt'], b=['c.txt', 'd.txt'], group_by=1).paired_with('name', ['e', 'f', 'a', 'b', 'c', 'd'])
+        res = sos_targets('e.txt', 'f.ext', a=['a.txt', 'b.txt'], b=['c.txt', 'd.txt'], group_by=1).paired_with('_name', ['e', 'f', 'a', 'b', 'c', 'd'])
         for i,n in enumerate(['e', 'f', 'a', 'b', 'c', 'd']):
-            self.assertEqual(res[i].name, n)
+            self.assertEqual(res[i]._name, n)
         #
         res = copy.deepcopy(res)
         for i,n in enumerate(['e', 'f', 'a', 'b', 'c', 'd']):
-            self.assertEqual(res[i].name, n)
+            self.assertEqual(res[i]._name, n)
         #
         # test assert for length difference
         self.assertRaises(Exception, sos_targets('e.txt', 'f.ext').paired_with,
@@ -425,10 +425,10 @@ run: expand=True
   touch {_output}
 
 [work_2]
-input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}', paired_with = ['data']
+input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}', paired_with = dict(data=data)
 output: expand_pattern('{_name}.out2')
 run: expand=True
-  touch {_data[0]} {_output}
+  touch {data[0]} {_output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -446,8 +446,8 @@ run: expand=True
   touch {_output}
 
 [work_2]
-input: "1.txt", "2.txt", group_by = 'single', for_each = 'data, data',  pattern = '{name}.{ext}'
-output: expand_pattern('{_data}_{_name}.out2')
+input: "1.txt", "2.txt", group_by = 'single', for_each = dict(data=data),  pattern = '{name}.{ext}'
+output: expand_pattern('{data}_{_name}.out2')
 run: expand=True
   touch {_output}
 
