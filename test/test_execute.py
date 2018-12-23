@@ -1151,7 +1151,7 @@ run: expand=True
 [default]
 s = [x for x in range(5)]
 output_files = ['temp/{}.txt'.format(x) for x in range(5)]
-input: for_each = ['s']
+input: for_each = ['s'], concurrent=False
 output: output_files[_index]
 run: active = 0
 rm -f temp/out.log
