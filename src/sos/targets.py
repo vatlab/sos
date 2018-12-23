@@ -697,6 +697,9 @@ class file_target(path, BaseTarget):
         ft._dict = copy.deepcopy(self._dict)
         return ft
 
+    def __reduce__(self):
+        return tuple([self.__class__, super(file_target, self).__reduce__()[1], {'_md5': self._md5, '_dict': self._dict}])
+
 class paths(Sequence, os.PathLike):
     '''A collection of targets'''
     # check if string contains wildcard character
@@ -1189,8 +1192,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
     def group_with(self, name, properties):
         if not self._groups:
-            env.logger.warning(f'group_with on sos_targets without group information')
-            return self
+            self._group(by='all')
         if not is_basic_type(properties):
             env.logger.warning(f'Failed to set {properties} as it is or contains unsupported data type')
             return self
@@ -1230,8 +1232,6 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         self._groups = []
 
     def _add_group(self, arg):
-        env.logger.error(f'adding {arg}')
-        #
         idx = []
         for i,t in enumerate(arg._targets):
             try:
@@ -1250,7 +1250,6 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         self._groups.append(
             _sos_group(idx, sources=arg.sources).set(**arg._dict)
         )
-        env.logger.error(f'ends with {short_repr(self)}')
 
     def _duplicate_groups(self, n):
         n_grps = len(self._groups)

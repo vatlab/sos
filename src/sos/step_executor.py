@@ -308,13 +308,15 @@ class Base_Step_Executor:
         for k in kwargs.keys():
             if k not in SOS_OUTPUT_OPTIONS:
                 raise RuntimeError(f'Unrecognized output option {k}')
-        if 'group_by' in kwargs:
-            ofiles._group(by=kwargs['group_by'])
-            _ogroups = ofiles.groups
-            if len(_ogroups) != len(self._substeps):
+
+        if ofiles._num_groups() > 0:
+            if ofiles._num_groups() == 1:
+                ofiles = ofiles._get_group(0)
+            elif ofiles._num_groups() != len(self._substeps):
                 raise RuntimeError(
-                    f'Output option group_by produces {len(_ogroups)} output groups which is different from the number of input groups ({len(self._substeps)}).')
-            ofiles = _ogroups[env.sos_dict['_index']]
+                    f'Inconsistent number of output ({len(_ogroups)}) and input ({len(self._substeps)}) groups.')
+            else:
+                ofiles = ofiles._get_group(env.sos_dict['_index'])
 
         # create directory
         if ofiles.valid():
@@ -334,7 +336,7 @@ class Base_Step_Executor:
                 if ofile in env.sos_dict['step_output']._targets:
                     raise ValueError(
                         f'Output {ofile} from substep {env.sos_dict["_index"]} overlaps with output from a previous substep')
-            env.sos_dict['step_output'].extend(ofiles)
+            env.sos_dict['step_output'].extend(ofiles, keep_groups=True)
 
     def process_task_args(self, **kwargs):
         env.sos_dict.set('_runtime', {})
@@ -800,6 +802,7 @@ class Base_Step_Executor:
                                     if any(x in g._targets for x in ofiles if not isinstance(x, sos_step)):
                                         raise RuntimeError(
                                             f'Overlapping input and output files: {", ".join(repr(x) for x in ofiles if x in g)}')
+
                                 # set variable _output and output
                                 self.process_output_args(ofiles, **{k:v for k,v in kwargs.items() if k in SOS_OUTPUT_OPTIONS})
                                 self.output_groups[idx] = env.sos_dict['_output']
@@ -1040,21 +1043,11 @@ class Base_Step_Executor:
             # finalize output from output_groups because some output might be skipped
             # this is the final version of the output but we do maintain output
             # during the execution of step, for compatibility.
-            env.sos_dict.set(
-                'step_output', sos_targets(self.output_groups[0]))
+            env.sos_dict.set('step_output', sos_targets([]))
 
-            for og in self.output_groups[1:]:
-                env.sos_dict['step_output'].extend(og)
-            env.sos_dict['step_output'].dedup()
-            # internal api, sorry
-            env.sos_dict['step_output']._clear_groups()
-            try:
-                for og in self.output_groups:
-                    env.sos_dict['step_output']._add_group(
-                         sos_targets(og, _source=env.sos_dict['step_name']))
-            except Exception as e:
-                env.logger.error(f'Failed to add _output to step_output: {e}. Please contact SoS developer with a bug report.')
-                env.sos_dict['step_output']._clear_groups()
+            for og in self.output_groups:
+                og = sos_targets(og)
+                env.sos_dict['step_output']._add_group(sos_targets(og))
 
             # now that output is settled, we can write remaining signatures
             for idx, res in enumerate(self.proc_results):
