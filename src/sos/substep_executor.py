@@ -164,7 +164,9 @@ def _execute_substep(stmt, global_def, task, proc_vars, shared_vars, config):
             env.controller_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
         return res
     except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock) as e:
-        clear_output()
+        # stop_if is not considered as an error
+        if not isinstance(e, StopInputGroup):
+            clear_output(e)
         res = {'index': env.sos_dict['_index'], 'ret_code': 1, 'exception': e}
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
