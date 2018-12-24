@@ -314,7 +314,7 @@ class Base_Step_Executor:
                 ofiles = ofiles._get_group(0)
             elif ofiles._num_groups() != len(self._substeps):
                 raise RuntimeError(
-                    f'Inconsistent number of output ({len(_ogroups)}) and input ({len(self._substeps)}) groups.')
+                    f'Inconsistent number of output ({ofiles._num_groups()}) and input ({len(self._substeps)}) groups.')
             else:
                 ofiles = ofiles._get_group(env.sos_dict['_index'])
 
