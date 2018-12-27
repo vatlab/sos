@@ -258,6 +258,30 @@ run:
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    def testNoTask(self):
+        env.config['sig_mode'] = 'force'
+        script = SoS_Script(r'''
+
+[10]
+task:
+run:
+   sleep 0
+''')
+        wf = script.workflow()
+        # this will always work and not through task
+        Base_Executor(wf, config={'default_queue': 'None'}).run()
+        #
+        env.config['sig_mode'] = 'force'
+        script = SoS_Script(r'''
+
+[10]
+task: queue=None
+run:
+   sleep 0
+''')
+        wf = script.workflow()
+        # this will always work and not through task
+        Base_Executor(wf).run()
 
     def testPassingVarToTask(self):
         '''Test passing used variable to tasks'''

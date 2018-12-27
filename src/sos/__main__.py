@@ -224,7 +224,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             workflow. The queue can be defined in global or local sos
             configuration file, or a file specified by option  --config. A host is
             assumed to be a remote machine with process type if no configuration
-            is found. If a value "none" is specified, tasks are executed as part of
+            is found. If a value "None" is specified, tasks are executed as part of
             regular step processes unless task-specific queues are specified.''')
     parser.add_argument('-r', dest='__remote__', metavar='HOST', nargs='?', const='',
                         help='''Execute the workflow in specified remote host, which should
