@@ -219,13 +219,13 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             to generate specified targets.''')
     parser.add_argument('-b', dest='__bin_dirs__', nargs='*', metavar='BIN_DIR',
                         default=['~/.sos/bin'], help=bindir_help)
-    parser.add_argument('-q', dest='__queue__', nargs='?', const='', metavar='QUEUE',
+    parser.add_argument('-q', dest='__queue__', default="", metavar='QUEUE',
                         help='''host (server) or job queues to execute all tasks in the
             workflow. The queue can be defined in global or local sos
             configuration file, or a file specified by option  --config. A host is
             assumed to be a remote machine with process type if no configuration
-            is found. If this option is specified without value, SoS will list
-            all configured queues and exit.''')
+            is found. If a value "none" is specified, tasks are executed as part of
+            regular step processes unless task-specific queues are specified.''')
     parser.add_argument('-r', dest='__remote__', metavar='HOST', nargs='?', const='',
                         help='''Execute the workflow in specified remote host, which should
             be defined under key host of sos configuration files (preferrably
@@ -362,7 +362,7 @@ def cmd_run(args, workflow_args):
             'config_file': args.__config__,
             'output_dag': args.__dag__,
             'output_report': args.__report__,
-            'default_queue': '' if args.__queue__ is None else args.__queue__,
+            'default_queue': args.__queue__,
             'max_procs': args.__max_procs__,
             'max_running_jobs': args.__max_running_jobs__,
             'sig_mode': 'ignore' if args.dryrun else args.__sig_mode__,
@@ -442,8 +442,7 @@ def get_dryrun_parser(desc_only=False):
             workflow. The queue can be defined in global or local sos
             configuration file, or a file specified by option  --config. A host is
             assumed to be a remote machine with process type if no configuration
-            is found. If this option is specified without value, SoS will list all
-            configured queues and exit.''')
+            is found. ''')
     output = parser.add_argument_group(title='Output options',
                                        description='''Output of workflow''')
     output.add_argument('-d', nargs='?', default='', metavar='DAG', dest='__dag__',

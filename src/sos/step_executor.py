@@ -604,6 +604,25 @@ class Base_Step_Executor:
         env.logger.trace(
             f'Executing step {env.sos_dict["step_name"]} with step_input {env.sos_dict["step_input"]} and step_output {env.sos_dict["step_output"]}')
 
+        task_statement = [x[2] for x in enumerate(
+            self.step.statements) if x[0] == ':' and x[1] == 'task']
+        if task_statement:
+            args, kwargs = SoS_eval(f'__null_func__({task_statement})')
+            self.process_task_args(*args, **kwargs)
+        if (env.config['default_queue'] in ('None', 'none') and
+            'queue' not in env.sos_dict['_runtime']) or \
+            ('queue' in env.sos_dict['_runtime'] and
+            env.sos_dict['_runtime']['default_queue'] in ('none', None)):
+            # remove task statement
+            if len(self.step.statements) >= 1 and self.step.statements[-1][0] == '!':
+                self.step.statements[-1][1].append('\n' + self.step.task)
+            else:
+                self.step.statements.append(
+                    ['!', self.step.task]
+                )
+            self.step.task = None
+
+
         # look for input statement.
         input_statement_idx = [idx for idx, x in enumerate(
             self.step.statements) if x[0] == ':' and x[1] == 'input']
@@ -817,7 +836,9 @@ class Base_Step_Executor:
                                     env.logger.info(e)
                                     raise
                             elif key == 'task':
-                                self.process_task_args(*args, **kwargs)
+                                # we process task options a the beginning of the
+                                # step in case it users specify -q none
+                                pass
                             else:
                                 raise RuntimeError(
                                     f'Unrecognized directive {key}')
