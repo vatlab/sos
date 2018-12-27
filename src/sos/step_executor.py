@@ -609,10 +609,10 @@ class Base_Step_Executor:
         if task_statement:
             args, kwargs = SoS_eval(f'__null_func__({task_statement})')
             self.process_task_args(*args, **kwargs)
-        if (env.config['default_queue'] in ('None', 'none') and
+        if (env.config['default_queue'] in ('None', 'none', None) and
             'queue' not in env.sos_dict['_runtime']) or \
             ('queue' in env.sos_dict['_runtime'] and
-            env.sos_dict['_runtime']['default_queue'] in ('none', None)):
+            env.sos_dict['_runtime']['default_queue'] in ('none', 'None', None)):
             # remove task statement
             if len(self.step.statements) >= 1 and self.step.statements[-1][0] == '!':
                 self.step.statements[-1][1].append('\n' + self.step.task)
