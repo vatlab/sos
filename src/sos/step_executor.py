@@ -857,7 +857,7 @@ class Base_Step_Executor:
                                 # step in case it users specify -q none, but need
                                 # to do it again because the options might involve
                                 # _output #1129
-                                process_task_args(**kwargs)
+                                self.process_task_args(**kwargs)
                             else:
                                 raise RuntimeError(
                                     f'Unrecognized directive {key}')
