@@ -9,6 +9,7 @@ import subprocess
 import sys
 import time
 import zmq
+import ast
 
 from collections import Iterable, Mapping, Sequence, defaultdict
 from typing import List, Union
@@ -220,6 +221,18 @@ def evaluate_shared(vars, option):
     else:
         raise RuntimeError(f'Unacceptable shared option. Only str, sequence, or mapping are accepted in sequence: {option}')
     return shared_vars
+
+
+def get_value_of_param(name, param_list, extra_dict={}):
+    tree = ast.parse(f'__null_func__({param_list})')
+    # x.func can be an attribute (e.g. a.b()) and do not have id
+    kwargs = [x for x in ast.walk(tree) if x.__class__.__name__ == 'keyword' and x.arg == name]
+    if not kwargs:
+        return []
+    try:
+        return [ast.literal_eval(kwargs[0].value)]
+    except Exception as e:
+        return [eval(compile(ast.Expression(body=kwargs[0].value), filename='<string>', mode="eval"), extra_dict)]
 
 class Base_Step_Executor:
     # This base class defines how steps are executed. The derived classes will reimplement
@@ -607,8 +620,12 @@ class Base_Step_Executor:
         task_statement = [x[2] for x in enumerate(
             self.step.statements) if x[0] == ':' and x[1] == 'task']
         if task_statement:
-            args, kwargs = SoS_eval(f'__null_func__({task_statement})')
-            self.process_task_args(*args, **kwargs)
+            try:
+                val = get_value_of_param('queue', task_statement, extra_dict=env.sos_dict._dict)
+                if val:
+                    env.sos_dict['_runtime']['queue'] = val[0]
+            except Exception as e:
+                raise ValueError(f'Failed to determine value of parameter queue of {task_statement}: {e}')
         if (env.config['default_queue'] in ('None', 'none', None) and
             'queue' not in env.sos_dict['_runtime']) or \
             ('queue' in env.sos_dict['_runtime'] and
@@ -837,8 +854,10 @@ class Base_Step_Executor:
                                     raise
                             elif key == 'task':
                                 # we process task options a the beginning of the
-                                # step in case it users specify -q none
-                                pass
+                                # step in case it users specify -q none, but need
+                                # to do it again because the options might involve
+                                # _output #1129
+                                process_task_args(**kwargs)
                             else:
                                 raise RuntimeError(
                                     f'Unrecognized directive {key}')
