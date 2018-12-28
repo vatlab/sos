@@ -437,7 +437,7 @@ def get_dryrun_parser(desc_only=False):
             will be the target of execution. If specified, SoS will execute
             only part of a workflow or multiple workflows or auxiliary steps
             to generate specified targets. ''')
-    parser.add_argument('-q', dest='__queue__', nargs='?', const='', metavar='QUEUE',
+    parser.add_argument('-q', dest='__queue__', default='*', metavar='QUEUE',
                         help='''host (server) or job queues to execute all tasks in the
             workflow. The queue can be defined in global or local sos
             configuration file, or a file specified by option  --config. A host is

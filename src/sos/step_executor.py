@@ -632,7 +632,7 @@ class Base_Step_Executor:
             env.sos_dict['_runtime']['default_queue'] in ('none', 'None', None)):
             # remove task statement
             if len(self.step.statements) >= 1 and self.step.statements[-1][0] == '!':
-                self.step.statements[-1][1].append('\n' + self.step.task)
+                self.step.statements[-1][1] += '\n' + self.step.task
             else:
                 self.step.statements.append(
                     ['!', self.step.task]
