@@ -379,7 +379,9 @@ del sos_handle_parameter_
             # resolve remote() target
             env.sos_dict.set(key, sos_dict[key].remove_targets(type=sos_step).resolve_remote())
 
-    sig = None if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified() else InMemorySignature(
+    # when no output is specified, we just treat the task as having no output (determined)
+    env.sos_dict['_output']._undetermined = False
+    sig = None if env.config['sig_mode'] == 'ignore' else InMemorySignature(
         env.sos_dict['_input'], env.sos_dict['_output'],
         env.sos_dict['_depends'], env.sos_dict['__signature_vars__'],
         shared_vars=parse_shared_vars(env.sos_dict['_runtime'].get('shared', None)))
