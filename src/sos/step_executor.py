@@ -288,9 +288,6 @@ class Base_Step_Executor:
             env.sos_dict.set('_input', sos_targets([]))
             env.sos_dict.set('step_output', sos_targets())
             return [sos_targets([])], [{}]
-        #
-        if 'filetype' in kwargs:
-            env.logger.warning('Input option filetype was deprecated')
 
         assert isinstance(ifiles, sos_targets)
 
@@ -426,7 +423,7 @@ class Base_Step_Executor:
         # because it can be different (e.g. not localhost
         if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
             queue = env.sos_dict['_runtime']['queue']
-        elif 'default_queue' in env.config:
+        elif env.config['default_queue']:
             queue = env.config['default_queue']
         else:
             queue = 'localhost'
@@ -617,15 +614,21 @@ class Base_Step_Executor:
         env.logger.trace(
             f'Executing step {env.sos_dict["step_name"]} with step_input {env.sos_dict["step_input"]} and step_output {env.sos_dict["step_output"]}')
 
-        task_statement = [x[2] for x in enumerate(
-            self.step.statements) if x[0] == ':' and x[1] == 'task']
+        task_statement = [x[2] for x in self.step.statements if x[0] == ':' and x[1] == 'task']
         if task_statement:
             try:
-                val = get_value_of_param('queue', task_statement, extra_dict=env.sos_dict._dict)
-                if val:
-                    env.sos_dict['_runtime']['queue'] = val[0]
+                task_queue = get_value_of_param('queue', task_statement[0], extra_dict=env.sos_dict._dict)
+                if task_queue:
+                    env.sos_dict['_runtime']['queue'] = task_queue[0]
             except Exception as e:
                 raise ValueError(f'Failed to determine value of parameter queue of {task_statement}: {e}')
+            # check concurrent #1134
+            try:
+                task_concurrency = get_value_of_param('concurrent', task_statement[0], extra_dict=env.sos_dict._dict)
+                if task_concurrency:
+                    env.sos_dict['_runtime']['concurrent'] = task_concurrency[0]
+            except Exception as e:
+                raise ValueError(f'Failed to determine value of parameter queue of {task_statement[0]}: {e}')
         if (env.config['default_queue'] in ('None', 'none', None) and
             'queue' not in env.sos_dict['_runtime']) or \
             ('queue' in env.sos_dict['_runtime'] and
@@ -653,7 +656,8 @@ class Base_Step_Executor:
 
         # if shared is true, we have to disable concurrent because we
         # do not yet return anything from shared.
-        self.concurrent_substep = 'shared' not in self.step.options
+        self.concurrent_substep = 'shared' not in self.step.options and \
+            ('concurrent' not in env.sos_dict['_runtime'] or env.sos_dict['_runtime']['concurrent'] is True)
         if input_statement_idx is not None:
             # execute before input stuff
             for statement in self.step.statements[:input_statement_idx]:
