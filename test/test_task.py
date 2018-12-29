@@ -200,7 +200,7 @@ print('I am {}, done'.format(_index))
 repeat = range(4)
 input: for_each='repeat'
 
-task: concurrent=True
+task: 
 
 import time
 print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
@@ -366,7 +366,7 @@ run:
                 file_target(f).unlink()
         script = SoS_Script('''
 [10]
-input: for_each={'i': range(5)}, concurrent=True
+input: for_each={'i': range(5)}
 output: f'con_{i}.txt'
 
 task:
@@ -524,7 +524,6 @@ sh: expand=True
             'output_report': None,
             'targets': [],
             'max_procs': 4,
-            'default_queue': None,
             'workflow': 'default',
             'workdir': '.',
         }).run()
@@ -553,7 +552,6 @@ sh: expand=True
             'output_report': None,
             'targets': [],
             'max_procs': 4,
-            'default_queue': None,
             'workflow': 'default',
             'workdir': '.',
         }).run()

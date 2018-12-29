@@ -426,7 +426,7 @@ class Base_Step_Executor:
         # because it can be different (e.g. not localhost
         if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
             queue = env.sos_dict['_runtime']['queue']
-        elif env.config['default_queue']:
+        elif 'default_queue' in env.config:
             queue = env.config['default_queue']
         else:
             queue = 'localhost'
