@@ -791,5 +791,29 @@ print('a')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
 
+    def testOutputInTask(self):
+        '''Test passing _output to task #1136'''
+        script = SoS_Script('''
+chunks  = [1,2]
+[1]
+input: for_each = 'chunks'
+output: f'{_chunks}.txt'
+_output.touch()
+
+[2]
+input: group_with = 'chunks'
+output: summary_stats = f'{_input}.summary', ld_matrix = f'{_input}.result'
+task: 
+
+python3: expand="${ }" 
+       open("${_output['summary_stats']}", 'w').close()
+       open("${_output['ld_matrix']}", 'w').close()
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
+
+
+
 if __name__ == '__main__':
     unittest.main()

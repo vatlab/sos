@@ -8,10 +8,10 @@ import subprocess
 import time
 from collections import OrderedDict, Mapping, Sequence
 
-from .eval import SoS_eval, SoS_exec, interpolate
+from .eval import SoS_eval, SoS_exec
 from .monitor import ProcessMonitor
 from .targets import (InMemorySignature, UnknownTarget, file_target,
-                      remote, sos_step, dynamic, sos_targets)
+                      sos_step, dynamic, sos_targets)
 from .utils import StopInputGroup, env, short_repr, pickleable
 from .tasks import TaskFile, remove_task_files
 from .step_executor import parse_shared_vars
@@ -75,6 +75,7 @@ def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
                 f'Option shared should be a string, a mapping of expression, or a list of string or mappings. {svars} provided')
         env.logger.debug(
             f'task {task_id} (index={env.sos_dict["_index"]}) return shared variable {shared}')
+
     # the difference between sos_dict and env.sos_dict is that sos_dict (the original version) can have remote() targets
     # which should not be reported.
     if env.sos_dict['_output'] is None:
@@ -93,8 +94,7 @@ def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
     elif sos_dict['_output'] is None:
         output = {}
     else:
-        output = {x: file_target(x).target_signature()
-                  for x in sos_dict['_output'] if isinstance(x, (str, file_target))}
+        output = {x: x.target_signature() for x in sos_dict['_output'] if x.exists()}
 
     input = {} if env.sos_dict['_input'] is None or sos_dict['_input'] is None else {x: file_target(
         x).target_signature() for x in sos_dict['_input'] if isinstance(x, (str, file_target))}
@@ -374,19 +374,10 @@ del sos_handle_parameter_
 
     env.sos_dict.quick_update(sos_dict)
 
-    # if targets are defined as `remote`, they should be resolved during task execution
-    def resolve_remote(x):
-        if isinstance(x, remote):
-            x = x.resolve()
-            if isinstance(x, str):
-                x = interpolate(x, env.sos_dict._dict)
-        return x
-
     for key in ['step_input', '_input',  'step_output', '_output', 'step_depends', '_depends']:
-        if key in sos_dict and isinstance(sos_dict[key], (list, sos_targets)):
+        if key in sos_dict and isinstance(sos_dict[key], sos_targets):
             # resolve remote() target
-            env.sos_dict.set(key, sos_targets(resolve_remote(x)
-                                              for x in sos_dict[key] if not isinstance(x, sos_step)))
+            env.sos_dict.set(key, sos_dict[key].remove_targets(type=sos_step).resolve_remote())
 
     sig = None if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified() else InMemorySignature(
         env.sos_dict['_input'], env.sos_dict['_output'],

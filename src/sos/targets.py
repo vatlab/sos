@@ -23,7 +23,7 @@ import pkg_resources
 
 from .utils import (Error, env, pickleable, short_repr, stable_repr)
 from .pattern import extract_pattern
-
+from .eval import interpolate
 
 try:
     from xxhash import xxh64 as hash_md5
@@ -652,7 +652,7 @@ class file_target(path, BaseTarget):
                 self._md5 = md5
                 return (float(mtime), int(size), md5)
         else:
-            raise ValueError('{self} does not exist.')
+            raise ValueError(f'{self} does not exist.')
 
     def sig_file(self):
         return os.path.join(env.exec_dir, '.sos', f'{textMD5(str(self.resolve()))}.file_info')
@@ -1187,6 +1187,34 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 target.set(name, property)
         else:
             raise ValueError('Unacceptable properties {properties} for function paired_with')
+        return self
+
+    def remove_targets(self, type):
+        '''Remove targets of certain type'''
+        kept = [i for i,x in enumerate(self._targets) if not isinstance(x, type)]
+        if len(kept) == len(self._targets):
+            return self
+        self._targets = [self._targets[x] for x in kept]
+        self._sources = [self._sources[x] for x in kept]
+        if not self._groups:
+            return self
+        index_map = {o_idx:n_idx for n_idx,o_idx in zip(
+                range(len(self._targets)), kept)}
+        kept = set(kept)
+        for idx,grp in enumerate(self._groups):
+            self._groups[idx] = _sos_group(
+                [index_map[x] for x in grp._indexes if x in kept],
+                [y for x,y in zip(grp._indexes, grp._sources) if x in kept]).set(**grp._dict)
+        return self
+
+    def resolve_remote(self):
+        '''If target is of remote type, resolve it'''
+        for idx, target in enumerate(self._targets):
+            if isinstance(target, remote):
+                resolved = target.resolve()
+                if isinstance(resolved, str):
+                    resolved = interpolate(resolved, env.sos_dict._dict)
+                self._targets[idx] = file_target(resolved).set(**target._dict)
         return self
 
     def group_with(self, name, properties):

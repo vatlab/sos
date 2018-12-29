@@ -1881,5 +1881,6 @@ assert(step_input.groups[1] == ['b_2.txt', 'b_3.txt'])
             wf = script.workflow(wf)
             Base_Executor(wf).run()
 
+
 if __name__ == '__main__':
     unittest.main()

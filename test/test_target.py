@@ -12,7 +12,7 @@ import unittest
 
 from sos.eval import interpolate
 from sos.parser import SoS_Script
-from sos.targets import file_target, path, paths, sos_targets
+from sos.targets import file_target, path, paths, sos_targets, sos_step
 from sos.utils import env
 from sos.workflow_executor import Base_Executor
 
@@ -73,6 +73,20 @@ class TestTarget(unittest.TestCase):
         self.assertEqual(len(res_a.groups[1]), 1)
         self.assertEqual(len(res_a.groups[2]), 0)
         self.assertEqual(len(res_a.groups[3]), 0)
+
+
+    def testRemoveTargets(self):
+        '''Test sos_target.remove_targets()'''
+        a = sos_targets(sos_step('1'), 'a.txt')._group(by=1)
+        a.remove_targets(type=sos_step)
+        self.assertEqual(len(a), 1)
+        self.assertEqual(len(a.groups), 2)
+        self.assertEqual(len(a._groups[0]._indexes), 0)
+        self.assertEqual(len(a._groups[0]._sources), 0)
+        self.assertEqual(a._groups[1]._indexes, [0])
+        self.assertEqual(len(a._groups[1]._sources), 1)
+
+
 
     def testTargetSetGet(self):
         '''Test set and get attributes from targets'''
