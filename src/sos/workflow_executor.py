@@ -318,29 +318,6 @@ class Base_Executor:
                 if not key.startswith('__'):
                     env.sos_dict.set(key, value)
 
-    def skip(self, section: SoS_Step) -> bool:
-        if section.global_def:
-            try:
-                SoS_exec(section.global_def)
-            except subprocess.CalledProcessError as e:
-                raise RuntimeError(e.stderr)
-            except RuntimeError as e:
-                if env.verbosity > 2:
-                    sys.stderr.write(get_traceback())
-                raise RuntimeError(
-                    f'Failed to execute statements\n"{section.global_def}"\n{e}')
-        #
-        if 'skip' in section.options:
-            val_skip = section.options['skip']
-            if val_skip is None or val_skip is True:
-                env.logger.info(
-                    f'``{section.step_name(True)}`` is ``ignored`` due to skip option.')
-                return True
-            elif val_skip is not False:
-                raise RuntimeError(
-                    f'The value of section option skip can only be None, True or False, {val_skip} provided')
-        return False
-
     def match(self, target: BaseTarget, step: SoS_Step) -> Union[Dict[str, str], bool]:
         # for sos_step, we need to match step name
         if isinstance(target, sos_step):
@@ -442,8 +419,6 @@ class Base_Executor:
                         default_input: sos_targets = sos_targets()
                         #
                         for idx, section in enumerate(sections):
-                            if self.skip(section):
-                                continue
                             res = analyze_section(section, default_input)
 
                             environ_vars = res['environ_vars']
@@ -634,8 +609,6 @@ class Base_Executor:
         default_input: sos_targets = sos_targets([])
         targets = sos_targets(targets)
         for idx, section in enumerate(self.workflow.sections):
-            if self.skip(section):
-                continue
             #
             res = analyze_section(section, default_input)
 

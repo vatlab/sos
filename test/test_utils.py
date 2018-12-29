@@ -102,7 +102,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(accessed_vars('''a = "C" + f"{D}"'''), {'a', 'D'})
         self.assertEqual(accessed_vars(
             '''a = 1 + f"{D + 20:f}" '''), {'a', 'D'})
-        self.assertEqual(accessed_vars('''k, "a.txt", "b.txt", skip=True, par=f(something) '''), {
+        self.assertEqual(accessed_vars('''k, "a.txt", "b.txt", par=f(something) '''), {
                          'k', 'f', 'something', '__NULLFUNC__'})
         # this is a complicated case because the actual variable depends on the
         # result of an expression... However, in the NO-evaluation case, this is

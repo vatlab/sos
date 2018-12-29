@@ -8,7 +8,7 @@ import re
 
 from typing import Callable
 SOS_TARGETS_OPTIONS = ['group_by', 'paired_with', 'pattern', 'group_with', 'for_each']
-SOS_INPUT_OPTIONS = ['filetype', 'concurrent']
+SOS_INPUT_OPTIONS = ['concurrent']
 SOS_OUTPUT_OPTIONS = []
 SOS_DEPENDS_OPTIONS = []
 SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'active', 'walltime', 'nodes',
@@ -18,7 +18,7 @@ SOS_ACTION_OPTIONS = ['workdir', 'container', 'engine', 'docker_image', 'docker_
                       'allow_error', 'tracked', 'stdout', 'stderr', 'default_env', 'env']
 
 SOS_DIRECTIVES = ['input', 'output', 'depends', 'task', 'parameter']
-SOS_SECTION_OPTIONS = ['skip', 'provides', 'shared', 'workdir']
+SOS_SECTION_OPTIONS = ['provides', 'shared', 'workdir']
 
 SOS_KEYWORDS = SOS_INPUT_OPTIONS + SOS_OUTPUT_OPTIONS + SOS_DEPENDS_OPTIONS + SOS_RUNTIME_OPTIONS \
     + SOS_ACTION_OPTIONS + SOS_DIRECTIVES + SOS_SECTION_OPTIONS

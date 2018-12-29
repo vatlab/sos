@@ -55,7 +55,7 @@ output: var2
 
 var3 = 'a'
 
-[section_3, *_4 : shared='var4', skip ]
+[section_3, *_4 : shared='var4']
 output:
 	var2,
 	var3
@@ -121,11 +121,6 @@ class TestParser(unittest.TestCase):
         script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse_2]\n[s*_2]''')
         self.assertEqual(sorted(script.workflows), [
                          '', 'human', 'mouse'])
-        # skip option is not effective at parsing time
-        script = SoS_Script(
-            '''[0]\n[*_1]\n[human_1]\n[mouse_2:skip]\n[s*_2]''')
-        self.assertEqual(sorted(script.workflows), [
-                         '', 'human', 'mouse'])
         # unnamed
         script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse]\n[s*_2]''')
         self.assertEqual(sorted(script.workflows), [
@@ -147,24 +142,6 @@ class TestParser(unittest.TestCase):
         # action
         SoS_Script('''a : expand='${ }' ''')
 
-    def testSkipStep(self):
-        '''Test the skip option to skip certain steps'''
-        script = SoS_Script('''
-parameter: skip = 0
-
-[0: shared={'a':'var'}, skip=skip==0]
-var = 0
-
-[1: shared={'b': 'var'}, skip=skip==1]
-var = 1
-
-''')
-        wf = script.workflow()
-        Base_Executor(wf, args=['--skip', '0']).run()
-        self.assertEqual(env.sos_dict['b'], 1)
-        #
-        Base_Executor(wf, args=['--skip', '1']).run()
-        self.assertEqual(env.sos_dict['a'], 0)
 
     def testSections(self):
         '''Test section definitions'''
@@ -172,7 +149,7 @@ var = 1
         for badname in ['56_1', '_a', 'a_', '1x', '*', '?']:
             self.assertRaises(ParsingError, SoS_Script, '[{}]'.format(badname))
         # bad options
-        for badoption in ['ss', 'skip a', 'skip:_', 'skip, skip']:
+        for badoption in ['ss']:
             self.assertRaises(ParsingError, SoS_Script,
                               '[0:{}]'.format(badoption))
         # allowed names
@@ -193,8 +170,6 @@ var = 1
         SoS_Script('''[a_1]\n[a_3]\n[b*_1]''')
         #
         # global section
-        self.assertRaises(ParsingError, SoS_Script,
-                          '''[global: skip]''')
         self.assertRaises(ParsingError, SoS_Script,
                           '''[global, step_10]''')
 

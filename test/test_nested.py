@@ -347,7 +347,7 @@ run: expand=True
 if 'executed' not in locals():
     executed = []
 
-[b_1: skip=False, shared='executed']
+[b_1: shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('A', shared='executed')
@@ -371,7 +371,7 @@ sos_run('A', shared='executed')
 if 'executed' not in locals():
     executed = []
 
-[b_1: skip=False, shared='executed']
+[b_1: shared='executed']
 executed.append('g.' + step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('k.A', shared='executed')
