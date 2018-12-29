@@ -1003,7 +1003,7 @@ class Base_Executor:
                     # if the job is failed
                     elif isinstance(res, Exception):
                         env.logger.debug(f'{i_am()} received an exception')
-                        env.logger.error(res)
+                        # env.logger.error(res)
                         runnable._status = 'failed'
                         dag.save(env.config['output_dag'])
                         exec_error.append(runnable._node_id, res)
