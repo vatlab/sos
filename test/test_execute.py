@@ -1950,6 +1950,41 @@ assert(step_input.groups[1] == ['b_2.txt', 'b_3.txt'])
             wf = script.workflow(wf)
             Base_Executor(wf).run()
 
+    def testSetVariablesTo_Output(self):
+        '''Test assigning variables to _output'''
+        script = SoS_Script('''\
+[10]
+output: 'a.txt'
+_output[0].set(tvar=1)
+_output.set(gvar=2)
+_output.touch()
+
+[20]
+assert(gvar == 2)
+assert(_input.gvar == 2)
+assert(_input.tvar == 1)
+assert(_input[0].tvar == 1)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # if there are substeps
+        script = SoS_Script('''\
+[10]
+input: for_each=dict(i=range(4))
+output: f'a_{i}.txt'
+_output[0].set(tvar=i)
+_output.set(gvar=i)
+_output.touch()
+
+[20]
+assert(gvar == _index)
+assert(_input.gvar == _index)
+assert(_input.tvar == _index)
+assert(_input[0].tvar == )index)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
 
 if __name__ == '__main__':
     unittest.main()
