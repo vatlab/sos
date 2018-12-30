@@ -328,6 +328,16 @@ class Base_Step_Executor:
             else:
                 ofiles = ofiles._get_group(env.sos_dict['_index'])
 
+        if 'group_with' in kwargs:
+            # group_with is applied to step_output so for each _output is applies
+            # its _index-th element
+            try:
+                tmp = sos_targets(['.']*env.sos_dict['__num_groups__'],
+                    group_by=1, group_with=kwargs['group_with'])
+                ofiles.set(**tmp._get_group(env.sos_dict['_index'])._dict)
+            except Exception as e:
+                raise RuntimeError(f'Failed to apply option "group_with" to input with {env.sos_dict["__num_groups__"]} groups: {e}')
+
         # create directory
         if ofiles.valid():
             for ofile in ofiles:

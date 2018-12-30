@@ -770,6 +770,75 @@ run: expand=True
             file_target(ofile).unlink()
 
 
+    def testOutputGroupWith(self):
+        '''Test option group_with in output statement'''
+        self.touch(['a.txt', 'b.txt'])
+        for ofile in ['a.txt1', 'b.txt2']:
+            if file_target(ofile).exists():
+                file_target(ofile).unlink()
+        #
+        # string input
+        script = SoS_Script(r'''
+[0]
+files = ['a.txt', 'b.txt']
+vars = [1, 2]
+
+input: files, group_by=1
+output: f"{_input}.bak", group_with='vars'
+run: expand=True
+    touch {_output}
+
+[1]
+assert(_vars == _index + 1)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for ofile in ['a.txt.bak', 'b.txt.bak']:
+            self.assertTrue(file_target(ofile).target_exists('target'))
+            file_target(ofile).unlink()
+        #
+        # list input
+        script = SoS_Script(r'''
+[0]
+files = ['a.txt', 'b.txt']
+vars = [1]
+vars2 = ['a']
+
+input: files, group_by=2
+output: f"{_input[0]}1", group_with=('vars', 'vars2') 
+run: expand=True
+    touch {_output}
+
+[1]
+assert(_vars == 1)
+assert(_input._vars2 == 'a')
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for ofile in ['a.txt1']:
+            self.assertTrue(file_target(ofile).target_exists('target'))
+            file_target(ofile).unlink()
+        #
+        # dict input
+        script = SoS_Script(r'''
+[0]
+files = ['a.txt', 'b.txt']
+input: files, group_by=2
+output: f"{_input[0]}.bak",  group_with={'var': [1], 'var2': ['a']}
+run: expand=True
+    touch {_output}
+
+[1]
+assert(var == 1)
+assert(var2 == 'a')
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for ofile in ['a.txt.bak']:
+            self.assertTrue(file_target(ofile).target_exists('target'))
+            file_target(ofile).unlink()
+
+
     def testGroupWithAsTargetProperty(self):
         '''Test option group_with '''
         self.touch(['a.txt', 'b.txt'])
