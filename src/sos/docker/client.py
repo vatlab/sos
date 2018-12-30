@@ -152,9 +152,10 @@ class SoS_DockerClient:
                 'Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
         with tempfile.TemporaryDirectory(dir=os.getcwd()) as tempdir:
             if script:
-                with open(os.path.join(tempdir, 'Dockerfile'), 'w') as df:
+                docker_file = os.path.join(tempdir, 'Dockerfile')
+                with open(docker_file, 'w') as df:
                     df.write(script)
-                file_opt = [tempdir]
+                file_opt = ['-f', docker_file, '.']
             else:
                 if 'file' not in kwargs:
                     raise RuntimeError(
