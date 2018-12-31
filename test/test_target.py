@@ -87,6 +87,21 @@ class TestTarget(unittest.TestCase):
         self.assertEqual(len(a._groups[1]._sources), 1)
 
 
+    def testSoSTargetsSignature(self):
+        '''Test save and validate signatures of sos_targets'''
+        with open('a.txt', 'w') as a:
+            a.write('text1')
+        with open('b.txt', 'w') as b:
+            b.write('text2')
+        t = sos_targets('a.txt', 'b.txt')
+        sig = t.target_signature()
+        self.assertTrue(t.validate(sig))
+        # variables does not affect signature
+        t[0].set('a', 2)
+        self.assertEqual(sig, t.target_signature())
+        #
+        t.set('cc', 'another string')
+        self.assertTrue(t.validate(sig))
 
     def testTargetSetGet(self):
         '''Test set and get attributes from targets'''
