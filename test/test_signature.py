@@ -296,10 +296,9 @@ run: expand='${ }'
     @unittest.skipIf(sys.platform == 'win32', 'Windows executable cannot be created with chmod.')
     def testRemovalOfIntermediateFiles(self):
         # if we zap the file, it
-        if os.path.isfile('midfile.txt'):
-            os.remove('midfile.txt')
-        if os.path.isfile('midfile.txt.zapped'):
-            os.remove('midfile.txt.zapped')
+        for f in ['midfile.txt', 'finalfile.txt', 'midfile.txt.zapped']:
+            if os.path.isfile(f):
+                os.remove(f)
         script = SoS_Script(r'''
 [10]
 
@@ -307,6 +306,7 @@ run: expand='${ }'
 output: 'midfile.txt'
 
 run: expand='${ }'
+    rm -f ${_output}
     for x in {1..1000}
     do
         echo $x >> ${_output}
@@ -328,17 +328,14 @@ run: expand=True
         self.assertEqual(res['__completed__']['__step_completed__'], 1)
         self.assertTrue(os.path.isfile('midfile.txt'))
         #
-        # we discard the signature, and change midfile rerun
-        with open('midfile.txt', 'a') as mf:
-            mf.write('extra')
-        res = Base_Executor(wf).run()
-        self.assertEqual(res['__completed__']['__step_completed__'], 2)
-        #
         # now if we touch the mid file, it needs to be regenerated
         with open('midfile.txt', 'a') as lf:
             lf.write('something')
         res = Base_Executor(wf).run()
-        self.assertEqual(res['__completed__']['__step_completed__'], 2)
+        self.assertEqual(res['__completed__']['__step_completed__'], 1)
+        #
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 0)
         #
         # if we zap the mid file, it does not need to be rerun
         subprocess.call('sos remove midfile.txt --zap -y', shell=True)

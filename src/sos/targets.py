@@ -90,8 +90,8 @@ def textMD5(text):
 
 def objectMD5(obj):
     '''Get md5 of an object'''
-    if hasattr(obj, 'target_signature'):
-        return obj.target_signature()
+    if hasattr(obj, 'target_name'):
+        return obj.target_name()
     try:
         return textMD5(pickle.dumps(obj))
     except:
@@ -1145,10 +1145,10 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             return self._targets[i]
 
     def target_signature(self):
-        return tuple(x.target_signature() for x in self._targets)
+        return tuple((x.target_signature(),y) for x,y in zip(self._targets, self._sources))
 
     def validate(self, sig):
-        return isinstance(sig, tuple) and len(sig) == len(self._targets) and all(x.validate(y) for x,y in zip(self._targets, sig))
+        return isinstance(sig, tuple) and len(sig) == len(self._targets) and all(x.validate(sig[0]) and src==sig[1] for x,src,sig in zip(self._targets, self._sources, sig))
 
     def target_exists(self, mode='any'):
         if len(self._targets) == 1:
@@ -1169,11 +1169,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 f'Unknown attribute {key} from sos_targets of size {len(self)}.')
 
     def target_name(self):
-        if len(self._targets) == 1:
-            return self._targets[0].target_name()
-        else:
-            raise ValueError(f'Cannot get name() for group of targets {self}')
-
+        return f"sos_targets([{','.join(x.target_name() for x in self._targets)}])"
+        
     def dedup(self):
         self._targets = list(dict.fromkeys(self._targets))
 
@@ -1760,6 +1757,7 @@ class InMemorySignature:
             if not x.target_exists('any'):
                 return f'Missing target {x}'
         #
+
         files_checked = {x.target_name(): False for x in sig_files}
         res = {'input': [], 'output': [], 'depends': [], 'vars': {}}
         cur_type = 'input'
@@ -1779,8 +1777,7 @@ class InMemorySignature:
                 if key not in env.sos_dict:
                     return f'Variable {key} not in running environment'
                 try:
-                    if (hasattr(env.sos_dict[key], 'validate') and not env.sos_dict[key].validate(value)) and \
-                        objectMD5(env.sos_dict[key]) != value:
+                    if objectMD5(env.sos_dict[key]) != value:
                         return f'ID of context variable {key} ({objectMD5(env.sos_dict[key])}) mismatch: {short_repr(env.sos_dict[key])} does not match id {value}'
                 except Exception as e:
                     env.logger.debug(f"Variable {key} cannot be compared: {e}")
