@@ -530,11 +530,13 @@ class Base_Step_Executor:
     def submit_substep(self, substep):
         env.substep_frontend_socket.send_pyobj(substep)
 
-    def process_returned_substep_result(self, wait=True):
+    def process_returned_substep_result(self, till=None, wait=True):
         while True:
             if not wait:
                 if not self.result_pull_socket.poll(0):
                     return
+            elif self._completed_concurrent_substeps == till:
+                return
             res = self.result_pull_socket.recv_pyobj()
             #
             if "index" not in res:
@@ -549,7 +551,8 @@ class Base_Step_Executor:
 
     def wait_for_substep(self):
         while self._completed_concurrent_substeps < len(self.proc_results):
-            self.process_returned_substep_result(wait=True)
+            self.process_returned_substep_result(till=len(self.proc_results),
+                wait=True)
 
     def collect_result(self):
         # only results will be sent back to the master process
@@ -1082,10 +1085,12 @@ class Base_Step_Executor:
                 #
                 # if not concurrent, we have to wait for the completion of the task
                 if 'concurrent' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['concurrent'] is False:
+                    # in this case the steps must be executed not concurrently
                     self.wait_for_results(all_submitted=False)
                 #
                 # endfor loop for each input group
                 #
+
             self.wait_for_results(all_submitted=True)
             for idx, res in enumerate(self.proc_results):
                 if 'sig_skipped' in res:
