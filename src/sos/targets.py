@@ -1169,8 +1169,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 f'Unknown attribute {key} from sos_targets of size {len(self)}.')
 
     def target_name(self):
-        return f"sos_targets([{','.join(x.target_name() for x in self._targets)}])"
-        
+        return f"sos_targets([{','.join(x.target_name() for x in self._targets)}],_sources=[{','.join(self._sources)}])"
+
     def dedup(self):
         self._targets = list(dict.fromkeys(self._targets))
 
