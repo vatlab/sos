@@ -947,7 +947,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         elif isinstance(arg, dict):
             for k, v in arg.items():
                 if not isinstance(k, str):
-                    raise ValueError(f'Source of sos_targets can only be a string: {k} specified')
+                    raise ValueError(f'Failed to create a sos_targets object with dictionary {arg}: source of sos_targets can only be a string: {k} of type {k.__class__.__name__} specified')
                 self.__append__(v, source=k, verify_existence=verify_existence)
         elif isinstance(arg, sos_targets):
             # group handling if tricker here because arg can have

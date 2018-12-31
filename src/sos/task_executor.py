@@ -78,9 +78,7 @@ def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
 
     # the difference between sos_dict and env.sos_dict is that sos_dict (the original version) can have remote() targets
     # which should not be reported.
-    if env.sos_dict['_output'] is None:
-        output = {}
-    elif env.sos_dict['_output'].undetermined():
+    if env.sos_dict['_output'].undetermined():
         # re-process the output statement to determine output files
         args, _ = SoS_eval(
             f'__null_func__({env.sos_dict["_output"]._undetermined})',
@@ -88,19 +86,9 @@ def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
                     '__null_func__': __null_func__
             })
         # handle dynamic args
-        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-        output = {x: file_target(x).target_signature()
-                  for x in sos_targets(*args)}
-    elif sos_dict['_output'] is None:
-        output = {}
-    else:
-        output = {x: x.target_signature() for x in sos_dict['_output'] if x.exists()}
+        env.sos_dict.set('_output', sos_targets([x.resolve() if isinstance(x, dynamic) else x for x in args]))
 
-    input = {} if env.sos_dict['_input'] is None or sos_dict['_input'] is None else {x: file_target(
-        x).target_signature() for x in sos_dict['_input'] if isinstance(x, (str, file_target))}
-    depends = {} if env.sos_dict['_depends'] is None or sos_dict['_depends'] is None else {
-        x: file_target(x).target_signature() for x in sos_dict['_depends'] if isinstance(x, (str, file_target))}
-    return {'ret_code': 0, 'task': task_id, 'input': input, 'output': output, 'depends': depends,
+    return {'ret_code': 0, 'task': task_id, 'input': sos_dict['_input'], 'output': sos_dict['_output'], 'depends': sos_dict['_depends'],
             'shared': shared, 'skipped': skipped,
             'start_time': sos_dict.get('start_time', ''),
             'peak_cpu': sos_dict.get('peak_cpu', 0),

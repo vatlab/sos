@@ -530,8 +530,12 @@ class Base_Step_Executor:
     def submit_substep(self, substep):
         env.substep_frontend_socket.send_pyobj(substep)
 
-    def wait_for_substep(self):
-        for ss in self.proc_results:
+    def process_returned_substep_result(self, wait=True):
+        while True:
+            if not self.result_pull_socket.poll(0):
+                return
+            elif not wait:
+                return
             res = self.result_pull_socket.recv_pyobj()
             #
             if "index" not in res:
@@ -542,6 +546,11 @@ class Base_Step_Executor:
                 self.proc_results[res['index']] = task
             else:
                 self.proc_results[res['index']] = res
+            self._completed_concurrent_substeps += 1
+
+    def wait_for_substep(self):
+        while self._completed_concurrent_substeps < len(self.proc_results):
+            self.process_returned_substep_result(wait=True)
 
     def collect_result(self):
         # only results will be sent back to the master process
@@ -771,6 +780,7 @@ class Base_Step_Executor:
         try:
             self.completed['__substep_skipped__'] = 0
             self.completed['__substep_completed__'] = len(self._substeps)
+            self._completed_concurrent_substeps = 0
             # pending signatures are signatures for steps with external tasks
             pending_signatures = [None for x in self._substeps]
             for idx, g in enumerate(self._substeps):
@@ -915,6 +925,10 @@ class Base_Step_Executor:
                                     proc_vars=proc_vars,
                                     shared_vars=self.vars_to_be_shared,
                                     config=env.config))
+
+                                # we check if the previous task has been completed and process them
+                                # because further steps might need to be done
+                                self.process_returned_substep_result(wait=False)
                             else:
                                 if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified():
                                     env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} without signature')
