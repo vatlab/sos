@@ -1686,12 +1686,9 @@ class InMemorySignature:
             raise RuntimeError(
                 'Dependent files of step signature cannot be undetermined.')
 
-        self.input_files = sos_targets(
-            [x for x in input_files._targets if not isinstance(x, sos_step)])
-        self.dependent_files = sos_targets(
-            [x for x in dependent_files._targets if not isinstance(x, sos_step)])
-        self.output_files = output_files if output_files.undetermined() else sos_targets(
-            [x for x in output_files._targets if not isinstance(x, sos_step)])
+        self.input_files = input_files.remove_targets(type=sos_step)
+        self.dependent_files = dependent_files.remove_targets(type=sos_step)
+        self.output_files = output_files.remove_targets(type=sos_step)
         self.signature_vars = signature_vars
         self.shared_vars = shared_vars
         # signatures that exist before execution and might change during execution
@@ -1739,8 +1736,11 @@ class InMemorySignature:
 
         self.content = {
             'input': input_sig,
+            'input_obj': self.input_files,
             'output': output_sig,
+            'output_obj': self.output_files,
             'depends': dependent_sig,
+            'depends_obj': self.dependent_files,
             'init_context_sig': init_context_sig,
             'end_context': end_context
         }
@@ -1815,6 +1815,11 @@ class InMemorySignature:
         #
         if not all(files_checked.values()):
             return f'No MD5 signature for {", ".join(x for x,y in files_checked.items() if not y)}'
+        if 'input_obj' in signature:
+            # for new style signature, the entire objects are kept
+            res['input'] = signature['input_obj']
+            res['depends'] = signature['depends_obj']
+            res['output'] = signature['output_obj']
         return res
 
 

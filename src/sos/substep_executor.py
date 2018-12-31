@@ -153,14 +153,14 @@ def _execute_substep(stmt, global_def, task, proc_vars, shared_vars, config):
         else:
             if env.sos_dict['step_output'].undetermined():
                 env.sos_dict.set('_output', reevaluate_output())
-            res = {'index': env.sos_dict['_index'], 'ret_code': 0,
-                'output': env.sos_dict['_output']}
-
+            res = {'index': env.sos_dict['_index'], 'ret_code': 0}
             if sig:
                 sig.set_output(env.sos_dict['_output'])
                 # sig.write will use env.signature_push_socket
                 if sig.write():
-                    res.update({'shared': sig.content['end_context']})
+                    res['shared'] = sig.content['end_context']
+                    if 'output_obj' in sig.content:
+                        res['output'] = sig.content['output_obj']
             if capture_output:
                 res.update({'stdout': outmsg, 'stderr': errmsg})
             # complete case: concurrent execution without task
