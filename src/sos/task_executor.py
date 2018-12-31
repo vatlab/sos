@@ -15,7 +15,7 @@ from .targets import (InMemorySignature, UnknownTarget, file_target,
 from .utils import StopInputGroup, env, short_repr, pickleable
 from .tasks import TaskFile, remove_task_files
 from .step_executor import parse_shared_vars
-from .executor_utils import __null_func__, get_traceback_msg
+from .executor_utils import __null_func__, get_traceback_msg, prepare_env
 
 def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
     shared = {}
@@ -317,22 +317,8 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
 
     if verbosity is not None:
         env.verbosity = verbosity
-    try:
-        # global def could fail due to execution on remote host...
-        # we also execute global_def way before others and allows variables set by
-        # global_def be overwritten by other passed variables
-        #
-        # note that we do not handle parameter in tasks because values should already be
-        # in sos_task dictionary
-        SoS_exec('''\
-import os, sys, glob
-from sos.runtime import *
-CONFIG = {}
-del sos_handle_parameter_
-''' + global_def)
-    except Exception as e:
-        env.logger.trace(
-            f'Failed to execute global definition {short_repr(global_def)}: {e}')
+
+    prepare_env(global_def)
 
     if '_runtime' not in sos_dict:
         sos_dict['_runtime'] = {}
