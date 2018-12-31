@@ -532,10 +532,9 @@ class Base_Step_Executor:
 
     def process_returned_substep_result(self, wait=True):
         while True:
-            if not self.result_pull_socket.poll(0):
-                return
-            elif not wait:
-                return
+            if not wait:
+                if not self.result_pull_socket.poll(0):
+                    return
             res = self.result_pull_socket.recv_pyobj()
             #
             if "index" not in res:
