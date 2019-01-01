@@ -112,9 +112,9 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
             err.write(f'Task {task_id} exits with code {res["ret_code"]}')
 
     if res.get('skipped', False):
+        remove_task_files(task_id, ['.pulse', '.out', '.err', '.job_id', '.sh'])
         tf.status = 'skipped'
     else:
-        tf.status = 'completed' if res['ret_code'] == 0 else 'failed'
         tf.add_outputs()
         sig = res.get('signature', {})
         res.pop('signature', None)
@@ -123,7 +123,13 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
             tf.add_signature(sig)
 
         # **after** result file is created, remove other files
+        #
+        # NOTE: if the pulse is not removed. When another sos process checkes
+        # the task is started very quickly so the task has satus 'pending',
+        # the task might be considered already running.
+
         remove_task_files(task_id, ['.pulse', '.out', '.err', '.job_id', '.sh'])
+        tf.status = 'completed' if res['ret_code'] == 0 else 'failed'
 
     return res['ret_code']
 
