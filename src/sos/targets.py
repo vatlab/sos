@@ -1118,6 +1118,25 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             ret._sources = [self._sources[x] for x in i]
             ret._groups = []
             return ret
+        elif callable(i):
+            kept = [idx for idx,x in enumerate(self._targets) if i(x)]
+            if len(kept) == len(self._targets):
+                return self
+            ret = sos_targets()
+            ret._undetermined = self._undetermined
+            ret._targets = [self._targets[x] for x in kept]
+            ret._sources = [self._sources[x] for x in kept]
+            ret._groups = []
+            if not self._groups:
+                return ret
+            index_map = {o_idx:n_idx for n_idx,o_idx in zip(
+                    range(len(ret._targets)), kept)}
+            kept = set(kept)
+            for idx,grp in enumerate(self._groups):
+                ret._groups.append(_sos_group(
+                    [index_map[x] for x in grp._indexes if x in kept],
+                    [y for x,y in zip(grp._indexes, grp._sources) if x in kept]).set(**grp._dict))
+            return ret
         else:
             ret = sos_targets()
             ret._undetermined = self._undetermined
