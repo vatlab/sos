@@ -473,6 +473,10 @@ class TaskFile(object):
                 # from the current location, move by status
                 fh.seek(sts * 8, 1)
                 fh.write(struct.pack('!d', now))
+        # if restarting the task, make sure all irrelevant files
+        # are removed
+        if status == 'pending':
+            remove_task_files(self.task_id, ['.pulse', '.out', '.err', '.job_id', '.sh'])
 
 
     status = property(_get_status, _set_status)
