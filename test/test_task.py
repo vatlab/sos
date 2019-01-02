@@ -813,6 +813,20 @@ python3: expand="${ }"
         Base_Executor(wf).run()
 
 
+    def testRepeatedTasks(self):
+        '''Test statement before task #1142 '''
+        script = SoS_Script('''
+[1]
+input: for_each=dict(i=range(5))
+
+print(f'This is for {i}')
+task:  walltime='10m'
+print(f'this is task {i}')
+
+''')
+        for i in range(5):
+            wf = script.workflow()
+            Base_Executor(wf, config={'sig_mode': 'force'}).run()
 
 
 if __name__ == '__main__':
