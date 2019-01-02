@@ -20,11 +20,11 @@ from tokenize import generate_tokens
 
 from .targets import (RemovedTarget, file_target, sos_targets, sos_step,
     dynamic, sos_variable, RuntimeInfo, textMD5)
-from .utils import env, short_repr
+from .utils import env, short_repr, format_HHMMSS, expand_size
 from .eval import SoS_eval, SoS_exec, stmtHash
 from ._version import __version__
 from .tasks import TaskParams
-from .syntax import SOS_TAG
+from .syntax import SOS_TAG, SOS_RUNTIME_OPTIONS
 
 def __null_func__(*args, **kwargs) -> Any:
     '''This function will be passed to SoS's namespace and be executed
@@ -160,7 +160,23 @@ def statementMD5(stmts):
             tokens.extend(_get_tokens(stmt))
     return textMD5(' '.join(tokens))
 
-def create_task(global_def, task_stmt):
+def create_task(global_def, task_stmt, task_params):
+    env.sos_dict.set('_runtime', {})
+    if task_params:
+        args, kwargs = SoS_eval(f'__null_func__({task_params})',
+            extra_dict={'__null_func__': __null_func__})
+        if args:
+            raise RuntimeError(f'Only keyword arguments are accepted for task statement: "{task_params}" provided')
+        for k, v in kwargs.items():
+            if k not in SOS_RUNTIME_OPTIONS:
+                raise RuntimeError(f'Unrecognized runtime option {k}={v}')
+            # standardize walltime to an integer
+            if k == 'walltime':
+                v = format_HHMMSS(v)
+            elif k == 'mem':
+                v = expand_size(v)
+            env.sos_dict['_runtime'][k] = v
+    #
     # prepare task variables
     env.sos_dict['_runtime']['cur_dir'] = os.getcwd()
     # we need to record the verbosity and sigmode of task during creation because

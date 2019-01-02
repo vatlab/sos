@@ -16,13 +16,13 @@ from typing import List, Union
 
 from .eval import SoS_eval, SoS_exec, accessed_vars
 from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS, SOS_TARGETS_OPTIONS,
-                     SOS_OUTPUT_OPTIONS, SOS_RUNTIME_OPTIONS)
+                     SOS_OUTPUT_OPTIONS)
 from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
                       UnknownTarget, dynamic, file_target,
                       sos_targets, sos_step)
 from .tasks import MasterTaskParams, TaskFile
 from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
-                    expand_size, format_HHMMSS, get_traceback, short_repr)
+                    get_traceback, short_repr)
 from .executor_utils import (clear_output, create_task, verify_input, reevaluate_output,
                     validate_step_sig, statementMD5, get_traceback_msg, __null_func__,
                     __output_from__, __named_output__)
@@ -405,18 +405,6 @@ class Base_Step_Executor:
                     raise ValueError(
                         f'Output {ofile} from substep {env.sos_dict["_index"]} overlaps with output from a previous substep')
             env.sos_dict['step_output'].extend(ofiles, keep_groups=True)
-
-    def process_task_args(self, **kwargs):
-        env.sos_dict.set('_runtime', {})
-        for k, v in kwargs.items():
-            if k not in SOS_RUNTIME_OPTIONS:
-                raise RuntimeError(f'Unrecognized runtime option {k}={v}')
-            # standardize walltime to an integer
-            if k == 'walltime':
-                v = format_HHMMSS(v)
-            elif k == 'mem':
-                v = expand_size(v)
-            env.sos_dict['_runtime'][k] = v
 
     def submit_task(self, task_info):
         if self.task_manager is None:
@@ -941,12 +929,6 @@ class Base_Step_Executor:
                                 except Exception as e:
                                     env.logger.info(e)
                                     raise
-                            elif key == 'task':
-                                # we process task options a the beginning of the
-                                # step in case it users specify -q none, but need
-                                # to do it again because the options might involve
-                                # _output #1129
-                                self.process_task_args(**kwargs)
                             else:
                                 raise RuntimeError(
                                     f'Unrecognized directive {key}')
@@ -987,6 +969,7 @@ class Base_Step_Executor:
                                 self.submit_substep(dict(stmt=statement[1],
                                     global_def=self.step.global_def,
                                     task=self.step.task,
+                                    task_params=self.step.task_params,
                                     proc_vars=proc_vars,
                                     shared_vars=self.vars_to_be_shared,
                                     config=env.config))
@@ -1136,7 +1119,8 @@ class Base_Step_Executor:
                 #
                 self.log('task')
                 try:
-                    task_id, taskdef, task_vars = create_task(self.step.global_def, self.step.task)
+                    task_id, taskdef, task_vars = create_task(self.step.global_def, self.step.task,
+                        self.step.task_params)
                     task = self.submit_task(
                         {'index': env.sos_dict['_index'],
                         'task_id': task_id,

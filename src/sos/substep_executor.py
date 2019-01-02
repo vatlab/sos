@@ -32,7 +32,7 @@ def stdoutIO():
     sys.stderr = olderr
 
 
-def execute_substep(stmt, global_def='', task='', proc_vars={}, shared_vars=[], config={}):
+def execute_substep(stmt, global_def='', task='', task_params='', proc_vars={}, shared_vars=[], config={}):
     '''Execute a substep with specific input etc
 
     Substep executed by this function should be self-contained. It can contain
@@ -92,13 +92,14 @@ def execute_substep(stmt, global_def='', task='', proc_vars={}, shared_vars=[], 
     try:
         res_socket = env.zmq_context.socket(zmq.PUSH)
         res_socket.connect(f'tcp://127.0.0.1:{config["sockets"]["result_push_socket"]}')
-        res = _execute_substep(stmt=stmt, global_def=global_def, task=task, proc_vars=proc_vars,
+        res = _execute_substep(stmt=stmt, global_def=global_def, task=task,
+            task_params=task_params, proc_vars=proc_vars,
             shared_vars=shared_vars, config=config)
         res_socket.send_pyobj(res)
     finally:
         res_socket.close()
 
-def _execute_substep(stmt, global_def, task, proc_vars, shared_vars, config):
+def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars, config):
     # passing configuration and port numbers to the subprocess
     env.config.update(config)
     # prepare a working environment with sos symbols and functions
@@ -153,7 +154,7 @@ def _execute_substep(stmt, global_def, task, proc_vars, shared_vars, config):
                 SoS_exec(stmt, return_result=False)
 
         if task:
-            task_id, taskdef, task_vars = create_task(global_def, task)
+            task_id, taskdef, task_vars = create_task(global_def, task, task_params)
             res = {'index': env.sos_dict['_index'], 'task_id': task_id, 'task_def': taskdef, 'task_vars': task_vars}
         else:
             if env.sos_dict['step_output'].undetermined():
