@@ -1,0 +1,7 @@
+#!/usr/bin/env sos-runner
+
+[1]
+input: '*.sos', group_by=1
+output: f'WP2019_{_input:n}.ipynb'
+bash: expand = True
+  sos convert {_input} {_output}
