@@ -134,7 +134,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     return res['ret_code']
 
 
-def _validate_task_signature(sig, saved_sig, task_id):
+def _validate_task_signature(sig, saved_sig, task_id, is_subtask):
     idx = env.sos_dict['_index']
     if env.config['sig_mode'] == 'default':
         matched = sig.validate(saved_sig)
@@ -145,7 +145,7 @@ def _validate_task_signature(sig, saved_sig, task_id):
             env.sos_dict.set('_depends', sos_targets(matched['depends']))
             env.sos_dict.set('_output', sos_targets(matched['output']))
             env.sos_dict.update(matched['vars'])
-            env.logger.info(
+            (env.logger.debug if is_subtask else env.logger.info)(
                 f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` due to saved signature')
             return True
     elif env.config['sig_mode'] == 'assert':
@@ -157,18 +157,18 @@ def _validate_task_signature(sig, saved_sig, task_id):
             env.sos_dict.set('_depends', sos_targets(matched['depends']))
             env.sos_dict.set('_output', sos_targets(matched['output']))
             env.sos_dict.update(matched['vars'])
-            env.logger.info(
+            (env.logger.debug if is_subtask else env.logger.info)(
                 f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with matching signature')
             sig.content = saved_sig
             return True
     elif env.config['sig_mode'] == 'build':
         # The signature will be write twice
         if sig.write(rebuild=True):
-            env.logger.info(
+            (env.logger.debug if is_subtask else env.logger.info)(
                 f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with signature constructed')
             return True
         else:
-            env.logger.info(
+            (env.logger.debug if is_subtask else env.logger.info)(
                 f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``executed`` with failed signature constructed')
             return False
     elif env.config['sig_mode'] == 'force':
@@ -191,6 +191,8 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
                            'max_procs', None),
                        sos_dict=params.sos_dict)
     m.start()
+
+    env.logger.info(f'{task_id} ``started``')
 
     master_out = os.path.join(os.path.expanduser(
         '~'), '.sos', 'tasks', task_id + '.out')
@@ -246,13 +248,13 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
             p.join()
             # we wait for all results to be ready to return or raise
             # but we only raise exception for one of the subtasks
-            for res in results:
-                if 'exception' in res:
-                    failed = [x.get("task", "")
-                              for x in results if "exception" in x]
-                    env.logger.error(
-                        f'{task_id} ``failed`` due to failure of subtask{"s" if len(failed) > 1 else ""} {", ".join(failed)}')
-                    return {'ret_code': 1, 'exception': res['exception'], 'task': task_id}
+            # for res in results:
+            #     if 'exception' in res:
+            #         failed = [x.get("task", "")
+            #                   for x in results if "exception" in x]
+            #         env.logger.error(
+            #             f'{task_id} ``failed`` due to failure of subtask{"s" if len(failed) > 1 else ""} {", ".join(failed)}')
+            #         return {'ret_code': 1, 'exception': res['exception'], 'task': task_id}
         else:
             results = []
             for tid, tdef in params.task_stack:
@@ -261,18 +263,23 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
                                     sigmode=sigmode, monitor_interval=None, resource_monitor_interval=None)
                 copy_out_and_err(res)
                 results.append(res)
-            for res in results:
-                if 'exception' in res:
-                    failed = [x.get("task", "")
-                              for x in results if "exception" in x]
-                    env.logger.error(
-                        f'{task_id} ``failed`` due to failure of subtask{"s" if len(failed) > 1 else ""} {", ".join(failed)}')
-                    return {'ret_code': 1, 'exception': res['exception'], 'task': task_id}
+            # for res in results:
+            #     if 'exception' in res:
+            #         failed = [x.get("task", "")
+            #                   for x in results if "exception" in x]
+            #         env.logger.error(
+            #             f'{task_id} ``failed`` due to failure of subtask{"s" if len(failed) > 1 else ""} {", ".join(failed)}')
+            #         return {'ret_code': 1, 'exception': res['exception'], 'task': task_id}
     #
     # now we collect result
     all_res = {'ret_code': 0, 'output': {},
                'subtasks': {}, 'shared': {}, 'skipped': False, 'signature': {}}
     for tid, x in zip(params.task_stack, results):
+        if 'exception' in x:
+            all_res['exception'] = x['exception']
+            all_res['task'] = tid
+            all_res['ret_code'] = 1
+            continue
         all_res['ret_code'] += x['ret_code']
         all_res['output'].update(x['output'])
         all_res['subtasks'][tid[0]] = x
@@ -280,6 +287,13 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
         # does not care if one or all subtasks are executed or skipped.
         all_res['skipped'] = x['skipped']
         all_res['signature'].update(x['signature'])
+
+    if all_res['ret_code'] != 0:
+        env.logger.info(f'{task_id} ``failed``')
+    elif all_res['skipped']:
+        env.logger.info(f'{task_id} ``ignored`` due to saved signature')
+    else:
+        env.logger.info(f'{task_id} ``completed``')
 
     return all_res
 
@@ -347,10 +361,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
     elif sigmode is not None:
         env.config['sig_mode'] = sigmode
     #
-    if subtask:
-        env.logger.debug(f'{task_id} ``started``')
-    else:
-        env.logger.info(f'{task_id} ``started``')
+    (env.logger.debug if subtask else env.logger.info)(f'{task_id} ``started``')
 
     env.sos_dict.quick_update(sos_dict)
 
@@ -366,7 +377,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
         env.sos_dict['_depends'], env.sos_dict['__signature_vars__'],
         shared_vars=parse_shared_vars(env.sos_dict['_runtime'].get('shared', None)))
 
-    if sig and _validate_task_signature(sig, sig_content.get(task_id, {}), task_id):
+    if sig and _validate_task_signature(sig, sig_content.get(task_id, {}), task_id, subtask):
         #env.logger.info(f'{task_id} ``skipped``')
         return collect_task_result(task_id, sos_dict, skipped=True, signature=sig)
 
@@ -457,10 +468,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
         # step process
         SoS_exec(task)
 
-        if subtask:
-            env.logger.debug(f'{task_id} ``completed``')
-        else:
-            env.logger.info(f'{task_id} ``completed``')
+        (env.logger.debug if subtask else env.logger.info)(f'{task_id} ``completed``')
 
     except StopInputGroup as e:
         # task ignored with stop_if exception

@@ -33,10 +33,15 @@ __all__ = []
 
 class TaskManager:
     # manage tasks created by the step
-    def __init__(self, trunk_size, trunk_workers):
+    def __init__(self, num_tasks, trunk_size, trunk_workers):
         super(TaskManager, self).__init__()
+        self.num_tasks = num_tasks
+        import math
+        self._slots = [[] for x in range(math.ceil(num_tasks/trunk_size))]
+        self._last_slot_size = trunk_size if (num_tasks % trunk_size == 0) else (num_tasks % trunk_size)
         self.trunk_size = trunk_size
         self.trunk_workers = trunk_workers
+
         self._submitted_tasks = []
         self._unsubmitted_tasks = []
         # derived from _unsubmitted_tasks
@@ -47,8 +52,26 @@ class TaskManager:
         #
         self._tags = {}
 
-    def append(self, task_def):
-        self._unsubmitted_tasks.append(task_def)
+    def set(self, idx, task_def):
+        slot = idx // self.trunk_size
+        #
+        # slot [
+        #   [idx, None] <- for empty
+        #   [idx, taskdef] <- for non empty
+        #  ]
+        self._slots[slot].append([idx, task_def])
+        # the slot is full
+        if len(self._slots[slot]) == self.trunk_size or \
+            (slot == len(self._slots) - 1 and len(self._slots[slot]) == self._last_slot_size):
+            # if there are valida tasks
+            if not all([x[1] is None for x in self._slots[slot]]):
+                # remove empty tasks and sort by id
+                self._unsubmitted_tasks.append(
+                    sorted([x for x in self._slots[slot] if x[1] is not None], key=lambda x: x[0]))
+            # clear skit
+            self._slots[slot] = []
+        if not task_def:
+            return
         if isinstance(task_def[2], Sequence):
             self._all_output.extend(task_def[2])
         self._all_ids.append(task_def[0])
@@ -69,48 +92,32 @@ class TaskManager:
         return any(x in self._all_output for x in output)
 
     def get_job(self, all_tasks=False):
-        # save tasks
-        if not self._unsubmitted_tasks:
-            return None
         # single tasks
-        if self.trunk_size == 1 or all_tasks:
-            to_be_submitted = self._unsubmitted_tasks
-            self._unsubmitted_tasks = []
-        else:
-            # save complete blocks
-            num_tasks = len(
-                self._unsubmitted_tasks) // self.trunk_size * self.trunk_size
-            to_be_submitted = self._unsubmitted_tasks[: num_tasks]
-            self._unsubmitted_tasks = self._unsubmitted_tasks[num_tasks:]
-
-        # save tasks
         ids = []
-        if self.trunk_size == 1 or (all_tasks and len(self._unsubmitted_tasks) == 1):
-            for task_id, taskdef, _ in to_be_submitted:
+        # submit all tasks without trunk, easy
+        for slot in self._unsubmitted_tasks:
+            if self.trunk_size == 1:
+                task_id, taskdef, _ = slot[0][1]
                 # if the task file, perhaps it is already running, we do not change
                 # the task file. Otherwise we are changing the status of the task
                 TaskFile(task_id).save(taskdef)
                 env.signature_push_socket.send_pyobj(['workflow', 'task', task_id,
                                           f"{{'creation_time': {time.time()}}}"])
                 ids.append(task_id)
-        else:
-            master = None
-            for task_id, taskdef, _ in to_be_submitted:
-                if master is not None and master.num_tasks() == self.trunk_size:
-                    ids.append(master.ID)
-                    TaskFile(master.ID).save(master)
-                    env.signature_push_socket.send_pyobj(['workflow', 'task', master.ID,
-                                              f"{{'creation_time': {time.time()}}}"])
-                    master = None
-                if master is None:
-                    master = MasterTaskParams(self.trunk_workers)
-                master.push(task_id, taskdef)
-            # the last piece
-            if master is not None:
+            else:
+                # create a master task
+                master = MasterTaskParams(self.trunk_workers)
+                for idx, (task_id, taskdef, _) in slot:
+                    master.push(task_id, taskdef)
+                ids.append(master.ID)
                 TaskFile(master.ID).save(master)
                 env.signature_push_socket.send_pyobj(['workflow', 'task', master.ID,
-                                          f"{{'creation_time': {time.time()}}}"])
-                ids.append(master.ID)
+                                      f"{{'creation_time': {time.time()}}}"])
+            self._unsubmitted_tasks = []
+
+        # if all_tasks, there should be no pending ones
+        if all_tasks and any(self._slots):
+            raise RuntimeError(f'Some tasks have not been returned from substeps. This should not happen.')
 
         if not ids:
             return None
@@ -411,7 +418,7 @@ class Base_Step_Executor:
                 v = expand_size(v)
             env.sos_dict['_runtime'][k] = v
 
-    def submit_task(self, task_id, taskdef, task_vars):
+    def submit_task(self, task_info):
         if self.task_manager is None:
             if 'trunk_size' in env.sos_dict['_runtime']:
                 if not isinstance(env.sos_dict['_runtime']['trunk_size'], int):
@@ -434,7 +441,17 @@ class Base_Step_Executor:
             #    # otherwise, use workflow default
             #    host = '__default__'
 
-            self.task_manager = TaskManager(trunk_size, trunk_workers)
+            self.task_manager = TaskManager(env.sos_dict['__num_groups__'],
+                trunk_size, trunk_workers)
+
+        task_id = task_info['task_id']
+        task_index = task_info['index']
+        if task_id is None:
+            self.task_manager.set(task_index, '')
+            return None
+
+        taskdef = task_info['task_def']
+        task_vars = task_info['task_vars']
 
         # 618
         # it is possible that identical tasks are executed (with different underlying random numbers)
@@ -447,7 +464,7 @@ class Base_Step_Executor:
                 f'Task produces output files {", ".join(task_vars["_output"])} that are output of other tasks.')
         # if no trunk_size, the job will be submitted immediately
         # otherwise tasks will be accumulated and submitted in batch
-        self.task_manager.append(
+        self.task_manager.set(task_index,
             (task_id, taskdef, task_vars['_output']))
         tasks = self.task_manager.get_job()
         if tasks:
@@ -583,9 +600,14 @@ class Base_Step_Executor:
             if "index" not in res:
                 raise RuntimeError("Result received from substep does not have key index")
             if 'task_id' in res:
+                task = self.submit_task(res)
                 # if substep returns tasks, ...
-                task = self.submit_task(res['task_id'], res['task_def'], res['task_vars'])
-                self.proc_results[res['index']] = task
+                if res['task_id']:
+                    self.proc_results[res['index']] = task
+                else:
+                    # if there is no task_id, the substep must have
+                    # been skipped.
+                    self.proc_results[res['index']] = res
             else:
                 self.proc_results[res['index']] = res
             self._completed_concurrent_substeps += 1
@@ -1115,7 +1137,11 @@ class Base_Step_Executor:
                 self.log('task')
                 try:
                     task_id, taskdef, task_vars = create_task(self.step.global_def, self.step.task)
-                    task = self.submit_task(task_id, taskdef, task_vars)
+                    task = self.submit_task(
+                        {'index': env.sos_dict['_index'],
+                        'task_id': task_id,
+                        'task_def': taskdef,
+                        'task_vars': task_vars})
                     self.proc_results.append(task)
                 except Exception as e:
                     # FIXME: cannot catch exception from subprocesses

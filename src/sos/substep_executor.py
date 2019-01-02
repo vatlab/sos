@@ -126,8 +126,13 @@ def _execute_substep(stmt, global_def, task, proc_vars, shared_vars, config):
                 sig = None
                 # complete case: concurrent ignore without task
                 env.controller_push_socket.send_pyobj(['progress', 'substep_ignored', env.sos_dict['step_id']])
-                return {'index': env.sos_dict['_index'], 'ret_code': 0, 'sig_skipped': 1, 'output': matched['output'],
-                    'shared': matched['vars']}
+                res = {'index': env.sos_dict['_index'], 'ret_code': 0, 'sig_skipped': 1,
+                    'output': matched['output'], 'shared': matched['vars']}
+                if task:
+                    # if there is task, let the master know that the task is
+                    # skipped
+                    res['task_id'] = None
+                return res
             sig.lock()
 
         # check if input and depends targets actually exist
