@@ -408,6 +408,14 @@ class Base_Step_Executor:
 
     def submit_task(self, task_info):
         if self.task_manager is None:
+
+            if self.step.task_params:
+                for key in ('trunk_size', 'trunk_workers', 'queue'):
+                    val = get_value_of_param(key, self.step.task_params,
+                        extra_dict=env.sos_dict._dict)
+                    if val:
+                        env.sos_dict['_runtime'][key] = val[0]
+
             if 'trunk_size' in env.sos_dict['_runtime']:
                 if not isinstance(env.sos_dict['_runtime']['trunk_size'], int):
                     raise ValueError(
