@@ -710,7 +710,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                 return dict(status='running', files=status_files)
 
             elapsed = time.time() - status_files[pulse_file]
-            if elapsed < 600:
+            if elapsed < 60:
                 return dict(status='running', files=status_files)
 
             # assume aborted
