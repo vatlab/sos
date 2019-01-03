@@ -316,7 +316,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     it uses, and input, output, etc.'''
     from ._version import __version__
 
-    analysis_key = (section.md5, default_input.target_name() if hasattr(default_input, 'target_name') else '', vars_only)
+    analysis_key = (section.md5, section.step_name(), default_input.target_name() if hasattr(default_input, 'target_name') else '', vars_only)
     if analysis_key in analysis_cache:
         return analysis_cache[analysis_key]
 
