@@ -694,7 +694,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                 if status != 'aborted':
                     tf.status = 'aborted'
                 with open(os.path.join(os.path.expanduser(
-                    '~'), '.sos', 'tasks', task_id + '.err'), 'a') as err:
+                    '~'), '.sos', 'tasks', task + '.err'), 'a') as err:
                     err.write(f'Task {task} aborted by external command.')
                 tf.add_outputs()
                 remove_task_files(
@@ -713,8 +713,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
 
             # assume aborted
             tf.status = 'aborted'
-            with open(os.path.join(os.path.expanduser(
-                '~'), '.sos', 'tasks', task_id + '.err'), 'a') as err:
+            with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.err'), 'a') as err:
                 err.write(f'Task {task} considered as aborted due to inactivity for more than {int(elapsed)} seconds.')
 
             tf.add_outputs()
@@ -733,8 +732,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         # and the status is still showing as running, something is wrong.
         # if there is no pulse file .
         tf.status = 'aborted'
-        with open(os.path.join(os.path.expanduser(
-            '~'), '.sos', 'tasks', task_id + '.err'), 'a') as err:
+        with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.err'), 'a') as err:
             err.write(f'Task {task} considered as aborted due to missing pulse file.')
         tf.add_outputs()
         remove_task_files(
