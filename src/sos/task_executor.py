@@ -219,6 +219,8 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
 
             sub_err = os.path.join(os.path.expanduser(
                 '~'), '.sos', 'tasks', tid + '.err')
+            if 'exception' in result:
+                err.write(str(result['exception']))
             err.write(
                 f'{tid}: {"completed" if result["ret_code"] == 0 else "failed"}\n'.encode())
             if os.path.isfile(sub_err):
