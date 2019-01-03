@@ -720,8 +720,8 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             env.logger.warning(f'Task {task} considered as aborted due to inactivity for more than {int(elapsed)} seconds.')
 
             tf.add_outputs()
-            remove_task_files(
-                task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
+            #remove_task_files(
+            #    task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
             return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
                     pulse_file: 0})
         except:
