@@ -220,7 +220,7 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
             sub_err = os.path.join(os.path.expanduser(
                 '~'), '.sos', 'tasks', tid + '.err')
             if 'exception' in result:
-                err.write(str(result['exception']))
+                err.write(str(result['exception']).encode())
             err.write(
                 f'{tid}: {"completed" if result["ret_code"] == 0 else "failed"}\n'.encode())
             if os.path.isfile(sub_err):
@@ -264,7 +264,10 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
                 # no monitor process for subtasks
                 res = _execute_task((tid, tdef, {tid: sig_content.get(tid, {})}), verbosity=verbosity, runmode=runmode,
                                     sigmode=sigmode, monitor_interval=None, resource_monitor_interval=None)
-                copy_out_and_err(res)
+                try:
+                    copy_out_and_err(res)
+                except Exception as e:
+                    env.logger.warning(f'Failed to copy result of subtask {tid}: {e}')
                 results.append(res)
             # for res in results:
             #     if 'exception' in res:
