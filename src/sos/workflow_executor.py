@@ -492,7 +492,7 @@ class Base_Executor:
                 # will become input, set to None
                 env.sos_dict['__step_output__'] = sos_targets()
                 #
-                res = analyze_section(section)
+                res = analyze_section(section, default_output=env.sos_dict['__default_output__'])
                 if isinstance(target, sos_step) and target.target_name() != section.step_name():
                     # sos_step target "name" can be matched to "name_10" etc so we will have to
                     # ensure that the target is outputted from the "name_10" step.
@@ -571,7 +571,7 @@ class Base_Executor:
                 # will become input, set to None
                 env.sos_dict['__step_output__'] = sos_targets()
                 #
-                res = analyze_section(section)
+                res = analyze_section(section, default_output=env.sos_dict['__default_output__'])
                 #
                 # build DAG with input and output files of step
                 env.logger.debug(

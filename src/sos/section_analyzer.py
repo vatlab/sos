@@ -229,13 +229,12 @@ def get_step_input(section, default_input):
         step_input = sos_targets(_undetermined=stmt)
     return step_input
 
-def get_step_output(section):
+def get_step_output(section, default_output):
     '''determine step output'''
     step_output: sos_targets = sos_targets()
     #
     if 'provides' in section.options:
-        if '__default_output__' in env.sos_dict:
-            step_output = env.sos_dict['__default_output__']
+        step_output = default_output
 
     # look for input statement.
     output_idx = find_statement(section, 'output')
@@ -255,12 +254,12 @@ def get_step_output(section):
     except Exception as e:
         env.logger.debug(f"Args {value} cannot be determined: {e}")
 
-    if 'provides' in section.options and '__default_output__' in env.sos_dict and step_output.valid():
-        for out in env.sos_dict['__default_output__']:
+    if 'provides' in section.options and default_output is not None and step_output.valid():
+        for out in default_output:
             # 981
             if not isinstance(out, sos_step) and out not in step_output:
                 raise ValueError(
-                    f'Defined output fail to produce expected output: {step_output} generated, {env.sos_dict["__default_output__"]} expected.')
+                    f'Defined output fail to produce expected output: {step_output} generated, {default_output} expected.')
     return step_output
 
 def get_output_from_steps(stmt, last_step):
@@ -311,12 +310,15 @@ def get_output_from_steps(stmt, last_step):
 analysis_cache = {}
 
 def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = None,
+    default_output: Optional[sos_targets] = None,
     vars_only: bool = False) -> Dict[str, Any]:
     '''Analyze a section for how it uses input and output, what variables
     it uses, and input, output, etc.'''
     from ._version import __version__
 
-    analysis_key = (section.md5, section.step_name(), default_input.target_name() if hasattr(default_input, 'target_name') else '', vars_only)
+    analysis_key = (section.md5, section.step_name(),
+        default_input.target_name() if hasattr(default_input, 'target_name') else '',
+        default_output.target_name() if hasattr(default_output, 'target_name') else '', vars_only)
     if analysis_key in analysis_cache:
         return analysis_cache[analysis_key]
 
@@ -356,7 +358,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     }
     if not vars_only:
         res['step_input'] = get_step_input(section, default_input)
-        res['step_output'] = get_step_output(section)
+        res['step_output'] = get_step_output(section, default_output)
         res['step_depends'] = get_step_depends(section)
     analysis_cache[analysis_key] = res
     return res

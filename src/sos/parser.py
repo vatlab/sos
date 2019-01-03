@@ -440,12 +440,7 @@ class SoS_Step:
 
         tokens = []
         for statement in self.statements:
-            if statement[0] == ':':
-                # we only keep statements after input
-                if statement[1] == 'input':
-                    tokens = []
-                continue
-            tokens.extend(_get_tokens(statement[1]))
+            tokens.extend(_get_tokens(statement[2] if statement[0] == ':' else statement[1]))
 
         if self.task:
             tokens.extend(_get_tokens(self.task))
