@@ -693,9 +693,11 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             if not os.access(pulse_file, os.W_OK):
                 if status != 'aborted':
                     tf.status = 'aborted'
+
                 with open(os.path.join(os.path.expanduser(
                     '~'), '.sos', 'tasks', task + '.err'), 'a') as err:
                     err.write(f'Task {task} aborted by external command.')
+                env.logger.warning(f'Task {task} aborted by external command.')
                 tf.add_outputs()
                 remove_task_files(
                     task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
@@ -708,13 +710,14 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                 return dict(status='running', files=status_files)
 
             elapsed = time.time() - status_files[pulse_file]
-            if elapsed < 60:
+            if elapsed < 600:
                 return dict(status='running', files=status_files)
 
             # assume aborted
             tf.status = 'aborted'
             with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.err'), 'a') as err:
                 err.write(f'Task {task} considered as aborted due to inactivity for more than {int(elapsed)} seconds.')
+            env.logger.warning(f'Task {task} considered as aborted due to inactivity for more than {int(elapsed)} seconds.')
 
             tf.add_outputs()
             remove_task_files(
@@ -734,6 +737,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         tf.status = 'aborted'
         with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.err'), 'a') as err:
             err.write(f'Task {task} considered as aborted due to missing pulse file.')
+        env.logger.warning(f'Task {task} considered as aborted due to missing pulse file.')
         tf.add_outputs()
         remove_task_files(
             task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
@@ -1168,37 +1172,44 @@ showResourceFigure_''' + t + '''()
                 if 'pulse' in res:
                     print('EXECUTION STATS:\n================')
                     print(summarizeExecution(t, res['pulse'], status=s))
-                # if there are other files such as job file, print them.
-                if tf.has_shell():
-                    print('execution script:\n================\n' +
-                          tf.shell)
-                if tf.has_stdout():
-                    print('standout output:\n================\n' +
-                          tf.stdout)
-                if tf.has_stderr():
-                    print('standout error:\n================\n' +
-                          tf.stderr)
             else:
                 # we have separate pulse, out and err files
-                print('EXECUTION STATS:\n================')
                 pulse_file = os.path.join(
                     os.path.expanduser('~'), '.sos', 'tasks', t + '.pulse')
                 if os.path.isfile(pulse_file):
+                    print('EXECUTION STATS:\n================')
                     with open(pulse_file) as pulse:
                         print(summarizeExecution(t, pulse.read(), status=s))
-                # if there are other files such as job file, print them.
-                for ext in ('.sh', '.out', '.err'):
-                    f = os.path.join(
-                        os.path.expanduser('~'), '.sos', 'tasks', t + ext)
-                    if not os.path.isfile(f):
-                        continue
-                    print(
-                        f'{os.path.basename(f)}:\n{"="*(len(os.path.basename(f))+1)}')
-                    try:
-                        with open(f) as fc:
-                            print(fc.read())
-                    except Exception:
-                        print('Binary file')
+
+            # if there are other files such as job file, print them.
+            def show_file(task, ext):
+                f = os.path.join(
+                    os.path.expanduser('~'), '.sos', 'tasks', task + ext)
+                if not os.path.isfile(f):
+                    return
+                print(
+                    f'{os.path.basename(f)}:\n{"="*(len(os.path.basename(f))+1)}')
+                try:
+                    with open(f) as fc:
+                        print(fc.read())
+                except Exception:
+                    print('Binary file')
+            if tf.has_shell():
+                print('execution script:\n================\n' +
+                      tf.shell)
+            else:
+                show_file(t, '.sh')
+            if tf.has_stdout():
+                print('standout output:\n================\n' +
+                      tf.stdout)
+            else:
+                show_file(t, '.out')
+            if tf.has_stderr():
+                print('standout error:\n================\n' +
+                      tf.stderr)
+            else:
+                show_file(t, '.err')
+
     # remove jobs that are older than 1 month
     if to_be_removed:
         purge_tasks(to_be_removed, verbosity=0)
