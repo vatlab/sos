@@ -48,7 +48,7 @@ other kernels. Please refer to [the installation page of sos website](https://va
 
 SoS 0.18.0
 * [sos#1115](https://github.com/vatlab/SoS/issues/1115): Function `output_from` and `named_output` to support named inputs and outputs, among other new features summarized in this ticket.
-* [sos#1120](https://github.com/vatlab/SoS/issues/1120): Allow paremeters `group_by`, `paired_with` etc for functions `output_from` and `named_outptu`.
+* [sos#1120](https://github.com/vatlab/SoS/issues/1120): Allow paremeters `group_by`, `paired_with` etc for functions `output_from` and `named_output`.
 * [sos#1125](https://github.com/vatlab/SoS/issues/1125): Set `concurrent=True` as default for substep execution.
 * [sos#1132](https://github.com/vatlab/SoS/issues/1132): Deprecate section option `skip`
 
