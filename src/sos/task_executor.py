@@ -290,7 +290,7 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
         try:
             all_res['output'].extend(x['output'], keep_groups=True)
         except Exception as e:
-            env.logger.warning(f'Failed to extend output {all_res['output']} with {x['output']}')
+            env.logger.warning(f"Failed to extend output {all_res['output']} with {x['output']}")
         all_res['subtasks'][tid[0]] = x
         all_res['shared'].update(x['shared'])
         # does not care if one or all subtasks are executed or skipped.
