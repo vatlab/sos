@@ -310,12 +310,13 @@ def get_output_from_steps(stmt, last_step):
 
 analysis_cache = {}
 
-def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = None) -> Dict[str, Any]:
+def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = None,
+    vars_only: bool = False) -> Dict[str, Any]:
     '''Analyze a section for how it uses input and output, what variables
     it uses, and input, output, etc.'''
     from ._version import __version__
 
-    analysis_key = (section.md5, default_input.target_name() if hasattr(default_input, 'target_name') else '')
+    analysis_key = (section.md5, default_input.target_name() if hasattr(default_input, 'target_name') else '', vars_only)
     if analysis_key in analysis_cache:
         return analysis_cache[analysis_key]
 
@@ -348,13 +349,14 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
 
     res = {
         'step_name': section.step_name(),
-        'step_input': get_step_input(section, default_input),
-        'step_output': get_step_output(section),
-        'step_depends': get_step_depends(section),
         # variables starting with __ are internals...
         'environ_vars': get_environ_vars(section),
         'signature_vars': get_signature_vars(section),
         'changed_vars': get_changed_vars(section)
     }
+    if not vars_only:
+        res['step_input'] = get_step_input(section, default_input)
+        res['step_output'] = get_step_output(section)
+        res['step_depends'] = get_step_depends(section)
     analysis_cache[analysis_key] = res
     return res
