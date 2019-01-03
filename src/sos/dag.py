@@ -103,7 +103,7 @@ class SoS_Node(object):
 
     def show(self):
         print(
-            f'{self._node_id} ({self._node_index}, {self._status}): input {self._input_targets}, depends {self._depends_targets}, output {self._output_targets}, context {self._context}')
+            f'{self._node_id} ({self._node_index}, {self._status}): input {short_repr(self._input_targets)}, depends {short_repr(self._depends_targets)}, output {short_repr(self._output_targets)}, context {self._context}')
 
 
 class SoS_DAG(nx.DiGraph):
