@@ -693,6 +693,9 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             if not os.access(pulse_file, os.W_OK):
                 if status != 'aborted':
                     tf.status = 'aborted'
+                with open(os.path.join(os.path.expanduser(
+                    '~'), '.sos', 'tasks', task_id + '.err'), 'a') as err:
+                    err.write(f'Task {task} aborted by external command.')
                 tf.add_outputs()
                 remove_task_files(
                     task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
@@ -1237,15 +1240,16 @@ def kill_tasks(tasks, tags=None):
 
 
 def kill_task(task):
-    status = TaskFile(task).status
+    tf = TaskFile(task)
+    status = tf.status
     if status == 'completed':
         return 'completed'
+    with open(os.path.join(os.path.expanduser(
+        '~'), '.sos', 'tasks', task + '.err'), 'a') as err:
+        err.write(f'Task {task} killed by sos kill command or task engine.')
+    tf.add_outputs()
     remove_task_files(
-        task, ['.sh', '.job_id', '.out', '.err'])
-    pulse_file = os.path.join(os.path.expanduser(
-        '~'), '.sos', 'tasks', task + '.pulse')
-    if os.path.isfile(pulse_file):
-        os.chmod(pulse_file, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
+        task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
     TaskFile(task).status = 'aborted'
     return 'aborted'
 
