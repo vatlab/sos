@@ -184,10 +184,7 @@ def get_step_depends(section):
         value = section.statements[depends_idx][2]
         try:
             args, kwargs = SoS_eval(f'__null_func__({value})',
-                extra_dict={
-                    '__null_func__': __null_func__
-                    }
-            )
+                extra_dict=env.sos_dict._dict)
             if any(isinstance(x, (dynamic, remote)) for x in args):
                 step_depends = sos_targets()
             else:
@@ -208,12 +205,14 @@ def get_step_input(section, default_input):
     # input statement
     stmt = section.statements[input_idx][2]
     try:
+        env.sos_dict._dict.update({
+            'output_from': lambda *args, **kwargs: None,
+            'named_output': lambda *args, **kwargs: None
+            })
         args, kwargs = SoS_eval(f'__null_func__({stmt})',
-            extra_dict={
-                '__null_func__': __null_func__,
-                'output_from': lambda *args, **kwargs: None,
-                'named_output': lambda *args, **kwargs: None
-                })
+            extra_dict=env.sos_dict._dict)
+        env.sos_dict._dict.pop('output_from')
+        env.sos_dict._dict.pop('named_output')
         if not args:
             if default_input is None:
                 step_input = sos_targets()
@@ -246,9 +245,7 @@ def get_step_output(section, default_output):
     # output, depends, and process can be processed multiple times
     try:
         args, kwargs = SoS_eval(f'__null_func__({value})',
-            extra_dict={
-                '__null_func__': __null_func__
-                })
+            extra_dict=env.sos_dict._dict)
         if not any(isinstance(x, (dynamic, remote)) for x in args):
             step_output = sos_targets(*args)
     except Exception as e:
@@ -328,6 +325,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     SoS_exec('from sos.runtime import *', None)
 
     env.sos_dict.set('step_name', section.step_name())
+    env.sos_dict.set('__null_func__', __null_func__)
     env.logger.trace(f'Analyzing {section.step_name()}')
 
     #

@@ -540,19 +540,19 @@ class SoS_Step:
             #
             output_names = get_names_of_kwargs(output_stmt)
             self.options['namedprovides'] = repr(output_names)
-
-        if 'provides' in self.options:
-            # let us check if provides is a "plain output"
-            try:
-                plain_output = eval(self.options['provides'])
-                if isinstance(plain_output, str) or \
-                    (isinstance(plain_output, (list, tuple, set)) and
-                     all(isinstance(x, str) for x in plain_output)):
-                    self.options['autoprovides'] = self.options['provides']
-            except:
-                # if otuput has options and rely on anything, it cannot be treated as
-                # auto output
-                pass
+        # 
+        # if 'provides' in self.options:
+        #     # let us check if provides is a "plain output"
+        #     try:
+        #         plain_output = eval(self.options['provides'])
+        #         if isinstance(plain_output, str) or \
+        #             (isinstance(plain_output, (list, tuple, set)) and
+        #              all(isinstance(x, str) for x in plain_output)):
+        #             self.options['autoprovides'] = self.options['provides']
+        #     except:
+        #         # if otuput has options and rely on anything, it cannot be treated as
+        #         # auto output
+        #         pass
 
     def show(self):
         '''Output for command sos show'''
