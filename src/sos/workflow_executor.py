@@ -649,7 +649,7 @@ class Base_Executor:
         #
         # analyze auxiliary steps
         for idx, section in enumerate(self.workflow.auxiliary_sections):
-            res = analyze_section(section, default_input. vars_only=True)
+            res = analyze_section(section, default_input, vars_only=True)
             environ_vars = res['environ_vars']
             signature_vars = res['signature_vars']
             changed_vars = res['changed_vars']
