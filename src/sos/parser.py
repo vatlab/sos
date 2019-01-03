@@ -1290,6 +1290,7 @@ for __n, __v in {repr(name_map)}.items():
                                           'Cannot define multiple default sections with a task in between.')
                 self.sections[-1].statements.extend(section.statements)
                 self.sections[-1].task = section.task
+                self.sections[-1].task_params = section.task_params
                 self.global_def = ''
                 global_parameters.update(section.parameters)
             # The sections should have been finalized so there is no need to finalize
