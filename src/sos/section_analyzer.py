@@ -233,7 +233,7 @@ def get_step_output(section, default_output):
     '''determine step output'''
     step_output: sos_targets = sos_targets()
     #
-    if 'provides' in section.options:
+    if 'provides' in section.options and default_output:
         step_output = default_output
 
     # look for input statement.
