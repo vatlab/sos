@@ -513,7 +513,7 @@ class SoS_Step:
             self.task_params = self.statements[task_directive[0]][2]
             self.statements = self.statements[:task_directive[0]]
         # merge multiple statments at the end
-        if self.statements[-1][0] == '!' and len(self.statements) > 1:
+        if len(self.statements) > 1 and self.statements[-1][0] == '!':
             starting = len(self.statements) - 1
             for idx in range(starting - 1, -1, -1):
                 if self.statements[idx][0] == '!':

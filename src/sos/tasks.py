@@ -12,6 +12,7 @@ import stat
 import struct
 from enum import Enum
 from collections import namedtuple
+from datetime import datetime
 
 from typing import Union, Dict
 
@@ -477,6 +478,13 @@ class TaskFile(object):
         # are removed
         if status == 'pending':
             remove_task_files(self.task_id, ['.pulse', '.out', '.err', '.job_id', '.sh'])
+        elif status == 'running':
+            # setting to running status ... refresh the pulse file
+            with open(os.path.join(os.path.expanduser(
+                    '~'), '.sos', 'tasks', self.task_id + '.pulse'), 'w') as pd:
+                pd.write(f'#task: {self.task_id}\n')
+                pd.write(
+                    f'#started at {datetime.now().strftime("%A, %d. %B %Y %I:%M%p")}\n#\n')
 
 
     status = property(_get_status, _set_status)
@@ -691,29 +699,26 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                 return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
                                                      pulse_file: 0})
 
-            if not hint or pulse_file not in hint['files'] or 'last_checked' not in hint:
-                # if this is the first time checking the status of task with
-                # pulse file, we have to assume that it is running with a
-                # pulse file. The status of the pulse file will be checked later
-                if status != 'running':
-                    # the first obserged running status
-                    tf.status = 'running'
-                return dict(status='running', files=status_files, last_checked=time.time())
-            else:
-                # if we have hint, we know the time stamp of last
-                # status file.
-                if status_files[pulse_file] != hint['files'][pulse_file]:
-                    return dict(status='running', files=status_files, last_checked=time.time())
-                if time.time() - hint['last_checked'] < 20 * monitor_interval:
-                    return dict(status='running', files=status_files, last_checked=hint['last_checked'])
-                # now, if the time has not been changed since last_checked...
-                # assume aborted
-                tf.status = 'aborted'
-                tf.add_outputs()
-                remove_task_files(
-                    task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
-                return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
-                        pulse_file: 0})
+            # if we have hint, we know the time stamp of last
+            # status file.
+            if pulse_file not in hint['files'] or status_files[pulse_file] != hint['files'][pulse_file]:
+                return dict(status='running', files=status_files)
+
+            elapsed = time.time() - status_files[pulse_file]
+            if elapsed < 60:
+                return dict(status='running', files=status_files)
+
+            # assume aborted
+            tf.status = 'aborted'
+            with open(os.path.join(os.path.expanduser(
+                '~'), '.sos', 'tasks', task_id + '.err'), 'a') as err:
+                err.write(f'Task {task} considered as aborted due to inactivity for more than {int(elapsed)} seconds.')
+
+            tf.add_outputs()
+            remove_task_files(
+                task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
+            return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
+                    pulse_file: 0})
         except:
             # the pulse file could disappear when the job is completed.
             if task_changed():
@@ -721,15 +726,18 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             else:
                 raise
     elif status == 'running':
-        # if there is no pulse file and task has been in running status for a
-        # while, this task is not started correctly.
-        if time.time() - tf.last_updated > 20 * monitor_interval:
-            tf.status = 'aborted'
-            tf.add_outputs()
-            remove_task_files(
-                task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
-            return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
-                    pulse_file: 0})
+        # starting of task will create a pulse file. If the pulse file is gone
+        # and the status is still showing as running, something is wrong.
+        # if there is no pulse file .
+        tf.status = 'aborted'
+        with open(os.path.join(os.path.expanduser(
+            '~'), '.sos', 'tasks', task_id + '.err'), 'a') as err:
+            err.write(f'Task {task} considered as aborted due to missing pulse file.')
+        tf.add_outputs()
+        remove_task_files(
+            task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
+        return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
+                pulse_file: 0})
 
     # if there is no pulse file
     job_file = os.path.join(os.path.expanduser(

@@ -102,6 +102,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                  resource_monitor_interval=60):
     tf = TaskFile(task_id)
 
+    # this will automatically create a pulse file
     tf.status = 'running'
     # write result file
     res = _execute_task(task_id, verbosity, runmode, sigmode,

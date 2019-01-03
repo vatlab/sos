@@ -6,7 +6,6 @@ import os
 import stat
 import threading
 import time
-from datetime import datetime
 
 import psutil
 
@@ -39,10 +38,7 @@ class ProcessMonitor(threading.Thread):
                 os.chmod(self.pulse_file, stat.S_IREAD | stat.S_IWRITE)
             os.remove(self.pulse_file)
         self.sos_dict = sos_dict
-        with open(self.pulse_file, 'w') as pd:
-            pd.write(f'#task: {task_id}\n')
-            pd.write(
-                f'#started at {datetime.now().strftime("%A, %d. %B %Y %I:%M%p")}\n#\n')
+        with open(self.pulse_file, 'a') as pd:
             pd.write(
                 '#time\tproc_cpu\tproc_mem\tchildren\tchildren_cpu\tchildren_mem\n')
 
