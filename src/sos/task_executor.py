@@ -107,7 +107,6 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     # write result file
     res = _execute_task(task_id, verbosity, runmode, sigmode,
                         monitor_interval, resource_monitor_interval)
-
     if res['ret_code'] != 0 and 'exception' in res:
         with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'), 'a') as err:
             err.write(f'Task {task_id} exits with code {res["ret_code"]}')
@@ -122,7 +121,6 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         tf.add_result(res)
         if sig:
             tf.add_signature(sig)
-
         # **after** result file is created, remove other files
         #
         # NOTE: if the pulse is not removed. When another sos process checkes
@@ -279,12 +277,14 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
     #
     # now we collect result
     all_res = {'ret_code': 0, 'output': None,
-               'subtasks': {}, 'shared': {}, 'skipped': False, 'signature': {}}
+               'subtasks': {}, 'shared': {}, 'skipped': 0, 'signature': {}}
     for tid, x in zip(params.task_stack, results):
+        all_res['subtasks'][tid[0]] = x
+
         if 'exception' in x:
             all_res['exception'] = x['exception']
             all_res['task'] = tid
-            all_res['ret_code'] = 1
+            all_res['ret_code'] += 1
             continue
         all_res['ret_code'] += x['ret_code']
         if all_res['output'] is None:
@@ -294,19 +294,26 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
                 all_res['output'].extend(x['output'], keep_groups=True)
             except Exception as e:
                 env.logger.warning(f"Failed to extend output {all_res['output']} with {x['output']}")
-        all_res['subtasks'][tid[0]] = x
         all_res['shared'].update(x['shared'])
         # does not care if one or all subtasks are executed or skipped.
-        all_res['skipped'] = x['skipped']
-        all_res['signature'].update(x['signature'])
+        all_res['skipped'] += 'skipped' in x
+        if 'signature' in x:
+            all_res['signature'].update(x['signature'])
 
     if all_res['ret_code'] != 0:
-        env.logger.info(f'{task_id} ``failed``')
+        if all_res['ret_code'] == len(results):
+            env.logger.info(f'All {len(results)} tasks in {task_id} ``failed``')
+        else:
+            env.logger.info(f'{all_res["ret_code"]} of {len(results)} tasks in {task_id} ``failed``')
     elif all_res['skipped']:
-        env.logger.info(f'{task_id} ``ignored`` due to saved signature')
+        if all_res['skipped'] == len(results):
+            env.logger.info(f'All {len(results)} tasks in {task_id} ``ignored`` or skipped')
+        else:
+            # if only partial skip, we still save signature and result etc
+            env.logger.info(f'{all_res["skipped"]} of {len(results)} tasks in {task_id} ``ignored`` or skipped')
+            all_res.pop('skipped')
     else:
-        env.logger.info(f'{task_id} ``completed``')
-
+        env.logger.info(f'All {len(results)} tasks in {task_id} ``completed``')
     return all_res
 
 
@@ -486,8 +493,8 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
         # task ignored with stop_if exception
         if e.message:
             env.logger.warning(f'{task_id} ``stopped``: {e.message}')
-        return {'ret_code': 0, 'task': task_id, 'input': [],
-                'output': [], 'depends': [], 'shared': {}}
+        return {'ret_code': 0, 'task': task_id, 'input': sos_targets([]),
+                'output': sos_targets([]), 'depends': sos_targets([]), 'shared': {}}
     except KeyboardInterrupt:
         env.logger.error(f'{task_id} ``interrupted``')
         raise

@@ -1052,7 +1052,7 @@ class Base_Step_Executor:
 
 
                         except StopInputGroup as e:
-                            self.output_groups[idx] = []
+                            self.output_groups[idx] = sos_targets([])
                             if e.message:
                                 env.logger.info(e)
                             skip_index = True
@@ -1174,7 +1174,7 @@ class Base_Step_Executor:
                     if isinstance(e, StopInputGroup):
                         if e.message:
                             env.logger.info(e)
-                        self.output_groups[proc_result['index']] = []
+                        self.output_groups[proc_result['index']] = sos_targets([])
                     else:
                         raise e
             # if output is Undetermined, re-evalulate it
