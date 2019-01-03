@@ -308,10 +308,16 @@ def get_output_from_steps(stmt, last_step):
     return [x for x in res if x is not None]
 
 
+analysis_cache = {}
+
 def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = None) -> Dict[str, Any]:
     '''Analyze a section for how it uses input and output, what variables
     it uses, and input, output, etc.'''
     from ._version import __version__
+
+    analysis_key = (section.md5, default_input.target_name() if hasattr(default_input, 'target_name') else '')
+    if analysis_key in analysis_cache:
+        return analysis_cache[analysis_key]
 
     # initial values
     env.sos_dict.set('SOS_VERSION', __version__)
@@ -340,7 +346,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
         finally:
             SoS_exec('from sos.runtime import sos_handle_parameter_', None)
 
-    return {
+    res = {
         'step_name': section.step_name(),
         'step_input': get_step_input(section, default_input),
         'step_output': get_step_output(section),
@@ -350,3 +356,5 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
         'signature_vars': get_signature_vars(section),
         'changed_vars': get_changed_vars(section)
     }
+    analysis_cache[analysis_key] = res
+    return res
