@@ -443,7 +443,7 @@ class Base_Step_Executor:
         task_id = task_info['task_id']
         task_index = task_info['index']
         if task_id is None:
-            self.task_manager.set(task_index, '')
+            self.task_manager.set(task_index, None)
             return None
 
         taskdef = task_info['task_def']
