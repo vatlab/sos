@@ -705,7 +705,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                 if status_files[pulse_file] != hint['files'][pulse_file]:
                     return dict(status='running', files=status_files, last_checked=time.time())
                 if time.time() - hint['last_checked'] < 20 * monitor_interval:
-                    return dict(status='running', files=status_files, hint['last_checked'])
+                    return dict(status='running', files=status_files, last_checked=hint['last_checked'])
                 # now, if the time has not been changed since last_checked...
                 # assume aborted
                 tf.status = 'aborted'
