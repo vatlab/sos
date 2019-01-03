@@ -278,7 +278,7 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
             #         return {'ret_code': 1, 'exception': res['exception'], 'task': task_id}
     #
     # now we collect result
-    all_res = {'ret_code': 0, 'output': {},
+    all_res = {'ret_code': 0, 'output': None,
                'subtasks': {}, 'shared': {}, 'skipped': False, 'signature': {}}
     for tid, x in zip(params.task_stack, results):
         if 'exception' in x:
@@ -287,10 +287,13 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
             all_res['ret_code'] = 1
             continue
         all_res['ret_code'] += x['ret_code']
-        try:
-            all_res['output'].extend(x['output'], keep_groups=True)
-        except Exception as e:
-            env.logger.warning(f"Failed to extend output {all_res['output']} with {x['output']}")
+        if all_res['output'] is None:
+            all_res['output'] = x['output']
+        else:
+            try:
+                all_res['output'].extend(x['output'], keep_groups=True)
+            except Exception as e:
+                env.logger.warning(f"Failed to extend output {all_res['output']} with {x['output']}")
         all_res['subtasks'][tid[0]] = x
         all_res['shared'].update(x['shared'])
         # does not care if one or all subtasks are executed or skipped.
