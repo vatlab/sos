@@ -685,6 +685,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             if not os.access(pulse_file, os.W_OK):
                 if status != 'aborted':
                     tf.status = 'aborted'
+                tf.add_outputs()
                 remove_task_files(
                     task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
                 return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
@@ -701,9 +702,10 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             else:
                 # if we have hint, we know the time stamp of last
                 # status file.
-                if status_files[pulse_file] != hint['files'][pulse_file] or \
-                    time.time() - hint['last_checked'] < 2 * monitor_interval:
+                if status_files[pulse_file] != hint['files'][pulse_file]:
                     return dict(status='running', files=status_files, last_checked=time.time())
+                if time.time() - hint['last_checked'] < 20 * monitor_interval:
+                    return dict(status='running', files=status_files, hint['last_checked'])
                 # now, if the time has not been changed since last_checked...
                 # assume aborted
                 tf.status = 'aborted'
@@ -721,8 +723,11 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
     elif status == 'running':
         # if there is no pulse file and task has been in running status for a
         # while, this task is not started correctly.
-        if time.time() - tf.last_updated > 2 * monitor_interval:
+        if time.time() - tf.last_updated > 20 * monitor_interval:
             tf.status = 'aborted'
+            tf.add_outputs()
+            remove_task_files(
+                task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
             return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
                     pulse_file: 0})
 
