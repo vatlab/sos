@@ -701,7 +701,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
 
             # if we have hint, we know the time stamp of last
             # status file.
-            if pulse_file not in hint['files'] or status_files[pulse_file] != hint['files'][pulse_file]:
+            if not hint or pulse_file not in hint['files'] or status_files[pulse_file] != hint['files'][pulse_file]:
                 return dict(status='running', files=status_files)
 
             elapsed = time.time() - status_files[pulse_file]

@@ -694,17 +694,16 @@ class Base_Step_Executor:
         env.logger.trace(
             f'Executing step {env.sos_dict["step_name"]} with step_input {env.sos_dict["step_input"]} and step_output {env.sos_dict["step_output"]}')
 
-        task_statement = [x[2] for x in self.step.statements if x[0] == ':' and x[1] == 'task']
-        if task_statement:
+        if self.step.task_params:
             try:
-                task_queue = get_value_of_param('queue', task_statement[0], extra_dict=env.sos_dict._dict)
+                task_queue = get_value_of_param('queue', self.step.task_params, extra_dict=env.sos_dict._dict)
                 if task_queue:
                     env.sos_dict['_runtime']['queue'] = task_queue[0]
             except Exception as e:
                 raise ValueError(f'Failed to determine value of parameter queue of {task_statement}: {e}')
             # check concurrent #1134
             try:
-                task_concurrency = get_value_of_param('concurrent', task_statement[0], extra_dict=env.sos_dict._dict)
+                task_concurrency = get_value_of_param('concurrent', self.step.task_params, extra_dict=env.sos_dict._dict)
                 if task_concurrency:
                     env.sos_dict['_runtime']['concurrent'] = task_concurrency[0]
             except Exception as e:
