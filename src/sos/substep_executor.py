@@ -175,7 +175,7 @@ def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars
     except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock) as e:
         # stop_if is not considered as an error
         if not isinstance(e, StopInputGroup):
-            clear_output(e)
+            clear_output(err=e)
         res = {'index': env.sos_dict['_index'], 'ret_code': 1, 'exception': e}
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
@@ -185,17 +185,17 @@ def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars
         kill_all_subprocesses()
         raise e
     except subprocess.CalledProcessError as e:
-        clear_output()
+        clear_output(err=e)
         # cannot pass CalledProcessError back because it is not pickleable
         res = {'index': env.sos_dict['_index'], 'ret_code': e.returncode, 'exception': RuntimeError(e.stderr)}
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res
     except ArgumentError as e:
-        clear_output()
+        clear_output(err=e)
         return {'index': env.sos_dict['_index'], 'ret_code': 1, 'exception': e}
     except Exception as e:
-        clear_output()
+        clear_output(err=e)
         res = {'index': env.sos_dict['_index'], 'ret_code': 1,
             'exception': RuntimeError(get_traceback_msg(e))}
         if capture_output:
