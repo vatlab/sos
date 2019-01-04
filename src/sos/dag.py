@@ -266,7 +266,7 @@ class SoS_DAG(nx.DiGraph):
             ancestors |= nx.ancestors(self, node)
         return SoS_DAG(nx.subgraph(self, subnodes + list(ancestors)))
 
-    def build(self, steps):
+    def build(self):
         '''Connect nodes according to status of targets'''
         # right now we do not worry about status of nodes
         # connecting the output to the input of other nodes

@@ -673,7 +673,7 @@ class Base_Executor:
                 raise RuntimeError(
                     f'No step to generate target {targets}.')
         # now, there should be no dangling targets, let us connect nodes
-        dag.build(self.workflow.auxiliary_sections)
+        dag.build()
         # dag.show_nodes()
         # trim the DAG if targets are specified
         if targets:
@@ -768,7 +768,7 @@ class Base_Executor:
         if dag.regenerate_target(target):
             # runnable._depends_targets.append(target)
             # dag._all_dependent_files[target].append(runnable)
-            dag.build(self.workflow.auxiliary_sections)
+            dag.build()
             #
             cycle = dag.circular_dependencies()
             if cycle:
@@ -784,7 +784,7 @@ class Base_Executor:
             if runnable not in dag._all_dependent_files[target]:
                 dag._all_dependent_files[target].append(
                     runnable)
-            dag.build(self.workflow.auxiliary_sections)
+            dag.build()
             #
             cycle = dag.circular_dependencies()
             if cycle:
