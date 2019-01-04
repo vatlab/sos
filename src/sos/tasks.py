@@ -485,6 +485,10 @@ class TaskFile(object):
                 pd.write(f'#task: {self.task_id}\n')
                 pd.write(
                     f'#started at {datetime.now().strftime("%A, %d. %B %Y %I:%M%p")}\n#\n')
+        elif status in ('aborted', 'completed', 'failed'):
+            # terminal status
+            remove_task_files(
+                self.task_id, ['.sh', '.job_id', '.out', '.err', '.pulse'])
 
 
     status = property(_get_status, _set_status)
@@ -636,12 +640,10 @@ def taskDuration(task):
 
 
 def remove_task_files(task: str, exts: list):
+    task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks'))
     for ext in exts:
-        filename = os.path.join(os.path.expanduser(
-            '~'), '.sos', 'tasks', task + ext)
+        filename = os.path.join(task_dir, task + ext)
         if os.path.isfile(filename):
-            if ext == '.pulse' and not os.access(filename, os.W_OK):
-                os.chmod(filename, stat.S_IREAD | stat.S_IWRITE)
             try:
                 os.remove(filename)
             except Exception:
@@ -706,8 +708,6 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             env.logger.warning(f'Task {task} considered as aborted due to inactivity for more than {int(elapsed)} seconds.')
 
             tf.add_outputs()
-            #remove_task_files(
-            #    task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
             return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
                     pulse_file: 0})
         except:
@@ -725,8 +725,6 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             err.write(f'Task {task} considered as aborted due to missing pulse file.')
         env.logger.warning(f'Task {task} considered as aborted due to missing pulse file.')
         tf.add_outputs()
-        remove_task_files(
-            task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
         return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
                 pulse_file: 0})
 
@@ -1243,8 +1241,6 @@ def kill_task(task):
         '~'), '.sos', 'tasks', task + '.err'), 'a') as err:
         err.write(f'Task {task} killed by sos kill command or task engine.')
     tf.add_outputs()
-    remove_task_files(
-        task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
     TaskFile(task).status = 'aborted'
     return 'aborted'
 

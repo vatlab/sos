@@ -128,8 +128,6 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         # the task might be considered already running.
         tf.status = 'completed' if res['ret_code'] == 0 else 'failed'
 
-    remove_task_files(task_id, ['.pulse', '.out', '.err', '.job_id', '.sh'])
-
     return res['ret_code']
 
 
