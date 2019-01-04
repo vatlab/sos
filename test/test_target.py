@@ -446,6 +446,9 @@ depends: executable('lkls')
 
     def testSharedVarInPairedWith(self):
         self.touch(['1.txt', '2.txt'])
+        for file in ('1.out', '2.out', '1.out2', '2.out2'):
+            if file_target(file).exists():
+                file_target(file).unlink()
         script = SoS_Script('''
 [work_1: shared = {'data': 'step_output'}]
 input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
@@ -467,6 +470,9 @@ run: expand=True
 
     def testSharedVarInForEach(self):
         self.touch(['1.txt', '2.txt'])
+        for file in ('1.out', '2.out', '1.out2', '2.out2'):
+            if file_target(file).exists():
+                file_target(file).unlink()
         script = SoS_Script('''
 [work_1: shared = {'data': 'step_output'}]
 input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
