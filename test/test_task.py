@@ -143,9 +143,6 @@ class TestTask(unittest.TestCase):
         a.add_outputs()
         a.add_result({'ret_code': 5})
         self.assertEqual(a.result['ret_code'], 5)
-        for ext in ('.pulse', '.out', '.err', '.task'):
-            os.remove(os.path.join(os.path.expanduser('~'),
-                                   '.sos', 'tasks', 'ffffffffffffffff' + ext))
 
     def testWorkdir(self):
         '''Test workdir option for runtime environment'''
