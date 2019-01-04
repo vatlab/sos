@@ -43,8 +43,11 @@ class TaskManager:
         self.trunk_workers = trunk_workers
 
         self._submitted_tasks = []
+        # entire groups
+        self._unsubmitted_slots = []
+        # collection of partial groups if some tasks are completed
         self._unsubmitted_tasks = []
-        # derived from _unsubmitted_tasks
+        # derived from _unsubmitted_slots
         self._all_ids = []
         self._all_output = []
         #
@@ -66,8 +69,11 @@ class TaskManager:
             # if there are valida tasks
             if not all([x[1] is None for x in self._slots[slot]]):
                 # remove empty tasks and sort by id
-                self._unsubmitted_tasks.append(
-                    sorted([x for x in self._slots[slot] if x[1] is not None], key=lambda x: x[0]))
+                if self.trunk_size == 1 or any(x[1] is None for x in self._slots[slot]):
+                    # if partial, sent to partial list
+                    self._unsubmitted_tasks.extend([x[1] for x in self._slots[slot] if x[1] is not None])
+                else:
+                    self._unsubmitted_slots.append(sorted(self._slots[slot], key=lambda x: x[0]))
             # clear skit
             self._slots[slot] = []
         if not task_def:
@@ -87,7 +93,7 @@ class TaskManager:
             return -1
 
     def has_output(self, output):
-        if not isinstance(output, Sequence) or not self._unsubmitted_tasks:
+        if not isinstance(output, Sequence) or not self._unsubmitted_slots:
             return False
         return any(x in self._all_output for x in output)
 
@@ -95,29 +101,54 @@ class TaskManager:
         # single tasks
         ids = []
         # submit all tasks without trunk, easy
-        for slot in self._unsubmitted_tasks:
-            if self.trunk_size == 1:
-                task_id, taskdef, _ = slot[0][1]
+        for slot in self._unsubmitted_slots:
+            # create a master task
+            master = MasterTaskParams(self.trunk_workers)
+            for idx, (task_id, taskdef, _) in slot:
+                master.push(task_id, taskdef)
+            ids.append(master.ID)
+            TaskFile(master.ID).save(master)
+            env.signature_push_socket.send_pyobj(['workflow', 'task', master.ID,
+                                  f"{{'creation_time': {time.time()}}}"])
+        self._unsubmitted_slots = []
+
+        # individual tasks...
+        if self.trunk_size == 1 or all_tasks:
+            to_be_submitted = self._unsubmitted_tasks
+            self._unsubmitted_tasks = []
+        else:
+            # save complete blocks
+            num_tasks = len(
+                self._unsubmitted_tasks) // self.trunk_size * self.trunk_size
+            to_be_submitted = self._unsubmitted_tasks[: num_tasks]
+            self._unsubmitted_tasks = self._unsubmitted_tasks[num_tasks:]
+
+        if self.trunk_size == 1 or (all_tasks and len(self._unsubmitted_tasks) == 1):
+            for task_id, taskdef, _ in to_be_submitted:
                 # if the task file, perhaps it is already running, we do not change
                 # the task file. Otherwise we are changing the status of the task
                 TaskFile(task_id).save(taskdef)
                 env.signature_push_socket.send_pyobj(['workflow', 'task', task_id,
                                           f"{{'creation_time': {time.time()}}}"])
                 ids.append(task_id)
-            else:
-                # create a master task
-                master = MasterTaskParams(self.trunk_workers)
-                for idx, (task_id, taskdef, _) in slot:
-                    master.push(task_id, taskdef)
-                ids.append(master.ID)
+        else:
+            master = None
+            for task_id, taskdef, _ in to_be_submitted:
+                if master is not None and master.num_tasks() == self.trunk_size:
+                    ids.append(master.ID)
+                    TaskFile(master.ID).save(master)
+                    env.signature_push_socket.send_pyobj(['workflow', 'task', master.ID,
+                                              f"{{'creation_time': {time.time()}}}"])
+                    master = None
+                if master is None:
+                    master = MasterTaskParams(self.trunk_workers)
+                master.push(task_id, taskdef)
+            # the last piece
+            if master is not None:
                 TaskFile(master.ID).save(master)
                 env.signature_push_socket.send_pyobj(['workflow', 'task', master.ID,
-                                      f"{{'creation_time': {time.time()}}}"])
-            self._unsubmitted_tasks = []
-
-        # if all_tasks, there should be no pending ones
-        if all_tasks and any(self._slots):
-            raise RuntimeError(f'Some tasks have not been returned from substeps. This should not happen.')
+                                          f"{{'creation_time': {time.time()}}}"])
+                ids.append(master.ID)
 
         if not ids:
             return None
