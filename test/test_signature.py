@@ -482,6 +482,9 @@ run: expand=True
     def testOutputFromSignature(self):
         'Test restoration of output from signature'''
         self.touch(['1.txt', '2.txt'])
+        for f in ('1.out', '2.out', '1.2.out', '2.3.out'):
+            if file_target(f).exists():
+                file_target(f).unlink()        
         script = SoS_Script('''
 parameter: K = [2,3]
 
