@@ -985,6 +985,17 @@ class Base_Step_Executor:
                             if self.concurrent_substep:
                                 env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} concurrently')
 
+                                # the ignatures are supposed to be written by substep worker, however
+                                # the substep worker might send tasks back to the step worker and
+                                # we should write the signatures after the tasks are completed
+                                if env.config['sig_mode'] != 'ignore' and self.step.task:
+                                    pending_signatures[idx] = RuntimeInfo(
+                                        statementMD5([statement[1], self.step.task]),
+                                        env.sos_dict['_input'],
+                                        env.sos_dict['_output'],
+                                        env.sos_dict['_depends'],
+                                        env.sos_dict['__signature_vars__'],
+                                        shared_vars=self.vars_to_be_shared)
                                 #
                                 # step_output: needed only when it is undetermined
                                 # step_input: not needed
