@@ -296,7 +296,7 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
                 env.logger.warning(f"Failed to extend output {all_res['output']} with {x['output']}")
         all_res['shared'].update(x['shared'])
         # does not care if one or all subtasks are executed or skipped.
-        all_res['skipped'] += 'skipped' in x
+        all_res['skipped'] += x.get('skipped', 0)
         if 'signature' in x:
             all_res['signature'].update(x['signature'])
 
