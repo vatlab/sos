@@ -341,7 +341,6 @@ class Base_Executor:
 
         if not res['step_output'].unspecified():
              section._autoprovides = res['step_output']
-        env.logger.error(f'section provides {section._autoprovides}')
 
     def match(self, target: BaseTarget, step: SoS_Step) -> Union[Dict[str, str], bool]:
         if not hasattr(step, '_analyzed'):
