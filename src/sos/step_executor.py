@@ -988,7 +988,8 @@ class Base_Step_Executor:
                                 # the ignatures are supposed to be written by substep worker, however
                                 # the substep worker might send tasks back to the step worker and
                                 # we should write the signatures after the tasks are completed
-                                if env.config['sig_mode'] != 'ignore' and self.step.task:
+                                if env.config['sig_mode'] != 'ignore' and not env.sos_dict['_output'].unspecified() \
+                                    and self.step.task:
                                     pending_signatures[idx] = RuntimeInfo(
                                         statementMD5([statement[1], self.step.task]),
                                         env.sos_dict['_input'],
