@@ -281,7 +281,6 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
 
         if 'exception' in x:
             all_res['exception'] = x['exception']
-            all_res['task'] = tid
             all_res['ret_code'] += 1
             continue
         all_res['ret_code'] += x['ret_code']
