@@ -828,6 +828,21 @@ print(f'this is task {i}')
             wf = script.workflow()
             Base_Executor(wf, config={'sig_mode': 'force'}).run()
 
+    def testPassingParametersToTask(self):
+        '''Test passing of parameters in global section to tasks #1155'''
+        script = SoS_Script('''\
+[global]
+parameter: par=5 
+def a():
+  print(par)
+
+[default]
+task:
+a()
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={'sig_mode': 'force'}).run()
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -134,7 +134,10 @@ def get_environ_vars(section):
 def get_signature_vars(section):
     '''Get signature variables which are variables that will be
     saved with step signatures'''
-    signature_vars = set()
+
+    # signature vars should contain parameters defined in global section
+    # #1155
+    signature_vars = set(section.parameters.keys())
 
     input_idx = find_statement(section, 'input')
     after_input_idx = 0 if input_idx is None else input_idx + 1
