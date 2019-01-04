@@ -640,7 +640,7 @@ def taskDuration(task):
 
 
 def remove_task_files(task: str, exts: list):
-    task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks'))
+    task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
     for ext in exts:
         filename = os.path.join(task_dir, task + ext)
         if os.path.isfile(filename):
