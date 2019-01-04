@@ -103,7 +103,7 @@ def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars
     # passing configuration and port numbers to the subprocess
     env.config.update(config)
     # prepare a working environment with sos symbols and functions
-    prepare_env(global_def)
+    prepare_env(global_def, proc_vars)
     # update it with variables passed from master process
     env.sos_dict.quick_update(proc_vars)
     if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified():

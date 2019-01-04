@@ -130,7 +130,7 @@ def get_traceback_msg(e):
     else:
         return f'{error_class}: {detail}'
 
-def prepare_env(global_def):
+def prepare_env(global_def, extra_dict={}):
     # initial values
     env.sos_dict.set('SOS_VERSION', __version__)
     try:
@@ -145,9 +145,9 @@ import os, sys
 from sos.runtime import *
 CONFIG = {}
 del sos_handle_parameter_
-''' + global_def, None)
+''' + global_def, extra_dict)
     except Exception as e:
-        env.logger.trace(
+        env.logger.warning(
             f'Failed to execute global definition {short_repr(global_def)}: {e}')
 
 def statementMD5(stmts):

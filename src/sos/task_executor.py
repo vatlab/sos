@@ -358,7 +358,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
     if verbosity is not None:
         env.verbosity = verbosity
 
-    prepare_env(global_def)
+    prepare_env(global_def, sos_dict)
 
     if '_runtime' not in sos_dict:
         sos_dict['_runtime'] = {}
