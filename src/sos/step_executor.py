@@ -1100,7 +1100,7 @@ class Base_Step_Executor:
                             skip_index = True
                             break
                         except Exception as e:
-                            clear_output(e)
+                            clear_output(err=e)
                             raise
 
                 # if there is no statement , but there are tasks, we should
@@ -1211,7 +1211,7 @@ class Base_Step_Executor:
                 if pending_signatures[idx] is not None and res['ret_code'] == 0:
                     pending_signatures[idx].write()
                 if res['ret_code'] != 0 and 'output' in res:
-                    clear_output(res['output'])
+                    clear_output(output=res['output'])
 
             for proc_result in [x for x in self.proc_results if x['ret_code'] != 0]:
                 if 'stdout' in proc_result and proc_result['stdout']:
