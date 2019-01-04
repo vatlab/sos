@@ -147,7 +147,7 @@ CONFIG = {}
 del sos_handle_parameter_
 ''' + global_def, None)
     except Exception as e:
-        env.logger.trace(
+        env.logger.warning(
             f'Failed to execute global definition {short_repr(global_def)}: {e}')
 
 def statementMD5(stmts):
