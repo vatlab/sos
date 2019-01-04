@@ -318,7 +318,31 @@ class Base_Executor:
                 if not key.startswith('__'):
                     env.sos_dict.set(key, value)
 
+    def analyze_auxiliary_step(self, section):
+        res = analyze_section(section, vars_only=True)
+        environ_vars = res['environ_vars']
+        signature_vars = res['signature_vars']
+        changed_vars = res['changed_vars']
+        # parameters, if used in the step, should be considered environmental
+        environ_vars |= env.parameter_vars & signature_vars
+
+        # add shared to targets
+        if res['changed_vars']:
+            if 'provides' in section.options:
+                if isinstance(section.options['provides'], str):
+                    section.options.set(
+                        'provides', [section.options['provides']])
+            else:
+                section.options.set('provides', [])
+            #
+            section.options.set('provides',
+                                section.options['provides'] + [sos_variable(var) for var in changed_vars])
+
+
     def match(self, target: BaseTarget, step: SoS_Step) -> Union[Dict[str, str], bool]:
+        if not hasattr(step, '_analyzed'):
+            ret = self.analyze_auxiliary_step(step)
+            step._analyzed = True
         # for sos_step, we need to match step name
         if isinstance(target, sos_step):
             return step.match(target.target_name())
@@ -646,27 +670,6 @@ class Base_Executor:
                          res['step_output'],
                          context=context)
             default_input = res['step_output']
-        #
-        # analyze auxiliary steps
-        for idx, section in enumerate(self.workflow.auxiliary_sections):
-            res = analyze_section(section, default_input, vars_only=True)
-            environ_vars = res['environ_vars']
-            signature_vars = res['signature_vars']
-            changed_vars = res['changed_vars']
-            # parameters, if used in the step, should be considered environmental
-            environ_vars |= env.parameter_vars & signature_vars
-
-            # add shared to targets
-            if res['changed_vars']:
-                if 'provides' in section.options:
-                    if isinstance(section.options['provides'], str):
-                        section.options.set(
-                            'provides', [section.options['provides']])
-                else:
-                    section.options.set('provides', [])
-                #
-                section.options.set('provides',
-                                    section.options['provides'] + [sos_variable(var) for var in changed_vars])
         #
         if self.resolve_dangling_targets(dag, targets) == 0:
             if targets:
