@@ -550,8 +550,8 @@ class Base_Step_Executor:
                 for _, mres in results.items():
                     if 'subtasks' in mres and task in mres['subtasks']:
                         self.proc_results[idx] = mres['subtasks'][task]
-                    elif 'exception' in mres:
-                        self.proc_results[idx] = mres
+                    #elif 'exception' in mres:
+                    #    self.proc_results[idx] = mres
         #
         # check if all have results?
         if any(isinstance(x, str) for x in self.proc_results):
@@ -1206,6 +1206,13 @@ class Base_Step_Executor:
                 if 'stderr' in proc_result and proc_result['stderr']:
                     sys.stderr.write(proc_result['stderr'])
 
+            # now that output is settled, we can write remaining signatures
+            for idx, res in enumerate(self.proc_results):
+                if pending_signatures[idx] is not None and res['ret_code'] == 0:
+                    pending_signatures[idx].write()
+                if res['ret_code'] != 0 and 'output' in res:
+                    clear_output(res['output'])
+
             for proc_result in [x for x in self.proc_results if x['ret_code'] != 0]:
                 if 'stdout' in proc_result and proc_result['stdout']:
                     sys.stdout.write(proc_result['stdout'])
@@ -1229,11 +1236,6 @@ class Base_Step_Executor:
                 og = sos_targets(og)
                 env.sos_dict['step_output']._add_group(sos_targets(og))
 
-            # now that output is settled, we can write remaining signatures
-            for idx, res in enumerate(self.proc_results):
-                if pending_signatures[idx] is not None:
-                    if res['ret_code'] == 0:
-                        pending_signatures[idx].write()
 
             # if there exists an option shared, the variable would be treated as
             # provides=sos_variable(), and then as step_output
@@ -1331,7 +1333,6 @@ class Step_Executor(Base_Step_Executor):
             else:
                 return res
         except Exception as e:
-            clear_output(e)
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
             if self.socket is not None:

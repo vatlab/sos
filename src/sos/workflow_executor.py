@@ -1054,23 +1054,7 @@ class Base_Executor:
                         res = proc.step._host.check_status(
                             proc.step._pending_tasks)
                         # env.logger.warning(res)
-                        if any(x in ('aborted', 'failed') for x in res):
-                            for t, s in zip(proc.step._pending_tasks, res):
-                                if s in ('aborted', 'failed') and not (hasattr(proc.step, '_killed_tasks') and t in proc.step._killed_tasks):
-                                    # env.logger.warning(f'{t} ``{s}``')
-                                    if not hasattr(proc.step, '_killed_tasks'):
-                                        proc.step._killed_tasks = {t}
-                                    else:
-                                        proc.step._killed_tasks.add(t)
-                            if all(x in ('completed', 'aborted', 'failed') for x in res):
-                                # we try to get results
-                                task_status = proc.step._host.retrieve_results(
-                                    proc.step._pending_tasks)
-                                proc.socket.send_pyobj(task_status)
-                                proc.set_status('failed')
-                        elif any(x in ('new', 'pending', 'submitted', 'running') for x in res):
-                            continue
-                        elif all(x == 'completed' for x in res):
+                        if all(x in ('completed', 'aborted', 'failed') for x in res):
                             env.logger.debug(
                                 f'Proc {proc_idx} puts results for {" ".join(proc.step._pending_tasks)} from step {proc.step._node_id}')
                             res = proc.step._host.retrieve_results(
@@ -1078,6 +1062,9 @@ class Base_Executor:
                             proc.socket.send_pyobj(res)
                             proc.step._pending_tasks = []
                             proc.set_status('running')
+                            #proc.set_status('failed')
+                        elif any(x in ('new', 'pending', 'submitted', 'running') for x in res):
+                            continue
                         elif 'missing' in res:
                             raise RuntimeError(
                                 f'Task no longer exists: {" ".join(x for x,y in zip(proc.step._pending_tasks, res) if y == "missing")}')

@@ -506,7 +506,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
                 'exception': RuntimeError(e.stderr)}
     except Exception as e:
         msg = get_traceback_msg(e)
-        env.logger.error(f'{task_id} ``failed``: {msg}')
+        # env.logger.error(f'{task_id} ``failed``: {msg}')
         with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'), 'a') as err:
             err.write(msg + '\n')
         return {'ret_code': 1, 'exception': RuntimeError(msg), 'task': task_id, 'shared': {}}
