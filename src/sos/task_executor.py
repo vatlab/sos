@@ -305,6 +305,9 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
             env.logger.info(f'All {len(results)} tasks in {task_id} ``failed``')
         else:
             env.logger.info(f'{all_res["ret_code"]} of {len(results)} tasks in {task_id} ``failed``')
+        # if some failed, some skipped, not skipped
+        if 'skipped' in all_res:
+            all_res.pop('skipped')
     elif all_res['skipped']:
         if all_res['skipped'] == len(results):
             env.logger.info(f'All {len(results)} tasks in {task_id} ``ignored`` or skipped')
