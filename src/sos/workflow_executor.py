@@ -319,7 +319,7 @@ class Base_Executor:
                     env.sos_dict.set(key, value)
 
     def analyze_auxiliary_step(self, section):
-        res = analyze_section(section, vars_only=True)
+        res = analyze_section(section, vars_and_output_only=True)
         environ_vars = res['environ_vars']
         signature_vars = res['signature_vars']
         changed_vars = res['changed_vars']
@@ -339,6 +339,10 @@ class Base_Executor:
                                 section.options['provides'] + [sos_variable(var) for var in changed_vars])
 
 
+        if not res['step_output'].unspecified():
+             section._autoprovides = res['step_output']
+        env.logger.error(f'section provides {section._autoprovides}')
+
     def match(self, target: BaseTarget, step: SoS_Step) -> Union[Dict[str, str], bool]:
         if not hasattr(step, '_analyzed'):
             ret = self.analyze_auxiliary_step(step)
@@ -348,9 +352,11 @@ class Base_Executor:
             return step.match(target.target_name())
         if isinstance(target, named_output):
             return 'namedprovides' in step.options and target.target_name() in step.options['namedprovides']
-        if not any(x in step.options for x in ('provides', 'autoprovides')):
+        if hasattr(step, '_autoprovides') and step._autoprovides.contains(target):
+            return True
+        if not 'provides' in step.options:
             return False
-        patterns = step.options['provides'] if 'provides' in step.options else step.options['autoprovides']
+        patterns = step.options['provides']
         if isinstance(patterns, (str, BaseTarget, path)):
             patterns = [patterns]
         elif not isinstance(patterns, (sos_targets, Sequence, paths)):

@@ -148,7 +148,7 @@ def get_signature_vars(section):
     # signature vars should contain parameters defined in global section
     # #1155
     signature_vars = set(section.parameters.keys() & find_used_parameters(section.global_def))
-    
+
     input_idx = find_statement(section, 'input')
     after_input_idx = 0 if input_idx is None else input_idx + 1
 
@@ -321,14 +321,14 @@ analysis_cache = {}
 
 def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = None,
     default_output: Optional[sos_targets] = None,
-    vars_only: bool = False) -> Dict[str, Any]:
+    vars_and_output_only: bool = False) -> Dict[str, Any]:
     '''Analyze a section for how it uses input and output, what variables
     it uses, and input, output, etc.'''
     from ._version import __version__
 
     analysis_key = (section.md5, section.step_name(),
         default_input.target_name() if hasattr(default_input, 'target_name') else '',
-        default_output.target_name() if hasattr(default_output, 'target_name') else '', vars_only)
+        default_output.target_name() if hasattr(default_output, 'target_name') else '', vars_and_output_only)
     if analysis_key in analysis_cache:
         return analysis_cache[analysis_key]
 
@@ -358,14 +358,14 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
 
     res = {
         'step_name': section.step_name(),
+        'step_output': get_step_output(section, default_output),
         # variables starting with __ are internals...
         'environ_vars': get_environ_vars(section),
         'signature_vars': get_signature_vars(section),
         'changed_vars': get_changed_vars(section)
     }
-    if not vars_only:
+    if not vars_and_output_only:
         res['step_input'] = get_step_input(section, default_input)
-        res['step_output'] = get_step_output(section, default_output)
         res['step_depends'] = get_step_depends(section)
     analysis_cache[analysis_key] = res
     return res

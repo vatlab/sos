@@ -1690,6 +1690,12 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         ret._undetermined = self._undetermined
         return ret
 
+    def contains(self, target):
+        if isinstance(target, str):
+            return file_target(target) in self._targets
+        else:
+            return target in self._targets
+
 class InMemorySignature:
     def __init__(self, input_files: sos_targets, output_files: sos_targets,
                  dependent_files: sos_targets, signature_vars: set=set(),

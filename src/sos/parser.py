@@ -524,35 +524,9 @@ class SoS_Step:
         # auto provides #859
         if not any(opt in self.options for opt in ('provides', 'shared')) and \
                 len([x for x in self.statements if x[0] == ':' and x[1] == 'output']) == 1:
-            # let us check if output is a "plain output"
-            output_stmt = [x for x in self.statements if x[0]
-                           == ':' and x[1] == 'output'][0][2]
-            try:
-                plain_output = eval(output_stmt)
-                if isinstance(plain_output, str) or \
-                    (isinstance(plain_output, (list, tuple, set)) and
-                     all(isinstance(x, str) for x in plain_output)):
-                    self.options['autoprovides'] = output_stmt
-            except:
-                # if otuput has options and rely on anything, it cannot be treated as
-                # auto output
-                pass
-            #
+            output_stmt = [x for x in self.statements if x[0]  == ':' and x[1] == 'output'][0][2]
             output_names = get_names_of_kwargs(output_stmt)
             self.options['namedprovides'] = repr(output_names)
-        # 
-        # if 'provides' in self.options:
-        #     # let us check if provides is a "plain output"
-        #     try:
-        #         plain_output = eval(self.options['provides'])
-        #         if isinstance(plain_output, str) or \
-        #             (isinstance(plain_output, (list, tuple, set)) and
-        #              all(isinstance(x, str) for x in plain_output)):
-        #             self.options['autoprovides'] = self.options['provides']
-        #     except:
-        #         # if otuput has options and rely on anything, it cannot be treated as
-        #         # auto output
-        #         pass
 
     def show(self):
         '''Output for command sos show'''
@@ -1321,8 +1295,7 @@ for __n, __v in {repr(name_map)}.items():
         This function might be called recursively because of nested
         workflow.'''
         if workflow_name is None and not use_default:
-            return SoS_Workflow(self.content, '', '',
-                                [section for section in self.sections if any(x in section.options for x in ('provides', 'shared', 'autoprovides'))], self.global_def)
+            return SoS_Workflow(self.content, '', '', self.sections, self.global_def)
         allowed_steps = None
         if not workflow_name:
             wf_name = ''
@@ -1399,15 +1372,6 @@ for __n, __v in {repr(name_map)}.items():
         #
         print('\nWorkflows:')
         print('  ' + '\n  '.join(self.workflows))
-        #
-        # targets
-        targets = []
-        for section in self.sections:
-            if 'autoprovides' in section.options:
-                targets.append(section.options['autoprovides'])
-        if targets:
-            print('\nTargets:')
-            print('\n'.join('  ' + x for x in list(dict.fromkeys(targets))))
         #
         global_parameters = {}
         for section in self.sections:

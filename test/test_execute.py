@@ -1986,5 +1986,26 @@ assert(_input[0].tvar == _index)
         Base_Executor(wf).run()
 
 
+    def testAutoProvide(self):
+        '''Testing steps to provide plain output'''
+        script = SoS_Script('''\
+[global]
+
+a = 'a.txt'
+
+[b]
+output: a
+_output.touch()
+
+[default]
+
+input: a
+output: f"{file_target(a):n}.out"
+
+_output.touch()
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
 if __name__ == '__main__':
     unittest.main()
