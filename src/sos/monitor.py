@@ -56,14 +56,21 @@ class ProcessMonitor(threading.Thread):
         return par_cpu, par_mem, n_children, ch_cpu, ch_mem
 
     def _exceed_resource(self, msg):
+        env.logger.warning(f'{self.task_id} ``aborted``: {msg}')
         err_file = os.path.join(os.path.expanduser(
             '~'), '.sos', 'tasks', self.task_id + '.err')
         with open(err_file, 'a') as err:
             err.write(msg + '\n')
+        tf = TaskFile(self.task_id)
+        tf.add_outputs()
+        remove_task_files(
+            task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
+        tf.status = 'aborted'
         # kill the task
         os.chmod(self.pulse_file, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
         p = psutil.Process(self.pid)
         p.kill()
+
 
     def run(self):
         counter = 0

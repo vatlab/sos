@@ -689,20 +689,6 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         try:
             status_files = {task_file: os.stat(task_file).st_mtime,
                             pulse_file: os.stat(pulse_file).st_mtime}
-            # if the status file is readonly
-            if not os.access(pulse_file, os.W_OK):
-                if status != 'aborted':
-                    tf.status = 'aborted'
-
-                with open(os.path.join(os.path.expanduser(
-                    '~'), '.sos', 'tasks', task + '.err'), 'a') as err:
-                    err.write(f'Task {task} aborted by external command.')
-                env.logger.warning(f'Task {task} aborted by external command.')
-                tf.add_outputs()
-                remove_task_files(
-                    task, ['.sh', '.job_id', '.out', '.err', '.pulse'])
-                return dict(status='aborted', files={task_file: os.stat(task_file).st_mtime,
-                                                     pulse_file: 0})
 
             # if we have hint, we know the time stamp of last
             # status file.
