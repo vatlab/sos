@@ -1204,10 +1204,9 @@ touch {step_output}
         ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        # output should have 1, 2, 3, 4, 5, respectively, and
-        # the total record files would be 1+2+3+4+5=15
+        # output should have 1, 2, 3, 4, 5, respectively
         with open('temp/out.log') as out:
-            self.assertEqual(len(out.read().split()), 15)
+            self.assertEqual(len(out.read().split()), 5)
         shutil.rmtree('temp')
         #
         os.mkdir('temp')
@@ -1227,7 +1226,7 @@ touch {step_output}
         env.config['sig_mode'] = 'ignore'
         Base_Executor(wf).run()
         with open('temp/out.log') as out:
-            self.assertEqual(len(out.read().split()), 15)
+            self.assertEqual(len(out.read().split()), 5)
         shutil.rmtree('temp')
 
     @multi_attempts
