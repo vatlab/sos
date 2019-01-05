@@ -119,7 +119,7 @@ class Controller(threading.Thread):
         self._frontend_requests = []
         self._substep_workers = []
         self._n_working_workers = 0
-        self._worker_pending_time = None
+        self._worker_pending_time = []
         # self.event_map = {}
         # for name in dir(zmq):
         #     if name.startswith('EVENT_'):
@@ -300,9 +300,9 @@ class Controller(threading.Thread):
 
     def handle_substep_frontend_msg(self, msg):
 
-        if self._worker_pending_time is not None:
+        if self._worker_pending_time:
             self.substep_backend_socket.send(msg)
-            self._worker_pending_time = None
+            self._worker_pending_time.pop()
             return
 
         #  Get client request, route to first available worker
@@ -331,15 +331,8 @@ class Controller(threading.Thread):
         if self._frontend_requests:
             msg = self._frontend_requests.pop()
             self.substep_backend_socket.send(msg)
-        elif self._n_working_workers > 1:
-            # if the jobs are consumed faster than requested, we do not kill
-            # all the workers to avoid creating a new worker each time
-            self.substep_backend_socket.send_pyobj(None)
-            self._n_working_workers -= 1
-            env.logger.debug(
-                f'Kill a substep worker. {self._n_working_workers} remains.')
         else:
-            self._worker_pending_time = time.time()
+            self._worker_pending_time.insert(0, time.time())
 
     def handle_tapping_logging_msg(self, msg):
         if env.config['exec_mode'] == 'both':
@@ -495,11 +488,17 @@ class Controller(threading.Thread):
 
                 # if the last worker has been pending for more than 5
                 # seconds, kill it
-                if self._worker_pending_time is not None and \
-                     time.time() - self._worker_pending_time > 5:
-                     self.substep_backend_socket.send_pyobj(None)
-                     self._n_working_workers -= 1
-                     self._worker_pending_time = None
+                if self._worker_pending_time:
+                    now = time.time()
+                    kept = [x for x in self._worker_pending_time if now - x > 10]
+                    n_kill = len(self._worker_pending_time) - len(kept)
+                    if n_kill > 0:
+                        for i in range(n_kill):
+                            self.substep_backend_socket.send_pyobj(None)
+                        self._n_working_workers -= n_kill
+                        self._worker_pending_time = kept
+                    env.logger.debug(
+                         f'Kill {n_kill} substep worker. {self._n_working_workers} remains.')
                 # if monitor_socket in socks:
                 #     evt = recv_monitor_message(monitor_socket)
                 #     if evt['event'] == zmq.EVENT_ACCEPTED:
