@@ -203,7 +203,8 @@ def get_step_depends(section):
             else:
                 step_depends.extend(sos_targets(*args))
         except Exception as e:
-            env.logger.debug(f"Args {value} cannot be determined: {e}")
+            pass
+            # env.logger.debug(f"Args {value} cannot be determined: {e}")
     return step_depends
 
 def get_step_input(section, default_input):
@@ -262,7 +263,8 @@ def get_step_output(section, default_output):
         if not any(isinstance(x, (dynamic, remote)) for x in args):
             step_output = sos_targets(*args)
     except Exception as e:
-        env.logger.debug(f"Args {value} cannot be determined: {e}")
+        pass
+        # env.logger.debug(f"Args {value} cannot be determined: {e}")
 
     if 'provides' in section.options and default_output is not None and step_output.valid():
         for out in default_output:
