@@ -428,15 +428,14 @@ class Base_Step_Executor:
 
         # set variables
         env.sos_dict.set('_output', ofiles)
+        env.sos_dict.set('step_output', ofiles)
         #
-        if not env.sos_dict['step_output'].valid():
-            env.sos_dict.set('step_output', copy.deepcopy(ofiles))
-        else:
-            for ofile in ofiles:
-                if ofile in env.sos_dict['step_output']._targets:
-                    raise ValueError(
-                        f'Output {ofile} from substep {env.sos_dict["_index"]} overlaps with output from a previous substep')
-            env.sos_dict['step_output'].extend(ofiles, keep_groups=True)
+        for ofile in ofiles:
+            oname = ofile.target_name()
+            if oname in self._all_outputs:
+                raise ValueError(
+                    f'Output {ofile} from substep {env.sos_dict["_index"]} overlaps with output from a previous substep')
+            self._all_outputs.add(oname)
 
     def submit_task(self, task_info):
         if self.task_manager is None:
@@ -851,6 +850,8 @@ class Base_Step_Executor:
         # signatures of each index, which can remain to be None if no output
         # is defined.
         self.output_groups = [[] for x in self._substeps]
+        # used to prevent overlapping output from substeps
+        self._all_outputs = set()
 
         if self.concurrent_substep:
             if len(self._substeps) <= 1 or self.run_mode == 'dryrun':
