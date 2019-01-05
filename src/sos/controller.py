@@ -490,13 +490,13 @@ class Controller(threading.Thread):
                 # seconds, kill it
                 if self._worker_pending_time:
                     now = time.time()
-                    kept = [x for x in self._worker_pending_time if now - x > 10]
+                    kept = [x for x in self._worker_pending_time if now - x > 30]
                     n_kill = len(self._worker_pending_time) - len(kept)
                     if n_kill > 0:
                         for i in range(n_kill):
                             self.substep_backend_socket.send_pyobj(None)
                         self._n_working_workers -= n_kill
-                        self._worker_pending_time = kept
+                        self._worker_pending_time = [now]*len(kept)
                     env.logger.debug(
                          f'Kill {n_kill} substep worker. {self._n_working_workers} remains.')
                 # if monitor_socket in socks:
