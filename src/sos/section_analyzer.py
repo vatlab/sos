@@ -15,7 +15,7 @@ from .eval import SoS_eval, SoS_exec, accessed_vars
 from .parser import SoS_Step
 from .targets import (dynamic, remote, sos_targets, sos_step, named_output)
 from .utils import env, get_traceback, separate_options
-from .executor_utils import  __null_func__, prepare_env
+from .executor_utils import  __null_func__, prepare_env, strip_param_defs
 from .syntax import SOS_TARGETS_OPTIONS
 
 def get_param_of_function(name, param_list, extra_dict={}):
@@ -131,15 +131,6 @@ def get_environ_vars(section):
                 raise ValueError(f'Failed to parse parameter for_each: {e}')
     return {x for x in environ_vars if not x.startswith('__')}
 
-def find_used_parameters(statement):
-    assessed = set()
-    for node in ast.parse(statement, '<string>', 'exec').body:
-        # ignore the sos_handle_parameter_ statements
-        if isinstance(node, ast.If) and hasattr(node.test, 'left') \
-            and hasattr(node.test.left, 's') and node.test.left.s == 'sos_handle_parameter_':
-            continue
-        assessed |= {x.id for x in ast.walk(node) if isinstance(x, ast.Name)}
-    return assessed
 
 def get_signature_vars(section):
     '''Get signature variables which are variables that will be
@@ -147,7 +138,7 @@ def get_signature_vars(section):
 
     # signature vars should contain parameters defined in global section
     # #1155
-    signature_vars = set(section.parameters.keys() & find_used_parameters(section.global_def))
+    signature_vars = set(section.parameters.keys() & accessed_vars(strip_param_defs(section.global_def)))
 
     input_idx = find_statement(section, 'input')
     after_input_idx = 0 if input_idx is None else input_idx + 1
@@ -334,7 +325,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     if analysis_key in analysis_cache:
         return analysis_cache[analysis_key]
 
-    # initialiaze environment, without sos_handle_parameter_
+    # initialiaze environment, without handling parameter
     prepare_env()
 
     env.sos_dict.set('step_name', section.step_name())

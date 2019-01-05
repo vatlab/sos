@@ -478,8 +478,8 @@ class SoS_Step:
                         f'{self.step_name()}: Invalid parameter definition: {statement[2]}')
                 # there is a possibility that value contains # so  sos_handle_parameter(name, val # aaa) will fail
                 self.statements[idx] = ['!',
-                                        f'if "sos_handle_parameter_" in globals():\n    {name} = sos_handle_parameter_({name.strip()!r}, {value}' +
-                                        ('\n)\n' if '#' in value else ')\n'), statement[2].strip()]
+                                        f'#begin_parameter {name}\n{name} = sos_handle_parameter_({name.strip()!r}, {value}\n) #end_parameter {name}\n',
+                                        statement[2].strip()]
                 self.parameters[name] = (value, statement[3])
         # handle tasks
         task_directive = [idx for idx, statement in enumerate(

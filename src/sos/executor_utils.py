@@ -140,15 +140,15 @@ def prepare_env(global_def='', extra_dict={}):
         #
         # note that we do not handle parameter in tasks because values should already be
         # in sos_task dictionary
+        gd = strip_param_defs(global_def)
         SoS_exec('''\
 import os, sys
 from sos.runtime import *
 CONFIG = {}
-del sos_handle_parameter_
-''' + global_def, extra_dict)
+''' + gd, extra_dict)
     except Exception as e:
         env.logger.warning(
-            f'Failed to execute global definition {short_repr(global_def)}: {e}')
+            f'Failed to execute global definition {short_repr(gd)}: {e}')
 
 def statementMD5(stmts):
     def _get_tokens(statement):
@@ -333,6 +333,27 @@ def validate_step_sig(sig):
     else:
         raise RuntimeError(
             f'Unrecognized signature mode {env.config["sig_mode"]}')
+
+def strip_param_defs(stmt):
+    # the parameters are translated to
+    #
+    # #begin_parameter name
+    # name = sos_handle_parameter_("name", value
+    # ) #end_parameter name
+    #
+    # we will need to remove these lines in cases when parameters are not handled
+    res = []
+    end_line = None
+    for line in stmt.splitlines():
+        if line.startswith('#begin_parameter '):
+            end_line = f') #end_parameter {line[17:]}'
+        if not end_line:
+            res.append(line)
+        elif line == end_line:
+            end_line = None
+    return '\n'.join(res)
+
+
 
 
 def verify_input(ignore_internal_targets=False):
