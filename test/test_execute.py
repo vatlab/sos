@@ -1169,8 +1169,7 @@ run: expand=True
   touch temp/{len(_output)}.output
         ''')
         wf = script.workflow()
-        Base_Executor(wf).run()
-        self.assertTrue(os.path.isfile('temp/5.output'))
+        self.assertRaises(Exception, Base_Executor(wf).run)
         # Test duplicate depends
         script = SoS_Script('''
 [1]
@@ -1182,8 +1181,7 @@ run: expand=True
   touch temp/{len(_depends)}.depends
         ''')
         wf = script.workflow()
-        Base_Executor(wf).run()
-        self.assertTrue(os.path.isfile(os.path.join('temp', '5.depends')))
+        self.assertRaises(Exception, Base_Executor(wf).run)
         shutil.rmtree('temp')
 
     def testOutputInLoop(self):
