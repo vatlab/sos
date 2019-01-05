@@ -490,15 +490,15 @@ class Controller(threading.Thread):
                 # seconds, kill it
                 if self._worker_pending_time:
                     now = time.time()
-                    kept = [x for x in self._worker_pending_time if now - x > 30]
+                    kept = [x for x in self._worker_pending_time if now - x < 30]
                     n_kill = len(self._worker_pending_time) - len(kept)
                     if n_kill > 0:
                         for i in range(n_kill):
                             self.substep_backend_socket.send_pyobj(None)
                         self._n_working_workers -= n_kill
                         self._worker_pending_time = [now]*len(kept)
-                    env.logger.debug(
-                         f'Kill {n_kill} substep worker. {self._n_working_workers} remains.')
+                        env.logger.debug(
+                            f'Kill {n_kill} substep worker. {self._n_working_workers} remains.')
                 # if monitor_socket in socks:
                 #     evt = recv_monitor_message(monitor_socket)
                 #     if evt['event'] == zmq.EVENT_ACCEPTED:
@@ -509,6 +509,10 @@ class Controller(threading.Thread):
             sys.stderr.write(f'{env.config["exec_mode"]} get an error {e}')
             return
         finally:
+            # kill all workers
+            for worker in self._worker_pending_time:
+                self.substep_backend_socket.send_pyobj(None)
+
             # close all databses
             self.step_signatures.close()
             self.workflow_signatures.close()
