@@ -335,12 +335,11 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     #
     # Here we need to get "contant" values from the global section
     # Because parameters are considered variable, they has to be
-    # removed. We achieve this by removing function sos_handle_parameter_
-    # from the SoS_dict namespace
+    # removed.
     #
     if section.global_def:
         try:
-            SoS_exec(section.global_def)
+            SoS_exec(strip_param_defs(section.global_def))
         except subprocess.CalledProcessError as e:
             raise RuntimeError(e.stderr)
         except RuntimeError as e:
