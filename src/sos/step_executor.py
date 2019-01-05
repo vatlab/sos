@@ -115,7 +115,7 @@ class TaskManager:
         # individual tasks...
         if self.trunk_size == 1 or all_tasks:
             to_be_submitted = self._unsubmitted_tasks
-            [to_be_submitted.extend([x[1] for x in slot]) for slot in self._slots if slot]
+            [to_be_submitted.extend([x[1] for x in slot if x[1] is not None]) for slot in self._slots if slot]
             self._unsubmitted_tasks = []
         else:
             # save complete blocks

@@ -840,6 +840,34 @@ a()
         wf = script.workflow()
         Base_Executor(wf, config={'sig_mode': 'force'}).run()
 
+    def testTrunkSizeWithStopIf(self):
+        '''Test a case when some tasks are not submitted due to holes in slots #1159'''
+        for i in range(5):
+            f = f'{i+1}.txt'
+            if os.path.isfile(f):
+                os.remove(f)
+        script = SoS_Script('''\
+[1]
+output: [f'{x+1}.txt' for x in range(5)]
+for i in range(5):
+  name = f'{i+1}.txt'
+  if i not in [0,1,2]:
+    path(name).touch()
+  else:
+    with open(name, 'w') as f:
+      f.write('test it')
+
+[2]
+input: group_by = 1
+output: f'{_input:n}.out'
+stop_if(_input.stat().st_size==0)
+
+task: trunk_size = 80
+_output.touch()
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={'sig_mode': 'force'}).run()
+
 
 if __name__ == '__main__':
     unittest.main()
