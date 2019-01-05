@@ -115,6 +115,7 @@ class TaskManager:
         # individual tasks...
         if self.trunk_size == 1 or all_tasks:
             to_be_submitted = self._unsubmitted_tasks
+            [to_be_submitted.extend([x[1] for x in slot]) for slot in self._slots if slot]
             self._unsubmitted_tasks = []
         else:
             # save complete blocks
@@ -439,7 +440,6 @@ class Base_Step_Executor:
 
     def submit_task(self, task_info):
         if self.task_manager is None:
-
             if self.step.task_params:
                 for key in ('trunk_size', 'trunk_workers', 'queue'):
                     val = get_value_of_param(key, self.step.task_params,
@@ -467,7 +467,6 @@ class Base_Step_Executor:
             # else:
             #    # otherwise, use workflow default
             #    host = '__default__'
-
             self.task_manager = TaskManager(env.sos_dict['__num_groups__'],
                 trunk_size, trunk_workers)
 
