@@ -64,7 +64,7 @@ before_script:
     - cd test
     - sh build_test_docker.sh
 script:
-    - pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report=xml;
+    - for test in test*.py; do python check_zombie.py pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report=xml; done
 
 after_success:
     - coverage combine;
