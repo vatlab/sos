@@ -1025,6 +1025,7 @@ class Base_Executor:
                                         and proc.step._pending_workflow == runnable._pending_workflow:
                                     proc.set_status('failed')
                             dag.save(env.config['output_dag'])
+                        raise exec_error
                     elif '__step_name__' in res:
                         env.logger.debug(f'{i_am()} receive step result ')
                         self.step_completed(res, dag, runnable)
@@ -1160,7 +1161,8 @@ class Base_Executor:
                 raise
         # close all processes
         except Exception as e:
-            exec_error.append(self.workflow.name, e)
+            if not isinstance(e, ExecuteError):
+                exec_error.append(self.workflow.name, e)
             manager.terminate(brutal=True)
         finally:
             manager.terminate()
@@ -1353,7 +1355,8 @@ class Base_Executor:
             else:
                 raise
         except Exception as e:
-            exec_error.append(self.workflow.name, e)
+            if not isinstance(e, ExecuteError):
+                exec_error.append(self.workflow.name, e)
             manager.terminate(brutal=True)
 
         if exec_error.errors:

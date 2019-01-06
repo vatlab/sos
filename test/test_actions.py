@@ -135,9 +135,26 @@ fail_if(len(input) == 1)
         script = SoS_Script(r"""
 [0]
 input: 'a.txt', 'b.txt'
-fail_if(len(input) == 1)
+fail_if(len(input) == 2)
 """)
         wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+        #
+        # test fail_if of killing another running substep
+        script = SoS_Script(r"""
+import time
+
+[10]
+time.sleep(2000)
+
+[20]
+input: None
+time.sleep(2)
+fail_if(True)
+""")
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+
 
     def testWarnIf(self):
         '''Test action fail if'''
