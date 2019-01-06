@@ -491,10 +491,13 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
 
     except StopInputGroup as e:
         # task ignored with stop_if exception
+        if not e.keep_output:
+            clear_output(env.sos_dict['_output'])
+            env.sos_dict['_output'] = sos_targets([])
         if e.message:
             env.logger.warning(f'{task_id} ``stopped``: {e.message}')
         return {'ret_code': 0, 'task': task_id, 'input': sos_targets([]),
-                'output': sos_targets([]), 'depends': sos_targets([]), 'shared': {}}
+                'output': env.sos_dict['_output'], 'depends': sos_targets([]), 'shared': {}}
     except KeyboardInterrupt:
         env.logger.error(f'{task_id} ``interrupted``')
         raise

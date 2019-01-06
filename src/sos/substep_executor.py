@@ -12,7 +12,7 @@ from io import StringIO
 
 from .eval import SoS_exec
 from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
-                      UnknownTarget)
+                      UnknownTarget, sos_targets)
 from .executor_utils import (prepare_env, clear_output, verify_input, kill_all_subprocesses,
         reevaluate_output, validate_step_sig, create_task, get_traceback_msg, statementMD5)
 
@@ -167,6 +167,8 @@ def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars
                     res['shared'] = sig.content['end_context']
                     if 'output_obj' in sig.content:
                         res['output'] = sig.content['output_obj']
+            else:
+                res['output'] = env.sos_dict['_output']
             if capture_output:
                 res.update({'stdout': outmsg, 'stderr': errmsg})
             # complete case: concurrent execution without task
@@ -174,9 +176,29 @@ def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars
         return res
     except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock) as e:
         # stop_if is not considered as an error
-        if not isinstance(e, StopInputGroup):
+        if isinstance(e, StopInputGroup):
+            # we do not really treat this as an exception
+            if env.sos_dict['step_output'].undetermined():
+                env.sos_dict.set('_output', reevaluate_output())
+            res = {'index': env.sos_dict['_index'], 'ret_code': 0}
+            if task:
+                res['task_id'] = None
+            if not e.keep_output:
+                # treat as an error
+                clear_output(err=e)
+                res['output'] = sos_targets([])
+            elif sig:
+                sig.set_output(env.sos_dict['_output'])
+                # sig.write will use env.signature_push_socket
+                if sig.write():
+                    res['shared'] = sig.content['end_context']
+                    if 'output_obj' in sig.content:
+                        res['output'] = sig.content['output_obj']
+            else:
+                res['output'] = env.sos_dict['_output']
+        else:
             clear_output(err=e)
-        res = {'index': env.sos_dict['_index'], 'ret_code': 1, 'exception': e}
+            res = {'index': env.sos_dict['_index'], 'ret_code': 1, 'exception': e}
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res

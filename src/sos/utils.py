@@ -554,7 +554,8 @@ class Error(Exception):
 class StopInputGroup(Error):
     '''Abort a step and continue'''
 
-    def __init__(self, msg):
+    def __init__(self, msg, keep_output=False):
+        self.keep_output = keep_output
         Error.__init__(self, msg)
 
 

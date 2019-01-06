@@ -794,6 +794,8 @@ class Base_Step_Executor:
                     try:
                         self.execute(statement[1])
                     except StopInputGroup as e:
+                        # stop before substeps, because there is no output statement before it
+                        # we do not have to worry about keep_output
                         if e.message:
                             env.logger.warning(e)
                         return self.collect_result()
@@ -1095,7 +1097,9 @@ class Base_Step_Executor:
 
 
                         except StopInputGroup as e:
-                            self.output_groups[idx] = sos_targets([])
+                            if not e.keep_output:
+                                clear_output(env.sos_dict['_output'])
+                                self.output_groups[idx] = sos_targets([])
                             if e.message:
                                 env.logger.info(e)
                             skip_index = True
