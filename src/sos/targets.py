@@ -1217,7 +1217,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
     def remove_targets(self, type, kept=None):
         '''Remove targets of certain type'''
-        if kept is not None:
+        if kept is None:
             kept = [i for i,x in enumerate(self._targets) if not isinstance(x, type)]
         if len(kept) == len(self._targets):
             return self

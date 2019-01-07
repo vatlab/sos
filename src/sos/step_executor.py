@@ -1062,11 +1062,7 @@ class Base_Step_Executor:
                                     skip_index = bool(matched)
                                     if matched:
                                         if env.sos_dict['step_output'].undetermined():
-                                            if isinstance(matched["output"], dict):
-                                                # older version of sos returns a dictionary instead of a sos_target
-                                                self.output_groups[env.sos_dict['_index']] = sos_targets(matched["output"].keys(), _source=env.sos_dict['step_name'])
-                                            else:
-                                                self.output_groups[env.sos_dict['_index']] = matched["output"]
+                                            self.output_groups[env.sos_dict['_index']] = matched["output"]
                                         if 'vars' in matched:
                                             self.shared_vars[env.sos_dict['_index']].update(matched["vars"])
                                         # complete case: local skip without task
@@ -1128,11 +1124,7 @@ class Base_Step_Executor:
                     skip_index = bool(matched)
                     if matched:
                         if env.sos_dict['step_output'].undetermined():
-                            # older version of sos returns a dictionary instead of a sos_target
-                            if isinstance(matched["output"], dict):
-                                self.output_groups[env.sos_dict['_index']] = sos_targets(matched["output"].keys(), _source=env.sos_dict['step_name'])
-                            else:
-                                self.output_groups[env.sos_dict['_index']] = matched["output"]
+                            self.output_groups[env.sos_dict['_index']] = matched["output"]
                         self.shared_vars[env.sos_dict['_index']].update(matched["vars"])
                         # complete case: step with task ignored
                         env.controller_push_socket.send_pyobj(['progress', 'substep_ignored', env.sos_dict['step_id']])
@@ -1210,11 +1202,7 @@ class Base_Step_Executor:
                     self.completed['__substep_skipped__'] += 1
                     self.completed['__substep_completed__'] -= 1
                 if 'output' in res:
-                    # older version of sos returns a dictionary instead of a sos_target
-                    if isinstance(res["output"], dict):
-                        self.output_groups[idx] = sos_targets(res["output"].keys(), _source=env.sos_dict['step_name'])
-                    else:
-                        self.output_groups[idx] = res["output"]
+                    self.output_groups[idx] = res["output"]
 
             # check results
             for proc_result in [x for x in self.proc_results if x['ret_code'] == 0]:
@@ -1247,7 +1235,7 @@ class Base_Step_Executor:
             # finalize output from output_groups because some output might be skipped
             # this is the final version of the output but we do maintain output
             # during the execution of step, for compatibility.
-            env.sos_dict.set('step_output', sos_targets([])._add_groups(og))
+            env.sos_dict.set('step_output', sos_targets([])._add_groups(self.output_groups))
 
             # if there exists an option shared, the variable would be treated as
             # provides=sos_variable(), and then as step_output

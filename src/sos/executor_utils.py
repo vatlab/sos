@@ -323,9 +323,9 @@ def validate_step_sig(sig):
         elif sig.write(rebuild=True):
             env.logger.info(
                 f'Step ``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` with signature constructed')
-            return {'input': sig.content['input'],
-                'output': sig.content['output'],
-                'depends': sig.content['depends'],
+            return {'input': sig.content['input_obj'],
+                'output': sig.content['output_obj'],
+                'depends': sig.content['depends_obj'],
                 'vars': sig.content['end_context']
                 }
     elif env.config['sig_mode'] == 'force':
