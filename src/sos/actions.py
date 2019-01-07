@@ -591,7 +591,7 @@ def warn_if(expr, msg=''):
 
 
 @SoS_Action(acceptable_args=['expr', 'msg', 'keep_output'])
-def stop_if(expr, msg='', keep_output=False):
+def stop_if(expr, msg='', keep_output=True):
     '''Abort the execution of the current step or loop and yield
     an warning message `msg` if `expr` is False '''
     if expr:
