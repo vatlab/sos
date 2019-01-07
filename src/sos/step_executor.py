@@ -1213,7 +1213,7 @@ class Base_Step_Executor:
 
             # now that output is settled, we can write remaining signatures
             for idx, res in enumerate(self.proc_results):
-                if pending_signatures[idx] is not None and res['ret_code'] == 0:
+                if pending_signatures[idx] is not None and res['ret_code'] == 0 and not 'sig_skipped' in res:
                     pending_signatures[idx].write()
                 if res['ret_code'] != 0 and 'output' in res:
                     clear_output(output=res['output'])
