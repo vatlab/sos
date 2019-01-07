@@ -203,7 +203,7 @@ input: for_each='rep'
 output: f'test_stop_if_{_rep}.txt'
 
 _output.touch()
-stop_if(_rep == 1)
+stop_if(_rep == 1, no_output=True)
 
 [20]
 assert(step_input.contains('test_stop_if_0.txt'))
@@ -228,7 +228,7 @@ input: for_each='rep'
 output: f'test_stop_if_{_rep}.txt'
 
 _output.touch()
-stop_if(_rep == 1, keep_output=True)
+stop_if(_rep == 1)
 
 [20]
 assert(step_input.contains('test_stop_if_0.txt'))

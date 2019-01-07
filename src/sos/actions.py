@@ -590,12 +590,12 @@ def warn_if(expr, msg=''):
     return 0
 
 
-@SoS_Action(acceptable_args=['expr', 'msg', 'keep_output'])
-def stop_if(expr, msg='', keep_output=True):
+@SoS_Action(acceptable_args=['expr', 'msg', 'no_output'])
+def stop_if(expr, msg='', no_output=False):
     '''Abort the execution of the current step or loop and yield
     an warning message `msg` if `expr` is False '''
     if expr:
-        raise StopInputGroup(msg=msg, keep_output=keep_output)
+        raise StopInputGroup(msg=msg, keep_output=not no_output)
     return 0
 
 #
