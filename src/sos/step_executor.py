@@ -1247,11 +1247,7 @@ class Base_Step_Executor:
             # finalize output from output_groups because some output might be skipped
             # this is the final version of the output but we do maintain output
             # during the execution of step, for compatibility.
-            env.sos_dict.set('step_output', sos_targets([]))
-
-            for og in self.output_groups:
-                env.sos_dict['step_output']._add_group(sos_targets(og))
-
+            env.sos_dict.set('step_output', sos_targets([])._add_groups(og))
 
             # if there exists an option shared, the variable would be treated as
             # provides=sos_variable(), and then as step_output

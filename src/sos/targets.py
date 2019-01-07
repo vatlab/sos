@@ -1190,8 +1190,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def target_name(self):
         return f"sos_targets([{','.join(x.target_name() for x in self._targets)}],_sources=[{','.join(self._sources)}])"
 
-    def dedup(self):
-        self._targets = list(dict.fromkeys(self._targets))
+    def _dedup(self):
+        kept = []
+        items = set()
+        for i,t in enumerate(self._targets):
+            if t not in items:
+                kept.append(i)
+                items.add(t)
+        return self.remove_targets(self, kept=kept)
 
     def paired_with(self, name, properties):
         if not is_basic_type(properties):
@@ -1209,9 +1215,10 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             raise ValueError('Unacceptable properties {properties} for function paired_with')
         return self
 
-    def remove_targets(self, type):
+    def remove_targets(self, type, kept=None):
         '''Remove targets of certain type'''
-        kept = [i for i,x in enumerate(self._targets) if not isinstance(x, type)]
+        if kept is not None:
+            kept = [i for i,x in enumerate(self._targets) if not isinstance(x, type)]
         if len(kept) == len(self._targets):
             return self
         self._targets = [self._targets[x] for x in kept]
@@ -1275,30 +1282,23 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             else:
                 raise AttributeError(f'{self.__class__.__name__} object has no attribute {name}')
 
-    def _clear_groups(self):
+    def _add_groups(self, grps):
         self._groups = []
 
-    def _add_group(self, arg):
-        idx = []
-        for i,t in enumerate(arg._targets):
-            try:
-                index = self._targets.index(t)
-                # if target and source both match
-                if arg._sources[index] == arg._sources[i]:
-                    idx.append(index)
-                else:
-                    self._targets.append(t)
-                    self._sources.append(arg._sources[i])
-                    idx.append(len(self._targets) - 1)
-            except:
-                # if none is found
-                self._targets.append(t)
-                self._sources.append(arg._sources[i])
-                idx.append(len(self._targets) - 1)
-
-        self._groups.append(
-            _sos_group(idx, sources=arg.sources).set(**arg._dict)
-        )
+        for grp in grps:
+            if not isinstance(grp, sos_targets):
+                raise RuntimeError(f'_output should be of type sos_targets: {grp} of type {grp.__class__.__name__} returned. Please report this bug to SoS developers')
+            start_idx = len(self._targets)
+            grp_size = len(grp)
+            self._targets.extend(grp._targets)
+            self._sources.extend(grp._sources)
+            self._groups.append(
+                _sos_group(range(start_idx, start_idx + grp_size),
+                    sources=grp._sources).set(**grp._dict)
+            )
+        # in theory the groups should not overlap but in rare cases when
+        # output is for example dynamic, they could overlap.
+        return self._dedup()
 
     def _duplicate_groups(self, n):
         n_grps = len(self._groups)
