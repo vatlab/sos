@@ -153,7 +153,7 @@ time.sleep(2)
 fail_if(True)
 """)
         wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf, config={'max_procs': 3}).run)
 
 
     def testWarnIf(self):
