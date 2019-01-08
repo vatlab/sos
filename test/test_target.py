@@ -43,31 +43,31 @@ class TestTarget(unittest.TestCase):
     def testTargetSource(self):
         '''Test source of sos_targets'''
         a = sos_targets('a')
-        self.assertEqual(a.sources, [''])
+        self.assertEqual(a.labels, [''])
         b = sos_targets(['a', 'b'])
-        self.assertEqual(b.sources, ['', ''])
+        self.assertEqual(b.labels, ['', ''])
         c = sos_targets(['a1', 'b1'], _source='here')
-        self.assertEqual(c.sources, ['here', 'here'])
+        self.assertEqual(c.labels, ['here', 'here'])
         c.extend(b)
-        self.assertEqual(c.sources, ['here', 'here', '', ''])
+        self.assertEqual(c.labels, ['here', 'here', '', ''])
         #
-        self.assertEqual(c.slice('').sources, ['', ''])
-        self.assertEqual(c.slice('here').sources, ['here', 'here'])
+        self.assertEqual(c.slice('').labels, ['', ''])
+        self.assertEqual(c.slice('here').labels, ['here', 'here'])
         self.assertEqual(c['here'], [file_target('a1'), file_target('b1')])
         self.assertTrue(isinstance(c['here'], sos_targets))
         #
         # function item
         self.assertTrue(isinstance(c.slice(1), sos_targets))
-        self.assertEqual(c.slice(1).sources, ['here'])
+        self.assertEqual(c.slice(1).labels, ['here'])
         self.assertEqual(c.slice(1), ['b1'])
         #
         # test slice of groups
         res = sos_targets(a=['a.txt', 'b.txt'], b=['c.txt', 'd.txt'], group_by=1)
         self.assertEqual(len(res.groups), 4)
-        self.assertEqual(res.sources, ['a', 'a', 'b', 'b'])
+        self.assertEqual(res.labels, ['a', 'a', 'b', 'b'])
         res_a = res['a']
         self.assertEqual(len(res_a), 2)
-        self.assertEqual(res_a.sources, ['a', 'a'])
+        self.assertEqual(res_a.labels, ['a', 'a'])
         self.assertEqual(len(res_a.groups), 4)
         self.assertEqual(len(res_a.groups[0]), 1)
         self.assertEqual(len(res_a.groups[1]), 1)
@@ -82,9 +82,9 @@ class TestTarget(unittest.TestCase):
         self.assertEqual(len(a), 1)
         self.assertEqual(len(a.groups), 2)
         self.assertEqual(len(a._groups[0]._indexes), 0)
-        self.assertEqual(len(a._groups[0]._sources), 0)
+        self.assertEqual(len(a._groups[0]._labels), 0)
         self.assertEqual(a._groups[1]._indexes, [0])
-        self.assertEqual(len(a._groups[1]._sources), 1)
+        self.assertEqual(len(a._groups[1]._labels), 1)
 
 
     def testSoSTargetsSignature(self):
@@ -115,7 +115,7 @@ class TestTarget(unittest.TestCase):
         '''Test new option group_by to sos_targets'''
         res = sos_targets('e.txt', 'f.ext', a=['a.txt', 'b.txt'], b=['c.txt', 'd.txt'], group_by=1)
         self.assertEqual(len(res.groups), 6)
-        self.assertEqual(res.sources, ['', '', 'a', 'a', 'b', 'b'])
+        self.assertEqual(res.labels, ['', '', 'a', 'a', 'b', 'b'])
         #
         res = sos_targets(res, group_by=2)
         self.assertEqual(len(res.groups), 3)

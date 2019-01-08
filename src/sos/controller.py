@@ -245,7 +245,7 @@ class Controller(threading.Thread):
                 name = msg[1]
                 found = False
                 for step_output in self._completed_steps.values():
-                    if name in step_output.sources:
+                    if name in step_output.labels:
                         found = True
                         self.ctl_req_socket.send_pyobj(step_output[name])
                         break

@@ -806,52 +806,52 @@ class paths(Sequence, os.PathLike):
 
 class _sos_group(BaseTarget):
     '''A type that is similar to sos_targets but saves index of objects '''
-    def __init__(self, indexes, sources=None, parent=None):
+    def __init__(self, indexes, labels=None, parent=None):
         super(_sos_group, self).__init__()
         self._indexes = list(indexes)
-        if sources is not None:
-            if isinstance(sources, str):
-                self._sources = [sources] * len(indexes)
+        if labels is not None:
+            if isinstance(labels, str):
+                self._labels = [labels] * len(indexes)
             else:
-                self._sources = sources
-                if len(self._indexes) != len(self._sources):
+                self._labels = labels
+                if len(self._indexes) != len(self._labels):
                     raise ValueError('Index and source have different length')
         elif parent:
-            self._sources = [parent._sources[x] for x in indexes]
+            self._labels = [parent._labels[x] for x in indexes]
         else:
-            raise ValueError('Either sources or indexes should be specified')
+            raise ValueError('Either labels or indexes should be specified')
 
     def add_last(self, n, parent):
         # add the last n elements of parent to group
         # this has to be called after the elements have been appended
         self._indexes.extend(range(len(parent._targets) - n, len(parent._targets)))
-        self._sources.extend(parent._sources[len(parent._targets) - n : len(parent._targets)])
+        self._labels.extend(parent._labels[len(parent._targets) - n : len(parent._targets)])
         return self
 
     def extend(self, grp, start, parent):
         self._indexes.extend([x + start for x in grp._indexes])
-        self._sources.extend([parent._sources[x + start] for x in grp._indexes])
+        self._labels.extend([parent._labels[x + start] for x in grp._indexes])
         self._dict.update(grp._dict)
         return self
 
     def __repr__(self):
-        return f'_sos_group(indexes={self._indexes}, sources={self._sources})'
+        return f'_sos_group(indexes={self._indexes}, labels={self._labels})'
 
     def idx_to_targets(self, parent):
         ret = sos_targets([])
         ret._targets = [parent._targets[x] for x in self._indexes]
-        ret._sources = self._sources
+        ret._labels = self._labels
         ret._dict = self._dict
         return ret
 
     def __getstate__(self):
         return dict(indexes=self._indexes,
-            sources=self._sources,
+            labels=self._labels,
             properties=self._dict)
 
     def __setstate__(self, sdict):
         self._indexes = sdict['indexes']
-        self._sources = sdict['sources']
+        self._labels = sdict['labels']
         self._dict = sdict['properties']
 
 class sos_targets(BaseTarget, Sequence, os.PathLike):
@@ -867,7 +867,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         _source='', _verify_existence=False, **kwargs):
         super(sos_targets, self).__init__()
         self._targets = []
-        self._sources = []
+        self._labels = []
         self._groups = []
         if isinstance(_undetermined, (bool, str)):
             self._undetermined = _undetermined
@@ -921,12 +921,12 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         src = source if source else default_source
         if isinstance(arg, paths):
             self._targets.extend([file_target(x) for x in arg._paths])
-            self._sources.extend([src]*len(arg._paths))
+            self._labels.extend([src]*len(arg._paths))
             for g in self._groups:
                 g.add_last(len(arg._paths), parent=self)
         elif isinstance(arg, path):
             self._targets.append(file_target(arg))
-            self._sources.append(src)
+            self._labels.append(src)
             for g in self._groups:
                 g.add_last(1, parent=self)
         elif isinstance(arg, str):
@@ -934,7 +934,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 matched = sorted(glob.glob(os.path.expanduser(arg)))
                 if matched:
                     self._targets.extend([file_target(x) for x in matched])
-                    self._sources.extend([src]*len(matched))
+                    self._labels.extend([src]*len(matched))
                     for g in self._groups:
                         g.add_last(len(matched), parent=self)
                 elif verify_existence:
@@ -943,7 +943,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     env.logger.debug(f'Pattern {arg} does not match any file')
             else:
                 self._targets.append(file_target(arg))
-                self._sources.append(src)
+                self._labels.append(src)
                 for g in self._groups:
                     g.add_last(1, parent=self)
         elif isinstance(arg, dict):
@@ -961,7 +961,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 self.extend(arg)
         elif isinstance(arg, BaseTarget):
             self._targets.append(arg)
-            self._sources.append(src)
+            self._labels.append(src)
             for g in self._groups:
                 g.add_last(1, parent=self)
         elif isinstance(arg, Iterable):
@@ -972,15 +972,15 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             raise RuntimeError(
                 f'Unrecognized targets {arg} of type {arg.__class__.__name__}')
 
-    def set_source(self, source):
+    def set_labels(self, source):
         if isinstance(source, str):
-            self._sources = [source] * len(self._targets)
+            self._labels = [source] * len(self._targets)
         elif len(source) == len(self._targets):
-            self._sources = source
+            self._labels = source
         else:
             raise ValueError(f'Invalid source {source} for sos_target with {len(self)} targets.')
 
-    sources = property(lambda self: self._sources, set_source)
+    labels = property(lambda self: self._labels, set_labels)
 
     targets = property(lambda self: self._targets)
 
@@ -1006,11 +1006,11 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         self._targets.extend(arg._targets)
         # if source is specified, override the default
         if source:
-            self._sources.extend([source]*len(arg._targets))
-        elif hasattr(arg, '_sources'):
-            self._sources.extend(arg._sources)
+            self._labels.extend([source]*len(arg._targets))
+        elif hasattr(arg, '_labels'):
+            self._labels.extend(arg._labels)
         else:
-            self._sources.extend(['']*len(arg._targets))
+            self._labels.extend(['']*len(arg._targets))
         # merge dictionaries
         self._dict.update(arg._dict)
         #
@@ -1018,7 +1018,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             return self
         # it is possible to merge groups from multiple...
         if arg._groups:
-            # if source is specified, it will override sources of all groups
+            # if source is specified, it will override labels of all groups
             if not self._groups:
                 self._groups = [_sos_group(range(n_old), parent=self)
                         for g in arg._groups
@@ -1026,7 +1026,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             if len(self._groups) == 1 and len(arg._groups) > 1:
                 # 1 vs more, we duplicate itself
                 self._groups = [_sos_group(self._groups[0]._indexes,
-                    self._groups[0]._sources).set(**self._groups[0]._dict)
+                    self._groups[0]._labels).set(**self._groups[0]._dict)
                     for ag in arg._groups]
                 for g, ag in zip(self._groups, arg._groups):
                     g.extend(ag, start=n_old, parent=self)
@@ -1041,7 +1041,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         elif self._groups:
             # if the RHS has no _group but myself has groups...
             # source will be figured out during extend
-            ag = _sos_group(range(n_added), sources=['']*n_added)
+            ag = _sos_group(range(n_added), labels=['']*n_added)
             for g in self._groups:
                 g.extend(ag, start=n_old, parent=self)
         return self
@@ -1055,39 +1055,39 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 env.logger.debug(f'Ignore non-file target {target}')
 
     def __getstate__(self):
-        return (self._targets, self._sources, self._undetermined, self._groups,
+        return (self._targets, self._labels, self._undetermined, self._groups,
             self._dict)
 
     def __setstate__(self, state) -> None:
         if isinstance(state, tuple):
             if len(state) == 2:
                 self._targets = state[0]
-                self._sources = [''] * len(self._targets)
+                self._labels = [''] * len(self._targets)
                 self._undetermined = state[1]
                 self._groups = []
                 self._dict = {}
             elif len(state) == 3:
                 self._targets = state[0]
-                self._sources = state[1]
+                self._labels = state[1]
                 self._undetermined = state[2]
                 self._groups = []
                 self._dict = {}
             elif len(state) == 4:
                 self._targets = state[0]
-                self._sources = state[1]
+                self._labels = state[1]
                 self._undetermined = state[2]
                 self._groups = state[3]
                 self._dict = {}
             elif len(state) == 5:
                 self._targets = state[0]
-                self._sources = state[1]
+                self._labels = state[1]
                 self._undetermined = state[2]
                 self._groups = state[3]
                 self._dict = state[4]
         else:
             # older version of sig file might only saved targets
             self._targets = state
-            self._sources = [''] * len(self._targets)
+            self._labels = [''] * len(self._targets)
             self._undetermined = False
             self._groups = []
             self._dict = {}
@@ -1100,22 +1100,22 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         if isinstance(i, str):
             ret = sos_targets()
             ret._undetermined = self._undetermined
-            ret._targets = [x for x,y in zip(self._targets, self._sources) if y == i]
+            ret._targets = [x for x,y in zip(self._targets, self._labels) if y == i]
             index_map = {o_idx:n_idx for n_idx,o_idx in zip(
                     range(len(ret._targets)),
-                    [x for x,y in enumerate(self._sources) if y == i])}
-            ret._sources = [i]*len(ret._targets)
+                    [x for x,y in enumerate(self._labels) if y == i])}
+            ret._labels = [i]*len(ret._targets)
             ret._groups = []
             for grp in self._groups:
                 ret._groups.append(_sos_group(
-                    [index_map[x] for x,y in zip(grp._indexes, grp._sources) if y == i],
+                    [index_map[x] for x,y in zip(grp._indexes, grp._labels) if y == i],
                     source=i).set(**grp._dict))
             return ret
         elif isinstance(i, (tuple, list)):
             ret = sos_targets()
             ret._undetermined = self._undetermined
             ret._targets = [self._targets[x] for x in i]
-            ret._sources = [self._sources[x] for x in i]
+            ret._labels = [self._labels[x] for x in i]
             ret._groups = []
             return ret
         elif callable(i):
@@ -1125,7 +1125,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             ret = sos_targets()
             ret._undetermined = self._undetermined
             ret._targets = [self._targets[x] for x in kept]
-            ret._sources = [self._sources[x] for x in kept]
+            ret._labels = [self._labels[x] for x in kept]
             ret._groups = []
             if not self._groups:
                 return ret
@@ -1135,13 +1135,13 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             for idx,grp in enumerate(self._groups):
                 ret._groups.append(_sos_group(
                     [index_map[x] for x in grp._indexes if x in kept],
-                    [y for x,y in zip(grp._indexes, grp._sources) if x in kept]).set(**grp._dict))
+                    [y for x,y in zip(grp._indexes, grp._labels) if x in kept]).set(**grp._dict))
             return ret
         else:
             ret = sos_targets()
             ret._undetermined = self._undetermined
             ret._targets = [self._targets[i]] if isinstance(i, int) else self._targets[i]
-            ret._sources = [self._sources[i]] if isinstance(i, int) else self._sources[i]
+            ret._labels = [self._labels[i]] if isinstance(i, int) else self._labels[i]
             ret._groups = []
             return ret
 
@@ -1149,25 +1149,25 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         if isinstance(i, str):
             ret = sos_targets()
             ret._undetermined = self._undetermined
-            ret._targets = [x for x,y in zip(self._targets, self._sources) if y == i]
+            ret._targets = [x for x,y in zip(self._targets, self._labels) if y == i]
             index_map = {o_idx:n_idx for n_idx,o_idx in zip(
                     range(len(ret._targets)),
-                    [x for x,y in enumerate(self._sources) if y == i])}
-            ret._sources = [i]*len(ret._targets)
+                    [x for x,y in enumerate(self._labels) if y == i])}
+            ret._labels = [i]*len(ret._targets)
             ret._groups = []
             for grp in self._groups:
                 ret._groups.append(_sos_group(
-                    [index_map[x] for x,y in zip(grp._indexes, grp._sources) if y == i],
-                    sources=i).set(**grp._dict))
+                    [index_map[x] for x,y in zip(grp._indexes, grp._labels) if y == i],
+                    labels=i).set(**grp._dict))
             return ret
         else:
             return self._targets[i]
 
     def target_signature(self):
-        return tuple((x.target_signature(),y) for x,y in zip(self._targets, self._sources))
+        return tuple((x.target_signature(),y) for x,y in zip(self._targets, self._labels))
 
     def validate(self, sig):
-        return isinstance(sig, tuple) and len(sig) == len(self._targets) and all(x.validate(sig[0]) and src==sig[1] for x,src,sig in zip(self._targets, self._sources, sig))
+        return isinstance(sig, tuple) and len(sig) == len(self._targets) and all(x.validate(sig[0]) and src==sig[1] for x,src,sig in zip(self._targets, self._labels, sig))
 
     def target_exists(self, mode='any'):
         if len(self._targets) == 1:
@@ -1188,7 +1188,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 f'Unknown attribute {key} from sos_targets of size {len(self)}.')
 
     def target_name(self):
-        return f"sos_targets([{','.join(x.target_name() for x in self._targets)}],_sources=[{','.join(self._sources)}])"
+        return f"sos_targets([{','.join(x.target_name() for x in self._targets)}],_labels=[{','.join(self._labels)}])"
 
     def _dedup(self):
         kept = []
@@ -1222,7 +1222,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         if len(kept) == len(self._targets):
             return self
         self._targets = [self._targets[x] for x in kept]
-        self._sources = [self._sources[x] for x in kept]
+        self._labels = [self._labels[x] for x in kept]
         if not self._groups:
             return self
         index_map = {o_idx:n_idx for n_idx,o_idx in zip(
@@ -1231,7 +1231,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         for idx,grp in enumerate(self._groups):
             self._groups[idx] = _sos_group(
                 [index_map[x] for x in grp._indexes if x in kept],
-                [y for x,y in zip(grp._indexes, grp._sources) if x in kept]).set(**grp._dict)
+                [y for x,y in zip(grp._indexes, grp._labels) if x in kept]).set(**grp._dict)
         return self
 
     def resolve_remote(self):
@@ -1291,10 +1291,10 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             start_idx = len(self._targets)
             grp_size = len(grp)
             self._targets.extend(grp._targets)
-            self._sources.extend(grp._sources)
+            self._labels.extend(grp._labels)
             self._groups.append(
                 _sos_group(range(start_idx, start_idx + grp_size),
-                    sources=grp._sources).set(**grp._dict)
+                    labels=grp._labels).set(**grp._dict)
             )
         # in theory the groups should not overlap but in rare cases when
         # output is for example dynamic, they could overlap.
@@ -1305,7 +1305,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         for _ in range(n-1):
             for grp in self._groups[:n_grps]:
                 self._groups.append(
-                    _sos_group(grp._indexes, grp._sources).set(**grp._dict)
+                    _sos_group(grp._indexes, grp._labels).set(**grp._dict)
                 )
         return self
 
@@ -1323,10 +1323,10 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             self._groups = [_sos_group([x], parent=self) for x in range(len(self))]
         elif by == 'all':
             # default option
-            self._groups = [_sos_group(range(len(self)), self._sources)]
+            self._groups = [_sos_group(range(len(self)), self._labels)]
         elif isinstance(by, str) and by.startswith('pairsource'):
-            sources = list(dict.fromkeys(self.sources))
-            if len(sources) == 1:
+            labels = list(dict.fromkeys(self.labels))
+            if len(labels) == 1:
                 raise ValueError(
                     f'Cannot pairsource input with a single source.'
                 )
@@ -1337,13 +1337,13 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     grp_size = int(by[10:])
                 except:
                     raise ValueError(f'Invalid pairsource option {by}')
-            src_sizes = {s:self.sources.count(s) for s in sources}
+            src_sizes = {s:self.labels.count(s) for s in labels}
             if max(src_sizes.values()) % grp_size != 0:
                 raise ValueError(f'Cannot use group size {grp_size} (option {by}) for source of size {src_sizes}')
             n_groups = max(src_sizes.values()) // grp_size
             indexes = [[] for x in range(n_groups)]
-            for s in sources:
-                lookup = [idx for idx,src in enumerate(self.sources) if src == s]
+            for s in labels:
+                lookup = [idx for idx,src in enumerate(self.labels) if src == s]
                 if src_sizes[s] > n_groups and src_sizes[s] % n_groups == 0:
                     gs = src_sizes[s] // n_groups
                     for i in range(n_groups):
@@ -1409,8 +1409,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     raise ValueError(f'Invalid pairs option {by}')
             self._groups = [_sos_group(x, parent=self) for x in combinations(range(len(self)), grp_size)]
         elif by == 'source':
-            sources = list(dict.fromkeys(self.sources))
-            self._groups = [_sos_group([i for i,x in enumerate(self._sources) if x == src], parent=self) for src in sources]
+            labels = list(dict.fromkeys(self.labels))
+            self._groups = [_sos_group([i for i,x in enumerate(self._labels) if x == src], parent=self) for src in labels]
         elif isinstance(by, int) or (isinstance(by, str) and by.isdigit()):
             by = int(by)
             if len(self) % by != 0 and len(self) > by:
@@ -1685,7 +1685,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         ret = sos_targets()
         ret._targets = copy.deepcopy(self._targets)
         ret._groups = copy.deepcopy(self._groups)
-        ret._sources = copy.deepcopy(self._sources)
+        ret._labels = copy.deepcopy(self._labels)
         ret._dict = copy.deepcopy(self._dict)
         ret._undetermined = self._undetermined
         return ret

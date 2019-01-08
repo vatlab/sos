@@ -1730,7 +1730,7 @@ output: 'a.txt'
 _output.touch()
 
 [2]
-assert step_input.sources == ['1']
+assert step_input.labels == ['1']
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -1742,7 +1742,7 @@ output: 'a.txt', 'b.txt', group_by=1
 _output.touch()
 
 [2]
-assert step_input.sources == ['1', '1']
+assert step_input.labels == ['1', '1']
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -1756,7 +1756,7 @@ _output.touch()
 
 [2]
 input: 'c.txt'
-assert step_input.sources == ['2']
+assert step_input.labels == ['2']
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -1831,9 +1831,9 @@ _output.touch()
 assert(len(step_input.groups) == 5)
 assert(len(step_input) == 10)
 assert(step_input.groups[0] == ['a_0.txt', 'b_0.txt'])
-assert(step_input.groups[0].sources == ['a', 'b'])
+assert(step_input.groups[0].labels == ['a', 'b'])
 assert(step_input.groups[4] == ['a_4.txt', 'b_4.txt'])
-assert(step_input.groups[4].sources == ['a', 'b'])
+assert(step_input.groups[4].labels == ['a', 'b'])
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -1855,32 +1855,32 @@ _output.touch()
 input: output_from('A')
 assert(len(step_input.groups) == 5)
 assert(len(step_input) == 5)
-assert(step_input.sources == ['A']*5)
+assert(step_input.labels == ['A']*5)
 assert(step_input.groups[0] == 'a_0.txt')
 assert(step_input.groups[4] == 'a_4.txt')
 
 [C]
 input: K=output_from('A')
 assert(len(step_input.groups) == 5)
-assert(step_input.sources == ['K']*5)
+assert(step_input.labels == ['K']*5)
 
 [D]
 input: K=output_from('A', group_by='all')
 assert(len(step_input) == 5)
 assert(len(step_input.groups) == 1)
-assert(step_input.sources == ['K']*5)
+assert(step_input.labels == ['K']*5)
 
 [E]
 input: output_from('A1', group_by='all')
 assert(len(step_input) == 4)
 assert(len(step_input.groups) == 1)
-assert(step_input.sources == ['aa']*4)
+assert(step_input.labels == ['aa']*4)
 
 [F]
 input: K=output_from('A1', group_by='all')['aa']
 assert(len(step_input) == 4)
 assert(len(step_input.groups) == 1)
-assert(step_input.sources == ['K']*4)
+assert(step_input.labels == ['K']*4)
 
 [G_0]
 input: for_each=dict(i=range(4))
@@ -1891,7 +1891,7 @@ _output.touch()
 input: K=output_from(-1, group_by=2)
 assert(len(step_input) == 4)
 assert(len(step_input.groups) == 2)
-assert(step_input.sources == ['K']*4)
+assert(step_input.labels == ['K']*4)
 
 [H_0]
 input: for_each=dict(i=range(4))
@@ -1902,7 +1902,7 @@ _output.touch()
 input: K=output_from([-1, 'A1'], group_by=2)
 assert(len(step_input) == 8)
 assert(len(step_input.groups) == 4)
-assert(step_input.sources == ['K']*8)
+assert(step_input.labels == ['K']*8)
 
 ''')
         for wf in ('B', 'C', 'D', 'E', 'F', 'G', 'H'):
@@ -1923,7 +1923,7 @@ _output.touch()
 input: named_output('aa')
 assert(len(step_input.groups) == 4)
 assert(len(step_input) == 4)
-assert(step_input.sources == ['aa']*4)
+assert(step_input.labels == ['aa']*4)
 assert(step_input.groups[0] == 'a_0.txt')
 assert(step_input.groups[3] == 'a_3.txt')
 
@@ -1931,7 +1931,7 @@ assert(step_input.groups[3] == 'a_3.txt')
 input: K=named_output('bb')
 assert(len(step_input.groups) == 4)
 assert(len(step_input) == 4)
-assert(step_input.sources == ['K']*4)
+assert(step_input.labels == ['K']*4)
 assert(step_input.groups[0] == 'b_0.txt')
 assert(step_input.groups[3] == 'b_3.txt')
 
@@ -1939,7 +1939,7 @@ assert(step_input.groups[3] == 'b_3.txt')
 input: K=named_output('bb', group_by=2)
 assert(len(step_input.groups) == 2)
 assert(len(step_input) == 4)
-assert(step_input.sources == ['K']*4)
+assert(step_input.labels == ['K']*4)
 assert(step_input.groups[1] == ['b_2.txt', 'b_3.txt'])
 
 ''')
