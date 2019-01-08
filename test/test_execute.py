@@ -1303,7 +1303,7 @@ run: expand=True
 input: for_each={'a': range(10)}
 output: f"{a}.txt"
 
-stop_if(a % 2 == 0)
+stop_if(a % 2 == 0, no_output=True)
 run: expand=True
     touch {_output}
 

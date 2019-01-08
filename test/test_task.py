@@ -860,7 +860,7 @@ for i in range(5):
 [2]
 input: group_by = 1
 output: f'{_input:n}.out'
-stop_if(_input.stat().st_size==0)
+stop_if(_input.stat().st_size==0, no_output=True)
 
 task: trunk_size = 80
 _output.touch()
