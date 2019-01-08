@@ -444,51 +444,53 @@ depends: executable('lkls')
         Base_Executor(wf).run()
         file_target('lkls').unlink()
 
-#     def testSharedVarInPairedWith(self):
-#         self.touch(['1.txt', '2.txt'])
-#         for file in ('1.out', '2.out', '1.out2', '2.out2'):
-#             if file_target(file).exists():
-#                 file_target(file).unlink()
-#         script = SoS_Script('''
-# [work_1: shared = {'data': 'step_output'}]
-# input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
-# output: expand_pattern('{_name}.out')
-# run: expand=True
-#   touch {_output}
-# 
-# [work_2]
-# input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}', paired_with = dict(data=data)
-# output: expand_pattern('{_name}.out2')
-# run: expand=True
-#   touch {data[0]} {_output}
-# ''')
-#         wf = script.workflow()
-#         Base_Executor(wf).run()
-#         for file in ('1.out', '2.out', '1.out2', '2.out2'):
-#             if file_target(file).exists():
-#                 file_target(file).unlink()
-# 
-#     def testSharedVarInForEach(self):
-#         self.touch(['1.txt', '2.txt'])
-#         for file in ('1.out', '2.out', '1.out2', '2.out2'):
-#             if file_target(file).exists():
-#                 file_target(file).unlink()
-#         script = SoS_Script('''
-# [work_1: shared = {'data': 'step_output'}]
-# input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
-# output: expand_pattern('{_name}.out')
-# run: expand=True
-#   touch {_output}
-# 
-# [work_2]
-# input: "1.txt", "2.txt", group_by = 'single', for_each = dict(data=data),  pattern = '{name}.{ext}'
-# output: expand_pattern('{data}_{_name}.out2')
-# run: expand=True
-#   touch {_output}
-# 
-# ''')
-#         wf = script.workflow()
-#         Base_Executor(wf).run()
+    @unittest.skipIf('TRAVIS' in os.environ, 'Skip test because travis fails on this test for unknown reason')
+    def testSharedVarInPairedWith(self):
+        self.touch(['1.txt', '2.txt'])
+        for file in ('1.out', '2.out', '1.out2', '2.out2'):
+            if file_target(file).exists():
+                file_target(file).unlink()
+        script = SoS_Script('''
+[work_1: shared = {'data': 'step_output'}]
+input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
+output: expand_pattern('{_name}.out')
+run: expand=True
+  touch {_output}
+
+[work_2]
+input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}', paired_with = dict(data=data)
+output: expand_pattern('{_name}.out2')
+run: expand=True
+  touch {data[0]} {_output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for file in ('1.out', '2.out', '1.out2', '2.out2'):
+            if file_target(file).exists():
+                file_target(file).unlink()
+
+    @unittest.skipIf('TRAVIS' in os.environ, 'Skip test because travis fails on this test for unknown reason')
+    def testSharedVarInForEach(self):
+        self.touch(['1.txt', '2.txt'])
+        for file in ('1.out', '2.out', '1.out2', '2.out2'):
+            if file_target(file).exists():
+                file_target(file).unlink()
+        script = SoS_Script('''
+[work_1: shared = {'data': 'step_output'}]
+input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
+output: expand_pattern('{_name}.out')
+run: expand=True
+  touch {_output}
+
+[work_2]
+input: "1.txt", "2.txt", group_by = 'single', for_each = dict(data=data),  pattern = '{name}.{ext}'
+output: expand_pattern('{data}_{_name}.out2')
+run: expand=True
+  touch {_output}
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
 
     def testRemovedDepends(self):
         '''Test a case where a dependent file has signature, but

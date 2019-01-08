@@ -1414,11 +1414,12 @@ depends: 'non-existent.txt'
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
 
-#     def testExecuteIPynb(self):
-#         '''Test extracting and executing workflow from .ipynb files'''
-#         script = SoS_Script(filename='sample_workflow.ipynb')
-#         wf = script.workflow()
-#         Base_Executor(wf).run()
+    @unittest.skipIf('TRAVIS' in os.environ, 'Skip test because travis fails on this test for unknown reason')
+    def testExecuteIPynb(self):
+        '''Test extracting and executing workflow from .ipynb files'''
+        script = SoS_Script(filename='sample_workflow.ipynb')
+        wf = script.workflow()
+        Base_Executor(wf).run()
 
     def testOutputReport(self):
         '''Test generation of report'''
