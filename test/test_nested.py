@@ -700,6 +700,32 @@ sos_run('A', idx=i)
         self.assertTrue(time.time() - st < 30)
 
 
+
+    def testSoSMultiWorkflow(self):
+        '''Test multiple workflows in sos_run '''
+        script = SoS_Script('''
+[B]
+parameter: idx=2
+import time
+time.sleep(idx)
+
+[A]
+import time
+time.sleep(idx)
+
+[default]
+input: for_each=dict(i=range(4))
+sos_run(['A', 'B'], idx=i)
+''')
+        import time
+        st = time.time()
+        wf = script.workflow()
+        # this should be ok.
+        Base_Executor(wf, config={'max_procs': 8}).run()
+        self.assertTrue(time.time() - st < 20)
+
+
+
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
     # unittest.TextTestRunner(, suite).run()

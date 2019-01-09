@@ -964,29 +964,30 @@ class Base_Executor:
                             self.step_queue[step_id] = step_params
                             continue
                         elif res[0] == 'workflow':
-                            workflow_id, wf, targets, args, shared, config = res[1:]
+                            workflow_ids, wfs, targets, args, shared, config = res[1:]
                             # receive the real definition
                             env.logger.debug(
-                                f'{i_am()} receives workflow request {workflow_id}')
+                                f'{i_am()} receives workflow request {workflow_ids}')
                             # a workflow needs to be executed immediately because otherwise if all workflows
                             # occupies all workers, no real step could be executed.
 
                             # now we would like to find a worker and
                             if hasattr(runnable, '_pending_workflows'):
-                                runnable._pending_workflows.append(workflow_id)
+                                runnable._pending_workflows.extend(workflow_ids)
                             else:
-                                runnable._pending_workflows = [workflow_id]
+                                runnable._pending_workflows = workflow_ids
                             runnable._status = 'workflow_pending'
                             dag.save(env.config['output_dag'])
 
-                            wfrunnable = dummy_node()
-                            wfrunnable._node_id = workflow_id
-                            wfrunnable._status = 'workflow_running_pending'
-                            dag.save(env.config['output_dag'])
-                            wfrunnable._pending_workflows = [workflow_id]
-                            #
-                            manager.execute(wfrunnable, config=config, args=args,
-                                            spec=('workflow', workflow_id, wf, targets, args, shared, config))
+                            for wid, wf in zip(workflow_ids, wfs):
+                                wfrunnable = dummy_node()
+                                wfrunnable._node_id = wid
+                                wfrunnable._status = 'workflow_running_pending'
+                                dag.save(env.config['output_dag'])
+                                wfrunnable._pending_workflows = [wid]
+                                #
+                                manager.execute(wfrunnable, config=config, args=args,
+                                                spec=('workflow', wid, wf, targets, args, shared, config))
                             continue
                         else:
                             raise RuntimeError(
@@ -1049,6 +1050,7 @@ class Base_Executor:
                         # else:
                         #    self.completed['__subworkflow_completed__'] += 1
                         for proc in manager.procs:
+                            # do not care about dummy processes
                             if proc is None:
                                 continue
                             if proc.in_status('workflow_pending') and res['__workflow_id__'] in proc.step._pending_workflows:

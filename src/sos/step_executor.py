@@ -601,10 +601,12 @@ class Base_Step_Executor:
                 env.logger.info(
                     f'output:   ``{short_repr(env.sos_dict["step_output"])}``')
 
-    def execute(self, stmt):
+    def execute(self, stmt, return_result=False):
         try:
             self.last_res = SoS_exec(
-                stmt, return_result=self.run_mode == 'interactive')
+                stmt, return_result=return_result or self.run_mode == 'interactive')
+            if return_result:
+                return self.last_res
         except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock):
             raise
         except subprocess.CalledProcessError as e:
@@ -1055,7 +1057,7 @@ class Base_Step_Executor:
                                         verify_input()
                                         if env.sos_dict.get('__concurrent_subworkflow__', False):
                                             self._subworkflow_results.append(
-                                                self.execute(statement[1]))
+                                                self.execute(statement[1], return_result=True))
                                         else:
                                             self.execute(statement[1])
                                     finally:
@@ -1096,7 +1098,7 @@ class Base_Step_Executor:
                                             verify_input()
                                             if env.sos_dict.get('__concurrent_subworkflow__', False):
                                                 self._subworkflow_results.append(
-                                                    self.execute(statement[1]))
+                                                    self.execute(statement[1], return_result=True))
                                             else:
                                                 self.execute(statement[1])
                                             if 'shared' in self.step.options:
@@ -1223,7 +1225,9 @@ class Base_Step_Executor:
                 # endfor loop for each input group
                 #
             if self._subworkflow_results:
-                for swf in self._subworkflow_results:
+                wf_ids = sum([x['pending_workflows'] for x in self._subworkflow_results], [])
+                for swf in wf_ids:
+                    # here we did not check if workflow ids match
                     res = env.__socket__.recv_pyobj()
                     if res is None:
                         sys.exit(0)

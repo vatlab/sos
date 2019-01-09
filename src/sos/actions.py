@@ -507,19 +507,27 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
         raise RuntimeError(
             'Executing nested workflow (action sos_run) in tasks is not supported.')
 
+    if isinstance(workflow, str):
+        workflow = [workflow]
+    elif isinstance(workflow, Sequence):
+        workflow = list(workflow)
+    elif workflow is not None:
+        raise ValueError('workflow has to be None, a workflow name, or a list of workflow names')
+
     if source is None:
         script = SoS_Script(env.sos_dict['__step_context__'].content,
                             env.sos_dict['__step_context__'].filename)
-        wf = script.workflow(workflow, use_default=not targets)
+        wfs = [script.workflow(wf, use_default=not targets) for wf in workflow]
     else:
         # reading workflow from another file
         script = SoS_Script(filename=source)
-        wf = script.workflow(workflow, use_default=not targets)
+        wfs = [script.workflow(wf, use_default=not targets) for wf in workflow]
     # if wf contains the current step or one of the previous one, this constitute
     # recusive nested workflow and should not be allowed
-    if env.sos_dict['step_name'] in [f'{x.name}_{x.index}' for x in wf.sections]:
-        raise RuntimeError(
-            f'Nested workflow {workflow} contains the current step {env.sos_dict["step_name"]}')
+    for wf in wfs:
+        if env.sos_dict['step_name'] in [f'{x.name}_{x.index}' for x in wf.sections]:
+            raise RuntimeError(
+                f'Nested workflow {workflow} contains the current step {env.sos_dict["step_name"]}')
     # args can be specified both as a dictionary or keyword arguments
     if args is None:
         args = kwargs
@@ -549,18 +557,24 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
         # really send the workflow
         shared = {
             x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
-        env.__socket__.send_pyobj(['workflow', uuid.uuid4(), wf, targets, args, shared, env.config])
-        if env.sos_dict.get('__concurrent_subworkflow__', False):
-            return {}
 
-        res = env.__socket__.recv_pyobj()
-        if res is None:
-            sys.exit(0)
-        elif isinstance(res, Exception):
-            raise res
-        else:
-            env.sos_dict.quick_update(res['shared'])
-            return res
+        wf_ids = [uuid.uuid4() for wf in wfs]
+        env.__socket__.send_pyobj(['workflow', wf_ids, wfs, targets, args, shared, env.config])
+
+        if env.sos_dict.get('__concurrent_subworkflow__', False):
+            return {'pending_workflows': wf_ids}
+
+        res = {}
+        for wf in wfs:
+            wf_res = env.__socket__.recv_pyobj()
+            res.update(wf_res)
+            if wf_res is None:
+                sys.exit(0)
+            elif isinstance(wf_res, Exception):
+                raise wf_res
+            else:
+                env.sos_dict.quick_update(wf_res['shared'])
+        return res
     finally:
         # restore step_name in case the subworkflow re-defines it
         env.sos_dict.set('step_name', my_name)
