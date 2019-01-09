@@ -133,11 +133,10 @@ class SoS_Worker(mp.Process):
         #
         self.args = args
         self.reset_dict()
-        # this is to keep compatibility of dag run with sequential run because
-        # in sequential run, we evaluate global section of each step in
-        # order to determine values of options such as skip.
-        # The consequence is that global definitions are available in
-        # SoS namespace.
+
+        # Execute global namespace. The reason why this is executed outside of
+        # step is that the content of the dictioary might be overridden by context
+        # variables.
         try:
             SoS_exec(section.global_def)
         except subprocess.CalledProcessError as e:
