@@ -1166,6 +1166,30 @@ c_20 -> b_20;
 ''')
         file_target('test.dot').unlink()
 
+    def testMultiNamedOutput(self):
+        '''Test DAG built from multiple named_output #1166'''
+        script = SoS_Script('''
+[A]
+output: A='a.txt', B='b.txt'
+_output.touch()
+
+[default]
+input: named_output('A'), named_output('B')
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={'output_dag': 'test_named_output.dot'}
+                      ).run()
+        # note that A2 is no longer mentioned
+        self.assertDAG('test_named_output.dot',
+                       '''
+strict digraph "" {
+default;
+"A (A)";
+"A (A)" -> default;
+}
+''')
+
+
 
 if __name__ == '__main__':
     unittest.main()
