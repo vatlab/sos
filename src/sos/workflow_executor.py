@@ -529,7 +529,10 @@ class Base_Executor:
                     # added
                     res['step_output'].extend(target)
                 elif isinstance(target, named_output):
-                    res['step_output'].extend(target)
+                    # when a named_output is matched, we add all names from the step
+                    # to avoid the step to be added multiple times for different named_steps
+                    # from the same step. #1166
+                    res['step_output'].extend([named_output(x) for x in section.options['namedprovides']])
                 #
                 # build DAG with input and output files of step
                 env.logger.debug(
