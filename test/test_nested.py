@@ -680,6 +680,25 @@ sos_run('whatever', source='another.sos')
         self.assertTrue(os.path.isfile('a.txt'),
                         'a.txt should have been created by nested workflow from another file')
 
+    def testConcurrentSubWorkflow(self):
+        '''Test concurrent subworkflow sos_run '''
+        script = SoS_Script('''
+[A]
+parameter: idx=0
+import time
+time.sleep(5)
+
+[default]
+input: for_each=dict(i=range(6))
+sos_run('A', idx=i)
+''')
+        import time
+        st = time.time()
+        wf = script.workflow()
+        # this should be ok.
+        Base_Executor(wf, config={'max_procs': 8}).run()
+        self.assertTrue(time.time() - st < 30)
+
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)

@@ -927,18 +927,18 @@ class Base_Executor:
                     res = proc.socket.recv_pyobj()
                     #
                     # if this is NOT a result, rather some request for task, step, workflow etc
-                    if isinstance(res, str):
-                        if res.startswith('task'):
+                    if isinstance(res, list):
+                        if res[0] == 'tasks':
                             env.logger.debug(
                                 f'{i_am()} receives task request {res}')
-                            host = res.split(' ')[1]
+                            host = res[1]
                             if host == '__default__':
                                 if 'default_queue' in env.config:
                                     host = env.config['default_queue']
                                 else:
                                     host = 'localhost'
                             try:
-                                new_tasks = res.split(' ')[2:]
+                                new_tasks = res[2:]
                                 runnable._host = Host(host)
                                 if hasattr(runnable, '_pending_tasks'):
                                     runnable._pending_tasks.extend(new_tasks)
@@ -955,26 +955,27 @@ class Base_Executor:
                                 env.logger.error(e)
                                 proc.set_status('failed')
                             continue
-                        elif res.startswith('step'):
+                        elif res[0] == 'step':
                             # step sent from nested workflow
-                            step_id = res.split(' ')[1]
-                            step_params = proc.socket.recv_pyobj()
+                            step_id = res[1]
+                            step_params = res[2:]
                             env.logger.debug(
                                 f'{i_am()} receives step request {step_id} with args {step_params[3]}')
                             self.step_queue[step_id] = step_params
                             continue
-                        elif res.startswith('workflow'):
-                            workflow_id = res.split(' ')[1]
+                        elif res[0] == 'workflow':
+                            workflow_id, wf, targets, args, shared, config = res[1:]
                             # receive the real definition
                             env.logger.debug(
                                 f'{i_am()} receives workflow request {workflow_id}')
-                            # (wf, args, shared, config)
-                            wf, targets, args, shared, config = proc.socket.recv_pyobj()
                             # a workflow needs to be executed immediately because otherwise if all workflows
                             # occupies all workers, no real step could be executed.
 
                             # now we would like to find a worker and
-                            runnable._pending_workflow = workflow_id
+                            if hasattr(runnable, '_pending_workflows'):
+                                runnable._pending_workflows.append(workflow_id)
+                            else:
+                                runnable._pending_workflows = [workflow_id]
                             runnable._status = 'workflow_pending'
                             dag.save(env.config['output_dag'])
 
@@ -982,7 +983,7 @@ class Base_Executor:
                             wfrunnable._node_id = workflow_id
                             wfrunnable._status = 'workflow_running_pending'
                             dag.save(env.config['output_dag'])
-                            wfrunnable._pending_workflow = workflow_id
+                            wfrunnable._pending_workflows = [workflow_id]
                             #
                             manager.execute(wfrunnable, config=config, args=args,
                                             spec=('workflow', workflow_id, wf, targets, args, shared, config))
@@ -990,6 +991,9 @@ class Base_Executor:
                         else:
                             raise RuntimeError(
                                 f'Unexpected value from step {short_repr(res)}')
+                    elif isinstance(res, str):
+                        raise RuntimeError(
+                            f'Unexpected value from step {short_repr(res)}')
 
                     # if we does get the result, we send the process to pool
                     manager.mark_idle(idx)
@@ -1020,12 +1024,12 @@ class Base_Executor:
                         exec_error.append(runnable._node_id, res)
                         # if this is a node for a running workflow, need to mark it as failed as well
                         #                        for proc in procs:
-                        if isinstance(runnable, dummy_node) and hasattr(runnable, '_pending_workflow'):
+                        if isinstance(runnable, dummy_node) and hasattr(runnable, '_pending_workflows'):
                             for proc in manager.procs:
                                 if proc is None:
                                     continue
                                 if proc.is_pending() and hasattr(proc.step, '_pending_workflow') \
-                                        and proc.step._pending_workflow == runnable._pending_workflow:
+                                        and proc.step._pending_workflow in runnable._pending_workflows:
                                     proc.set_status('failed')
                             dag.save(env.config['output_dag'])
                         raise exec_error
@@ -1047,9 +1051,11 @@ class Base_Executor:
                         for proc in manager.procs:
                             if proc is None:
                                 continue
-                            if proc.in_status('workflow_pending') and proc.step._pending_workflow == res['__workflow_id__']:
+                            if proc.in_status('workflow_pending') and res['__workflow_id__'] in proc.step._pending_workflows:
+                                proc.step._pending_workflows.remove(res['__workflow_id__'])
+                                if not proc.step._pending_workflows:
+                                    proc.set_status('running')
                                 proc.socket.send_pyobj(res)
-                                proc.set_status('running')
                                 break
                         dag.save(env.config['output_dag'])
                     else:
@@ -1263,37 +1269,39 @@ class Base_Executor:
                         exec_error.append(runnable._node_id, res)
                         # if this is a node for a running workflow, need to mark it as failed as well
                         #                        for proc in procs:
-                        if isinstance(runnable, dummy_node) and hasattr(runnable, '_pending_workflow'):
+                        if isinstance(runnable, dummy_node) and hasattr(runnable, '_pending_workflows'):
                             for proc in manager.procs:
                                 if proc is None:
                                     continue
                                 if proc.is_pending() and hasattr(proc.step, '_pending_workflow') \
-                                        and proc.step._pending_workflow == runnable._pending_workflow:
+                                        and proc.step._pending_workflow in runnable._pending_workflows:
                                     proc.set_status('failed')
                             dag.save(env.config['output_dag'])
                     elif '__step_name__' in res:
                         env.logger.debug(f'{i_am()} receive step result ')
                         self.step_completed(res, dag, runnable)
-                    elif '__workflow_id__' in res:
-                        # result from a workflow
-                        # the worker process has been returned to the pool, now we need to
-                        # notify the step that is waiting for the result
-                        env.logger.debug(f'{i_am()} receive workflow result')
-                        # aggregate steps etc with subworkflows
-                        for k, v in res['__completed__'].items():
-                            self.completed[k] += v
-                        # if res['__completed__']['__step_completed__'] == 0:
-                        #    self.completed['__subworkflow_skipped__'] += 1
-                        # else:
-                        #    self.completed['__subworkflow_completed__'] += 1
-                        for proc in manager.procs:
-                            if proc is None:
-                                continue
-                            if proc.in_status('workflow_pending') and proc.step._pending_workflow == res['__workflow_id__']:
-                                proc.socket.send_pyobj(res)
-                                proc.set_status('running')
-                                break
-                        dag.save(env.config['output_dag'])
+                    # elif '__workflow_id__' in res:
+                    #     # result from a workflow
+                    #     # the worker process has been returned to the pool, now we need to
+                    #     # notify the step that is waiting for the result
+                    #     env.logger.warning(f'{i_am()} receive workflow result {res}')
+                    #     # aggregate steps etc with subworkflows
+                    #     for k, v in res['__completed__'].items():
+                    #         self.completed[k] += v
+                    #     # if res['__completed__']['__step_completed__'] == 0:
+                    #     #    self.completed['__subworkflow_skipped__'] += 1
+                    #     # else:
+                    #     #    self.completed['__subworkflow_completed__'] += 1
+                    #     for proc in manager.procs:
+                    #         if proc is None:
+                    #             continue
+                    #         if proc.in_status('workflow_pending') and res['__workflow_id__'] in proc.step._pending_workflows:
+                    #             proc.socket.send_pyobj(res)
+                    #             proc.step._pending_workflows.remove(res['__workflow_id__'])
+                    #             if not proc.step._pending_workflows:
+                    #                 proc.set_status('running')
+                    #             break
+                    #     dag.save(env.config['output_dag'])
                     else:
                         raise RuntimeError(
                             f'Unrecognized response from a step: {res}')
@@ -1327,12 +1335,11 @@ class Base_Executor:
                     step_id = uuid.uuid4()
                     env.logger.debug(
                         f'{i_am()} send step {section.step_name()} to master with args {self.args} and context {runnable._context}')
-                    parent_socket.send_pyobj(f'step {step_id}')
 
                     socket = env.zmq_context.socket(zmq.PAIR)
                     port = socket.bind_to_random_port('tcp://127.0.0.1')
-                    parent_socket.send_pyobj((section, runnable._context, shared, self.args,
-                                              env.config, env.verbosity, port))
+                    parent_socket.send_pyobj(['step', step_id, section, runnable._context, shared, self.args,
+                                              env.config, env.verbosity, port])
                     # this is a real step
                     manager.add_placeholder_worker(runnable, socket)
 

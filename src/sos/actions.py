@@ -546,11 +546,13 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
         if not hasattr(env, '__socket__'):
             raise RuntimeError('Running nested workflow without a master is not acceptable')
         # tell the master process to receive a workflow
-        env.__socket__.send_pyobj(f'workflow {uuid.uuid4()}')
         # really send the workflow
         shared = {
             x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
-        env.__socket__.send_pyobj((wf, targets, args, shared, env.config))
+        env.__socket__.send_pyobj(['workflow', uuid.uuid4(), wf, targets, args, shared, env.config])
+        if env.sos_dict.get('__concurrent_subworkflow__', False):
+            return {}
+
         res = env.__socket__.recv_pyobj()
         if res is None:
             sys.exit(0)

@@ -273,6 +273,16 @@ def get_value_of_param(name, param_list, extra_dict={}):
     except Exception as e:
         return [eval(compile(ast.Expression(body=kwargs[0].value), filename='<string>', mode="eval"), extra_dict)]
 
+def is_sos_run_the_only_last_stmt(stmt):
+    tree = ast.parse(stmt)
+    return len(tree.body) >= 1 and \
+        isinstance(tree.body[-1], ast.Expr) and \
+        isinstance(tree.body[-1].value, ast.Call) and \
+        hasattr(tree.body[-1].value.func, 'id') and \
+        tree.body[-1].value.func.id == 'sos_run' and \
+        len([x for x in ast.walk(tree) if isinstance(x, ast.Call) and hasattr(x.func, 'id') and x.func.id == 'sos_run']) == 1
+
+
 class Base_Step_Executor:
     # This base class defines how steps are executed. The derived classes will reimplement
     # some function to behave differently in different modes.
@@ -390,7 +400,7 @@ class Base_Step_Executor:
                 var[vn] = vv
             elif isinstance(vv, (list, tuple)):
                 if len(vv) != env.sos_dict["__num_groups__"]:
-                    raise ValueError(f'Length of provided attributes ({len(vv)}) does not match number of input groups ({env.sos_dict["__num_groups__"]})')
+                    raise ValueError(f'Length of provided attributes ({len(vv)}) does not match number of Substeps ({env.sos_dict["__num_groups__"]})')
                 var[vn] = vv[env.sos_dict["_index"]]
             else:
                 raise ValueError('Unacceptable variables {vv} for option group_with')
@@ -854,6 +864,7 @@ class Base_Step_Executor:
         self.output_groups = [sos_targets([]) for x in self._substeps]
         # used to prevent overlapping output from substeps
         self._all_outputs = set()
+        self._subworkflow_results = []
 
         if self.concurrent_substep:
             if len(self._substeps) <= 1 or self.run_mode == 'dryrun':
@@ -862,11 +873,19 @@ class Base_Step_Executor:
                     x for x in self.step.statements[input_statement_idx:] if x[0] != ':']) > 1:
                 self.concurrent_substep = False
                 env.logger.debug(
-                    'Input groups are executed sequentially because of existence of directives between statements.')
+                    'Substeps are executed sequentially because of existence of directives between statements.')
             elif any('sos_run' in x[1] for x in self.step.statements[input_statement_idx:]):
                 self.concurrent_substep = False
-                env.logger.debug(
-                    'Input groups are executed sequentially because of existence of nested workflow.')
+                if 'shared' not in self.step.options and not self.step.task and \
+                    len([x for x in self.step.statements[input_statement_idx:] if x[0] == '!']) == 1 and \
+                    self.step.statements[-1][0] == '!' and \
+                    is_sos_run_the_only_last_stmt(self.step.statements[-1][1]):
+                    env.sos_dict.set('__concurrent_subworkflow__', True)
+                    env.logger.debug(
+                        'Running nested workflows concurrently.')
+                else:
+                    env.logger.debug(
+                        'Substeps are executed sequentially because of existence of multiple nested workflow.')
             else:
                 self.prepare_substep()
 
@@ -1034,7 +1053,11 @@ class Base_Step_Executor:
                                     env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} without signature')
                                     try:
                                         verify_input()
-                                        self.execute(statement[1])
+                                        if env.sos_dict.get('__concurrent_subworkflow__', False):
+                                            self._subworkflow_results.append(
+                                                self.execute(statement[1]))
+                                        else:
+                                            self.execute(statement[1])
                                     finally:
                                         if not self.step.task:
                                             # if no task, this step is __completed
@@ -1071,7 +1094,11 @@ class Base_Step_Executor:
                                         sig.lock()
                                         try:
                                             verify_input()
-                                            self.execute(statement[1])
+                                            if env.sos_dict.get('__concurrent_subworkflow__', False):
+                                                self._subworkflow_results.append(
+                                                    self.execute(statement[1]))
+                                            else:
+                                                self.execute(statement[1])
                                             if 'shared' in self.step.options:
                                                 try:
                                                     self.shared_vars[env.sos_dict['_index']].update({
@@ -1195,6 +1222,16 @@ class Base_Step_Executor:
                 #
                 # endfor loop for each input group
                 #
+            if self._subworkflow_results:
+                for swf in self._subworkflow_results:
+                    res = env.__socket__.recv_pyobj()
+                    if res is None:
+                        sys.exit(0)
+                    elif isinstance(res, Exception):
+                        raise res
+                env.sos_dict.pop('__concurrent_subworkflow__')
+                # otherwise there should be nothing interesting in subworkflow
+                # return value (shared is not handled)
 
             self.wait_for_results(all_submitted=True)
             for idx, res in enumerate(self.proc_results):
@@ -1302,7 +1339,7 @@ class Step_Executor(Base_Step_Executor):
         else:
             # otherwise, use workflow default
             host = '__default__'
-        self.socket.send_pyobj(f'tasks {host} {" ".join(tasks)}')
+        self.socket.send_pyobj(['tasks', host] + tasks)
 
     def wait_for_tasks(self, tasks, all_submitted):
         if not tasks:
