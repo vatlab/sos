@@ -389,9 +389,13 @@ class RuntimeEnvironments(object):
         }
 
         if self._logging_socket:
+            PUBHandler.formatters[logging.TRACE] = logging.Formatter(
+                "%(levelname)s %(filename)s:%(lineno)d - %(message)s\n")
             socket_handler = PUBHandler(self._logging_socket)
             # debug informaiton and time is always written to the log file
             socket_handler.setLevel(levels[self._verbosity])
+
+
             #ch.setFormatter(logging.Formatter(
             #    '%(asctime)s: %(levelname)s: %(message)s'))
             self._logger.addHandler(socket_handler)
