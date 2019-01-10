@@ -80,15 +80,13 @@ _output.touch()
         self.assertTrue(os.path.isfile('t_na.txt'))
 
     def testProvidesTarget(self):
-        '''Test sos run -t filename'''
+        '''Test sos run -t filename with exact match'''
         self.removeIfExists('t_pa.txt')
         script = SoS_Script('''
 [A: provides="t_pa.txt"]
 _output.touch()
 ''')
-        env.verbosity = 4
         wf = script.workflow(use_default=False)
-
         Base_Executor(wf).run(targets=['t_pa.txt'])
         self.assertTrue(os.path.isfile('t_pa.txt'))
         #
@@ -120,6 +118,18 @@ _output.touch()
 ''')
         wf = script.workflow(use_default=False)
         self.assertRaises(Exception, Base_Executor(wf).run, targets=['t_pa.txt'])
+
+    def testProvidesPattern(self):
+        '''Test sos run -t filename with pattern matching'''
+        self.removeIfExists('t_ma.txt')
+        script = SoS_Script('''
+[A: provides="{filename}.txt"]
+_output.touch()
+''')
+        wf = script.workflow(use_default=False)
+        Base_Executor(wf).run(targets=['t_ma.txt'])
+        self.assertTrue(os.path.isfile('t_ma.txt'))
+
 
 
 if __name__ == '__main__':
