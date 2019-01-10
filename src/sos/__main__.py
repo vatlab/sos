@@ -213,7 +213,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             of the configuration file will be available as a dictionary
             CONF in the SoS script being executed.''')
     parser.add_argument('-t', dest='__targets__', metavar='FILE', default=[],
-                        nargs='+', help='''One of more files or alias of other targets that
+                        nargs='+', help='''One of more files or names of named outputs that
             will be the target of execution. If specified, SoS will execute
             only part of a workflow or multiple workflows or auxiliary steps
             to generate specified targets.''')
