@@ -141,11 +141,12 @@ def prepare_env(global_def='', extra_dict={}):
         # note that we do not handle parameter in tasks because values should already be
         # in sos_task dictionary
         gd = strip_param_defs(global_def)
+        env.sos_dict._dict.update(extra_dict)
         SoS_exec('''\
 import os, sys
 from sos.runtime import *
 CONFIG = {}
-''' + gd, extra_dict)
+''' + gd)
     except Exception as e:
         env.logger.warning(
             f'Failed to execute global definition {short_repr(gd)}: {e}')
