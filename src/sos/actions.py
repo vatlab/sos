@@ -508,31 +508,39 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
             'Executing nested workflow (action sos_run) in tasks is not supported.')
 
     if isinstance(workflow, str):
-        workflow = [workflow]
+        workflows = [workflow]
     elif isinstance(workflow, Sequence):
-        workflow = list(workflow)
+        workflows = list(workflow)
     elif workflow is not None:
         raise ValueError('workflow has to be None, a workflow name, or a list of workflow names')
 
     if source is None:
         script = SoS_Script(env.sos_dict['__step_context__'].content,
                             env.sos_dict['__step_context__'].filename)
-        wfs = [script.workflow(wf, use_default=not targets) for wf in workflow]
+        wfs = [script.workflow(wf, use_default=not targets) for wf in workflows]
     else:
         # reading workflow from another file
         script = SoS_Script(filename=source)
-        wfs = [script.workflow(wf, use_default=not targets) for wf in workflow]
+        wfs = [script.workflow(wf, use_default=not targets) for wf in workflows]
     # if wf contains the current step or one of the previous one, this constitute
     # recusive nested workflow and should not be allowed
+    all_parameters = set()
     for wf in wfs:
+        all_parameters |= set(wf.parameters())
         if env.sos_dict['step_name'] in [f'{x.name}_{x.index}' for x in wf.sections]:
             raise RuntimeError(
                 f'Nested workflow {workflow} contains the current step {env.sos_dict["step_name"]}')
+
     # args can be specified both as a dictionary or keyword arguments
     if args is None:
         args = kwargs
     else:
         args.update(kwargs)
+
+    for key in args.keys():
+        if key not in all_parameters:
+            raise ValueError(f'No parameter {key} is defined for workflow {workflow}')
+
     args['__args__'] = env.sos_dict['__args__']
     if shared is None:
         shared = []
@@ -558,7 +566,7 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
         shared = {
             x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
 
-        wf_ids = [uuid.uuid4() for wf in wfs]
+        wf_ids = [str(uuid.uuid4()) for wf in wfs]
         env.__socket__.send_pyobj(['workflow', wf_ids, wfs, targets, args, shared, env.config])
 
         if env.sos_dict.get('__concurrent_subworkflow__', False):

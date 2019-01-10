@@ -725,6 +725,46 @@ sos_run(['A', 'B'], idx=i)
         self.assertTrue(time.time() - st < 20)
 
 
+    def testPassOfArgs(self):
+        '''Test passing of arguments through sos_run #1164'''
+        script = SoS_Script('''
+parameter: b=2
+[A]
+parameter: c=1
+print(c)
+
+[default]
+sos_run('A', a=2)
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+        #
+        script = SoS_Script('''
+parameter: b=2
+[A]
+parameter: c=1
+print(c)
+
+[default]
+sos_run('A', b=2)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        #
+        script = SoS_Script('''
+parameter: b=2
+[A]
+parameter: c=1
+print(c)
+
+[default]
+sos_run('A', c=2)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
+
+
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
