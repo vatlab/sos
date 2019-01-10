@@ -252,7 +252,7 @@ def get_step_output(section, default_output):
         args, kwargs = SoS_eval(f'__null_func__({value})',
             extra_dict=env.sos_dict._dict)
         if not any(isinstance(x, (dynamic, remote)) for x in args):
-            step_output = sos_targets(*args)
+            step_output = sos_targets(*args, **{x:y for x,y in kwargs.items() if x not in SOS_TARGETS_OPTIONS})
     except Exception as e:
         pass
         # env.logger.debug(f"Args {value} cannot be determined: {e}")
