@@ -19,7 +19,7 @@ from sos.workflow_executor import Base_Executor
 
 
 
-class TestExecute(unittest.TestCase):
+class TestOutcome(unittest.TestCase):
     def setUp(self):
         env.reset()
         subprocess.call('sos remove -s', shell=True)
@@ -63,8 +63,8 @@ class TestExecute(unittest.TestCase):
 output: 't_a.txt'
 _output.touch()
 ''')
-        wf = script.workflow()
-        Base_Executor(wf, config={'target': 't_a.txt'}).run()
+        wf = script.workflow(use_default=False)
+        Base_Executor(wf).run(targets=['t_a.txt'])
         self.assertTrue(os.path.isfile('t_a.txt'))
 
     def testTargetInNamed(self):
@@ -75,9 +75,51 @@ _output.touch()
 output: res='t_na.txt'
 _output.touch()
 ''')
-        wf = script.workflow()
-        Base_Executor(wf, config={'target': 't_na.txt'}).run()
+        wf = script.workflow(use_default=False)
+        Base_Executor(wf).run(targets=['t_na.txt'])
         self.assertTrue(os.path.isfile('t_na.txt'))
+
+    def testProvidesTarget(self):
+        '''Test sos run -t filename'''
+        self.removeIfExists('t_pa.txt')
+        script = SoS_Script('''
+[A: provides="t_pa.txt"]
+_output.touch()
+''')
+        env.verbosity = 4
+        wf = script.workflow(use_default=False)
+
+        Base_Executor(wf).run(targets=['t_pa.txt'])
+        self.assertTrue(os.path.isfile('t_pa.txt'))
+        #
+        self.removeIfExists('t_pa.txt')
+        script = SoS_Script('''
+[A: provides="t_pa.txt"]
+output: 't_pa.txt'
+_output.touch()
+''')
+        wf = script.workflow(use_default=False)
+        Base_Executor(wf).run(targets=['t_pa.txt'])
+        self.assertTrue(os.path.isfile('t_pa.txt'))
+        #
+        self.removeIfExists('t_pa.txt')
+        script = SoS_Script('''
+[A: provides="t_pa.txt"]
+output: pa='t_pa.txt'
+_output.touch()
+''')
+        wf = script.workflow(use_default=False)
+        Base_Executor(wf).run(targets=['t_pa.txt'])
+        self.assertTrue(os.path.isfile('t_pa.txt'))
+        #
+        self.removeIfExists('t_pa.txt')
+        script = SoS_Script('''
+[A: provides="t_pa.txt"]
+output: pa='t_pa_none.txt'
+_output.touch()
+''')
+        wf = script.workflow(use_default=False)
+        self.assertRaises(Exception, Base_Executor(wf).run, targets=['t_pa.txt'])
 
 
 if __name__ == '__main__':
