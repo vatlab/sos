@@ -145,7 +145,6 @@ def prepare_env(global_def='', extra_dict={}):
         SoS_exec('''\
 import os, sys
 from sos.runtime import *
-CONFIG = {}
 ''' + gd)
     except Exception as e:
         env.logger.warning(
