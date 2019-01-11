@@ -681,7 +681,7 @@ class Base_Executor:
         #
         if self.resolve_dangling_targets(dag, targets) == 0:
             if targets:
-                raise RuntimeError(
+                raise UnknownTarget(
                     f'No step to generate target {targets}.')
         # now, there should be no dangling targets, let us connect nodes
         dag.build()
@@ -737,7 +737,7 @@ class Base_Executor:
                     target.unlink()
                 else:
                     env.logger.info(f'Target {target} already exists')
-        return sos_targets([x for x in targets if not file_target(x).target_exists('target') or env.config['sig_mode'] == 'force'])
+        return [x for x in targets if not file_target(x).target_exists('target') or env.config['sig_mode'] == 'force']
 
     def step_completed(self, res, dag, runnable):
         for k, v in res['__completed__'].items():
@@ -902,7 +902,15 @@ class Base_Executor:
                 f'Failed to remove existing DAG file {env.config["output_dag"]}: {e}')
 
         # process step of the pipelinp
-        dag = self.initialize_dag(targets=targets)
+        try:
+            dag = self.initialize_dag(targets=targets)
+        except UnknownTarget as e:
+            try:
+                named_targets = [named_output(x) for x in targets]
+                dag = self.initialize_dag(targets=named_targets)
+            except UnknownTarget as e:
+                raise RuntimeError(f'No step to generate target {targets}')
+
         #
         manager = ExecutionManager(env.config['max_procs'])
         #

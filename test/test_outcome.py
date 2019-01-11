@@ -79,6 +79,18 @@ _output.touch()
         Base_Executor(wf).run(targets=['t_na.txt'])
         self.assertTrue(os.path.isfile('t_na.txt'))
 
+    def testNamedOutputAsTarget(self):
+        '''Test sos run -t named_output'''
+        self.removeIfExists('t_no.txt')
+        script = SoS_Script('''
+[A]
+output: res='t_no.txt'
+_output.touch()
+''')
+        wf = script.workflow(use_default=False)
+        Base_Executor(wf).run(targets=['res'])
+        self.assertTrue(os.path.isfile('t_no.txt'))
+
     def testProvidesTarget(self):
         '''Test sos run -t filename with exact match'''
         self.removeIfExists('t_pa.txt')
