@@ -246,7 +246,7 @@ _SOS_MAGIC_TMPL = r'''                  # SOS magic
     |preview                            # %preview
     |with                               # %with
     |use                                # %use
-    |restart                            # %restart
+    |shutdown                           # %shutdown
     )(\s+.*)?
     $
     '''
