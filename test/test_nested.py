@@ -495,6 +495,8 @@ import time
 import random
 
 [nested]
+parameter: nested=True
+parameter: seed=1
 print(f'I am nested {nested} with seed {seed}')
 
 [0]
