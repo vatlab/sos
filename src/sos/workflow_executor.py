@@ -267,6 +267,7 @@ class Base_Executor:
             return self.run_as_master(targets=targets, mode=mode)
         except:
             succ = False
+            raise
         finally:
             # end progress bar when the master workflow stops
             env.logger.trace(f'Stop controller from {os.getpid()}')
@@ -1037,7 +1038,7 @@ class Base_Executor:
                         runnable._status = 'failed'
                         dag.save(env.config['output_dag'])
                         exec_error.append(runnable._node_id, res)
-                        env.logger.error(res)
+                        #env.logger.error(res)
                         # if this is a node for a running workflow, need to mark it as failed as well
                         #                        for proc in procs:
                         # if isinstance(runnable, dummy_node) and hasattr(runnable, '_pending_workflows'):
@@ -1280,20 +1281,22 @@ class Base_Executor:
                         self.handle_unavailable_lock(res, dag, runnable)
                     # if the job is failed
                     elif isinstance(res, Exception):
-                        env.logger.debug(f'{i_am()} received an exception')
-                        runnable._status = 'failed'
-                        dag.save(env.config['output_dag'])
-                        exec_error.append(runnable._node_id, res)
-                        # if this is a node for a running workflow, need to mark it as failed as well
-                        #                        for proc in procs:
-                        if isinstance(runnable, dummy_node) and hasattr(runnable, '_pending_workflows'):
-                            for proc in manager.procs:
-                                if proc is None:
-                                    continue
-                                if proc.is_pending() and hasattr(proc.step, '_pending_workflow') \
-                                        and proc.step._pending_workflow in runnable._pending_workflows:
-                                    proc.set_status('failed')
-                            dag.save(env.config['output_dag'])
+                        env.logger.error(f'Nested worker is not supposed to receive the exception...')
+                        raise res
+                        # env.logger.debug(f'{i_am()} received an exception')
+                        # runnable._status = 'failed'
+                        # dag.save(env.config['output_dag'])
+                        # exec_error.append(runnable._node_id, res)
+                        # # if this is a node for a running workflow, need to mark it as failed as well
+                        # #                        for proc in procs:
+                        # if isinstance(runnable, dummy_node) and hasattr(runnable, '_pending_workflows'):
+                        #     for proc in manager.procs:
+                        #         if proc is None:
+                        #             continue
+                        #         if proc.is_pending() and hasattr(proc.step, '_pending_workflow') \
+                        #                 and proc.step._pending_workflow in runnable._pending_workflows:
+                        #             proc.set_status('failed')
+                        #     dag.save(env.config['output_dag'])
                     elif '__step_name__' in res:
                         env.logger.debug(f'{i_am()} receive step result ')
                         self.step_completed(res, dag, runnable)
