@@ -124,7 +124,8 @@ class DotProgressBar:
                 sys.stderr.flush()
             elif self._update_str:
                 # print update message
-                sys.stderr.write(self._update_str)
+                sys.stderr.write('\b \b'*self._pulse_cnt + self._update_str)
+                self._pulse_cnt = 0
                 sys.stderr.flush()
                 self.update_event.clear()
 
@@ -133,30 +134,25 @@ class DotProgressBar:
             if time.time() - self._substep_last_updated < 1:
                 return
             if self._substep_cnt == self._subprogressbar_size:
-                self._update_str = '\b \b'*(self._pulse_cnt + self._substep_cnt)
+                self._update_str = '\b \b'* self._substep_cnt + '\033[90m.\033[0m'
                 self._substep_cnt = 0
             else:
-                self._update_str = '\b \b'*self._pulse_cnt
-            self._update_str += '\033[90m.\033[0m'
+                self._update_str = '\033[90m.\033[0m'
             self._substep_cnt += 1
-            self._pulse_cnt = 0
             self._substep_last_updated = time.time()
         elif type == 'substep_completed':
             if time.time() - self._substep_last_updated < 1:
                 return
             if self._substep_cnt == self._subprogressbar_size:
-                self._update_str = '\b \b'*(self._pulse_cnt + self._substep_cnt)
+                self._update_str = '\b \b'* self._substep_cnt + '\033[32m.\033[0m'
                 self._substep_cnt = 0
             else:
-                self._update_str = '\b \b'*self._pulse_cnt
-            self._update_str += '\033[32m.\033[0m'
+                self._update_str = '\033[32m.\033[0m'
             self._substep_cnt += 1
-            self._pulse_cnt = 0
             self._substep_last_updated = time.time()
         elif type == 'step_completed':
-            self._update_str = '\b \b'*(self._pulse_cnt + self._substep_cnt)
+            self._update_str = '\b \b'*self._substep_cnt
             self._substep_cnt = 0
-            self._pulse_cnt = 0
             if status == 1:  # completed
                 self._update_str += '\033[32m#\033[0m'
             elif status == 0:  # completed
@@ -166,7 +162,7 @@ class DotProgressBar:
             else:  # untracked (no signature)
                 self._update_str += '\033[33m#\033[0m'
         elif type == 'done':
-            self._update_str = '\b \b' * (self._pulse_cnt + self._substep_cnt)
+            self._update_str = '\b \b' * self._substep_cnt
             self._update_str += f'\033[32m]\033[0m {status}\n'
 
         self.update_event.set()
