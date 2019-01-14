@@ -84,89 +84,89 @@ def disconnect_controllers(context=None):
         context.term()
 
 class DotProgressBar:
-    def __init__(self, interval=1):
-        self.interval = interval
+    def __init__(self, context, interval=1):
+        self.context = context
+        self.interval = interval * 1000
 
         self._subprogressbar_size = 25
         self._substep_last_updated = time.time()
 
-        self.update_event = threading.Event()
         self.stop_event = threading.Event()
+        self._substep_cnt = 0
 
-        self._update_str = ''
+        # broker to handle the execution of substeps
+        self.progress_push_socket = self.context.socket(zmq.PUSH)
+        self.progress_port = self.progress_push_socket.bind_to_random_port(
+            'tcp://127.0.0.1')
 
         self.thread = threading.Thread(target=self.run)
         self.thread.start()
 
     def run(self):
+        progress_pull_socket = self.context.socket(zmq.PULL)
+        progress_pull_socket.connect(f'tcp://127.0.0.1:{self.progress_port}')
+
         # leading progress bar
         sys.stderr.write('\033[32m[\033[0m')
         sys.stderr.flush()
 
-        self._subprogressbar_size = 25
-        self._substep_last_updated = time.time()
-
-        self._pulse_cnt = 0
-        self._substep_cnt = 0
-        self._step_cnt = 0
-
+        _pulse_cnt = 0
         while True:
             # no new message, add pulse
             if self.stop_event.is_set():
                 return
-            if not self.update_event.wait(self.interval):
-                if self._pulse_cnt == 10:
-                    sys.stderr.write('\b \b'*self._pulse_cnt)
-                    self._pulse_cnt = 0
+            if not progress_pull_socket.poll(self.interval):
+                if _pulse_cnt == 10:
+                    sys.stderr.write('\b \b'*_pulse_cnt)
+                    _pulse_cnt = 0
                 else:
                     sys.stderr.write('\033[97m.\033[0m')
-                    self._pulse_cnt += 1
+                    _pulse_cnt += 1
                 sys.stderr.flush()
-            elif self._update_str:
+            else:
+                msg = progress_pull_socket.recv().decode()
                 # print update message
-                sys.stderr.write('\b \b'*self._pulse_cnt + self._update_str)
-                self._pulse_cnt = 0
+                sys.stderr.write('\b \b'*_pulse_cnt + msg)
+                _pulse_cnt = 0
                 sys.stderr.flush()
-                self.update_event.clear()
 
     def update(self, type, status=None):
         if type == 'substep_ignored':
             if time.time() - self._substep_last_updated < 1:
                 return
             if self._substep_cnt == self._subprogressbar_size:
-                self._update_str = '\b \b'* self._substep_cnt + '\033[90m.\033[0m'
+                update_str = '\b \b'* self._substep_cnt + '\033[90m.\033[0m'
                 self._substep_cnt = 0
             else:
-                self._update_str = '\033[90m.\033[0m'
+                update_str = '\033[90m.\033[0m'
             self._substep_cnt += 1
             self._substep_last_updated = time.time()
         elif type == 'substep_completed':
             if time.time() - self._substep_last_updated < 1:
                 return
             if self._substep_cnt == self._subprogressbar_size:
-                self._update_str = '\b \b'* self._substep_cnt + '\033[32m.\033[0m'
+                update_str = '\b \b'* self._substep_cnt + '\033[32m.\033[0m'
                 self._substep_cnt = 0
             else:
-                self._update_str = '\033[32m.\033[0m'
+                update_str = '\033[32m.\033[0m'
             self._substep_cnt += 1
             self._substep_last_updated = time.time()
         elif type == 'step_completed':
-            self._update_str = '\b \b'*self._substep_cnt
+            update_str = '\b \b'*self._substep_cnt
             self._substep_cnt = 0
             if status == 1:  # completed
-                self._update_str += '\033[32m#\033[0m'
+                update_str += '\033[32m#\033[0m'
             elif status == 0:  # completed
-                self._update_str += '\033[90m#\033[0m'
+                update_str += '\033[90m#\033[0m'
             elif status > 0:  # in the middle
-                self._update_str += '\033[36m#\033[0m'
+                update_str += '\033[36m#\033[0m'
             else:  # untracked (no signature)
-                self._update_str += '\033[33m#\033[0m'
+                update_str += '\033[33m#\033[0m'
         elif type == 'done':
-            self._update_str = '\b \b' * self._substep_cnt
+            update_str = '\b \b' * self._substep_cnt + f'\033[32m]\033[0m {status}\n'
             self._substep_cnt = 0
-            self._update_str += f'\033[32m]\033[0m {status}\n'
 
-        self.update_event.set()
+        self.progress_push_socket.send(update_str.encode())
 
     def done(self, msg):
         self.update('done', msg)
@@ -495,7 +495,7 @@ class Controller(threading.Thread):
         #poller.register(monitor_socket, zmq.POLLIN)
         if env.verbosity == 1 and env.config['run_mode'] != 'interactive':
             # leading progress bar
-            self._progress_bar = DotProgressBar()
+            self._progress_bar = DotProgressBar(self.context)
 
         try:
             while True:
