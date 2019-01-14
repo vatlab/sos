@@ -163,6 +163,7 @@ class DotProgressBar:
                 self._update_str += '\033[33m#\033[0m'
         elif type == 'done':
             self._update_str = '\b \b' * self._substep_cnt
+            self._substep_cnt = 0
             self._update_str += f'\033[32m]\033[0m {status}\n'
 
         self.update_event.set()
