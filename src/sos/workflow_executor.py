@@ -148,8 +148,8 @@ class ExecutionManager(object):
     def all_done(self) -> bool:
         return not self.procs or all(x is None for x in self.procs)
 
-    def all_failed(self) -> bool:
-        return all(x.in_status('failed') for x in self.procs)
+    # def all_failed(self) -> bool:
+    #     return all(x.in_status('failed') for x in self.procs)
 
     def mark_idle(self, idx: int) -> None:
         self.pool.append(self.procs[idx])
@@ -1167,11 +1167,11 @@ class Base_Executor:
 
                 if manager.all_done():
                     break
-                if manager.all_failed():
-                    steps = list(dict.fromkeys(
-                        [str(x.step) for x in manager.procs]))
-                    raise RuntimeError(
-                        f'Workflow exited due to failed step{"s" if len(steps) > 1 else ""} {", ".join(steps)}.')
+                # if manager.all_failed():
+                #     steps = list(dict.fromkeys(
+                #         [str(x.step) for x in manager.procs]))
+                #     raise RuntimeError(
+                #         f'Workflow exited due to failed step{"s" if len(steps) > 1 else ""} {", ".join(steps)}.')
                 else:
                     time.sleep(0.1)
         except KeyboardInterrupt:
@@ -1281,14 +1281,12 @@ class Base_Executor:
                         self.handle_unavailable_lock(res, dag, runnable)
                     # if the job is failed
                     elif isinstance(res, Exception):
-                        env.logger.error(f'Nested worker is not supposed to receive the exception...')
-                        raise res
-                        # env.logger.debug(f'{i_am()} received an exception')
-                        # runnable._status = 'failed'
-                        # dag.save(env.config['output_dag'])
-                        # exec_error.append(runnable._node_id, res)
-                        # # if this is a node for a running workflow, need to mark it as failed as well
-                        # #                        for proc in procs:
+                        env.logger.debug(f'{i_am()} received an exception')
+                        runnable._status = 'failed'
+                        dag.save(env.config['output_dag'])
+                        exec_error.append(runnable._node_id, res)
+                        # if this is a node for a running workflow, need to mark it as failed as well
+                        #                        for proc in procs:
                         # if isinstance(runnable, dummy_node) and hasattr(runnable, '_pending_workflows'):
                         #     for proc in manager.procs:
                         #         if proc is None:
@@ -1297,6 +1295,7 @@ class Base_Executor:
                         #                 and proc.step._pending_workflow in runnable._pending_workflows:
                         #             proc.set_status('failed')
                         #     dag.save(env.config['output_dag'])
+                        raise exec_error
                     elif '__step_name__' in res:
                         env.logger.debug(f'{i_am()} receive step result ')
                         self.step_completed(res, dag, runnable)
@@ -1365,11 +1364,11 @@ class Base_Executor:
 
                 if manager.all_done():
                     break
-                if manager.all_failed():
-                    steps = list(dict.fromkeys(
-                        [str(x.step) for x in manager.procs]))
-                    raise RuntimeError(
-                        f'Workflow exited due to failed step{"s" if len(steps) > 1 else ""} {", ".join(steps)}.')
+                # if manager.all_failed():
+                #     steps = list(dict.fromkeys(
+                #         [str(x.step) for x in manager.procs]))
+                #     raise RuntimeError(
+                #         f'Workflow exited due to failed step{"s" if len(steps) > 1 else ""} {", ".join(steps)}.')
                 else:
                     time.sleep(0.1)
         except KeyboardInterrupt:
