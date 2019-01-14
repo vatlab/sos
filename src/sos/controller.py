@@ -112,6 +112,8 @@ class DotProgressBar:
 
         while True:
             # no new message, add pulse
+            if self.stop_event.is_set():
+                return
             if not self.update_event.wait(self.interval):
                 if self._pulse_cnt == 10:
                     sys.stderr.write('\b \b'*self._pulse_cnt)
@@ -120,8 +122,6 @@ class DotProgressBar:
                     sys.stderr.write('\033[97m.\033[0m')
                     self._pulse_cnt += 1
                 sys.stderr.flush()
-                if self.stop_event.is_set():
-                    return
             elif self._update_str:
                 # print update message
                 sys.stderr.write(self._update_str)
@@ -130,28 +130,29 @@ class DotProgressBar:
 
     def update(self, type, status=None):
         if type == 'substep_ignored':
-            if time.time() - self._substep_last_updated > 1:
-                if self._substep_cnt == self._subprogressbar_size:
-                    self._update_str = '\b \b'*(self._pulse_cnt + self._substep_cnt)
-                    self._substep_cnt = 0
-                else:
-                    self._update_str = '\b \b'*(self._pulse_cnt)
-                self._update_str += '\033[90m.\033[0m'
-                self._substep_cnt += 1
-                self._pulse_cnt = 0
-                self._substep_last_updated = time.time()
-            else:
-                # do not trigger update event
+            if time.time() - self._substep_last_updated < 1:
                 return
-        elif type == 'substep_completed':
             if self._substep_cnt == self._subprogressbar_size:
                 self._update_str = '\b \b'*(self._pulse_cnt + self._substep_cnt)
                 self._substep_cnt = 0
             else:
-                self._update_str = '\b \b'*(self._pulse_cnt)
+                self._update_str = '\b \b'*self._pulse_cnt
+            self._update_str += '\033[90m.\033[0m'
+            self._substep_cnt += 1
+            self._pulse_cnt = 0
+            self._substep_last_updated = time.time()
+        elif type == 'substep_completed':
+            if time.time() - self._substep_last_updated < 1:
+                return
+            if self._substep_cnt == self._subprogressbar_size:
+                self._update_str = '\b \b'*(self._pulse_cnt + self._substep_cnt)
+                self._substep_cnt = 0
+            else:
+                self._update_str = '\b \b'*self._pulse_cnt
             self._update_str += '\033[32m.\033[0m'
             self._substep_cnt += 1
             self._pulse_cnt = 0
+            self._substep_last_updated = time.time()
         elif type == 'step_completed':
             self._update_str = '\b \b'*(self._pulse_cnt + self._substep_cnt)
             self._substep_cnt = 0
@@ -166,7 +167,7 @@ class DotProgressBar:
                 self._update_str += '\033[33m#\033[0m'
         elif type == 'done':
             self._update_str = '\b \b' * (self._pulse_cnt + self._substep_cnt)
-            self._update_str += f'\033[32m]\033[0m{status}\n'
+            self._update_str += f'\033[32m]\033[0m {status}\n'
 
         self.update_event.set()
 
