@@ -83,6 +83,96 @@ def disconnect_controllers(context=None):
         env.logger.trace(f'terminate context at {os.getpid()}')
         context.term()
 
+class DotProgressBar:
+    def __init__(self, interval=1):
+        self.interval = interval
+
+        self._subprogressbar_size = 25
+        self._substep_last_updated = time.time()
+
+        self.update_event = threading.Event()
+        self.stop_event = threading.Event()
+
+        self._update_str = ''
+
+        self.thread = threading.Thread(target=self.run)
+        self.thread.start()
+
+    def run(self):
+        # leading progress bar
+        sys.stderr.write('\033[32m[\033[0m')
+        sys.stderr.flush()
+
+        self._subprogressbar_size = 25
+        self._substep_last_updated = time.time()
+
+        self._pulse_cnt = 0
+        self._substep_cnt = 0
+        self._step_cnt = 0
+
+        while True:
+            # no new message, add pulse
+            if not self.update_event.wait(self.interval):
+                if self._pulse_cnt == 10:
+                    sys.stderr.write('\b \b'*self._pulse_cnt)
+                    self._pulse_cnt = 0
+                else:
+                    sys.stderr.write('\033[97m.\033[0m')
+                    self._pulse_cnt += 1
+                sys.stderr.flush()
+                if self.stop_event.is_set():
+                    return
+            elif self._update_str:
+                # print update message
+                sys.stderr.write(self._update_str)
+                sys.stderr.flush()
+                self.update_event.clear()
+
+    def update(self, type, status=None):
+        if type == 'substep_ignored':
+            if time.time() - self._substep_last_updated > 1:
+                if self._substep_cnt == self._subprogressbar_size:
+                    self._update_str = '\b \b'*(self._pulse_cnt + self._substep_cnt)
+                    self._substep_cnt = 0
+                else:
+                    self._update_str = '\b \b'*(self._pulse_cnt)
+                self._update_str += '\033[90m.\033[0m'
+                self._substep_cnt += 1
+                self._pulse_cnt = 0
+                self._substep_last_updated = time.time()
+            else:
+                # do not trigger update event
+                return
+        elif type == 'substep_completed':
+            if self._substep_cnt == self._subprogressbar_size:
+                self._update_str = '\b \b'*(self._pulse_cnt + self._substep_cnt)
+                self._substep_cnt = 0
+            else:
+                self._update_str = '\b \b'*(self._pulse_cnt)
+            self._update_str += '\033[32m.\033[0m'
+            self._substep_cnt += 1
+            self._pulse_cnt = 0
+        elif type == 'step_completed':
+            self._update_str = '\b \b'*(self._pulse_cnt + self._substep_cnt)
+            self._substep_cnt = 0
+            self._pulse_cnt = 0
+            if status == 1:  # completed
+                self._update_str += '\033[32m#\033[0m'
+            elif status == 0:  # completed
+                self._update_str += '\033[90m#\033[0m'
+            elif status > 0:  # in the middle
+                self._update_str += '\033[36m#\033[0m'
+            else:  # untracked (no signature)
+                self._update_str += '\033[33m#\033[0m'
+        elif type == 'done':
+            self._update_str = '\b \b' * (self._pulse_cnt + self._substep_cnt)
+            self._update_str += f'\033[32m]\033[0m{status}\n'
+
+        self.update_event.set()
+
+    def done(self, msg):
+        self.update('done', msg)
+        self.stop_event.set()
 
 class Controller(threading.Thread):
     '''This controller is used by both sos and sos-notebook, and there
@@ -107,10 +197,6 @@ class Controller(threading.Thread):
 
         self._completed = defaultdict(int)
         self._ignored = defaultdict(int)
-        self._subprogressbar_cnt = 0
-        # size of sub progress bar
-        self._subprogressbar_size = 25
-        self._subprogressbar_last_updated = time.time()
 
         # completed steps
         self._completed_steps = {}
@@ -187,33 +273,8 @@ class Controller(threading.Thread):
                 elif msg[1] == 'step_completed':
                     self._completed_steps[msg[3]] = msg[4]
                 if env.verbosity == 1 and env.config['run_mode'] != 'interactive':
-                    # remove existing subworkflow
-                    if time.time() - self._subprogressbar_last_updated > 1:
-                        if self._subprogressbar_cnt == self._subprogressbar_size:
-                            sys.stderr.write(
-                                '\b \b' * self._subprogressbar_cnt)
-                            self._subprogressbar_cnt = 0
-                        if msg[1] == 'substep_ignored':
-                            sys.stderr.write(f'\033[90m.\033[0m')
-                            self._subprogressbar_cnt += 1
-                        elif msg[1] == 'substep_completed':
-                            sys.stderr.write(f'\033[32m.\033[0m')
-                            self._subprogressbar_cnt += 1
-                        self._subprogressbar_last_updated = time.time()
-                    if msg[1] == 'step_completed':
-                        if self._subprogressbar_cnt > 0:
-                            sys.stderr.write(
-                                '\b \b' * self._subprogressbar_cnt)
-                            self._subprogressbar_cnt = 0
-                        if msg[2] == 1:  # completed
-                            sys.stderr.write(f'\033[32m#\033[0m')
-                        elif msg[2] == 0:  # completed
-                            sys.stderr.write(f'\033[90m#\033[0m')
-                        elif msg[2] > 0:  # in the middle
-                            sys.stderr.write(f'\033[36m#\033[0m')
-                        else:  # untracked (no signature)
-                            sys.stderr.write(f'\033[33m#\033[0m')
-                    sys.stderr.flush()
+                    # update progress bar
+                    self._progress_bar.update(msg[1], msg[2] if len(msg) > 2 else None)
             else:
                 raise RuntimeError(f'Unrecognized request {msg}')
         except Exception as e:
@@ -284,9 +345,7 @@ class Controller(threading.Thread):
                     completed_text = f'{nCompleted} job{"s" if nCompleted > 1 else ""} completed' if nCompleted else ''
                     ignored_text = f'{nIgnored} job{"s" if nIgnored > 1 else ""} ignored' if nIgnored else ''
                     steps_text = f'{nSteps} step{"s" if nSteps > 1 else ""} processed'
-                    sys.stderr.write('\b \b' * self._subprogressbar_cnt +
-                                     f'\033[32m]\033[0m {steps_text} ({completed_text}{", " if nCompleted and nIgnored else ""}{ignored_text})\n')
-                    sys.stderr.flush()
+                    self._progress_bar.done(f'{steps_text} ({completed_text}{", " if nCompleted and nIgnored else ""}{ignored_text})')
 
                 self.ctl_req_socket.send_pyobj('bye')
 
@@ -438,8 +497,7 @@ class Controller(threading.Thread):
         #poller.register(monitor_socket, zmq.POLLIN)
         if env.verbosity == 1 and env.config['run_mode'] != 'interactive':
             # leading progress bar
-            sys.stderr.write('\033[32m[\033[0m')
-            sys.stderr.flush()
+            self._progress_bar = DotProgressBar()
 
         try:
             while True:
