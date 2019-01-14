@@ -1200,13 +1200,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         return self.remove_targets(self, kept=kept)
 
     def paired_with(self, name, properties):
-        if not is_basic_type(properties):
-            env.logger.warning(f'Failed to set {properties} as it is or contains unsupported data type')
+        # can pair with sos_targets 
+        if not isinstance(properties, sos_targets) and not is_basic_type(properties):
+            env.logger.warning(f'Failed to paired_with with value "{properties}" as it contains unsupported data type')
             return self
         if isinstance(properties, (bool, int, float, str, bytes)):
             for target in self._targets:
                 target.set(name, properties)
-        elif isinstance(properties, (list, tuple)):
+        elif isinstance(properties, (list, tuple, sos_targets)):
             if len(properties) != len(self._targets):
                 raise ValueError(f'Length of provided attributes ({len(properties)}) does not match length of sos_targets ({len(self._targets)})')
             for target, property in zip(self._targets, properties):

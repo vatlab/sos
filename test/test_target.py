@@ -458,10 +458,10 @@ run: expand=True
   touch {_output}
 
 [work_2]
-input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}', paired_with = dict(data=data)
+input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}', paired_with = dict(data1=data)
 output: expand_pattern('{_name}.out2')
 run: expand=True
-  touch {data[0]} {_output}
+  touch {data1[0]} {_output}
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
