@@ -263,14 +263,20 @@ class Base_Executor:
         connect_controllers(env.zmq_context)
 
         try:
+            succ = True
             return self.run_as_master(targets=targets, mode=mode)
+        except:
+            succ = False
         finally:
             # end progress bar when the master workflow stops
             env.logger.trace(f'Stop controller from {os.getpid()}')
-            env.controller_req_socket.send_pyobj(['done'])
+            env.controller_req_socket.send_pyobj(['done', succ])
             env.controller_req_socket.recv()
             env.logger.trace('disconntecting master')
-            disconnect_controllers(env.zmq_context)
+            # if the process is failed, some workers might be killed, resulting
+            # in nonresponseness from the master, and the socket context cannot
+            # be killed in this case.
+            disconnect_controllers(env.zmq_context if succ else None)
             self.controller.join()
             # when the run() function is called again, the controller
             # thread will be start again.
@@ -1031,16 +1037,17 @@ class Base_Executor:
                         runnable._status = 'failed'
                         dag.save(env.config['output_dag'])
                         exec_error.append(runnable._node_id, res)
+                        env.logger.error(res)
                         # if this is a node for a running workflow, need to mark it as failed as well
                         #                        for proc in procs:
-                        if isinstance(runnable, dummy_node) and hasattr(runnable, '_pending_workflows'):
-                            for proc in manager.procs:
-                                if proc is None:
-                                    continue
-                                if proc.is_pending() and hasattr(proc.step, '_pending_workflow') \
-                                        and proc.step._pending_workflow in runnable._pending_workflows:
-                                    proc.set_status('failed')
-                            dag.save(env.config['output_dag'])
+                        # if isinstance(runnable, dummy_node) and hasattr(runnable, '_pending_workflows'):
+                        #     for proc in manager.procs:
+                        #         if proc is None:
+                        #             continue
+                        #         if proc.is_pending() and hasattr(proc.step, '_pending_workflow') \
+                        #                 and proc.step._pending_workflow in runnable._pending_workflows:
+                        #             proc.set_status('failed')
+                        #     dag.save(env.config['output_dag'])
                         raise exec_error
                     elif '__step_name__' in res:
                         env.logger.debug(f'{i_am()} receive step result ')

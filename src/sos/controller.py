@@ -343,7 +343,8 @@ class Controller(threading.Thread):
                     completed_text = f'{nCompleted} job{"s" if nCompleted > 1 else ""} completed' if nCompleted else ''
                     ignored_text = f'{nIgnored} job{"s" if nIgnored > 1 else ""} ignored' if nIgnored else ''
                     steps_text = f'{nSteps} step{"s" if nSteps > 1 else ""} processed'
-                    self._progress_bar.done(f'{steps_text} ({completed_text}{", " if nCompleted and nIgnored else ""}{ignored_text})')
+                    succ = '' if msg[1] else 'Failed with '
+                    self._progress_bar.done(f'{succ}{steps_text} ({completed_text}{", " if nCompleted and nIgnored else ""}{ignored_text})')
 
                 self.ctl_req_socket.send_pyobj('bye')
 
