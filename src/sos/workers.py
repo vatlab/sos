@@ -102,6 +102,7 @@ class SoS_Worker(mp.Process):
                     f'Worker {self.name} completes request {short_repr(work)}')
             except ProcessKilled as e:
                 kill_all_subprocesses(os.getpid())
+                signal.signal(signal.SIGTERM, signal.SIG_DFL)
                 break
             except KeyboardInterrupt:
                 break
