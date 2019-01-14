@@ -8,6 +8,8 @@ import subprocess
 import sys
 import zmq
 import multiprocessing as mp
+import signal
+import psutil
 
 from typing import Any, Dict, Optional
 
@@ -16,6 +18,13 @@ from .eval import SoS_exec
 from .controller import connect_controllers, disconnect_controllers
 from .targets import sos_targets
 from .utils import WorkflowDict, env, get_traceback, load_config_files, short_repr
+from .executor_utils import kill_all_subprocesses
+
+class ProcessKilled(Exception):
+    pass
+
+def signal_handler(signum, frame):
+    raise ProcessKilled()
 
 class SoS_Worker(mp.Process):
     '''
@@ -72,7 +81,7 @@ class SoS_Worker(mp.Process):
     def run(self):
         env.config.update(self.config)
         env.zmq_context = connect_controllers()
-
+        signal.signal(signal.SIGTERM, signal_handler)
         env.master_socket = env.zmq_context.socket(zmq.PAIR)
         env.master_socket.connect(f'tcp://127.0.0.1:{self.port}')
 
@@ -91,6 +100,9 @@ class SoS_Worker(mp.Process):
                     self.run_workflow(*work[1:])
                 env.logger.debug(
                     f'Worker {self.name} completes request {short_repr(work)}')
+            except ProcessKilled as e:
+                kill_all_subprocesses(os.getpid())
+                break
             except KeyboardInterrupt:
                 break
         # Finished
