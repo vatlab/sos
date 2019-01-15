@@ -1095,7 +1095,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def __len__(self):
         return len(self._targets)
 
-    def slice(self, i):
+    def select(self, i):
         # similar to [] but always returns a sos_targets object with appropriate source
         if isinstance(i, str):
             ret = sos_targets()
