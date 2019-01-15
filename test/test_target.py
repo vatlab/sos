@@ -40,8 +40,8 @@ class TestTarget(unittest.TestCase):
         #
         self.temp_files.extend(files)
 
-    def testTargetSource(self):
-        '''Test source of sos_targets'''
+    def testTargetLabel(self):
+        '''Test labels of sos_targets'''
         a = sos_targets('a')
         self.assertEqual(a.labels, [''])
         b = sos_targets(['a', 'b'])
@@ -51,15 +51,15 @@ class TestTarget(unittest.TestCase):
         c.extend(b)
         self.assertEqual(c.labels, ['here', 'here', '', ''])
         #
-        self.assertEqual(c.slice('').labels, ['', ''])
-        self.assertEqual(c.slice('here').labels, ['here', 'here'])
+        self.assertEqual(c.select('').labels, ['', ''])
+        self.assertEqual(c.select('here').labels, ['here', 'here'])
         self.assertEqual(c['here'], [file_target('a1'), file_target('b1')])
         self.assertTrue(isinstance(c['here'], sos_targets))
         #
         # function item
-        self.assertTrue(isinstance(c.slice(1), sos_targets))
-        self.assertEqual(c.slice(1).labels, ['here'])
-        self.assertEqual(c.slice(1), ['b1'])
+        self.assertTrue(isinstance(c.select(1), sos_targets))
+        self.assertEqual(c.select(1).labels, ['here'])
+        self.assertEqual(c.select(1), ['b1'])
         #
         # test slice of groups
         res = sos_targets(a=['a.txt', 'b.txt'], b=['c.txt', 'd.txt'], group_by=1)
