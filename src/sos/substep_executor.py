@@ -177,6 +177,8 @@ def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars
     except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock) as e:
         # stop_if is not considered as an error
         if isinstance(e, StopInputGroup):
+            if e.message:
+                env.logger.info(e.message)
             # we do not really treat this as an exception
             if env.sos_dict['step_output'].undetermined():
                 env.sos_dict.set('_output', reevaluate_output())
