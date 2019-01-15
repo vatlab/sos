@@ -816,7 +816,7 @@ class _sos_group(BaseTarget):
                 self._labels = labels
                 if len(self._indexes) != len(self._labels):
                     raise ValueError('Index and source have different length')
-        elif parent:
+        elif parent is not None:
             self._labels = [parent._labels[x] for x in indexes]
         else:
             raise ValueError('Either labels or indexes should be specified')
@@ -1200,7 +1200,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         return self.remove_targets(self, kept=kept)
 
     def paired_with(self, name, properties):
-        # can pair with sos_targets 
+        # can pair with sos_targets
         if not isinstance(properties, sos_targets) and not is_basic_type(properties):
             env.logger.warning(f'Failed to paired_with with value "{properties}" as it contains unsupported data type')
             return self
