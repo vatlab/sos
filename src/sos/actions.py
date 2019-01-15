@@ -622,6 +622,22 @@ def stop_if(expr, msg='', no_output=False):
         raise StopInputGroup(msg=msg, keep_output=not no_output)
     return 0
 
+@SoS_Action(acceptable_args=['expr', 'msg'])
+def done_if(expr, msg=''):
+    '''Assuming that output has already been generated and stop
+     executing the rest of the substep'''
+    if expr:
+        raise StopInputGroup(msg=msg, keep_output=True)
+    return 0
+
+@SoS_Action(acceptable_args=['expr', 'msg', 'no_output'])
+def skip_if(expr, msg=''):
+    '''Skip the current substep and set _output to empty. Output
+    will be removed if already generated.'''
+    if expr:
+        raise StopInputGroup(msg=msg, keep_output=False)
+    return 0
+
 #
 # download file with progress bar
 #

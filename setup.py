@@ -142,6 +142,8 @@ sos_run = sos.actions:sos_run
 fail_if = sos.actions:fail_if
 warn_if = sos.actions:warn_if
 stop_if = sos.actions:stop_if
+done_if = sos.actions:done_if
+skip_if = sos.actions:skip_if
 download = sos.actions:download
 run = sos.actions:run
 
