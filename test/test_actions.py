@@ -243,6 +243,74 @@ assert(step_input.contains('test_stop_if_1.txt'))
         self.assertTrue(os.path.isfile('test_stop_if_1.txt'))
 
 
+    def testSkipIf(self):
+        '''Test action stop_if'''
+        script = SoS_Script(r'''
+[0: shared='result']
+rep = range(20)
+result = []
+input: for_each='rep'
+
+skip_if(_rep > 10)
+result.append(_rep)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertEqual(env.sos_dict['result'], [
+                         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+
+        # stop_if should not be treated as error so the previously
+        # generated output file will be removed
+        for rep in range(2):
+            file = f'test_stop_if_{rep}.txt'
+            if os.path.isfile(file):
+                os.remove(file)
+        script = SoS_Script(r'''
+[10]
+rep = range(2)
+input: for_each='rep'
+output: f'test_stop_if_{_rep}.txt'
+
+_output.touch()
+skip_if(_rep == 1)
+
+[20]
+assert(step_input.contains('test_stop_if_0.txt'))
+assert(not step_input.contains('test_stop_if_1.txt'))
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertTrue(os.path.isfile('test_stop_if_0.txt'))
+        self.assertFalse(os.path.isfile('test_stop_if_1.txt'))
+        #
+
+    def testDoneIf(self):
+        'Test action done_if'
+        for rep in range(2):
+            file = f'test_done_if_{rep}.txt'
+            if os.path.isfile(file):
+                os.remove(file)
+        script = SoS_Script(r'''
+[10]
+rep = range(2)
+input: for_each='rep'
+output: f'test_done_if_{_rep}.txt'
+
+_output.touch()
+done_if(_rep == 1)
+
+[20]
+assert(step_input.contains('test_done_if_0.txt'))
+assert(step_input.contains('test_done_if_1.txt'))
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertTrue(os.path.isfile('test_done_if_0.txt'))
+        self.assertTrue(os.path.isfile('test_done_if_1.txt'))
+
+
     def testRun(self):
         '''Test action run'''
         script = SoS_Script(r'''
