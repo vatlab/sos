@@ -19,7 +19,7 @@ from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS, SOS_TARGETS_OPTIONS
                      SOS_OUTPUT_OPTIONS)
 from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
                       UnknownTarget, dynamic, file_target,
-                      sos_targets, sos_step)
+                      sos_targets, sos_step, textMD5)
 from .tasks import MasterTaskParams, TaskFile
 from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
                     get_traceback, short_repr)
@@ -692,7 +692,8 @@ class Base_Step_Executor:
         #               actions dynamically.
         env.sos_dict.set('step_name', self.step.step_name())
         self.log('start')
-        env.sos_dict.set('step_id', hash((env.sos_dict["workflow_id"], env.sos_dict["step_name"], self.step.md5)))
+        env.sos_dict.set('step_id', textMD5(f'{env.sos_dict["workflow_id"]} {env.sos_dict["step_name"]} {self.step.md5}'))
+        env.sos_dict.set('master_id', env.config['master_id'])
         # used by nested workflow
         env.sos_dict.set('__step_context__', self.step.context)
 

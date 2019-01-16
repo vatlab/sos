@@ -182,6 +182,13 @@ output: add_a([f"{x}_{y}_process.txt" for x,y in zip(name, model)])
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['SOS_VERSION'], __version__)
+        self.assertTrue(isinstance(env.sos_dict['CONFIG'], dict))
+        #
+        with open('local_cfg.yml', 'w') as cfg:
+            cfg.write('my_config: 5')
+        #
+        Base_Executor(wf, config={'config_file': 'local_cfg.yml'}).run()
+        self.assertEqual(env.sos_dict['CONFIG']['my_config'], 5)
 
     def testFuncDef(self):
         '''Test defintion of function that can be used by other steps'''
@@ -2004,6 +2011,30 @@ _output.touch()
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
+
+    def testStepIDVars(self):
+        '''Test variables in a step'''
+        script = SoS_Script('''
+[nested]
+print(f'Workflow {workflow_id}: step name={step_name}')
+print(f'Workflow {workflow_id}: step id={step_id}')
+print(f'Workflow {workflow_id}: workflow id={workflow_id}')
+print(f'Workflow {workflow_id}: master id={master_id}')
+assert step_name == 'nested'
+assert workflow_id != master_id
+
+[default]
+print(f'Workflow {workflow_id}: step name={step_name}')
+print(f'Workflow {workflow_id}: step id={step_id}')
+print(f'Workflow {workflow_id}: workflow id={workflow_id}')
+print(f'Workflow {workflow_id}: master id={master_id}')
+assert step_name == 'default'
+assert workflow_id == master_id
+sos_run('nested')
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
 
 if __name__ == '__main__':
     unittest.main()
