@@ -1729,6 +1729,31 @@ output: sos_step('A')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
 
+
+    def testSoSVariableInInput(self):
+        '''Test output_from in input statement'''
+        script = SoS_Script('''
+[A]
+a=1
+
+[default]
+input: sos_variable('a')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+
+    def testSoSVariableInOutput(self):
+        '''Test output_from in output statement'''
+        script = SoS_Script('''
+[A]
+a = 1
+
+[default]
+output: sos_variable('a')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
     # unittest.TextTestRunner(, suite).run()

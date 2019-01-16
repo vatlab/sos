@@ -71,6 +71,9 @@ def no_named_output(*args, **kwargs):
 def no_sos_step(*args, **kwargs):
     raise SyntaxError('Target sos_step can only be used in depends statements')
 
+def no_sos_variable(*args, **kwargs):
+    raise SyntaxError('Target sos_variable can only be used in depends statements')
+
 def get_changed_vars(section: SoS_Step):
     '''changed vars are variables that are "shared" and therefore "provides"
     to others '''
@@ -231,6 +234,7 @@ def get_step_input(section, default_input):
             'output_from': lambda *args, **kwargs: None,
             'named_output': lambda *args, **kwargs: None,
             'sos_step': no_sos_step,
+            'sos_variable': no_sos_variable,
             })
         args, kwargs = SoS_eval(f'__null_func__({stmt})',
             extra_dict=env.sos_dict._dict)
@@ -273,6 +277,7 @@ def get_step_output(section, default_output):
             'output_from': no_output_from,
             'named_output': no_named_output,
             'sos_step': no_sos_step,
+            'sos_variable': no_sos_variable,
             })
         args, kwargs = SoS_eval(f'__null_func__({value})',
             extra_dict=env.sos_dict._dict)
