@@ -172,7 +172,6 @@ def get_step_depends(section):
         try:
             svars = ['output_from', 'named_output']
             old_values = {x:env.sos_dict._dict[x] for x in svars if x in env.sos_dict._dict}
-            env.logger.warning(f" before dd {env.sos_dict['sos_variable']}")
             env.sos_dict._dict.update({
                 'output_from': no_output_from,
                 'named_output': no_named_output
