@@ -50,7 +50,8 @@ SoS 0.18.0
 * [sos#1115](https://github.com/vatlab/SoS/issues/1115): Function `output_from` and `named_output` to support named inputs and outputs, among other new features summarized in this ticket.
 * [sos#1120](https://github.com/vatlab/SoS/issues/1120): Allow paremeters `group_by`, `paired_with` etc for functions `output_from` and `named_output`.
 * [sos#1125](https://github.com/vatlab/SoS/issues/1125): Set `concurrent=True` as default for substep execution.
-* [sos#1132](https://github.com/vatlab/SoS/issues/1132): Deprecate section option `skip`
+* [sos#1132](https://github.com/vatlab/SoS/issues/1132): Deprecate action `stop_if` and replace it with `done_if` and `skip_if`
+* [sos#1175](https://github.com/vatlab/SoS/issues/1175): Enforce the use of `sos_variable` to import shared variable in a step
 
 SoS Notebook 0.18.0
 * [sos-notebook#150](https://github.com/vatlab/sos-notebook/issues/150): A new side panel that works in the same fashion as JupyterLab's console window.
