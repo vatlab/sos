@@ -83,7 +83,7 @@ def __named_output__(name, group_by=None, paired_with=None, pattern=None,
     env.controller_req_socket.send_pyobj(['named_output', name])
     targets = env.controller_req_socket.recv_pyobj()
     if targets is None:
-        env.logger.warning(f'named_output("name") is not found')
+        env.logger.warning(f'named_output("{name}") is not found')
         return sos_targets([])
 
     if group_by or paired_with or pattern or group_with or for_each:
