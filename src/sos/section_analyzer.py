@@ -62,6 +62,12 @@ def find_statement(section, name):
         raise RuntimeError(
             f'More than one step {name} statement are specified in step {section.step_name()}')
 
+def no_output_from(*args, **kwargs):
+    raise SyntaxError('Function output_from can only be used in input statements')
+
+def no_named_output(*args, **kwargs):
+    raise SyntaxError('Function named_output can only be used in input statements')
+
 def get_changed_vars(section: SoS_Step):
     '''changed vars are variables that are "shared" and therefore "provides"
     to others '''
@@ -187,12 +193,20 @@ def get_step_depends(section):
     if depends_idx is not None:
         value = section.statements[depends_idx][2]
         try:
+            env.sos_dict._dict.update({
+                'output_from': no_output_from,
+                'named_output': no_named_output
+                })
             args, kwargs = SoS_eval(f'__null_func__({value})',
                 extra_dict=env.sos_dict._dict)
+            env.sos_dict._dict.pop('output_from')
+            env.sos_dict._dict.pop('named_output')
             if any(isinstance(x, (dynamic, remote)) for x in args):
                 step_depends = sos_targets()
             else:
                 step_depends.extend(sos_targets(*args))
+        except SyntaxError as e:
+            raise
         except Exception as e:
             pass
             # env.logger.debug(f"Args {value} cannot be determined: {e}")
@@ -249,10 +263,18 @@ def get_step_output(section, default_output):
     value = section.statements[output_idx][2]
     # output, depends, and process can be processed multiple times
     try:
+        env.sos_dict._dict.update({
+            'output_from': no_output_from,
+            'named_output': no_named_output
+            })
         args, kwargs = SoS_eval(f'__null_func__({value})',
             extra_dict=env.sos_dict._dict)
+        env.sos_dict._dict.pop('output_from')
+        env.sos_dict._dict.pop('named_output')
         if not any(isinstance(x, (dynamic, remote)) for x in args):
             step_output = sos_targets(*args, **{x:y for x,y in kwargs.items() if x not in SOS_TARGETS_OPTIONS})
+    except SyntaxError:
+        raise
     except Exception as e:
         pass
         # env.logger.debug(f"Args {value} cannot be determined: {e}")

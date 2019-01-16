@@ -1651,6 +1651,57 @@ with open(_output, 'w') as out:
         Base_Executor(wf).run()
         self.assertTrue(open('c.txt').read(), 'a.txt\nb.txt\n')
 
+    def testNamedOutputInDepends(self):
+        '''Test named_output in depends statement'''
+        script = SoS_Script('''
+[A]
+output: A='a.txt'
+_output.touch()
+
+[default]
+dpends: named_output('A')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+
+    def testOutputFromInDepends(self):
+        '''Test output_from in depends statement'''
+        script = SoS_Script('''
+[A]
+output: A='a.txt'
+_output.touch()
+
+[default]
+dpends: output_from('A')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+
+    def testNamedOutputInOutput(self):
+        '''Test named_output in output statement'''
+        script = SoS_Script('''
+[A]
+output: A='a.txt'
+_output.touch()
+
+[default]
+output: named_output('A')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+
+    def testOutputFromInOutput(self):
+        '''Test output_from in output statement'''
+        script = SoS_Script('''
+[A]
+output: A='a.txt'
+_output.touch()
+
+[default]
+output: output_from('A')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
