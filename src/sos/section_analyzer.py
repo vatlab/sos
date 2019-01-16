@@ -102,47 +102,18 @@ def get_changed_vars(section: SoS_Step):
     return changed_vars
 
 def get_environ_vars(section):
-    # environ variables are variables that are needed in the step
-    # and should be passed to the step, but it should not trigger
-    # dependency. The reason why it is needed is because if an environ
-    # var is "shared" by another step, then this step should be dependent
-    # upon that step. However, this is only implement for "forward-steps"
+    # environ variables are variables should be inserted from outside
+    # which is basically the sos_variable(var)
     environ_vars = set()
-    before_input = True
-    for statement in section.statements:
-        if statement[0] in ('!', '='):
-            if before_input:
-                environ_vars |= accessed_vars(statement[1])
-            continue
-        environ_vars |= accessed_vars(statement[2])
-        # there is only nasty problem here. With the old paird_with etc
-        # they accept parameter name, not parameter, so we will need to
-        # get the value of the parameters
-        if statement[1] != 'input':
-            continue
-        else:
-            before_input = False
-        if 'paired_with' in statement[2]:
-            try:
-                pws = get_names_of_param('paired_with', statement[2],  extra_dict=env.sos_dict._dict)
-                environ_vars |= set(pws)
-            except Exception as e:
-                raise ValueError(f'Failed to parse parameter paired_with: {e}')
-        if 'group_with' in statement[2]:
-            try:
-                pws = get_names_of_param('group_with', statement[2], extra_dict=env.sos_dict._dict)
-                environ_vars |= set(pws)
-            except Exception as e:
-                raise ValueError(f'Failed to parse parameter group_with: {e}')
-        if 'for_each' in statement[2]:
-            try:
-                pws = get_names_of_param('for_each', statement[2], extra_dict=env.sos_dict._dict)
-                for pw in pws:
-                    environ_vars |= set(pw.split(','))
-            except Exception as e:
-                raise ValueError(f'Failed to parse parameter for_each: {e}')
-    return {x for x in environ_vars if not x.startswith('__')}
-
+    depends_idx = find_statement(section, 'depends')
+    if depends_idx is not None:
+        value = section.statements[depends_idx][2]
+        args = get_param_of_function('sos_variable', value, extra_dict=env.sos_dict._dict)
+        for arg in args:
+            if len(arg) == 2:
+                raise SyntaxError('sos_variable does not accept keyword argument')
+            environ_vars.add(arg[0])
+    return environ_vars
 
 def get_signature_vars(section):
     '''Get signature variables which are variables that will be

@@ -1704,7 +1704,7 @@ output: output_from('A')
         self.assertRaises(Exception, Base_Executor(wf).run)
 
     def testSoSStepInInput(self):
-        '''Test output_from in input statement'''
+        '''Test sos_step in input statement'''
         script = SoS_Script('''
 [A]
 output: A='a.txt'
@@ -1717,7 +1717,7 @@ input: sos_step('A')
         self.assertRaises(Exception, Base_Executor(wf).run)
 
     def testSoSStepInOutput(self):
-        '''Test output_from in output statement'''
+        '''Test sos_step in output statement'''
         script = SoS_Script('''
 [A]
 output: A='a.txt'
@@ -1731,7 +1731,7 @@ output: sos_step('A')
 
 
     def testSoSVariableInInput(self):
-        '''Test output_from in input statement'''
+        '''Test sos_variable in input statement'''
         script = SoS_Script('''
 [A]
 a=1
@@ -1743,7 +1743,7 @@ input: sos_variable('a')
         self.assertRaises(Exception, Base_Executor(wf).run)
 
     def testSoSVariableInOutput(self):
-        '''Test output_from in output statement'''
+        '''Test sos_variable in output statement'''
         script = SoS_Script('''
 [A]
 a = 1
@@ -1753,6 +1753,20 @@ output: sos_variable('a')
 ''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
+
+
+    def testSoSVariableWithKeywordargument(self):
+        '''Test output_from in output statement'''
+        script = SoS_Script('''
+[A]
+a = 1
+
+[default]
+depends: sos_variable(var='a')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
