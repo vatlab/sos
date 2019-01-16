@@ -1703,6 +1703,32 @@ output: output_from('A')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
 
+    def testSoSStepInInput(self):
+        '''Test output_from in input statement'''
+        script = SoS_Script('''
+[A]
+output: A='a.txt'
+_output.touch()
+
+[default]
+input: sos_step('A')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+
+    def testSoSStepInOutput(self):
+        '''Test output_from in output statement'''
+        script = SoS_Script('''
+[A]
+output: A='a.txt'
+_output.touch()
+
+[default]
+output: sos_step('A')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
     # unittest.TextTestRunner(, suite).run()

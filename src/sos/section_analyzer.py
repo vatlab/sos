@@ -68,6 +68,9 @@ def no_output_from(*args, **kwargs):
 def no_named_output(*args, **kwargs):
     raise SyntaxError('Function named_output can only be used in input statements')
 
+def no_sos_step(*args, **kwargs):
+    raise SyntaxError('Target sos_step can only be used in depends statements')
+
 def get_changed_vars(section: SoS_Step):
     '''changed vars are variables that are "shared" and therefore "provides"
     to others '''
@@ -226,7 +229,8 @@ def get_step_input(section, default_input):
     try:
         env.sos_dict._dict.update({
             'output_from': lambda *args, **kwargs: None,
-            'named_output': lambda *args, **kwargs: None
+            'named_output': lambda *args, **kwargs: None,
+            'sos_step': no_sos_step,
             })
         args, kwargs = SoS_eval(f'__null_func__({stmt})',
             extra_dict=env.sos_dict._dict)
@@ -239,6 +243,8 @@ def get_step_input(section, default_input):
                 step_input = default_input
         elif not any(isinstance(x, (dynamic, remote)) for x in args):
             step_input = sos_targets(*args)
+    except SyntaxError:
+        raise
     except Exception as e:
         # if anything is not evalutable, keep Undetermined
         env.logger.debug(
@@ -265,7 +271,8 @@ def get_step_output(section, default_output):
     try:
         env.sos_dict._dict.update({
             'output_from': no_output_from,
-            'named_output': no_named_output
+            'named_output': no_named_output,
+            'sos_step': no_sos_step,
             })
         args, kwargs = SoS_eval(f'__null_func__({value})',
             extra_dict=env.sos_dict._dict)
