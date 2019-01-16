@@ -812,17 +812,20 @@ run:
 
 [A_3]
 input: p
+depends: sos_variable('p')
 
 run:
     sleep 0
 
 [A_4]
 input: p
+depends: sos_variable('p')
 run:
     sleep 0
 
 [A_5]
 input: dynamic(p)
+depends: sos_variable('p')
 ''')
         wf = script.workflow('A')
         dag = Base_Executor(wf).initialize_dag()
@@ -837,7 +840,6 @@ A_5;
 A_1 -> A_4;
 A_1 -> A_3;
 A_1 -> A_5;
-A_4 -> A_5;
 }
 ''')
         env.max_jobs = 3

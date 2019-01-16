@@ -1375,7 +1375,7 @@ run: expand=True
 	echo {_input} > 2.txt
 
 [3]
-depends: ifile
+depends: sos_variable('ifile'), sos_variable('dfile'), ifile
 input: dfile
 output: '3.txt'
 run: expand=True
@@ -1444,7 +1444,7 @@ run: expand=True
 	echo {_input} > 2.txt
 
 [3]
-depends: ifile
+depends: ifile, sos_variable('ifile'), sos_variable('dfile')
 input: dfile
 output: '3.txt'
 run: expand=True
@@ -1472,7 +1472,7 @@ run: expand=True
 	echo {_input} > 2.txt
 
 [3]
-depends: ifile
+depends: ifile, sos_variable('ifile'), sos_variable('dfile')
 input: dfile
 output: '4.txt'
 run: expand=True

@@ -170,14 +170,15 @@ def get_step_depends(section):
     if depends_idx is not None:
         value = section.statements[depends_idx][2]
         try:
+            svars = ['output_from', 'named_output']
+            old_values = {x:env.sos_dict._dict[x] for x in svars if x in env.sos_dict._dict}
+            env.logger.warning(f" before dd {env.sos_dict['sos_variable']}")
             env.sos_dict._dict.update({
                 'output_from': no_output_from,
                 'named_output': no_named_output
                 })
             args, kwargs = SoS_eval(f'__null_func__({value})',
                 extra_dict=env.sos_dict._dict)
-            env.sos_dict._dict.pop('output_from')
-            env.sos_dict._dict.pop('named_output')
             if any(isinstance(x, (dynamic, remote)) for x in args):
                 step_depends = sos_targets()
             else:
@@ -186,7 +187,10 @@ def get_step_depends(section):
             raise
         except Exception as e:
             pass
-            # env.logger.debug(f"Args {value} cannot be determined: {e}")
+        finally:
+            [env.sos_dict._dict.pop(x) for x in svars]
+            env.sos_dict._dict.update(old_values)
+    # env.logger.debug(f"Args {value} cannot be determined: {e}")
     return step_depends
 
 def get_step_input(section, default_input):
@@ -201,6 +205,8 @@ def get_step_input(section, default_input):
     # input statement
     stmt = section.statements[input_idx][2]
     try:
+        svars = ['output_from', 'named_output', 'sos_step', 'sos_variable']
+        old_values = {x:env.sos_dict._dict[x] for x in svars if x in env.sos_dict._dict}
         env.sos_dict._dict.update({
             'output_from': lambda *args, **kwargs: None,
             'named_output': lambda *args, **kwargs: None,
@@ -209,8 +215,6 @@ def get_step_input(section, default_input):
             })
         args, kwargs = SoS_eval(f'__null_func__({stmt})',
             extra_dict=env.sos_dict._dict)
-        env.sos_dict._dict.pop('output_from')
-        env.sos_dict._dict.pop('named_output')
         if not args:
             if default_input is None:
                 step_input = sos_targets()
@@ -226,6 +230,9 @@ def get_step_input(section, default_input):
             f'Input of step {section.name if section.index is None else f"{section.name}_{section.index}"} is set to Undertermined: {e}')
         # expression ...
         step_input = sos_targets(_undetermined=stmt)
+    finally:
+        [env.sos_dict._dict.pop(x) for x in svars]
+        env.sos_dict._dict.update(old_values)
     return step_input
 
 def get_step_output(section, default_output):
@@ -244,6 +251,8 @@ def get_step_output(section, default_output):
     value = section.statements[output_idx][2]
     # output, depends, and process can be processed multiple times
     try:
+        svars = ['output_from', 'named_output', 'sos_step', 'sos_variable']
+        old_values = {x:env.sos_dict._dict[x] for x in svars if x in env.sos_dict._dict}
         env.sos_dict._dict.update({
             'output_from': no_output_from,
             'named_output': no_named_output,
@@ -252,8 +261,6 @@ def get_step_output(section, default_output):
             })
         args, kwargs = SoS_eval(f'__null_func__({value})',
             extra_dict=env.sos_dict._dict)
-        env.sos_dict._dict.pop('output_from')
-        env.sos_dict._dict.pop('named_output')
         if not any(isinstance(x, (dynamic, remote)) for x in args):
             step_output = sos_targets(*args, **{x:y for x,y in kwargs.items() if x not in SOS_TARGETS_OPTIONS})
     except SyntaxError:
@@ -261,6 +268,9 @@ def get_step_output(section, default_output):
     except Exception as e:
         pass
         # env.logger.debug(f"Args {value} cannot be determined: {e}")
+    finally:
+        [env.sos_dict._dict.pop(x) for x in svars]
+        env.sos_dict._dict.update(old_values)
 
     if 'provides' in section.options and default_output is not None and step_output.valid():
         for out in default_output:

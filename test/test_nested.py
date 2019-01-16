@@ -165,6 +165,7 @@ executed.append(step_name)
 [c_0:shared='executed']
 executed.append(step_name)
 [c_1:shared='executed']
+depends: sos_variable('executed')
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a:2', shared='executed')
@@ -186,6 +187,7 @@ executed.append(step_name)
 [c_0:shared='executed']
 executed.append(step_name)
 [c_1:shared='executed']
+depends: sos_variable('executed')
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a:2', shared='executed')
@@ -233,6 +235,7 @@ sos_run('a:1-2', shared='executed')
 [c_0:shared='executed']
 executed.append(step_name)
 [c_1:shared='executed']
+depends: sos_variable('executed')
 executed.append(step_name)
 input: 'a.txt'
 sos_run('a+b', shared='executed')
