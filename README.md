@@ -46,6 +46,11 @@ other kernels. Please refer to [the installation page of sos website](https://va
 
 ### Change Log of SoS and SoS Notebook
 
+SoS Notebook 0.18.1
+* [sos-notebook#178](https://github.com/vatlab/sos-notebook/issues/178): Allow adding `&` to the end of magics `%run`, `%sosrun`, and `%runfile` to execute workflow in background.
+* [sos-notebook#179](https://github.com/vatlab/sos-notebook/issues/179): Remove magic `%rerun` and add magic `%runfile`
+* [sos-notebook#180](https://github.com/vatlab/sos-notebook/issues/180): Add option `-r` to `%save` to execute the cell after saving it.
+
 SoS 0.18.0
 * [sos#1115](https://github.com/vatlab/SoS/issues/1115): Function `output_from` and `named_output` to support named inputs and outputs, among other new features summarized in this ticket.
 * [sos#1120](https://github.com/vatlab/SoS/issues/1120): Allow paremeters `group_by`, `paired_with` etc for functions `output_from` and `named_output`.
