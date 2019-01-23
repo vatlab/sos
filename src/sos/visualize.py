@@ -324,6 +324,7 @@ class Visualizer:
         code = """
 <div class='scatterplot_container'>
 <div class='""" + class_name + """' id='dataframe_scatterplot_""" + tid + """' width='""" + args.width + """' height='""" + args.height + """'></div>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 <script language="javascript" type="text/javascript" src="https://www.flotcharts.org/flot/jquery.flot.js"></script>
 <script>
     var options = """ + json.dumps(options) + """;""" + optfunc + """
