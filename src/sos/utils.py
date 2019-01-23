@@ -1063,52 +1063,47 @@ class TimeoutInterProcessLock(fasteners.InterProcessLock):
 
 def load_config_files(filename=None):
     cfg = {}
-    config_lock = os.path.join(env.temp_dir, 'sos_config.lck')
     # site configuration file
     sos_config_file = os.path.join(
         os.path.split(__file__)[0], 'site_config.yml')
     if os.path.isfile(sos_config_file):
-        with TimeoutInterProcessLock(config_lock):
-            try:
-                with open(sos_config_file) as config:
-                    cfg = yaml.safe_load(config)
-            except Exception as e:
-                raise RuntimeError(
-                    f'Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})')
+        try:
+            with open(sos_config_file) as config:
+                cfg = yaml.safe_load(config)
+        except Exception as e:
+            raise RuntimeError(
+                f'Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})')
 
     # global site file
     sos_config_file = os.path.join(
         os.path.expanduser('~'), '.sos', 'hosts.yml')
     if os.path.isfile(sos_config_file):
-        with TimeoutInterProcessLock(config_lock):
-            try:
-                with open(sos_config_file) as config:
-                    dict_merge(cfg, yaml.safe_load(config))
-            except Exception as e:
-                raise RuntimeError(
-                    f'Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})')
+        try:
+            with open(sos_config_file) as config:
+                dict_merge(cfg, yaml.safe_load(config))
+        except Exception as e:
+            raise RuntimeError(
+                f'Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})')
     # global config file
     sos_config_file = os.path.join(
         os.path.expanduser('~'), '.sos', 'config.yml')
     if os.path.isfile(sos_config_file):
-        with TimeoutInterProcessLock(config_lock):
-            try:
-                with open(sos_config_file) as config:
-                    dict_merge(cfg, yaml.safe_load(config))
-            except Exception as e:
-                raise RuntimeError(
-                    f'Failed to parse global sos config file {sos_config_file}, is it in YAML/JSON format? ({e})')
+        try:
+            with open(sos_config_file) as config:
+                dict_merge(cfg, yaml.safe_load(config))
+        except Exception as e:
+            raise RuntimeError(
+                f'Failed to parse global sos config file {sos_config_file}, is it in YAML/JSON format? ({e})')
     # user-specified configuration file.
     if filename is not None:
         if not os.path.isfile(os.path.expanduser(filename)):
             raise RuntimeError(f'Config file {filename} not found')
-        with TimeoutInterProcessLock(config_lock):
-            try:
-                with open(os.path.expanduser(filename)) as config:
-                    dict_merge(cfg, yaml.safe_load(config))
-            except Exception as e:
-                raise RuntimeError(
-                    f'Failed to parse config file {filename}, is it in YAML/JSON format? ({e})')
+        try:
+            with open(os.path.expanduser(filename)) as config:
+                dict_merge(cfg, yaml.safe_load(config))
+        except Exception as e:
+            raise RuntimeError(
+                f'Failed to parse config file {filename}, is it in YAML/JSON format? ({e})')
     if 'user_name' not in cfg:
         cfg['user_name'] = getpass.getuser().lower()
     env.sos_dict.set('CONFIG', cfg)
