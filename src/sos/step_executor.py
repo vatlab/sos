@@ -357,11 +357,7 @@ class Base_Step_Executor:
             raise ValueError(r"Depends needs to handle undetermined")
 
         env.sos_dict.set('_depends', dfiles)
-        if env.sos_dict['step_depends'] is None:
-            env.sos_dict.set('step_depends', dfiles)
-        # dependent files can overlap
-        elif env.sos_dict['step_depends'] != dfiles:
-            env.sos_dict['step_depends'].extend(dfiles)
+        env.sos_dict.set('step_depends', dfiles)
 
     def process_output_group_with(self, group_with):
         # group_with is applied to step_output so for each _output is applies
@@ -865,6 +861,8 @@ class Base_Step_Executor:
         # signatures of each index, which can remain to be None if no output
         # is defined.
         self.output_groups = [sos_targets([]) for x in self._substeps]
+        self.depends_groups = [sos_targets([]) for x in self._substeps]
+
         # used to prevent overlapping output from substeps
         self._all_outputs = set()
         self._subworkflow_results = []
@@ -987,6 +985,7 @@ class Base_Step_Executor:
                                     dfiles = expand_depends_files(*args)
                                     # dfiles can be Undetermined
                                     self.process_depends_args(dfiles, **kwargs)
+                                    self.depends_groups[idx] = env.sos_dict['_depends']
                                     self.log('_depends')
                                 except Exception as e:
                                     env.logger.info(e)
@@ -1278,6 +1277,7 @@ class Base_Step_Executor:
             # this is the final version of the output but we do maintain output
             # during the execution of step, for compatibility.
             env.sos_dict.set('step_output', sos_targets([])._add_groups(self.output_groups))
+            env.sos_dict.set('step_depends', sos_targets([])._add_groups(self.depends_groups))
 
             # if there exists an option shared, the variable would be treated as
             # provides=sos_variable(), and then as step_output

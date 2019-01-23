@@ -979,6 +979,31 @@ counter += 1
         self.assertEqual(env.sos_dict['counter'], 2)
         self.assertEqual(env.sos_dict['step'], ['a.txt.bak', 'b.txt.bak'])
 
+    def testDependsFromInput(self):
+        '''Test deriving dependent files from input files'''
+        self.touch(['a.txt', 'b.txt'])
+        for f in ('a.txt.bak', 'b.txt.bak'):
+            if os.path.isfile(f):
+                os.remove(f)
+        script = SoS_Script(r"""
+
+[bak: provides='{file}.bak']
+_output.touch()
+
+[0: shared={'counter': 'counter', 'step':'step_depends'}]
+counter = 0
+
+input: 'a.txt', 'b.txt', group_by='single'
+depends: _input[0] + '.bak'
+counter += 1
+""")
+        wf = script.workflow()
+        Base_Executor(wf, config={'sig_mode': 'force'}).run(mode='run')
+        self.assertEqual(env.sos_dict['counter'], 2)
+        self.assertEqual(env.sos_dict['step'], ['a.txt.bak', 'b.txt.bak'])
+        self.assertEqual(env.sos_dict['step'].groups, [['a.txt.bak'],
+            ['b.txt.bak']])
+
     def testLocalNamespace(self):
         '''Test if steps are well separated.'''
         # interctive mode behave differently
