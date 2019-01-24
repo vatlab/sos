@@ -8,7 +8,7 @@
       <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
       <title>{{workflow_name}}</title>
       <style type="text/css">
-         {% include "sos_report.css" %}
+         {% include "parts/sos_report.css" %}
       </style>
    </head>
    <body>
@@ -298,7 +298,7 @@
       <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.38.0/mode/julia/julia.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.38.0/mode/markdown/markdown.js"></script>
       <script>
-         {% include 'sos-mode.js' %}
+         {% include 'parts/sos-mode.js' %}
       </script>
       <script>
          function timeElapsed(start_date)

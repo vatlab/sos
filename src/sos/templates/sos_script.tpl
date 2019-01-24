@@ -1,3 +1,5 @@
+{% import 'parts/hover_doc.tpl' as doc %}
+
 <!DOCTYPE html>
 <html lang="en">
    <head>
@@ -10,8 +12,9 @@
       <link href="https://use.fontawesome.com/releases/v5.0.6/css/all.css" rel="stylesheet" type="text/css">
       <title>{{workflow_name}}</title>
       <style type="text/css">
-         {% include "sos_report.css" %}
+         {% include "parts/sos_report.css" %}
       </style>
+      {{ doc.css() }}
    </head>
    <body>
       <h2 class='mt-0'>{{basename}}
@@ -52,10 +55,11 @@
       <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.38.0/mode/julia/julia.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.38.0/mode/markdown/markdown.js"></script>
       <script>
-         {% include 'sos-mode.js' %}
+         {% include 'parts/sos-mode.js' %}
       </script>
+      {{ doc.js() }}
       <script>
-         var editor = CodeMirror.fromTextArea(document.getElementById("source-code"), {
+         CodeMirror.fromTextArea(document.getElementById("source-code"), {
            lineNumbers: true,
            styleActiveLine: true,
            matchBrackets: true,
@@ -63,6 +67,7 @@
            theme: '{{ theme }}',
            mode: 'sos'
          });
+         add_hoverdoc();
       </script>
    </body>
 </html>
