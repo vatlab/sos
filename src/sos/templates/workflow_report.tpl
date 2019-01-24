@@ -1,3 +1,5 @@
+{% import 'parts/hover_doc.tpl' as doc %}
+
 <!DOCTYPE html>
 <html lang="en">
    <head>
@@ -300,6 +302,7 @@
       <script>
          {% include 'parts/sos-mode.js' %}
       </script>
+      {{ doc.js() }}
       <script>
          function timeElapsed(start_date)
          {
@@ -333,7 +336,7 @@
           $("#workflow-start-time").text(timeElapsed($("#workflow-start-time")[0].innerText));
          });
 
-         var editor = CodeMirror.fromTextArea(document.getElementById("source-code"), {
+         CodeMirror.fromTextArea(document.getElementById("source-code"), {
            lineNumbers: true,
            styleActiveLine: true,
            matchBrackets: true,
@@ -341,7 +344,7 @@
            indentUnit: 5,
            mode: 'sos'
          });
-
+         add_hoverdoc();
       </script>
    </body>
 </html>
