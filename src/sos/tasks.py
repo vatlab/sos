@@ -244,8 +244,6 @@ class TaskFile(object):
         return os.path.isfile(self.task_file)
 
     def update(self, runtime):
-        if not runtime:
-            return
         runtime_block = lzma.compress(pickle.dumps(runtime))
         #env.logger.error(f'updating {self.task_id} params of size {len(params_block)}')
         with fasteners.InterProcessLock(os.path.join(env.temp_dir, self.task_id + '.lck')):

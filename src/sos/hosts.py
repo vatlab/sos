@@ -551,10 +551,10 @@ class RemoteHost:
 
         # map variables
         # translate cur_dir, home_dir, and workdir
-        runtime['cur_dir'] = self._map_var(task_vars['_runtime']['cur_dir'])
-        runtime['home_dir'] = self._map_var(task_vars['_runtime']['home_dir'])
+        runtime['_runtime']['cur_dir'] = self._map_var(task_vars['_runtime']['cur_dir'])
+        runtime['_runtime']['home_dir'] = self._map_var(task_vars['_runtime']['home_dir'])
         if 'workdir' in task_vars['_runtime']:
-            runtime['workdir'] = self._map_var(task_vars['_runtime']['workdir'])
+            runtime['_runtime']['workdir'] = self._map_var(task_vars['_runtime']['workdir'])
 
         mapped_vars = {'_input', '_output',
                        '_depends', 'input', 'output', 'depends'}
