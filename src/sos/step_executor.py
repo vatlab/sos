@@ -1131,7 +1131,7 @@ class Base_Step_Executor:
 
                         except StopInputGroup as e:
                             if not e.keep_output:
-                                clear_output(env.sos_dict['_output'])
+                                clear_output()
                                 self.output_groups[idx] = sos_targets([])
                             if e.message:
                                 env.logger.info(e.message)

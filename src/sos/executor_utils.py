@@ -92,11 +92,11 @@ def __named_output__(name, group_by=None, paired_with=None, pattern=None,
     else:
         return targets
 
-def clear_output(err=None):
+def clear_output(output=None, err=None):
     '''
     Remove file targets in `_output` when a step fails to complete
     '''
-    for target in env.sos_dict['_output']:
+    for target in env.sos_dict['_output'] if output is None else output:
         if isinstance(target, file_target) and target.exists():
             try:
                 target.unlink()

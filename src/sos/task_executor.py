@@ -492,7 +492,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
     except StopInputGroup as e:
         # task ignored with stop_if exception
         if not e.keep_output:
-            clear_output(env.sos_dict['_output'])
+            clear_output()
             env.sos_dict['_output'] = sos_targets([])
         if e.message:
             env.logger.info(e.message)
