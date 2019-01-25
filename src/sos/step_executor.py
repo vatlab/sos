@@ -1031,19 +1031,23 @@ class Base_Step_Executor:
                                 #
                                 # __step_context__ is not needed because substep
                                 # executor does not support nested workflow
-                                proc_vars = env.sos_dict.clone_selected_vars(
-                                    env.sos_dict['__signature_vars__']
+
+                                proc_vars = env.sos_dict['__signature_vars__'] \
                                     | {'_input', '_output', '_depends', '_index',
-                                     'step_output', '__args__', 'step_name',
+                                     'step_output', 'step_name',
                                       '_runtime', 'step_id', 'workflow_id', '__num_groups__',
-                                      '__signature_vars__'})
+                                      '__signature_vars__'}
+                                # If substep does not have any parameter, stop passing
+                                # __args__ to substeps because they can be large #1185
+                                if self.step.substep_parameters:
+                                    proc_vars.add('__args__')
 
                                 self.proc_results.append({})
                                 self.submit_substep(dict(stmt=statement[1],
                                     global_def=self.step.global_def,
                                     task=self.step.task,
                                     task_params=self.step.task_params,
-                                    proc_vars=proc_vars,
+                                    proc_vars=env.sos_dict.clone_selected_vars(proc_vars),
                                     shared_vars=self.vars_to_be_shared,
                                     config=env.config))
 

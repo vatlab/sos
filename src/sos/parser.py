@@ -209,6 +209,7 @@ class SoS_Step:
         self.statements: List = []
         self.global_parameters = {}
         self.parameters = {}
+        self.substep_parameters = set()
         # step processes
         self.global_def = ''
         self.task = ''
@@ -454,6 +455,8 @@ class SoS_Step:
             self.task = ''
             return
         # handle tasks
+        input_directive = [idx for idx, statement in enumerate(
+            self.statements) if statement[0] == ':' and statement[1] == 'input']
         task_directive = [idx for idx, statement in enumerate(
             self.statements) if statement[0] == ':' and statement[1] == 'task']
         if len(task_directive) > 1:
@@ -488,6 +491,8 @@ class SoS_Step:
                                         f'#begin_parameter {name}\n{name} = sos_handle_parameter_({name.strip()!r}, {value}\n) #end_parameter {name}\n',
                                         statement[2].strip()]
                 self.parameters[name] = (value, statement[3])
+                if input_directive and input_directive[0] < idx:
+                    self.substep_parameters.add(name)
         # handle tasks
         if not task_directive:
             self.task = ''
