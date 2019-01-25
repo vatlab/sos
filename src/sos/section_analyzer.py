@@ -137,12 +137,14 @@ def get_signature_vars(section):
     return {x for x in signature_vars if not x.startswith('__')}
 
 def get_step_depends(section):
+
     step_depends: sos_targets = sos_targets([])
 
     input_idx = find_statement(section, 'input')
-    if input_idx is not None:
+    depends_idx = find_statement(section, 'depends')
+    for stmt_idx in ([] if input_idx is None else [input_idx]) + ([] if depends_idx is None else [depends_idx]):
         # input statement
-        stmt = section.statements[input_idx][2]
+        stmt = section.statements[stmt_idx][2]
         if 'output_from' in stmt:
             step_depends.extend([sos_step(x) for x in get_output_from_steps(stmt, section.last_step)])
         if 'named_output' in stmt:
@@ -165,16 +167,15 @@ def get_step_depends(section):
                     else:
                         raise ValueError(f'Unacceptable keyword argument {par[0]} for named_output()')
 
-
-    depends_idx = find_statement(section, 'depends')
     if depends_idx is not None:
         value = section.statements[depends_idx][2]
         try:
             svars = ['output_from', 'named_output']
             old_values = {x:env.sos_dict._dict[x] for x in svars if x in env.sos_dict._dict}
+            # output_from and named_output has been processed
             env.sos_dict._dict.update({
-                'output_from': no_output_from,
-                'named_output': no_named_output
+                'output_from': lambda *args, **kwargs: None,
+                'named_output': lambda *args, **kwargs: None,
                 })
             args, kwargs = SoS_eval(f'__null_func__({value})',
                 extra_dict=env.sos_dict._dict)
