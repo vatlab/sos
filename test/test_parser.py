@@ -524,20 +524,25 @@ parameter: c_b = list
         wf = script.workflow()
         self.assertEqual(sorted(list(wf.parameters().keys())), ['a_b', 'c_b'])
 
-#    this test is no longer valid because sos has stopped parsing assignments
-#
-#    def testSectionVariables(self):
-#        '''Test variables in sections'''
-#        # directive name cannot be used as variable
-#        self.assertRaises(ParsingError, SoS_Script,
-#            '''[0]
-# input='a.txt' ''')
-#        self.assertRaises(ParsingError, SoS_Script,
-#            '''[0]
-# output='a.txt' ''')
-#        self.assertRaises(ParsingError, SoS_Script,
-#            '''[0]
-# depends='a.txt' ''')
+    def testParamInTask(self):
+        '''Test specification of parameters in tasks'''
+        self.assertRaises(Exception, SoS_Script, '''\
+[1]
+output: 'a.txt'
+task:
+parameter: value = 'a'
+sh: expand=True
+echo {value} >  a.txt
+''')
+        # multiple parameters
+        script = SoS_Script('''
+parameter: a_b = int
+[0]
+parameter: c_b = list
+''')
+        wf = script.workflow()
+        self.assertEqual(sorted(list(wf.parameters().keys())), ['a_b', 'c_b'])
+
 
     def testTypeTraitParameter(self):
         # type trait
@@ -1659,10 +1664,10 @@ output: A='a.txt'
 _output.touch()
 
 [default]
-dpends: named_output('A')
+depends: named_output('A')
 ''')
         wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf).run)
+        Base_Executor(wf).run()
 
     def testOutputFromInDepends(self):
         '''Test output_from in depends statement'''
@@ -1672,20 +1677,20 @@ output: A='a.txt'
 _output.touch()
 
 [default]
-dpends: output_from('A')
+depends: output_from('A')
 ''')
         wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf).run)
+        Base_Executor(wf).run()
 
     def testNamedOutputInOutput(self):
         '''Test named_output in output statement'''
         script = SoS_Script('''
 [A]
-output: A='a.txt'
+output: Aa='a.txt'
 _output.touch()
 
 [default]
-output: named_output('A')
+output: named_output('Aa')
 ''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
@@ -1693,12 +1698,12 @@ output: named_output('A')
     def testOutputFromInOutput(self):
         '''Test output_from in output statement'''
         script = SoS_Script('''
-[A]
+[Aa]
 output: A='a.txt'
 _output.touch()
 
 [default]
-output: output_from('A')
+output: output_from('Aa')
 ''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
