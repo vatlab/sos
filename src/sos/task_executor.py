@@ -339,10 +339,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
         return _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode,
                                   monitor_interval, resource_monitor_interval)
 
-    global_def, task = params.global_def, params.task
-    sos_dict = copy.deepcopy(params.raw_dict)
-    if '_runtime' in params.sos_dict:
-        sos_dict['_runtime'].update(params.sos_dict['_runtime'])
+    global_def, task, sos_dict = params.global_def, params.task, params.sos_dict
 
     # task output
     env.sos_dict.set('__std_out__', os.path.join(

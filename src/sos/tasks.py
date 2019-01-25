@@ -34,9 +34,7 @@ class TaskParams(object):
         self.name = name
         self.global_def = global_def
         self.task = task
-        self.raw_dict = sos_dict
-        # sos_dict will be copied from raw_dict each time it is used
-        self.sos_dict = {'_runtime': {}}
+        self.sos_dict = sos_dict
         self.tags = tags
         # remove builtins that could be saved in a dictionary
         if 'CONFIG' in self.sos_dict and '__builtins__' in self.sos_dict['CONFIG']:
@@ -52,7 +50,7 @@ class MasterTaskParams(TaskParams):
         self.name = self.ID
         self.global_def = ''
         self.task = ''
-        self.raw_dict = {'_runtime': {}, '_input': sos_targets(), '_output': sos_targets(), '_depends': sos_targets(),
+        self.sos_dict = {'_runtime': {}, '_input': sos_targets(), '_output': sos_targets(), '_depends': sos_targets(),
                          'step_input': sos_targets(), 'step_output': sos_targets(),
                          'step_depends': sos_targets(), 'step_name': '',
                          '_index': 0}
@@ -76,16 +74,16 @@ class MasterTaskParams(TaskParams):
         if not self.task_stack:
             for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem', 'max_mem', 'map_vars',
                         'name', 'cur_dir', 'home_dir', 'verbosity', 'sig_mode', 'run_mode'):
-                if key in params.raw_dict['_runtime'] and params.raw_dict['_runtime'][key] is not None:
-                    self.raw_dict['_runtime'][key] = params.raw_dict['_runtime'][key]
-            self.raw_dict['step_name'] = params.raw_dict['step_name']
+                if key in params.sos_dict['_runtime'] and params.sos_dict['_runtime'][key] is not None:
+                    self.sos_dict['_runtime'][key] = params.sos_dict['_runtime'][key]
+            self.sos_dict['step_name'] = params.sos_dict['step_name']
             self.tags = params.tags
         else:
             for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem', 'max_mem',
                         'name', 'cur_dir', 'home_dir'):
-                val0 = self.task_stack[0][1].raw_dict['_runtime'].get(
+                val0 = self.task_stack[0][1].sos_dict['_runtime'].get(
                     key, None)
-                val = params.raw_dict['_runtime'].get(key, None)
+                val = params.sos_dict['_runtime'].get(key, None)
                 if val0 != val:
                     raise ValueError(
                         f'All tasks should have the same resource {key}')
@@ -103,30 +101,30 @@ class MasterTaskParams(TaskParams):
                     continue
                 elif key == 'walltime':
                     # if define walltime
-                    self.raw_dict['_runtime']['walltime'] = format_HHMMSS(
+                    self.sos_dict['_runtime']['walltime'] = format_HHMMSS(
                         nrow * expand_time(val0))
                 elif key == 'mem':
                     # number of columns * mem for each + 100M for master
-                    self.raw_dict['_runtime']['mem'] = ncol * \
+                    self.sos_dict['_runtime']['mem'] = ncol * \
                         expand_size(val0) + (expand_size('100M')
                                              if self.num_workers > 0 else 0)
                 elif key == 'cores':
                     # number of columns * cores for each + 1 for the master
-                    self.raw_dict['_runtime']['cores'] = ncol * \
+                    self.sos_dict['_runtime']['cores'] = ncol * \
                         val0 + (1 if self.num_workers > 0 else 0)
                 elif key == 'name':
-                    self.raw_dict['_runtime']['name'] = f'{val0}_{len(self.task_stack) + 1}'
+                    self.sos_dict['_runtime']['name'] = f'{val0}_{len(self.task_stack) + 1}'
 
             self.tags.extend(params.tags)
         #
         # input, output, preserved vars etc
         for key in ['_input', '_output', '_depends']:
-            if key in params.raw_dict and isinstance(params.raw_dict[key], list):
+            if key in params.sos_dict and isinstance(params.sos_dict[key], list):
                 if key == '__builtins__':
                     continue
                 # do not extend duplicated input etc
-                self.raw_dict[key].extend(
-                    list(set(params.raw_dict[key]) - set(self.raw_dict[key])))
+                self.sos_dict[key].extend(
+                    list(set(params.sos_dict[key]) - set(self.sos_dict[key])))
         #
         self.task_stack.append([task_id, params])
         self.tags = sorted(list(set(self.tags)))
@@ -165,18 +163,31 @@ class TaskFile(object):
                                'tags'
                                )
 
-    TaskHeader = namedtuple('TaskHeader',
+    TaskHeader_v2 = namedtuple('TaskHeader',
                             'version status last_modified '
                             'new_time pending_time submitted_time running_time aborted_time failed_time completed_time '
                             'params_size shell_size pulse_size stdout_size stderr_size result_size signature_size '
                             'tags'
                             )
 
+    TaskHeader_v3 = namedtuple('TaskHeader',
+                        'version status last_modified '
+                        'new_time pending_time submitted_time running_time aborted_time failed_time completed_time '
+                        'params_size runtime_size shell_size pulse_size stdout_size stderr_size result_size signature_size '
+                        'tags'
+                        )
+
+    TaskHeader = TaskHeader_v3
+
     header_fmt_v1 = '!2h 8d 6i 128s'
     header_fmt_v2 = '!2h 8d 7i 124s'
+    header_fmt_v3 = '!2h 8d 8i 120s'
+
+    header_fmt = header_fmt_v3
+
     header_size = 220  # struct.calcsize(header_fmt)
-    tags_offset = [92, 96]  # struct.calcsize(status_fmt + '6i')
-    tags_size = [128, 124]
+    tags_offset = [92, 96, 100]  # struct.calcsize(status_fmt + '6i')
+    tags_size = [128, 124, 120]
 
     def __init__(self, task_id: str):
         self.task_id = task_id
@@ -203,7 +214,7 @@ class TaskFile(object):
         params_block = lzma.compress(pickle.dumps(params))
         #env.logger.error(f'saving {self.task_id} params of size {len(params_block)}')
         header = self.TaskHeader(
-            version=2,
+            version=3,
             status=TaskStatus.new.value,
             last_modified=now,
             new_time=now,
@@ -214,6 +225,7 @@ class TaskFile(object):
             failed_time=0,
             completed_time=0,
             params_size=len(params_block),
+            runtime_size=0,
             shell_size=0,
             pulse_size=0,
             stdout_size=0,
@@ -231,26 +243,30 @@ class TaskFile(object):
     def exists(self):
         return os.path.isfile(self.task_file)
 
-    def update(self, params):
-        params_block = lzma.compress(pickle.dumps(params))
+    def update(self, runtime):
+        if not runtime:
+            return
+        runtime_block = lzma.compress(pickle.dumps(runtime))
         #env.logger.error(f'updating {self.task_id} params of size {len(params_block)}')
         with fasteners.InterProcessLock(os.path.join(env.temp_dir, self.task_id + '.lck')):
             with open(self.task_file, 'r+b') as fh:
                 header = self._read_header(fh)
-                if len(params_block) == header.params_size:
-                    fh.seek(self.header_size, 0)
-                    fh.write(params_block)
+                if len(runtime_block) == header.runtime_size:
+                    fh.seek(self.header_size + header.params_size, 0)
+                    fh.write(runtime_block)
                 else:
-                    fh.read(header.params_size)
+                    params = fh.read(header.params_size)
+                    fh.seek(self.header_size + header.params_size + header.runtime_size, 0)
                     shell = fh.read(header.shell_size)
                     pulse = fh.read(header.pulse_size)
                     stdout = fh.read(header.stdout_size)
                     stderr = fh.read(header.stderr_size)
                     result = fh.read(header.result_size)
                     signature = fh.read(header.signature_size)
-                    header = header._replace(params_size=len(params_block))
+                    header = header._replace(runtime_size=len(runtime_block))
                     self._write_header(fh, header)
-                    fh.write(params_block)
+                    fh.write(params)
+                    fh.write(runtime_block)
                     if shell:
                         fh.write(shell)
                     if pulse:
@@ -263,9 +279,9 @@ class TaskFile(object):
                         fh.write(result)
                     if signature:
                         fh.write(signature)
-                    fh.truncate(self.header_size + header.params_size + header.shell_size +
-                                header.pulse_size + header.stdout_size + header.stderr_size +
-                                header.result_size + header.signature_size)
+                    fh.truncate(self.header_size + header.params_size + header.runtime_size +
+                                header.shell_size + header.pulse_size + header.stdout_size +
+                                header.stderr_size + header.result_size + header.signature_size)
 
     def _reset(self, fh):
         # remove result, input, output etc and set the status of the task to new
@@ -282,6 +298,7 @@ class TaskFile(object):
             aborted_time=0,
             failed_time=0,
             completed_time=0,
+            runtime_size=0,
             shell_size=0,
             pulse_size=0,
             stdout_size=0,
@@ -305,21 +322,28 @@ class TaskFile(object):
         if struct.unpack('!h', data[:2])[0] == 1:
             header = self.TaskHeader_v1._make(struct.unpack(
                 self.header_fmt_v1, data))
-            if header.version not in (1, 2):
+            if header.version not in (1, 2, 3):
                 raise RuntimeError(
                     f'Corrupted task file {self.task_file}. Please report a bug if you can reproduce the generation of this file.')
-            return self.TaskHeader(shell_size=0, **header._asdict())._replace(version=2)
+            return self.TaskHeader(runtime_size=0, shell_size=0, **header._asdict())._replace(version=3)
+        elif struct.unpack('!h', data[:2])[0] == 2:
+            header = self.TaskHeader_v2._make(struct.unpack(
+                self.header_fmt_v2, data))
+            if header.version not in (1, 2, 3):
+                raise RuntimeError(
+                    f'Corrupted task file {self.task_file}. Please report a bug if you can reproduce the generation of this file.')
+            return self.TaskHeader(runtime_size=0, **header._asdict())._replace(version=3)
         else:
             header = self.TaskHeader._make(struct.unpack(
-                self.header_fmt_v2, data))
-            if header.version not in (1, 2):
+                self.header_fmt, data))
+            if header.version not in (1, 2, 3):
                 raise RuntimeError(
                     f'Corrupted task file {self.task_file}. Please report a bug if you can reproduce the generation of this file.')
             return header
 
     def _write_header(self, fh, header):
         fh.seek(0, 0)
-        fh.write(struct.pack(self.header_fmt_v2, *header))
+        fh.write(struct.pack(self.header_fmt, *header))
 
     def _get_content(self, ext: str):
         filename = self.task_file[:-5] + ext
@@ -349,7 +373,7 @@ class TaskFile(object):
                     signature_size=0
                 )
                 self._write_header(fh, header)
-                fh.seek(self.header_size + header.params_size, 0)
+                fh.seek(self.header_size + header.params_size + header.runtime_size, 0)
                 if shell:
                     fh.write(shell)
                 if pulse:
@@ -369,7 +393,7 @@ class TaskFile(object):
                     signature_size=0,
                 )
                 self._write_header(fh, header)
-                fh.seek(self.header_size + header.params_size + header.shell_size +
+                fh.seek(self.header_size + header.params_size + header.runtime_size + header.shell_size +
                         header.pulse_size + header.stdout_size + header.stderr_size)
                 fh.write(result_block)
 
@@ -382,7 +406,7 @@ class TaskFile(object):
                     signature_size=len(signature_block)
                 )
                 self._write_header(fh, header)
-                fh.seek(self.header_size + header.params_size + header.shell_size +
+                fh.seek(self.header_size + header.params_size + header.runtime_size + header.shell_size +
                         header.pulse_size + header.stdout_size + header.stderr_size +
                         header.result_size)
                 fh.write(signature_block)
@@ -393,7 +417,7 @@ class TaskFile(object):
 
     def _set_info(self, info):
         with open(self.task_file, 'r+b') as fh:
-            fh.write(struct.pack(self.header_fmt_v2, *info))
+            fh.write(struct.pack(self.header_fmt, *info))
 
     info = property(_get_info, _set_info)
 
@@ -418,12 +442,33 @@ class TaskFile(object):
     def _get_params(self):
         with open(self.task_file, 'rb') as fh:
             header = self._read_header(fh)
-            if header.params_size == 0:
+            if header.params_size == 0 and header.runtime_size == 0:
                 return {}
             fh.seek(self.header_size, 0)
-            return pickle.loads(lzma.decompress(fh.read(header.params_size)))
+            if header.params_size == 0:
+                params = {}
+            else:
+                params = pickle.loads(lzma.decompress(fh.read(header.params_size)))
+            if '_runtime' not in params.sos_dict:
+                params.sos_dict['_runtime'] = {}
+            if header.runtime_size > 0:
+                runtime = pickle.loads(lzma.decompress(fh.read(header.runtime_size)))
+                params.sos_dict['_runtime'].update(runtime['_runtime'])
+                runtime.pop('_runtime')
+                params.sos_dict.update(runtime)
+            return params
 
     params = property(_get_params)
+
+    def _get_runtime(self):
+        with open(self.task_file, 'rb') as fh:
+            header = self._read_header(fh)
+            if header.runtime_size == 0:
+                return {}
+            fh.seek(self.header_size + header.params_size, 0)
+            return pickle.loads(lzma.decompress(fh.read(header.runtime_size)))
+
+    runtime = property(_get_runtime)
 
     def _get_status(self):
         if not os.path.isfile(self.task_file):
@@ -522,7 +567,7 @@ class TaskFile(object):
             header = self._read_header(fh)
             if header.shell_size == 0:
                 return ''
-            fh.seek(self.header_size + header.params_size, 0)
+            fh.seek(self.header_size + header.params_size + header.runtime_size, 0)
             try:
                 return lzma.decompress(fh.read(header.shell_size)).decode()
             except Exception as e:
@@ -536,7 +581,7 @@ class TaskFile(object):
             header = self._read_header(fh)
             if header.pulse_size == 0:
                 return ''
-            fh.seek(self.header_size + header.params_size + header.shell_size, 0)
+            fh.seek(self.header_size + header.params_size + header.runtime_size + header.shell_size, 0)
             try:
                 return lzma.decompress(fh.read(header.pulse_size)).decode()
             except Exception as e:
@@ -550,7 +595,7 @@ class TaskFile(object):
             header = self._read_header(fh)
             if header.stdout_size == 0:
                 return ''
-            fh.seek(self.header_size + header.params_size +
+            fh.seek(self.header_size + header.params_size + header.runtime_size +
                     header.pulse_size + header.shell_size, 0)
             try:
                 return lzma.decompress(fh.read(header.stdout_size)).decode()
@@ -565,8 +610,8 @@ class TaskFile(object):
             header = self._read_header(fh)
             if header.stderr_size == 0:
                 return ''
-            fh.seek(self.header_size + header.params_size + header.shell_size + header.pulse_size
-                    + header.stdout_size, 0)
+            fh.seek(self.header_size + header.params_size + header.runtime_size
+                + header.shell_size + header.pulse_size + header.stdout_size, 0)
             try:
                 return lzma.decompress(fh.read(header.stderr_size)).decode()
             except Exception as e:
@@ -580,7 +625,7 @@ class TaskFile(object):
             header = self._read_header(fh)
             if header.result_size == 0:
                 return {}
-            fh.seek(self.header_size + header.params_size + header.shell_size +
+            fh.seek(self.header_size + header.params_size + header.runtime_size + header.shell_size +
                     header.pulse_size + header.stdout_size + header.stderr_size, 0)
             try:
                 return pickle.loads(lzma.decompress(fh.read(header.result_size)))
@@ -595,7 +640,7 @@ class TaskFile(object):
             header = self._read_header(fh)
             if header.signature_size == 0:
                 return {}
-            fh.seek(self.header_size + header.params_size +
+            fh.seek(self.header_size + header.params_size + header.runtime_size +
                     header.shell_size + header.pulse_size + header.stdout_size +
                     header.stderr_size + header.result_size, 0)
             try:

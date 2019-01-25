@@ -155,18 +155,13 @@ class LocalHost:
         tf = TaskFile(task_id)
         params = tf.params
         # clear possible previous result
-        task_vars = params.raw_dict
-        sos_dict = params.sos_dict
+        task_vars = params.sos_dict
+        runtime = {'_runtime': {}}
 
         if 'max_mem' in self.config or 'max_cores' in self.config or 'max_walltime' in self.config:
-            sos_dict['_runtime']['max_mem'] = self.config.get('max_mem', None)
-            sos_dict['_runtime']['max_cores'] = self.config.get(
-                'max_cores', None)
-            sos_dict['_runtime']['max_walltime'] = self.config.get(
-                'max_walltime', None)
-            if task_vars['_runtime']['max_walltime'] is not None:
-                sos_dict['_runtime']['max_walltime'] = format_HHMMSS(
-                    task_vars['_runtime']['max_walltime'])
+            for key in ('max_mem', 'max_cores', 'max_walltime'):
+                if key in self.config:
+                    runtime['_runtime'][key] = format_HHMMSS(self.config[key]) if key == 'max_walltime' else self.config[key]
 
             if self.config.get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
                     and self.config['max_mem'] < task_vars['_runtime']['mem']:
@@ -184,8 +179,8 @@ class LocalHost:
                     f'Task {task_id} requested more walltime ({task_vars["_runtime"]["walltime"]}) than allowed max_walltime ({self.config["max_walltime"]})')
                 return False
 
-        if sos_dict['_runtime']:
-            tf.update(params)
+        if runtime['_runtime']:
+            tf.update(runtime)
         tf.status = 'pending'
         #
         if 'to_host' in task_vars['_runtime'] and isinstance(task_vars['_runtime']['to_host'], dict):
@@ -512,9 +507,8 @@ class RemoteHost:
             raise ValueError(f'Missing task definition {task_file}')
         tf = TaskFile(task_id)
         params = tf.params
-        params.sos_dict = copy.deepcopy(params.raw_dict)
-
         task_vars = params.sos_dict
+        runtime = {'_runtime': {}}
 
         if self.config.get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
                 and self.config['max_mem'] < task_vars['_runtime']['mem']:
@@ -557,13 +551,10 @@ class RemoteHost:
 
         # map variables
         # translate cur_dir, home_dir, and workdir
-        task_vars['_runtime']['cur_dir'] = self._map_var(
-            task_vars['_runtime']['cur_dir'])
-        task_vars['_runtime']['home_dir'] = self._map_var(
-            task_vars['_runtime']['home_dir'])
+        runtime['cur_dir'] = self._map_var(task_vars['_runtime']['cur_dir'])
+        runtime['home_dir'] = self._map_var(task_vars['_runtime']['home_dir'])
         if 'workdir' in task_vars['_runtime']:
-            task_vars['_runtime']['workdir'] = self._map_var(
-                task_vars['_runtime']['workdir'])
+            runtime['workdir'] = self._map_var(task_vars['_runtime']['workdir'])
 
         mapped_vars = {'_input', '_output',
                        '_depends', 'input', 'output', 'depends'}
@@ -583,11 +574,11 @@ class RemoteHost:
             if not task_vars[var]:
                 continue
             elif isinstance(task_vars[var], str):
-                task_vars[var] = self._map_var(task_vars[var])
+                runtime[var] = self._map_var(task_vars[var])
                 env.logger.debug(
                     f'On {self.alias}: ``{var}`` = {short_repr(task_vars[var])}')
             elif isinstance(task_vars[var], (Sequence, set)):
-                task_vars[var] = type(task_vars[var])(
+                runtime[var] = type(task_vars[var])(
                     self._map_var(task_vars[var]))
                 env.logger.debug(
                     f'On {self.alias}: ``{var}`` = {short_repr(task_vars[var])}')
@@ -596,15 +587,13 @@ class RemoteHost:
                     f'Failed to map {var} of type {task_vars[var].__class__.__name__}')
 
         # server restrictions #488
-        task_vars['_runtime']['max_mem'] = self.config.get('max_mem', None)
-        task_vars['_runtime']['max_cores'] = self.config.get('max_cores', None)
-        task_vars['_runtime']['max_walltime'] = self.config.get(
-            'max_walltime', None)
-        if task_vars['_runtime']['max_walltime'] is not None:
-            task_vars['_runtime']['max_walltime'] = format_HHMMSS(
-                task_vars['_runtime']['max_walltime'])
+        for key in ('max_mem', 'max_cores', 'max_walltime'):
+            if key in self.config:
+                runtime['_runtime'][key] = format_HHMMSS(self.config[key]) if key == 'max_walltime' else self.config[key]
 
-        tf.update(params)
+        # only update task file if there are runtime information
+        if len(runtime) > 1 or runtime['_runtime']:
+            tf.update(runtime)
         tf.status = 'pending'
         self.send_task_file(task_file)
 
