@@ -35,7 +35,8 @@ class TaskParams(object):
         self.global_def = global_def
         self.task = task
         self.raw_dict = sos_dict
-        self.sos_dict = copy.deepcopy(sos_dict)
+        # sos_dict will be copied from raw_dict each time it is used
+        self.sos_dict = {}
         self.tags = tags
         # remove builtins that could be saved in a dictionary
         if 'CONFIG' in self.sos_dict and '__builtins__' in self.sos_dict['CONFIG']:
@@ -55,7 +56,7 @@ class MasterTaskParams(TaskParams):
                          'step_input': sos_targets(), 'step_output': sos_targets(),
                          'step_depends': sos_targets(), 'step_name': '',
                          '_index': 0}
-        self.sos_dict = copy.deepcopy(self.raw_dict)
+        self.sos_dict = {}
         self.num_workers = num_workers
         self.tags = []
         # a collection of tasks that will be executed by the master task
@@ -75,16 +76,16 @@ class MasterTaskParams(TaskParams):
         if not self.task_stack:
             for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem', 'max_mem', 'map_vars',
                         'name', 'cur_dir', 'home_dir', 'verbosity', 'sig_mode', 'run_mode'):
-                if key in params.sos_dict['_runtime'] and params.sos_dict['_runtime'][key] is not None:
-                    self.sos_dict['_runtime'][key] = params.sos_dict['_runtime'][key]
-            self.sos_dict['step_name'] = params.sos_dict['step_name']
+                if key in params.raw_dict['_runtime'] and params.raw_dict['_runtime'][key] is not None:
+                    self.raw_dict['_runtime'][key] = params.raw_dict['_runtime'][key]
+            self.raw_dict['step_name'] = params.raw_dict['step_name']
             self.tags = params.tags
         else:
             for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem', 'max_mem',
                         'name', 'cur_dir', 'home_dir'):
-                val0 = self.task_stack[0][1].sos_dict['_runtime'].get(
+                val0 = self.task_stack[0][1].raw_dict['_runtime'].get(
                     key, None)
-                val = params.sos_dict['_runtime'].get(key, None)
+                val = params.raw_dict['_runtime'].get(key, None)
                 if val0 != val:
                     raise ValueError(
                         f'All tasks should have the same resource {key}')
@@ -102,36 +103,35 @@ class MasterTaskParams(TaskParams):
                     continue
                 elif key == 'walltime':
                     # if define walltime
-                    self.sos_dict['_runtime']['walltime'] = format_HHMMSS(
+                    self.raw_dict['_runtime']['walltime'] = format_HHMMSS(
                         nrow * expand_time(val0))
                 elif key == 'mem':
                     # number of columns * mem for each + 100M for master
-                    self.sos_dict['_runtime']['mem'] = ncol * \
+                    self.raw_dict['_runtime']['mem'] = ncol * \
                         expand_size(val0) + (expand_size('100M')
                                              if self.num_workers > 0 else 0)
                 elif key == 'cores':
                     # number of columns * cores for each + 1 for the master
-                    self.sos_dict['_runtime']['cores'] = ncol * \
+                    self.raw_dict['_runtime']['cores'] = ncol * \
                         val0 + (1 if self.num_workers > 0 else 0)
                 elif key == 'name':
-                    self.sos_dict['_runtime']['name'] = f'{val0}_{len(self.task_stack) + 1}'
+                    self.raw_dict['_runtime']['name'] = f'{val0}_{len(self.task_stack) + 1}'
 
             self.tags.extend(params.tags)
         #
         # input, output, preserved vars etc
         for key in ['_input', '_output', '_depends']:
-            if key in params.sos_dict and isinstance(params.sos_dict[key], list):
+            if key in params.raw_dict and isinstance(params.raw_dict[key], list):
                 if key == '__builtins__':
                     continue
                 # do not extend duplicated input etc
-                self.sos_dict[key].extend(
-                    list(set(params.sos_dict[key]) - set(self.sos_dict[key])))
+                self.raw_dict[key].extend(
+                    list(set(params.raw_dict[key]) - set(self.raw_dict[key])))
         #
         self.task_stack.append([task_id, params])
         self.tags = sorted(list(set(self.tags)))
         #
         self.ID = f'M{len(self.task_stack)}_{self.task_stack[0][0]}'
-        self.raw_dict = copy.deepcopy(self.sos_dict)
         self.name = self.ID
 
 

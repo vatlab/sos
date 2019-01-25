@@ -237,9 +237,10 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
             from multiprocessing.pool import Pool
             p = Pool(params.num_workers)
             results = []
-            for t in params.task_stack:
+            for tid, tdef in params.task_stack:
+                tdef.sos_dict = copy.deepcopy(tdef.raw_dict)
                 results.append(p.apply_async(_execute_task,
-                                             ((*t, {t[0]: sig_content.get(t[0], {})}), verbosity, runmode,
+                                             ((tid, tdef, {tid: sig_content.get(tid, {})}), verbosity, runmode,
                                               sigmode, None, None), callback=copy_out_and_err))
             for idx, r in enumerate(results):
                 results[idx] = r.get()
@@ -258,6 +259,7 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
             results = []
             for tid, tdef in params.task_stack:
                 # no monitor process for subtasks
+                tdef.sos_dict = copy.deepcopy(tdef.raw_dict)
                 res = _execute_task((tid, tdef, {tid: sig_content.get(tid, {})}), verbosity=verbosity, runmode=runmode,
                                     sigmode=sigmode, monitor_interval=None, resource_monitor_interval=None)
                 try:
