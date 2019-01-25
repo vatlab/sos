@@ -155,18 +155,17 @@ class LocalHost:
         tf = TaskFile(task_id)
         params = tf.params
         # clear possible previous result
-        params.sos_dict = copy.deepcopy(params.raw_dict)
-
-        task_vars = params.sos_dict
+        task_vars = params.raw_dict
+        sos_dict = params.sos_dict
 
         if 'max_mem' in self.config or 'max_cores' in self.config or 'max_walltime' in self.config:
-            task_vars['_runtime']['max_mem'] = self.config.get('max_mem', None)
-            task_vars['_runtime']['max_cores'] = self.config.get(
+            sos_dict['_runtime']['max_mem'] = self.config.get('max_mem', None)
+            sos_dict['_runtime']['max_cores'] = self.config.get(
                 'max_cores', None)
-            task_vars['_runtime']['max_walltime'] = self.config.get(
+            sos_dict['_runtime']['max_walltime'] = self.config.get(
                 'max_walltime', None)
             if task_vars['_runtime']['max_walltime'] is not None:
-                task_vars['_runtime']['max_walltime'] = format_HHMMSS(
+                sos_dict['_runtime']['max_walltime'] = format_HHMMSS(
                     task_vars['_runtime']['max_walltime'])
 
             if self.config.get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
@@ -185,7 +184,8 @@ class LocalHost:
                     f'Task {task_id} requested more walltime ({task_vars["_runtime"]["walltime"]}) than allowed max_walltime ({self.config["max_walltime"]})')
                 return False
 
-        tf.update(params)
+        if sos_dict['_runtime']:
+            tf.update(params)
         tf.status = 'pending'
         #
         if 'to_host' in task_vars['_runtime'] and isinstance(task_vars['_runtime']['to_host'], dict):

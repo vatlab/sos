@@ -238,7 +238,6 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
             p = Pool(params.num_workers)
             results = []
             for tid, tdef in params.task_stack:
-                tdef.sos_dict = copy.deepcopy(tdef.raw_dict)
                 results.append(p.apply_async(_execute_task,
                                              ((tid, tdef, {tid: sig_content.get(tid, {})}), verbosity, runmode,
                                               sigmode, None, None), callback=copy_out_and_err))
@@ -259,7 +258,6 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
             results = []
             for tid, tdef in params.task_stack:
                 # no monitor process for subtasks
-                tdef.sos_dict = copy.deepcopy(tdef.raw_dict)
                 res = _execute_task((tid, tdef, {tid: sig_content.get(tid, {})}), verbosity=verbosity, runmode=runmode,
                                     sigmode=sigmode, monitor_interval=None, resource_monitor_interval=None)
                 try:
@@ -341,7 +339,10 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
         return _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode,
                                   monitor_interval, resource_monitor_interval)
 
-    global_def, task, sos_dict = params.global_def, params.task, params.sos_dict
+    global_def, task = params.global_def, params.task
+    sos_dict = copy.deepcopy(params.raw_dict)
+    if '_runtime' in params.sos_dict:
+        sos_dict['_runtime'].update(params.sos_dict['_runtime'])
 
     # task output
     env.sos_dict.set('__std_out__', os.path.join(

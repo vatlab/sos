@@ -36,7 +36,7 @@ class TaskParams(object):
         self.task = task
         self.raw_dict = sos_dict
         # sos_dict will be copied from raw_dict each time it is used
-        self.sos_dict = {}
+        self.sos_dict = {'_runtime': {}}
         self.tags = tags
         # remove builtins that could be saved in a dictionary
         if 'CONFIG' in self.sos_dict and '__builtins__' in self.sos_dict['CONFIG']:
@@ -56,7 +56,7 @@ class MasterTaskParams(TaskParams):
                          'step_input': sos_targets(), 'step_output': sos_targets(),
                          'step_depends': sos_targets(), 'step_name': '',
                          '_index': 0}
-        self.sos_dict = {}
+        self.sos_dict = {'_runtime': {}}
         self.num_workers = num_workers
         self.tags = []
         # a collection of tasks that will be executed by the master task
@@ -201,6 +201,7 @@ class TaskFile(object):
         # tags is not saved in params
         del params.tags
         params_block = lzma.compress(pickle.dumps(params))
+        #env.logger.error(f'saving {self.task_id} params of size {len(params_block)}')
         header = self.TaskHeader(
             version=2,
             status=TaskStatus.new.value,
@@ -232,6 +233,7 @@ class TaskFile(object):
 
     def update(self, params):
         params_block = lzma.compress(pickle.dumps(params))
+        #env.logger.error(f'updating {self.task_id} params of size {len(params_block)}')
         with fasteners.InterProcessLock(os.path.join(env.temp_dir, self.task_id + '.lck')):
             with open(self.task_file, 'r+b') as fh:
                 header = self._read_header(fh)
