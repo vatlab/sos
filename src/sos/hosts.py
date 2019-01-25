@@ -180,7 +180,7 @@ class LocalHost:
                 return False
 
         if len(runtime) > 1 or runtime['_runtime']:
-            tf.update(runtime)
+            tf.runtime = runtime
         tf.status = 'pending'
         #
         if 'to_host' in task_vars['_runtime'] and isinstance(task_vars['_runtime']['to_host'], dict):
@@ -593,7 +593,7 @@ class RemoteHost:
 
         # only update task file if there are runtime information
         if len(runtime) > 1 or runtime['_runtime']:
-            tf.update(runtime)
+            tf.runtime = runtime
         tf.status = 'pending'
         self.send_task_file(task_file)
 

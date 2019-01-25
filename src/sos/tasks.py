@@ -203,7 +203,7 @@ class TaskFile(object):
             else:
                 # keep original stuff but update params, which could contain
                 # new runtime info
-                self.update(params)
+                self.params = params
                 return
         # updating job_file will not change timestamp because it will be Only
         # the update of runtime info
@@ -242,44 +242,6 @@ class TaskFile(object):
 
     def exists(self):
         return os.path.isfile(self.task_file)
-
-    def update(self, runtime):
-        runtime_block = lzma.compress(pickle.dumps(runtime))
-        #env.logger.error(f'updating {self.task_id} params of size {len(params_block)}')
-        with fasteners.InterProcessLock(os.path.join(env.temp_dir, self.task_id + '.lck')):
-            with open(self.task_file, 'r+b') as fh:
-                header = self._read_header(fh)
-                if len(runtime_block) == header.runtime_size:
-                    fh.seek(self.header_size + header.params_size, 0)
-                    fh.write(runtime_block)
-                else:
-                    params = fh.read(header.params_size)
-                    fh.seek(self.header_size + header.params_size + header.runtime_size, 0)
-                    shell = fh.read(header.shell_size)
-                    pulse = fh.read(header.pulse_size)
-                    stdout = fh.read(header.stdout_size)
-                    stderr = fh.read(header.stderr_size)
-                    result = fh.read(header.result_size)
-                    signature = fh.read(header.signature_size)
-                    header = header._replace(runtime_size=len(runtime_block))
-                    self._write_header(fh, header)
-                    fh.write(params)
-                    fh.write(runtime_block)
-                    if shell:
-                        fh.write(shell)
-                    if pulse:
-                        fh.write(pulse)
-                    if stdout:
-                        fh.write(stdout)
-                    if stderr:
-                        fh.write(stderr)
-                    if result:
-                        fh.write(result)
-                    if signature:
-                        fh.write(signature)
-                    fh.truncate(self.header_size + header.params_size + header.runtime_size +
-                                header.shell_size + header.pulse_size + header.stdout_size +
-                                header.stderr_size + header.result_size + header.signature_size)
 
     def _reset(self, fh):
         # remove result, input, output etc and set the status of the task to new
@@ -448,7 +410,47 @@ class TaskFile(object):
             else:
                 return pickle.loads(lzma.decompress(fh.read(header.params_size)))
 
-    params = property(_get_params)
+
+    def _set_params(self, params):
+        params_block = lzma.compress(pickle.dumps(params))
+        #env.logger.error(f'updating {self.task_id} params of size {len(params_block)}')
+        with fasteners.InterProcessLock(os.path.join(env.temp_dir, self.task_id + '.lck')):
+            with open(self.task_file, 'r+b') as fh:
+                header = self._read_header(fh)
+                if len(params_block) == header.params_size:
+                    fh.seek(self.header_size, 0)
+                    fh.write(params_block)
+                else:
+                    fh.read(header.params_size)
+                    runtime = fh.read(header.runtime_size)
+                    shell = fh.read(header.shell_size)
+                    pulse = fh.read(header.pulse_size)
+                    stdout = fh.read(header.stdout_size)
+                    stderr = fh.read(header.stderr_size)
+                    result = fh.read(header.result_size)
+                    signature = fh.read(header.signature_size)
+                    header = header._replace(params_size=len(params_block))
+                    self._write_header(fh, header)
+                    fh.write(params_block)
+                    if runtime:
+                        fh.write(runtime)
+                    if shell:
+                        fh.write(shell)
+                    if pulse:
+                        fh.write(pulse)
+                    if stdout:
+                        fh.write(stdout)
+                    if stderr:
+                        fh.write(stderr)
+                    if result:
+                        fh.write(result)
+                    if signature:
+                        fh.write(signature)
+                    fh.truncate(self.header_size + header.params_size + header.runtime_size +
+                                header.shell_size + header.pulse_size + header.stdout_size +
+                                header.stderr_size + header.result_size + header.signature_size)
+
+    params = property(_get_params, _set_params)
 
     def _get_runtime(self):
         with open(self.task_file, 'rb') as fh:
@@ -458,7 +460,45 @@ class TaskFile(object):
             fh.seek(self.header_size + header.params_size, 0)
             return pickle.loads(lzma.decompress(fh.read(header.runtime_size)))
 
-    runtime = property(_get_runtime)
+    def _set_runtime(self, runtime):
+        runtime_block = lzma.compress(pickle.dumps(runtime))
+        #env.logger.error(f'updating {self.task_id} params of size {len(params_block)}')
+        with fasteners.InterProcessLock(os.path.join(env.temp_dir, self.task_id + '.lck')):
+            with open(self.task_file, 'r+b') as fh:
+                header = self._read_header(fh)
+                if len(runtime_block) == header.runtime_size:
+                    fh.seek(self.header_size + header.params_size, 0)
+                    fh.write(runtime_block)
+                else:
+                    params = fh.read(header.params_size)
+                    fh.seek(self.header_size + header.params_size + header.runtime_size, 0)
+                    shell = fh.read(header.shell_size)
+                    pulse = fh.read(header.pulse_size)
+                    stdout = fh.read(header.stdout_size)
+                    stderr = fh.read(header.stderr_size)
+                    result = fh.read(header.result_size)
+                    signature = fh.read(header.signature_size)
+                    header = header._replace(runtime_size=len(runtime_block))
+                    self._write_header(fh, header)
+                    fh.write(params)
+                    fh.write(runtime_block)
+                    if shell:
+                        fh.write(shell)
+                    if pulse:
+                        fh.write(pulse)
+                    if stdout:
+                        fh.write(stdout)
+                    if stderr:
+                        fh.write(stderr)
+                    if result:
+                        fh.write(result)
+                    if signature:
+                        fh.write(signature)
+                    fh.truncate(self.header_size + header.params_size + header.runtime_size +
+                                header.shell_size + header.pulse_size + header.stdout_size +
+                                header.stderr_size + header.result_size + header.signature_size)
+
+    runtime = property(_get_runtime, _set_runtime)
 
     def get_params_with_runtime(self):
         with open(self.task_file, 'rb') as fh:
