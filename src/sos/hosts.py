@@ -179,7 +179,7 @@ class LocalHost:
                     f'Task {task_id} requested more walltime ({task_vars["_runtime"]["walltime"]}) than allowed max_walltime ({self.config["max_walltime"]})')
                 return False
 
-        if runtime['_runtime']:
+        if len(runtime) > 1 or runtime['_runtime']:
             tf.update(runtime)
         tf.status = 'pending'
         #
