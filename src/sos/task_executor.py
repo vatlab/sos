@@ -326,7 +326,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
     # start a monitoring file, which would be killed after the job
     # is done (killed etc)
     if isinstance(task_id, str):
-        params = TaskFile(task_id).params
+        params = TaskFile(task_id).get_params_with_runtime()
         sig_content = TaskFile(task_id).signature
         subtask = False
     else:

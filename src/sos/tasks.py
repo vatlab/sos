@@ -446,17 +446,9 @@ class TaskFile(object):
                 return {}
             fh.seek(self.header_size, 0)
             if header.params_size == 0:
-                params = {}
+                return {}
             else:
-                params = pickle.loads(lzma.decompress(fh.read(header.params_size)))
-            if '_runtime' not in params.sos_dict:
-                params.sos_dict['_runtime'] = {}
-            if header.runtime_size > 0:
-                runtime = pickle.loads(lzma.decompress(fh.read(header.runtime_size)))
-                params.sos_dict['_runtime'].update(runtime['_runtime'])
-                runtime.pop('_runtime')
-                params.sos_dict.update(runtime)
-            return params
+                return pickle.loads(lzma.decompress(fh.read(header.params_size)))
 
     params = property(_get_params)
 
@@ -469,6 +461,25 @@ class TaskFile(object):
             return pickle.loads(lzma.decompress(fh.read(header.runtime_size)))
 
     runtime = property(_get_runtime)
+
+    def get_params_with_runtime(self):
+        with open(self.task_file, 'rb') as fh:
+            header = self._read_header(fh)
+            if header.params_size == 0 and header.runtime_size == 0:
+                return {}
+            fh.seek(self.header_size, 0)
+            if header.params_size == 0:
+                params = {}
+            else:
+                params = pickle.loads(lzma.decompress(fh.read(header.params_size)))
+            if '_runtime' not in params.sos_dict:
+                params.sos_dict['_runtime'] = {}
+            if header.runtime_size > 0:
+                runtime = pickle.loads(lzma.decompress(fh.read(header.runtime_size)))
+                params.sos_dict['_runtime'].update(runtime['_runtime'])
+                runtime.pop('_runtime')
+                params.sos_dict.update(runtime)
+            return params
 
     def _get_status(self):
         if not os.path.isfile(self.task_file):
