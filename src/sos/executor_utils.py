@@ -203,7 +203,7 @@ def create_task(global_def, task_stmt, task_params):
     task_vars = env.sos_dict.clone_selected_vars(
         env.sos_dict['__signature_vars__'] |
             {'_input', '_output', '_depends', '_index',
-            '__args__', 'step_name', '_runtime',
+            'step_name', '_runtime',
             '__signature_vars__'})
 
     task_tags = [env.sos_dict['step_name'], env.sos_dict['workflow_id']]

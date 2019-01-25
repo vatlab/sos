@@ -453,9 +453,16 @@ class SoS_Step:
         if not self.statements:
             self.task = ''
             return
+        # handle tasks
+        task_directive = [idx for idx, statement in enumerate(
+            self.statements) if statement[0] == ':' and statement[1] == 'task']
+        if len(task_directive) > 1:
+            raise ValueError('Only one task statement is allowed in a step')
         # handle parameter
         for idx, statement in enumerate(self.statements):
             if statement[0] == ':' and statement[1] == 'parameter':
+                if task_directive and task_directive[0] < idx:
+                    raise ValueError('Parameter statement is not allowed in tasks.')
                 if '=' not in statement[2]:
                     if ':' in statement[2]:
                         if not is_type_hint(statement[2]):
@@ -482,8 +489,6 @@ class SoS_Step:
                                         statement[2].strip()]
                 self.parameters[name] = (value, statement[3])
         # handle tasks
-        task_directive = [idx for idx, statement in enumerate(
-            self.statements) if statement[0] == ':' and statement[1] == 'task']
         if not task_directive:
             self.task = ''
         else:
