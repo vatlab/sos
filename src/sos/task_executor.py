@@ -238,6 +238,8 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
             p = Pool(params.num_workers)
             results = []
             for tid, tdef in params.task_stack:
+                if hasattr(params, 'common_dict'):
+                    tdef.sos_dict.update(params.common_dict)
                 results.append(p.apply_async(_execute_task,
                                              ((tid, tdef, {tid: sig_content.get(tid, {})}), verbosity, runmode,
                                               sigmode, None, None), callback=copy_out_and_err))
@@ -257,6 +259,8 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
         else:
             results = []
             for tid, tdef in params.task_stack:
+                if hasattr(params, 'common_dict'):
+                    tdef.sos_dict.update(params.common_dict)
                 # no monitor process for subtasks
                 res = _execute_task((tid, tdef, {tid: sig_content.get(tid, {})}), verbosity=verbosity, runmode=runmode,
                                     sigmode=sigmode, monitor_interval=None, resource_monitor_interval=None)

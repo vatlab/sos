@@ -107,7 +107,7 @@ class TaskManager:
             for idx, (task_id, taskdef, _) in slot:
                 master.push(task_id, taskdef)
             ids.append(master.ID)
-            TaskFile(master.ID).save(master)
+            TaskFile(master.ID).save(master.finalize())
             env.signature_push_socket.send_pyobj(['workflow', 'task', master.ID,
                                   f"{{'creation_time': {time.time()}}}"])
         self._unsubmitted_slots = []
@@ -146,7 +146,7 @@ class TaskManager:
                 master.push(task_id, taskdef)
             # the last piece
             if master is not None:
-                TaskFile(master.ID).save(master)
+                TaskFile(master.ID).save(master.finalize())
                 env.signature_push_socket.send_pyobj(['workflow', 'task', master.ID,
                                           f"{{'creation_time': {time.time()}}}"])
                 ids.append(master.ID)

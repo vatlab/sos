@@ -132,6 +132,23 @@ class MasterTaskParams(TaskParams):
         self.ID = f'M{len(self.task_stack)}_{self.task_stack[0][0]}'
         self.name = self.ID
 
+    def finalize(self):
+        if not self.task_stack:
+            return
+        common_dict = None
+        common_keys = set()
+        for id, params in self.task_stack:
+            if common_dict is None:
+                common_dict = params.sos_dict
+                common_keys = set(params.sos_dict.keys())
+            else:
+                common_keys = {key for key in common_keys if key in params.sos_dict and common_dict[key] == params.sos_dict[key]}
+            if not common_keys:
+                break
+        self.common_dict = {x:common_dict[x] for x in common_keys}
+        for id, params in self.task_stack:
+            params.sos_dict = {k:v for k,v in params.sos_dict.items() if k not in common_keys}
+        return self
 
 class TaskStatus(Enum):
     new = 0

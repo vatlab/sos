@@ -231,7 +231,6 @@ def create_task(global_def, task_stmt, task_params):
                 task_tags.append(tag)
 
     # save task to a file
-    task_vars['__task_vars__'] = copy.copy(task_vars)
     taskdef = TaskParams(
         name='{} (index={})'.format(
             env.sos_dict['step_name'], env.sos_dict['_index']),
