@@ -799,7 +799,9 @@ class Base_Step_Executor:
                         except (UnknownTarget, RemovedTarget) as e:
                             self.socket.send_pyobj(['missing_target', e.target])
                             res = self.socket.recv_pyobj()
-                            if not res:
+                            if res:
+                                continue
+                            else:
                                 raise e
                         except UnavailableLock:
                             raise
@@ -840,7 +842,9 @@ class Base_Step_Executor:
                 except (UnknownTarget, RemovedTarget, UnavailableLock) as e:
                     self.socket.send_pyobj(['missing_target', e.target])
                     res = self.socket.recv_pyobj()
-                    if not res:
+                    if res:
+                        continue
+                    else:
                         raise e
                 except Exception as e:
                     raise ValueError(
@@ -1014,7 +1018,9 @@ class Base_Step_Executor:
                             except (UnknownTarget, RemovedTarget, UnavailableLock) as e:
                                 self.socket.send_pyobj(['missing_target', e.target])
                                 res = self.socket.recv_pyobj()
-                                if not res:
+                                if res:
+                                    continue
+                                else:
                                     raise e
                             except Exception as e:
                                 # if input is Undertermined, it is possible that output cannot be processed

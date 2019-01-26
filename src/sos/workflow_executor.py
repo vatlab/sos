@@ -874,6 +874,10 @@ class Base_Executor:
                     node._context['__signature_vars__'] | node._context['__environ_vars__']
                     | {'_input', '__step_output__', '__args__'}))
             node._context.update(svar)
+            if node._status == 'target_pending':
+                if node._pending_target.target_exists('target'):
+                    node._socket.send_pyobj(True)
+                    node._status = 'running'
         dag.update_step(runnable,
                         input_targets = env.sos_dict['__step_input__'],
                         output_targets = env.sos_dict['__step_output__'],
@@ -881,10 +885,9 @@ class Base_Executor:
         runnable._status = 'completed'
         dag.save(env.config['output_dag'])
 
-    def handle_unknown_target(self, res, dag, runnable):
+    def handle_unknown_target(self, target, dag, runnable):
         runnable._status = None
         dag.save(env.config['output_dag'])
-        target = res.target
 
         if isinstance(target, file_target) and (target + '.zapped').exists():
             (target + '.zapped').unlink()
@@ -1073,8 +1076,13 @@ class Base_Executor:
                             continue
                         elif res[0] == 'missing_target':
                             missed = res[1]
-                            env.logger.warning(f'GOT {missed} request')
-                            proc.socket.send_pyobj(False)
+                            try:
+                                self.handle_unknown_target(missed, dag, runnable)
+                                runnable._status = 'target_pending'
+                                runnable._pending_target = missed
+                                runnable._socket = proc.socket
+                            except:
+                                proc.socket.send_pyobj(False)
                             continue
                         elif res[0] == 'step':
                             # step sent from nested workflow
@@ -1132,8 +1140,6 @@ class Base_Executor:
                         # nested workflow to master
                         runnable._child_socket.LINGER = 0
                         runnable._child_socket.close()
-                    elif isinstance(res, (UnknownTarget, RemovedTarget)):
-                        self.handle_unknown_target(res, dag, runnable)
                     elif isinstance(res, UnavailableLock):
                         self.handle_unavailable_lock(res, dag, runnable)
 
@@ -1375,9 +1381,7 @@ class Base_Executor:
                     manager.mark_idle(idx)
                     env.logger.debug(
                         f'{i_am()} receive a result {short_repr(res)}')
-                    if isinstance(res, (UnknownTarget, RemovedTarget)):
-                        self.handle_unknown_target(res, dag, runnable)
-                    elif isinstance(res, UnavailableLock):
+                    if isinstance(res, UnavailableLock):
                         self.handle_unavailable_lock(res, dag, runnable)
                     # if the job is failed
                     elif isinstance(res, Exception):
