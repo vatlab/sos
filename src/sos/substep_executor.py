@@ -11,8 +11,7 @@ import zmq
 from io import StringIO
 
 from .eval import SoS_exec
-from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
-                      UnknownTarget, sos_targets)
+from .targets import (RuntimeInfo, UnavailableLock, sos_targets)
 from .executor_utils import (prepare_env, clear_output, verify_input, kill_all_subprocesses,
         reevaluate_output, validate_step_sig, create_task, get_traceback_msg, statementMD5)
 
@@ -174,7 +173,7 @@ def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars
             # complete case: concurrent execution without task
             env.controller_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
         return res
-    except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock) as e:
+    except (StopInputGroup, TerminateExecution, UnavailableLock) as e:
         # stop_if is not considered as an error
         if isinstance(e, StopInputGroup):
             if e.message:
