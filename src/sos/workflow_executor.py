@@ -349,41 +349,91 @@ class Base_Executor:
         if not res['step_output'].unspecified():
              section._autoprovides = res['step_output']
 
-    def match(self, target: BaseTarget, step: SoS_Step) -> Union[Dict[str, str], bool]:
-        if not hasattr(step, '_analyzed'):
-            ret = self.analyze_auxiliary_step(step)
-            step._analyzed = True
-        # for sos_step, we need to match step name
-        if isinstance(target, sos_step):
-            return step.match(target.target_name())
-        if isinstance(target, named_output):
-            return 'namedprovides' in step.options and target.target_name() in step.options['namedprovides']
-        if hasattr(step, '_autoprovides') and step._autoprovides.contains(target):
-            return True
-        if not 'provides' in step.options:
-            return False
-        patterns = step.options['provides']
-        if isinstance(patterns, (str, BaseTarget, path)):
-            patterns = [patterns]
-        elif not isinstance(patterns, (sos_targets, Sequence, paths)):
-            raise RuntimeError(
-                f'Unknown target to match: {patterns} of type {patterns.__class__.__name__}')
-        for p in patterns:
-            # other targets has to match exactly
-            if not isinstance(target, (str, file_target)) or \
-                    not isinstance(p, (str, file_target)):
-                if target == p:
-                    return {}
-                else:
-                    continue
+    def _build_target_map(self, sections):
+        self._target_map = defaultdict(list)
+        self._target_patterns = defaultdict(list)
 
+        for step in sections:
+            if not hasattr(step, '_analyzed'):
+                ret = self.analyze_auxiliary_step(step)
+                step._analyzed = True
+            # a step first provides sos_step
+            for name, index, _ in step.names:
+                self._target_map[sos_step(name)].append(step)
+                if index is not None:
+                    self._target_map[sos_step(f'{name}_{index}')].append(step)
+            # named output
+            if 'namedprovides' in step.options:
+                for x in step.options['namedprovides']:
+                    self._target_map[named_output(x)].append(step)
+            #
+            if hasattr(step, '_autoprovides'):
+                for x in step._autoprovides:
+                    # x must be BaseTarget (file_target or others)
+                    self._target_map[x].append(step)
+            #
+            if 'provides' in step.options:
+                patterns = step.options['provides']
+                # str, BaseTarget, path
+                # sos_targets, Sequence, paths
+                if isinstance(patterns, str):
+                    if '{' in patterns and '}' in patterns:
+                        self._target_patterns[patterns].append(step)
+                    else:
+                        self._target_map[file_target(patterns)].append(step)
+                elif isinstance(patterns, path):
+                    self._target_map[file_target(patterns)].append((step, True))
+                elif isinstance(patterns, sos_targets):
+                    for x in patterns:
+                        self._target_map[x].append(step)
+                elif isinstance(patterns, paths):
+                    for x in patterns:
+                        self._target_map[file_target(x)].append(step)
+                elif isinstance(patterns, BaseTarget):
+                    self._target_map[patterns].append(step)
+                elif isinstance(patterns, Sequence):
+                    for pattern in patterns:
+                        if isinstance(pattern, str):
+                            if '{' in pattern and '}' in pattern:
+                                self._target_patterns[pattern].append(step)
+                            else:
+                                self._target_map[file_target(pattern)].append(step)
+                        elif isinstance(pattern, path):
+                            self._target_map[file_target(pattern)].append(step)
+                        elif isinstance(pattern, sos_targets):
+                            for x in pattern:
+                                self._target_map[x].append(step)
+                        elif isinstance(pattern, paths):
+                            for x in pattern:
+                                self._target_map[file_target(x)].append(step)
+                        elif isinstance(pattern, BaseTarget):
+                            self._target_map[pattern].append(step)
+                        else:
+                            raise ValueError(f'Unacceptable value for option pattern {patterns}')
+                else:
+                    raise ValueError(f'Unacceptable value for option pattern {patterns}')
+        env.logger.error(self._target_map)
+        env.logger.error(self._target_patterns)
+
+    def match(self, target: BaseTarget) -> Union[Dict[str, str], bool]:
+        if not hasattr(self, '_target_map'):
+            self._build_target_map(self.workflow.auxiliary_sections)
+        if target in self._target_map:
+            res = self._target_map[target]
+            if len(res) > 1:
+                self._target_map[target] = list(set(res))
+                res = self._target_map[target]
+            return res
+        if not isinstance(target, file_target) or not self._target_patterns:
+            return False
+        # try pattern?
+        for pattern, steps in self._target_patterns.items():
+            if len(steps) > 1:
+                raise RuntimeErrors(f'Multiple steps providing the same pattern.')
             # if this is a regular string
-            res = extract_pattern(str(p), [str(target)])
+            res = extract_pattern(pattern, [str(target)])
             if res and not any(None in x for x in res.values()):
-                return {x: y[0] for x, y in res.items()}
-            # string match
-            elif file_target(p) == target:
-                return True
+                return [(steps[0], {x: y[0] for x, y in res.items()})]
         return False
 
     def resolve_dangling_targets(self, dag: SoS_DAG, targets: Optional[sos_targets]=None) -> int:
@@ -402,9 +452,8 @@ class Base_Executor:
                 # target might no longer be dangling after a section is added.
                 if target not in dag.dangling(targets)[0]:
                     continue
-                mo = [(x, self.match(target, x))
-                      for x in self.workflow.auxiliary_sections]
-                mo = [x for x in mo if x[1] is not False]
+                mo = self.match(target)
+                env.logger.warning(f'{target} matched {mo}')
                 if not mo:
                     #
                     # if no step produces the target, it is possible that it is an indexed step
@@ -446,8 +495,7 @@ class Base_Executor:
                         # create a new forward_workflow that is different from the master one
                         dag.new_forward_workflow()
                         # get the step names
-                        sections = sorted([x[0] for x in mo],
-                                          key=lambda x: x.step_name())
+                        sections = sorted(mo, key=lambda x: x.step_name())
                         # this is only useful for executing auxiliary steps and
                         # might interfere with the step analysis
                         env.sos_dict.pop('__default_output__', None)
@@ -504,27 +552,35 @@ class Base_Executor:
                         continue
                     else:
                         raise RuntimeError(
-                            f'Multiple steps {", ".join(x[0].step_name() for x in mo)} to generate target {target}')
+                            f'Multiple steps {", ".join(x.step_name() for x in mo)} to generate target {target}')
                 #
                 # only one step, we need to process it # execute section with specified input
                 #
                 # NOTE:  Auxiliary can be called with different output files and matching pattern
                 # so we are actually creating a new section each time we need an auxillary step.
                 #
-                section = mo[0][0]
-                if isinstance(mo[0][1], dict):
-                    for k, v in mo[0][1].items():
-                        env.sos_dict.set(k, v)
-                #
-                # for auxiliary, we need to set input and output, here
-                # now, if the step does not provide any alternative (e.g. no variable generated
-                # from patten), we should specify all output as output of step. Otherwise the
-                # step will be created for multiple outputs. issue #243
-                if mo[0][1]:
+                if not isinstance(mo[0], tuple):
+                    section = mo[0]
                     env.sos_dict['__default_output__'] = sos_targets(target)
+                    context = {}
                 else:
-                    env.sos_dict['__default_output__'] = sos_targets(
-                        section.options['provides'])
+                    section = mo[0][0]
+                    if isinstance(mo[0][1], dict):
+                        for k, v in mo[0][1].items():
+                            env.sos_dict.set(k, v)
+                        context = mo[0][1]
+                    else:
+                        context = {}
+
+                    # for auxiliary, we need to set input and output, here
+                    # now, if the step does not provide any alternative (e.g. no variable generated
+                    # from patten), we should specify all output as output of step. Otherwise the
+                    # step will be created for multiple outputs. issue #243
+                    if mo[0][1]:
+                        env.sos_dict['__default_output__'] = sos_targets(target)
+                    else:
+                        env.sos_dict['__default_output__'] = sos_targets(
+                            section.options['provides'])
                 # will become input, set to None
                 env.sos_dict['__step_output__'] = sos_targets()
                 #
@@ -544,10 +600,7 @@ class Base_Executor:
                 # build DAG with input and output files of step
                 env.logger.debug(
                     f'Adding step {res["step_name"]} with output {short_repr(res["step_output"])} to resolve target {target}')
-                if isinstance(mo[0][1], dict):
-                    context = mo[0][1]
-                else:
-                    context = {}
+
                 context['__signature_vars__'] = res['signature_vars']
                 context['__environ_vars__'] = res['environ_vars']
                 context['__changed_vars__'] = res['changed_vars']
@@ -579,9 +632,8 @@ class Base_Executor:
                     continue
                 if file_target(target).target_exists('target') if isinstance(target, str) else target.target_exists('target'):
                     continue
-                mo = [(x, self.match(target, x))
-                      for x in self.workflow.auxiliary_sections]
-                mo = [x for x in mo if x[1] is not False]
+                mo = self.match(target)
+                env.logger.warning(f'{target} matched {mo}')
                 if not mo:
                     # this is ok, this is just an existing target, no one is designed to
                     # generate it.
@@ -589,24 +641,27 @@ class Base_Executor:
                 if len(mo) > 1:
                     # this is not ok.
                     raise RuntimeError(
-                        f'Multiple steps {", ".join(x[0].step_name() for x in mo)} to generate target {target}')
+                        f'Multiple steps {", ".join(x.step_name() for x in mo)} to generate target {target}')
                 #
                 # only one step, we need to process it # execute section with specified input
                 #
-                section = mo[0][0]
-                if isinstance(mo[0][1], dict):
-                    for k, v in mo[0][1].items():
-                        env.sos_dict.set(k, v)
-                #
-                # for auxiliary, we need to set input and output, here
-                # now, if the step does not provide any alternative (e.g. no variable generated
-                # from patten), we should specify all output as output of step. Otherwise the
-                # step will be created for multiple outputs. issue #243
-                if mo[0][1]:
+                if not isinstance(mo[0], tuple):
+                    section = mo[0]
                     env.sos_dict['__default_output__'] = sos_targets(target)
+                    context = {}
                 else:
-                    env.sos_dict['__default_output__'] = sos_targets(
-                        section.options['provides'])
+                    section = mo[0][0]
+                    if isinstance(mo[0][1], dict):
+                        for k, v in mo[0][1].items():
+                            env.sos_dict.set(k, v)
+
+                    if mo[0][1]:
+                        env.sos_dict['__default_output__'] = sos_targets(target)
+                        context = {}
+                    else:
+                        env.sos_dict['__default_output__'] = sos_targets(
+                            section.options['provides'])
+                        context = mo[0][1]
                 # will become input, set to None
                 env.sos_dict['__step_output__'] = sos_targets()
                 #
@@ -615,10 +670,7 @@ class Base_Executor:
                 # build DAG with input and output files of step
                 env.logger.debug(
                     f'Adding step {res["step_name"]} with output {short_repr(res["step_output"])} to resolve target {target}')
-                if isinstance(mo[0][1], dict):
-                    context = mo[0][1]
-                else:
-                    context = {}
+
                 context['__signature_vars__'] = res['signature_vars']
                 context['__environ_vars__'] = res['environ_vars']
                 context['__changed_vars__'] = res['changed_vars']
