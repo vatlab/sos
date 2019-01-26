@@ -603,7 +603,7 @@ class Base_Step_Executor:
                 stmt, return_result=return_result or self.run_mode == 'interactive')
             if return_result:
                 return self.last_res
-        except (StopInputGroup, TerminateExecution, UnknownTarget, RemovedTarget, UnavailableLock):
+        except (StopInputGroup, TerminateExecution, UnavailableLock):
             raise
         except subprocess.CalledProcessError as e:
             raise RuntimeError(e.stderr)
