@@ -412,8 +412,6 @@ class Base_Executor:
                             raise ValueError(f'Unacceptable value for option pattern {patterns}')
                 else:
                     raise ValueError(f'Unacceptable value for option pattern {patterns}')
-        env.logger.error(self._target_map)
-        env.logger.error(self._target_patterns)
 
     def match(self, target: BaseTarget) -> Union[Dict[str, str], bool]:
         if not hasattr(self, '_target_map'):
@@ -453,7 +451,6 @@ class Base_Executor:
                 if target not in dag.dangling(targets)[0]:
                     continue
                 mo = self.match(target)
-                env.logger.warning(f'{target} matched {mo}')
                 if not mo:
                     #
                     # if no step produces the target, it is possible that it is an indexed step
@@ -633,7 +630,6 @@ class Base_Executor:
                 if file_target(target).target_exists('target') if isinstance(target, str) else target.target_exists('target'):
                     continue
                 mo = self.match(target)
-                env.logger.warning(f'{target} matched {mo}')
                 if not mo:
                     # this is ok, this is just an existing target, no one is designed to
                     # generate it.
