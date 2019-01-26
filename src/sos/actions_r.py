@@ -11,7 +11,7 @@ import tempfile
 
 from sos.actions import SoS_Action, SoS_ExecuteScript, collect_input
 from sos.eval import interpolate
-from sos.targets import UnknownTarget, sos_targets
+from sos.targets import sos_targets
 from sos.utils import env
 
 from .targets_r import R_library
@@ -56,7 +56,7 @@ def Rmarkdown(script=None, input=None, output=None, args='{input:r}, output_file
     of args is `${input!r} --output ${output!ar}'
     '''
     if not R_library('rmarkdown').target_exists():
-        raise UnknownTarget(R_library('rmarkdown'))
+        raise RuntimeError('Library rmarkdown does not exist')
 
     input = sos_targets(collect_input(script, input))
 
