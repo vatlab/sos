@@ -700,6 +700,7 @@ class Base_Executor:
                 if not mo:
                     # this is ok, this is just an existing target, no one is designed to
                     # generate it.
+                    env.logger.info(f'{target} already exists')
                     continue
                 if len(mo) > 1:
                     # this is not ok.
@@ -749,8 +750,7 @@ class Base_Executor:
                              res['step_depends'], res['step_output'], context=context)
                 node_added = True
                 added_node += 1
-                # this case do not count as resolved
-                # resolved += 1
+                resolved += 1
 
             if added_node == 0:
                 break
