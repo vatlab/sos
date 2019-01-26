@@ -440,7 +440,8 @@ class Base_Executor:
         resolved = 0
         while True:
             added_node = 0
-            dangling_targets, existing_targets = dag.dangling(targets)
+            # first resolve missing
+            dangling_targets = dag.dangling(targets)[0]
             if dangling_targets:
                 env.logger.debug(
                     f'Resolving {dangling_targets} objects from {dag.number_of_nodes()} nodes')
@@ -457,7 +458,7 @@ class Base_Executor:
                     # so the execution of its previous steps would solves the dependency
                     #
                     # find all the nodes that depends on target
-                    nodes = dag._all_dependent_files[target]
+                    nodes = dag._all_depends_files[target]
                     for node in nodes:
                         # if this is an index step... simply let it depends on previous steps
                         if node._node_index is not None:
@@ -684,6 +685,73 @@ class Base_Executor:
                 added_node += 1
                 # this case do not count as resolved
                 # resolved += 1
+
+            # for depending targets... they already exist but we will add
+            # nodes that generates them if available.
+            node_added = False
+            depending_targets = set(dag.dangling(targets)[2])
+            for target in depending_targets:
+                if node_added:
+                    depending_targets = set(dag.dangling(targets)[2])
+                    node_added = False
+                if target not in depending_targets:
+                    continue
+                mo = self.match(target)
+                if not mo:
+                    # this is ok, this is just an existing target, no one is designed to
+                    # generate it.
+                    continue
+                if len(mo) > 1:
+                    # this is not ok.
+                    raise RuntimeError(
+                        f'Multiple steps {", ".join(x.step_name() for x in mo)} to generate target {target}')
+                #
+                # only one step, we need to process it # execute section with specified input
+                #
+                if not isinstance(mo[0], tuple):
+                    section = mo[0]
+                    env.sos_dict['__default_output__'] = sos_targets(target)
+                    context = {}
+                else:
+                    section = mo[0][0]
+                    if isinstance(mo[0][1], dict):
+                        for k, v in mo[0][1].items():
+                            env.sos_dict.set(k, v)
+
+                    if mo[0][1]:
+                        env.sos_dict['__default_output__'] = sos_targets(target)
+                        context = {}
+                    else:
+                        env.sos_dict['__default_output__'] = sos_targets(
+                            section.options['provides'])
+                        context = mo[0][1]
+                # will become input, set to None
+                env.sos_dict['__step_output__'] = sos_targets()
+                #
+                res = analyze_section(section, default_output=env.sos_dict['__default_output__'])
+                #
+                # build DAG with input and output files of step
+                env.logger.debug(
+                    f'Adding step {res["step_name"]} with output {short_repr(res["step_output"])} to resolve target {target}')
+
+                context['__signature_vars__'] = res['signature_vars']
+                context['__environ_vars__'] = res['environ_vars']
+                context['__changed_vars__'] = res['changed_vars']
+                context['__default_output__'] = env.sos_dict['__default_output__']
+                # NOTE: If a step is called multiple times with different targets, it is much better
+                # to use different names because pydotplus can be very slow in handling graphs with nodes
+                # with identical names.
+                node_name = section.step_name()
+                if env.sos_dict["__default_output__"]:
+                    node_name += f' {short_repr(env.sos_dict["__default_output__"])})'
+                dag.add_step(section.uuid, node_name,
+                             None, res['step_input'],
+                             res['step_depends'], res['step_output'], context=context)
+                node_added = True
+                added_node += 1
+                # this case do not count as resolved
+                # resolved += 1
+
             if added_node == 0:
                 break
         return resolved
@@ -784,16 +852,6 @@ class Base_Executor:
         else:
             return 'no step executed'
 
-    def check_targets(self, targets: sos_targets):
-        for target in sos_targets(targets):
-            if target.target_exists('target'):
-                if env.config['sig_mode'] == 'force':
-                    env.logger.info(f'Re-generating {target}')
-                    target.unlink()
-                else:
-                    env.logger.info(f'Target {target} already exists')
-        return [x for x in targets if not file_target(x).target_exists('target') or env.config['sig_mode'] == 'force']
-
     def step_completed(self, res, dag, runnable):
         for k, v in res['__completed__'].items():
             self.completed[k] += v
@@ -833,7 +891,7 @@ class Base_Executor:
 
         if dag.regenerate_target(target):
             # runnable._depends_targets.append(target)
-            # dag._all_dependent_files[target].append(runnable)
+            # dag._all_depends_files[target].append(runnable)
             dag.build()
             #
             cycle = dag.circular_dependencies()
@@ -847,8 +905,8 @@ class Base_Executor:
                     f'Failed to regenerate or resolve {target}{dag.steps_depending_on(target, self.workflow)}.')
             if runnable._depends_targets.valid():
                 runnable._depends_targets.extend(target)
-            if runnable not in dag._all_dependent_files[target]:
-                dag._all_dependent_files[target].append(
+            if runnable not in dag._all_depends_files[target]:
+                dag._all_depends_files[target].append(
                     runnable)
             dag.build()
             #
@@ -944,11 +1002,6 @@ class Base_Executor:
         wf_result = {'__workflow_id__': self.md5, 'shared': {}}
         # if targets are specified and there are only signatures for them, we need
         # to remove the signature and really generate them
-        if targets:
-            targets = self.check_targets(targets)
-            if len(targets) == 0:
-                return wf_result
-
         try:
             if env.config['output_dag'] and os.path.isfile(env.config['output_dag']):
                 os.unlink(env.config['output_dag'])
@@ -1284,13 +1337,7 @@ class Base_Executor:
         env.sos_dict.set('run_mode', env.config['run_mode'])
 
         wf_result = {'__workflow_id__': my_workflow_id, 'shared': {}}
-        # if targets are specified and there are only signatures for them, we need
-        # to remove the signature and really generate them
-        if targets:
-            targets = self.check_targets(targets)
-            if len(targets) == 0:
-                parent_socket.send_pyobj(wf_result)
-                return
+
 
         dag = self.initialize_dag(targets=targets)
         # the mansger will have all fake executors

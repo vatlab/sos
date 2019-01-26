@@ -109,8 +109,9 @@ class SoS_Node(object):
 class SoS_DAG(nx.DiGraph):
     def __init__(self, *args, **kwargs):
         nx.DiGraph.__init__(self, *args, **kwargs)
-        # all_dependent files includes input and depends files
-        self._all_dependent_files = defaultdict(list)
+        # all_input
+        self._all_input_files = defaultdict(list)
+        self._all_depends_files = defaultdict(list)
         self._all_output_files = defaultdict(list)
         # index of mini
         self._forward_workflow_id = 0
@@ -132,11 +133,11 @@ class SoS_DAG(nx.DiGraph):
         self._all_output_files[sos_step(node_name.split(' ')[0])].append(node)
 
         for x in input_targets:
-            if node not in self._all_dependent_files[x]:
-                self._all_dependent_files[x].append(node)
+            if node not in self._all_input_files[x]:
+                self._all_input_files[x].append(node)
         for x in depends_targets:
-            if node not in self._all_dependent_files[x]:
-                self._all_dependent_files[x].append(node)
+            if node not in self._all_depends_files[x]:
+                self._all_depends_files[x].append(node)
         for x in output_targets:
             if node not in self._all_output_files[x]:
                 self._all_output_files[x].append(node)
@@ -148,11 +149,11 @@ class SoS_DAG(nx.DiGraph):
 
     def update_step(self, node, input_targets: sos_targets, output_targets: sos_targets, depends_targets: sos_targets):
         for x in input_targets:
-            if node not in self._all_dependent_files[x]:
-                self._all_dependent_files[x].append(node)
+            if node not in self._all_input_files[x]:
+                self._all_input_files[x].append(node)
         for x in depends_targets:
-            if node not in self._all_dependent_files[x]:
-                self._all_dependent_files[x].append(node)
+            if node not in self._all_depends_files[x]:
+                self._all_depends_files[x].append(node)
         for x in output_targets:
             if node not in self._all_output_files[x]:
                 self._all_output_files[x].append(node)
@@ -213,8 +214,10 @@ class SoS_DAG(nx.DiGraph):
             return []
 
     def steps_depending_on(self, target: BaseTarget, workflow):
-        if target in self._all_dependent_files:
-            return ' requested by ' + ', '.join(set([workflow.section_by_id(x._step_uuid).step_name() for x in self._all_dependent_files[target]]))
+        if target in self._all_depends_files:
+            return ' requested by ' + ', '.join(set([workflow.section_by_id(x._step_uuid).step_name() for x in self._all_depends_files[target]]))
+        elif target in self._all_input_files:
+            return ' requested by ' + ', '.join(set([workflow.section_by_id(x._step_uuid).step_name() for x in self._all_input_files[target]]))
         else:
             return ''
 
@@ -223,20 +226,32 @@ class SoS_DAG(nx.DiGraph):
 
     def dangling(self, targets: sos_targets):
         missing = []
+        depending = []
         existing = []
-        for x in self._all_dependent_files.keys():
+        for x in self._all_input_files.keys():
+            # for input files, if it exists, and not in output files,
+            # declear exist, if it is in output_files, good.
             if x.target_exists():
                 if x not in self._all_output_files:
                     existing.append(x)
+            # if it does not exist, and not in output_files, declear missing
+            elif x not in self._all_output_files:
+                missing.append(x)
+        for x in self._all_depends_files.keys():
+            # for dependent files, if it exists, and not in output files
+            # we still try to find steps to satify it
+            if x.target_exists():
+                if x not in self._all_output_files:
+                    depending.append(x)
             elif x not in self._all_output_files:
                 missing.append(x)
         for x in targets:
             if x.target_exists():
                 if x not in self._all_output_files:
-                    existing.append(x)
+                    depending.append(x)
             elif x not in self._all_output_files:
                 missing.append(x)
-        return missing, existing
+        return missing, existing, depending
 
     def regenerate_target(self, target: BaseTarget):
         if target in self._all_output_files:
@@ -307,7 +322,14 @@ class SoS_DAG(nx.DiGraph):
                         self.add_edge(indexed[idx - 1], node)
         #
         # 3. if the input of a step depends on the output of another step
-        for target, in_node in self._all_dependent_files.items():
+        for target, in_node in self._all_depends_files.items():
+            for out_node in [y for (x, y) in self._all_output_files.items() if x == target]:
+                for i in in_node:
+                    for j in out_node:
+                        if j != i:
+                            self.add_edge(j, i)
+        #
+        for target, in_node in self._all_input_files.items():
             for out_node in [y for (x, y) in self._all_output_files.items() if x == target]:
                 for i in in_node:
                     for j in out_node:
