@@ -1071,6 +1071,11 @@ class Base_Executor:
                                 env.logger.error(e)
                                 proc.set_status('failed')
                             continue
+                        elif res[0] == 'missing_target':
+                            missed = res[1]
+                            env.logger.warning(f'GOT {missed} request')
+                            proc.socket.send_pyobj(False)
+                            continue
                         elif res[0] == 'step':
                             # step sent from nested workflow
                             step_id = res[1]

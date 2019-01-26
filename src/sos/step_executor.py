@@ -796,7 +796,12 @@ class Base_Step_Executor:
                             dfiles = expand_depends_files(*args)
                             # dfiles can be Undetermined
                             self.process_depends_args(dfiles, **kwargs)
-                        except (UnknownTarget, RemovedTarget, UnavailableLock):
+                        except (UnknownTarget, RemovedTarget) as e:
+                            self.socket.send_pyobj(['missing_target', e.target])
+                            res = self.socket.recv_pyobj()
+                            if not res:
+                                raise e
+                        except UnavailableLock:
                             raise
                         except Exception as e:
                             raise RuntimeError(
@@ -832,8 +837,11 @@ class Base_Step_Executor:
                     #
                     if 'concurrent' in kwargs and kwargs['concurrent'] is False:
                         self.concurrent_substep = False
-                except (UnknownTarget, RemovedTarget, UnavailableLock):
-                    raise
+                except (UnknownTarget, RemovedTarget, UnavailableLock) as e:
+                    self.socket.send_pyobj(['missing_target', e.target])
+                    res = self.socket.recv_pyobj()
+                    if not res:
+                        raise e
                 except Exception as e:
                     raise ValueError(
                         f'Failed to process input statement {stmt}: {e}')
@@ -1003,8 +1011,11 @@ class Base_Step_Executor:
                                         f'Unrecognized directive {key}')
                                 # everything is ok, break
                                 break
-                            except (UnknownTarget, RemovedTarget, UnavailableLock):
-                                raise
+                            except (UnknownTarget, RemovedTarget, UnavailableLock) as e:
+                                self.socket.send_pyobj(['missing_target', e.target])
+                                res = self.socket.recv_pyobj()
+                                if not res:
+                                    raise e
                             except Exception as e:
                                 # if input is Undertermined, it is possible that output cannot be processed
                                 # due to that, and we just return
