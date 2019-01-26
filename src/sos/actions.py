@@ -28,7 +28,7 @@ from concurrent.futures import ThreadPoolExecutor
 from .eval import interpolate
 from .parser import SoS_Script
 from .syntax import SOS_ACTION_OPTIONS
-from .targets import (UnknownTarget, executable, file_target, fileMD5, path,
+from .targets import (executable, file_target, fileMD5, path,
                       paths, sos_targets)
 from .utils import (StopInputGroup, TerminateExecution,
                     TimeoutInterProcessLock, env, get_traceback, short_repr,
@@ -1093,7 +1093,7 @@ def pandoc(script=None, input=None, output=None, args='{input:q} --output {outpu
 # IGNORED
 #
     if not executable('pandoc').target_exists():
-        raise UnknownTarget(executable('pandoc'))
+        raise RuntimeError('pandoc not found')
 
     input = sos_targets(collect_input(script, input))
 
