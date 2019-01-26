@@ -10,7 +10,7 @@ from collections import OrderedDict, Mapping, Sequence
 
 from .eval import SoS_eval, SoS_exec
 from .monitor import ProcessMonitor
-from .targets import (InMemorySignature, UnknownTarget, file_target,
+from .targets import (InMemorySignature, file_target,
                       sos_step, dynamic, sos_targets)
 from .utils import StopInputGroup, env, short_repr, pickleable
 from .tasks import TaskFile, remove_task_files
@@ -438,11 +438,11 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
             if isinstance(target, str):
                 if not file_target(target).target_exists('target'):
                     # remove the signature and regenerate the file
-                    raise UnknownTarget(target)
+                    raise RuntimeError(f'{target} not found')
             # the sos_step target should not be checked in tasks because tasks are
             # independently executable units.
             elif not isinstance(target, sos_step) and not target.target_exists('target'):
-                raise UnknownTarget(target)
+                raise RuntimeError(f'{target} not found')
 
         # create directory. This usually has been done at the step level but the task can be executed
         # on a remote host where the directory does not yet exist.
