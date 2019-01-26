@@ -779,26 +779,29 @@ class Base_Step_Executor:
             # execute before input stuff
             for statement in self.step.statements[:input_statement_idx]:
                 if statement[0] == ':':
-                    key, value = statement[1:3]
-                    if key != 'depends':
-                        raise ValueError(
-                            f'Step input should be specified before {key}')
-                    try:
-                        args, kwargs = SoS_eval(f'__null_func__({value})',
-                            extra_dict={
-                                '__null_func__': __null_func__,
-                                'output_from': __output_from__,
-                                'named_output': __named_output__
-                                }
-                            )
-                        dfiles = expand_depends_files(*args)
-                        # dfiles can be Undetermined
-                        self.process_depends_args(dfiles, **kwargs)
-                    except (UnknownTarget, RemovedTarget, UnavailableLock):
-                        raise
-                    except Exception as e:
-                        raise RuntimeError(
-                            f'Failed to process step {key} ({value.strip()}): {e}')
+                    while True:
+                        # wait for all dependent targets to be resolved to be resolved
+                        key, value = statement[1:3]
+                        if key != 'depends':
+                            raise ValueError(
+                                f'Step input should be specified before {key}')
+                        try:
+                            args, kwargs = SoS_eval(f'__null_func__({value})',
+                                extra_dict={
+                                    '__null_func__': __null_func__,
+                                    'output_from': __output_from__,
+                                    'named_output': __named_output__
+                                    }
+                                )
+                            dfiles = expand_depends_files(*args)
+                            # dfiles can be Undetermined
+                            self.process_depends_args(dfiles, **kwargs)
+                        except (UnknownTarget, RemovedTarget, UnavailableLock):
+                            raise
+                        except Exception as e:
+                            raise RuntimeError(
+                                f'Failed to process step {key} ({value.strip()}): {e}')
+                        break
                 else:
                     try:
                         self.execute(statement[1])
@@ -811,27 +814,30 @@ class Base_Step_Executor:
             # input statement
             stmt = self.step.statements[input_statement_idx][2]
             self.log('input statement', stmt)
-            try:
-                args, kwargs = SoS_eval(f"__null_func__({stmt})",
-                            extra_dict={
-                                '__null_func__': __null_func__,
-                                'output_from': __output_from__,
-                                'named_output': __named_output__
-                                }
-                )
-                # Files will be expanded differently with different running modes
-                input_files: sos_targets = expand_input_files(stmt, *args,
-                    **{k:v for k,v in kwargs.items() if k not in SOS_INPUT_OPTIONS})
-                self._substeps = self.process_input_args(
-                    input_files, **{k:v for k,v in kwargs.items() if k in SOS_INPUT_OPTIONS})
-                #
-                if 'concurrent' in kwargs and kwargs['concurrent'] is False:
-                    self.concurrent_substep = False
-            except (UnknownTarget, RemovedTarget, UnavailableLock):
-                raise
-            except Exception as e:
-                raise ValueError(
-                    f'Failed to process input statement {stmt}: {e}')
+            while True:
+                # wait for all targets to be resovled
+                try:
+                    args, kwargs = SoS_eval(f"__null_func__({stmt})",
+                                extra_dict={
+                                    '__null_func__': __null_func__,
+                                    'output_from': __output_from__,
+                                    'named_output': __named_output__
+                                    }
+                    )
+                    # Files will be expanded differently with different running modes
+                    input_files: sos_targets = expand_input_files(stmt, *args,
+                        **{k:v for k,v in kwargs.items() if k not in SOS_INPUT_OPTIONS})
+                    self._substeps = self.process_input_args(
+                        input_files, **{k:v for k,v in kwargs.items() if k in SOS_INPUT_OPTIONS})
+                    #
+                    if 'concurrent' in kwargs and kwargs['concurrent'] is False:
+                        self.concurrent_substep = False
+                except (UnknownTarget, RemovedTarget, UnavailableLock):
+                    raise
+                except Exception as e:
+                    raise ValueError(
+                        f'Failed to process input statement {stmt}: {e}')
+                break
 
             input_statement_idx += 1
         elif env.sos_dict['step_input'].groups:
@@ -957,52 +963,56 @@ class Base_Step_Executor:
                     if statement[0] == ':':
                         key, value = statement[1:3]
                         # output, depends, and process can be processed multiple times
-                        try:
-                            args, kwargs = SoS_eval(f'__null_func__({value})',
-                                extra_dict={
-                                    '__null_func__': __null_func__,
-                                    'output_from': __output_from__,
-                                    'named_output': __named_output__
-                                    })
-                            # dynamic output or dependent files
-                            if key == 'output':
-                                # if output is defined, its default value needs to be cleared
-                                if idx == 0:
-                                    env.sos_dict.set(
-                                        'step_output', sos_targets())
-                                ofiles: sos_targets = expand_output_files(value, *args,
-                                    **{k:v for k,v in kwargs.items() if k not in SOS_OUTPUT_OPTIONS})
-                                if g.valid() and ofiles.valid():
-                                    if any(x in g._targets for x in ofiles if not isinstance(x, sos_step)):
-                                        raise RuntimeError(
-                                            f'Overlapping input and output files: {", ".join(repr(x) for x in ofiles if x in g)}')
+                        while True:
+                            # loop for all unresolved targets to be resolved
+                            try:
+                                args, kwargs = SoS_eval(f'__null_func__({value})',
+                                    extra_dict={
+                                        '__null_func__': __null_func__,
+                                        'output_from': __output_from__,
+                                        'named_output': __named_output__
+                                        })
+                                # dynamic output or dependent files
+                                if key == 'output':
+                                    # if output is defined, its default value needs to be cleared
+                                    if idx == 0:
+                                        env.sos_dict.set(
+                                            'step_output', sos_targets())
+                                    ofiles: sos_targets = expand_output_files(value, *args,
+                                        **{k:v for k,v in kwargs.items() if k not in SOS_OUTPUT_OPTIONS})
+                                    if g.valid() and ofiles.valid():
+                                        if any(x in g._targets for x in ofiles if not isinstance(x, sos_step)):
+                                            raise RuntimeError(
+                                                f'Overlapping input and output files: {", ".join(repr(x) for x in ofiles if x in g)}')
 
-                                # set variable _output and output
-                                self.process_output_args(ofiles, **{k:v for k,v in kwargs.items() if k in SOS_OUTPUT_OPTIONS})
-                                self.output_groups[idx] = env.sos_dict['_output']
-                            elif key == 'depends':
-                                try:
-                                    dfiles = expand_depends_files(*args)
-                                    # dfiles can be Undetermined
-                                    self.process_depends_args(dfiles, **kwargs)
-                                    self.depends_groups[idx] = env.sos_dict['_depends']
-                                    self.log('_depends')
-                                except Exception as e:
-                                    env.logger.info(e)
-                                    raise
-                            else:
+                                    # set variable _output and output
+                                    self.process_output_args(ofiles, **{k:v for k,v in kwargs.items() if k in SOS_OUTPUT_OPTIONS})
+                                    self.output_groups[idx] = env.sos_dict['_output']
+                                elif key == 'depends':
+                                    try:
+                                        dfiles = expand_depends_files(*args)
+                                        # dfiles can be Undetermined
+                                        self.process_depends_args(dfiles, **kwargs)
+                                        self.depends_groups[idx] = env.sos_dict['_depends']
+                                        self.log('_depends')
+                                    except Exception as e:
+                                        env.logger.info(e)
+                                        raise
+                                else:
+                                    raise RuntimeError(
+                                        f'Unrecognized directive {key}')
+                                # everything is ok, break
+                                break
+                            except (UnknownTarget, RemovedTarget, UnavailableLock):
+                                raise
+                            except Exception as e:
+                                # if input is Undertermined, it is possible that output cannot be processed
+                                # due to that, and we just return
+                                if not g.valid():
+                                    env.logger.debug(e)
+                                    return self.collect_result()
                                 raise RuntimeError(
-                                    f'Unrecognized directive {key}')
-                        except (UnknownTarget, RemovedTarget, UnavailableLock):
-                            raise
-                        except Exception as e:
-                            # if input is Undertermined, it is possible that output cannot be processed
-                            # due to that, and we just return
-                            if not g.valid():
-                                env.logger.debug(e)
-                                return self.collect_result()
-                            raise RuntimeError(
-                                f'Failed to process step {key} ({value.strip()}): {e}')
+                                    f'Failed to process step {key} ({value.strip()}): {e}')
                     else:
                         try:
                             if self.concurrent_substep:
