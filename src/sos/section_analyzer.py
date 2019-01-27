@@ -325,7 +325,7 @@ def get_output_from_steps(stmt, last_step):
     return [x for x in res if x is not None]
 
 
-analysis_cache = {}
+# analysis_cache = {}
 
 def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = None,
     default_output: Optional[sos_targets] = None,
@@ -334,11 +334,11 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     it uses, and input, output, etc.'''
     from ._version import __version__
 
-    analysis_key = (section.md5, section.step_name(),
-        default_input.target_name() if hasattr(default_input, 'target_name') else '',
-        default_output.target_name() if hasattr(default_output, 'target_name') else '', vars_and_output_only)
-    if analysis_key in analysis_cache:
-        return analysis_cache[analysis_key]
+    # analysis_key = (section.md5, section.step_name(),
+    #     default_input.target_name() if hasattr(default_input, 'target_name') else '',
+    #     default_output.target_name() if hasattr(default_output, 'target_name') else '', vars_and_output_only)
+    #if analysis_key in analysis_cache:
+    #    return analysis_cache[analysis_key]
 
     # initialiaze environment, without handling parameter
     prepare_env()
@@ -374,5 +374,5 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     if not vars_and_output_only:
         res['step_input'] = get_step_input(section, default_input)
         res['step_depends'] = get_step_depends(section)
-    analysis_cache[analysis_key] = res
+    # analysis_cache[analysis_key] = res
     return res
