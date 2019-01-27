@@ -782,12 +782,12 @@ class Base_Step_Executor:
             # execute before input stuff
             for statement in self.step.statements[:input_statement_idx]:
                 if statement[0] == ':':
+                    # wait for all dependent targets to be resolved to be resolved
+                    key, value = statement[1:3]
+                    if key != 'depends':
+                        raise ValueError(
+                            f'Step input should be specified before {key}')
                     while True:
-                        # wait for all dependent targets to be resolved to be resolved
-                        key, value = statement[1:3]
-                        if key != 'depends':
-                            raise ValueError(
-                                f'Step input should be specified before {key}')
                         try:
                             args, kwargs = SoS_eval(f'__null_func__({value})',
                                 extra_dict={
@@ -838,8 +838,11 @@ class Base_Step_Executor:
                     #
                     if 'concurrent' in kwargs and kwargs['concurrent'] is False:
                         self.concurrent_substep = False
-                except (UnknownTarget, RemovedTarget, UnavailableLock) as e:
+                except (UnknownTarget, RemovedTarget) as e:
                     self.handle_unknown_target(e)
+                    continue
+                except UnavailableLock:
+                    raise
                 except Exception as e:
                     raise ValueError(
                         f'Failed to process input statement {stmt}: {e}')
@@ -1009,8 +1012,11 @@ class Base_Step_Executor:
                                         f'Unrecognized directive {key}')
                                 # everything is ok, break
                                 break
-                            except (UnknownTarget, RemovedTarget, UnavailableLock) as e:
+                            except (UnknownTarget, RemovedTarget) as e:
                                 self.handle_unknown_target(e)
+                                continue
+                            except UnavailableLock:
+                                raise
                             except Exception as e:
                                 # if input is Undertermined, it is possible that output cannot be processed
                                 # due to that, and we just return

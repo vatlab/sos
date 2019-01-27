@@ -853,6 +853,7 @@ class Base_Executor:
             return 'no step executed'
 
     def step_completed(self, res, dag, runnable):
+        # this function can be called by both master step and nested step
         for k, v in res['__completed__'].items():
             self.completed[k] += v
         # if the result of the result of a step
@@ -876,7 +877,9 @@ class Base_Executor:
             node._context.update(svar)
             if node._status == 'target_pending':
                 if node._pending_target.target_exists('target'):
-                    node._socket.send_pyobj(True)
+                    # in a master node, this _socket points to the step
+                    # in a nested node, this _socket points to the parent socket
+                    node._socket.send(b'target_resolved')
                     node._status = 'running'
         dag.update_step(runnable,
                         input_targets = env.sos_dict['__step_input__'],
@@ -998,13 +1001,13 @@ class Base_Executor:
 
         env.config['run_mode'] = env.config.get(
             'run_mode', 'run') if mode is None else mode
+
         # passing run_mode to SoS dict so that users can execute blocks of
         # python statements in different run modes.
         env.sos_dict.set('run_mode', env.config['run_mode'])
 
         wf_result = {'__workflow_id__': self.md5, 'shared': {}}
-        # if targets are specified and there are only signatures for them, we need
-        # to remove the signature and really generate them
+
         try:
             if env.config['output_dag'] and os.path.isfile(env.config['output_dag']):
                 os.unlink(env.config['output_dag'])
@@ -1016,13 +1019,14 @@ class Base_Executor:
         try:
             dag = self.initialize_dag(targets=targets)
         except UnknownTarget as e:
+            # if the names cannot be found, try to see if they are named_output
             try:
                 named_targets = [named_output(x) for x in targets]
                 dag = self.initialize_dag(targets=named_targets)
             except UnknownTarget as e:
                 raise RuntimeError(f'No step to generate target {targets}')
 
-        #
+        # manager of processes
         manager = ExecutionManager(env.config['max_procs'])
         #
         # steps sent and queued from the nested workflow
@@ -1037,14 +1041,13 @@ class Base_Executor:
                     if proc is None:
                         continue
 
-                    runnable = proc.step
                     # echck if there is any message from the socket
                     if not proc.socket.poll(0):
                         continue
 
                     # receieve something from the pipe
                     res = proc.socket.recv_pyobj()
-                    #
+                    runnable = proc.step
                     # if this is NOT a result, rather some request for task, step, workflow etc
                     if isinstance(res, list):
                         if res[0] == 'tasks':
@@ -1073,17 +1076,35 @@ class Base_Executor:
                                     {x: {'ret_code': 1, 'task': x, 'output': {}, 'exception': e} for x in new_tasks})
                                 env.logger.error(e)
                                 proc.set_status('failed')
-                            continue
                         elif res[0] == 'missing_target':
+                            # the target that is missing from the running step
                             missed = res[1]
-                            try:
-                                self.handle_unknown_target(missed, dag, runnable)
-                                runnable._status = 'target_pending'
-                                runnable._pending_target = missed
-                                runnable._socket = proc.socket
-                            except:
-                                proc.socket.send_pyobj(False)
-                            continue
+                            if hasattr(runnable, '_from_nested'):
+                                # if the step is from a subworkflow, then the missing target
+                                # should be resolved by the nested workflow
+                                runnable._child_socket.send_pyobj(res)
+                                reply = runnable._child_socket.recv_pyobj()
+                                if reply: # if the target is resolvable in nested workflow
+                                    runnable._status = 'target_pending'
+                                    runnable._pending_target = missed
+                                    # tell the step that the target is resolved and it can continue
+                                    env.logger.error(f'{runnable} is target_pending')
+                                    runnable._socket = proc.socket
+                                else:
+                                    # otherwise say the target cannot be resolved
+                                    proc.socket.send_pyobj(False)
+                                    proc.set_status('failed')
+                            else:
+                                # if the missing target is from master, resolve from here
+                                try:
+                                    self.handle_unknown_target(missed, dag, runnable)
+                                    runnable._status = 'target_pending'
+                                    runnable._pending_target = missed
+                                    runnable._socket = proc.socket
+                                except Exception as e:
+                                    env.logger.error(e)
+                                    proc.socket.send_pyobj(False)
+                                    proc.set_status('failed')
                         elif res[0] == 'step':
                             # step sent from nested workflow
                             step_id = res[1]
@@ -1091,14 +1112,11 @@ class Base_Executor:
                             env.logger.debug(
                                 f'{i_am()} receives step request {step_id} with args {step_params[3]}')
                             self.step_queue[step_id] = step_params
-                            continue
                         elif res[0] == 'workflow':
                             workflow_ids, wfs, targets, args, shared, config = res[1:]
                             # receive the real definition
                             env.logger.debug(
                                 f'{i_am()} receives workflow request {workflow_ids}')
-                            # a workflow needs to be executed immediately because otherwise if all workflows
-                            # occupies all workers, no real step could be executed.
 
                             # now we would like to find a worker and
                             if hasattr(runnable, '_pending_workflows'):
@@ -1109,6 +1127,9 @@ class Base_Executor:
                             dag.save(env.config['output_dag'])
 
                             for wid, wf in zip(workflow_ids, wfs):
+                                # for each subworkflow, create a dummy node to track
+                                # its status. Note that this dummy_node does not have
+                                # the _from_nested flag.
                                 wfrunnable = dummy_node()
                                 wfrunnable._node_id = wid
                                 wfrunnable._status = 'workflow_running_pending'
@@ -1117,21 +1138,23 @@ class Base_Executor:
                                 #
                                 manager.execute(wfrunnable, config=config, args=args,
                                                 spec=('workflow', wid, wf, targets, args, shared, config))
-                            continue
                         else:
                             raise RuntimeError(
                                 f'Unexpected value from step {short_repr(res)}')
+                        continue
                     elif isinstance(res, str):
                         raise RuntimeError(
                             f'Unexpected value from step {short_repr(res)}')
 
                     # if we does get the result, we send the process to pool
+
                     manager.mark_idle(idx)
 
                     env.logger.debug(
                         f'{i_am()} receive a result {short_repr(res)}')
                     if hasattr(runnable, '_from_nested'):
-                        # if the runnable is from nested, we will need to send the result back to the workflow
+                        # if the runnable is from nested, we will need to send the result back
+                        # to the nested workflow
                         env.logger.debug(f'{i_am()} send res to nested')
                         runnable._status = 'completed'
                         dag.save(env.config['output_dag'])
@@ -1142,7 +1165,6 @@ class Base_Executor:
                         runnable._child_socket.close()
                     elif isinstance(res, UnavailableLock):
                         self.handle_unavailable_lock(res, dag, runnable)
-
                     # if the job is failed
                     elif isinstance(res, Exception):
                         env.logger.debug(f'{i_am()} received an exception')
@@ -1150,17 +1172,6 @@ class Base_Executor:
                         runnable._status = 'failed'
                         dag.save(env.config['output_dag'])
                         exec_error.append(runnable._node_id, res)
-                        #env.logger.error(res)
-                        # if this is a node for a running workflow, need to mark it as failed as well
-                        #                        for proc in procs:
-                        # if isinstance(runnable, dummy_node) and hasattr(runnable, '_pending_workflows'):
-                        #     for proc in manager.procs:
-                        #         if proc is None:
-                        #             continue
-                        #         if proc.is_pending() and hasattr(proc.step, '_pending_workflow') \
-                        #                 and proc.step._pending_workflow in runnable._pending_workflows:
-                        #             proc.set_status('failed')
-                        #     dag.save(env.config['output_dag'])
                         raise exec_error
                     elif '__step_name__' in res:
                         env.logger.debug(f'{i_am()} receive step result ')
@@ -1219,6 +1230,15 @@ class Base_Executor:
                         else:
                             raise RuntimeError(
                                 f'Task {" ".join(proc.step._pending_tasks)} returned with status {" ".join(res)}')
+                    elif proc.in_status('target_pending') and proc.step._child_socket.poll(0):
+                        # see if the child node has sent something
+                        res = proc.step._child_socket.recv()
+                        if res == b'target_resolved':
+                            # this _socket is the socket to the step
+                            proc.step._socket.send_pyobj(res)
+                            proc.step._status = 'running'
+                        else:
+                            raise RuntimeError(f'Unrecognized response from child process {res}')
 
                 # step 3: check if there is room and need for another job
                 while True:
@@ -1235,10 +1255,8 @@ class Base_Executor:
                         runnable._status = 'running'
                         dag.save(env.config['output_dag'])
                         runnable._from_nested = True
-                        runnable._child_socket = env.zmq_context.socket(
-                            zmq.PAIR)
-                        runnable._child_socket.connect(
-                            f'tcp://127.0.0.1:{port}')
+                        runnable._child_socket = env.zmq_context.socket(zmq.PAIR)
+                        runnable._child_socket.connect(f'tcp://127.0.0.1:{port}')
 
                         env.logger.debug(
                             f'{i_am()} sends {section.step_name()} from step queue with args {args} and context {context}')
@@ -1349,8 +1367,10 @@ class Base_Executor:
 
         wf_result = {'__workflow_id__': my_workflow_id, 'shared': {}}
 
-
+        # this is the initial targets specified by subworkflow, users
+        # should specify named_output directly if needed.
         dag = self.initialize_dag(targets=targets)
+
         # the mansger will have all fake executors
         manager = ExecutionManager(env.config['max_procs'])
         #
@@ -1366,17 +1386,36 @@ class Base_Executor:
                     if proc is None:
                         continue
 
-                    runnable = proc.step
                     # echck if there is any message from the socket
                     if not proc.socket.poll(0):
                         continue
 
                     # receieve something from the pipe
                     res = proc.socket.recv_pyobj()
-                    #
-                    if isinstance(res, str):
-                        raise RuntimeError(
-                            f'Nested workflow is not supposed to receive task, workflow, or step requests. {res} received.')
+                    runnable = proc.step
+
+                    if isinstance(res, list):
+                        # missing target from nested workflow
+                        if res[0] == 'missing_target':
+                            missed = res[1]
+                            try:
+                                self.handle_unknown_target(missed, dag, runnable)
+                                # tell the master that the nested can resolve the target
+                                proc.socket.send_pyobj(True)
+                                runnable._status = 'target_pending'
+                                runnable._pending_target = missed
+                                # when the target is resolved, tell the parent that
+                                # the target is resolved and the step can continue
+                                runnable._socket = proc.socket
+                            except Exception as e:
+                                env.logger.error(e)
+                                # tell the master that nested cannot resolve the
+                                # target so the workflow should stop
+                                proc.socket.send_pyobj(False)
+                            continue
+                        else:
+                            raise RuntimeError(
+                                f'Unexpected value from step {short_repr(res)}')
 
                     manager.mark_idle(idx)
                     env.logger.debug(
@@ -1389,45 +1428,13 @@ class Base_Executor:
                         runnable._status = 'failed'
                         dag.save(env.config['output_dag'])
                         exec_error.append(runnable._node_id, res)
-                        # if this is a node for a running workflow, need to mark it as failed as well
-                        #                        for proc in procs:
-                        # if isinstance(runnable, dummy_node) and hasattr(runnable, '_pending_workflows'):
-                        #     for proc in manager.procs:
-                        #         if proc is None:
-                        #             continue
-                        #         if proc.is_pending() and hasattr(proc.step, '_pending_workflow') \
-                        #                 and proc.step._pending_workflow in runnable._pending_workflows:
-                        #             proc.set_status('failed')
-                        #     dag.save(env.config['output_dag'])
                         raise exec_error
                     elif '__step_name__' in res:
                         env.logger.debug(f'{i_am()} receive step result ')
                         self.step_completed(res, dag, runnable)
-                    # elif '__workflow_id__' in res:
-                    #     # result from a workflow
-                    #     # the worker process has been returned to the pool, now we need to
-                    #     # notify the step that is waiting for the result
-                    #     env.logger.warning(f'{i_am()} receive workflow result {res}')
-                    #     # aggregate steps etc with subworkflows
-                    #     for k, v in res['__completed__'].items():
-                    #         self.completed[k] += v
-                    #     # if res['__completed__']['__step_completed__'] == 0:
-                    #     #    self.completed['__subworkflow_skipped__'] += 1
-                    #     # else:
-                    #     #    self.completed['__subworkflow_completed__'] += 1
-                    #     for proc in manager.procs:
-                    #         if proc is None:
-                    #             continue
-                    #         if proc.in_status('workflow_pending') and res['__workflow_id__'] in proc.step._pending_workflows:
-                    #             proc.socket.send_pyobj(res)
-                    #             proc.step._pending_workflows.remove(res['__workflow_id__'])
-                    #             if not proc.step._pending_workflows:
-                    #                 proc.set_status('running')
-                    #             break
-                    #     dag.save(env.config['output_dag'])
                     else:
                         raise RuntimeError(
-                            f'Unrecognized response from a step: {res}')
+                            f'Nested wokflow received an unrecognized response: {res}')
 
                 # remove None
                 manager.cleanup()
@@ -1463,18 +1470,13 @@ class Base_Executor:
                     port = socket.bind_to_random_port('tcp://127.0.0.1')
                     parent_socket.send_pyobj(['step', step_id, section, runnable._context, shared, self.args,
                                               env.config, env.verbosity, port])
-                    # this is a real step
+                    # the nested workflow also needs a step to receive result
                     manager.add_placeholder_worker(runnable, socket)
 
                 if manager.all_done():
                     break
-                # if manager.all_failed():
-                #     steps = list(dict.fromkeys(
-                #         [str(x.step) for x in manager.procs]))
-                #     raise RuntimeError(
-                #         f'Workflow exited due to failed step{"s" if len(steps) > 1 else ""} {", ".join(steps)}.')
                 else:
-                    time.sleep(0.1)
+                    time.sleep(0.01)
         except KeyboardInterrupt:
             if exec_error.errors:
                 failed_steps, pending_steps = dag.pending()

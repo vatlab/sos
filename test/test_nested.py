@@ -769,6 +769,31 @@ sos_run('A', c=2)
         Base_Executor(wf).run()
 
 
+    def testNestedDynamicDepends(self):
+        '''Test the execution of nested workflow with dynamic depends'''
+        script = SoS_Script('''
+[A_1]
+parameter: num = 20
+input: f"B{num}.txt"
+depends: _input + '.p'
+
+[B: provides='B{num}.txt']
+run: expand=True
+    touch {_output}
+
+[P: provides='{filename}.p']
+input: filename
+run: expand=True
+    touch {_output}
+
+[ALL]
+
+sos_run('A', num=0)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
+
 
 
 if __name__ == '__main__':
