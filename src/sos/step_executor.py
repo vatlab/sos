@@ -801,6 +801,7 @@ class Base_Step_Executor:
                             self.process_depends_args(dfiles, **kwargs)
                         except (UnknownTarget, RemovedTarget) as e:
                             self.handle_unknown_target(e)
+                            continue
                         except UnavailableLock:
                             raise
                         except Exception as e:
@@ -1387,9 +1388,7 @@ class Step_Executor(Base_Step_Executor):
     def handle_unknown_target(self, e):
         self.socket.send_pyobj(['missing_target', e.target])
         res = self.socket.recv_pyobj()
-        if res:
-            continue
-        else:
+        if not res:
             raise e
 
     def run(self):
