@@ -349,12 +349,18 @@ class Base_Step_Executor:
         #
         return ifiles.groups
 
+    def verify_dynamic_depends(self, target):
+        return True
+
     def process_depends_args(self, dfiles: sos_targets, **kwargs):
         for k in kwargs.keys():
             if k not in SOS_DEPENDS_OPTIONS:
                 raise RuntimeError(f'Unrecognized depends option {k}')
         if dfiles.undetermined():
             raise ValueError(r"Depends needs to handle undetermined")
+
+        if env.sos_dict.get('__dynamic_depends__', False):
+            self.verify_dynamic_depends([x for x in dfiles if isinstance(x, file_target)])
 
         env.sos_dict.set('_depends', dfiles)
         env.sos_dict.set('step_depends', dfiles)
@@ -1401,6 +1407,14 @@ class Step_Executor(Base_Step_Executor):
         res = self.socket.recv()
         if not res:
             raise e
+
+    def verify_dynamic_depends(self, targets):
+        if not targets:
+            return
+        self.socket.send_pyobj(['dependent_target'] + targets)
+        res = self.socket.recv()
+        if res != b'target_resolved':
+            raise RuntimeError(f'Failed to veryify dependent target {targets}')
 
     def run(self):
         try:

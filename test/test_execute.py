@@ -2060,6 +2060,32 @@ sos_run('nested')
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    def testReexecutionOfDynamicDepends(self):
+        '''Testing the rerun of steps to verify dependency'''
+        for file in ('a.bam', 'a.bam.bai'):
+            if os.path.isfile(file):
+                os.remove(file)
+        script = SoS_Script('''
+[BAI: provides='{filename}.bam.bai']
+_output.touch()
+
+[BAM]
+output: 'a.bam'
+_output.touch()
+
+[default]
+input: 'a.bam'
+depends: _input.with_suffix('.bam.bai')
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # if we run again, because depends, the step will be re-checked
+        os.remove('a.bam')
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 2)
+        self.assertEqual(res['__completed__']['__step_skipped__'], 1)
+
+
 
 if __name__ == '__main__':
     unittest.main()

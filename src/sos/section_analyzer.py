@@ -138,7 +138,8 @@ def get_signature_vars(section):
 
 def get_step_depends(section):
 
-    step_depends: sos_targets = sos_targets([])
+    step_depends: sos_targets = sos_targets()
+    dynamic_depends = True
 
     input_idx = find_statement(section, 'input')
     depends_idx = find_statement(section, 'depends')
@@ -180,9 +181,10 @@ def get_step_depends(section):
             args, kwargs = SoS_eval(f'__null_func__({value})',
                 extra_dict=env.sos_dict._dict)
             if any(isinstance(x, (dynamic, remote)) for x in args):
-                step_depends = sos_targets()
+                dynamic_depends = True
             else:
-                step_depends.extend(sos_targets(*args))
+                step_depends.extend(sos_targets(*args, **kwargs))
+                dynamic_depends = False
         except SyntaxError as e:
             raise
         except Exception as e:
@@ -191,7 +193,8 @@ def get_step_depends(section):
             [env.sos_dict._dict.pop(x) for x in svars]
             env.sos_dict._dict.update(old_values)
     # env.logger.debug(f"Args {value} cannot be determined: {e}")
-    return step_depends
+    return step_depends, dynamic_depends
+
 
 def get_step_input(section, default_input):
     '''Find step input
@@ -373,6 +376,8 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     }
     if not vars_and_output_only:
         res['step_input'] = get_step_input(section, default_input)
-        res['step_depends'] = get_step_depends(section)
+        deps = get_step_depends(section)
+        res['step_depends'] = deps[0]
+        res['dynamic_depends'] = deps[1]
     # analysis_cache[analysis_key] = res
     return res
