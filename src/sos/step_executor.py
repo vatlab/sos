@@ -1296,6 +1296,11 @@ class Base_Step_Executor:
                         if e.message:
                             env.logger.info(e)
                         self.output_groups[proc_result['index']] = sos_targets([])
+                    #elif isinstance(e, RemovedTarget):
+                    #
+                    # in theory, we should be able to handled removed target from here
+                    # by rerunning the substep, but we it is too much work for this
+                    # corner case. Let us simply rerunt he entire step.
                     else:
                         raise e
             # if output is Undetermined, re-evalulate it

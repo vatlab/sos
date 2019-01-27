@@ -1165,6 +1165,8 @@ class Base_Executor:
                         runnable._child_socket.close()
                     elif isinstance(res, UnavailableLock):
                         self.handle_unavailable_lock(res, dag, runnable)
+                    elif isinstance(res, RemovedTarget):
+                        self.handle_unknown_target(res.target, dag, runnable)
                     # if the job is failed
                     elif isinstance(res, Exception):
                         env.logger.debug(f'{i_am()} received an exception')
@@ -1422,6 +1424,13 @@ class Base_Executor:
                         f'{i_am()} receive a result {short_repr(res)}')
                     if isinstance(res, UnavailableLock):
                         self.handle_unavailable_lock(res, dag, runnable)
+                    elif isinstance(res, RemovedTarget):
+                        # RemovedTarget is usually hanled at the step level
+                        # by sending a missing-target message here. However,
+                        # if the exception is raised from substep workers, it is
+                        # difficult for a substep to rerun particular substep
+                        # so we handle it here by rerunning the entire step
+                        self.handle_unknown_target(res.target, dag, runnable)
                     # if the job is failed
                     elif isinstance(res, Exception):
                         env.logger.debug(f'{i_am()} received an exception')
