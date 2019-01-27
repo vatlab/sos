@@ -1092,7 +1092,7 @@ class Base_Executor:
                                     runnable._socket = proc.socket
                                 else:
                                     # otherwise say the target cannot be resolved
-                                    proc.socket.send_pyobj(False)
+                                    proc.socket.send(b'')
                                     proc.set_status('failed')
                             else:
                                 # if the missing target is from master, resolve from here
@@ -1103,7 +1103,7 @@ class Base_Executor:
                                     runnable._socket = proc.socket
                                 except Exception as e:
                                     env.logger.error(e)
-                                    proc.socket.send_pyobj(False)
+                                    proc.socket.send(b'')
                                     proc.set_status('failed')
                         elif res[0] == 'step':
                             # step sent from nested workflow
