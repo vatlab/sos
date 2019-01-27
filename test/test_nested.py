@@ -786,14 +786,12 @@ input: filename
 run: expand=True
     touch {_output}
 
-[ALL]
 
+[default]
 sos_run('A', num=0)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-
-
 
 
 if __name__ == '__main__':
