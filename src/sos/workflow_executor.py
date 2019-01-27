@@ -1230,7 +1230,7 @@ class Base_Executor:
                         else:
                             raise RuntimeError(
                                 f'Task {" ".join(proc.step._pending_tasks)} returned with status {" ".join(res)}')
-                    elif proc.in_status('target_pending') and proc.step._child_socket.poll(0):
+                    elif proc.in_status('target_pending') and hasattr(proc.step, '_from_nested') and proc.step._child_socket.poll(0):
                         # see if the child node has sent something
                         res = proc.step._child_socket.recv()
                         if res == b'target_resolved':
