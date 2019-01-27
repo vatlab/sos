@@ -618,6 +618,9 @@ class Base_Step_Executor:
         port = self.result_pull_socket.bind_to_random_port('tcp://127.0.0.1')
         env.config['sockets']['result_push_socket'] = port
 
+    def handle_unknown_target(self, e):
+        raise e
+
     def submit_substep(self, substep):
         env.substep_frontend_socket.send_pyobj(substep)
 
@@ -797,12 +800,7 @@ class Base_Step_Executor:
                             # dfiles can be Undetermined
                             self.process_depends_args(dfiles, **kwargs)
                         except (UnknownTarget, RemovedTarget) as e:
-                            self.socket.send_pyobj(['missing_target', e.target])
-                            res = self.socket.recv_pyobj()
-                            if res:
-                                continue
-                            else:
-                                raise e
+                            self.handle_unknown_target(e)
                         except UnavailableLock:
                             raise
                         except Exception as e:
@@ -840,12 +838,7 @@ class Base_Step_Executor:
                     if 'concurrent' in kwargs and kwargs['concurrent'] is False:
                         self.concurrent_substep = False
                 except (UnknownTarget, RemovedTarget, UnavailableLock) as e:
-                    self.socket.send_pyobj(['missing_target', e.target])
-                    res = self.socket.recv_pyobj()
-                    if res:
-                        continue
-                    else:
-                        raise e
+                    self.handle_unknown_target(e)
                 except Exception as e:
                     raise ValueError(
                         f'Failed to process input statement {stmt}: {e}')
@@ -1016,12 +1009,7 @@ class Base_Step_Executor:
                                 # everything is ok, break
                                 break
                             except (UnknownTarget, RemovedTarget, UnavailableLock) as e:
-                                self.socket.send_pyobj(['missing_target', e.target])
-                                res = self.socket.recv_pyobj()
-                                if res:
-                                    continue
-                                else:
-                                    raise e
+                                self.handle_unknown_target(e)
                             except Exception as e:
                                 # if input is Undertermined, it is possible that output cannot be processed
                                 # due to that, and we just return
@@ -1395,6 +1383,14 @@ class Step_Executor(Base_Step_Executor):
             if len(results) == len(tasks):
                 break
         return results
+
+    def handle_unknown_target(self, e):
+        self.socket.send_pyobj(['missing_target', e.target])
+        res = self.socket.recv_pyobj()
+        if res:
+            continue
+        else:
+            raise e
 
     def run(self):
         try:
