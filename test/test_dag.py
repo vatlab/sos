@@ -918,9 +918,9 @@ run: expand=True
     def testOutputOfDAG(self):
         '''Test output of dag'''
         #
-        for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
-            if file_target(f).exists():
-                file_target(f).unlink()
+        #for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
+        #    if file_target(f).exists():
+        #        file_target(f).unlink()
         #
         #  A1 <- B1 <- B2 <- B3
         #   |
