@@ -10,13 +10,13 @@
 **Script of Scripts (SoS)** is a Jupyter-based **polyglot notebook** that allows the use of multiple Jupyter kernels in one notebook, and
 a **workflow engine** for the execution of workflows in both process- and outcome-oriented styles. It is designed for data scientists and bioinformatics who routinely work with scripts in different languages such as R, Python, Perl, and bash.
 
-Please refer to the [SoS homepage](http://vatlab.github.io/SOS) for more information. 
+Please refer to the [SoS homepage](http://vatlab.github.io/SOS) for more information.
 
-We welcome and value community contributions: please [post issues](https://github.com/vatlab/SoS/issues) 
-to provide us feedback or get our support; please [send pull requests](https://github.com/vatlab/SoS/pulls) 
+We welcome and value community contributions: please [post issues](https://github.com/vatlab/SoS/issues)
+to provide us feedback or get our support; please [send pull requests](https://github.com/vatlab/SoS/pulls)
 if you have helped fixing bugs or making improvements to the source code.  
 
-# Installing SoS 
+# Installing SoS
 
 With Python 3.6 and above installed ([anaconda python](https://www.continuum.io/downloads) is recommended), you can install the SoS Workflow System and its extensions with command
 
@@ -45,6 +45,10 @@ although different modules might be needed for SoS Notebook to work with
 other kernels. Please refer to [the installation page of sos website](https://vatlab.github.io/sos-docs/#runningsos) for details.
 
 ### Change Log of SoS and SoS Notebook
+
+SoS 0.18.4
+* [sos#1185](https://github.com/vatlab/SoS/issues/1185): Disallow the use of parameters in tasks.
+* [sos#1186](https://github.com/vatlab/SoS/issues/1186): Enforcing the concept that targets in `depends` statement always try to build dependency.
 
 SoS Notebook 0.18.1
 * [sos-notebook#178](https://github.com/vatlab/sos-notebook/issues/178): Allow adding `&` to the end of magics `%run`, `%sosrun`, and `%runfile` to execute workflow in background.
@@ -116,7 +120,7 @@ SoS 0.9.12.3
 * [sos#859](https://github.com/vatlab/SoS/issues/859): Introduce automatic auxiliary steps to simplify the use of makefile steps.
 
 SoS 0.9.11.3
-* [sos#879](https://github.com/vatlab/SoS/issues/879): Add action options `stdout` and `stderr` to redict output from script-executing actions. 
+* [sos#879](https://github.com/vatlab/SoS/issues/879): Add action options `stdout` and `stderr` to redict output from script-executing actions.
 * [sos-notebook#42](https://github.com/vatlab/sos-notebook/issues/42): Add option `--append` to magic `%capture` .
 
 SoS 0.9.11.2
@@ -125,8 +129,8 @@ SoS 0.9.11.2
 SoS 0.9.10.19
 
 * [sos#874](https://github.com/vatlab/SoS/issues/874): Add input option `concurrent=True` to allow parallel execution of input groups.
-* [sos#874](https://github.com/vatlab/SoS/issues/874): Optimize task submission of task engines to reduce status checking 
+* [sos#874](https://github.com/vatlab/SoS/issues/874): Optimize task submission of task engines to reduce status checking
 
 SoS Notebook 0.9.10.17
 
-* [sos-notebook#32](https://github.com/vatlab/sos-notebook/issues/32): Add magic `%capture` to capture output of cells 
+* [sos-notebook#32](https://github.com/vatlab/sos-notebook/issues/32): Add magic `%capture` to capture output of cells
