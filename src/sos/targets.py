@@ -1722,7 +1722,7 @@ class InMemorySignature:
         self.init_signature = {x: deepcopy(sdict[x]) for x in sorted(
             signature_vars) if x in sdict and not callable(sdict[x]) and pickleable(sdict[x], x)}
 
-    def write(self, rebuild=False):
+    def write(self):
         if hasattr(self, 'content'):
             return self.content
         if self.output_files.undetermined():
@@ -1924,7 +1924,7 @@ class RuntimeInfo(InMemorySignature):
         env.logger.trace(f'Set output of signature to {files}')
         self.output_files = files
 
-    def write(self, rebuild=False):
+    def write(self):
         '''Write signature file with signature of script, input, output and dependent files.
         Because local input and output files can only be determined after the execution
         of workflow. They are not part of the construction.

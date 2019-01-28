@@ -229,7 +229,7 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated', acceptable_args: 
                         return None
                 elif env.config['sig_mode'] == 'build':
                     # build signature require existence of files
-                    if sig.write(rebuild=True):
+                    if sig.write():
                         env.logger.info(
                             f'Action ``{func.__name__}`` is ``ignored`` with signature constructed')
                         return None

@@ -160,13 +160,11 @@ def _validate_task_signature(sig, saved_sig, task_id, is_subtask):
             return True
     elif env.config['sig_mode'] == 'build':
         # The signature will be write twice
-        if sig.write(rebuild=True):
+        if sig.write():
             (env.logger.debug if is_subtask else env.logger.info)(
                 f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with signature constructed')
             return True
         else:
-            (env.logger.debug if is_subtask else env.logger.info)(
-                f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``executed`` with failed signature constructed')
             return False
     elif env.config['sig_mode'] == 'force':
         return False
