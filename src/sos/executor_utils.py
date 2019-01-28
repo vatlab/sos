@@ -319,7 +319,7 @@ def validate_step_sig(sig):
         # build signature require existence of files
         if 'sos_run' in env.sos_dict['__signature_vars__']:
             return {}
-        elif sig.write(rebuild=True):
+        elif sig.write():
             env.logger.info(
                 f'Step ``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` with signature constructed')
             return {'input': sig.content['input_obj'],
