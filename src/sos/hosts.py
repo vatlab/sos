@@ -239,6 +239,9 @@ class LocalHost:
                     shutil.copy(r, l)
 
         res = tf.result
+        if not res or not 'ret_code' in res:
+            return {'ret_code': 1, 'exception': ValueError(f'No result is found for task {task_id}')}
+
         try:
             if res['ret_code'] != 0 or env.verbosity >= 3:
                 _show_err_and_out(task_id, res)
