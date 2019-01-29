@@ -634,5 +634,47 @@ sh: expand=True
         env.config['sig_mode'] = 'default'
 
 
+    def testRebuidSignature(self):
+        '''Test rebuilding signature'''
+        if os.path.isfile('a.txt'):
+            os.remove('a.txt')
+        script = SoS_Script(r'''
+[A_1]
+output: 'a.txt'
+_output.touch()
+''')
+        wf = script.workflow()
+        env.config['sig_mode'] = 'default'
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__substep_completed__'], 1)
+        env.config['sig_mode'] = 'default'
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__substep_skipped__'], 1)
+        env.config['sig_mode'] = 'build'
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__substep_skipped__'], 1)
+        env.config['sig_mode'] = 'default'
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__substep_skipped__'], 1)
+        # if a.txt is changed, rebuild will rerun
+        with open('a.txt', 'a') as atxt:
+            atxt.write('aaa')
+        env.config['sig_mode'] = 'build'
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__substep_skipped__'], 1)
+        # rerun?
+        env.config['sig_mode'] = 'default'
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__substep_skipped__'], 1)
+        #
+        env.config['sig_mode'] = 'force'
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__substep_completed__'], 1)
+        #
+        env.config['sig_mode'] = 'ignore'
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__substep_completed__'], 1)
+
+
 if __name__ == '__main__':
     unittest.main()
