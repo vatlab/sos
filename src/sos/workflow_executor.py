@@ -35,12 +35,12 @@ from .workers import SoS_Worker
 
 __all__ = []
 
-try:
-    # https://github.com/pytest-dev/pytest-cov/issues/139
-    from pytest_cov.embed import cleanup_on_sigterm
-    cleanup_on_sigterm()
-except:
-    pass
+# try:
+#     # https://github.com/pytest-dev/pytest-cov/issues/139
+#     from pytest_cov.embed import cleanup_on_sigterm
+#     cleanup_on_sigterm()
+# except:
+#     pass
 
 
 class ExecuteError(Error):
