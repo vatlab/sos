@@ -314,11 +314,15 @@ class SoS_DAG(nx.DiGraph):
         #
         # 3. if the input of a step depends on the output of another step
         for target, in_node in self._all_depends_files.items():
-            for out_node in [y for (x, y) in self._all_output_files.items() if x == target]:
-                for i in in_node:
-                    for j in out_node:
-                        if j != i:
-                            self.add_edge(j, i)
+            try:
+                # it is possible that multiple nodes satisfy the same target
+                out_node = self._all_output_files[target]
+            except IndexError:
+                raise RuntimeError(f'{target} not found in output of any step. This should not happen.')
+            for i in in_node:
+                for j in out_node:
+                    if j != i:
+                        self.add_edge(j, i)
 
     def save(self, dest=None):
         if not dest:

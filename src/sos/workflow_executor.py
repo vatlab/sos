@@ -447,10 +447,9 @@ class Base_Executor:
                     f'Resolving {dangling_targets} objects from {dag.number_of_nodes()} nodes')
             # find matching steps
             # check auxiliary steps and see if any steps provides it
-            for target in dangling_targets:
-                # target might no longer be dangling after a section is added.
-                if target not in dag.dangling(targets)[0]:
-                    continue
+            remaining_targets = dangling_targets
+            while remaining_targets:
+                target = remaining_targets[0]
                 mo = self.match(target)
                 if not mo:
                     #
@@ -622,7 +621,8 @@ class Base_Executor:
                              context=context)
                 added_node += 1
                 resolved += 1
-
+                remaining_targets = dag.dangling(remaining_targets)[0]
+ 
             # for existing targets that are not in DAG
             if not env.config['trace_existing']:
                 if added_node == 0:
@@ -632,13 +632,10 @@ class Base_Executor:
 
             node_added = False
             existing_targets = set(dag.dangling(targets)[1])
-            for target in existing_targets:
-                if node_added:
-                    existing_targets = set(dag.dangling(targets)[1])
-                    node_added = False
-                if target not in existing_targets:
-                    # target already in DAG and not reported as existing 
-                    continue
+
+            remaining_targets = existing_targets
+            while remaining_targets:
+                target = remaining_targets.pop()
                 # now we need to build DAG for existing...
                 mo = self.match(target)
                 if not mo:
@@ -697,6 +694,8 @@ class Base_Executor:
                 node_added = True
                 added_node += 1
                 resolved += 1
+                # adding one step can resolve many targets #1199
+                remaining_targets = set(dag.dangling(remaining_targets)[1])
 
             if added_node == 0:
                 break
@@ -757,6 +756,7 @@ class Base_Executor:
                     f'No step to generate target {targets}.')
         # now, there should be no dangling targets, let us connect nodes
         dag.build()
+
         # dag.show_nodes()
         # trim the DAG if targets are specified
         if targets:
