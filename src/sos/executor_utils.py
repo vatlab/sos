@@ -77,6 +77,9 @@ def __output_from__(steps, group_by=None, paired_with=None, pattern=None,
             pattern=pattern, group_with=group_with, for_each=for_each)
     return targets._remove_empty_groups() if remove_empty_groups else targets
 
+def __traced__(*args, **kwargs):
+    return sos_targets(*args, **kwargs).set_traced()
+
 def __named_output__(name, group_by=None, paired_with=None, pattern=None,
     group_with=None, for_each=None, remove_empty_groups=True):
     env.controller_req_socket.send_pyobj(['named_output', name])

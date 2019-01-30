@@ -627,14 +627,15 @@ class Base_Executor:
                 remaining_targets = dag.dangling(remaining_targets)[0]
  
             # for existing targets that are not in DAG
-            if not env.config['trace_existing']:
+            traced = [x for x in targets if x.traced]
+            if not env.config['trace_existing'] and not traced:
                 if added_node == 0:
                     break
                 else:
                     continue
 
             node_added = False
-            existing_targets = set(dag.dangling(targets)[1])
+            existing_targets = set(dag.dangling(targets)[1]) if env.config['trace_existing'] else traced
 
             remaining_targets = existing_targets
             while remaining_targets:

@@ -25,7 +25,7 @@ from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
                     get_traceback, short_repr)
 from .executor_utils import (clear_output, create_task, verify_input, reevaluate_output,
                     validate_step_sig, statementMD5, get_traceback_msg, __null_func__,
-                    __output_from__, __named_output__)
+                    __output_from__, __named_output__, __traced__)
 
 
 __all__: List = []
@@ -809,7 +809,8 @@ class Base_Step_Executor:
                                 extra_dict={
                                     '__null_func__': __null_func__,
                                     'output_from': __output_from__,
-                                    'named_output': __named_output__
+                                    'named_output': __named_output__,
+                                    'traced': __traced__
                                     }
                                 )
                             dfiles = expand_depends_files(*args)
@@ -843,7 +844,8 @@ class Base_Step_Executor:
                                 extra_dict={
                                     '__null_func__': __null_func__,
                                     'output_from': __output_from__,
-                                    'named_output': __named_output__
+                                    'named_output': __named_output__,
+                                    'traced': __traced__
                                     }
                     )
                     # Files will be expanded differently with different running modes
@@ -994,7 +996,8 @@ class Base_Step_Executor:
                                     extra_dict={
                                         '__null_func__': __null_func__,
                                         'output_from': __output_from__,
-                                        'named_output': __named_output__
+                                        'named_output': __named_output__,
+                                        'traced': __traced__
                                         })
                                 # dynamic output or dependent files
                                 if key == 'output':
@@ -1417,13 +1420,21 @@ class Step_Executor(Base_Step_Executor):
             raise e
 
     def verify_dynamic_targets(self, targets):
-        if not targets or not env.config['trace_existing']:
+        if not targets:
             return
 
-        self.socket.send_pyobj(['dependent_target'] + targets)
+        if env.config['trace_existing']:
+            traced = targets
+        else:
+            traced = [x for x in targets if x.traced]
+
+        if not traced:
+            return
+
+        self.socket.send_pyobj(['dependent_target'] + traced)
         res = self.socket.recv()
         if res != b'target_resolved':
-            raise RuntimeError(f'Failed to veryify dependent target {targets}')
+            raise RuntimeError(f'Failed to veryify dependent target {traced}')
 
     def run(self):
         try:

@@ -177,6 +177,7 @@ def get_step_depends(section):
             env.sos_dict._dict.update({
                 'output_from': lambda *args, **kwargs: None,
                 'named_output': lambda *args, **kwargs: None,
+                'traced': lambda *args, **kwargs: sos_targets(*args, **kwargs)
                 })
             args, kwargs = SoS_eval(f'__null_func__({value})',
                 extra_dict=env.sos_dict._dict)
@@ -215,6 +216,7 @@ def get_step_input(section, default_input):
         env.sos_dict._dict.update({
             'output_from': lambda *args, **kwargs: None,
             'named_output': lambda *args, **kwargs: None,
+            'traced': lambda *args, **kwargs: sos_targets(*args, **kwargs),
             'sos_step': no_sos_step,
             'sos_variable': no_sos_variable,
             })

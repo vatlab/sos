@@ -140,6 +140,10 @@ class BaseTarget(object):
     def __init__(self, *args, **kwargs):
         self._sigfile = None
         self._dict = kwargs
+        self.traced = False
+
+    def set_traced(self):
+        self.traced = True
 
     def set(self, *args, **kwargs):
         if args:
@@ -892,6 +896,11 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             self._handle_group_with(group_with)
         if for_each:
             self._handle_for_each(for_each)
+
+    def set_traced(self):
+        [x.set_traced() for x in self._targets]
+        self.traced = True
+        return self
 
     def is_external(self):
         if not self.valid():
