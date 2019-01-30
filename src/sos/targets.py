@@ -149,7 +149,7 @@ class BaseTarget(object):
                 env.logger.warning(f'Failed to set attribute: {args[1]} is or contains unsupported data type.')
                 return self
             if hasattr(self, args[0]):
-                raise ValueError(f'Attribute {args[0]} conflicts with another attribute of {value.__class__.__name__}.')
+                raise ValueError(f'Attribute {args[0]} conflicts with another attribute of type {self.__class__.__name__}.')
             self._dict[args[0]] = args[1]
         #
         if kwargs:
@@ -673,8 +673,7 @@ class file_target(path, BaseTarget):
             if (self + '.zapped').is_file():
                 with open(self + '.zapped') as sig:
                     line = sig.readline()
-                    _, mtime, size, md5 = line.strip().rsplit('\t', 3)
-                    return sig_md5 == md5
+                    return sig_md5 == line.strip().rsplit('\t', 3)[-1]
             else:
                 return False
         if sig_mtime == os.path.getmtime(self) and sig_size == os.path.getsize(self):
@@ -705,7 +704,7 @@ class file_target(path, BaseTarget):
 class paths(Sequence, os.PathLike):
     '''A collection of targets'''
     # check if string contains wildcard character
-    wildcard = re.compile('[*?\[]')
+    wildcard = re.compile(r'[*?\[]')
 
     def __init__(self, *args):
         self._paths = []
@@ -860,7 +859,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     will be thrown if target does not exist.
     '''
     # check if string contains wildcard character
-    wildcard = re.compile('[*?\[]')
+    wildcard = re.compile(r'[*?\[]')
 
     def __init__(self, *args, group_by=None, paired_with=None, pattern=None,
         group_with=None, for_each=None, _undetermined: Union[bool, str]=None,
@@ -1109,7 +1108,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             for grp in self._groups:
                 ret._groups.append(_sos_group(
                     [index_map[x] for x,y in zip(grp._indexes, grp._labels) if y == i],
-                    source=i).set(**grp._dict))
+                    labels=i).set(**grp._dict))
             return ret
         elif isinstance(i, (tuple, list)):
             ret = sos_targets()
@@ -1132,7 +1131,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             index_map = {o_idx:n_idx for n_idx,o_idx in zip(
                     range(len(ret._targets)), kept)}
             kept = set(kept)
-            for idx,grp in enumerate(self._groups):
+            for grp in self._groups:
                 ret._groups.append(_sos_group(
                     [index_map[x] for x in grp._indexes if x in kept],
                     [y for x,y in zip(grp._indexes, grp._labels) if x in kept]).set(**grp._dict))
@@ -1176,16 +1175,17 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             raise ValueError(
                 f'Cannot test existense for group of {len(self)} targets {self!r}')
 
-
-    def __getattr__(self, key):
-        if len(self._targets) == 1:
-            return getattr(self._targets[0], key)
-        elif len(self._targets) == 0:
-            raise AttributeError(
-                f"Cannot get attribute {key} from empty target list")
-        else:
-            raise AttributeError(
-                f'Unknown attribute {key} from sos_targets of size {len(self)}.')
+    def __getattr__(self, name):
+        try:
+            return self._dict[name]
+        except:
+            if len(self._targets) == 1:
+                try:
+                    return getattr(self._targets[0], name)
+                except:
+                    raise AttributeError(f'{self.__class__.__name__} object or its first child has no attribute {name}')
+            else:
+                raise AttributeError(f'{self.__class__.__name__} object has no attribute {name}')
 
     def target_name(self):
         return f"sos_targets([{','.join(x.target_name() for x in self._targets)}],_labels=[{','.join(self._labels)}])"
@@ -1270,18 +1270,6 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             return self._targets[0].get(name, default)
         else:
             return default
-
-    def __getattr__(self, name):
-        try:
-            return self._dict[name]
-        except:
-            if len(self._targets) == 1:
-                try:
-                    return getattr(self._targets[0], name)
-                except:
-                    raise AttributeError(f'{self.__class__.__name__} object or its first child has no attribute {name}')
-            else:
-                raise AttributeError(f'{self.__class__.__name__} object has no attribute {name}')
 
     def _add_groups(self, grps):
         self._groups = []
@@ -1708,6 +1696,7 @@ class InMemorySignature:
                  shared_vars: list= []):
         '''Runtime information for specified output files
         '''
+        self.content = None
         if not sdict:
             sdict = env.sos_dict
         if not input_files.valid():
@@ -1727,7 +1716,7 @@ class InMemorySignature:
             signature_vars) if x in sdict and not callable(sdict[x]) and pickleable(sdict[x], x)}
 
     def write(self):
-        if hasattr(self, 'content'):
+        if self.content is not None:
             return self.content
         if self.output_files.undetermined():
             self.output_files = env.sos_dict['_output']

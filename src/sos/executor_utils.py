@@ -103,7 +103,7 @@ def clear_output(output=None):
 
 def get_traceback_msg(e):
     error_class = e.__class__.__name__
-    cl, exc, tb = sys.exc_info()
+    tb = sys.exc_info()[-1]
     msg = ''
     for st in reversed(traceback.extract_tb(tb)):
         if st.filename.startswith('script_'):
@@ -258,11 +258,11 @@ def kill_all_subprocesses(pid=None, include_self=False):
         return
     for p in procs:
         p.terminate()
-    gone, alive = psutil.wait_procs(procs, timeout=3)
+    alive = psutil.wait_procs(procs, timeout=3)[-1]
     if alive:
         for p in alive:
             p.kill()
-    gone, alive = psutil.wait_procs(procs, timeout=3)
+    alive = psutil.wait_procs(procs, timeout=3)[-1]
     if alive:
         for p in alive:
             env.logger.warning(f'Failed to kill subprocess {p.pid}')

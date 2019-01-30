@@ -469,7 +469,7 @@ class RemoteHost:
             dest_dir = os.path.dirname(dest)
             if dest_dir and not os.path.isdir(dest_dir):
                 try:
-                    os.path.makedirs(dest_dir)
+                    os.makedirs(dest_dir)
                 except Exception as e:
                     env.logger.error(
                         f'Failed to create destination directory {dest_dir}: {e}')

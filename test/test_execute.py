@@ -1627,7 +1627,7 @@ depends: a
 ''')
         wf = script.workflow()
         # should be ok
-        res = Base_Executor(wf).run(mode='dryrun')
+        Base_Executor(wf).run(mode='dryrun')
         # but the file would be removed afterwards
         self.assertFalse(os.path.isfile('1.txt'))
 
@@ -1643,9 +1643,9 @@ run:
 sos_run('remove')
 ''')
         wf = script.workflow()
-        res = Base_Executor(wf).run(mode='dryrun')
+        Base_Executor(wf).run(mode='dryrun')
         self.assertTrue(os.path.isfile('1.txt'))
-        res = Base_Executor(wf).run(mode='run')
+        Base_Executor(wf).run(mode='run')
         self.assertFalse(os.path.isfile('1.txt'))
 
     def testConcurrentWithDynamicOutput(self):
@@ -1660,7 +1660,7 @@ import random
 path(f'{random.randint(0, 1000000)}.dout').touch()
 ''')
         wf = script.workflow()
-        res = Base_Executor(wf).run()
+        Base_Executor(wf).run()
         douts = glob.glob('*.dout')
         self.assertEqual(len(douts), 3)
 

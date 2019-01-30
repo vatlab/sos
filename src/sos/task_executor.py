@@ -15,7 +15,7 @@ from .targets import (InMemorySignature, file_target,
 from .utils import StopInputGroup, env, short_repr, pickleable
 from .tasks import TaskFile, remove_task_files
 from .step_executor import parse_shared_vars
-from .executor_utils import __null_func__, get_traceback_msg, prepare_env
+from .executor_utils import __null_func__, get_traceback_msg, prepare_env, clear_output
 
 def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
     shared = {}

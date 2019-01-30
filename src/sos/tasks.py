@@ -137,7 +137,7 @@ class MasterTaskParams(TaskParams):
             return
         common_dict = None
         common_keys = set()
-        for id, params in self.task_stack:
+        for _, params in self.task_stack:
             if common_dict is None:
                 common_dict = params.sos_dict
                 common_keys = set(params.sos_dict.keys())
@@ -146,7 +146,7 @@ class MasterTaskParams(TaskParams):
             if not common_keys:
                 break
         self.common_dict = {x:common_dict[x] for x in common_keys}
-        for id, params in self.task_stack:
+        for _, params in self.task_stack:
             params.sos_dict = {k:v for k,v in params.sos_dict.items() if k not in common_keys}
         return self
 

@@ -1177,12 +1177,12 @@ class AnswerMachine:
                 return False
 
 
-def get_tracked_files(workflow_id):
-    from .workflow_report import WorkflowSig
-    sig = WorkflowSig(workflow_id)
-    tracked_files = set([x['filename'] for x in sig.tracked_files()])
-    placeholder_files = set(sig.placeholders())
-    return set(), tracked_files, placeholder_files
+# def get_tracked_files(workflow_id):
+#     from .workflow_report import WorkflowSig
+#     sig = WorkflowSig(workflow_id)
+#     tracked_files = set([x['filename'] for x in sig.tracked_files()])
+#     placeholder_files = set(sig.placeholders())
+#     return set(), tracked_files, placeholder_files
 
 
 def cmd_remove(args, unknown_args):

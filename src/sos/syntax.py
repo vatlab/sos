@@ -142,7 +142,7 @@ _GLOBAL_SECTION_HEADER_TMPL = r'''
     '''
 
 
-_SECTION_NAME_TMPL = '''
+_SECTION_NAME_TMPL = r'''
     ^\s*                               # start
     (?P<name>                          # optional name
     [a-zA-Z*]                          # alphabet or '*'
@@ -158,7 +158,7 @@ _SECTION_NAME_TMPL = '''
     \s*$
     '''
 
-_SUBWORKFLOW_TMPL = '''
+_SUBWORKFLOW_TMPL = r'''
     ^\s*                               # leading space
     (?P<name>                          # name
     ([a-zA-Z]+\.)*                     # optional name
@@ -169,7 +169,7 @@ _SUBWORKFLOW_TMPL = '''
     \s*$                               # end
     '''
 
-_SECTION_OPTION_TMPL = '''
+_SECTION_OPTION_TMPL = r'''
     ^\s*                               # start
     (?P<name>{})                       # one of the option names
     (\s*=\s*                           # =

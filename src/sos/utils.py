@@ -310,6 +310,14 @@ class RuntimeEnvironments(object):
         return cls._instance
 
     def __init__(self):
+        # sockets that will be initialized by the controller code
+        self.zmq_context = None
+        self.controller_req_socket = None
+        self.controller_push_socket = None
+        self.signature_push_socket = None
+        self.signature_req_socket = None
+        self.substep_frontend_socket = None
+
         # this function is used by tests to reset environments
         # after finishing an test
         self.reset()
@@ -327,6 +335,7 @@ class RuntimeEnvironments(object):
         self._verbosity: int = 2
         self._logging_socket = None
         self._set_logger()
+
         #
         # run mode, this mode controls how SoS actions behave
         #
@@ -1146,7 +1155,7 @@ def load_config_files(filename=None):
                     process_based_on(cfg, v)
             return item
     #
-    for k, v in cfg.items():
+    for v in cfg.values():
         if isinstance(v, dict):
             process_based_on(cfg, v)
     return cfg
@@ -1216,10 +1225,10 @@ def expand_time(v, default_unit='s'):
             f'Input of option walltime should be an integer with unit s (default), h, m, d or a string in the format of HH:MM:SS. {v} specified.')
 
 
-def tail_of_file(filename, n, offset=None, ansi2html=False):
+def tail_of_file(filename, n, ansi2html=False):
     """Reads a n lines from f with an offset of offset lines. """
     avg_line_length = 74
-    to_read = n + (offset or 0)
+    to_read = n
 
     with open(filename) as f:
         while 1:
@@ -1233,9 +1242,9 @@ def tail_of_file(filename, n, offset=None, ansi2html=False):
             lines = f.read().splitlines()
             if len(lines) >= to_read or pos == 0:
                 if ansi2html:
-                    return convertAnsi2html('\n'.join(lines[-to_read:offset and -offset or None]))
+                    return convertAnsi2html('\n'.join(lines[-to_read:]))
                 else:
-                    return '\n'.join(lines[-to_read:offset and -offset or None]) + '\n'
+                    return '\n'.join(lines[-to_read:]) + '\n'
             avg_line_length *= 1.3
 
 
@@ -1495,7 +1504,7 @@ def dot_to_gif(filename: str, warn=None):
                 except:
                     font = None
 
-            for idx, (subworkflow, pngFile) in enumerate(zip(subworkflows, pngFiles)):
+            for subworkflow, pngFile in zip(subworkflows, pngFiles):
                 image = images[pngFile]
                 lastGraph[subworkflow] = image
                 # we need to stitch figures together

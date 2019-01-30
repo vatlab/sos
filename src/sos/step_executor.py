@@ -104,7 +104,7 @@ class TaskManager:
         for slot in self._unsubmitted_slots:
             # create a master task
             master = MasterTaskParams(self.trunk_workers)
-            for idx, (task_id, taskdef, _) in slot:
+            for _, (task_id, taskdef, _) in slot:
                 master.push(task_id, taskdef)
             ids.append(master.ID)
             TaskFile(master.ID).save(master.finalize())
@@ -198,14 +198,14 @@ def parse_shared_vars(option):
     if isinstance(option, str):
         shared_vars.add(option)
     elif isinstance(option, Mapping):
-        for var, val in option.items():
+        for val in option.values():
             shared_vars |= accessed_vars(val)
     elif isinstance(option, Sequence):
         for item in option:
             if isinstance(item, str):
                 shared_vars.add(item)
             elif isinstance(item, Mapping):
-                for var, val in item.items():
+                for val in item.values():
                     shared_vars |= accessed_vars(val)
     return shared_vars
 
@@ -270,7 +270,7 @@ def get_value_of_param(name, param_list, extra_dict={}):
         return []
     try:
         return [ast.literal_eval(kwargs[0].value)]
-    except Exception as e:
+    except Exception:
         return [eval(compile(ast.Expression(body=kwargs[0].value), filename='<string>', mode="eval"), extra_dict)]
 
 def is_sos_run_the_only_last_stmt(stmt):
@@ -508,6 +508,12 @@ class Base_Step_Executor:
             self.submit_tasks(tasks)
         return task_id
 
+    def submit_tasks(self, tasks):
+        raise RuntimeError('Instance of Step_Executor should redefine submit_tasks')
+
+    def wait_for_tasks(self, tasks, all_submitted):
+        raise RuntimeError('Instance of Step_Executor should redefine wait_for_tasks')
+
     def wait_for_results(self, all_submitted):
         if self.concurrent_substep:
             self.wait_for_substep()
@@ -606,7 +612,7 @@ class Base_Step_Executor:
     def execute(self, stmt, return_result=False):
         try:
             self.last_res = SoS_exec(
-                stmt, return_result=return_result or self.run_mode == 'interactive')
+                stmt, return_result=return_result or env.config['run_mode'] == 'interactive')
             if return_result:
                 return self.last_res
         except (StopInputGroup, TerminateExecution, UnavailableLock):
@@ -747,14 +753,14 @@ class Base_Step_Executor:
                 if task_queue:
                     env.sos_dict['_runtime']['queue'] = task_queue[0]
             except Exception as e:
-                raise ValueError(f'Failed to determine value of parameter queue of {task_statement}: {e}')
+                raise ValueError(f'Failed to determine value of parameter queue of {self.step.task_params}: {e}')
             # check concurrent #1134
             try:
                 task_concurrency = get_value_of_param('concurrent', self.step.task_params, extra_dict=env.sos_dict._dict)
                 if task_concurrency:
                     env.sos_dict['_runtime']['concurrent'] = task_concurrency[0]
             except Exception as e:
-                raise ValueError(f'Failed to determine value of parameter queue of {task_statement[0]}: {e}')
+                raise ValueError(f'Failed to determine value of parameter queue of {self.step.task_params}: {e}')
         if (env.config['default_queue'] in ('None', 'none', None) and
             'queue' not in env.sos_dict['_runtime']) or \
             ('queue' in env.sos_dict['_runtime'] and
@@ -889,7 +895,7 @@ class Base_Step_Executor:
         self._subworkflow_results = []
 
         if self.concurrent_substep:
-            if len(self._substeps) <= 1 or self.run_mode == 'dryrun':
+            if len(self._substeps) <= 1 or env.config['run_mode'] == 'dryrun':
                 self.concurrent_substep = False
             if len([
                     x for x in self.step.statements[input_statement_idx:] if x[0] != ':']) > 1:
@@ -974,7 +980,6 @@ class Base_Step_Executor:
                     # if input is undertermined, we can only process output:
                     if not g.valid() and statement[0] != ':':
                         raise RuntimeError('Undetermined input encountered')
-                        return self.collect_result()
                     if statement[0] == ':':
                         key, value = statement[1:3]
                         # output, depends, and process can be processed multiple times
@@ -1258,7 +1263,7 @@ class Base_Step_Executor:
                 #
             if self._subworkflow_results:
                 wf_ids = sum([x['pending_workflows'] for x in self._subworkflow_results], [])
-                for swf in wf_ids:
+                for _ in wf_ids:
                     # here we did not check if workflow ids match
                     res = env.__socket__.recv_pyobj()
                     if res is None:

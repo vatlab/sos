@@ -134,7 +134,7 @@ def extract_option_from_arg_list(options: str, optname: str, default_value: None
     try:
         args = list(ast.iter_fields(ast.parse(f"f({options})", mode='eval')))[
             0][1].keywords
-        for idx, field in enumerate(args):
+        for field in args:
             if field.arg == optname:
                 try:
                     value = eval(compile(ast.Expression(body=field.value),
@@ -235,7 +235,7 @@ class SoS_Step:
         return self.task != ''
 
     def has_nested_workflow(self) -> bool:
-        return any('sos_run' in x[1] for x in self.step.statements)
+        return any('sos_run' in x[1] for x in self.statements)
 
     def step_name(self, alias: bool = False) -> str:
         # if the step is not part of any workflow and is not given a name
@@ -1090,7 +1090,7 @@ for __n, __v in {repr(name_map)}.items():
                                 lineno, line, 'Empty step name is not allowed')
                         if i and str(int(i)) != i:
                             # disallow cases such as a_01
-                            parsing_errors.appen(
+                            parsing_errors.append(
                                 lineno, line, f'Invalid section index {i} (leading zero is not allowed)'
                             )
                         if n:
@@ -1277,7 +1277,7 @@ for __n, __v in {repr(name_map)}.items():
             # self.sections[-1].finalize()
         else:
             # as the last step, let us insert the global section to all sections
-            for idx, sec in [(idx, x) for idx, x in enumerate(self.sections) if x.is_global]:
+            for sec in [x for x in self.sections if x.is_global]:
                 for statement in sec.statements:
                     if statement[0] == ':':
                         parsing_errors.append(cursect.lineno, f'{statement[1]}:{statement[2]}',
