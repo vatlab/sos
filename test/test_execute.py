@@ -2153,11 +2153,39 @@ depends: _input.with_suffix('.bam.bai')
         Base_Executor(wf).run()
         # if we run again, because depends, the step will be re-checked
         os.remove('a.bam')
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 2)
+        self.assertEqual(res['__completed__']['__step_skipped__'], 0)
+        #
+        os.remove('a.bam')
         res = Base_Executor(wf, config={'trace_existing': True}).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 2)
         self.assertEqual(res['__completed__']['__step_skipped__'], 1)
 
 
+    def testTracedFunction(self):
+        for file in ('a.bam', 'a.bam.bai'):
+            if os.path.isfile(file):
+                os.remove(file)
+        script = SoS_Script('''
+[BAI: provides='{filename}.bam.bai']
+_output.touch()
 
+[BAM]
+output: 'a.bam'
+_output.touch()
+
+[default]
+input: 'a.bam'
+depends: traced(_input.with_suffix('.bam.bai'))
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # if we run again, because depends, the step will be re-checked
+        os.remove('a.bam')
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__step_completed__'], 2)
+        self.assertEqual(res['__completed__']['__step_skipped__'], 1)
+        
 if __name__ == '__main__':
     unittest.main()
