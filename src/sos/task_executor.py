@@ -12,7 +12,7 @@ from .eval import SoS_eval, SoS_exec
 from .monitor import ProcessMonitor
 from .targets import (InMemorySignature, file_target,
                       sos_step, dynamic, sos_targets)
-from .utils import StopInputGroup, env, short_repr, pickleable
+from .utils import StopInputGroup, env, pickleable
 from .tasks import TaskFile, remove_task_files
 from .step_executor import parse_shared_vars
 from .executor_utils import __null_func__, get_traceback_msg, prepare_env, clear_output
@@ -149,23 +149,21 @@ def _validate_task_signature(sig, saved_sig, task_id, is_subtask):
         matched = sig.validate(saved_sig)
         if isinstance(matched, str):
             raise RuntimeError(f'Signature mismatch: {matched}')
-        else:
-            env.sos_dict.set('_input', sos_targets(matched['input']))
-            env.sos_dict.set('_depends', sos_targets(matched['depends']))
-            env.sos_dict.set('_output', sos_targets(matched['output']))
-            env.sos_dict.update(matched['vars'])
-            (env.logger.debug if is_subtask else env.logger.info)(
-                f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with matching signature')
-            sig.content = saved_sig
-            return True
+        env.sos_dict.set('_input', sos_targets(matched['input']))
+        env.sos_dict.set('_depends', sos_targets(matched['depends']))
+        env.sos_dict.set('_output', sos_targets(matched['output']))
+        env.sos_dict.update(matched['vars'])
+        (env.logger.debug if is_subtask else env.logger.info)(
+            f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with matching signature')
+        sig.content = saved_sig
+        return True
     elif env.config['sig_mode'] == 'build':
         # The signature will be write twice
         if sig.write():
             (env.logger.debug if is_subtask else env.logger.info)(
                 f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with signature constructed')
             return True
-        else:
-            return False
+        return False
     elif env.config['sig_mode'] == 'force':
         return False
     else:

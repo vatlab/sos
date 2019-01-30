@@ -26,7 +26,7 @@ import urllib.request
 from collections import Sequence, Mapping, Set, defaultdict
 from html.parser import HTMLParser
 from io import FileIO, StringIO
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 import fasteners
 import yaml
@@ -117,7 +117,7 @@ class ColoredFormatter(logging.Formatter):
             'CRITICAL': 'RED_BG',
         }
 
-    def format(self, record: str):
+    def format(self, record):
         level_name = record.levelname
         if level_name in self.LEVEL_COLOR:
             level_color = self.LEVEL_COLOR[level_name]
@@ -644,19 +644,18 @@ class ProgressFileObj(FileIO):
 def stable_repr(obj):
     if isinstance(obj, str):
         return repr(obj)
-    elif hasattr(obj, '__stable_repr__'):
+    if hasattr(obj, '__stable_repr__'):
         return obj.__stable_repr__()
-    elif isinstance(obj, Mapping):
+    if isinstance(obj, Mapping):
         items = [stable_repr(k) + ':' + stable_repr(obj[k])
                  for k in obj.keys()]
         return '{' + ', '.join(sorted(items)) + '}'
-    elif isinstance(obj, Set):
+    if isinstance(obj, Set):
         items = [stable_repr(x) for x in obj]
         return '{' + ', '.join(sorted(items)) + '}'
-    elif isinstance(obj, Sequence):
+    if isinstance(obj, Sequence):
         return '[' + ', '.join(stable_repr(k) for k in obj) + ']'
-    else:
-        return repr(obj)
+    return repr(obj)
 
 #
 # A utility function that returns output of a command
@@ -1243,8 +1242,7 @@ def tail_of_file(filename, n, ansi2html=False):
             if len(lines) >= to_read or pos == 0:
                 if ansi2html:
                     return convertAnsi2html('\n'.join(lines[-to_read:]))
-                else:
-                    return '\n'.join(lines[-to_read:]) + '\n'
+                return '\n'.join(lines[-to_read:]) + '\n'
             avg_line_length *= 1.3
 
 
@@ -1309,7 +1307,8 @@ def version_info(module: str):
     try:
         code = ("import %s; version=str(%s.__version__)" %
                 (module, module))
-        ns_g = ns_l = {}
+        ns_g: Dict = {}
+        ns_l: Dict = {}
         exec(compile(code, "<string>", "exec"), ns_g, ns_l)
         return ns_l["version"]
     except Exception:
@@ -1470,86 +1469,85 @@ def dot_to_gif(filename: str, warn=None):
         pngFiles = glob.glob(os.path.join(tempDirectory, f'sosDot*.png'))
         if len(pngFiles) == 1:
             return b64_of(outfile)
-        else:
-            import imageio
-            # create a gif files from multiple png files
-            pngFiles.sort(key=lambda x: int(
-                os.path.basename(x)[:-3].split('.')[1] or 0))
-            # find maximum size for all graphs corresponding to their subgraphs
-            maxWidth = 0
-            wf_maxHeight = {}
-            images = {}
-            for subworkflow in unique_subworkflows:
-                wf_images = {png: Image.open(png) for png, wf in zip(
-                    pngFiles, subworkflows) if wf == subworkflow}
-                maxWidth = max(maxWidth, max(
-                    [x.size[0] for x in wf_images.values()]))
-                wf_maxHeight[subworkflow] = max(
-                    [x.size[1] for x in wf_images.values()]) + 20
-                images.update(wf_images)
-            # now, we stack workflows as follows
-            #    G1
-            #    G2
-            #    G3
-            # and allow G1, G2, G3 to expand...
-            maxWidth += 150
-            totalHeight = sum(wf_maxHeight.values())
-            lastGraph = {}
-            newImages = {}
+        import imageio
+        # create a gif files from multiple png files
+        pngFiles.sort(key=lambda x: int(
+            os.path.basename(x)[:-3].split('.')[1] or 0))
+        # find maximum size for all graphs corresponding to their subgraphs
+        maxWidth = 0
+        wf_maxHeight = {}
+        images = {}
+        for subworkflow in unique_subworkflows:
+            wf_images = {png: Image.open(png) for png, wf in zip(
+                pngFiles, subworkflows) if wf == subworkflow}
+            maxWidth = max(maxWidth, max(
+                [x.size[0] for x in wf_images.values()]))
+            wf_maxHeight[subworkflow] = max(
+                [x.size[1] for x in wf_images.values()]) + 20
+            images.update(wf_images)
+        # now, we stack workflows as follows
+        #    G1
+        #    G2
+        #    G3
+        # and allow G1, G2, G3 to expand...
+        maxWidth += 150
+        totalHeight = sum(wf_maxHeight.values())
+        lastGraph = {}
+        newImages = {}
+        try:
+            font = ImageFont.truetype('/Library/Fonts/Arial.ttf', 8)
+        except:
             try:
-                font = ImageFont.truetype('/Library/Fonts/Arial.ttf', 8)
+                font = ImageFont.truetype('arial.ttf', 8)
             except:
-                try:
-                    font = ImageFont.truetype('arial.ttf', 8)
-                except:
-                    font = None
+                font = None
 
-            for subworkflow, pngFile in zip(subworkflows, pngFiles):
-                image = images[pngFile]
-                lastGraph[subworkflow] = image
-                # we need to stitch figures together
-                try:
-                    newImg = Image.new("RGB", (maxWidth, totalHeight),
-                                       color=0xFFFFFF)
-                    y_loc = 0
-                    for wf in unique_subworkflows:
-                        # if current, use the new one
-                        if wf == subworkflow:
-                            img = image
-                        elif wf in lastGraph:
-                            img = lastGraph[wf]
-                        else:
-                            continue
-                        newImg.paste(
-                            img, ((maxWidth - img.size[0]) // 2, y_loc + 20))
-                        draw = ImageDraw.Draw(newImg)
-                        # font = ImageFont.truetype("sans-serif.ttf", 8)
-                        # , font=font)
-                        draw.text((5, y_loc + 5), wf,
-                                  (0, 0, 0), font=font)
-                        y_loc += wf_maxHeight[wf]
-                except Exception as e:
-                    if warn:
-                        warn(f'Failed to resize gif file: {e}')
-                    return b64_of(pngFiles[-1])
-                newImages[pngFile] = newImg
+        for subworkflow, pngFile in zip(subworkflows, pngFiles):
+            image = images[pngFile]
+            lastGraph[subworkflow] = image
+            # we need to stitch figures together
             try:
-                for pngFile, image in newImages.items():
-                    image.save(pngFile, directory=tempDirectory)
-                images = [imageio.imread(x) for x in pngFiles]
+                newImg = Image.new("RGB", (maxWidth, totalHeight),
+                                    color=0xFFFFFF)
+                y_loc = 0
+                for wf in unique_subworkflows:
+                    # if current, use the new one
+                    if wf == subworkflow:
+                        img = image
+                    elif wf in lastGraph:
+                        img = lastGraph[wf]
+                    else:
+                        continue
+                    newImg.paste(
+                        img, ((maxWidth - img.size[0]) // 2, y_loc + 20))
+                    draw = ImageDraw.Draw(newImg)
+                    # font = ImageFont.truetype("sans-serif.ttf", 8)
+                    # , font=font)
+                    draw.text((5, y_loc + 5), wf,
+                                (0, 0, 0), font=font)
+                    y_loc += wf_maxHeight[wf]
             except Exception as e:
                 if warn:
-                    warn(f'Failed to read gng file: {e}')
+                    warn(f'Failed to resize gif file: {e}')
                 return b64_of(pngFiles[-1])
-            # create a gif file from images
-            gifFile = os.path.join(tempDirectory, 'sosDot.gif')
-            try:
-                imageio.mimsave(gifFile, images, duration=0.5)
-            except Exception as e:
-                if warn:
-                    warn(f'Failed to generate gif animation: {e}')
-                return b64_of(pngFiles[-1])
-            return b64_of(gifFile)
+            newImages[pngFile] = newImg
+        try:
+            for pngFile, image in newImages.items():
+                image.save(pngFile, directory=tempDirectory)
+            images_content = [imageio.imread(x) for x in pngFiles]
+        except Exception as e:
+            if warn:
+                warn(f'Failed to read gng file: {e}')
+            return b64_of(pngFiles[-1])
+        # create a gif file from images
+        gifFile = os.path.join(tempDirectory, 'sosDot.gif')
+        try:
+            imageio.mimsave(gifFile, images_content, duration=0.5)
+        except Exception as e:
+            if warn:
+                warn(f'Failed to generate gif animation: {e}')
+            return b64_of(pngFiles[-1])
+        return b64_of(gifFile)
 
 
 def separate_options(options: str) -> List[str]:

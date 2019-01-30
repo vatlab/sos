@@ -17,7 +17,7 @@ from copy import deepcopy
 from itertools import combinations, tee
 from pathlib import Path
 from shlex import quote
-from typing import Union, Dict, Any
+from typing import Union, Dict, Any, List
 import fasteners
 import pkg_resources
 
@@ -338,8 +338,7 @@ class sos_step(BaseTarget):
         # handling special !q conversion flag
         if format_spec and format_spec[0] == 'R':
             return self._step_name.__format__(format_spec[1:])
-        else:
-            return str(self).__format__(format_spec)
+        return str(self).__format__(format_spec)
 
 
 
@@ -765,18 +764,16 @@ class paths(Sequence, os.PathLike):
     def __fspath__(self):
         if len(self._paths) == 1:
             return self._paths[0].__fspath__()
-        elif len(self._paths) == 0:
+        if not self._paths:
             raise ValueError(f"Cannot treat an empty paths as single path")
-        else:
-            raise ValueError(
-                f'Cannot treat an paths object {self} with more than one paths as a single path')
+        raise ValueError(
+            f'Cannot treat an paths object {self} with more than one paths as a single path')
 
     def __format__(self, format_spec):
         if ',' in format_spec:
             fmt_spec = format_spec.replace(',', '')
             return ','.join(x.__format__(fmt_spec) for x in self._paths)
-        else:
-            return ' '.join(x.__format__(format_spec) for x in self._paths)
+        return ' '.join(x.__format__(format_spec) for x in self._paths)
 
     def __deepcopy__(self, memo):
         return paths(deepcopy(self._paths))
@@ -784,12 +781,11 @@ class paths(Sequence, os.PathLike):
     def __getattr__(self, key):
         if len(self._paths) == 1:
             return getattr(self._paths[0], key)
-        elif len(self._paths) == 0:
+        if len(self._paths) == 0:
             raise AttributeError(
                 f"Cannot get attribute {key} from empty target list")
-        else:
-            raise AttributeError(
-                f'Cannot get attribute {key} from group of {len(self)} targets {self!r}')
+        raise AttributeError(
+            f'Cannot get attribute {key} from group of {len(self)} targets {self!r}')
 
     def __hash__(self):
         return hash(repr(self))
@@ -865,9 +861,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         group_with=None, for_each=None, _undetermined: Union[bool, str]=None,
         _source='', _verify_existence=False, **kwargs):
         super(sos_targets, self).__init__()
-        self._targets = []
-        self._labels = []
-        self._groups = []
+        self._targets: List = []
+        self._labels: List = []
+        self._groups: List = []
         if isinstance(_undetermined, (bool, str)):
             self._undetermined = _undetermined
         else:
@@ -1691,7 +1687,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
 class InMemorySignature:
     def __init__(self, input_files: sos_targets, output_files: sos_targets,
-                 dependent_files: sos_targets, signature_vars: set=set(),
+                 dependent_files: sos_targets, signature_vars: set = set(),
                  sdict: dict={},
                  shared_vars: list= []):
         '''Runtime information for specified output files

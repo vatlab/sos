@@ -6,11 +6,12 @@
 import keyword
 import re
 
-from typing import Callable
+from typing import Callable, List
+
 SOS_TARGETS_OPTIONS = ['group_by', 'paired_with', 'pattern', 'group_with', 'for_each', 'remove_empty_groups']
 SOS_INPUT_OPTIONS = ['concurrent']
 SOS_OUTPUT_OPTIONS = ['group_with']
-SOS_DEPENDS_OPTIONS = []
+SOS_DEPENDS_OPTIONS: List = []
 SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'active', 'walltime', 'nodes',
                        'cores', 'mem', 'shared', 'env', 'prepend_path', 'queue', 'to_host',
                        'from_host', 'map_vars', 'name', 'trunk_size', 'trunk_workers', 'tags']

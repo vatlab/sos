@@ -12,10 +12,10 @@ import re
 import shutil
 import sys
 import textwrap
-import typing
 from io import StringIO, TextIOBase
 from tokenize import generate_tokens
-from typing import Dict, List, Optional, Tuple
+import typing
+from typing import Dict, List, Optional, Tuple, Any, Set
 from uuid import UUID, uuid4
 
 from .eval import on_demand_options
@@ -128,7 +128,7 @@ def is_type_hint(stmt: str) -> bool:
     return True
 
 
-def extract_option_from_arg_list(options: str, optname: str, default_value: None) -> Tuple[any, str]:
+def extract_option_from_arg_list(options: str, optname: str, default_value: None) -> Tuple[Any, str]:
     if not options:
         return default_value, options
     try:
@@ -207,9 +207,9 @@ class SoS_Step:
         self.names = [] if names is None else names
         # everything before step process
         self.statements: List = []
-        self.global_parameters = {}
-        self.parameters = {}
-        self.substep_parameters = set()
+        self.global_parameters: Dict = {}
+        self.parameters: Dict = {}
+        self.substep_parameters: Set = set()
         # step processes
         self.global_def = ''
         self.task = ''
@@ -220,10 +220,10 @@ class SoS_Step:
         # will be inserted to each step of the workflow.
         self.is_global = is_global
         # indicate the type of input of the last line
-        self.values = []
+        self.values: List = []
         self.lineno = 0
         #
-        self.runtime_options = {}
+        self.runtime_options: Dict = {}
         self.options = on_demand_options(options)
         #
         # string mode to collect all strings as part of an action
@@ -288,12 +288,9 @@ class SoS_Step:
                     return True
                 if validDirective() and self._action is not None:
                     return 'script'
-                else:
-                    return 'directive'
-            else:
-                return 'statements'
-        else:
-            return None
+                return 'directive'
+            return 'statements'
+        return None
 
     def isValid(self) -> bool:
         '''Determine if the statement, expression or directive is valid. Otherwise
@@ -439,7 +436,7 @@ class SoS_Step:
         def _get_tokens(statement):
             return [x[1] for x in generate_tokens(StringIO(statement).readline) if x[1] not in ('', '\n')]
 
-        tokens = []
+        tokens: List = []
         for statement in self.statements:
             tokens.extend(_get_tokens(statement[2] if statement[0] == ':' else statement[1]))
 
@@ -569,8 +566,8 @@ class SoS_Workflow:
         '''create a workflow from its name and a list of SoS_Sections (using name matching)'''
         self.content = content
         self.name = workflow_name if workflow_name else 'default'
-        self.sections = []
-        self.auxiliary_sections = []
+        self.sections: List = []
+        self.auxiliary_sections: List = []
         self.global_def = global_def
         #
         for section in sections:
@@ -648,7 +645,7 @@ class SoS_Workflow:
 
     def parameters(self) -> Dict[str, str]:
         # collect parameters defined by `parameter:` of steps
-        par = {}
+        par: Dict = {}
         for x in self.sections + self.auxiliary_sections:
             par.update(x.parameters)
         return {x: y[0] for x, y in par.items()}
@@ -867,9 +864,9 @@ for __n, __v in {repr(name_map)}.items():
             # env.logger.trace(self.global_def)
 
     def _read(self, fp: TextIOBase) -> None:
-        self.sections = []
-        self.format_version = '1.0'
-        self.gloal_def = ''
+        self.sections: List = []
+        self.format_version: str = '1.0'
+        self.gloal_def: str = ''
         #
         comment_block = 1
         # cursect always point to the last section
@@ -1259,7 +1256,7 @@ for __n, __v in {repr(name_map)}.items():
         #
         # if there is no section in the script, we create a default section with global
         # definition being the content.
-        global_parameters = {}
+        global_parameters: Dict = {}
         if not [x for x in self.sections if not x.is_global]:
             self.sections.append(
                 SoS_Step(self.content, [('default', None, None)]))

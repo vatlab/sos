@@ -2,7 +2,6 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
-import copy
 import glob
 import multiprocessing as mp
 import os
@@ -197,7 +196,7 @@ class LocalHost:
         if task_file != dest_task_file:
             shutil.copyfile(task_file, dest_task_file)
 
-    def check_output(self, cmd: object) -> object:
+    def check_output(self, cmd):
         # get the output of command
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
@@ -239,7 +238,7 @@ class LocalHost:
                     shutil.copy(r, l)
 
         res = tf.result
-        if not res or not 'ret_code' in res:
+        if not res or 'ret_code' not in res:
             return {'ret_code': 1, 'exception': ValueError(f'No result is found for task {task_id}')}
 
         try:
@@ -268,14 +267,13 @@ class RemoteHost:
         value = self.config.get('shared', [])
         if isinstance(value, str):
             return [value]
-        elif isinstance(value, Sequence):
+        if isinstance(value, Sequence):
             return value
-        else:
-            raise ValueError(
-                'Option shared can only be a string or a list of strings')
+        raise ValueError(
+            'Option shared can only be a string or a list of strings')
 
     def _get_path_map(self) -> Dict[str, str]:
-        res = {}
+        res: Dict = {}
         # if user-specified path_map, it overrides CONFIG
         path_map = self.config.get('path_map', [])
         #
@@ -305,15 +303,13 @@ class RemoteHost:
             return '''ssh -q {host} -p {port} "mkdir -p {dest:dpq}" && ''' + \
                 '''rsync -a --no-g -e 'ssh -p {port}' {source:aep} "{host}:{dest:dep}" && ''' + \
                 '''ssh -q {host} -p {port} "mv {dest:dep}/{source:b} {dest:ep}" '''
-        else:
-            return '''ssh -q {host} -p {port} "mkdir -p {dest:dpq}" && rsync -a --no-g -e 'ssh -p {port}' {source:aep} "{host}:{dest:dep}"'''
+        return '''ssh -q {host} -p {port} "mkdir -p {dest:dpq}" && rsync -a --no-g -e 'ssh -p {port}' {source:aep} "{host}:{dest:dep}"'''
 
     def _get_receive_cmd(self, rename=False):
         if rename:
             return '''rsync -a --no-g -e 'ssh -p {port}' {host}:{source:e} "{dest:adep}" && ''' + \
                 '''mv "{dest:adep}/{source:b}" "{dest:aep}"'''
-        else:
-            return '''rsync -a --no-g -e 'ssh -p {port}' {host}:{source:e} "{dest:adep}"'''
+        return '''rsync -a --no-g -e 'ssh -p {port}' {host}:{source:e} "{dest:adep}"'''
 
     def _get_execute_cmd(self) -> str:
         return self.config.get('execute_cmd',
@@ -741,7 +737,7 @@ class RemoteHost:
 #
 
 class Host:
-    host_instances = {}
+    host_instances: Dict = {}
 
     def __init__(self, alias: Optional[str] = '', start_engine: bool = True) -> None:
         # a host started from Jupyter notebook might not have proper stdout
@@ -1101,9 +1097,8 @@ def test_ssh(host):
         if i == 2:
             if not p.before:
                 return "OK"
-            else:
-                p.close(force=True)
-                return p.before.decode()
+            p.close(force=True)
+            return p.before.decode()
     except pexpect.TIMEOUT:
         return f'ssh connection to {address} time out with prompt: {str(p.before)}'
     except Exception as e:

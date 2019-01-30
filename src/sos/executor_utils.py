@@ -8,7 +8,6 @@
 #
 import os
 import sys
-import copy
 import re
 import psutil
 import traceback
@@ -25,6 +24,7 @@ from .eval import SoS_eval, SoS_exec, stmtHash
 from ._version import __version__
 from .tasks import TaskParams
 from .syntax import SOS_TAG, SOS_RUNTIME_OPTIONS
+
 
 def __null_func__(*args, **kwargs) -> Any:
     '''This function will be passed to SoS's namespace and be executed

@@ -1678,8 +1678,8 @@ print(_input)
     def testMultiDepends(self):
         '''Test a step with multiple depdendend steps'''
         for file in ('dbsnp.vcf', 'hg19.fa', 'f1.fastq', 'f2.fastq', 'f1.bam', 'f2.bam', 'f1.bam.idx', 'f2.bam.idx'):
-           if os.path.isfile(file):
-               os.remove(file)
+            if os.path.isfile(file):
+                os.remove(file)
         self.touch(['f1.fastq', 'f2.fastq'])
         script = SoS_Script('''
 import time

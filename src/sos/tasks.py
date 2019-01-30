@@ -2,24 +2,23 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
-import copy
 import os
 import fasteners
 import pickle
 import time
 import lzma
-import stat
 import struct
 from enum import Enum
 from collections import namedtuple
 from datetime import datetime
 
-from typing import Union, Dict
+from typing import Union, Dict, List
 
 from .utils import (env, expand_time, linecount_of_file, sample_lines,
                     short_repr, tail_of_file, expand_size, format_HHMMSS,
                     DelayedAction, format_duration)
 from .targets import sos_targets
+from .monitor import summarizeExecution
 
 monitor_interval = 5
 resource_monitor_interval = 60
@@ -217,11 +216,11 @@ class TaskFile(object):
             if self.status == 'running':
                 env.logger.debug('Running task is not updated')
                 return
-            else:
-                # keep original stuff but update params, which could contain
-                # new runtime info
-                self.params = params
-                return
+        
+            # keep original stuff but update params, which could contain
+            # new runtime info
+            self.params = params
+            return
         # updating job_file will not change timestamp because it will be Only
         # the update of runtime info
         now = time.time()
@@ -303,20 +302,19 @@ class TaskFile(object):
                 raise RuntimeError(
                     f'Corrupted task file {self.task_file}. Please report a bug if you can reproduce the generation of this file.')
             return self.TaskHeader(runtime_size=0, shell_size=0, **header._asdict())._replace(version=3)
-        elif struct.unpack('!h', data[:2])[0] == 2:
+        if struct.unpack('!h', data[:2])[0] == 2:
             header = self.TaskHeader_v2._make(struct.unpack(
                 self.header_fmt_v2, data))
             if header.version not in (1, 2, 3):
                 raise RuntimeError(
                     f'Corrupted task file {self.task_file}. Please report a bug if you can reproduce the generation of this file.')
             return self.TaskHeader(runtime_size=0, **header._asdict())._replace(version=3)
-        else:
-            header = self.TaskHeader._make(struct.unpack(
-                self.header_fmt, data))
-            if header.version not in (1, 2, 3):
-                raise RuntimeError(
-                    f'Corrupted task file {self.task_file}. Please report a bug if you can reproduce the generation of this file.')
-            return header
+        header = self.TaskHeader._make(struct.unpack(
+            self.header_fmt, data))
+        if header.version not in (1, 2, 3):
+            raise RuntimeError(
+                f'Corrupted task file {self.task_file}. Please report a bug if you can reproduce the generation of this file.')
+        return header
 
     def _write_header(self, fh, header):
         fh.seek(0, 0)
@@ -828,8 +826,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             # the pulse file could disappear when the job is completed.
             if task_changed():
                 return check_task(task)
-            else:
-                raise
+            raise
     elif status == 'running':
         # starting of task will create a pulse file. If the pulse file is gone
         # and the status is still showing as running, something is wrong.
@@ -887,7 +884,7 @@ def check_tasks(tasks, is_all: bool):
     cache_file: str = os.path.join(
         os.path.expanduser('~'), '.sos', 'tasks', 'status_cache.pickle')
     #
-    status_cache = {}
+    status_cache: Dict = {}
     if os.path.isfile(cache_file):
         with fasteners.InterProcessLock(cache_file + '_'):
             with open(cache_file, 'rb') as cache:
@@ -922,6 +919,7 @@ def print_task_status(tasks, check_all=False, verbosity: int=1, html: bool=False
         tasks = [x for x in workflow_signatures.tasks() if os.path.isfile(
             os.path.join(os.path.expanduser('~'), '.sos', 'tasks', x + '.task'))]
     import glob
+    all_tasks: List = []
     if check_all:
         tasks = glob.glob(os.path.join(
             os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
@@ -930,12 +928,11 @@ def print_task_status(tasks, check_all=False, verbosity: int=1, html: bool=False
         if not all_tasks:
             return
     else:
-        all_tasks = []
         for t in tasks:
-            matched = glob.glob(os.path.join(os.path.expanduser('~'),
+            matched_names = glob.glob(os.path.join(os.path.expanduser('~'),
                                              '.sos', 'tasks', f'{t}*.task'))
             matched = [(os.path.basename(x)[:-5], os.path.getmtime(x))
-                       for x in matched]
+                       for x in matched_names]
             if not matched:
                 all_tasks.append((t, None))
             else:
@@ -973,7 +970,6 @@ def print_task_status(tasks, check_all=False, verbosity: int=1, html: bool=False
     if html:
         # HTML output
         from .utils import isPrimitive
-        from .monitor import summarizeExecution
         import pprint
         print('<table width="100%" class="resource_table">')
 
@@ -1233,7 +1229,6 @@ showResourceFigure_''' + t + '''()
             print(f'{t}\t{ts.ljust(tsize)}\t{ct:<14}\t{st:<14}\t{dr:<14}\t{s}')
     elif verbosity == 4:
         import pprint
-        from .monitor import summarizeExecution
         for s, (t, d) in zip(obtained_status, all_tasks):
             tf = TaskFile(t)
             if s == 'missing':

@@ -28,7 +28,7 @@ from .executor_utils import (clear_output, create_task, verify_input, reevaluate
                     __output_from__, __named_output__)
 
 
-__all__ = []
+__all__: List = []
 
 
 class TaskManager:
@@ -161,7 +161,7 @@ class TaskManager:
         self._submitted_tasks = []
 
 
-def expand_input_files(value, *args, **kwargs):
+def expand_input_files(*args, **kwargs):
     # if unspecified, use __step_output__ as input (default)
     # resolve dynamic input.
     args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
@@ -370,7 +370,7 @@ class Base_Step_Executor:
         # its _index-th element
         if group_with is None or not group_with:
             return {}
-        elif isinstance(group_with, str):
+        if isinstance(group_with, str):
             var_name = ['_' + group_with]
             if group_with not in env.sos_dict:
                 raise ValueError(f'Variable {group_with} does not exist.')
@@ -844,7 +844,7 @@ class Base_Step_Executor:
                                     }
                     )
                     # Files will be expanded differently with different running modes
-                    input_files: sos_targets = expand_input_files(stmt, *args,
+                    input_files: sos_targets = expand_input_files(*args,
                         **{k:v for k,v in kwargs.items() if k not in SOS_INPUT_OPTIONS})
                     self._substeps = self.process_input_args(
                         input_files, **{k:v for k,v in kwargs.items() if k in SOS_INPUT_OPTIONS})
@@ -1303,10 +1303,10 @@ class Base_Step_Executor:
                 if 'stderr' in proc_result and proc_result['stderr']:
                     sys.stderr.write(proc_result['stderr'])
                 if 'exception' in proc_result:
-                    e = proc_result['exception']
-                    if isinstance(e, StopInputGroup):
-                        if e.message:
-                            env.logger.info(e.message)
+                    excp = proc_result['exception']
+                    if isinstance(excp, StopInputGroup):
+                        if excp.message:
+                            env.logger.info(excp.message)
                         self.output_groups[proc_result['index']] = sos_targets([])
                     #elif isinstance(e, RemovedTarget):
                     #
@@ -1314,7 +1314,7 @@ class Base_Step_Executor:
                     # by rerunning the substep, but we it is too much work for this
                     # corner case. Let us simply rerunt he entire step.
                     else:
-                        raise e
+                        raise excp
             # if output is Undetermined, re-evalulate it
             # finalize output from output_groups because some output might be skipped
             # this is the final version of the output but we do maintain output
@@ -1345,8 +1345,7 @@ class Base_Step_Executor:
                     env.logger.warning(
                         f"Unexpected input or output target for reporting. Empty list returned: {targets}")
                     return []
-                else:
-                    return [(str(x), x.size()) for x in targets._targets if isinstance(x, file_target)]
+                return [(str(x), x.size()) for x in targets._targets if isinstance(x, file_target)]
             step_info = {
                 'step_id': self.step.md5,
                 'start_time': self.start_time,
