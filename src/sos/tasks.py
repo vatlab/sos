@@ -18,7 +18,6 @@ from .utils import (env, expand_time, linecount_of_file, sample_lines,
                     short_repr, tail_of_file, expand_size, format_HHMMSS,
                     DelayedAction, format_duration)
 from .targets import sos_targets
-from .monitor import summarizeExecution
 
 monitor_interval = 5
 resource_monitor_interval = 60
@@ -967,6 +966,7 @@ def print_task_status(tasks, check_all=False, verbosity: int=1, html: bool=False
             all_tasks, obtained_status) if s in status]
         obtained_status = [x for x in obtained_status if x in status]
     #
+    from .monitor import summarizeExecution
     if html:
         # HTML output
         from .utils import isPrimitive
