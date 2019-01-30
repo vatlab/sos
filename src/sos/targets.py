@@ -1301,6 +1301,10 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         # output is for example dynamic, they could overlap.
         return self._dedup()
 
+    def _remove_empty_groups(self):
+        self._groups = [x for x in self._groups if len(x._indexes) > 0]
+        return self
+
     def _duplicate_groups(self, n):
         n_grps = len(self._groups)
         for _ in range(n-1):
