@@ -1186,8 +1186,8 @@ input: named_output('A'), named_output('B')
                        '''
 strict digraph "" {
 default;
-"A (A)";
-"A (A)" -> default;
+"A (B)";
+"A (B)" -> default;
 }
 ''')
 

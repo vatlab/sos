@@ -449,7 +449,7 @@ class Base_Executor:
             # check auxiliary steps and see if any steps provides it
             remaining_targets = dangling_targets
             while remaining_targets:
-                target = remaining_targets[0]
+                target = remaining_targets.pop()
                 mo = self.match(target)
                 if not mo:
                     #
@@ -485,6 +485,7 @@ class Base_Executor:
                                 f'No step to generate target {target}{dag.steps_depending_on(target, self.workflow)}')
                     if nodes:
                         resolved += 1
+                    # cannot resolve, but the step is numerically indexed so we just wait
                     continue
                 if len(mo) > 1:
                     # sos_step('a') could match to step a_1, a_2, etc, in this case we are adding a subworkflow
