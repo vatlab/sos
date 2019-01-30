@@ -186,7 +186,7 @@ def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars
                 res['task_id'] = None
             if not e.keep_output:
                 # treat as an error
-                clear_output(err=e)
+                clear_output()
                 res['output'] = sos_targets([])
             elif sig:
                 sig.set_output(env.sos_dict['_output'])
@@ -198,7 +198,7 @@ def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars
             else:
                 res['output'] = env.sos_dict['_output']
         else:
-            clear_output(err=e)
+            clear_output()
             res = {'index': env.sos_dict['_index'], 'ret_code': 1, 'exception': e}
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
@@ -208,17 +208,17 @@ def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars
         kill_all_subprocesses()
         raise e
     except subprocess.CalledProcessError as e:
-        clear_output(err=e)
+        clear_output()
         # cannot pass CalledProcessError back because it is not pickleable
         res = {'index': env.sos_dict['_index'], 'ret_code': e.returncode, 'exception': RuntimeError(e.stderr)}
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res
     except ArgumentError as e:
-        clear_output(err=e)
+        clear_output()
         return {'index': env.sos_dict['_index'], 'ret_code': 1, 'exception': e}
     except Exception as e:
-        clear_output(err=e)
+        clear_output()
         res = {'index': env.sos_dict['_index'], 'ret_code': 1,
             'exception': RuntimeError(get_traceback_msg(e))}
         if capture_output:

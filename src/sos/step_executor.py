@@ -1166,7 +1166,7 @@ class Base_Step_Executor:
                             skip_index = True
                             break
                         except Exception as e:
-                            clear_output(err=e)
+                            clear_output()
                             raise
 
                 # if there is no statement , but there are tasks, we should
@@ -1300,7 +1300,7 @@ class Base_Step_Executor:
                     e = proc_result['exception']
                     if isinstance(e, StopInputGroup):
                         if e.message:
-                            env.logger.info(e)
+                            env.logger.info(e.message)
                         self.output_groups[proc_result['index']] = sos_targets([])
                     #elif isinstance(e, RemovedTarget):
                     #
