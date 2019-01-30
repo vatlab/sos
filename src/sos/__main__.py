@@ -252,6 +252,9 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             "assert" for validating existing files against their signatures.
             Please refer to online documentation for details about the
             use of runtime signatures.''')
+    runmode.add_argument('-T', action='store_true', dest='trace_existing',
+        help='''Trace existing targets and re-execute the steps that generate
+            them to make sure that the targets are current.''')
     # run in tapping mode etc
     runmode.add_argument('-m', nargs='+', dest='exec_mode', help=argparse.SUPPRESS)
     output = parser.add_argument_group(title='Output options',
@@ -375,6 +378,7 @@ def cmd_run(args, workflow_args):
             'targets': args.__targets__,
             'bin_dirs': args.__bin_dirs__,
             'workflow_args': workflow_args,
+            'trace_existing': args.trace_existing,
             # tapping etc
             'exec_mode': args.exec_mode
         }
@@ -443,6 +447,11 @@ def get_dryrun_parser(desc_only=False):
             configuration file, or a file specified by option  --config. A host is
             assumed to be a remote machine with process type if no configuration
             is found. ''')
+    runmode = parser.add_argument_group(title='Run mode options',
+                                        description='''Control how sos scirpt is executed.''')
+    runmode.add_argument('-T', action='store_true', dest='trace_existing',
+        help='''Trace existing targets and re-execute the steps that generate
+            them to make sure that the targets are current.''')
     output = parser.add_argument_group(title='Output options',
                                        description='''Output of workflow''')
     output.add_argument('-d', nargs='?', default='', metavar='DAG', dest='__dag__',
