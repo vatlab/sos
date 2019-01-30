@@ -7,7 +7,7 @@ import keyword
 import re
 
 from typing import Callable
-SOS_TARGETS_OPTIONS = ['group_by', 'paired_with', 'pattern', 'group_with', 'for_each', 'remove_empty']
+SOS_TARGETS_OPTIONS = ['group_by', 'paired_with', 'pattern', 'group_with', 'for_each', 'remove_empty_groups']
 SOS_INPUT_OPTIONS = ['concurrent']
 SOS_OUTPUT_OPTIONS = ['group_with']
 SOS_DEPENDS_OPTIONS = []

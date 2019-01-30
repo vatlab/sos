@@ -1980,7 +1980,7 @@ assert(step_input.groups[1] == ['b_2.txt', 'b_3.txt'])
             Base_Executor(wf).run()
 
 
-    def testRemoveEmpty(self):
+    def testRemoveEmptyGroups(self):
         '''Test remove of empty groups'''
         # case 1, default output
         script = SoS_Script('''\
@@ -1995,7 +1995,7 @@ assert len(step_input.groups) == 3
     ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        # case 2, use default remove_empty=True
+        # case 2, use default remove_empty_groups=True
         script = SoS_Script('''\
 [A]
 input: for_each=dict(i=range(4))
@@ -2009,7 +2009,7 @@ assert len(step_input.groups) == 3
     ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        # case 3, use remove_empty=False
+        # case 3, use remove_empty_groups=False
         script = SoS_Script('''\
 [A]
 input: for_each=dict(i=range(4))
@@ -2018,7 +2018,7 @@ _output.touch()
 skip_if(i==2)
 
 [default]
-input: output_from('A', remove_empty=False)
+input: output_from('A', remove_empty_groups=False)
 assert len(step_input.groups) == 4
     ''')
         wf = script.workflow()
@@ -2046,7 +2046,7 @@ _output.touch()
 skip_if(i==2)
 
 [default]
-input: named_output('A', remove_empty=False)
+input: named_output('A', remove_empty_groups=False)
 assert len(step_input.groups) == 4
     ''')
         wf = script.workflow()

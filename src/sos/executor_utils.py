@@ -44,7 +44,7 @@ def __null_func__(*args, **kwargs) -> Any:
     return _flatten(args), kwargs
 
 def __output_from__(steps, group_by=None, paired_with=None, pattern=None,
-    group_with=None, for_each=None, remove_empty=True):
+    group_with=None, for_each=None, remove_empty_groups=True):
     targets = sos_targets()
     if isinstance(steps, (int, str)):
         steps = [steps]
@@ -75,10 +75,10 @@ def __output_from__(steps, group_by=None, paired_with=None, pattern=None,
     if group_by or paired_with or pattern or group_with or for_each:
         targets = sos_targets(targets, group_by=group_by, paired_with=paired_with,
             pattern=pattern, group_with=group_with, for_each=for_each)
-    return targets._remove_empty_groups() if remove_empty else targets
+    return targets._remove_empty_groups() if remove_empty_groups else targets
 
 def __named_output__(name, group_by=None, paired_with=None, pattern=None,
-    group_with=None, for_each=None, remove_empty=True):
+    group_with=None, for_each=None, remove_empty_groups=True):
     env.controller_req_socket.send_pyobj(['named_output', name])
     targets = env.controller_req_socket.recv_pyobj()
     if targets is None:
@@ -88,7 +88,7 @@ def __named_output__(name, group_by=None, paired_with=None, pattern=None,
     if group_by or paired_with or pattern or group_with or for_each:
         targets = sos_targets(targets, group_by=group_by, paired_with=paired_with,
             pattern=pattern, group_with=group_with, for_each=for_each)
-    return targets._remove_empty_groups() if remove_empty else targets
+    return targets._remove_empty_groups() if remove_empty_groups else targets
 
 def clear_output(output=None):
     '''
