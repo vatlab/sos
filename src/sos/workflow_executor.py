@@ -622,6 +622,8 @@ class Base_Executor:
                              context=context)
                 added_node += 1
                 resolved += 1
+                # this could be made more efficient by removing step output directly
+                # but it is inefficient to remove elements from list
                 remaining_targets = dag.dangling(remaining_targets)[0]
  
             # for existing targets that are not in DAG
@@ -696,7 +698,8 @@ class Base_Executor:
                 added_node += 1
                 resolved += 1
                 # adding one step can resolve many targets #1199
-                remaining_targets = set(dag.dangling(remaining_targets)[1])
+                if len(res['step_output']) > 1:
+                    remaining_targets -= set(res['step_output'].targets)
 
             if added_node == 0:
                 break
