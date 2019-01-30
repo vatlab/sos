@@ -1772,6 +1772,17 @@ depends: sos_variable(var='a')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
 
+    def testWideCardStepName(self):
+        '''test resolving step name with *'''
+        script = SoS_Script('''
+[A_1]
+
+[*_2]
+assert step_name == 'A_2', f'step_name is {step_name}, A_2 expected'
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)

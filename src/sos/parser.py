@@ -584,7 +584,7 @@ class SoS_Workflow:
                 # as long as it matches workflow name.
                 if (name == '' and workflow_name == 'default') or fnmatch.fnmatch(workflow_name, name):
                     self.sections.append(copy.deepcopy(section))
-                    self.sections[-1].name = name
+                    self.sections[-1].name = name if name == '' and workflow_name == 'default' else workflow_name
                     self.sections[-1].index = index
                     self.sections[-1].alias = alias
                     self.sections[-1].uuid = uuid4()
