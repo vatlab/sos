@@ -765,7 +765,7 @@ def natural_keys(text):
     http://nedbatchelder.com/blog/200712/human_sorting.html
     (See Toothy's implementation in the comments)
     '''
-    return [int(c) if c.isdigit() else c for c in re.split('(\d+)', text)]
+    return [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', text)]
 
 
 def transcribe(text, cmd=None):
@@ -1188,7 +1188,7 @@ def format_HHMMSS(v):
     return f'{h:02d}:{m:02d}:{s:02d}'
 
 
-def expand_time(v, default_unit='s'):
+def expand_time(v, default_unit='s') -> int:
     # expand walltime from '00:00:00' format to second
     if isinstance(v, str):
         try:

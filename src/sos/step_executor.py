@@ -512,7 +512,8 @@ class Base_Step_Executor:
         raise RuntimeError('Instance of Step_Executor should redefine submit_tasks')
 
     def wait_for_tasks(self, tasks, all_submitted):
-        raise RuntimeError('Instance of Step_Executor should redefine wait_for_tasks')
+        # this will be redefined in subclasses
+        return {}
 
     def wait_for_results(self, all_submitted):
         if self.concurrent_substep:
