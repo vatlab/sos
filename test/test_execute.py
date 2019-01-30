@@ -1942,7 +1942,6 @@ assert(step_input.labels == ['K']*8)
             wf = script.workflow(wf)
             Base_Executor(wf).run()
 
-
     def testNamedOutput(self):
         '''Testing named_output input function'''
         script = SoS_Script('''\
@@ -1979,6 +1978,79 @@ assert(step_input.groups[1] == ['b_2.txt', 'b_3.txt'])
         for wf in ('B', 'C', 'D'):
             wf = script.workflow(wf)
             Base_Executor(wf).run()
+
+
+    def testRemoveEmpty(self):
+        '''Test remove of empty groups'''
+        # case 1, default output
+        script = SoS_Script('''\
+[10]
+input: for_each=dict(i=range(4))
+output: f'a_{i}.txt'
+_output.touch()
+skip_if(i==2)
+
+[20]
+assert len(step_input.groups) == 3
+    ''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # case 2, use default remove_empty=True
+        script = SoS_Script('''\
+[A]
+input: for_each=dict(i=range(4))
+output: f'a_{i}.txt'
+_output.touch()
+skip_if(i==2)
+
+[default]
+input: output_from('A')
+assert len(step_input.groups) == 3
+    ''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # case 3, use remove_empty=False
+        script = SoS_Script('''\
+[A]
+input: for_each=dict(i=range(4))
+output: f'a_{i}.txt'
+_output.touch()
+skip_if(i==2)
+
+[default]
+input: output_from('A', remove_empty=False)
+assert len(step_input.groups) == 4
+    ''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # case 4, use named_output
+        script = SoS_Script('''\
+[A]
+input: for_each=dict(i=range(4))
+output: A=f'a_{i}.txt'
+_output.touch()
+skip_if(i==2)
+
+[default]
+input: named_output('A')
+assert len(step_input.groups) == 3
+    ''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # case 5, use named_output
+        script = SoS_Script('''\
+[A]
+input: for_each=dict(i=range(4))
+output: A=f'a_{i}.txt'
+_output.touch()
+skip_if(i==2)
+
+[default]
+input: named_output('A', remove_empty=False)
+assert len(step_input.groups) == 4
+    ''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
 
     def testSetVariablesTo_Output(self):
         '''Test assigning variables to _output'''
