@@ -81,7 +81,8 @@ class R_library(BaseTarget):
         #
         if len(glob_wildcards('{repo}@{pkg}', [name])['repo']):
             # package is from github
-            self._install('devtools', None, repos)
+            if self._autoinstall:
+                self._install('remotes', None, repos)
             install_script = f'''
             options(warn=-1)
             package_repo <-strsplit("{name}", split="@")[[1]][2]
@@ -90,7 +91,7 @@ class R_library(BaseTarget):
             if (!is.null(cur_version) && {version_satisfied}) {{
                 write(paste(package, cur_version, "AVAILABLE"), file={repr(output_file)})
             }} else if ({"TRUE" if self._autoinstall else "FALSE"}) {{
-                devtools::install_github(package_repo, force = TRUE)
+                remotes::install_github(package_repo, force = TRUE)
                 if ({package_loaded}) cur_version <- packageVersion(package) else cur_version <- NULL
                 # if it still does not exist, write the package name to output
                 if (!is.null(cur_version)) {{
@@ -100,6 +101,8 @@ class R_library(BaseTarget):
                     write(paste(package, "NA", "MISSING"), file={repr(output_file)})
                     quit("no")
                 }}
+            }} else if (!is.null(cur_version) && !{version_satisfied}) {{
+                write(paste(package, cur_version, "VERSION_MISMATCH"), file={repr(output_file)})
             }} else {{
                 write(paste(package, cur_version, "UNAVAILABLE"), file={repr(output_file)})
             }}
@@ -139,7 +142,7 @@ class R_library(BaseTarget):
             p = subprocess.Popen(['Rscript', '--default-packages=utils', script_file])
             ret = p.wait()
             if ret != 0:
-                env.logger.warning('Failed to detect or install R library')
+                env.logger.warning(f'Failed to detect or install R library {name}')
                 return False
         except Exception as e:
             env.logger.error(f'Failed to execute script: {e}')
@@ -153,10 +156,10 @@ class R_library(BaseTarget):
                 lib, cur_version, status = line.split(' ', 2)
                 if status.strip() == "MISSING":
                     env.logger.warning(
-                        f'R Library {lib} is not available and cannot be installed.')
+                        f'R library {lib} is not available and cannot be installed.')
                 elif status.strip() == "UNAVAILABLE":
                     env.logger.warning(
-                        f'R Library {lib} is not available. Use autoinstall=True to try to install.')
+                        f'R library {lib} is not available.')
                 elif status.strip() == 'AVAILABLE':
                     env.logger.debug(f'R library {lib} ({cur_version}) is available')
                     ret_val = True
