@@ -2153,7 +2153,7 @@ depends: _input.with_suffix('.bam.bai')
         Base_Executor(wf).run()
         # if we run again, because depends, the step will be re-checked
         os.remove('a.bam')
-        res = Base_Executor(wf).run()
+        res = Base_Executor(wf, config={'trace_existing': True}).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 2)
         self.assertEqual(res['__completed__']['__step_skipped__'], 1)
 

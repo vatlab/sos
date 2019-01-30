@@ -200,10 +200,12 @@ def get_step_input(section, default_input):
     '''Find step input
     '''
     step_input: sos_targets = sos_targets()
+    dynamic_input = True
+
     # look for input statement.
     input_idx = find_statement(section, 'input')
     if input_idx is None:
-        return step_input
+        return step_input, dynamic_input
 
     # input statement
     stmt = section.statements[input_idx][2]
@@ -223,8 +225,10 @@ def get_step_input(section, default_input):
                 step_input = sos_targets()
             else:
                 step_input = default_input
+            dynamoc_input = False
         elif not any(isinstance(x, (dynamic, remote)) for x in args):
             step_input = sos_targets(*args)
+            dynamic_input = True
     except SyntaxError:
         raise
     except Exception as e:
@@ -236,7 +240,7 @@ def get_step_input(section, default_input):
     finally:
         [env.sos_dict._dict.pop(x) for x in svars]
         env.sos_dict._dict.update(old_values)
-    return step_input
+    return step_input, dynamic_input
 
 def get_step_output(section, default_output):
     '''determine step output'''
@@ -375,7 +379,9 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
         'changed_vars': get_changed_vars(section)
     }
     if not vars_and_output_only:
-        res['step_input'] = get_step_input(section, default_input)
+        inps = get_step_input(section, default_input)
+        res['step_input'] = inps[0]
+        res['dynamic_input'] = inps[1]
         deps = get_step_depends(section)
         res['step_depends'] = deps[0]
         res['dynamic_depends'] = deps[1]

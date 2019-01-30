@@ -529,6 +529,7 @@ class Base_Executor:
                                 '__environ_vars__': environ_vars,
                                 '__changed_vars__': changed_vars,
                                 '__dynamic_depends__': res['dynamic_depends'],
+                                '__dynamic_input__': res['dynamic_input']
                             }
                             if idx == 0:
                                 context['__step_output__'] = env.sos_dict['__step_output__']
@@ -605,6 +606,8 @@ class Base_Executor:
                 context['__changed_vars__'] = res['changed_vars']
                 context['__default_output__'] = env.sos_dict['__default_output__']
                 context['__dynamic_depends__'] = res['dynamic_depends']
+                context['__dynamic_input__'] = res['dynamic_input']
+
                 # NOTE: If a step is called multiple times with different targets, it is much better
                 # to use different names because pydotplus can be very slow in handling graphs with nodes
                 # with identical names.
@@ -620,8 +623,13 @@ class Base_Executor:
                 added_node += 1
                 resolved += 1
 
-            # for existing targets... we should check if it actually exists. If
-            # not it would still need to be regenerated
+            # for existing targets that are not in DAG
+            if not env.config['trace_existing']:
+                if added_node == 0:
+                    break
+                else:
+                    continue
+
             node_added = False
             existing_targets = set(dag.dangling(targets)[1])
             for target in existing_targets:
@@ -629,9 +637,9 @@ class Base_Executor:
                     existing_targets = set(dag.dangling(targets)[1])
                     node_added = False
                 if target not in existing_targets:
+                    # target already in DAG and not reported as existing 
                     continue
-                if file_target(target).target_exists('target') if isinstance(target, str) else target.target_exists('target'):
-                    continue
+                # now we need to build DAG for existing...
                 mo = self.match(target)
                 if not mo:
                     # this is ok, this is just an existing target, no one is designed to
@@ -675,75 +683,7 @@ class Base_Executor:
                 context['__changed_vars__'] = res['changed_vars']
                 context['__default_output__'] = env.sos_dict['__default_output__']
                 context['__dynamic_depends__'] = res['dynamic_depends']
-
-                # NOTE: If a step is called multiple times with different targets, it is much better
-                # to use different names because pydotplus can be very slow in handling graphs with nodes
-                # with identical names.
-                node_name = section.step_name()
-                if env.sos_dict["__default_output__"]:
-                    node_name += f' {short_repr(env.sos_dict["__default_output__"])})'
-                dag.add_step(section.uuid, node_name,
-                             None, res['step_input'],
-                             res['step_depends'], res['step_output'], context=context)
-                node_added = True
-                added_node += 1
-                # this case do not count as resolved
-                # resolved += 1
-
-            # for depending targets... they already exist but we will add
-            # nodes that generates them if available.
-            node_added = False
-            depending_targets = set(dag.dangling(targets)[2])
-            for target in depending_targets:
-                if node_added:
-                    depending_targets = set(dag.dangling(targets)[2])
-                    node_added = False
-                if target not in depending_targets:
-                    continue
-                mo = self.match(target)
-                if not mo:
-                    # this is ok, this is just an existing target, no one is designed to
-                    # generate it.
-                    env.logger.debug(f'{target} already exists')
-                    continue
-                if len(mo) > 1:
-                    # this is not ok.
-                    raise RuntimeError(
-                        f'Multiple steps {", ".join(x.step_name() for x in mo)} to generate target {target}')
-                #
-                # only one step, we need to process it # execute section with specified input
-                #
-                if not isinstance(mo[0], tuple):
-                    section = mo[0]
-                    env.sos_dict['__default_output__'] = sos_targets(target)
-                    context = {}
-                else:
-                    section = mo[0][0]
-                    if isinstance(mo[0][1], dict):
-                        for k, v in mo[0][1].items():
-                            env.sos_dict.set(k, v)
-
-                    if mo[0][1]:
-                        env.sos_dict['__default_output__'] = sos_targets(target)
-                        context = {}
-                    else:
-                        env.sos_dict['__default_output__'] = sos_targets(
-                            section.options['provides'])
-                        context = mo[0][1]
-                # will become input, set to None
-                env.sos_dict['__step_output__'] = sos_targets()
-                #
-                res = analyze_section(section, default_output=env.sos_dict['__default_output__'])
-                #
-                # build DAG with input and output files of step
-                env.logger.debug(
-                    f'Adding step {res["step_name"]} with output {short_repr(res["step_output"])} to resolve target {target}')
-
-                context['__signature_vars__'] = res['signature_vars']
-                context['__environ_vars__'] = res['environ_vars']
-                context['__changed_vars__'] = res['changed_vars']
-                context['__default_output__'] = env.sos_dict['__default_output__']
-                context['__dynamic_depends__'] = res['dynamic_depends']
+                context['__dynamic_input__'] = res['dynamic_input']
 
                 # NOTE: If a step is called multiple times with different targets, it is much better
                 # to use different names because pydotplus can be very slow in handling graphs with nodes
@@ -794,7 +734,9 @@ class Base_Executor:
             context = {'__signature_vars__': signature_vars,
                        '__environ_vars__': environ_vars,
                        '__changed_vars__': changed_vars,
-                       '__dynamic_depends__': res['dynamic_depends']}
+                       '__dynamic_depends__': res['dynamic_depends'],
+                       '__dynamic_input__': res['dynamic_input']
+                       }
 
             # for nested workflow, the input is specified by sos_run, not None.
             if idx == 0:
@@ -903,10 +845,10 @@ class Base_Executor:
             # for depending targets... they already exist but we will add
             # nodes that generates them if available.
             node_added = False
-            depending_targets = set(dag.dangling(targets)[2])
+            depending_targets = set(dag.dangling(targets)[1])
             for target in depending_targets:
                 if node_added:
-                    depending_targets = set(dag.dangling(targets)[2])
+                    depending_targets = set(dag.dangling(targets)[1])
                     node_added = False
                 if target not in depending_targets:
                     continue
@@ -954,6 +896,7 @@ class Base_Executor:
                 context['__changed_vars__'] = res['changed_vars']
                 context['__default_output__'] = env.sos_dict['__default_output__']
                 context['__dynamic_depends__'] = res['dynamic_depends']
+                context['__dynamic_input__'] = res['dynamic_input']
 
                 # NOTE: If a step is called multiple times with different targets, it is much better
                 # to use different names because pydotplus can be very slow in handling graphs with nodes

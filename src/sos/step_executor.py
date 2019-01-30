@@ -340,6 +340,9 @@ class Base_Step_Executor:
 
         assert isinstance(ifiles, sos_targets)
 
+        if env.sos_dict.get('__dynamic_input__', False):
+            self.verify_dynamic_targets([x for x in ifiles if isinstance(x, file_target)])
+
         # input file is the filtered files
         env.sos_dict.set('step_input', ifiles)
         env.sos_dict.set('_input', ifiles)
@@ -349,7 +352,7 @@ class Base_Step_Executor:
         #
         return ifiles.groups
 
-    def verify_dynamic_depends(self, target):
+    def verify_dynamic_targets(self, target):
         return True
 
     def process_depends_args(self, dfiles: sos_targets, **kwargs):
@@ -360,7 +363,7 @@ class Base_Step_Executor:
             raise ValueError(r"Depends needs to handle undetermined")
 
         if env.sos_dict.get('__dynamic_depends__', False):
-            self.verify_dynamic_depends([x for x in dfiles if isinstance(x, file_target)])
+            self.verify_dynamic_targets([x for x in dfiles if isinstance(x, file_target)])
 
         env.sos_dict.set('_depends', dfiles)
         env.sos_dict.set('step_depends', dfiles)
@@ -1413,9 +1416,10 @@ class Step_Executor(Base_Step_Executor):
         if not res:
             raise e
 
-    def verify_dynamic_depends(self, targets):
-        if not targets:
+    def verify_dynamic_targets(self, targets):
+        if not targets or not env.config['trace_existing']:
             return
+
         self.socket.send_pyobj(['dependent_target'] + targets)
         res = self.socket.recv()
         if res != b'target_resolved':
