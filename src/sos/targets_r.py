@@ -81,8 +81,7 @@ class R_library(BaseTarget):
         #
         if len(glob_wildcards('{repo}@{pkg}', [name])['repo']):
             # package is from github
-            if self._autoinstall:
-                self._install('remotes', None, repos)
+            self._install('remotes', None, repos)
             install_script = f'''
             options(warn=-1)
             package_repo <-strsplit("{name}", split="@")[[1]][2]
@@ -101,10 +100,8 @@ class R_library(BaseTarget):
                     write(paste(package, "NA", "MISSING"), file={repr(output_file)})
                     quit("no")
                 }}
-            }} else if (!is.null(cur_version) && !{version_satisfied}) {{
-                write(paste(package, cur_version, "VERSION_MISMATCH"), file={repr(output_file)})
             }} else {{
-                write(paste(package, cur_version, "UNAVAILABLE"), file={repr(output_file)})
+                if (!is.null(cur_version)) write(paste(package, cur_version, "VERSION_MISMATCH"), file={repr(output_file)}) else write(paste(package, cur_version, "UNAVAILABLE"), file={repr(output_file)})
             }}
             '''
         else:
