@@ -929,6 +929,7 @@ class Base_Step_Executor:
             self._completed_concurrent_substeps = 0
             # pending signatures are signatures for steps with external tasks
             pending_signatures = [None for x in self._substeps]
+
             for idx, g in enumerate(self._substeps):
                 # other variables
                 #
@@ -982,7 +983,11 @@ class Base_Step_Executor:
                         # complete case: no step, no statement
                         env.controller_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
 
-                for statement in pre_statement + self.step.statements[input_statement_idx:] + post_statement:
+                all_statements = pre_statement + self.step.statements[input_statement_idx:] + post_statement
+                is_input_verified = True
+                for statement_idx, statement in enumerate(all_statements):
+                    is_last_runblock = statement_idx == len(all_statements) - 1
+
                     # if input is undertermined, we can only process output:
                     if not g.valid() and statement[0] != ':':
                         raise RuntimeError('Undetermined input encountered')
@@ -1043,7 +1048,7 @@ class Base_Step_Executor:
                                     return self.collect_result()
                                 raise RuntimeError(
                                     f'Failed to process step {key} ({value.strip()}): {e}')
-                    else:
+                    elif is_last_runblock:
                         try:
                             if self.concurrent_substep:
                                 env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} concurrently')
@@ -1098,7 +1103,9 @@ class Base_Step_Executor:
                                 if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified():
                                     env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} without signature')
                                     try:
-                                        verify_input()
+                                        if is_input_verified:
+                                            verify_input()
+                                            is_input_verified = False
                                         if env.sos_dict.get('__concurrent_subworkflow__', False):
                                             self._subworkflow_results.append(
                                                 self.execute(statement[1], return_result=True))
@@ -1141,7 +1148,9 @@ class Base_Step_Executor:
                                     else:
                                         sig.lock()
                                         try:
-                                            verify_input()
+                                            if is_input_verified:
+                                                verify_input()
+                                                is_input_verified = False
                                             if env.sos_dict.get('__concurrent_subworkflow__', False):
                                                 self._subworkflow_results.append(
                                                     self.execute(statement[1], return_result=True))
@@ -1169,8 +1178,6 @@ class Base_Step_Executor:
                                             else:
                                                 pending_signatures[idx] = sig
                                             sig.release()
-
-
                         except StopInputGroup as e:
                             if not e.keep_output:
                                 clear_output()
@@ -1182,7 +1189,25 @@ class Base_Step_Executor:
                         except Exception as e:
                             clear_output()
                             raise
-
+                    else:
+                        # if it is not the last statement group (e.g. statements before :output)
+                        # we execute locally without anything like signature
+                        if is_input_verified:
+                            verify_input()
+                            is_input_verified = False
+                        try:
+                            self.execute(statement[1])
+                        except StopInputGroup as e:
+                            if not e.keep_output:
+                                clear_output()
+                                self.output_groups[idx] = sos_targets([])
+                            if e.message:
+                                env.logger.info(e.message)
+                            skip_index = True
+                            break
+                        except Exception as e:
+                            clear_output()
+                            raise
                 # if there is no statement , but there are tasks, we should
                 # check signature here.
                 if not any(x[0] == '!' for x in self.step.statements[input_statement_idx:]) and self.step.task and not self.concurrent_substep \

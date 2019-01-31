@@ -767,6 +767,29 @@ _output.touch()
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__substep_completed__'], 2)
 
+    def testSignatureWithDependencyTracingAndVars(self):
+        '''Test signature with parameters with option -T #1200'''
+        if os.path.isfile('out.txt'):
+            os.remove('out.txt')
+        script = SoS_Script(r'''
+[analyze]
+parameter: par=5
+output: 'out.txt'
+print(par)
+_output.touch()
+
+[default]
+input: 'out.txt'
+''')
+        wf = script.workflow()
+        res = Base_Executor(wf, config={'trace_existing': True},
+                args=['--par', '10']).run()
+        self.assertEqual(res['__completed__']['__substep_completed__'], 2)
+        # change parameter, the step should not be skipped
+        res = Base_Executor(wf, config={'trace_existing': True},
+                args=['--par', '20']).run()
+        self.assertEqual(res['__completed__']['__substep_completed__'], 2)
+
 
 if __name__ == '__main__':
     unittest.main()
