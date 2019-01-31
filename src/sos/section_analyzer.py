@@ -63,10 +63,10 @@ def find_statement(section, name):
             f'More than one step {name} statement are specified in step {section.step_name()}')
 
 def no_output_from(*args, **kwargs):
-    raise SyntaxError('Function output_from can only be used in input statements')
+    raise SyntaxError('Function output_from can only be used in input or depends statements')
 
 def no_named_output(*args, **kwargs):
-    raise SyntaxError('Function named_output can only be used in input statements')
+    raise SyntaxError('Function named_output can only be used in input or depends statements')
 
 def no_sos_step(*args, **kwargs):
     raise SyntaxError('Target sos_step can only be used in depends statements')
