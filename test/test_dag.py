@@ -1226,6 +1226,8 @@ B;
 A_1 -> A_2;
 A_2 -> B;
 }''')
+        if os.path.isfile('a.txt'):
+            os.remove('a.txt')
         script = SoS_Script('''
 [A_1]
 [A_2]
