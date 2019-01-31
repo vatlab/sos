@@ -1192,6 +1192,64 @@ default;
 ''')
 
 
+    def testCompoundWorkflow(self):
+        '''Test the DAG of compound workflow'''
+        script = SoS_Script('''
+[A_1]
+[A_2]
+[B]
+ ''')
+        wf = script.workflow('A+B')
+        dag = Base_Executor(wf).initialize_dag()
+        self.assertDAG(dag,
+                       '''strict digraph "" {
+A_1;
+A_2;
+B;
+A_1 -> A_2;
+A_2 -> B;
+}''')
+        # with empty depends
+        script = SoS_Script('''
+[A_1]
+[A_2]
+[B]
+depends: 
+ ''')
+        wf = script.workflow('A+B')
+        dag = Base_Executor(wf).initialize_dag()
+        self.assertDAG(dag,
+                       '''strict digraph "" {
+A_1;
+A_2;
+B;
+A_1 -> A_2;
+A_2 -> B;
+}''')
+        script = SoS_Script('''
+[A_1]
+[A_2]
+[C]
+output: 'a.txt'
+_output.touch()
+
+[B]
+depends: 'a.txt'
+ ''')
+        # with more depends
+        wf = script.workflow('A+B')
+        dag = Base_Executor(wf).initialize_dag()
+        self.assertDAG(dag,
+                       '''strict digraph "" {
+A_1;
+A_2;
+B;
+"C (a.txt)";
+A_1 -> A_2;
+A_2 -> B;
+"C (a.txt)" -> B;
+}''')
+
 
 if __name__ == '__main__':
     unittest.main()

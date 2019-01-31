@@ -637,6 +637,21 @@ class SoS_Workflow:
     def extend(self, workflow: 'SoS_Workflow') -> None:
         '''Append another workflow to existing one to created a combined workflow'''
         # all sections are simply appended ...
+        # but we will need to make sure that the new workflow is
+        # executed after the previous one.
+        if not workflow.sections:
+            return
+        if not self.sections:
+            self.sections = workflow.sections
+            return
+        section = workflow.sections[0]
+        depends_idx = [idx for idx, stmt in enumerate(section.statements) if stmt[0] == ':' and stmt[1] == 'depends']
+        if not depends_idx:
+            section.statements.insert(0, [':', 'depends', f"sos_step('{self.sections[-1].step_name()}')"])
+        else:
+            section.statements[depends_idx[0]][2] = section.statements[depends_idx[0]][2].strip() + \
+                (", " if section.statements[depends_idx[0]][2].strip() else "") + \
+                f"sos_step('{self.sections[-1].step_name()}')\n"
         self.sections.extend(workflow.sections)
 
     def has_external_task(self) -> bool:
