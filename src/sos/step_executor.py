@@ -1136,6 +1136,8 @@ class Base_Step_Executor:
                                             self.shared_vars[env.sos_dict['_index']].update(matched["vars"])
                                         # complete case: local skip without task
                                         env.controller_push_socket.send_pyobj(['progress', 'substep_ignored', env.sos_dict['step_id']])
+                                        # do not execute the rest of the statement
+                                        break
                                     else:
                                         sig.lock()
                                         try:
