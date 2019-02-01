@@ -868,6 +868,24 @@ _output.touch()
         wf = script.workflow()
         Base_Executor(wf, config={'sig_mode': 'force'}).run()
 
+    def testOutputFromMasterTask(self):
+        '''Test splitting the output from master task #1203'''
+        script = SoS_Script('''\
+l=[x for x in range(1,13)]
+
+[2]
+input: for_each = 'l'
+output: f'{_l}.out'
+
+task: trunk_size = 4
+_output.touch()
+
+[3]
+assert _input == f'{_index+1}.out'
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
 
 if __name__ == '__main__':
     unittest.main()
