@@ -285,7 +285,7 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
             continue
         all_res['ret_code'] += x['ret_code']
         if all_res['output'] is None:
-            all_res['output'] = x['output']
+            all_res['output'] = copy.deepcopy(x['output'])
         else:
             try:
                 all_res['output'].extend(x['output'], keep_groups=True)
