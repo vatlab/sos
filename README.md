@@ -46,9 +46,14 @@ other kernels. Please refer to [the installation page of sos website](https://va
 
 ### Change Log of SoS and SoS Notebook
 
+SoS 0.18.5
+* [sos#1186](https://github.com/vatlab/SoS/issues/1186): Add command line option `-T` to enfore dependency tracing.
+* [sos#1197](https://github.com/vatlab/SoS/issues/1197): Introduce function `traced` to make dependencies that will always be traced
+* [sos#1201](https://github.com/vatlab/SoS/issues/1201): Introduce dependencies between compounded workflows
+
 SoS 0.18.4
 * [sos#1185](https://github.com/vatlab/SoS/issues/1185): Disallow the use of parameters in tasks.
-* [sos#1186](https://github.com/vatlab/SoS/issues/1186): Enforcing the concept that targets in `depends` statement always try to build dependency.
+* [sos#1186](https://github.com/vatlab/SoS/issues/1186): (reverted) Enforcing the concept that targets in `depends` statement always try to build dependency.
 
 SoS Notebook 0.18.1
 * [sos-notebook#178](https://github.com/vatlab/sos-notebook/issues/178): Allow adding `&` to the end of magics `%run`, `%sosrun`, and `%runfile` to execute workflow in background.
