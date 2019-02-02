@@ -156,21 +156,14 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated', acceptable_args: 
                         f'Unacceptable value for option active: {kwargs["active"]}')
             # verify input
             if 'input' in kwargs and kwargs['input'] is not None:
-                if isinstance(kwargs['input'], str):
-                    ifiles = [kwargs['input']]
-                elif isinstance(kwargs['input'], file_target):
-                    ifiles = [str(kwargs['input'])]
-                elif isinstance(kwargs['input'], Sequence):
-                    ifiles = list(kwargs['input'])
-                else:
+                try:
+                    ifiles = sos_targets(kwargs['input'])
+                    for ifile in ifiles:
+                        if not ifile.target_exists('target'):
+                            raise RuntimeError(f'Input file {ifile} does not exist.')
+                except Exception as e:
                     raise ValueError(
-                        f'Unacceptable value for parameter input of actions: {kwargs["input"]}')
-
-                ifiles = [os.path.expanduser(x) for x in ifiles]
-
-                for ifile in ifiles:
-                    if not os.path.exists(ifile):
-                        raise ValueError(f'Input file {ifile} does not exist.')
+                        f'Unacceptable value ({kwargs["input"]}) for parameter input of actions: {e}')
 
             # if there are parameters input and output, the action is subject to signature verification
             sig = None
@@ -183,29 +176,16 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated', acceptable_args: 
                 else:
                     script = ''
 
-                if isinstance(kwargs['tracked'], str):
-                    tfiles = [kwargs['tracked']]
-                elif isinstance(kwargs['tracked'], Sequence):
-                    tfiles = kwargs['tracked']
-                elif kwargs['tracked'] is True:
-                    tfiles = []
-                else:
+                try:
+                    tfiles = sos_targets(kwargs['tracked'])
+                except Exception as e:
                     raise ValueError(
-                        'Parameter tracked of actions can be None, True/False, or one or more filenames')
+                        'Parameter tracked of actions can be None, True/False, or one or more filenames: {tfiles} provided.')
 
                 # append input and output
                 for t in ('input', 'output'):
                     if t in kwargs and kwargs[t] is not None:
-                        if isinstance(kwargs[t], str):
-                            tfiles.append(kwargs[t])
-                        elif isinstance(kwargs[t], Sequence):
-                            tfiles.extend(list(kwargs[t]))
-                        else:
-                            env.logger.warning(
-                                f'Cannot track input or output file {kwargs[t]}')
-
-                # expand user...
-                tfiles = [os.path.expanduser(x) for x in tfiles]
+                        tfiles.extend(sos_targets(kwargs[t]))
 
                 from .targets import RuntimeInfo
                 sig = RuntimeInfo(func.__name__, script,
@@ -303,18 +283,19 @@ class SoS_ExecuteScript:
     def run(self, **kwargs):
         #
         if 'input' in kwargs:
-            if isinstance(kwargs['input'], str):
-                ifiles = [kwargs['input']]
-            elif isinstance(kwargs['input'], Sequence):
-                ifiles = list(kwargs['input'])
-            else:
+            try:
+                ifiles = sos_targets(kwargs['input'])
+            except Exception as e:
                 raise ValueError(
-                    f'Unacceptable value for paremter input: {kwargs["input"]}')
+                    f'Unacceptable value ({kwargs["input"]}) for paremter input: {e}')
 
             content = ''
             for ifile in ifiles:
-                with open(ifile) as iscript:
-                    content += iscript.read()
+                try:
+                    with open(ifile) as iscript:
+                        content += iscript.read()
+                except Exception as e:
+                    raise RuntimeError(f'Failed to read from {ifile}')
             self.script = content + self.script
 
         if 'engine' in kwargs and kwargs['engine'] == 'docker':
