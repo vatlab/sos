@@ -561,54 +561,29 @@ class Base_Executor:
                     # this is not ok.
                     raise RuntimeError(
                         f'Multiple steps {", ".join(x.step_name() for x in mo)} to generate target {target}')
-                #
-                # only one step, we need to process it # execute section with specified input
-                #
-                if not isinstance(mo[0], tuple):
-                    section = mo[0]
-                    env.sos_dict['__default_output__'] = sos_targets(target)
-                    context = {}
-                else:
-                    section = mo[0][0]
-                    if isinstance(mo[0][1], dict):
-                        for k, v in mo[0][1].items():
-                            env.sos_dict.set(k, v)
 
+                if isinstance(mo[0], tuple):
+                    # for auxiliary, we need to set input and output, here
+                    # now, if the step does not provide any alternative (e.g. no variable generated
+                    # from patten), we should specify all output as output of step. Otherwise the
+                    # step will be created for multiple outputs. issue #243
                     if mo[0][1]:
                         env.sos_dict['__default_output__'] = sos_targets(target)
-                        context = {}
                     else:
                         env.sos_dict['__default_output__'] = sos_targets(
                             section.options['provides'])
-                        context = mo[0][1]
-                # will become input, set to None
-                env.sos_dict['__step_output__'] = sos_targets()
-                #
-                res = analyze_section(section, default_output=env.sos_dict['__default_output__'])
-                #
-                # build DAG with input and output files of step
-                env.logger.debug(
-                    f'Adding step {res["step_name"]} with output {short_repr(res["step_output"])} to resolve target {target}')
+                    n_added = self.add_backward_step(dag, section=mo[0][0],
+                        context = mo[0][1] if isinstance(mo[0][1], dict) else {},
+                        target=target)
+                else:
+                    env.sos_dict['__default_output__'] = sos_targets(target)
+                    n_added = self.add_backward_step(dag, section=mo[0], context = {},
+                    target=target)
 
-                context['__signature_vars__'] = res['signature_vars']
-                context['__environ_vars__'] = res['environ_vars']
-                context['__changed_vars__'] = res['changed_vars']
-                context['__default_output__'] = env.sos_dict['__default_output__']
-                context['__dynamic_depends__'] = res['dynamic_depends']
-                context['__dynamic_input__'] = res['dynamic_input']
-
-                # NOTE: If a step is called multiple times with different targets, it is much better
-                # to use different names because pydotplus can be very slow in handling graphs with nodes
-                # with identical names.
-                node_name = section.step_name()
-                if env.sos_dict["__default_output__"]:
-                    node_name += f' {short_repr(env.sos_dict["__default_output__"])})'
-                dag.add_step(section.uuid, node_name,
-                             None, res['step_input'],
-                             res['step_depends'], res['step_output'], context=context)
                 node_added = True
-                added_node += 1
-                resolved += 1
+                added_node += n_added
+                resolved += n_added
+
                 # adding one step can resolve many targets #1199
                 if len(res['step_output']) > 1:
                     remaining_targets -= set(res['step_output'].targets)
@@ -836,54 +811,24 @@ class Base_Executor:
                     # this is not ok.
                     raise RuntimeError(
                         f'Multiple steps {", ".join(x.step_name() for x in mo)} to generate target {target}')
-                #
-                # only one step, we need to process it # execute section with specified input
-                #
-                if not isinstance(mo[0], tuple):
-                    section = mo[0]
-                    env.sos_dict['__default_output__'] = sos_targets(target)
-                    context = {}
-                else:
-                    section = mo[0][0]
-                    if isinstance(mo[0][1], dict):
-                        for k, v in mo[0][1].items():
-                            env.sos_dict.set(k, v)
 
+                if isinstance(mo[0], tuple):
                     if mo[0][1]:
                         env.sos_dict['__default_output__'] = sos_targets(target)
-                        context = {}
                     else:
                         env.sos_dict['__default_output__'] = sos_targets(
                             section.options['provides'])
-                        context = mo[0][1]
-                # will become input, set to None
-                env.sos_dict['__step_output__'] = sos_targets()
-                #
-                res = analyze_section(section, default_output=env.sos_dict['__default_output__'])
-                #
-                # build DAG with input and output files of step
-                env.logger.debug(
-                    f'Adding step {res["step_name"]} with output {short_repr(res["step_output"])} to resolve target {target}')
+                    n_added = self.add_backward_step(dag, section=mo[0][0],
+                        context = mo[0][1] if isinstance(mo[0][1], dict) else {},
+                        target=target)
+                else:
+                    env.sos_dict['__default_output__'] = sos_targets(target)
+                    n_added = self.add_backward_step(dag, section=mo[0], context = {},
+                    target=target)
 
-                context['__signature_vars__'] = res['signature_vars']
-                context['__environ_vars__'] = res['environ_vars']
-                context['__changed_vars__'] = res['changed_vars']
-                context['__default_output__'] = env.sos_dict['__default_output__']
-                context['__dynamic_depends__'] = res['dynamic_depends']
-                context['__dynamic_input__'] = res['dynamic_input']
-
-                # NOTE: If a step is called multiple times with different targets, it is much better
-                # to use different names because pydotplus can be very slow in handling graphs with nodes
-                # with identical names.
-                node_name = section.step_name()
-                if env.sos_dict["__default_output__"]:
-                    node_name += f' {short_repr(env.sos_dict["__default_output__"])})'
-                dag.add_step(section.uuid, node_name,
-                             None, res['step_input'],
-                             res['step_depends'], res['step_output'], context=context)
                 node_added = True
-                added_node += 1
-                resolved += 1
+                added_node += n_added
+                resolved += n_added
 
             total_added += added_node
             if added_node == 0:
