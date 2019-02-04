@@ -298,8 +298,14 @@ class Controller(threading.Thread):
                 self.ctl_req_socket.send_pyobj(msg[1] in self._completed_steps
                                                or msg[1] in [x.rsplit('_', 1)[0] for x in self._completed_steps.keys()])
             elif msg[0] == 'step_output':
-                self.ctl_req_socket.send_pyobj(
-                    self._completed_steps.get(msg[1], None))
+                step_name = msg[1]
+                if step_name in self._completed_steps:
+                    self.ctl_req_socket.send_pyobj(self._completed_steps[step_name])
+                else:
+                    # now, step_name might actually be a workflow name, in which
+                    # case we need to return the last step of the workflow
+                    steps = sorted([x for x in self._completed_steps.keys() if x.rsplit('_', 1)[0] == step_name])
+                    self.ctl_req_socket.send_pyobj(self._completed_steps[steps[-1]] if steps else None)
             elif msg[0] == 'named_output':
                 name = msg[1]
                 found = False

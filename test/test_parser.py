@@ -1898,6 +1898,43 @@ input: output_from('A_2')
         self.assertFalse(os.path.isfile('A_3.txt'))
         self.assertFalse(os.path.isfile('A_4.txt'))
 
+    def testOutputFromWorkflow(self):
+        '''Test output from workflow'''
+        #
+        #
+        for file in ('A_1.txt', 'A_2.txt'):
+            if os.path.isfile(file):
+                os.remove(file)
+        #
+        script = SoS_Script(r'''
+[A_1]
+output: f'{step_name}.txt'
+
+with open(_output, 'w') as out:
+    out.write(step_name)
+    out.write('\n')
+
+[A_2]
+output: f'{step_name}.txt'
+
+with open(_output, 'w') as out:
+    out.write(step_name)
+    out.write('\n')
+
+[default]
+input: output_from('A')
+
+with open(_input) as content:
+    assert(content, 'A_2\n')
+
+''')
+        wf = script.workflow()
+        # this should execute A_2 and A_1
+        Base_Executor(wf).run()
+        #
+        self.assertTrue(os.path.isfile('A_1.txt'))
+        self.assertTrue(os.path.isfile('A_2.txt'))
+
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
     # unittest.TextTestRunner(, suite).run()
