@@ -624,7 +624,7 @@ class SoS_Workflow:
             section.last_step = last_step
             last_step = section.step_name()
         # for auxiliary steps they may also have the step -1
-        self.auxiliary_sections.sort(key=lambda x: (x.name, x.index))
+        self.auxiliary_sections.sort(key=lambda x: (x.name, 0 if x.index is None else x.index))
         for idx, section in enumerate(self.auxiliary_sections):
             if idx == 0 or section.index is None:
                 continue
