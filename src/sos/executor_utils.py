@@ -57,12 +57,11 @@ def __output_from__(steps, group_by=None, paired_with=None, pattern=None,
         if isinstance(step, int):
             if step == -1:
                 # this refers to the last step of a forward style workflow
-                if '__step_output__' in env.sos_dict and not env.sos_dict['__step_output__'].unspecified():
-                    targets.extend(env.sos_dict['__step_output__'])
+                if '__last_step__' in env.sos_dict and env.sos_dict['__last_step__']:
+                    step = env.sos_dict['__last_step__']
                 else:
                     raise ValueError(f'output_from(-1) is called for a step without previous step')
-                continue
-            if '_' in env.sos_dict['step_name']:
+            elif '_' in env.sos_dict['step_name']:
                 step = f"{env.sos_dict['step_name'].rsplit('_', 1)[0]}_{step}"
             else:
                 step = str(step)

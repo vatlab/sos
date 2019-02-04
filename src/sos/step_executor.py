@@ -706,6 +706,7 @@ class Base_Step_Executor:
         # * step_name:  name of the step, can be used by step process to determine
         #               actions dynamically.
         env.sos_dict.set('step_name', self.step.step_name())
+        env.sos_dict.set('__last_step__', self.step.last_step)
         self.log('start')
         env.sos_dict.set('step_id', textMD5(f'{env.sos_dict["workflow_id"]} {env.sos_dict["step_name"]} {self.step.md5}'))
         env.sos_dict.set('master_id', env.config['master_id'])
