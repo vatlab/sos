@@ -1783,6 +1783,23 @@ assert step_name == 'A_2', f'step_name is {step_name}, A_2 expected'
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    def testOutfromPrevStep(self):
+        '''Test output_from(-1) from output_from '''
+        script = SoS_Script('''
+[A_1]
+output: 'A_1.txt'
+_output.touch()
+
+[A_2]
+input: output_from(-1)
+
+[default]
+depends: sos_step('A_2')
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
