@@ -523,12 +523,12 @@ class Base_Executor:
                     else:
                         env.sos_dict['__default_output__'] = sos_targets(
                             section.options['provides'])
-                    n_added = self.add_backward_step(dag, section=mo[0][0],
+                    n_added, _ = self.add_backward_step(dag, section=mo[0][0],
                         context = mo[0][1] if isinstance(mo[0][1], dict) else {},
                         target=target)
                 else:
                     env.sos_dict['__default_output__'] = sos_targets(target)
-                    n_added = self.add_backward_step(dag, section=mo[0], context = {},
+                    n_added, _ = self.add_backward_step(dag, section=mo[0], context = {},
                     target=target)
 
                 added_node += n_added
@@ -572,12 +572,12 @@ class Base_Executor:
                     else:
                         env.sos_dict['__default_output__'] = sos_targets(
                             section.options['provides'])
-                    n_added = self.add_backward_step(dag, section=mo[0][0],
+                    n_added, resolved_output = self.add_backward_step(dag, section=mo[0][0],
                         context = mo[0][1] if isinstance(mo[0][1], dict) else {},
                         target=target)
                 else:
                     env.sos_dict['__default_output__'] = sos_targets(target)
-                    n_added = self.add_backward_step(dag, section=mo[0], context = {},
+                    n_added, resolved_output = self.add_backward_step(dag, section=mo[0], context = {},
                     target=target)
 
                 node_added = True
@@ -585,8 +585,9 @@ class Base_Executor:
                 resolved += n_added
 
                 # adding one step can resolve many targets #1199
-                if len(res['step_output']) > 1:
-                    remaining_targets -= set(res['step_output'].targets)
+                if len(resolved_output) > 1:
+                    remaining_targets -= set(resolved_output.targets)
+                    # set(dag.dangling(remaining_targets)[1])
 
             if added_node == 0:
                 break
@@ -688,7 +689,7 @@ class Base_Executor:
                         res['step_depends'],
                         res['step_output'],
                         context=context)
-        return 1
+        return 1, res['step_output']
 
     def initialize_dag(self, targets: Optional[List[str]] = [], nested: bool = False) -> SoS_DAG:
         '''Create a DAG by analyzing sections statically.'''
@@ -818,12 +819,12 @@ class Base_Executor:
                     else:
                         env.sos_dict['__default_output__'] = sos_targets(
                             section.options['provides'])
-                    n_added = self.add_backward_step(dag, section=mo[0][0],
+                    n_added, _ = self.add_backward_step(dag, section=mo[0][0],
                         context = mo[0][1] if isinstance(mo[0][1], dict) else {},
                         target=target)
                 else:
                     env.sos_dict['__default_output__'] = sos_targets(target)
-                    n_added = self.add_backward_step(dag, section=mo[0], context = {},
+                    n_added, _ = self.add_backward_step(dag, section=mo[0], context = {},
                     target=target)
 
                 node_added = True
