@@ -491,62 +491,17 @@ class Base_Executor:
                     # sos_step('a') could match to step a_1, a_2, etc, in this case we are adding a subworkflow
                     if isinstance(target, sos_step):
                         # create a new forward_workflow that is different from the master one
-                        dag.new_forward_workflow()
                         # get the step names
                         sections = sorted(mo, key=lambda x: x.step_name())
                         # this is only useful for executing auxiliary steps and
                         # might interfere with the step analysis
                         env.sos_dict.pop('__default_output__', None)
-                        #  no default input
-                        default_input: sos_targets = sos_targets()
-                        #
-                        for idx, section in enumerate(sections):
-                            res = analyze_section(section, default_input)
+                        env.logger.debug(
+                                f'Adding {len(sections)} steps to resolve target {target}')
 
-                            environ_vars = res['environ_vars']
-                            signature_vars = res['signature_vars']
-                            changed_vars = res['changed_vars']
-                            # parameters, if used in the step, should be considered environmental
-                            environ_vars |= env.parameter_vars & signature_vars
+                        n_added = self.add_forward_workflow(dag, sections, satisfies=target)
 
-                            # add shared to targets
-                            if res['changed_vars']:
-                                if 'provides' in section.options:
-                                    if isinstance(section.options['provides'], str):
-                                        section.options.set(
-                                            'provides', [section.options['provides']])
-                                else:
-                                    section.options.set('provides', [])
-                                #
-                                section.options.set('provides',
-                                                    section.options['provides'] + [sos_variable(var) for var in changed_vars])
-
-                            # build DAG with input and output files of step
-                            env.logger.debug(
-                                f'Adding step {res["step_name"]} with output {short_repr(res["step_output"])} to resolve target {target}')
-                            context = {
-                                '__signature_vars__': signature_vars,
-                                '__environ_vars__': environ_vars,
-                                '__changed_vars__': changed_vars,
-                                '__dynamic_depends__': res['dynamic_depends'],
-                                '__dynamic_input__': res['dynamic_input']
-                            }
-                            if idx == 0:
-                                context['__step_output__'] = env.sos_dict['__step_output__']
-                            elif idx == len(sections) - 1:
-                                # for the last step, we say the mini-subworkflow satisfies sos_step('a')
-                                # we have to do it this way because by default the DAG only sees sos_step('a_1') etc
-                                res['step_output'].extend(target)
-
-                            node_name = section.step_name()
-                            dag.add_step(section.uuid,
-                                         node_name, idx,
-                                         res['step_input'],
-                                         res['step_depends'],
-                                         res['step_output'],
-                                         context=context)
-                            default_input = res['step_output']
-                        added_node += len(sections)
+                        added_node += n_added
                         resolved += 1
                         # dag.show_nodes()
                         continue
@@ -554,24 +509,11 @@ class Base_Executor:
                         raise RuntimeError(
                             f'Multiple steps {", ".join(x.step_name() for x in mo)} to generate target {target}')
                 #
-                # only one step, we need to process it # execute section with specified input
-                #
-                # NOTE:  Auxiliary can be called with different output files and matching pattern
-                # so we are actually creating a new section each time we need an auxillary step.
-                #
-                if not isinstance(mo[0], tuple):
-                    section = mo[0]
-                    env.sos_dict['__default_output__'] = sos_targets(target)
-                    context = {}
-                else:
-                    section = mo[0][0]
-                    if isinstance(mo[0][1], dict):
-                        for k, v in mo[0][1].items():
-                            env.sos_dict.set(k, v)
-                        context = mo[0][1]
-                    else:
-                        context = {}
-
+                # m0[0] can be a tuple
+                #   section, context
+                # or just a section
+                #   section
+                if isinstance(mo[0], tuple):
                     # for auxiliary, we need to set input and output, here
                     # now, if the step does not provide any alternative (e.g. no variable generated
                     # from patten), we should specify all output as output of step. Otherwise the
@@ -581,51 +523,20 @@ class Base_Executor:
                     else:
                         env.sos_dict['__default_output__'] = sos_targets(
                             section.options['provides'])
-                # will become input, set to None
-                env.sos_dict['__step_output__'] = sos_targets()
-                #
-                res = analyze_section(section, default_output=env.sos_dict['__default_output__'])
-                if isinstance(target, sos_step) and target.target_name() != section.step_name():
-                    # sos_step target "name" can be matched to "name_10" etc so we will have to
-                    # ensure that the target is outputted from the "name_10" step.
-                    # This has been done in a more advanced case when an entire workflow is
-                    # added
-                    res['step_output'].extend(target)
-                elif isinstance(target, named_output):
-                    # when a named_output is matched, we add all names from the step
-                    # to avoid the step to be added multiple times for different named_steps
-                    # from the same step. #1166
-                    res['step_output'].extend([named_output(x) for x in section.options['namedprovides']])
-                #
-                # build DAG with input and output files of step
-                env.logger.debug(
-                    f'Adding step {res["step_name"]} with output {short_repr(res["step_output"])} to resolve target {target}')
+                    n_added = self.add_backward_step(dag, section=mo[0][0],
+                        context = mo[0][1] if isinstance(mo[0][1], dict) else {},
+                        target=target)
+                else:
+                    env.sos_dict['__default_output__'] = sos_targets(target)
+                    n_added = self.add_backward_step(dag, section=mo[0], context = {},
+                    target=target)
 
-                context['__signature_vars__'] = res['signature_vars']
-                context['__environ_vars__'] = res['environ_vars']
-                context['__changed_vars__'] = res['changed_vars']
-                context['__default_output__'] = env.sos_dict['__default_output__']
-                context['__dynamic_depends__'] = res['dynamic_depends']
-                context['__dynamic_input__'] = res['dynamic_input']
-
-                # NOTE: If a step is called multiple times with different targets, it is much better
-                # to use different names because pydotplus can be very slow in handling graphs with nodes
-                # with identical names.
-                node_name = section.step_name()
-                if env.sos_dict["__default_output__"]:
-                    node_name += f' ({short_repr(env.sos_dict["__default_output__"])})'
-                dag.add_step(section.uuid,
-                             node_name, None,
-                             res['step_input'],
-                             res['step_depends'],
-                             res['step_output'],
-                             context=context)
-                added_node += 1
-                resolved += 1
+                added_node += n_added
+                resolved += n_added
                 # this could be made more efficient by removing step output directly
                 # but it is inefficient to remove elements from list
                 remaining_targets = dag.dangling(remaining_targets)[0]
- 
+
             # for existing targets that are not in DAG
             traced = [x for x in targets if x.traced]
             if not env.config['trace_existing'] and not traced:
@@ -706,14 +617,13 @@ class Base_Executor:
                 break
         return resolved
 
-    def initialize_dag(self, targets: Optional[List[str]] = [], nested: bool = False) -> SoS_DAG:
-        '''Create a DAG by analyzing sections statically.'''
-        self.reset_dict()
+    def add_forward_workflow(self, dag, sections, satisfies=None):
+        '''Add a forward-workflow, return number of nodes added
+        '''
+        dag.new_forward_workflow()
 
-        dag = SoS_DAG(name=self.md5)
         default_input: sos_targets = sos_targets([])
-        targets = sos_targets(targets)
-        for idx, section in enumerate(self.workflow.sections):
+        for idx, section in enumerate(sections):
             #
             res = analyze_section(section, default_input)
 
@@ -745,6 +655,8 @@ class Base_Executor:
             # for nested workflow, the input is specified by sos_run, not None.
             if idx == 0:
                 context['__step_output__'] = env.sos_dict['__step_output__']
+            elif idx == len(sections) - 1 and satisfies is not None:
+                res['step_output'].extend(satisfies)
 
             dag.add_step(section.uuid,
                          section.step_name(),
@@ -754,6 +666,63 @@ class Base_Executor:
                          res['step_output'],
                          context=context)
             default_input = res['step_output']
+        return len(sections)
+
+    def add_backward_step(self, dag, section, context, target):
+        # only one step, we need to process it # execute section with specified input
+        #
+        for k, v in context.items():
+            env.sos_dict.set(k, v)
+
+        # will become input, set to None
+        env.sos_dict['__step_output__'] = sos_targets()
+        #
+        res = analyze_section(section, default_output=env.sos_dict['__default_output__'])
+        if isinstance(target, sos_step) and target.target_name() != section.step_name():
+            # sos_step target "name" can be matched to "name_10" etc so we will have to
+            # ensure that the target is outputted from the "name_10" step.
+            # This has been done in a more advanced case when an entire workflow is
+            # added
+            res['step_output'].extend(target)
+        elif isinstance(target, named_output):
+            # when a named_output is matched, we add all names from the step
+            # to avoid the step to be added multiple times for different named_steps
+            # from the same step. #1166
+            res['step_output'].extend([named_output(x) for x in section.options['namedprovides']])
+        #
+        # build DAG with input and output files of step
+        env.logger.debug(
+            f'Adding step {res["step_name"]} with output {short_repr(res["step_output"])} to resolve target {target}')
+
+        context['__signature_vars__'] = res['signature_vars']
+        context['__environ_vars__'] = res['environ_vars']
+        context['__changed_vars__'] = res['changed_vars']
+        context['__default_output__'] = env.sos_dict['__default_output__']
+        context['__dynamic_depends__'] = res['dynamic_depends']
+        context['__dynamic_input__'] = res['dynamic_input']
+
+        # NOTE: If a step is called multiple times with different targets, it is much better
+        # to use different names because pydotplus can be very slow in handling graphs with nodes
+        # with identical names.
+        node_name = section.step_name()
+        if env.sos_dict["__default_output__"]:
+            node_name += f' ({short_repr(env.sos_dict["__default_output__"])})'
+        dag.add_step(section.uuid,
+                        node_name, None,
+                        res['step_input'],
+                        res['step_depends'],
+                        res['step_output'],
+                        context=context)
+        return 1
+
+    def initialize_dag(self, targets: Optional[List[str]] = [], nested: bool = False) -> SoS_DAG:
+        '''Create a DAG by analyzing sections statically.'''
+        self.reset_dict()
+
+        dag = SoS_DAG(name=self.md5)
+        targets = sos_targets(targets)
+
+        self.add_forward_workflow(dag, self.workflow.sections)
         #
         if self.resolve_dangling_targets(dag, targets) == 0:
             if targets:
