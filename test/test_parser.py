@@ -1800,6 +1800,103 @@ depends: sos_step('A_2')
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    def testDependsOnStepWithUnspecifiedInput(self):
+        for file in ('A_1.txt', 'A_2.txt', 'A_3.txt', 'A_4.txt'):
+            if os.path.isfile(file):
+                os.remove(file)
+        #
+        script = SoS_Script('''
+[A_1]
+output: f'{step_name}.txt'
+_output.touch()
+
+[A_2]
+output: f'{step_name}.txt'
+_output.touch()
+
+[A_3]
+output: f'{step_name}.txt'
+_output.touch()
+
+[A_4]
+output: f'{step_name}.txt'
+_output.touch()
+
+[default]
+depends: sos_step('A_2')
+''')
+        wf = script.workflow()
+        # this should execute A_2 and A_1
+        Base_Executor(wf).run()
+        self.assertTrue(os.path.isfile('A_1.txt'))
+        self.assertTrue(os.path.isfile('A_2.txt'))
+        self.assertFalse(os.path.isfile('A_3.txt'))
+        self.assertFalse(os.path.isfile('A_4.txt'))
+        #
+        for file in ('A_1.txt', 'A_2.txt', 'A_3.txt', 'A_4.txt'):
+            if os.path.isfile(file):
+                os.remove(file)
+        #
+        script = SoS_Script('''
+[A_1]
+output: f'{step_name}.txt'
+_output.touch()
+
+[A_2]
+output: f'{step_name}.txt'
+_output.touch()
+
+[A_3]
+output: f'{step_name}.txt'
+_output.touch()
+
+[A_4]
+output: f'{step_name}.txt'
+_output.touch()
+
+[default]
+input: output_from('A_2')
+''')
+        wf = script.workflow()
+        # this should execute A_2 and A_1
+        Base_Executor(wf).run()
+        self.assertTrue(os.path.isfile('A_1.txt'))
+        self.assertTrue(os.path.isfile('A_2.txt'))
+        self.assertFalse(os.path.isfile('A_3.txt'))
+        self.assertFalse(os.path.isfile('A_4.txt'))
+        #
+        for file in ('A_1.txt', 'A_2.txt', 'A_3.txt', 'A_4.txt'):
+            if os.path.isfile(file):
+                os.remove(file)
+        #
+        script = SoS_Script('''
+[A_1]
+output: f'{step_name}.txt'
+_output.touch()
+
+[A_2]
+input: None
+output: f'{step_name}.txt'
+_output.touch()
+
+[A_3]
+output: f'{step_name}.txt'
+_output.touch()
+
+[A_4]
+output: f'{step_name}.txt'
+_output.touch()
+
+[default]
+input: output_from('A_2')
+''')
+        wf = script.workflow()
+        # this should execute A_2 and A_1
+        Base_Executor(wf).run()
+        self.assertFalse(os.path.isfile('A_1.txt'))
+        self.assertTrue(os.path.isfile('A_2.txt'))
+        self.assertFalse(os.path.isfile('A_3.txt'))
+        self.assertFalse(os.path.isfile('A_4.txt'))
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)

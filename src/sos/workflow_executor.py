@@ -598,6 +598,7 @@ class Base_Executor:
         '''
         dag.new_forward_workflow()
 
+        env.logger.debug(f'Adding mini-workflow with {len(sections)} to resolve {satisfies}')
         default_input: sos_targets = sos_targets([])
         for idx, section in enumerate(sections):
             #
@@ -631,7 +632,8 @@ class Base_Executor:
             # for nested workflow, the input is specified by sos_run, not None.
             if idx == 0:
                 context['__step_output__'] = env.sos_dict['__step_output__']
-            elif idx == len(sections) - 1 and satisfies is not None:
+            # can be the only step
+            if idx == len(sections) - 1 and satisfies is not None:
                 res['step_output'].extend(satisfies)
 
             dag.add_step(section.uuid,
@@ -665,7 +667,19 @@ class Base_Executor:
             # to avoid the step to be added multiple times for different named_steps
             # from the same step. #1166
             res['step_output'].extend([named_output(x) for x in section.options['namedprovides']])
-        #
+
+        # now, if we are adding a step that is part of a forward-style workflow
+        # (with index), and the input of the step is unspecified, the it is possible
+        # that the step depends on its previous steps and we will have to add these steps
+        # as well. #1206
+        if res['step_input'].unspecified() and section.index is not None:
+            # there should be one step with that name
+            prev_steps = [x for x in self.workflow.auxiliary_sections
+                if x.name == section.name and x.index is not None and x.index <= section.index]
+            self.add_forward_workflow(dag, prev_steps, target)
+            return len(prev_steps), res['step_output']
+
+        # add a single step
         # build DAG with input and output files of step
         env.logger.debug(
             f'Adding step {res["step_name"]} with output {short_repr(res["step_output"])} to resolve target {target}')
