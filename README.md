@@ -46,6 +46,9 @@ other kernels. Please refer to [the installation page of sos website](https://va
 
 ### Change Log of SoS and SoS Notebook
 
+SoS 0.18.6
+* [sos#1206](https://github.com/vatlab/SoS/issues/1206): Allow `output_from(step)` to obtain output from a workflow.
+
 SoS 0.18.5
 * [sos#1186](https://github.com/vatlab/SoS/issues/1186): Add command line option `-T` to enfore dependency tracing.
 * [sos#1197](https://github.com/vatlab/SoS/issues/1197): Introduce function `traced` to make dependencies that will always be traced
