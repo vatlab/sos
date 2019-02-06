@@ -1800,6 +1800,28 @@ depends: sos_step('A_2')
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    def testStepFromNumericStep(self):
+        '''Test sos_step(index) #1209'''
+        script = SoS_Script('''
+[1]
+
+[2]
+depends: sos_step('1')
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        #
+        script = SoS_Script('''
+[1]
+
+[2]
+depends: sos_step(1)
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
+
     def testDependsOnStepWithUnspecifiedInput(self):
         for file in ('A_1.txt', 'A_2.txt', 'A_3.txt', 'A_4.txt'):
             if os.path.isfile(file):
