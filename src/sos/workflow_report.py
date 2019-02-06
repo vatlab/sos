@@ -15,8 +15,8 @@ from ._version import __version__
 class WorkflowSig(object):
     def __init__(self, workflow_id):
         self.data = defaultdict(lambda: defaultdict(list))
-        env.signature_req_socket.send_pyobj(['workflow_sig', 'records', workflow_id])
-        for entry_type, id, item in env.signature_req_socket.recv_pyobj():
+        env.master_request_socket.send_pyobj(['workflow_sig', 'records', workflow_id])
+        for entry_type, id, item in env.master_request_socket.recv_pyobj():
             try:
                 self.data[entry_type][id].append(item.strip())
             except Exception as e:

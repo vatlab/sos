@@ -20,11 +20,11 @@ def connect_controllers(context=None):
         context = zmq.Context()
     env.logger.trace(f'Connecting sockets from {os.getpid()}')
 
-    env.signature_push_socket = context.socket(zmq.PUSH)
-    env.signature_push_socket.connect(
+    env.master_push_socket = context.socket(zmq.PUSH)
+    env.master_push_socket.connect(
         f'tcp://127.0.0.1:{env.config["sockets"]["signature_push"]}')
-    env.signature_req_socket = context.socket(zmq.REQ)
-    env.signature_req_socket.connect(
+    env.master_request_socket = context.socket(zmq.REQ)
+    env.master_request_socket.connect(
         f'tcp://127.0.0.1:{env.config["sockets"]["signature_req"]}')
 
     env.substep_frontend_socket = context.socket(zmq.PUSH)
@@ -50,10 +50,10 @@ def connect_controllers(context=None):
 
 
 def disconnect_controllers(context=None):
-    env.signature_push_socket.LINGER = 0
-    env.signature_push_socket.close()
-    env.signature_req_socket.LINGER = 0
-    env.signature_req_socket.close()
+    env.master_push_socket.LINGER = 0
+    env.master_push_socket.close()
+    env.master_request_socket.LINGER = 0
+    env.master_request_socket.close()
     env.substep_frontend_socket.LINGER = 0
     env.substep_frontend_socket.close()
 
@@ -200,7 +200,7 @@ class Controller(threading.Thread):
         #          self.event_map[value] = name
         self.console_logger = None
 
-    def handle_sig_push_msg(self, msg):
+    def handle_master_push_msg(self, msg):
         try:
             if msg[0] == 'nprocs':
                 env.logger.trace(f'Active running process set to {msg[1]}')
@@ -227,29 +227,29 @@ class Controller(threading.Thread):
         except Exception as e:
             env.logger.warning(f'Failed to push signature {msg}: {e}')
 
-    def handle_sig_req_msg(self, msg):
+    def handle_master_request_msg(self, msg):
         try:
             # make sure all records have been saved before returning information
             while True:
-                if self.sig_push_socket.poll(0):
-                    self.handle_sig_push_msg(self.sig_push_socket.recv_pyobj())
+                if self.master_push_socket.poll(0):
+                    self.handle_master_push_msg(self.master_push_socket.recv_pyobj())
                 else:
                     break
             if msg[0] == 'workflow_sig':
                 if msg[1] == 'clear':
                     self.workflow_signatures.clear()
-                    self.sig_req_socket.send_pyobj('ok')
+                    self.master_request_socket.send_pyobj('ok')
                 elif msg[1] == 'placeholders':
-                    self.sig_req_socket.send_pyobj(
+                    self.master_request_socket.send_pyobj(
                         self.workflow_signatures.placeholders(msg[2]))
                 elif msg[1] == 'records':
-                    self.sig_req_socket.send_pyobj(
+                    self.master_request_socket.send_pyobj(
                         self.workflow_signatures.records(msg[2]))
                 else:
                     env.logger.warning(f'Unknown signature request {msg}')
             elif msg[0] == 'step_sig':
                 if msg[1] == 'get':
-                    self.sig_req_socket.send_pyobj(
+                    self.master_request_socket.send_pyobj(
                         self.step_signatures.get(*msg[2:]))
                 else:
                     env.logger.warning(f'Unknown signature request {msg}')
@@ -321,7 +321,7 @@ class Controller(threading.Thread):
             return True
         except Exception as e:
             env.logger.warning(f'Failed to respond controller {msg}: {e}')
-            self.sig_req_socket.send_pyobj(None)
+            self.master_request_socket.send_pyobj(None)
 
     def handle_ctl_push_msg(self, msg):
         pass
@@ -407,11 +407,11 @@ class Controller(threading.Thread):
         if 'sockets' not in env.config:
             env.config['sockets'] = {}
 
-        self.sig_push_socket = self.context.socket(zmq.PULL)
-        env.config['sockets']['signature_push'] = self.sig_push_socket.bind_to_random_port(
+        self.master_push_socket = self.context.socket(zmq.PULL)
+        env.config['sockets']['signature_push'] = self.master_push_socket.bind_to_random_port(
             'tcp://127.0.0.1')
-        self.sig_req_socket = self.context.socket(zmq.REP)
-        env.config['sockets']['signature_req'] = self.sig_req_socket.bind_to_random_port(
+        self.master_request_socket = self.context.socket(zmq.REP)
+        env.config['sockets']['signature_req'] = self.master_request_socket.bind_to_random_port(
             'tcp://127.0.0.1')
 
         # broker to handle the execution of substeps
@@ -441,14 +441,14 @@ class Controller(threading.Thread):
             self.tapping_controller_socket.connect(
                 f'tcp://127.0.0.1:{env.config["sockets"]["tapping_controller"]}')
 
-        #monitor_socket = self.sig_req_socket.get_monitor_socket()
+        #monitor_socket = self.master_request_socket.get_monitor_socket()
         # tell others that the sockets are ready
         self.ready.set()
 
         # Process messages from receiver and controller
         poller = zmq.Poller()
-        poller.register(self.sig_push_socket, zmq.POLLIN)
-        poller.register(self.sig_req_socket, zmq.POLLIN)
+        poller.register(self.master_push_socket, zmq.POLLIN)
+        poller.register(self.master_request_socket, zmq.POLLIN)
         poller.register(self.substep_frontend_socket, zmq.POLLIN)
         poller.register(self.substep_backend_socket, zmq.POLLIN)
         if env.config['exec_mode'] == 'master':
@@ -465,11 +465,11 @@ class Controller(threading.Thread):
         try:
             while True:
                 socks = dict(poller.poll())
-                if self.sig_push_socket in socks:
-                    self.handle_sig_push_msg(self.sig_push_socket.recv_pyobj())
+                if self.master_push_socket in socks:
+                    self.handle_master_push_msg(self.master_push_socket.recv_pyobj())
 
-                if self.sig_req_socket in socks:
-                    if not self.handle_sig_req_msg(self.sig_req_socket.recv_pyobj()):
+                if self.master_request_socket in socks:
+                    if not self.handle_master_request_msg(self.master_request_socket.recv_pyobj()):
                         break
 
                 if self.substep_frontend_socket in socks:
@@ -532,8 +532,8 @@ class Controller(threading.Thread):
             self.step_signatures.close()
             self.workflow_signatures.close()
 
-            poller.unregister(self.sig_push_socket)
-            poller.unregister(self.sig_req_socket)
+            poller.unregister(self.master_push_socket)
+            poller.unregister(self.master_request_socket)
             poller.unregister(self.substep_frontend_socket)
             poller.unregister(self.substep_backend_socket)
             if env.config['exec_mode'] == 'master':
@@ -542,10 +542,10 @@ class Controller(threading.Thread):
             if env.config['exec_mode'] == 'slave':
                 poller.unregister(self.tapping_controller_socket)
 
-            self.sig_push_socket.LINGER = 0
-            self.sig_push_socket.close()
-            self.sig_req_socket.LINGER = 0
-            self.sig_req_socket.close()
+            self.master_push_socket.LINGER = 0
+            self.master_push_socket.close()
+            self.master_request_socket.LINGER = 0
+            self.master_request_socket.close()
             self.substep_frontend_socket.LINGER = 0
             self.substep_frontend_socket.close()
             self.substep_backend_socket.LINGER = 0

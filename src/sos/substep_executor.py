@@ -75,8 +75,8 @@ def execute_substep(stmt, global_def='', task='', task_params='', proc_vars={}, 
     exception: (optional) if an exception occures
     '''
     assert not env.zmq_context.closed
-    assert not env.signature_push_socket.closed
-    assert not env.signature_req_socket.closed
+    assert not env.master_push_socket.closed
+    assert not env.master_request_socket.closed
     assert 'workflow_id' in proc_vars
     assert 'step_id' in proc_vars
     assert '_input' in proc_vars
@@ -123,7 +123,7 @@ def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars
                 # avoid sig being released in the final statement
                 sig = None
                 # complete case: concurrent ignore without task
-                env.signature_push_socket.send_pyobj(['progress', 'substep_ignored', env.sos_dict['step_id']])
+                env.master_push_socket.send_pyobj(['progress', 'substep_ignored', env.sos_dict['step_id']])
                 res = {'index': env.sos_dict['_index'], 'ret_code': 0, 'sig_skipped': 1,
                     'output': matched['output'], 'shared': matched['vars']}
                 if task:
@@ -159,7 +159,7 @@ def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars
             res = {'index': env.sos_dict['_index'], 'ret_code': 0}
             if sig:
                 sig.set_output(env.sos_dict['_output'])
-                # sig.write will use env.signature_push_socket
+                # sig.write will use env.master_push_socket
                 if sig.write():
                     res['shared'] = sig.content['end_context']
                     if 'output_obj' in sig.content:
@@ -169,7 +169,7 @@ def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars
             if capture_output:
                 res.update({'stdout': outmsg, 'stderr': errmsg})
             # complete case: concurrent execution without task
-            env.signature_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
+            env.master_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
         return res
     except (StopInputGroup, TerminateExecution, RemovedTarget, UnavailableLock) as e:
         # stop_if is not considered as an error
@@ -188,7 +188,7 @@ def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars
                 res['output'] = sos_targets([])
             elif sig:
                 sig.set_output(env.sos_dict['_output'])
-                # sig.write will use env.signature_push_socket
+                # sig.write will use env.master_push_socket
                 if sig.write():
                     res['shared'] = sig.content['end_context']
                     if 'output_obj' in sig.content:

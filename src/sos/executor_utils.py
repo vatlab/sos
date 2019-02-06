@@ -65,8 +65,8 @@ def __output_from__(steps, group_by=None, paired_with=None, pattern=None,
                 step = f"{env.sos_dict['step_name'].rsplit('_', 1)[0]}_{step}"
             else:
                 step = str(step)
-        env.signature_req_socket.send_pyobj(['step_output', step])
-        res = env.signature_req_socket.recv_pyobj()
+        env.master_request_socket.send_pyobj(['step_output', step])
+        res = env.master_request_socket.recv_pyobj()
         if res is None or not isinstance(res, sos_targets):
             raise RuntimeError(f'Failed to obtain output of step {step}')
         targets.extend(res)
@@ -81,8 +81,8 @@ def __traced__(*args, **kwargs):
 
 def __named_output__(name, group_by=None, paired_with=None, pattern=None,
     group_with=None, for_each=None, remove_empty_groups=True):
-    env.signature_req_socket.send_pyobj(['named_output', name])
-    targets = env.signature_req_socket.recv_pyobj()
+    env.master_request_socket.send_pyobj(['named_output', name])
+    targets = env.master_request_socket.recv_pyobj()
     if targets is None:
         env.logger.warning(f'named_output("{name}") is not found')
         return sos_targets([])
