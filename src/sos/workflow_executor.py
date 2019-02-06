@@ -151,6 +151,10 @@ class ExecutionManager(object):
     # def all_failed(self) -> bool:
     #     return all(x.in_status('failed') for x in self.procs)
 
+    def dispose(self, idx: int) -> None:
+        self.procs[idx].socket.close()
+        self.procs.pop(idx)
+
     def mark_idle(self, idx: int) -> None:
         self.pool.append(self.procs[idx])
         self.procs[idx] = None
@@ -1436,7 +1440,10 @@ class Base_Executor:
                             raise RuntimeError(
                                 f'Unexpected value from step {short_repr(res)}')
 
-                    manager.mark_idle(idx)
+                    # in a nested workflow, the manager manages all dummy nodes with a fake
+                    # process but real socket. When the step is done. The socket needs to be
+                    # closed.
+                    manager.dispose(idx)
                     env.logger.debug(
                         f'{i_am()} receive a result {short_repr(res)}')
                     if isinstance(res, UnavailableLock):
@@ -1462,8 +1469,6 @@ class Base_Executor:
                         raise RuntimeError(
                             f'Nested wokflow received an unrecognized response: {res}')
 
-                # remove None
-                manager.cleanup()
                 # step 3: check if there is room and need for another job
                 while True:
                     # with status.
