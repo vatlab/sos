@@ -1165,7 +1165,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         return tuple((x.target_signature(),y) for x,y in zip(self._targets, self._labels))
 
     def validate(self, sig):
-        return isinstance(sig, tuple) and len(sig) == len(self._targets) and all(x.validate(sig[0]) and src==sig[1] for x,src,sig in zip(self._targets, self._labels, sig))
+        return isinstance(sig, tuple) and len(sig) == len(self._targets) and all(x.validate(sig[0]) and src==sig[1] for x, src, sig in zip(self._targets, self._labels, sig))
 
     def target_exists(self, mode='any'):
         if len(self._targets) == 1:

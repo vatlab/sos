@@ -7,11 +7,10 @@ import os
 import subprocess
 import sys
 import zmq
-import multiprocessing as mp
 import signal
-import psutil
 
 from typing import Any, Dict, Optional
+import multiprocessing as mp
 
 from ._version import __version__
 from .eval import SoS_exec
@@ -23,7 +22,7 @@ from .executor_utils import kill_all_subprocesses
 class ProcessKilled(Exception):
     pass
 
-def signal_handler(signum, frame):
+def signal_handler(*args, **kwargs):
     raise ProcessKilled()
 
 class SoS_Worker(mp.Process):
@@ -103,7 +102,7 @@ class SoS_Worker(mp.Process):
                     self.run_workflow(*work[1:])
                 env.logger.debug(
                     f'Worker {self.name} completes request {short_repr(work)}')
-            except ProcessKilled as e:
+            except ProcessKilled:
                 kill_all_subprocesses(os.getpid())
                 signal.signal(signal.SIGTERM, signal.SIG_DFL)
                 break

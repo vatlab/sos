@@ -709,8 +709,9 @@ def preview_file(previewers, filename, style=None):
                     break
             except Exception as e:
                 msg.append(['stream', {
-                            'name': 'stderr',
-                            'text': str(e)}])
+                    'name': 'stderr',
+                    'text': str(e)
+                }])
                 continue
     #
     # if no previewer can be found
@@ -1445,7 +1446,7 @@ def get_config_parser(desc_only=False):
     group.add_argument('--get', nargs='*', metavar='OPTION', dest='__get_config__',
                        help='''Display values of options that contain one of the specified words
             from all configuration files.''')
-    group.add_argument('--unset', nargs='+', metavar='OPTION',  dest='__unset_config__',
+    group.add_argument('--unset', nargs='+', metavar='OPTION', dest='__unset_config__',
                        help='''Unset (remove) settings for specified options. The arguments of this
         option can be a single configuration option or a list of option. Wildcard
         characters are allowed to match more options (e.g. '*timeout', or '*' for

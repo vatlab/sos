@@ -842,7 +842,7 @@ class Base_Executor:
                         target=target)
                 else:
                     env.sos_dict['__default_output__'] = sos_targets(target)
-                    n_added, _ = self.add_backward_step(dag, section=mo[0], context = {},
+                    n_added, _ = self.add_backward_step(dag, section=mo[0], context={},
                     target=target)
 
                 node_added = True

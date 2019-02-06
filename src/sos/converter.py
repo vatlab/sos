@@ -7,13 +7,13 @@ import argparse
 import os
 import time
 import sys
-from ._version import __version__
-
 import nbformat
+
 from pygments.lexers import PythonLexer
 from pygments.token import Keyword, Name
 from pygments.util import shebang_matches
 
+from ._version import __version__
 from .actions import get_actions
 from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
                      SOS_OUTPUT_OPTIONS, SOS_RUNTIME_OPTIONS,
@@ -48,7 +48,7 @@ class SoS_Lexer(PythonLexer):
             else:
                 yield index, token, value
 
-    def analyse_text(text):
+    def analyse_text(self, text):
         return (shebang_matches(text, r'sos-runner') or
                 '#fileformat=SOS' in text[:1000])
 

@@ -3,30 +3,31 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
+import ast
 import copy
 import os
 import subprocess
 import sys
 import time
-import zmq
-import ast
-
 from collections import Iterable, Mapping, Sequence, defaultdict
 from typing import List, Union
 
+import zmq
+
+from .controller import close_socket, create_socket
 from .eval import SoS_eval, SoS_exec, accessed_vars
-from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS, SOS_TARGETS_OPTIONS,
-                     SOS_OUTPUT_OPTIONS)
+from .executor_utils import (__named_output__, __null_func__, __output_from__,
+                             __traced__, clear_output, create_task,
+                             get_traceback_msg, reevaluate_output,
+                             statementMD5, validate_step_sig, verify_input)
+from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
+                     SOS_OUTPUT_OPTIONS, SOS_TARGETS_OPTIONS)
 from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
-                      UnknownTarget, dynamic, file_target,
-                      sos_targets, sos_step, textMD5)
+                      UnknownTarget, dynamic, file_target, sos_step,
+                      sos_targets, textMD5)
 from .tasks import MasterTaskParams, TaskFile
-from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
+from .utils import (ArgumentError, StopInputGroup, TerminateExecution, env,
                     get_traceback, short_repr)
-from .executor_utils import (clear_output, create_task, verify_input, reevaluate_output,
-                    validate_step_sig, statementMD5, get_traceback_msg, __null_func__,
-                    __output_from__, __named_output__, __traced__)
-from .controller import create_socket, close_socket
 
 __all__: List = []
 
@@ -851,9 +852,9 @@ class Base_Step_Executor:
                     )
                     # Files will be expanded differently with different running modes
                     input_files: sos_targets = expand_input_files(*args,
-                        **{k:v for k,v in kwargs.items() if k not in SOS_INPUT_OPTIONS})
+                        **{k:v for k, v in kwargs.items() if k not in SOS_INPUT_OPTIONS})
                     self._substeps = self.process_input_args(
-                        input_files, **{k:v for k,v in kwargs.items() if k in SOS_INPUT_OPTIONS})
+                        input_files, **{k:v for k, v in kwargs.items() if k in SOS_INPUT_OPTIONS})
                     #
                     if 'concurrent' in kwargs and kwargs['concurrent'] is False:
                         self.concurrent_substep = False
@@ -1012,7 +1013,7 @@ class Base_Step_Executor:
                                         env.sos_dict.set(
                                             'step_output', sos_targets())
                                     ofiles: sos_targets = expand_output_files(value, *args,
-                                        **{k:v for k,v in kwargs.items() if k not in SOS_OUTPUT_OPTIONS})
+                                        **{k:v for k, v in kwargs.items() if k not in SOS_OUTPUT_OPTIONS})
                                     if g.valid() and ofiles.valid():
                                         if any(x in g._targets for x in ofiles if not isinstance(x, sos_step)):
                                             raise RuntimeError(

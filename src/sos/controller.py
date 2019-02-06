@@ -137,8 +137,8 @@ class DotProgressBar:
                 _pulse_cnt = 0
                 sys.stderr.flush()
 
-    def update(self, type, status=None):
-        if type == 'substep_ignored':
+    def update(self, prog_type, status=None):
+        if prog_type == 'substep_ignored':
             if time.time() - self._substep_last_updated < 1:
                 return
             if self._substep_cnt == self._subprogressbar_size:
@@ -148,7 +148,7 @@ class DotProgressBar:
                 update_str = '\033[90m.\033[0m'
             self._substep_cnt += 1
             self._substep_last_updated = time.time()
-        elif type == 'substep_completed':
+        elif prog_type == 'substep_completed':
             if time.time() - self._substep_last_updated < 1:
                 return
             if self._substep_cnt == self._subprogressbar_size:
@@ -158,7 +158,7 @@ class DotProgressBar:
                 update_str = '\033[32m.\033[0m'
             self._substep_cnt += 1
             self._substep_last_updated = time.time()
-        elif type == 'step_completed':
+        elif prog_type == 'step_completed':
             update_str = '\b \b'*self._substep_cnt
             self._substep_cnt = 0
             if status == 1:  # completed
@@ -169,7 +169,7 @@ class DotProgressBar:
                 update_str += '\033[36m#\033[0m'
             else:  # untracked (no signature)
                 update_str += '\033[33m#\033[0m'
-        elif type == 'done':
+        elif prog_type == 'done':
             update_str = '\b \b' * self._substep_cnt + f'\033[32m]\033[0m {status}\n'
             self._substep_cnt = 0
 
@@ -194,6 +194,9 @@ class Controller(threading.Thread):
 
         self.step_signatures = StepSignatures()
         self.workflow_signatures = WorkflowSignatures()
+
+        self.tapping_controller_socket = None
+        self.tapping_listener_socket = None
 
         self.ready = ready
         self.kernel = kernel
@@ -337,15 +340,15 @@ class Controller(threading.Thread):
                             break
 
                 if env.verbosity == 1 and env.config['run_mode'] != 'interactive':
-                    nSteps = len(set(self._completed.keys())
+                    num_steps = len(set(self._completed.keys())
                                  | set(self._ignored.keys()))
-                    nCompleted = sum(self._completed.values())
-                    nIgnored = sum(self._ignored.values())
-                    completed_text = f'{nCompleted} job{"s" if nCompleted > 1 else ""} completed' if nCompleted else ''
-                    ignored_text = f'{nIgnored} job{"s" if nIgnored > 1 else ""} ignored' if nIgnored else ''
-                    steps_text = f'{nSteps} step{"s" if nSteps > 1 else ""} processed'
+                    num_completed = sum(self._completed.values())
+                    num_ignored = sum(self._ignored.values())
+                    completed_text = f'{num_completed} job{"s" if num_completed > 1 else ""} completed' if num_completed else ''
+                    ignored_text = f'{num_ignored} job{"s" if num_ignored > 1 else ""} ignored' if num_ignored else ''
+                    steps_text = f'{num_steps} step{"s" if num_steps > 1 else ""} processed'
                     succ = '' if msg[1] else 'Failed with '
-                    self._progress_bar.done(f'{succ}{steps_text} ({completed_text}{", " if nCompleted and nIgnored else ""}{ignored_text})')
+                    self._progress_bar.done(f'{succ}{steps_text} ({completed_text}{", " if num_completed and num_ignored else ""}{ignored_text})')
 
                 self.master_request_socket.send_pyobj('bye')
 
