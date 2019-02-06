@@ -27,13 +27,6 @@ def connect_controllers(context=None):
     env.signature_req_socket.connect(
         f'tcp://127.0.0.1:{env.config["sockets"]["signature_req"]}')
 
-    env.controller_push_socket = context.socket(zmq.PUSH)
-    env.controller_push_socket.connect(
-        f'tcp://127.0.0.1:{env.config["sockets"]["controller_push"]}')
-    env.controller_req_socket = context.socket(zmq.REQ)
-    env.controller_req_socket.connect(
-        f'tcp://127.0.0.1:{env.config["sockets"]["controller_req"]}')
-
     env.substep_frontend_socket = context.socket(zmq.PUSH)
     env.substep_frontend_socket.connect(
         f'tcp://127.0.0.1:{env.config["sockets"]["substep_frontend"]}')
@@ -61,10 +54,6 @@ def disconnect_controllers(context=None):
     env.signature_push_socket.close()
     env.signature_req_socket.LINGER = 0
     env.signature_req_socket.close()
-    env.controller_push_socket.LINGER = 0
-    env.controller_push_socket.close()
-    env.controller_req_socket.LINGER = 0
-    env.controller_req_socket.close()
     env.substep_frontend_socket.LINGER = 0
     env.substep_frontend_socket.close()
 
@@ -213,11 +202,24 @@ class Controller(threading.Thread):
 
     def handle_sig_push_msg(self, msg):
         try:
-            if msg[0] == 'workflow':
+            if msg[0] == 'nprocs':
+                env.logger.trace(f'Active running process set to {msg[1]}')
+                self._nprocs = msg[1]
+            elif msg[0] == 'progress':
+                if msg[1] == 'substep_ignored':
+                    self._ignored[msg[2]] += 1
+                elif msg[1] == 'substep_completed':
+                    self._completed[msg[2]] += 1
+                elif msg[1] == 'step_completed':
+                    self._completed_steps[msg[3]] = msg[4]
+                if env.verbosity == 1 and env.config['run_mode'] != 'interactive':
+                    # update progress bar
+                    self._progress_bar.update(msg[1], msg[2] if len(msg) > 2 else None)
+            elif msg[0] == 'workflow_sig':
                 self.workflow_signatures.write(*msg[1:])
-            elif msg[0] == 'step':
+            elif msg[0] == 'step_sig':
                 self.step_signatures.set(*msg[1:])
-            elif msg[0] == 'commit':
+            elif msg[0] == 'commit_sig':
                 self.workflow_signatures.commit()
                 self.step_signatures.commit()
             else:
@@ -233,7 +235,7 @@ class Controller(threading.Thread):
                     self.handle_sig_push_msg(self.sig_push_socket.recv_pyobj())
                 else:
                     break
-            if msg[0] == 'workflow':
+            if msg[0] == 'workflow_sig':
                 if msg[1] == 'clear':
                     self.workflow_signatures.clear()
                     self.sig_req_socket.send_pyobj('ok')
@@ -245,54 +247,13 @@ class Controller(threading.Thread):
                         self.workflow_signatures.records(msg[2]))
                 else:
                     env.logger.warning(f'Unknown signature request {msg}')
-            elif msg[0] == 'step':
+            elif msg[0] == 'step_sig':
                 if msg[1] == 'get':
                     self.sig_req_socket.send_pyobj(
                         self.step_signatures.get(*msg[2:]))
                 else:
                     env.logger.warning(f'Unknown signature request {msg}')
-            else:
-                raise RuntimeError(f'Unrecognized signature request {msg}')
-        except Exception as e:
-            env.logger.warning(
-                f'Failed to respond to signature request {msg}: {e}')
-            self.sig_req_socket.send_pyobj(None)
-
-    def handle_ctl_push_msg(self, msg):
-        try:
-            if msg[0] == 'nprocs':
-                env.logger.trace(f'Active running process set to {msg[1]}')
-                self._nprocs = msg[1]
-            elif msg[0] == 'progress':
-                if msg[1] == 'substep_ignored':
-                    self._ignored[msg[2]] += 1
-                elif msg[1] == 'substep_completed':
-                    self._completed[msg[2]] += 1
-                elif msg[1] == 'step_completed':
-                    self._completed_steps[msg[3]] = msg[4]
-                if env.verbosity == 1 and env.config['run_mode'] != 'interactive':
-                    # update progress bar
-                    self._progress_bar.update(msg[1], msg[2] if len(msg) > 2 else None)
-            else:
-                raise RuntimeError(f'Unrecognized request {msg}')
-        except Exception as e:
-            env.logger.warning(f'Failed to push controller {msg}: {e}')
-
-    def handle_ctl_req_msg(self, msg):
-        try:
-            # handle all sig_push_msg
-            while True:
-                if self.sig_push_socket.poll(0):
-                    self.handle_sig_push_msg(self.sig_push_socket.recv_pyobj())
-                else:
-                    break
-            # also handle ctrl push, which includes progress info
-            while True:
-                if self.ctl_push_socket.poll(0):
-                    self.handle_ctl_push_msg(self.ctl_push_socket.recv_pyobj())
-                else:
-                    break
-            if msg[0] == 'nprocs':
+            elif msg[0] == 'nprocs':
                 self.ctl_req_socket.send_pyobj(self._nprocs)
             elif msg[0] == 'sos_step':
                 self.ctl_req_socket.send_pyobj(msg[1] in self._completed_steps
@@ -360,7 +321,13 @@ class Controller(threading.Thread):
             return True
         except Exception as e:
             env.logger.warning(f'Failed to respond controller {msg}: {e}')
-            self.ctl_req_socket.send_pyobj(None)
+            self.sig_req_socket.send_pyobj(None)
+
+    def handle_ctl_push_msg(self, msg):
+        pass
+
+    def handle_ctl_req_msg(self, msg):
+        pass
 
     def handle_substep_frontend_msg(self, msg):
 
@@ -447,13 +414,6 @@ class Controller(threading.Thread):
         env.config['sockets']['signature_req'] = self.sig_req_socket.bind_to_random_port(
             'tcp://127.0.0.1')
 
-        self.ctl_push_socket = self.context.socket(zmq.PULL)
-        env.config['sockets']['controller_push'] = self.ctl_push_socket.bind_to_random_port(
-            'tcp://127.0.0.1')
-        self.ctl_req_socket = self.context.socket(zmq.REP)
-        env.config['sockets']['controller_req'] = self.ctl_req_socket.bind_to_random_port(
-            'tcp://127.0.0.1')
-
         # broker to handle the execution of substeps
         self.substep_frontend_socket = self.context.socket(zmq.PULL)  # ROUTER
         env.config['sockets']['substep_frontend'] = self.substep_frontend_socket.bind_to_random_port(
@@ -489,8 +449,6 @@ class Controller(threading.Thread):
         poller = zmq.Poller()
         poller.register(self.sig_push_socket, zmq.POLLIN)
         poller.register(self.sig_req_socket, zmq.POLLIN)
-        poller.register(self.ctl_push_socket, zmq.POLLIN)
-        poller.register(self.ctl_req_socket, zmq.POLLIN)
         poller.register(self.substep_frontend_socket, zmq.POLLIN)
         poller.register(self.substep_backend_socket, zmq.POLLIN)
         if env.config['exec_mode'] == 'master':
@@ -511,13 +469,7 @@ class Controller(threading.Thread):
                     self.handle_sig_push_msg(self.sig_push_socket.recv_pyobj())
 
                 if self.sig_req_socket in socks:
-                    self.handle_sig_req_msg(self.sig_req_socket.recv_pyobj())
-
-                if self.ctl_push_socket in socks:
-                    self.handle_ctl_push_msg(self.ctl_push_socket.recv_pyobj())
-
-                if self.ctl_req_socket in socks:
-                    if not self.handle_ctl_req_msg(self.ctl_req_socket.recv_pyobj()):
+                    if not self.handle_sig_req_msg(self.sig_req_socket.recv_pyobj()):
                         break
 
                 if self.substep_frontend_socket in socks:
@@ -582,8 +534,6 @@ class Controller(threading.Thread):
 
             poller.unregister(self.sig_push_socket)
             poller.unregister(self.sig_req_socket)
-            poller.unregister(self.ctl_push_socket)
-            poller.unregister(self.ctl_req_socket)
             poller.unregister(self.substep_frontend_socket)
             poller.unregister(self.substep_backend_socket)
             if env.config['exec_mode'] == 'master':
@@ -596,10 +546,6 @@ class Controller(threading.Thread):
             self.sig_push_socket.close()
             self.sig_req_socket.LINGER = 0
             self.sig_req_socket.close()
-            self.ctl_push_socket.LINGER = 0
-            self.ctl_push_socket.close()
-            self.ctl_req_socket.LINGER = 0
-            self.ctl_req_socket.close()
             self.substep_frontend_socket.LINGER = 0
             self.substep_frontend_socket.close()
             self.substep_backend_socket.LINGER = 0

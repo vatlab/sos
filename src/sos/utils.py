@@ -312,8 +312,6 @@ class RuntimeEnvironments(object):
     def __init__(self):
         # sockets that will be initialized by the controller code
         self.zmq_context = None
-        self.controller_req_socket = None
-        self.controller_push_socket = None
         self.signature_push_socket = None
         self.signature_req_socket = None
         self.substep_frontend_socket = None

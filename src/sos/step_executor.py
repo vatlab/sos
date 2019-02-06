@@ -108,7 +108,7 @@ class TaskManager:
                 master.push(task_id, taskdef)
             ids.append(master.ID)
             TaskFile(master.ID).save(master.finalize())
-            env.signature_push_socket.send_pyobj(['workflow', 'task', master.ID,
+            env.signature_push_socket.send_pyobj(['workflow_sig', 'task', master.ID,
                                   f"{{'creation_time': {time.time()}}}"])
         self._unsubmitted_slots = []
 
@@ -129,7 +129,7 @@ class TaskManager:
                 # if the task file, perhaps it is already running, we do not change
                 # the task file. Otherwise we are changing the status of the task
                 TaskFile(task_id).save(taskdef)
-                env.signature_push_socket.send_pyobj(['workflow', 'task', task_id,
+                env.signature_push_socket.send_pyobj(['workflow_sig', 'task', task_id,
                                           f"{{'creation_time': {time.time()}}}"])
                 ids.append(task_id)
         else:
@@ -138,7 +138,7 @@ class TaskManager:
                 if master is not None and master.num_tasks() == self.trunk_size:
                     ids.append(master.ID)
                     TaskFile(master.ID).save(master)
-                    env.signature_push_socket.send_pyobj(['workflow', 'task', master.ID,
+                    env.signature_push_socket.send_pyobj(['workflow_sig', 'task', master.ID,
                                               f"{{'creation_time': {time.time()}}}"])
                     master = None
                 if master is None:
@@ -147,7 +147,7 @@ class TaskManager:
             # the last piece
             if master is not None:
                 TaskFile(master.ID).save(master.finalize())
-                env.signature_push_socket.send_pyobj(['workflow', 'task', master.ID,
+                env.signature_push_socket.send_pyobj(['workflow_sig', 'task', master.ID,
                                           f"{{'creation_time': {time.time()}}}"])
                 ids.append(master.ID)
 
@@ -549,7 +549,7 @@ class Base_Step_Executor:
                 y)) for x, y in result.items()}
             rep_result['tags'] = ' '.join(self.task_manager.tags(id))
             rep_result['queue'] = queue
-            env.signature_push_socket.send_pyobj(['workflow', 'task', id, repr(rep_result)])
+            env.signature_push_socket.send_pyobj(['workflow_sig', 'task', id, repr(rep_result)])
         self.task_manager.clear_submitted()
 
         # if in dryrun mode, we display the output of the dryrun task
@@ -582,10 +582,10 @@ class Base_Step_Executor:
             if 'skipped' in res and res['skipped']:
                 self.completed['__task_skipped__'] += 1
                 # complete case: task skipped
-                env.controller_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
+                env.signature_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
             else:
                 # complete case: task completed
-                env.controller_push_socket.send_pyobj(['progress', 'substep_ignored', env.sos_dict['step_id']])
+                env.signature_push_socket.send_pyobj(['progress', 'substep_ignored', env.sos_dict['step_id']])
                 self.completed['__task_completed__'] += 1
             if 'shared' in res:
                 self.shared_vars[idx].update(res['shared'])
@@ -687,7 +687,7 @@ class Base_Step_Executor:
         result['__shared__'] = {}
         if 'shared' in self.step.options:
             result['__shared__'] = self.shared_vars
-        env.controller_push_socket.send_pyobj(['progress', 'step_completed',
+        env.signature_push_socket.send_pyobj(['progress', 'step_completed',
             -1 if 'sos_run' in env.sos_dict['__signature_vars__'] else self.completed['__step_completed__'],
             env.sos_dict['step_name'], env.sos_dict['step_output']])
         return result
@@ -982,7 +982,7 @@ class Base_Step_Executor:
                         post_statement = [['!', '']]
                     else:
                         # complete case: no step, no statement
-                        env.controller_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
+                        env.signature_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
 
                 all_statements = pre_statement + self.step.statements[input_statement_idx:] + post_statement
                 is_input_verified = True
@@ -1116,7 +1116,7 @@ class Base_Step_Executor:
                                         if not self.step.task:
                                             # if no task, this step is __completed
                                             # complete case: local skip without task
-                                            env.controller_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
+                                            env.signature_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
                                     if 'shared' in self.step.options:
                                         try:
                                             self.shared_vars[env.sos_dict['_index']].update({
@@ -1143,7 +1143,7 @@ class Base_Step_Executor:
                                         if 'vars' in matched:
                                             self.shared_vars[env.sos_dict['_index']].update(matched["vars"])
                                         # complete case: local skip without task
-                                        env.controller_push_socket.send_pyobj(['progress', 'substep_ignored', env.sos_dict['step_id']])
+                                        env.signature_push_socket.send_pyobj(['progress', 'substep_ignored', env.sos_dict['step_id']])
                                         # do not execute the rest of the statement
                                         break
                                     else:
@@ -1175,7 +1175,7 @@ class Base_Step_Executor:
                                                     sig.set_output(output)
                                                 sig.write()
                                                 # complete case : local execution without task
-                                                env.controller_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
+                                                env.signature_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
                                             else:
                                                 pending_signatures[idx] = sig
                                             sig.release()
@@ -1228,7 +1228,7 @@ class Base_Step_Executor:
                             self.output_groups[env.sos_dict['_index']] = matched["output"]
                         self.shared_vars[env.sos_dict['_index']].update(matched["vars"])
                         # complete case: step with task ignored
-                        env.controller_push_socket.send_pyobj(['progress', 'substep_ignored', env.sos_dict['step_id']])
+                        env.signature_push_socket.send_pyobj(['progress', 'substep_ignored', env.sos_dict['step_id']])
                     pending_signatures[idx] = sig
 
                 # if this index is skipped, go directly to the next one
@@ -1391,7 +1391,7 @@ class Base_Step_Executor:
                 'end_time': time.time()
             }
             env.signature_push_socket.send_pyobj([
-                'workflow', 'step', env.sos_dict["workflow_id"], repr(step_info)])
+                'workflow_sig', 'step', env.sos_dict["workflow_id"], repr(step_info)])
             return self.collect_result()
         finally:
             if self.concurrent_substep:
@@ -1427,7 +1427,7 @@ class Step_Executor(Base_Step_Executor):
             return {}
         # when we wait, the "outsiders" also need to see the tags etc
         # of the tasks so we have to write to the database. #156
-        env.signature_push_socket.send_pyobj(['commit'])
+        env.signature_push_socket.send_pyobj(['commit_sig'])
         # wait till the executor responde
         results = {}
         while True:

@@ -127,7 +127,7 @@ class ExecutionManager(object):
             socket = pi.socket
 
         # we need to report number of active works, plus master process itself
-        env.controller_push_socket.send_pyobj(
+        env.signature_push_socket.send_pyobj(
             ['nprocs', self.num_active() + 1])
 
         socket.send_pyobj(spec)
@@ -229,10 +229,10 @@ class Base_Executor:
         workflow_info['script'] = base64.b64encode(
             self.workflow.content.text().encode()).decode('ascii')
         workflow_info['master_id'] = env.config['master_id']
-        env.signature_req_socket.send_pyobj(['workflow', 'clear'])
+        env.signature_req_socket.send_pyobj(['workflow_sig', 'clear'])
         env.signature_req_socket.recv_pyobj()
         env.signature_push_socket.send_pyobj(
-            ['workflow', 'workflow', self.md5, repr(workflow_info)])
+            ['workflow_sig', 'workflow', self.md5, repr(workflow_info)])
         if env.config['exec_mode'] == 'slave':
             env.tapping_listener_socket.send_pyobj(
                 {'msg_type': 'workflow_status',
@@ -271,8 +271,8 @@ class Base_Executor:
         finally:
             # end progress bar when the master workflow stops
             env.logger.trace(f'Stop controller from {os.getpid()}')
-            env.controller_req_socket.send_pyobj(['done', succ])
-            env.controller_req_socket.recv()
+            env.signature_req_socket.send_pyobj(['done', succ])
+            env.signature_req_socket.recv()
             env.logger.trace('disconntecting master')
             # if the process is failed, some workers might be killed, resulting
             # in nonresponseness from the master, and the socket context cannot
@@ -949,14 +949,14 @@ class Base_Executor:
         if env.config['output_dag'] and env.config['master_id'] == self.md5:
             workflow_info['dag'] = env.config['output_dag']
         env.signature_push_socket.send_pyobj(
-            ['workflow', 'workflow', self.md5, repr(workflow_info)])
+            ['workflow_sig', self.md5, repr(workflow_info)])
         if env.config['master_id'] == env.sos_dict['workflow_id'] and env.config['output_report']:
             # if this is the outter most workflow
             render_report(env.config['output_report'],
                           env.sos_dict['workflow_id'])
         if env.config['run_mode'] == 'dryrun':
             env.signature_req_socket.send_pyobj(
-                ['workflow', 'placeholders', env.sos_dict['workflow_id']])
+                ['workflow_sig', 'placeholders', env.sos_dict['workflow_id']])
             for filename in env.signature_req_socket.recv_pyobj():
                 try:
                     if os.path.getsize(file_target(filename)) == 0:

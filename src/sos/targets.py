@@ -323,8 +323,8 @@ class sos_step(BaseTarget):
     def target_exists(self, mode='any'):
         # the target exists only if it has been executed?
         # which is indicated by a variable
-        env.controller_req_socket.send_pyobj(['sos_step', self._step_name])
-        return env.controller_req_socket.recv_pyobj()
+        env.signature_req_socket.send_pyobj(['sos_step', self._step_name])
+        return env.signature_req_socket.recv_pyobj()
 
     def target_name(self):
         return self._step_name
@@ -615,7 +615,7 @@ class file_target(path, BaseTarget):
         # create an empty placeholder file
         env.logger.debug(f'Create placeholder target {self}')
         self.touch()
-        env.signature_push_socket.send_pyobj(['workflow', 'placeholder', 'file_target', str(self)])
+        env.signature_push_socket.send_pyobj(['workflow_sig', 'placeholder', 'file_target', str(self)])
 
     def target_exists(self, mode='any'):
         try:
@@ -1935,8 +1935,8 @@ class RuntimeInfo(InMemorySignature):
         if ret is False:
             env.logger.debug(f'Failed to write signature {self.sig_id}')
             return ret
-        env.signature_push_socket.send_pyobj(['step', self.sig_id, ret])
-        env.signature_push_socket.send_pyobj(['workflow', 'tracked_files', self.sig_id, repr({
+        env.signature_push_socket.send_pyobj(['step_sig', self.sig_id, ret])
+        env.signature_push_socket.send_pyobj(['workflow_sig', 'tracked_files', self.sig_id, repr({
             'input_files': [str(f.resolve()) for f in self.input_files if isinstance(f, file_target)],
             'dependent_files': [str(f.resolve()) for f in self.dependent_files if isinstance(f, file_target)],
             'output_files': [str(f.resolve()) for f in self.output_files if isinstance(f, file_target)]
@@ -1954,7 +1954,7 @@ class RuntimeInfo(InMemorySignature):
             if not x.target_exists('any'):
                 return f'Missing target {x}'
         #
-        env.signature_req_socket.send_pyobj(['step', 'get', self.sig_id])
+        env.signature_req_socket.send_pyobj(['step_sig', 'get', self.sig_id])
         sig = env.signature_req_socket.recv_pyobj()
         if not sig:
             return f"No signature found for {self.sig_id}"
