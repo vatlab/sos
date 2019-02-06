@@ -449,7 +449,7 @@ class Base_Step_Executor:
             oname = ofile.target_name()
             if oname in self._all_outputs:
                 raise ValueError(
-                    f'Output {ofile} from substep {env.sos_dict["_index"]} overlaps with output from a previous substep')
+                    f'Output {ofile} from substep {env.sos_dict["_index"]} of {env.sos_dict["__num_groups__"]} substeps overlaps with output from a previous substep.')
             self._all_outputs.add(oname)
 
     def submit_task(self, task_info):
