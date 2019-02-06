@@ -16,7 +16,7 @@ from .executor_utils import (prepare_env, clear_output, verify_input, kill_all_s
         reevaluate_output, validate_step_sig, create_task, get_traceback_msg, statementMD5)
 
 from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env)
-from .controller import create_socket, close_socket
+from .controller import create_socket, close_socket, send_message_to_controller
 
 @contextlib.contextmanager
 def stdoutIO():
@@ -75,8 +75,6 @@ def execute_substep(stmt, global_def='', task='', task_params='', proc_vars={}, 
     exception: (optional) if an exception occures
     '''
     assert not env.zmq_context.closed
-    assert not env.master_push_socket.closed
-    assert not env.master_request_socket.closed
     assert 'workflow_id' in proc_vars
     assert 'step_id' in proc_vars
     assert '_input' in proc_vars
@@ -123,7 +121,7 @@ def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars
                 # avoid sig being released in the final statement
                 sig = None
                 # complete case: concurrent ignore without task
-                env.master_push_socket.send_pyobj(['progress', 'substep_ignored', env.sos_dict['step_id']])
+                send_message_to_controller(['progress', 'substep_ignored', env.sos_dict['step_id']])
                 res = {'index': env.sos_dict['_index'], 'ret_code': 0, 'sig_skipped': 1,
                     'output': matched['output'], 'shared': matched['vars']}
                 if task:
@@ -169,7 +167,7 @@ def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars
             if capture_output:
                 res.update({'stdout': outmsg, 'stderr': errmsg})
             # complete case: concurrent execution without task
-            env.master_push_socket.send_pyobj(['progress', 'substep_completed', env.sos_dict['step_id']])
+            send_message_to_controller(['progress', 'substep_completed', env.sos_dict['step_id']])
         return res
     except (StopInputGroup, TerminateExecution, RemovedTarget, UnavailableLock) as e:
         # stop_if is not considered as an error

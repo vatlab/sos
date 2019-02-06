@@ -24,6 +24,8 @@ def create_socket(context, socket_type, desc=''):
     return socket
 
 def close_socket(socket, desc='', now=False):
+    if socket is None:
+        return
     g_sockets.remove(socket.fd)
     env.logger.trace(f'{os.getpid()} {desc}: closes socket with handler {socket.fd} ({len(g_sockets)} left)' )
     if now:
@@ -40,20 +42,30 @@ def zmq_term(context):
         # env.logger.warning(f'{os.getpid()} terminting zmq with {len(g_sockets)} unclosed sockets: {g_sockets}')
     context.term()
 
-# from zmq.utils.monitor import recv_monitor_message
+def send_message_to_controller(msg):
+    if env.master_push_socket is None:
+        env.master_push_socket = create_socket(env.zmq_context, zmq.PUSH, 'master push')
+        env.master_push_socket.connect(
+            f'tcp://127.0.0.1:{env.config["sockets"]["signature_push"]}')
+    env.master_push_socket.send_pyobj(msg)
+
+def request_answer_from_controller(msg):
+    if env.master_request_socket is None:
+        env.master_request_socket = create_socket(env.zmq_context, zmq.REQ, 'master request')
+        env.master_request_socket.connect(
+            f'tcp://127.0.0.1:{env.config["sockets"]["signature_req"]}')
+    env.master_request_socket.send_pyobj(msg)
+    return env.master_request_socket.recv_pyobj()
 
 def connect_controllers(context=None):
     if not context:
         env.logger.trace(f'create context at {os.getpid()}')
         context = zmq.Context()
+
     env.logger.trace(f'Connecting sockets from {os.getpid()}')
 
-    env.master_push_socket = create_socket(context, zmq.PUSH, 'master push')
-    env.master_push_socket.connect(
-        f'tcp://127.0.0.1:{env.config["sockets"]["signature_push"]}')
-    env.master_request_socket = create_socket(context, zmq.REQ, 'master request')
-    env.master_request_socket.connect(
-        f'tcp://127.0.0.1:{env.config["sockets"]["signature_req"]}')
+    env.master_push_socket = None
+    env.master_request_socket = None
 
     # if this instance of sos is being tapped. It should connect to a few sockets
     #

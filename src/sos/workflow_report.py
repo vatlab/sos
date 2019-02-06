@@ -10,13 +10,14 @@ import base64
 from collections import defaultdict
 
 from .utils import env, format_duration, dot_to_gif
+from .controller import request_answer_from_controller
 from ._version import __version__
 
 class WorkflowSig(object):
     def __init__(self, workflow_id):
         self.data = defaultdict(lambda: defaultdict(list))
-        env.master_request_socket.send_pyobj(['workflow_sig', 'records', workflow_id])
-        for entry_type, id, item in env.master_request_socket.recv_pyobj():
+
+        for entry_type, id, item in request_answer_from_controller(['workflow_sig', 'records', workflow_id]):
             try:
                 self.data[entry_type][id].append(item.strip())
             except Exception as e:

@@ -23,7 +23,7 @@ from .hosts import Host
 from .parser import SoS_Step, SoS_Workflow
 from .pattern import extract_pattern
 from .workflow_report import render_report
-from .controller import Controller, connect_controllers, disconnect_controllers, create_socket, close_socket
+from .controller import Controller, connect_controllers, disconnect_controllers, create_socket, close_socket, request_answer_from_controller, send_message_to_controller
 from .section_analyzer import analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
                       UnknownTarget, file_target, path, paths,
@@ -127,8 +127,7 @@ class ExecutionManager(object):
             socket = pi.socket
 
         # we need to report number of active works, plus master process itself
-        env.master_push_socket.send_pyobj(
-            ['nprocs', self.num_active() + 1])
+        send_message_to_controller(['nprocs', self.num_active() + 1])
 
         socket.send_pyobj(spec)
         self.procs.append(
@@ -233,9 +232,8 @@ class Base_Executor:
         workflow_info['script'] = base64.b64encode(
             self.workflow.content.text().encode()).decode('ascii')
         workflow_info['master_id'] = env.config['master_id']
-        env.master_request_socket.send_pyobj(['workflow_sig', 'clear'])
-        env.master_request_socket.recv_pyobj()
-        env.master_push_socket.send_pyobj(
+        request_answer_from_controller(['workflow_sig', 'clear'])
+        send_message_to_controller(
             ['workflow_sig', 'workflow', self.md5, repr(workflow_info)])
         if env.config['exec_mode'] == 'slave':
             env.tapping_listener_socket.send_pyobj(
@@ -275,8 +273,7 @@ class Base_Executor:
         finally:
             # end progress bar when the master workflow stops
             env.logger.trace(f'Stop controller from {os.getpid()}')
-            env.master_request_socket.send_pyobj(['done', succ])
-            env.master_request_socket.recv()
+            request_answer_from_controller(['done', succ])            
             env.logger.trace('disconntecting master')
             # if the process is failed, some workers might be killed, resulting
             # in nonresponseness from the master, and the socket context cannot
@@ -952,16 +949,14 @@ class Base_Executor:
         }
         if env.config['output_dag'] and env.config['master_id'] == self.md5:
             workflow_info['dag'] = env.config['output_dag']
-        env.master_push_socket.send_pyobj(
+        send_message_to_controller(
             ['workflow_sig', 'workflow', self.md5, repr(workflow_info)])
         if env.config['master_id'] == env.sos_dict['workflow_id'] and env.config['output_report']:
             # if this is the outter most workflow
             render_report(env.config['output_report'],
                           env.sos_dict['workflow_id'])
         if env.config['run_mode'] == 'dryrun':
-            env.master_request_socket.send_pyobj(
-                ['workflow_sig', 'placeholders', env.sos_dict['workflow_id']])
-            for filename in env.master_request_socket.recv_pyobj():
+            for filename in request_answer_from_controller(['workflow_sig', 'placeholders', env.sos_dict['workflow_id']]):
                 try:
                     if os.path.getsize(file_target(filename)) == 0:
                         file_target(filename).unlink()

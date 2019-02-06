@@ -33,6 +33,7 @@ from .targets import (executable, file_target, fileMD5, path,
 from .utils import (StopInputGroup, TerminateExecution,
                     TimeoutInterProcessLock, env, get_traceback, short_repr,
                     transcribe)
+from .controller import send_message_to_controller
 
 from typing import Any, Callable, Dict, List, Tuple, Union
 __all__ = ['SoS_Action', 'script', 'sos_run',
@@ -363,7 +364,7 @@ class SoS_ExecuteScript:
                 # if not notebook, not task, signature database is avaialble.
                 if env.sos_dict['_index'] == 0 and env.config['run_mode'] != 'interactive' \
                     and '__std_out__' not in env.sos_dict and hasattr(env, 'master_push_socket'):
-                    env.master_push_socket.send_pyobj(['workflow_sig', 'transcript', env.sos_dict['step_name'],
+                    send_message_to_controller(['workflow_sig', 'transcript', env.sos_dict['step_name'],
                                               repr({'start_time': time.time(), 'command': transcript_cmd, 'script': self.script})])
 
                 if env.config['run_mode'] == 'interactive':
