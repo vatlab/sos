@@ -630,7 +630,7 @@ class Base_Step_Executor:
 
     def prepare_substep(self):
         # socket to collect result
-        self.result_pull_socket = create_socket(env.zmq_context, zmq.PULL)
+        self.result_pull_socket = create_socket(env.zmq_context, zmq.PULL, 'substep result collector')
         port = self.result_pull_socket.bind_to_random_port('tcp://127.0.0.1')
         env.config['sockets']['result_push_socket'] = port
 
@@ -904,7 +904,7 @@ class Base_Step_Executor:
         if self.concurrent_substep:
             if len(self._substeps) <= 1 or env.config['run_mode'] == 'dryrun':
                 self.concurrent_substep = False
-            if len([
+            elif len([
                     x for x in self.step.statements[input_statement_idx:] if x[0] != ':']) > 1:
                 self.concurrent_substep = False
                 env.logger.debug(
@@ -1395,7 +1395,7 @@ class Base_Step_Executor:
             return self.collect_result()
         finally:
             if self.concurrent_substep:
-                close_socket(self.result_pull_socket)
+                close_socket(self.result_pull_socket, 'substep collector')
 
 
 

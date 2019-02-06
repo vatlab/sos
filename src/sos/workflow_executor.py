@@ -116,7 +116,7 @@ class ExecutionManager(object):
 
     def execute(self, runnable: Union[SoS_Node, dummy_node], config: Dict[str, Any], args: Any, spec: Any) -> None:
         if not self.pool:
-            socket = create_socket(env.zmq_context, zmq.PAIR)
+            socket = create_socket(env.zmq_context, zmq.PAIR, 'pair socket for step worker')
             port = socket.bind_to_random_port('tcp://127.0.0.1')
             worker = SoS_Worker(port=port, config=config, args=args)
             worker.start()
@@ -281,8 +281,8 @@ class Base_Executor:
             # if the process is failed, some workers might be killed, resulting
             # in nonresponseness from the master, and the socket context cannot
             # be killed in this case.
-            disconnect_controllers(env.zmq_context if succ else None)
             self.controller.join()
+            disconnect_controllers(env.zmq_context if succ else None)
             # when the run() function is called again, the controller
             # thread will be start again.
             env.config['master_id'] = None
@@ -1267,7 +1267,7 @@ class Base_Executor:
                         runnable._status = 'running'
                         dag.save(env.config['output_dag'])
                         runnable._from_nested = True
-                        runnable._child_socket = create_socket(env.zmq_context, zmq.PAIR)
+                        runnable._child_socket = create_socket(env.zmq_context, zmq.PAIR, 'child socket for dummy')
                         runnable._child_socket.connect(f'tcp://127.0.0.1:{port}')
 
                         env.logger.debug(
@@ -1498,7 +1498,7 @@ class Base_Executor:
                     env.logger.debug(
                         f'{i_am()} send step {section.step_name()} to master with args {self.args} and context {runnable._context}')
 
-                    socket = create_socket(env.zmq_context, zmq.PAIR)
+                    socket = create_socket(env.zmq_context, zmq.PAIR, 'worker pair socket')
                     port = socket.bind_to_random_port('tcp://127.0.0.1')
                     parent_socket.send_pyobj(['step', step_id, section, runnable._context, shared, self.args,
                                               env.config, env.verbosity, port])

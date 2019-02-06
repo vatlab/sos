@@ -16,22 +16,28 @@ for name in ('PUSH', 'PULL', 'PAIR', 'REQ', 'REP'):
     EVENT_MAP[getattr(zmq, name)] = name
 
 g_sockets = set()
-def create_socket(context, socket_type):
+
+def create_socket(context, socket_type, desc=''):
     socket = context.socket(socket_type)
     g_sockets.add(socket.fd)
-    env.logger.warning(f'{os.getpid()} new socket of type {EVENT_MAP.get(socket_type, "UNKNOWN")} with handler {socket.fd} ({len(g_sockets)} total)' )
+    env.logger.trace(f'{os.getpid()} {desc}: new socket of type {EVENT_MAP.get(socket_type, "UNKNOWN")} with handler {socket.fd} ({len(g_sockets)} total)' )
     return socket
 
-def close_socket(socket):
+def close_socket(socket, desc='', now=False):
     g_sockets.remove(socket.fd)
-    env.logger.warning(f'{os.getpid()} closes socket with handler {socket.fd} ({len(g_sockets)} left)' )
-    socket.LINGER = 0
+    env.logger.trace(f'{os.getpid()} {desc}: closes socket with handler {socket.fd} ({len(g_sockets)} left)' )
+    if now:
+        socket.LINGER = 0
     socket.close()
     return socket
 
 def zmq_term(context):
-    if g_sockets:
-        env.logger.error(f'{os.getpid()} terminting zmq with {len(g_sockets)} unclosed sockets: {g_sockets}')
+    #
+    # the following is only valid when multiprocessing is started with the spawn method
+    # otherwise g_sockets will contain sockets from the parental process
+
+    # if g_sockets:
+        # env.logger.warning(f'{os.getpid()} terminting zmq with {len(g_sockets)} unclosed sockets: {g_sockets}')
     context.term()
 
 # from zmq.utils.monitor import recv_monitor_message
@@ -42,10 +48,10 @@ def connect_controllers(context=None):
         context = zmq.Context()
     env.logger.trace(f'Connecting sockets from {os.getpid()}')
 
-    env.master_push_socket = create_socket(context, zmq.PUSH)
+    env.master_push_socket = create_socket(context, zmq.PUSH, 'master push')
     env.master_push_socket.connect(
         f'tcp://127.0.0.1:{env.config["sockets"]["signature_push"]}')
-    env.master_request_socket = create_socket(context, zmq.REQ)
+    env.master_request_socket = create_socket(context, zmq.REQ, 'master request')
     env.master_request_socket.connect(
         f'tcp://127.0.0.1:{env.config["sockets"]["signature_req"]}')
 
@@ -96,7 +102,7 @@ class DotProgressBar:
         self._substep_cnt = 0
 
         # broker to handle the execution of substeps
-        self.progress_push_socket = create_socket(self.context, zmq.PUSH)
+        self.progress_push_socket = create_socket(self.context, zmq.PUSH, 'progress push')
         self.progress_port = self.progress_push_socket.bind_to_random_port(
             'tcp://127.0.0.1')
 
@@ -104,7 +110,7 @@ class DotProgressBar:
         self.thread.start()
 
     def run(self):
-        progress_pull_socket = create_socket(self.context, zmq.PULL)
+        progress_pull_socket = create_socket(self.context, zmq.PULL, 'progress pull')
         progress_pull_socket.connect(f'tcp://127.0.0.1:{self.progress_port}')
 
         # leading progress bar
@@ -411,15 +417,15 @@ class Controller(threading.Thread):
         if 'sockets' not in env.config:
             env.config['sockets'] = {}
 
-        self.master_push_socket = create_socket(self.context, zmq.PULL)
+        self.master_push_socket = create_socket(self.context, zmq.PULL, 'controller master_pull')
         env.config['sockets']['signature_push'] = self.master_push_socket.bind_to_random_port(
             'tcp://127.0.0.1')
-        self.master_request_socket = create_socket(self.context, zmq.REP)
+        self.master_request_socket = create_socket(self.context, zmq.REP, 'controller master_request')
         env.config['sockets']['signature_req'] = self.master_request_socket.bind_to_random_port(
             'tcp://127.0.0.1')
 
         # broker to handle the execution of substeps
-        self.substep_backend_socket = create_socket(self.context, zmq.REP)  # ROUTER
+        self.substep_backend_socket = create_socket(self.context, zmq.REP, 'controller backend rep')  # ROUTER
         env.config['sockets']['substep_backend'] = self.substep_backend_socket.bind_to_random_port(
             'tcp://127.0.0.1')
 
@@ -542,6 +548,7 @@ class Controller(threading.Thread):
             close_socket(self.master_push_socket)
             close_socket(self.master_request_socket)
             close_socket(self.substep_backend_socket)
+
             if env.config['exec_mode'] == 'master':
                 close_socket(self.tapping_logging_socket)
                 close_socket(self.tapping_listener_socket)
