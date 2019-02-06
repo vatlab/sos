@@ -27,10 +27,6 @@ def connect_controllers(context=None):
     env.master_request_socket.connect(
         f'tcp://127.0.0.1:{env.config["sockets"]["signature_req"]}')
 
-    env.substep_frontend_socket = context.socket(zmq.PUSH)
-    env.substep_frontend_socket.connect(
-        f'tcp://127.0.0.1:{env.config["sockets"]["substep_frontend"]}')
-
     # if this instance of sos is being tapped. It should connect to a few sockets
     #
     if env.config['exec_mode'] == 'slave':
@@ -54,8 +50,6 @@ def disconnect_controllers(context=None):
     env.master_push_socket.close()
     env.master_request_socket.LINGER = 0
     env.master_request_socket.close()
-    env.substep_frontend_socket.LINGER = 0
-    env.substep_frontend_socket.close()
 
     if env.config['exec_mode'] == 'slave':
         env.tapping_logging_socket.LINGER = 0
@@ -168,7 +162,7 @@ class Controller(threading.Thread):
     need to talk to the same controller (signature, controller etc) when
     they are executed in sos or sos notebook.
     '''
-    LRU_READY = b"\x01"
+    LRU_READY = "READY"
 
     def __init__(self, ready, kernel=None):
         threading.Thread.__init__(self)
@@ -202,7 +196,23 @@ class Controller(threading.Thread):
 
     def handle_master_push_msg(self, msg):
         try:
-            if msg[0] == 'nprocs':
+            if isinstance(msg, dict):  # substep
+                if self._worker_pending_time:
+                    self.substep_backend_socket.send_pyobj(msg)
+                    self._worker_pending_time.pop()
+                    return
+                #  Get client request, route to first available worker
+                self._frontend_requests.insert(0, msg)
+
+                if self._n_working_workers == 0 or self._n_working_workers + self._nprocs < env.config['max_procs']:
+                    from .workers import SoS_SubStep_Worker
+                    worker = SoS_SubStep_Worker(env.config)
+                    worker.start()
+                    self._substep_workers.append(worker)
+                    self._n_working_workers += 1
+                    env.logger.debug(
+                        f'Start a substep worker, {self._n_working_workers} in total')
+            elif msg[0] == 'nprocs':
                 env.logger.trace(f'Active running process set to {msg[1]}')
                 self._nprocs = msg[1]
             elif msg[0] == 'progress':
@@ -225,7 +235,7 @@ class Controller(threading.Thread):
             else:
                 env.logger.warning(f'Unknown message passed {msg}')
         except Exception as e:
-            env.logger.warning(f'Failed to push signature {msg}: {e}')
+            env.logger.warning(f'Failed to handle master push message {msg}: {e}')
 
     def handle_master_request_msg(self, msg):
         try:
@@ -254,35 +264,35 @@ class Controller(threading.Thread):
                 else:
                     env.logger.warning(f'Unknown signature request {msg}')
             elif msg[0] == 'nprocs':
-                self.ctl_req_socket.send_pyobj(self._nprocs)
+                self.master_request_socket.send_pyobj(self._nprocs)
             elif msg[0] == 'sos_step':
-                self.ctl_req_socket.send_pyobj(msg[1] in self._completed_steps
+                self.master_request_socket.send_pyobj(msg[1] in self._completed_steps
                                                or msg[1] in [x.rsplit('_', 1)[0] for x in self._completed_steps.keys()])
             elif msg[0] == 'step_output':
                 step_name = msg[1]
                 if step_name in self._completed_steps:
-                    self.ctl_req_socket.send_pyobj(self._completed_steps[step_name])
+                    self.master_request_socket.send_pyobj(self._completed_steps[step_name])
                 else:
                     # now, step_name might actually be a workflow name, in which
                     # case we need to return the last step of the workflow
                     steps = sorted([x for x in self._completed_steps.keys() if x.rsplit('_', 1)[0] == step_name])
-                    self.ctl_req_socket.send_pyobj(self._completed_steps[steps[-1]] if steps else None)
+                    self.master_request_socket.send_pyobj(self._completed_steps[steps[-1]] if steps else None)
             elif msg[0] == 'named_output':
                 name = msg[1]
                 found = False
                 for step_output in self._completed_steps.values():
                     if name in step_output.labels:
                         found = True
-                        self.ctl_req_socket.send_pyobj(step_output[name])
+                        self.master_request_socket.send_pyobj(step_output[name])
                         break
                 if not found:
-                    self.ctl_req_socket.send_pyobj(None)
+                    self.master_request_socket.send_pyobj(None)
             elif msg[0] == 'done':
                 # handle all ctl_push_msgs #1062
                 while True:
-                    if self.ctl_push_socket.poll(0):
-                        self.handle_ctl_push_msg(
-                            self.ctl_push_socket.recv_pyobj())
+                    if self.master_push_socket.poll(0):
+                        self.handle_master_push_msg(
+                            self.master_push_socket.recv_pyobj())
                     else:
                         break
 
@@ -290,7 +300,7 @@ class Controller(threading.Thread):
                 while True:
                     if self.substep_backend_socket.poll(0):
                         self.handle_substep_backend_msg(
-                            self.substep_backend_socket.recv())
+                            self.substep_backend_socket.recv_pyobj())
                     else:
                         break
                 # handle all push request from logging
@@ -313,7 +323,7 @@ class Controller(threading.Thread):
                     succ = '' if msg[1] else 'Failed with '
                     self._progress_bar.done(f'{succ}{steps_text} ({completed_text}{", " if nCompleted and nIgnored else ""}{ignored_text})')
 
-                self.ctl_req_socket.send_pyobj('bye')
+                self.master_request_socket.send_pyobj('bye')
 
                 return False
             else:
@@ -323,30 +333,6 @@ class Controller(threading.Thread):
             env.logger.warning(f'Failed to respond controller {msg}: {e}')
             self.master_request_socket.send_pyobj(None)
 
-    def handle_ctl_push_msg(self, msg):
-        pass
-
-    def handle_ctl_req_msg(self, msg):
-        pass
-
-    def handle_substep_frontend_msg(self, msg):
-
-        if self._worker_pending_time:
-            self.substep_backend_socket.send(msg)
-            self._worker_pending_time.pop()
-            return
-
-        #  Get client request, route to first available worker
-        self._frontend_requests.insert(0, msg)
-
-        if self._n_working_workers == 0 or self._n_working_workers + self._nprocs < env.config['max_procs']:
-            from .workers import SoS_SubStep_Worker
-            worker = SoS_SubStep_Worker(env.config)
-            worker.start()
-            self._substep_workers.append(worker)
-            self._n_working_workers += 1
-            env.logger.debug(
-                f'Start a substep worker, {self._n_working_workers} in total')
 
     def handle_substep_backend_msg(self, msg):
         # Use worker address for LRU routing
@@ -361,7 +347,7 @@ class Controller(threading.Thread):
         # now see if we have any work to do
         if self._frontend_requests:
             msg = self._frontend_requests.pop()
-            self.substep_backend_socket.send(msg)
+            self.substep_backend_socket.send_pyobj(msg)
         else:
             self._worker_pending_time.insert(0, time.time())
 
@@ -415,9 +401,6 @@ class Controller(threading.Thread):
             'tcp://127.0.0.1')
 
         # broker to handle the execution of substeps
-        self.substep_frontend_socket = self.context.socket(zmq.PULL)  # ROUTER
-        env.config['sockets']['substep_frontend'] = self.substep_frontend_socket.bind_to_random_port(
-            'tcp://127.0.0.1')
         self.substep_backend_socket = self.context.socket(zmq.REP)  # ROUTER
         env.config['sockets']['substep_backend'] = self.substep_backend_socket.bind_to_random_port(
             'tcp://127.0.0.1')
@@ -449,7 +432,6 @@ class Controller(threading.Thread):
         poller = zmq.Poller()
         poller.register(self.master_push_socket, zmq.POLLIN)
         poller.register(self.master_request_socket, zmq.POLLIN)
-        poller.register(self.substep_frontend_socket, zmq.POLLIN)
         poller.register(self.substep_backend_socket, zmq.POLLIN)
         if env.config['exec_mode'] == 'master':
             poller.register(self.tapping_logging_socket, zmq.POLLIN)
@@ -465,26 +447,24 @@ class Controller(threading.Thread):
         try:
             while True:
                 socks = dict(poller.poll())
+
                 if self.master_push_socket in socks:
-                    self.handle_master_push_msg(self.master_push_socket.recv_pyobj())
+                    while True:
+                        if self.master_push_socket.poll(0):
+                            self.handle_master_push_msg(
+                                self.master_push_socket.recv_pyobj())
+                        else:
+                            break
 
                 if self.master_request_socket in socks:
                     if not self.handle_master_request_msg(self.master_request_socket.recv_pyobj()):
                         break
 
-                if self.substep_frontend_socket in socks:
-                    while True:
-                        if self.substep_frontend_socket.poll(0):
-                            self.handle_substep_frontend_msg(
-                                self.substep_frontend_socket.recv())
-                        else:
-                            break
-
                 if self.substep_backend_socket in socks:
                     while True:
                         if self.substep_backend_socket.poll(0):
                             self.handle_substep_backend_msg(
-                                self.substep_backend_socket.recv())
+                                self.substep_backend_socket.recv_pyobj())
                         else:
                             break
 
@@ -534,7 +514,6 @@ class Controller(threading.Thread):
 
             poller.unregister(self.master_push_socket)
             poller.unregister(self.master_request_socket)
-            poller.unregister(self.substep_frontend_socket)
             poller.unregister(self.substep_backend_socket)
             if env.config['exec_mode'] == 'master':
                 poller.unregister(self.tapping_logging_socket)
@@ -546,8 +525,6 @@ class Controller(threading.Thread):
             self.master_push_socket.close()
             self.master_request_socket.LINGER = 0
             self.master_request_socket.close()
-            self.substep_frontend_socket.LINGER = 0
-            self.substep_frontend_socket.close()
             self.substep_backend_socket.LINGER = 0
             self.substep_backend_socket.close()
             if env.config['exec_mode'] == 'master':

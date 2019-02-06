@@ -314,7 +314,6 @@ class RuntimeEnvironments(object):
         self.zmq_context = None
         self.master_push_socket = None
         self.master_request_socket = None
-        self.substep_frontend_socket = None
 
         # this function is used by tests to reset environments
         # after finishing an test

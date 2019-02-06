@@ -949,7 +949,7 @@ class Base_Executor:
         if env.config['output_dag'] and env.config['master_id'] == self.md5:
             workflow_info['dag'] = env.config['output_dag']
         env.master_push_socket.send_pyobj(
-            ['workflow_sig', self.md5, repr(workflow_info)])
+            ['workflow_sig', 'workflow', self.md5, repr(workflow_info)])
         if env.config['master_id'] == env.sos_dict['workflow_id'] and env.config['output_report']:
             # if this is the outter most workflow
             render_report(env.config['output_report'],

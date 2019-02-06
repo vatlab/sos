@@ -180,7 +180,7 @@ class SoS_SubStep_Worker(mp.Process):
     '''
     Worker process to process SoS step or workflow in separate process.
     '''
-    LRU_READY = b"\x01"
+    LRU_READY = "READY"
 
     def __init__(self, config={}, **kwargs) -> None:
         # the worker process knows configuration file, command line argument etc
@@ -197,7 +197,7 @@ class SoS_SubStep_Worker(mp.Process):
         env.logger.trace(f'Substep worker {os.getpid()} started')
 
         while True:
-            env.master_socket.send(self.LRU_READY)
+            env.master_socket.send_pyobj(self.LRU_READY)
             msg = env.master_socket.recv_pyobj()
             if not msg:
                 env.logger.debug(f'stop substep worker {os.getpid()}')
