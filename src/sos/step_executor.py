@@ -26,7 +26,7 @@ from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env,
 from .executor_utils import (clear_output, create_task, verify_input, reevaluate_output,
                     validate_step_sig, statementMD5, get_traceback_msg, __null_func__,
                     __output_from__, __named_output__, __traced__)
-
+from .controller import create_socket, close_socket
 
 __all__: List = []
 
@@ -630,7 +630,7 @@ class Base_Step_Executor:
 
     def prepare_substep(self):
         # socket to collect result
-        self.result_pull_socket = env.zmq_context.socket(zmq.PULL)
+        self.result_pull_socket = create_socket(env.zmq_context, zmq.PULL)
         port = self.result_pull_socket.bind_to_random_port('tcp://127.0.0.1')
         env.config['sockets']['result_push_socket'] = port
 
@@ -1395,7 +1395,7 @@ class Base_Step_Executor:
             return self.collect_result()
         finally:
             if self.concurrent_substep:
-                self.result_pull_socket.close()
+                close_socket(self.result_pull_socket)
 
 
 

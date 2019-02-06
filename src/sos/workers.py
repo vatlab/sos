@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional
 
 from ._version import __version__
 from .eval import SoS_exec
-from .controller import connect_controllers, disconnect_controllers
+from .controller import connect_controllers, disconnect_controllers, create_socket, close_socket
 from .targets import sos_targets
 from .utils import WorkflowDict, env, get_traceback, load_config_files, short_repr
 from .executor_utils import kill_all_subprocesses
@@ -79,10 +79,13 @@ class SoS_Worker(mp.Process):
                     env.sos_dict.set(key, value)
 
     def run(self):
+
+        env.logger.warning(f'Worker created {os.getpid()}')
+
         env.config.update(self.config)
         env.zmq_context = connect_controllers()
         signal.signal(signal.SIGTERM, signal_handler)
-        env.master_socket = env.zmq_context.socket(zmq.PAIR)
+        env.master_socket = create_socket(env.zmq_context, zmq.PAIR)
         env.master_socket.connect(f'tcp://127.0.0.1:{self.port}')
 
         # wait to handle jobs
@@ -107,9 +110,10 @@ class SoS_Worker(mp.Process):
             except KeyboardInterrupt:
                 break
         # Finished
-        env.master_socket.LINGER = 0
-        env.master_socket.close()
+        close_socket(env.master_socket)
         disconnect_controllers(env.zmq_context)
+
+        env.logger.warning(f'Worker terminated {os.getpid()}')
 
 
     def run_workflow(self, workflow_id, wf, targets, args, shared, config):
@@ -189,10 +193,13 @@ class SoS_SubStep_Worker(mp.Process):
         self.daemon = True
 
     def run(self):
+
+        env.logger.warning(f'Substep worker created {os.getpid()}')
+
         env.config.update(self.config)
         env.zmq_context = connect_controllers()
         from .substep_executor import execute_substep
-        env.master_socket = env.zmq_context.socket(zmq.REQ)
+        env.master_socket = create_socket(env.zmq_context, zmq.REQ)
         env.master_socket.connect(f'tcp://127.0.0.1:{self.config["sockets"]["substep_backend"]}')
         env.logger.trace(f'Substep worker {os.getpid()} started')
 
@@ -206,6 +213,7 @@ class SoS_SubStep_Worker(mp.Process):
             env.logger.debug(f'Substep worker {os.getpid()} receives request {short_repr(msg)}')
             execute_substep(**msg)
 
-        env.master_socket.LINGER = 0
-        env.master_socket.close()
+        close_socket(env.master_socket)
         disconnect_controllers(env.zmq_context)
+
+        env.logger.warning(f'Substep worker terminated {os.getpid()}')

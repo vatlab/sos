@@ -16,7 +16,7 @@ from .executor_utils import (prepare_env, clear_output, verify_input, kill_all_s
         reevaluate_output, validate_step_sig, create_task, get_traceback_msg, statementMD5)
 
 from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env)
-
+from .controller import create_socket, close_socket
 
 @contextlib.contextmanager
 def stdoutIO():
@@ -87,14 +87,14 @@ def execute_substep(stmt, global_def='', task='', task_params='', proc_vars={}, 
     assert 'result_push_socket' in config["sockets"]
 
     try:
-        res_socket = env.zmq_context.socket(zmq.PUSH)
+        res_socket = create_socket(env.zmq_context, zmq.PUSH)
         res_socket.connect(f'tcp://127.0.0.1:{config["sockets"]["result_push_socket"]}')
         res = _execute_substep(stmt=stmt, global_def=global_def, task=task,
             task_params=task_params, proc_vars=proc_vars,
             shared_vars=shared_vars, config=config)
         res_socket.send_pyobj(res)
     finally:
-        res_socket.close()
+        close_socket(res_socket)
 
 def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars, config):
     # passing configuration and port numbers to the subprocess

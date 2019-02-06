@@ -23,7 +23,7 @@ from .hosts import Host
 from .parser import SoS_Step, SoS_Workflow
 from .pattern import extract_pattern
 from .workflow_report import render_report
-from .controller import Controller, connect_controllers, disconnect_controllers
+from .controller import Controller, connect_controllers, disconnect_controllers, create_socket, close_socket
 from .section_analyzer import analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
                       UnknownTarget, file_target, path, paths,
@@ -116,7 +116,7 @@ class ExecutionManager(object):
 
     def execute(self, runnable: Union[SoS_Node, dummy_node], config: Dict[str, Any], args: Any, spec: Any) -> None:
         if not self.pool:
-            socket = env.zmq_context.socket(zmq.PAIR)
+            socket = create_socket(env.zmq_context, zmq.PAIR)
             port = socket.bind_to_random_port('tcp://127.0.0.1')
             worker = SoS_Worker(port=port, config=config, args=args)
             worker.start()
@@ -152,8 +152,8 @@ class ExecutionManager(object):
     #     return all(x.in_status('failed') for x in self.procs)
 
     def dispose(self, idx: int) -> None:
-        self.procs[idx].socket.close()
-        self.procs.pop(idx)
+        close_socket(self.procs[idx].socket)
+        self.procs[idx] = None
 
     def mark_idle(self, idx: int) -> None:
         self.pool.append(self.procs[idx])
@@ -168,7 +168,7 @@ class ExecutionManager(object):
             for proc in self.procs + self.pool:
                 proc.socket.send_pyobj(None)
                 proc.socket.LINGER = 0
-                proc.socket.close()
+                close_socket(proc.socket)
             time.sleep(0.1)
             for proc in self.procs + self.pool:
                 if proc.worker and proc.worker.is_alive():
@@ -1172,7 +1172,7 @@ class Base_Executor:
                         # this is a onetime use socket that passes results from
                         # nested workflow to master
                         runnable._child_socket.LINGER = 0
-                        runnable._child_socket.close()
+                        close_socket(runnable._child_socket)
                     elif isinstance(res, UnavailableLock):
                         self.handle_unavailable_lock(res, dag, runnable)
                     elif isinstance(res, RemovedTarget):
@@ -1267,7 +1267,7 @@ class Base_Executor:
                         runnable._status = 'running'
                         dag.save(env.config['output_dag'])
                         runnable._from_nested = True
-                        runnable._child_socket = env.zmq_context.socket(zmq.PAIR)
+                        runnable._child_socket = create_socket(env.zmq_context, zmq.PAIR)
                         runnable._child_socket.connect(f'tcp://127.0.0.1:{port}')
 
                         env.logger.debug(
@@ -1469,6 +1469,7 @@ class Base_Executor:
                         raise RuntimeError(
                             f'Nested wokflow received an unrecognized response: {res}')
 
+                manager.cleanup()
                 # step 3: check if there is room and need for another job
                 while True:
                     # with status.
@@ -1497,7 +1498,7 @@ class Base_Executor:
                     env.logger.debug(
                         f'{i_am()} send step {section.step_name()} to master with args {self.args} and context {runnable._context}')
 
-                    socket = env.zmq_context.socket(zmq.PAIR)
+                    socket = create_socket(env.zmq_context, zmq.PAIR)
                     port = socket.bind_to_random_port('tcp://127.0.0.1')
                     parent_socket.send_pyobj(['step', step_id, section, runnable._context, shared, self.args,
                                               env.config, env.verbosity, port])

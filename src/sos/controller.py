@@ -11,6 +11,28 @@ from collections import defaultdict
 from .utils import env
 from .signatures import StepSignatures, WorkflowSignatures
 
+EVENT_MAP = {}
+for name in ('PUSH', 'PULL', 'PAIR', 'REQ', 'REP'):
+    EVENT_MAP[getattr(zmq, name)] = name
+
+g_sockets = set()
+def create_socket(context, socket_type):
+    socket = context.socket(socket_type)
+    g_sockets.add(socket.fd)
+    env.logger.warning(f'{os.getpid()} new socket of type {EVENT_MAP.get(socket_type, "UNKNOWN")} with handler {socket.fd} ({len(g_sockets)} total)' )
+    return socket
+
+def close_socket(socket):
+    g_sockets.remove(socket.fd)
+    env.logger.warning(f'{os.getpid()} closes socket with handler {socket.fd} ({len(g_sockets)} left)' )
+    socket.LINGER = 0
+    socket.close()
+    return socket
+
+def zmq_term(context):
+    if g_sockets:
+        env.logger.error(f'{os.getpid()} terminting zmq with {len(g_sockets)} unclosed sockets: {g_sockets}')
+    context.term()
 
 # from zmq.utils.monitor import recv_monitor_message
 
@@ -20,17 +42,17 @@ def connect_controllers(context=None):
         context = zmq.Context()
     env.logger.trace(f'Connecting sockets from {os.getpid()}')
 
-    env.master_push_socket = context.socket(zmq.PUSH)
+    env.master_push_socket = create_socket(context, zmq.PUSH)
     env.master_push_socket.connect(
         f'tcp://127.0.0.1:{env.config["sockets"]["signature_push"]}')
-    env.master_request_socket = context.socket(zmq.REQ)
+    env.master_request_socket = create_socket(context, zmq.REQ)
     env.master_request_socket.connect(
         f'tcp://127.0.0.1:{env.config["sockets"]["signature_req"]}')
 
     # if this instance of sos is being tapped. It should connect to a few sockets
     #
     if env.config['exec_mode'] == 'slave':
-        env.tapping_logging_socket = context.socket(zmq.PUSH)
+        env.tapping_logging_socket = create_socket(context, zmq.PUSH)
         env.tapping_logging_socket.connect(
             f'tcp://127.0.0.1:{env.config["sockets"]["tapping_logging"]}')
         # change logging to socket
@@ -38,7 +60,7 @@ def connect_controllers(context=None):
 
     # master also need to update task status from interactive runner.
     if env.config['exec_mode'] in ('master', 'slave'):
-        env.tapping_listener_socket = context.socket(zmq.PUSH)
+        env.tapping_listener_socket = create_socket(context, zmq.PUSH)
         env.tapping_listener_socket.connect(
             f'tcp://127.0.0.1:{env.config["sockets"]["tapping_listener"]}')
 
@@ -46,25 +68,21 @@ def connect_controllers(context=None):
 
 
 def disconnect_controllers(context=None):
-    env.master_push_socket.LINGER = 0
-    env.master_push_socket.close()
-    env.master_request_socket.LINGER = 0
-    env.master_request_socket.close()
+    close_socket(env.master_push_socket)
+    close_socket(env.master_request_socket)
 
     if env.config['exec_mode'] == 'slave':
-        env.tapping_logging_socket.LINGER = 0
-        env.tapping_logging_socket.close()
+        close_socket(env.tapping_logging_socket)
         env.set_socket_logger(None)
 
     if env.config['exec_mode'] in ('master', 'slave'):
-        env.tapping_listener_socket.LINGER = 0
-        env.tapping_listener_socket.close()
+        close_socket(env.tapping_listener_socket)
 
     env.logger.trace(f'Disconnecting sockets from {os.getpid()}')
 
     if context:
         env.logger.trace(f'terminate context at {os.getpid()}')
-        context.term()
+        zmq_term(context)
 
 class DotProgressBar:
     def __init__(self, context, interval=1):
@@ -78,7 +96,7 @@ class DotProgressBar:
         self._substep_cnt = 0
 
         # broker to handle the execution of substeps
-        self.progress_push_socket = self.context.socket(zmq.PUSH)
+        self.progress_push_socket = create_socket(self.context, zmq.PUSH)
         self.progress_port = self.progress_push_socket.bind_to_random_port(
             'tcp://127.0.0.1')
 
@@ -86,7 +104,7 @@ class DotProgressBar:
         self.thread.start()
 
     def run(self):
-        progress_pull_socket = self.context.socket(zmq.PULL)
+        progress_pull_socket = create_socket(self.context, zmq.PULL)
         progress_pull_socket.connect(f'tcp://127.0.0.1:{self.progress_port}')
 
         # leading progress bar
@@ -393,34 +411,34 @@ class Controller(threading.Thread):
         if 'sockets' not in env.config:
             env.config['sockets'] = {}
 
-        self.master_push_socket = self.context.socket(zmq.PULL)
+        self.master_push_socket = create_socket(self.context, zmq.PULL)
         env.config['sockets']['signature_push'] = self.master_push_socket.bind_to_random_port(
             'tcp://127.0.0.1')
-        self.master_request_socket = self.context.socket(zmq.REP)
+        self.master_request_socket = create_socket(self.context, zmq.REP)
         env.config['sockets']['signature_req'] = self.master_request_socket.bind_to_random_port(
             'tcp://127.0.0.1')
 
         # broker to handle the execution of substeps
-        self.substep_backend_socket = self.context.socket(zmq.REP)  # ROUTER
+        self.substep_backend_socket = create_socket(self.context, zmq.REP)  # ROUTER
         env.config['sockets']['substep_backend'] = self.substep_backend_socket.bind_to_random_port(
             'tcp://127.0.0.1')
 
         # tapping
         if env.config['exec_mode'] == 'master':
-            self.tapping_logging_socket = self.context.socket(zmq.PULL)
+            self.tapping_logging_socket = create_socket(self.context, zmq.PULL)
             env.config['sockets']['tapping_logging'] = self.tapping_logging_socket.bind_to_random_port(
                 'tcp://127.0.0.1')
 
-            self.tapping_listener_socket = self.context.socket(zmq.PULL)
+            self.tapping_listener_socket = create_socket(self.context, zmq.PULL)
             env.config['sockets']['tapping_listener'] = self.tapping_listener_socket.bind_to_random_port(
                 'tcp://127.0.0.1')
 
-            self.tapping_controller_socket = self.context.socket(zmq.PUSH)
+            self.tapping_controller_socket = create_socket(self.context, zmq.PUSH)
             env.config['sockets']['tapping_controller'] = self.tapping_controller_socket.bind_to_random_port(
                 'tcp://127.0.0.1')
 
         if env.config['exec_mode'] == 'slave':
-            self.tapping_controller_socket = self.context.socket(zmq.PULL)
+            self.tapping_controller_socket = create_socket(self.context, zmq.PULL)
             self.tapping_controller_socket.connect(
                 f'tcp://127.0.0.1:{env.config["sockets"]["tapping_controller"]}')
 
@@ -521,20 +539,14 @@ class Controller(threading.Thread):
             if env.config['exec_mode'] == 'slave':
                 poller.unregister(self.tapping_controller_socket)
 
-            self.master_push_socket.LINGER = 0
-            self.master_push_socket.close()
-            self.master_request_socket.LINGER = 0
-            self.master_request_socket.close()
-            self.substep_backend_socket.LINGER = 0
-            self.substep_backend_socket.close()
+            close_socket(self.master_push_socket)
+            close_socket(self.master_request_socket)
+            close_socket(self.substep_backend_socket)
             if env.config['exec_mode'] == 'master':
-                self.tapping_logging_socket.LINGER = 0
-                self.tapping_logging_socket.close()
-                self.tapping_listener_socket.LINGER = 0
-                self.tapping_listener_socket.close()
+                close_socket(self.tapping_logging_socket)
+                close_socket(self.tapping_listener_socket)
             # both master and slave has it
             if env.config['exec_mode'] in ('master', 'slave'):
-                self.tapping_controller_socket.LINGER = 0
-                self.tapping_controller_socket.close()
+                close_socket(self.tapping_controller_socket)
 
             env.logger.trace(f'controller stopped {os.getpid()}')
