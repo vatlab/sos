@@ -80,7 +80,7 @@ def __traced__(*args, **kwargs):
 
 def __named_output__(name, group_by=None, paired_with=None, pattern=None,
     group_with=None, for_each=None, remove_empty_groups=True):
-    target = request_answer_from_controller(['named_output', name])
+    targets = request_answer_from_controller(['named_output', name])
     if targets is None:
         env.logger.warning(f'named_output("{name}") is not found')
         return sos_targets([])
