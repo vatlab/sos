@@ -34,15 +34,20 @@ You can install the latest git version of SoS with commands
 although the development version can be less stable than the released
 version.
 
-You can install SoS Notebook and all language modules, and register the sos kernel with Jupyter using the following commands
+You can install SoS Notebook, and register the sos kernel with Jupyter using the following commands
 
 ```
 % pip install sos-notebook
 % python -m sos_notebook.install
 ```
 
-although different modules might be needed for SoS Notebook to work with
-other kernels. Please refer to [the installation page of sos website](https://vatlab.github.io/sos-docs/#runningsos) for details.
+To exchange data between live kernels in SoS Notebook, you will need to install individual kernels (e.g. `irkernel` for `R`),
+make sure they work under Jupyter, and install SoS language modules using commands such as
+
+```
+% pip install sos-r sos-matlab sos-python sos-bash
+```
+Different modules might be needed to assist data exchange among kernels. Please refer to [the installation page of sos website](https://vatlab.github.io/sos-docs/#runningsos) for details.
 
 ### Change Log of SoS and SoS Notebook
 
