@@ -472,11 +472,6 @@ class SoS_ExecuteScript:
                             cmd, ret, os.getcwd(),
                             f', task={os.path.basename(env.sos_dict["__std_err__"]).split(".")[0]}' if '__std_err__' in env.sos_dict else '',
                             out, err, '-' * 75))
-            except RuntimeError:
-                raise
-            except Exception as e:
-                env.logger.error(e)
-                raise
             finally:
                 os.remove(script_file)
 
