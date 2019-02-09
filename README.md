@@ -51,6 +51,9 @@ Different modules might be needed to assist data exchange among kernels. Please 
 
 ### Change Log of SoS and SoS Notebook
 
+SoS Notebook 0.18.5
+* [sos-notebook#192](https://github.com/vatlab/sos-notebook/issues/192): Allow language modules to support pattern matched kernel names such as julia-?.?
+
 SoS 0.18.6
 * [sos#1206](https://github.com/vatlab/SoS/issues/1206): Allow `output_from(step)` to obtain output from a workflow.
 
