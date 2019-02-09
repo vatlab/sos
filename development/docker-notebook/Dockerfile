@@ -75,6 +75,4 @@ RUN     DUMMY=${DUMMY} pip install sos sos-notebook sos-r sos-julia sos-python s
 RUN     python -m sos_notebook.install
 RUN     jupyter labextension install jupyterlab-sos
 
-COPY    examples /home/jovyan/examples
-
 USER    jovyan

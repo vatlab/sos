@@ -46,6 +46,10 @@ run:
 
 	docker build --no-cache -t mdabioinfo/sos-notebook docker-notebook
 	docker push mdabioinfo/sos-notebook
+
+	docker build --no-cache -t mdabioinfo/sos-demo docker-demo
+	docker push mdabioinfo/sos-demo
+
 # update docker on ec2
 
 [update-ec2]
