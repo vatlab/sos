@@ -854,6 +854,19 @@ sh:
 sh('echo "b"')
 ''')
         script.workflow()
+        #
+        # script with triple quote and format string
+        # #1211
+        script = SoS_Script('''
+[1]
+python3: expand = "${ }"
+
+  ld = ${'100'}
+  a =  """doc"""
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
 
     def testInput(self):
         '''Test input directive'''

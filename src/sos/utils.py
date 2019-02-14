@@ -733,27 +733,100 @@ def locate_script(filename, start=''):
     raise ValueError(f'Failed to locate {filename}')
 
 
-def text_repr(text):
-    """return a valid string representation of text, but requires that
-    it is double quoted so that sos can interpolate text in script style
-    """
-    # in the simple case, we can just use r""" """
-    if '"""' not in text and not text.endswith('"'):
-        return 'r"""' + text + '"""'
-    # if things need to be quoted, let us first use repr
-    # to quote them
-    r = repr(text)
-    # if the result happens to be double quoted, good
-    # although it appears to me that Python 3 only use single quote.
-    if r.startswith('"'):
-        return r
-    # otherwise we have to manually change single quote to double quote
-    #
-    # The problem here is that the representation can have a bunch of \'
-    # and I have to hope that \' will be correctly interpreted in " "
-    # strings
-    return '"' + r.replace('"', r'\"')[1:-1] + '"'
+import ast
 
+def valid_expr_till(text):
+    pos = len(text)
+    while pos > 0:
+        try:
+            if not text[:pos].lstrip():
+                return 0
+            ast.parse(text[:pos].lstrip())
+            if pos == len(text) or text[pos] == '!' or text[pos] == ':':
+                return pos
+            else:
+                return 0
+        except:
+            pos -= 1
+    return 0
+
+def check_last_piece(text):
+    pos = 0
+    while True:
+        spos = text.find('}', pos)
+        if spos == -1:
+            return True
+        elif spos == len(text) - 1 or text[spos + 1] != '}':
+            raise SyntaxError("f-string: single '}' is not allowed")
+        elif spos == len(text) - 2:
+            # }} as the last
+            return True
+        else:
+            pos = spos + 2
+
+def split_fstring(text):
+    # now that we have the correct sigil
+    # first, we need to replace all { as {{ and } as }}
+    pieces = []
+    pos = 0
+    lastpos = 0
+    while True:
+        dpos = text.find('{{', pos)
+        spos = text.find('{', pos)
+        if spos == -1:
+            # no more {
+            check_last_piece(text)
+            pieces.append(text)
+            break
+        if spos == dpos:  # no { before {{
+            pos = dpos + 2
+            continue
+        # now we have a valid spos
+        pieces.append(text[:spos])
+        # skip '{'
+        rhs_pieces = text[spos + 1:].split('}')
+        if len(rhs_pieces) == 1:
+            raise SyntaxError(f'Invalid f-string {text}: missing right sigil at {text[pos:pos+20]}')
+        # rhs = 'whatever }' :r} something else {}
+        #
+        # we need to include } in expression
+        for n in range(1, len(rhs_pieces) + 1):
+            if valid_expr_till('}'.join(rhs_pieces[:n])) > 0:
+                pieces.append('}'.join(rhs_pieces[:n]))
+                text = '}'.join(rhs_pieces[n:])
+                break
+            # the last one, still not valid
+            if n == len(rhs_pieces):
+                raise SyntaxError(f'Invalid f-string "{text}": invalid or empty expression')
+    return pieces
+
+def as_fstring(text):
+    """expansion with python f-string, usually ok, but with the case
+       of ' inside expressions, adding repr will add backslash to it
+       and cause trouble.
+    """
+    for quote in ('"""', "'''"):
+        if quote not in text:
+            return 'fr' + quote + text + quote
+
+    # now, we need to look into the structure of f-string
+    pieces = split_fstring(text)
+    # if all expressions do not have single quote, we can
+    # safely repr the entire string
+    if not any("'" in piece for piece in pieces[1::2]):
+        return 'f' + repr(text)
+    #
+    # unfortunately, this thing has both single and double triple quotes
+    # because we cannot use backslash inside expressions in f-string, we
+    # have to use format string now.
+    args = []
+    for idx in range(len(pieces))[1::2]:
+        pos = valid_expr_till(pieces[idx])
+        if pos == 0:
+            raise SyntaxError(f'invalid expression in {pieces[idx]}')
+        args.append(pieces[idx][:pos])
+        pieces[idx] = '{' + str(idx//2) + pieces[idx][pos:] + '}'
+    return repr(''.join(pieces)) + '.format(' + ', '.join(args) + ')'
 
 def natural_keys(text):
     '''

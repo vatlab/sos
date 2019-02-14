@@ -14,7 +14,7 @@ from sos.pattern import expand_pattern, extract_pattern
 from sos.targets import executable, sos_targets, file_target, sos_step
 # these functions are normally not available but can be imported
 # using their names for testing purposes
-from sos.utils import WorkflowDict, env, logger, stable_repr
+from sos.utils import WorkflowDict, env, logger, stable_repr, split_fstring, as_fstring
 from sos.workflow_executor import analyze_section
 from sos.workflow_executor import Base_Executor
 
@@ -269,6 +269,49 @@ input: something_unknown, sos_groups(output_from(['C1', 'C2']), by=2), group_by=
             ts.write('bac')
         self.assertFalse(a.validate())
 
+    def testSplitFstring(self):
+        '''Test function to split f-string in pieces '''
+        for string, pieces in [
+            ('hello world' , ['hello world']),
+            ('hello world {' , None),
+            ('{ hello world' , None),
+            ('hello world {}' , None),
+            ('hello world {a b}' , None),
+            ('{{hello world' , ['{{hello world']),
+            ('hello {{}} world' , ['hello {{}} world']),
+            ('hello {{ world }}' , ['hello {{ world }}']),
+            ('hello }} world' , ['hello }} world']),
+            ('hello {1} world' , ['hello ', '1', ' world']),
+            ('hello {a+b } }} world' , ['hello ', 'a+b ', ' }} world']),
+            ('hello {a+b:r} }} world' , ['hello ', 'a+b:r', ' }} world']),
+            ('hello {{{a+b!r} }} world' , ['hello {{', 'a+b!r', ' }} world']),
+            ('hello {a+b + {1,2}.pop() } }} world' , ['hello ', 'a+b + {1,2}.pop() ', ' }} world']),
+            ]:
+            if pieces is None:
+                self.assertRaises(SyntaxError, split_fstring, string)
+            else:
+                self.assertEqual(split_fstring(string), pieces)
+
+    def testAsFstring(self):
+        '''Test as fstring '''
+        for string, fstring in [
+            ('hello world' , 'fr"""hello world"""'),
+            ('{{hello world' , 'fr"""{{hello world"""'),
+            ('hello {{}} world' , 'fr"""hello {{}} world"""'),
+            ('hello {{ world }}' , 'fr"""hello {{ world }}"""'),
+            ('hello }} \n world' , 'fr"""hello }} \n world"""'),
+            (r'hello }} \n world' , 'fr"""hello }} \\n world"""'),
+            ('hello {1} world' , 'fr"""hello {1} world"""'),
+            ('hello {a+b } }} world' , 'fr"""hello {a+b } }} world"""'),
+            ('hello {a+b:r} }} world' , 'fr"""hello {a+b:r} }} world"""'),
+            ('''hello """ \'\'\' {a+b } }} world''', 'f\'hello """ \\\'\\\'\\\' {a+b } }} world\''),
+            ('hello {{{a+b!r} }} world' , 'fr"""hello {{{a+b!r} }} world"""'),
+            ('hello {a+b + {1,2}.pop() } }} world' , 'fr"""hello {a+b + {1,2}.pop() } }} world"""'),
+            ('''hello {'a'+b !r} }} world''' , 'fr"""hello {\'a\'+b !r} }} world"""'),
+            ('''hello """ \'\'\' {'a'+"b" + {"c", "D"}.pop() } }} world''' ,
+                '\'hello """ \\\'\\\'\\\' {0} }} world\'.format(\'a\'+"b" + {"c", "D"}.pop() )'),
+            ]:
+            self.assertEqual(as_fstring(string), fstring)
 
 if __name__ == '__main__':
     unittest.main()

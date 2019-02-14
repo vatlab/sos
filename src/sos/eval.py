@@ -7,7 +7,7 @@ import ast
 import sys
 from typing import Any, Dict, Optional, Set
 
-from .utils import env, text_repr
+from .utils import env, as_fstring
 
 
 def interpolate(text, global_dict=None, local_dict=None):
@@ -15,7 +15,7 @@ def interpolate(text, global_dict=None, local_dict=None):
     # step 1, make it a f-string (add quotation marks and f
     # step 2, evaluate as a string
     try:
-        return eval('f' + text_repr(text), global_dict, local_dict)
+        return eval(as_fstring(text), global_dict, local_dict)
     except Exception as e:
         raise ValueError(f'Failed to interpolate {text}: {e}')
 

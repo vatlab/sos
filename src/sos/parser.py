@@ -25,7 +25,7 @@ from .syntax import (INDENTED, SOS_AS, SOS_CELL, SOS_DIRECTIVE, SOS_DIRECTIVES,
                      SOS_MAGIC, SOS_SECTION_HEADER, SOS_SECTION_NAME,
                      SOS_SECTION_OPTION, SOS_STRU, SOS_SUBWORKFLOW, SOS_ACTION_OPTIONS)
 from .targets import file_target, path, paths, sos_targets, textMD5
-from .utils import Error, env, locate_script, text_repr, format_par, separate_options
+from .utils import Error, env, locate_script, as_fstring, valid_expr_till, format_par, separate_options
 
 __all__ = ['SoS_Script']
 
@@ -173,14 +173,29 @@ def replace_sigil(text: str, sigil: str) -> str:
             final_text += text.replace('{', '{{').replace('}', '}}')
             break
         else:
-            # find right sigil
-            right_pieces = rp.split(pieces[1], 1)
-            if len(right_pieces) == 1:
-                raise ValueError(f'Missing right sigil in {text}')
-            final_text += pieces[0].replace('{', '{{').replace('}', '}}') + \
-                '{' + \
-                right_pieces[0].replace('{', '{{').replace('}', '}}') + '}'
-            text = right_pieces[1]
+            rhs = pieces[1]
+            # now if there is {, we need to find matching number of }
+            # basically we need to find syntaxly valid expression before
+            # ending bracket... or !
+            rhs_pieces = rp.split(rhs)
+            if len(rhs_pieces) == 1:
+                raise ValueError(f'Invalid f-string {text}: missing right sigil at {rhs[:20]}')
+
+            # say we have sigil = [ ]
+            #
+            # rhs = 'whatever ]' :r] something else [ ]
+            #
+            # we need to include ] in expression
+            #
+            for n in range(1, len(rhs_pieces) + 1):
+                if valid_expr_till(r.join(rhs_pieces[:n])) > 0:
+                    final_text += pieces[0].replace('{', '{{').replace('}', '}}') + \
+                        '{' + r.join(rhs_pieces[:n]) + '}'
+                    text = r.join(rhs_pieces[n:])
+                    break
+                # the last one, still not valid
+                if n == len(rhs_pieces):
+                    raise ValueError(f'Invalid f-string {text}: invalid expression')
     # finally, replace LSIGIL etc
     return final_text
 
@@ -411,21 +426,24 @@ class SoS_Step:
         # under window, the lines will be ended with \r\n, which will cause
         # trouble with textwrap.dedent.
         self._script = '\n'.join(self._script.splitlines()) + '\n'
-        # the script will be considered a f-string, but we will need to handle sigil option here
-        self._script = text_repr(textwrap.dedent(self._script))
+        # dedent, which will not remove empty line, so _scrit will always ends with \n.
+        self._script = textwrap.dedent(self._script)
         # let us look for 'expand=""' in options
         prefix = ''
         if 'expand' in opt:
             sigil, opt = extract_option_from_arg_list(opt, 'expand', None)
             if sigil is None or sigil is False:
-                pass
+                # no expansion
+                self._script = repr(self._script)
             elif sigil is True:
-                prefix = 'f'
+                self._script = as_fstring(self._script)
             else:
-                prefix = 'f'
-                self._script = replace_sigil(self._script, sigil)
+                self._script = as_fstring(replace_sigil(self._script, sigil))
+        else:
+            # verbatim script, use repr is enough
+            self._script = repr(self._script)
         self.statements[-1] = ['!',
-                               f'{self._action}({prefix}{self._script}{(", " + opt) if opt else ""})\n']
+                               f'{self._action}({self._script}{(", " + opt) if opt else ""})\n']
         self.values = []
         self._action = None
         self._action_options = None
