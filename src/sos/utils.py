@@ -806,7 +806,9 @@ def as_fstring(text):
        and cause trouble.
     """
     for quote in ('"""', "'''"):
-        if quote not in text:
+        # although script-format always ends with \n, direct use of this function might
+        # have string ending with " or '
+        if quote not in text and not text.endswith(quote[0]):
             return 'fr' + quote + text + quote
 
     # now, we need to look into the structure of f-string
