@@ -109,7 +109,7 @@ class SoS_Worker(mp.Process):
             except KeyboardInterrupt:
                 break
         # Finished
-        close_socket(env.master_socket)
+        close_socket(env.master_socket. now=True)
         disconnect_controllers(env.zmq_context)
 
         # env.logger.warning(f'Worker terminated {os.getpid()}')
@@ -213,6 +213,6 @@ class SoS_SubStep_Worker(mp.Process):
             execute_substep(**msg)
 
         close_socket(env.master_socket, 'substep backend')
-        disconnect_controllers(env.zmq_context)
+        disconnect_controllers(env.zmq_context, now=True)
 
         # env.logger.warning(f'Substep worker terminated {os.getpid()}')

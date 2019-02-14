@@ -46,14 +46,14 @@ def send_message_to_controller(msg):
     if env.master_push_socket is None:
         env.master_push_socket = create_socket(env.zmq_context, zmq.PUSH, 'master push')
         env.master_push_socket.connect(
-            f'tcp://127.0.0.1:{env.config["sockets"]["signature_push"]}')
+            f'tcp://127.0.0.1:{env.config["sockets"]["master_push"]}')
     env.master_push_socket.send_pyobj(msg)
 
 def request_answer_from_controller(msg):
     if env.master_request_socket is None:
         env.master_request_socket = create_socket(env.zmq_context, zmq.REQ, 'master request')
         env.master_request_socket.connect(
-            f'tcp://127.0.0.1:{env.config["sockets"]["signature_req"]}')
+            f'tcp://127.0.0.1:{env.config["sockets"]["master_request"]}')
     env.master_request_socket.send_pyobj(msg)
     return env.master_request_socket.recv_pyobj()
 
@@ -86,15 +86,15 @@ def connect_controllers(context=None):
 
 
 def disconnect_controllers(context=None):
-    close_socket(env.master_push_socket)
-    close_socket(env.master_request_socket)
+    close_socket(env.master_push_socket, now=True)
+    close_socket(env.master_request_socket, now=True)
 
     if env.config['exec_mode'] == 'slave':
-        close_socket(env.tapping_logging_socket)
+        close_socket(env.tapping_logging_socket, now=True)
         env.set_socket_logger(None)
 
     if env.config['exec_mode'] in ('master', 'slave'):
-        close_socket(env.tapping_listener_socket)
+        close_socket(env.tapping_listener_socket, now=True)
 
     env.logger.trace(f'Disconnecting sockets from {os.getpid()}')
 
@@ -422,9 +422,6 @@ class Controller(threading.Thread):
     def run(self):
         # there are two sockets
         #
-        # signature_push is used to write signatures. It is a single push operation with no reply.
-        # signature_req is used to query information. The sender would need to get an response.
-
         self.context = zmq.Context.instance()
 
         env.logger.trace(f'controller started {os.getpid()}')
@@ -433,10 +430,10 @@ class Controller(threading.Thread):
             env.config['sockets'] = {}
 
         self.master_push_socket = create_socket(self.context, zmq.PULL, 'controller master_pull')
-        env.config['sockets']['signature_push'] = self.master_push_socket.bind_to_random_port(
+        env.config['sockets']['master_push'] = self.master_push_socket.bind_to_random_port(
             'tcp://127.0.0.1')
         self.master_request_socket = create_socket(self.context, zmq.REP, 'controller master_request')
-        env.config['sockets']['signature_req'] = self.master_request_socket.bind_to_random_port(
+        env.config['sockets']['master_request'] = self.master_request_socket.bind_to_random_port(
             'tcp://127.0.0.1')
 
         # broker to handle the execution of substeps
@@ -560,15 +557,15 @@ class Controller(threading.Thread):
             if env.config['exec_mode'] == 'slave':
                 poller.unregister(self.tapping_controller_socket)
 
-            close_socket(self.master_push_socket)
-            close_socket(self.master_request_socket)
-            close_socket(self.substep_backend_socket)
+            close_socket(self.master_push_socket, now=True)
+            close_socket(self.master_request_socket, now=True)
+            close_socket(self.substep_backend_socket, now=True)
 
             if env.config['exec_mode'] == 'master':
-                close_socket(self.tapping_logging_socket)
-                close_socket(self.tapping_listener_socket)
+                close_socket(self.tapping_logging_socket, now=True)
+                close_socket(self.tapping_listener_socket, now=True)
             # both master and slave has it
             if env.config['exec_mode'] in ('master', 'slave'):
-                close_socket(self.tapping_controller_socket)
+                close_socket(self.tapping_controller_socket, now=True)
 
             env.logger.trace(f'controller stopped {os.getpid()}')
