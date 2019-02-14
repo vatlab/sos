@@ -46,7 +46,7 @@ def accessed_vars(statement: str, filename: str = '<string>', mode: str = 'exec'
 
 def SoS_eval(expr: str, extra_dict: dict = {}) -> Any:
     '''Evaluate an expression with sos dict.'''
-    return eval(expr, env.sos_dict._dict, extra_dict)
+    return eval(expr, env.sos_dict.dict(), extra_dict)
 
 
 def _is_expr(expr):
@@ -78,7 +78,7 @@ stmtHash = StatementHash()
 def SoS_exec(script: str, _dict: dict = None, return_result: bool = True) -> None:
     '''Execute a statement.'''
     if _dict is None:
-        _dict = env.sos_dict._dict
+        _dict = env.sos_dict.dict()
 
     if not return_result:
         exec(compile(script, filename=stmtHash.hash(script), mode='exec'), _dict)

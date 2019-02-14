@@ -4,7 +4,6 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 
-import glob
 import os
 import shutil
 import subprocess
@@ -15,7 +14,7 @@ import sqlite3
 from contextlib import contextmanager
 
 from sos.hosts import Host
-from sos.parser import ParsingError, SoS_Script
+from sos.parser import  SoS_Script
 from sos.targets import file_target
 from sos.utils import env
 from sos.tasks import TaskParams, TaskFile
@@ -451,7 +450,7 @@ run: expand=True
         for i in range(10):
             if os.path.isfile(f'{i}.txt'):
                 file_target(f'{i}.txt').unlink()
-        res = Base_Executor(wf, config={
+        Base_Executor(wf, config={
             'sig_mode': 'force',
             'script': 'test_trunksize.sos',
             'max_running_jobs': 10,
@@ -481,7 +480,7 @@ run: expand=True
     sleep 2
 ''')
         wf = SoS_Script(filename='test_trunkworker.sos').workflow()
-        res = Base_Executor(wf, config={
+        Base_Executor(wf, config={
             'sig_mode': 'force',
             'script': 'test_trunkworker.sos',
             'max_running_jobs': 10,
@@ -773,7 +772,7 @@ sleep 2
             tf = TaskFile(tasks[0])
             self.assertTrue(tf.has_signature())
             self.assertEqual(tf.status, 'completed')
-            info = tf.tags_created_start_and_duration()
+            tf.tags_created_start_and_duration()
             #
             subprocess.call('sos run test', shell=True)
             self.assertLess(tf.tags_created_start_and_duration()[3], 1)

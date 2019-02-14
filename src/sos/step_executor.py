@@ -10,7 +10,7 @@ import subprocess
 import sys
 import time
 from collections import Iterable, Mapping, Sequence, defaultdict
-from typing import List, Union
+from typing import List
 
 import zmq
 
@@ -140,7 +140,7 @@ class TaskManager:
                     ids.append(master.ID)
                     TaskFile(master.ID).save(master)
                     send_message_to_controller(['workflow_sig', 'task', master.ID,
-                                              f"{{'creation_time': {time.time()}}}"])
+                                                f"{{'creation_time': {time.time()}}}"])
                     master = None
                 if master is None:
                     master = MasterTaskParams(self.trunk_workers)
@@ -458,7 +458,7 @@ class Base_Step_Executor:
             if self.step.task_params:
                 for key in ('trunk_size', 'trunk_workers', 'queue'):
                     val = get_value_of_param(key, self.step.task_params,
-                        extra_dict=env.sos_dict._dict)
+                        extra_dict=env.sos_dict.dict())
                     if val:
                         env.sos_dict['_runtime'][key] = val[0]
 
@@ -755,14 +755,14 @@ class Base_Step_Executor:
 
         if self.step.task_params:
             try:
-                task_queue = get_value_of_param('queue', self.step.task_params, extra_dict=env.sos_dict._dict)
+                task_queue = get_value_of_param('queue', self.step.task_params, extra_dict=env.sos_dict.dict())
                 if task_queue:
                     env.sos_dict['_runtime']['queue'] = task_queue[0]
             except Exception as e:
                 raise ValueError(f'Failed to determine value of parameter queue of {self.step.task_params}: {e}')
             # check concurrent #1134
             try:
-                task_concurrency = get_value_of_param('concurrent', self.step.task_params, extra_dict=env.sos_dict._dict)
+                task_concurrency = get_value_of_param('concurrent', self.step.task_params, extra_dict=env.sos_dict.dict())
                 if task_concurrency:
                     env.sos_dict['_runtime']['concurrent'] = task_concurrency[0]
             except Exception as e:

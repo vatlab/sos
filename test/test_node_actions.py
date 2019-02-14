@@ -4,7 +4,6 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 
-import os
 import shutil
 import unittest
 

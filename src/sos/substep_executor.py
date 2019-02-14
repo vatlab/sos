@@ -3,20 +3,22 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
+import contextlib
 import subprocess
 import sys
-import contextlib
-import zmq
-
 from io import StringIO
 
-from .eval import SoS_exec
-from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock, sos_targets)
-from .executor_utils import (prepare_env, clear_output, verify_input, kill_all_subprocesses,
-        reevaluate_output, validate_step_sig, create_task, get_traceback_msg, statementMD5)
+import zmq
 
-from .utils import (StopInputGroup, TerminateExecution, ArgumentError, env)
-from .controller import create_socket, close_socket, send_message_to_controller
+from .controller import close_socket, create_socket, send_message_to_controller
+from .eval import SoS_exec
+from .executor_utils import (clear_output, create_task, get_traceback_msg,
+                             kill_all_subprocesses, prepare_env,
+                             reevaluate_output, statementMD5,
+                             validate_step_sig, verify_input)
+from .targets import RemovedTarget, RuntimeInfo, UnavailableLock, sos_targets
+from .utils import ArgumentError, StopInputGroup, TerminateExecution, env
+
 
 @contextlib.contextmanager
 def stdoutIO():
@@ -216,7 +218,7 @@ def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars
     except Exception as e:
         clear_output()
         res = {'index': env.sos_dict['_index'], 'ret_code': 1,
-            'exception': RuntimeError(get_traceback_msg(e))}
+               'exception': RuntimeError(get_traceback_msg(e))}
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res

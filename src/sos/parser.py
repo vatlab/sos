@@ -429,7 +429,6 @@ class SoS_Step:
         # dedent, which will not remove empty line, so _scrit will always ends with \n.
         self._script = textwrap.dedent(self._script)
         # let us look for 'expand=""' in options
-        prefix = ''
         if 'expand' in opt:
             sigil, opt = extract_option_from_arg_list(opt, 'expand', None)
             if sigil is None or sigil is False:

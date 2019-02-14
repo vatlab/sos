@@ -9,8 +9,6 @@ import subprocess
 import unittest
 from pathlib import Path
 
-from sos.targets import file_target
-
 
 class TestRemove(unittest.TestCase):
     def setUp(self):

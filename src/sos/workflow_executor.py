@@ -13,14 +13,14 @@ import zmq
 
 from collections import defaultdict, Sequence
 from io import StringIO
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 from threading import Event
 
 from ._version import __version__
 from .dag import SoS_DAG, SoS_Node
 from .eval import SoS_exec
 from .hosts import Host
-from .parser import SoS_Step, SoS_Workflow
+from .parser import SoS_Workflow
 from .pattern import extract_pattern
 from .workflow_report import render_report
 from .controller import Controller, connect_controllers, disconnect_controllers, create_socket, close_socket, request_answer_from_controller, send_message_to_controller
@@ -273,7 +273,7 @@ class Base_Executor:
         finally:
             # end progress bar when the master workflow stops
             env.logger.trace(f'Stop controller from {os.getpid()}')
-            request_answer_from_controller(['done', succ])            
+            request_answer_from_controller(['done', succ])
             env.logger.trace('disconntecting master')
             # if the process is failed, some workers might be killed, resulting
             # in nonresponseness from the master, and the socket context cannot
@@ -356,7 +356,7 @@ class Base_Executor:
 
         for step in sections:
             if not hasattr(step, '_analyzed'):
-                ret = self.analyze_auxiliary_step(step)
+                self.analyze_auxiliary_step(step)
                 step._analyzed = True
             # a step first provides sos_step
             for name, index, _ in step.names:
@@ -428,7 +428,7 @@ class Base_Executor:
         # try pattern?
         for pattern, steps in self._target_patterns.items():
             if len(steps) > 1:
-                raise RuntimeErrors(f'Multiple steps providing the same pattern.')
+                raise RuntimeError(f'Multiple steps providing the same pattern.')
             # if this is a regular string
             res = extract_pattern(pattern, [str(target)])
             if res and not any(None in x for x in res.values()):
@@ -523,13 +523,13 @@ class Base_Executor:
                         env.sos_dict['__default_output__'] = sos_targets(target)
                     else:
                         env.sos_dict['__default_output__'] = sos_targets(
-                            section.options['provides'])
+                            mo[0][0].options['provides'])
                     n_added, _ = self.add_backward_step(dag, section=mo[0][0],
                         context = mo[0][1] if isinstance(mo[0][1], dict) else {},
                         target=target)
                 else:
                     env.sos_dict['__default_output__'] = sos_targets(target)
-                    n_added, _ = self.add_backward_step(dag, section=mo[0], context = {},
+                    n_added, _ = self.add_backward_step(dag, section=mo[0], context={},
                     target=target)
 
                 added_node += n_added
@@ -546,7 +546,6 @@ class Base_Executor:
                 else:
                     continue
 
-            node_added = False
             existing_targets = set(dag.dangling(targets)[1]) if env.config['trace_existing'] else traced
 
             remaining_targets = existing_targets
@@ -572,7 +571,7 @@ class Base_Executor:
                         env.sos_dict['__default_output__'] = sos_targets(target)
                     else:
                         env.sos_dict['__default_output__'] = sos_targets(
-                            section.options['provides'])
+                            mo[0][0].options['provides'])
                     n_added, resolved_output = self.add_backward_step(dag, section=mo[0][0],
                         context = mo[0][1] if isinstance(mo[0][1], dict) else {},
                         target=target)
@@ -581,7 +580,6 @@ class Base_Executor:
                     n_added, resolved_output = self.add_backward_step(dag, section=mo[0], context = {},
                     target=target)
 
-                node_added = True
                 added_node += n_added
                 resolved += n_added
 
@@ -832,10 +830,9 @@ class Base_Executor:
                     if mo[0][1]:
                         env.sos_dict['__default_output__'] = sos_targets(target)
                     else:
-                        env.sos_dict['__default_output__'] = sos_targets(
-                            section.options['provides'])
+                        env.sos_dict['__default_output__'] = sos_targets(mo[0][0].options['provides'])
                     n_added, _ = self.add_backward_step(dag, section=mo[0][0],
-                        context = mo[0][1] if isinstance(mo[0][1], dict) else {},
+                        context=mo[0][1] if isinstance(mo[0][1], dict) else {},
                         target=target)
                 else:
                     env.sos_dict['__default_output__'] = sos_targets(target)

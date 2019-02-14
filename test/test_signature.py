@@ -8,7 +8,6 @@ import shutil
 import subprocess
 import sys
 import unittest
-import shutil
 
 from sos.hosts import Host
 from sos.parser import SoS_Script

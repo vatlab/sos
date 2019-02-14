@@ -12,7 +12,7 @@ import re
 import psutil
 import traceback
 
-from typing import Any, List, Tuple
+from typing import Any
 from collections import Sequence
 from io import StringIO
 from tokenize import generate_tokens
@@ -136,7 +136,7 @@ def prepare_env(global_def='', extra_dict={}):
         # note that we do not handle parameter in tasks because values should already be
         # in sos_task dictionary
         gd = strip_param_defs(global_def)
-        env.sos_dict._dict.update(extra_dict)
+        env.sos_dict.quick_update(extra_dict)
         SoS_exec('''\
 import os, sys
 from sos.runtime import *

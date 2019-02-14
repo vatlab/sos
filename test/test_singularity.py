@@ -4,23 +4,14 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import os
-import signal
 import sys
 import shutil
-import threading
 import unittest
-from contextlib import contextmanager
 
 from sos.parser import SoS_Script
 from sos.targets import file_target
 from sos.utils import env
 from sos.workflow_executor import Base_Executor
-
-try:
-    import _thread
-except Exception:
-    import _dummy_thread as _thread
-
 
 class TestSingularityActions(unittest.TestCase):
     def setUp(self):
@@ -68,10 +59,7 @@ From: ubuntu:16.04
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-
-    @unittest.skipIf(not shutil.which('singularity')  or sys.platform == 'win32', 'Skip test because docker is not installed.')
-    def testSingularityBuildLinuxImage(self):
-        '''Test action singularity build'''
+        #
         script = SoS_Script(r'''
 singularity_build(src='shub://GodloveD/lolcow', dest='lolcow_shub.simg', sudo=True, notest=True)
 ''')

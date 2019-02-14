@@ -6,15 +6,14 @@
 import ast
 import subprocess
 import sys
-import re
 
-from collections import Iterable, Mapping, Sequence
+from collections import  Mapping, Sequence
 from typing import Any, Dict, Optional
 
 from .eval import SoS_eval, SoS_exec, accessed_vars
 from .parser import SoS_Step
 from .targets import (dynamic, remote, sos_targets, sos_step, named_output)
-from .utils import env, get_traceback, separate_options
+from .utils import env, get_traceback
 from .executor_utils import  __null_func__, prepare_env, strip_param_defs
 from .syntax import SOS_TARGETS_OPTIONS
 
@@ -108,7 +107,7 @@ def get_environ_vars(section):
     depends_idx = find_statement(section, 'depends')
     if depends_idx is not None:
         value = section.statements[depends_idx][2]
-        args = get_param_of_function('sos_variable', value, extra_dict=env.sos_dict._dict)
+        args = get_param_of_function('sos_variable', value, extra_dict=env.sos_dict.dict())
         for arg in args:
             if len(arg) == 2:
                 raise SyntaxError('sos_variable does not accept keyword argument')
@@ -151,7 +150,7 @@ def get_step_depends(section):
         if 'named_output' in stmt:
             # there can be multiple named_output calls
             pars = get_param_of_function('named_output', stmt,
-                extra_dict=env.sos_dict._dict)
+                extra_dict=env.sos_dict.dict())
             for par in pars:
                 # a single argument
                 if len(par) == 1:
@@ -172,15 +171,15 @@ def get_step_depends(section):
         value = section.statements[depends_idx][2]
         try:
             svars = ['output_from', 'named_output']
-            old_values = {x:env.sos_dict._dict[x] for x in svars if x in env.sos_dict._dict}
+            old_values = {x:env.sos_dict.dict()[x] for x in svars if x in env.sos_dict.dict()}
             # output_from and named_output has been processed
-            env.sos_dict._dict.update({
+            env.sos_dict.quick_update({
                 'output_from': lambda *args, **kwargs: None,
                 'named_output': lambda *args, **kwargs: None,
                 'traced': lambda *args, **kwargs: sos_targets(*args, **kwargs)
                 })
             args, kwargs = SoS_eval(f'__null_func__({value})',
-                extra_dict=env.sos_dict._dict)
+                extra_dict=env.sos_dict.dict())
             if any(isinstance(x, (dynamic, remote)) for x in args):
                 dynamic_depends = True
             else:
@@ -191,8 +190,8 @@ def get_step_depends(section):
         except Exception as e:
             pass
         finally:
-            [env.sos_dict._dict.pop(x) for x in svars]
-            env.sos_dict._dict.update(old_values)
+            [env.sos_dict.dict().pop(x) for x in svars]
+            env.sos_dict.quick_update(old_values)
     # env.logger.debug(f"Args {value} cannot be determined: {e}")
     return step_depends, dynamic_depends
 
@@ -212,8 +211,8 @@ def get_step_input(section, default_input):
     stmt = section.statements[input_idx][2]
     try:
         svars = ['output_from', 'named_output', 'sos_step', 'sos_variable']
-        old_values = {x:env.sos_dict._dict[x] for x in svars if x in env.sos_dict._dict}
-        env.sos_dict._dict.update({
+        old_values = {x:env.sos_dict.dict()[x] for x in svars if x in env.sos_dict.dict()}
+        env.sos_dict.quick_update({
             'output_from': lambda *args, **kwargs: None,
             'named_output': lambda *args, **kwargs: None,
             'traced': lambda *args, **kwargs: sos_targets(*args, **kwargs),
@@ -221,16 +220,14 @@ def get_step_input(section, default_input):
             'sos_variable': no_sos_variable,
             })
         args, kwargs = SoS_eval(f'__null_func__({stmt})',
-            extra_dict=env.sos_dict._dict)
+            extra_dict=env.sos_dict.dict())
         if not args:
             if default_input is None:
                 step_input = sos_targets()
             else:
                 step_input = default_input
-            dynamoc_input = False
         elif not any(isinstance(x, (dynamic, remote)) for x in args):
             step_input = sos_targets(*args)
-            dynamic_input = True
     except SyntaxError:
         raise
     except Exception as e:
@@ -240,8 +237,8 @@ def get_step_input(section, default_input):
         # expression ...
         step_input = sos_targets(_undetermined=stmt)
     finally:
-        [env.sos_dict._dict.pop(x) for x in svars]
-        env.sos_dict._dict.update(old_values)
+        [env.sos_dict.dict().pop(x) for x in svars]
+        env.sos_dict.quick_update(old_values)
     return step_input, dynamic_input
 
 def get_step_output(section, default_output):
@@ -261,25 +258,25 @@ def get_step_output(section, default_output):
     # output, depends, and process can be processed multiple times
     try:
         svars = ['output_from', 'named_output', 'sos_step', 'sos_variable']
-        old_values = {x:env.sos_dict._dict[x] for x in svars if x in env.sos_dict._dict}
-        env.sos_dict._dict.update({
+        old_values = {x:env.sos_dict.dict()[x] for x in svars if x in env.sos_dict.dict()}
+        env.sos_dict.quick_update({
             'output_from': no_output_from,
             'named_output': no_named_output,
             'sos_step': no_sos_step,
             'sos_variable': no_sos_variable,
             })
         args, kwargs = SoS_eval(f'__null_func__({value})',
-            extra_dict=env.sos_dict._dict)
+            extra_dict=env.sos_dict.dict())
         if not any(isinstance(x, (dynamic, remote)) for x in args):
-            step_output = sos_targets(*args, **{x:y for x,y in kwargs.items() if x not in SOS_TARGETS_OPTIONS})
+            step_output = sos_targets(*args, **{x:y for x, y in kwargs.items() if x not in SOS_TARGETS_OPTIONS})
     except SyntaxError:
         raise
     except Exception as e:
         pass
         # env.logger.debug(f"Args {value} cannot be determined: {e}")
     finally:
-        [env.sos_dict._dict.pop(x) for x in svars]
-        env.sos_dict._dict.update(old_values)
+        [env.sos_dict.dict().pop(x) for x in svars]
+        env.sos_dict.quick_update(old_values)
 
     if 'provides' in section.options and default_output is not None and step_output.valid():
         for out in default_output:
@@ -294,7 +291,7 @@ def get_output_from_steps(stmt, last_step):
     Extract output_from(1), output_from('step_1'), and output_from([1, 2])
     to determine dependent steps
     '''
-    opt_values = get_param_of_function('output_from', stmt, extra_dict=env.sos_dict._dict)
+    opt_values = get_param_of_function('output_from', stmt, extra_dict=env.sos_dict.dict())
 
     def step_name(val):
         if isinstance(val, str):
@@ -341,8 +338,6 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     vars_and_output_only: bool = False) -> Dict[str, Any]:
     '''Analyze a section for how it uses input and output, what variables
     it uses, and input, output, etc.'''
-    from ._version import __version__
-
     # analysis_key = (section.md5, section.step_name(),
     #     default_input.target_name() if hasattr(default_input, 'target_name') else '',
     #     default_output.target_name() if hasattr(default_output, 'target_name') else '', vars_and_output_only)

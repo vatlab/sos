@@ -3,21 +3,24 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
+import multiprocessing as mp
 import os
+import signal
 import subprocess
 import sys
-import zmq
-import signal
-
 from typing import Any, Dict, Optional
-import multiprocessing as mp
+
+import zmq
 
 from ._version import __version__
+from .controller import (close_socket, connect_controllers, create_socket,
+                         disconnect_controllers)
 from .eval import SoS_exec
-from .controller import connect_controllers, disconnect_controllers, create_socket, close_socket
-from .targets import sos_targets
-from .utils import WorkflowDict, env, get_traceback, load_config_files, short_repr
 from .executor_utils import kill_all_subprocesses
+from .targets import sos_targets
+from .utils import (WorkflowDict, env, get_traceback, load_config_files,
+                    short_repr)
+
 
 class ProcessKilled(Exception):
     pass

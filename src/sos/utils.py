@@ -3,6 +3,7 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
+import ast
 import argparse
 import base64
 import copy
@@ -187,8 +188,9 @@ class WorkflowDict(object):
 
     def __init__(self, *args, **kwargs):
         self._dict = dict(*args, **kwargs)
-        # self._readonly_vars = {}
-        # self._change_all_cap_vars = None
+
+    def dict(self):
+        return self._dict
 
     def set(self, key, value):
         '''A short cut to set value to key without triggering any logging
@@ -238,43 +240,7 @@ class WorkflowDict(object):
     def _log(self, key, value):
         env.logger.debug(f'Set ``{key}`` = ``{short_repr(value)}``')
 
-#    def _check_readonly(self, key, value):
-#        # we only keep track of primitive types
-#        if self._change_all_cap_vars is None or hasattr(value, '__dict__'):
-#            return
-#        if key not in self._readonly_vars:
-#            self._readonly_vars[key] = value
-#            return
-#        if key in self._dict and self._dict[key] != self._readonly_vars[key]:
-#            if self._change_all_cap_vars == 'warning':
-#                env.logger.warning(
-#                    f'Value of readonly variable {key} is changed from {self._readonly_vars[key]} to {self._dict[key]}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the warning."')
-#            else:
-#                raise RuntimeError(
-#                    f'Value of readonly variable {key} is changed from {self._readonly_vars[key]} to {self._dict[key]}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the warning."')
-#            if hasattr(self._dict[key], '__dict__'):
-#                self._readonly_vars.pop(key)
-#            else:
-#                self._readonly_vars[key] = self._dict[key]
-#
-#    def check_readonly_vars(self):
-#        if self._change_all_cap_vars is None:
-#            return
-#        for key in self._readonly_vars:
-#            if key in self._dict and (hasattr(self._dict[key], '__dict__') or self._dict[key] != self._readonly_vars[key]):
-#                if self._change_all_cap_vars == 'warning':
-#                    env.logger.warning(
-#                        f'Value of readonly variable {key} is changed from {self._readonly_vars[key]} to {self._dict[key]}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the warning."')
-#                else:
-#                    raise RuntimeError(
-#                        f'Value of readonly variable {key} is changed from {self._readonly_vars[key]} to {self._dict[key]}. Use "sos config --global --unset sos.change_all_cap_vars" to turn off the error."')
-#                if hasattr(self._dict[key], '__dict__'):
-#                    self._readonly_vars.pop(key)
-#                else:
-#                    self._readonly_vars[key] = self._dict[key]
-#        #
-#        self._readonly_vars.update({x:y for x,y in self._dict.items() if x not in self._readonly_vars and x.isupper() and not hasattr(y, '__dict__')})
-#
+
     def _warn(self, key, value):
         if key.startswith('_') and not key.startswith('__') and key not in ('_input', '_output', '_step', '_index', '_depends', '_runtime'):
             env.logger.warning(
@@ -733,7 +699,6 @@ def locate_script(filename, start=''):
     raise ValueError(f'Failed to locate {filename}')
 
 
-import ast
 
 def valid_expr_till(text):
     pos = len(text)
@@ -769,7 +734,6 @@ def split_fstring(text):
     # first, we need to replace all { as {{ and } as }}
     pieces = []
     pos = 0
-    lastpos = 0
     while True:
         dpos = text.find('{{', pos)
         spos = text.find('{', pos)

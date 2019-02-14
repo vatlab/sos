@@ -1240,7 +1240,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             if isinstance(target, remote):
                 resolved = target.resolve()
                 if isinstance(resolved, str):
-                    resolved = interpolate(resolved, env.sos_dict._dict)
+                    resolved = interpolate(resolved, env.sos_dict.dict())
                 self._targets[idx] = file_target(resolved).set(**target._dict)
         return self
 
