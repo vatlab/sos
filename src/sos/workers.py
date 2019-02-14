@@ -109,7 +109,7 @@ class SoS_Worker(mp.Process):
             except KeyboardInterrupt:
                 break
         # Finished
-        close_socket(env.master_socket. now=True)
+        close_socket(env.master_socket, now=True)
         disconnect_controllers(env.zmq_context)
 
         # env.logger.warning(f'Worker terminated {os.getpid()}')
