@@ -867,6 +867,17 @@ python3: expand = "${ }"
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
+        script = SoS_Script('''
+[default]
+report: expand = "${ }"
+  ld_file = ${_input['']:r}
+  """ \'\'\'
+  {}, ${_output:r},
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
 
     def testInput(self):
         '''Test input directive'''
@@ -1287,7 +1298,7 @@ input: output_from(10)
 print(_input)
 ''')
         wf = script.workflow()
-        Base_Executor(wf).run()        
+        Base_Executor(wf).run()
 
     def testSectionActions(self):
         '''Test actions of sections'''

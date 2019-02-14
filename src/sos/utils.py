@@ -706,7 +706,9 @@ def valid_expr_till(text):
         try:
             if not text[:pos].lstrip():
                 return 0
-            ast.parse(text[:pos].lstrip())
+            # so we trying to find out the valid expression before : and !
+            # but somehow a : r is a valid expression until we put it inside ().
+            ast.parse('(' + text[:pos].lstrip() + ')')
             if pos == len(text) or text[pos] == '!' or text[pos] == ':':
                 return pos
             else:
