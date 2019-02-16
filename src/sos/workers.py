@@ -6,8 +6,10 @@
 import multiprocessing as mp
 import os
 import signal
+import threading
 import subprocess
 import sys
+import time
 from typing import Any, Dict, Optional
 
 import zmq
@@ -24,6 +26,58 @@ from .utils import (WorkflowDict, env, get_traceback, load_config_files,
 
 class ProcessKilled(Exception):
     pass
+
+class PingThread(threading.Thread):
+    '''A thread to send ping message to controller and expects
+    a pong reply'''
+    def __init__(self, context):
+        self._stopping = threading.Event()
+        self._stopped = threading.Event()
+        self.context = context
+        threading.Thread.__init__(self)
+
+    def run(self):
+        ping_socket = create_socket(self.context, zmq.REQ, 'master ping')
+        ping_socket.connect(f'tcp://127.0.0.1:{env.config["sockets"]["executor_ping"]}')
+
+        while not self._stopping.is_set():
+            try:
+                ret = ping_socket.send_pyobj(os.getpid())
+            except:
+                env.logger.warning(f'failed to send ping msg from {os.getpid()}')
+                break
+            received = False
+            cnt = 0
+            while cnt < 20:
+                time.sleep(1)
+                if self._stopping.is_set():
+                    break
+                if ping_socket.poll(0):
+                    msg = ping_socket.recv()
+                    if msg != b'PONG':
+                        raise RuntimeError(f'Unrecognized reply from ping/pong socket: {msg}')
+                    received = True
+                    break
+            if received:
+                continue
+
+            if self._stopping.is_set():
+                break
+            elif ping_socket.poll(0):
+                msg = ping_socket.recv()
+                if msg != b'PONG':
+                    raise RuntimeError(f'Unrecognized reply from ping/pong socket: {msg}')
+            else:
+                raise RuntimeError(f'Master inactive for 20 seconds. Killing myself.')
+
+        close_socket(ping_socket, f'ping socket on {os.getpid()}', now=True)
+        self._stopped.set()
+
+    def join(self, timeout=None):
+        self._stopping.set()
+        self._stopped.wait()
+        threading.Thread.join(self, timeout)
+
 
 def signal_handler(*args, **kwargs):
     raise ProcessKilled()
@@ -56,6 +110,7 @@ class SoS_Worker(mp.Process):
         self.config = config
 
         self.args = [] if args is None else args
+
 
     def reset_dict(self):
         env.sos_dict = WorkflowDict()
@@ -90,6 +145,9 @@ class SoS_Worker(mp.Process):
         env.master_socket = create_socket(env.zmq_context, zmq.PAIR)
         env.master_socket.connect(f'tcp://127.0.0.1:{self.port}')
 
+        self.ping_thread = PingThread(env.zmq_context)
+        self.ping_thread.start()
+
         # wait to handle jobs
         while True:
             try:
@@ -112,6 +170,7 @@ class SoS_Worker(mp.Process):
             except KeyboardInterrupt:
                 break
         # Finished
+        self.ping_thread.join()
         close_socket(env.master_socket, now=True)
         disconnect_controllers(env.zmq_context)
 
