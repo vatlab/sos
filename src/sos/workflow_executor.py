@@ -80,9 +80,20 @@ class ProcInfo(object):
         self.worker = worker
         self.socket = socket
         self.step = step
+        self._last_alive = time.time()
 
     def set_status(self, status: str) -> None:
         self.step._status = status
+
+    def is_alive(self):
+        # avoid calling is_alive too many times
+        if time.time() - self._last_alive < 1:
+            return True
+        elif self.worker.is_alive():
+            self._last_alive = time.time()
+            return True
+        else:
+            return False
 
     def in_status(self, status: str) -> bool:
         return self.step._status == status
@@ -164,20 +175,23 @@ class ExecutionManager(object):
     def terminate(self, brutal: bool = False) -> None:
         self.cleanup()
         for proc in self.procs + self.pool:
-            proc.socket.send_pyobj(None)
+            # the process might have been killed #1212
+            # in which case we should not send anything
+            if proc.worker.is_alive():
+                proc.socket.send_pyobj(None)
             close_socket(proc.socket, now=True)
         cnt = 0
         while cnt < 200:
             # wait at most 5 second for all processes to be
             # finished by themselves.
-            if any(x.worker.is_alive() for x in self.procs + self.pool if x.worker is not None):
+            if any(x.worker.is_alive() for x in self.procs + self.pool):
                 time.sleep(0.01)
                 cnt += 1
             else:
                 return
         # if the workers cannot kill themselves, give a warning
         for proc in self.procs + self.pool:
-            if proc.worker and proc.worker.is_alive():
+            if proc.worker.is_alive():
                 if not brutal:
                     env.logger.warning(f'Process {proc.worker.pid} has to be explicitly killed.')
                 proc.worker.terminate()
@@ -1019,10 +1033,12 @@ class Base_Executor:
                         continue
                     # echck if there is any message from the socket
                     if not proc.socket.poll(0):
-                        continue
-
-                    # receieve something from the pipe
-                    res = proc.socket.recv_pyobj()
+                        if proc.is_alive():
+                            continue
+                        else:
+                            raise RuntimeError('A worker has been killed. Quitting.')
+                    # receieve something from the worker
+                    res = proc.socket.recv_pyobj(zmq.NOBLOCK)
                     runnable = proc.step
                     # if this is NOT a result, rather some request for task, step, workflow etc
                     if isinstance(res, list):
