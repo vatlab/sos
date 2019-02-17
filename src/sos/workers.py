@@ -215,7 +215,7 @@ class SoS_SubStep_Worker(mp.Process):
             env.logger.debug(f'Substep worker {os.getpid()} receives request {short_repr(msg)}')
             execute_substep(**msg)
 
-        close_socket(env.master_socket, 'substep backend')
-        disconnect_controllers(env.zmq_context, now=True)
+        close_socket(env.master_socket, 'substep backend', now=True)
+        disconnect_controllers(env.zmq_context)
 
         # env.logger.warning(f'Substep worker terminated {os.getpid()}')
