@@ -80,22 +80,9 @@ class ProcInfo(object):
         self.worker = worker
         self.socket = socket
         self.step = step
-        self._last_active_time = None
 
     def set_status(self, status: str) -> None:
         self.step._status = status
-
-    def mark_alive(self):
-        self._last_active_time = time.time()
-
-    def is_alive(self):
-        if self._last_active_time is None:
-            # if no feedback, the child is still starting, ok
-            return True
-        elif time.time() - self._last_active_time > 20:
-            return False
-        else:
-            return True
 
     def in_status(self, status: str) -> bool:
         return self.step._status == status
@@ -122,24 +109,15 @@ class ExecutionManager(object):
         #       created on the fly for steps passed from nested workflow
         #
         self.procs = []
-        self._pid_map = {}
 
         # process pool that is used to pool temporarily unused processed.
         self.pool = []
         self.max_workers = max_workers
 
-        self.executor_ping_socket = None
-
     def execute(self, runnable: Union[SoS_Node, dummy_node], config: Dict[str, Any], args: Any, spec: Any) -> None:
-        if self.executor_ping_socket is None:
-            self.executor_ping_socket = create_socket(env.zmq_context, zmq.REP, 'executor master_ping')
-            self.executor_ping_port = self.executor_ping_socket.bind_to_random_port(
-                'tcp://127.0.0.1')
-
         if not self.pool:
             socket = create_socket(env.zmq_context, zmq.PAIR, 'pair socket for step worker')
             port = socket.bind_to_random_port('tcp://127.0.0.1')
-            config['sockets']['executor_ping'] = self.executor_ping_port
             worker = SoS_Worker(port=port, config=config, args=args)
             worker.start()
         else:
@@ -154,20 +132,6 @@ class ExecutionManager(object):
         socket.send_pyobj(spec)
         self.procs.append(
             ProcInfo(worker=worker, socket=socket, step=runnable))
-        self._pid_map[worker.pid] = self.procs[-1]
-
-    def check_workers(self):
-        '''check the ping socket and see if the workers are alive'''
-        if self.executor_ping_socket is None:
-            return
-        while True:
-            if self.executor_ping_socket.poll(0):
-                res = self.executor_ping_socket.recv_pyobj()
-                if res in self._pid_map:
-                    self._pid_map[res].mark_alive()
-                self.executor_ping_socket.send(b'PONG')
-            else:
-                break
 
     def add_placeholder_worker(self, runnable, socket):
         runnable._status = 'step_pending'
@@ -199,13 +163,16 @@ class ExecutionManager(object):
 
     def terminate(self, brutal: bool = False) -> None:
         self.cleanup()
-        if self.executor_ping_socket is not None:
-            close_socket(self.executor_ping_socket, 'ping socket', now=True)
-
         if not brutal:
             for proc in self.procs + self.pool:
                 proc.socket.send_pyobj(None)
-                close_socket(proc.socket, now=True)
+                proc.socket.LINGER = 0
+                close_socket(proc.socket)
+            time.sleep(0.1)
+            for proc in self.procs + self.pool:
+                if proc.worker and proc.worker.is_alive():
+                    proc.worker.terminate()
+                    proc.worker.join()
         else:
             for proc in self.procs + self.pool:
                 # proc can be fake if from a nested workflow
@@ -1042,9 +1009,6 @@ class Base_Executor:
         try:
             exec_error = ExecuteError(self.workflow.name)
             while True:
-                # step 0: check the health of workers
-                manager.check_workers()
-
                 # step 1: check existing jobs and see if they are completed
                 for idx, proc in enumerate(manager.procs):
                     if proc is None:
@@ -1052,12 +1016,7 @@ class Base_Executor:
 
                     # echck if there is any message from the socket
                     if not proc.socket.poll(0):
-                        if proc.is_alive():
-                            continue
-                        else:
-                            raise RuntimeError('Worker seems to have died.')
-                    else:
-                        proc.mark_alive()
+                        continue
 
                     # receieve something from the pipe
                     res = proc.socket.recv_pyobj()
@@ -1366,10 +1325,8 @@ class Base_Executor:
             if not isinstance(e, ExecuteError):
                 exec_error.append(self.workflow.name, e)
             manager.terminate(brutal=True)
-            manager = None
         finally:
-            if manager:
-                manager.terminate()
+            manager.terminate()
         #
 
         if exec_error.errors:

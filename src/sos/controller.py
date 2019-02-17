@@ -469,7 +469,6 @@ class Controller(threading.Thread):
         poller.register(self.master_push_socket, zmq.POLLIN)
         poller.register(self.master_request_socket, zmq.POLLIN)
         poller.register(self.substep_backend_socket, zmq.POLLIN)
-
         if env.config['exec_mode'] == 'master':
             poller.register(self.tapping_logging_socket, zmq.POLLIN)
             poller.register(self.tapping_listener_socket, zmq.POLLIN)
@@ -484,6 +483,7 @@ class Controller(threading.Thread):
         try:
             while True:
                 socks = dict(poller.poll())
+
                 if self.master_push_socket in socks:
                     while True:
                         if self.master_push_socket.poll(0):
