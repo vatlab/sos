@@ -191,6 +191,68 @@ class DotProgressBar:
         self.update('done', msg)
         self.stop_event.set()
 
+class WorkerManager(object):
+    # manager worker processes
+
+    def __init__(self, backend_socket):
+        self._substep_workers = []
+        self._n_working_workers = 0
+        self._worker_pending_time = []
+        self._frontend_requests = []
+        self._substep_backend_socket = backend_socket
+
+    def add_request(self, msg):
+        self._frontend_requests.insert(0, msg)
+
+    def process_request(self):
+        if self._frontend_requests:
+            msg = self._frontend_requests.pop()
+            self._substep_backend_socket.send_pyobj(msg)
+        else:
+            self._worker_pending_time.insert(0, time.time())
+
+    def num_working(self):
+        return self._n_working_workers
+
+    def use_pending(self, msg):
+        if not self._worker_pending_time:
+            return False
+        self._substep_backend_socket.send_pyobj(msg)
+        self._worker_pending_time.pop()
+        return True
+
+    def start(self):
+        from .workers import SoS_SubStep_Worker
+        worker = SoS_SubStep_Worker(env.config)
+        worker.start()
+        self._substep_workers.append(worker)
+        self._n_working_workers += 1
+        env.logger.debug(
+            f'Start a substep worker, {self._n_working_workers} in total')
+
+    def kill_pending_workers(self):
+        '''Kill workers that have been pending for a while'''
+        if not self._worker_pending_time:
+            return
+        now = time.time()
+        kept = [x for x in self._worker_pending_time if now - x < 30]
+        n_kill = len(self._worker_pending_time) - len(kept)
+        if n_kill == 0:
+            return
+        for i in range(n_kill):
+            self._substep_backend_socket.send_pyobj(None)
+        self._n_working_workers -= n_kill
+        self._worker_pending_time = [now]*len(kept)
+        env.logger.debug(
+            f'Kill {n_kill} substep worker. {self._n_working_workers} remains.')
+
+    def kill_all(self):
+        '''Kill all workers'''
+        for worker in self._worker_pending_time:
+            self._substep_backend_socket.send_pyobj(None)
+
+
+
 class Controller(threading.Thread):
     '''This controller is used by both sos and sos-notebook, and there
     can be two controllers one as a slave (sos) and one as a master
@@ -221,11 +283,9 @@ class Controller(threading.Thread):
         # completed steps
         self._completed_steps = {}
 
-        # substgep workers
-        self._frontend_requests = []
-        self._substep_workers = []
-        self._n_working_workers = 0
-        self._worker_pending_time = []
+        # substep workers
+        self.workers = None
+
         # self.event_map = {}
         # for name in dir(zmq):
         #     if name.startswith('EVENT_'):
@@ -236,21 +296,16 @@ class Controller(threading.Thread):
     def handle_master_push_msg(self, msg):
         try:
             if isinstance(msg, dict):  # substep
-                if self._worker_pending_time:
-                    self.substep_backend_socket.send_pyobj(msg)
-                    self._worker_pending_time.pop()
+                if self.workers.use_pending(msg):
+                    # in this case the msg is directly consumed by a pending worker
                     return
-                #  Get client request, route to first available worker
-                self._frontend_requests.insert(0, msg)
 
-                if self._n_working_workers == 0 or self._n_working_workers + self._nprocs < env.config['max_procs']:
-                    from .workers import SoS_SubStep_Worker
-                    worker = SoS_SubStep_Worker(env.config)
-                    worker.start()
-                    self._substep_workers.append(worker)
-                    self._n_working_workers += 1
-                    env.logger.debug(
-                        f'Start a substep worker, {self._n_working_workers} in total')
+                # cache the request, route to first available worker
+                self.workers.add_request(msg)
+                # start a worker is necessary
+                if self.workers.num_working() == 0 or self.workers.num_working() + self._nprocs < env.config['max_procs']:
+                    self.workers.start()
+
             elif msg[0] == 'nprocs':
                 env.logger.trace(f'Active running process set to {msg[1]}')
                 self._nprocs = msg[1]
@@ -383,12 +438,8 @@ class Controller(threading.Thread):
             raise RuntimeError(
                 f'substep worker should only send ready message: {msg} received')
 
-        # now see if we have any work to do
-        if self._frontend_requests:
-            msg = self._frontend_requests.pop()
-            self.substep_backend_socket.send_pyobj(msg)
-        else:
-            self._worker_pending_time.insert(0, time.time())
+        # now see if we have any work to do, if the process will be marked as pending
+        self.workers.process_request()
 
     def handle_tapping_logging_msg(self, msg):
         if env.config['exec_mode'] == 'both':
@@ -440,6 +491,9 @@ class Controller(threading.Thread):
         self.substep_backend_socket = create_socket(self.context, zmq.REP, 'controller backend rep')  # ROUTER
         env.config['sockets']['substep_backend'] = self.substep_backend_socket.bind_to_random_port(
             'tcp://127.0.0.1')
+
+        # create a manager
+        self.workers = WorkerManager(self.substep_backend_socket)
 
         # tapping
         if env.config['exec_mode'] == 'master':
@@ -519,17 +573,8 @@ class Controller(threading.Thread):
 
                 # if the last worker has been pending for more than 5
                 # seconds, kill it
-                if self._worker_pending_time:
-                    now = time.time()
-                    kept = [x for x in self._worker_pending_time if now - x < 30]
-                    n_kill = len(self._worker_pending_time) - len(kept)
-                    if n_kill > 0:
-                        for i in range(n_kill):
-                            self.substep_backend_socket.send_pyobj(None)
-                        self._n_working_workers -= n_kill
-                        self._worker_pending_time = [now]*len(kept)
-                        env.logger.debug(
-                            f'Kill {n_kill} substep worker. {self._n_working_workers} remains.')
+                self.workers.kill_pending_workers()
+
                 # if monitor_socket in socks:
                 #     evt = recv_monitor_message(monitor_socket)
                 #     if evt['event'] == zmq.EVENT_ACCEPTED:
@@ -541,8 +586,7 @@ class Controller(threading.Thread):
             return
         finally:
             # kill all workers
-            for worker in self._worker_pending_time:
-                self.substep_backend_socket.send_pyobj(None)
+            self.workers.kill_all()
 
             # close all databses
             self.step_signatures.close()

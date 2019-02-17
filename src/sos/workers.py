@@ -195,7 +195,7 @@ class SoS_SubStep_Worker(mp.Process):
 
     def run(self):
 
-        env.logger.warning(f'Substep worker created {os.getpid()}')
+        # env.logger.warning(f'Substep worker created {os.getpid()}')
 
         env.config.update(self.config)
         env.zmq_context = connect_controllers()
