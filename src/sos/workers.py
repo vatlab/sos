@@ -19,11 +19,7 @@ from .eval import SoS_exec
 from .executor_utils import kill_all_subprocesses
 from .targets import sos_targets
 from .utils import (WorkflowDict, env, get_traceback, load_config_files,
-                    short_repr)
-
-
-class ProcessKilled(Exception):
-    pass
+                    short_repr, ProcessKilled)
 
 def signal_handler(*args, **kwargs):
     raise ProcessKilled()
@@ -106,12 +102,15 @@ class SoS_Worker(mp.Process):
                 env.logger.debug(
                     f'Worker {self.name} completes request {short_repr(work)}')
             except ProcessKilled:
-                kill_all_subprocesses(os.getpid())
-                signal.signal(signal.SIGTERM, signal.SIG_DFL)
+                # in theory, this will not be executed because the exception
+                # will be caught by the step executor, and then sent to the master
+                # process, which will then trigger terminate() and send a None here.
                 break
             except KeyboardInterrupt:
                 break
         # Finished
+        kill_all_subprocesses(os.getpid())
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
         close_socket(env.master_socket, now=True)
         disconnect_controllers(env.zmq_context)
 

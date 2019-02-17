@@ -29,7 +29,7 @@ from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
                       UnknownTarget, file_target, path, paths,
                       sos_step, sos_targets, sos_variable, textMD5,
                       named_output)
-from .utils import (Error, WorkflowDict, env, get_traceback,
+from .utils import (Error, WorkflowDict, env, get_traceback, ProcessKilled,
                     load_config_files, pickleable, short_repr)
 from .workers import SoS_Worker
 
@@ -1017,7 +1017,6 @@ class Base_Executor:
                 for idx, proc in enumerate(manager.procs):
                     if proc is None:
                         continue
-
                     # echck if there is any message from the socket
                     if not proc.socket.poll(0):
                         continue
@@ -1179,8 +1178,12 @@ class Base_Executor:
                         # env.logger.error(res)
                         runnable._status = 'failed'
                         dag.save(env.config['output_dag'])
-                        exec_error.append(runnable._node_id, res)
-                        raise exec_error
+                        if isinstance(res, ProcessKilled):
+                            env.logger.error('Worker process killed.')
+                            raise res
+                        else:
+                            exec_error.append(runnable._node_id, res)
+                            raise exec_error
                     elif '__step_name__' in res:
                         env.logger.debug(f'{i_am()} receive step result ')
                         self.step_completed(res, dag, runnable)

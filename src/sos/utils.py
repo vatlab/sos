@@ -541,6 +541,8 @@ class TerminateExecution(Error):
     def __init__(self, msg):
         Error.__init__(self, msg)
 
+class ProcessKilled(Error):
+    pass
 
 def get_traceback():
     output = StringIO()
