@@ -163,21 +163,25 @@ class ExecutionManager(object):
 
     def terminate(self, brutal: bool = False) -> None:
         self.cleanup()
-        if not brutal:
-            for proc in self.procs + self.pool:
-                proc.socket.send_pyobj(None)
-                proc.socket.LINGER = 0
-                close_socket(proc.socket)
-            time.sleep(0.1)
-            for proc in self.procs + self.pool:
-                if proc.worker and proc.worker.is_alive():
-                    proc.worker.terminate()
-                    proc.worker.join()
-        else:
-            for proc in self.procs + self.pool:
-                # proc can be fake if from a nested workflow
-                if proc.worker:
-                    proc.worker.terminate()
+        for proc in self.procs + self.pool:
+            proc.socket.send_pyobj(None)
+            close_socket(proc.socket, now=True)
+        cnt = 0
+        while cnt < 200:
+            # wait at most 5 second for all processes to be
+            # finished by themselves.
+            if any(x.worker.is_alive() for x in self.procs + self.pool if x.worker is not None):
+                time.sleep(0.01)
+                cnt += 1
+            else:
+                return
+        # if the workers cannot kill themselves, give a warning
+        for proc in self.procs + self.pool:
+            if proc.worker and proc.worker.is_alive():
+                if not brutal:
+                    env.logger.warning(f'Process {proc.worker.pid} has to be explicitly killed.')
+                proc.worker.terminate()
+                proc.worker.join()
 
 
 class Base_Executor:
@@ -1325,8 +1329,10 @@ class Base_Executor:
             if not isinstance(e, ExecuteError):
                 exec_error.append(self.workflow.name, e)
             manager.terminate(brutal=True)
+            manager = None
         finally:
-            manager.terminate()
+            if manager:
+                manager.terminate()
         #
 
         if exec_error.errors:
