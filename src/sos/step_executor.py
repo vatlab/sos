@@ -27,7 +27,7 @@ from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
                       sos_targets, textMD5)
 from .tasks import MasterTaskParams, TaskFile
 from .utils import (ArgumentError, StopInputGroup, TerminateExecution, env,
-                    get_traceback, short_repr)
+                    get_traceback, short_repr, ProcessKilled)
 
 __all__: List = []
 
@@ -649,6 +649,8 @@ class Base_Step_Executor:
             elif self._completed_concurrent_substeps == till:
                 return
             res = self.result_pull_socket.recv_pyobj()
+            if 'exception' in res and isinstance(res['exception'], ProcessKilled):
+                raise res['exception']
             #
             if "index" not in res:
                 raise RuntimeError("Result received from substep does not have key index")

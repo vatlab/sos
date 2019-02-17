@@ -184,7 +184,7 @@ class ExecutionManager(object):
         while cnt < 200:
             # wait at most 5 second for all processes to be
             # finished by themselves.
-            if any(x.worker.is_alive() for x in self.procs + self.pool):
+            if any(x.worker.is_alive() for x in self.procs + self.pool if x.worker):
                 time.sleep(0.01)
                 cnt += 1
             else:
@@ -287,6 +287,11 @@ class Base_Executor:
             return self.run_as_master(targets=targets, mode=mode)
         except:
             succ = False
+            # 1212: when a substep worker is killed, the worker will
+            # be killed but the substep workers belonging to the master sos
+            # will still be alive and prevents it from qutting properly
+            from .executor_utils import kill_all_subprocesses
+            kill_all_subprocesses(os.getpid())
             raise
         finally:
             # end progress bar when the master workflow stops
@@ -1194,12 +1199,8 @@ class Base_Executor:
                         # env.logger.error(res)
                         runnable._status = 'failed'
                         dag.save(env.config['output_dag'])
-                        if isinstance(res, ProcessKilled):
-                            env.logger.error('Worker process killed.')
-                            raise res
-                        else:
-                            exec_error.append(runnable._node_id, res)
-                            raise exec_error
+                        exec_error.append(runnable._node_id, res)
+                        raise exec_error
                     elif '__step_name__' in res:
                         env.logger.debug(f'{i_am()} receive step result ')
                         self.step_completed(res, dag, runnable)
@@ -1353,7 +1354,6 @@ class Base_Executor:
             if manager:
                 manager.terminate()
         #
-
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
             # if failed_steps:

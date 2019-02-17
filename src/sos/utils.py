@@ -542,7 +542,10 @@ class TerminateExecution(Error):
         Error.__init__(self, msg)
 
 class ProcessKilled(Error):
-    pass
+    '''Process is killed'''
+
+    def __init__(self, msg=''):
+        Error.__init__(self, 'Process killed')
 
 def get_traceback():
     output = StringIO()

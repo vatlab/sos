@@ -17,7 +17,7 @@ from .executor_utils import (clear_output, create_task, get_traceback_msg,
                              reevaluate_output, statementMD5,
                              validate_step_sig, verify_input)
 from .targets import RemovedTarget, RuntimeInfo, UnavailableLock, sos_targets
-from .utils import ArgumentError, StopInputGroup, TerminateExecution, env
+from .utils import ArgumentError, StopInputGroup, TerminateExecution, ProcessKilled, env
 
 
 @contextlib.contextmanager
@@ -215,6 +215,10 @@ def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars
     except ArgumentError as e:
         clear_output()
         return {'index': env.sos_dict['_index'], 'ret_code': 1, 'exception': e}
+    except ProcessKilled as e:
+        clear_output()
+        res = {'index': env.sos_dict['_index'], 'ret_code': 1, 'exception': e}
+        return res
     except Exception as e:
         clear_output()
         res = {'index': env.sos_dict['_index'], 'ret_code': 1,

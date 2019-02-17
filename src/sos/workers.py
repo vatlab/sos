@@ -199,6 +199,7 @@ class SoS_SubStep_Worker(mp.Process):
 
         env.config.update(self.config)
         env.zmq_context = connect_controllers()
+        signal.signal(signal.SIGTERM, signal_handler)
         from .substep_executor import execute_substep
         env.master_socket = create_socket(env.zmq_context, zmq.REQ, 'substep backend')
         env.master_socket.connect(f'tcp://127.0.0.1:{self.config["sockets"]["substep_backend"]}')
@@ -213,6 +214,9 @@ class SoS_SubStep_Worker(mp.Process):
 
             env.logger.debug(f'Substep worker {os.getpid()} receives request {short_repr(msg)}')
             execute_substep(**msg)
+
+        kill_all_subprocesses(os.getpid())
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
 
         close_socket(env.master_socket, 'substep backend', now=True)
         disconnect_controllers(env.zmq_context)
