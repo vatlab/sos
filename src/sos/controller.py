@@ -8,7 +8,7 @@ import zmq
 import time
 import threading
 from collections import defaultdict
-from .utils import env
+from .utils import env, ProcessKilled
 from .signatures import StepSignatures, WorkflowSignatures
 
 EVENT_MAP = {}
@@ -198,6 +198,8 @@ class WorkerManager(object):
         self._substep_workers = []
         self._n_working_workers = 0
         self._worker_pending_time = []
+        self._worker_alive_time = time.time()
+
         self._frontend_requests = []
         self._substep_backend_socket = backend_socket
 
@@ -230,8 +232,14 @@ class WorkerManager(object):
         env.logger.debug(
             f'Start a substep worker, {self._n_working_workers} in total')
 
-    def kill_pending_workers(self):
-        '''Kill workers that have been pending for a while'''
+    def check_workers(self):
+        '''Kill workers that have been pending for a while and check if all workers
+        are alive. '''
+        if time.time() - self._worker_alive_time > 5:
+            self._worker_alive_time = time.time()
+            for worker in self._substep_workers:
+                if not worker.is_alive():
+                    raise ProcessKilled('Substep worker killed')
         if not self._worker_pending_time:
             return
         now = time.time()
@@ -572,8 +580,9 @@ class Controller(threading.Thread):
                             self.tapping_controller_socket.recv_pyobj())
 
                 # if the last worker has been pending for more than 5
-                # seconds, kill it
-                self.workers.kill_pending_workers()
+                # seconds, kill it. It is also possible that some others are killed
+                # by external process.
+                self.workers.check_workers()
 
                 # if monitor_socket in socks:
                 #     evt = recv_monitor_message(monitor_socket)
@@ -581,6 +590,9 @@ class Controller(threading.Thread):
                 #         self._num_clients += 1
                 #     elif evt['event'] == zmq.EVENT_DISCONNECTED:
                 #         self._num_clients -= 1
+        except ProcessKilled:
+            env.logger.error('A substep worker has failed or has been killed externally. Quitting.')
+            os._exit(1)
         except Exception as e:
             sys.stderr.write(f'{env.config["exec_mode"]} get an error {e}')
             return
