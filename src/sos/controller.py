@@ -199,14 +199,15 @@ class WorkerManager(object):
         self._n_working_workers = 0
         self._n_requested = 0
         self._n_ready = 0
-        self._worker_pending_time = []
+        self._worker_pending_time = None
         self._worker_alive_time = time.time()
 
         self._frontend_requests = []
         self._substep_backend_socket = backend_socket
 
     def report(self, msg):
-        env.logger.error(f'{msg}: workers: {self._n_working_workers} pending requests: {len(self._frontend_requests)}, pending worker: {len(self._worker_pending_time)}, requested: {self._n_requested}, num_ready: {self._n_ready}')
+        return
+        env.logger.trace(f'{msg}: workers: {self._n_working_workers} pending requests: {len(self._frontend_requests)}, pending: {self._worker_pending_time is not None}, requested: {self._n_requested}, num_ready: {self._n_ready}')
 
     def add_request(self, msg):
         self._frontend_requests.insert(0, msg)
@@ -218,8 +219,16 @@ class WorkerManager(object):
             msg = self._frontend_requests.pop()
             self._substep_backend_socket.send_pyobj(msg)
             self.report('process request')
+        elif self._worker_pending_time is not None:
+            # if there is a pending worker and another has also been completed
+            # kill one.
+            self._worker_pending_time = time.time()
+            self._substep_backend_socket.send_pyobj(None)
+            self._n_working_workers -= 1
+            self.report('kill one worker')
         else:
-            self._worker_pending_time.insert(0, time.time())
+            # one or more messages are pending
+            self._worker_pending_time = time.time()
             self.report('worker pending')
 
     def num_working(self):
@@ -230,7 +239,7 @@ class WorkerManager(object):
         if not self._worker_pending_time:
             return False
         self._substep_backend_socket.send_pyobj(msg)
-        self._worker_pending_time.pop()
+        self._worker_pending_time = None
         self.report('resume pending')
         return True
 
@@ -247,31 +256,31 @@ class WorkerManager(object):
         are alive. '''
         if time.time() - self._worker_alive_time > 5:
             self._worker_alive_time = time.time()
-            for worker in self._substep_workers:
-                if not worker.is_alive():
-                    raise ProcessKilled('Substep worker killed')
-        if not self._worker_pending_time:
+            self._substep_workers = [worker for worker in self._substep_workers if worker.is_alive()]
+            if len(self._substep_workers) < self._n_working_workers:
+                raise ProcessKilled('Substep worker killed')
+        # a pending worker can survive 5 seconds without job
+        if self._worker_pending_time is None or time.time() - self._worker_pending_time < 2:
             return
-        now = time.time()
-        kept = [x for x in self._worker_pending_time if now - x < 30]
-        n_kill = len(self._worker_pending_time) - len(kept)
-        if n_kill == 0:
-            return
-        for i in range(n_kill):
-            self._substep_backend_socket.send_pyobj(None)
-        self._n_working_workers -= n_kill
-        self._worker_pending_time = [now]*len(kept)
-        self.report('kill pending workers')
+        self._substep_backend_socket.send_pyobj(None)
+        self._n_working_workers -= 1
+        self._worker_pending_time = None
+        self.report('kill a long standing workers')
 
     def kill_all(self):
         '''Kill all workers'''
-
-        for worker in self._worker_pending_time:
+        if self._worker_pending_time:
             self._substep_backend_socket.send_pyobj(None)
             self._n_working_workers -= 1
-        self._worker_pending_time = []
-        self.report('kill all pending workers')
-
+            self.report('kill a pending worker')
+        # there are a few more workers
+        for worker in range(self._n_working_workers):
+            # we should get a ready signal
+            if self._substep_backend_socket.poll(100):
+                self._substep_backend_socket.recv_pyobj()
+                self._substep_backend_socket.send_pyobj(None)
+                self._n_working_workers -= 1
+                self.report('kill a done worker')
 
 
 class Controller(threading.Thread):
@@ -411,13 +420,6 @@ class Controller(threading.Thread):
                     else:
                         break
 
-                # handle all push request from substep, used to for example kill workers
-                while True:
-                    if self.substep_backend_socket.poll(0):
-                        self.handle_substep_backend_msg(
-                            self.substep_backend_socket.recv_pyobj())
-                    else:
-                        break
                 # handle all push request from logging
                 if env.config['exec_mode'] in ('master', 'both'):
                     while True:
