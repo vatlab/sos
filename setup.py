@@ -207,6 +207,6 @@ sos-html.func = sos.converter:script_to_html
           ':sys_platform=="win32"': ['colorama'],
           # faster hashlib
           ':sys_platform!="win32"': ['xxhash'],
-          'dot':      ['graphviz', 'imageio', 'pillow'],
+          'dot':      ['graphviz', 'pillow'],
       }
       )

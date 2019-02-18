@@ -26,7 +26,7 @@ import urllib.parse
 import urllib.request
 from collections import Sequence, Mapping, Set, defaultdict
 from html.parser import HTMLParser
-from io import FileIO, StringIO
+from io import FileIO, StringIO, BytesIO
 from typing import Optional, List, Dict
 
 import fasteners
@@ -1512,7 +1512,6 @@ def dot_to_gif(filename: str, warn=None):
         pngFiles = glob.glob(os.path.join(tempDirectory, f'sosDot*.png'))
         if len(pngFiles) == 1:
             return b64_of(outfile)
-        import imageio
         # create a gif files from multiple png files
         pngFiles.sort(key=lambda x: int(
             os.path.basename(x)[:-3].split('.')[1] or 0))
@@ -1574,23 +1573,20 @@ def dot_to_gif(filename: str, warn=None):
                     warn(f'Failed to resize gif file: {e}')
                 return b64_of(pngFiles[-1])
             newImages[pngFile] = newImg
-        try:
-            for pngFile, image in newImages.items():
-                image.save(pngFile, directory=tempDirectory)
-            images_content = [imageio.imread(x) for x in pngFiles]
-        except Exception as e:
-            if warn:
-                warn(f'Failed to read gng file: {e}')
-            return b64_of(pngFiles[-1])
+
         # create a gif file from images
         gifFile = os.path.join(tempDirectory, 'sosDot.gif')
         try:
-            imageio.mimsave(gifFile, images_content, duration=0.5)
+            with BytesIO() as output:
+                newImages[pngFiles[0]].save(output, save_all=True, format='GIF',
+                    append_images=[newImages[x] for x in pngFiles[1:]],
+                    duration=400, loop=0)
+                return base64.b64encode(output.getvalue()).decode('ascii')
         except Exception as e:
             if warn:
                 warn(f'Failed to generate gif animation: {e}')
-            return b64_of(pngFiles[-1])
-        return b64_of(gifFile)
+        # if things go wrong
+        return b64_of(pngFiles[-1])
 
 
 def separate_options(options: str) -> List[str]:
