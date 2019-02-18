@@ -197,30 +197,41 @@ class WorkerManager(object):
     def __init__(self, backend_socket):
         self._substep_workers = []
         self._n_working_workers = 0
+        self._n_requested = 0
+        self._n_ready = 0
         self._worker_pending_time = []
         self._worker_alive_time = time.time()
 
         self._frontend_requests = []
         self._substep_backend_socket = backend_socket
 
+    def report(self, msg):
+        env.logger.error(f'{msg}: workers: {self._n_working_workers} pending requests: {len(self._frontend_requests)}, pending worker: {len(self._worker_pending_time)}, requested: {self._n_requested}, num_ready: {self._n_ready}')
+
     def add_request(self, msg):
         self._frontend_requests.insert(0, msg)
+        self.report('add_request')
 
     def process_request(self):
+        self._n_ready += 1
         if self._frontend_requests:
             msg = self._frontend_requests.pop()
             self._substep_backend_socket.send_pyobj(msg)
+            self.report('process request')
         else:
             self._worker_pending_time.insert(0, time.time())
+            self.report('worker pending')
 
     def num_working(self):
         return self._n_working_workers
 
     def use_pending(self, msg):
+        self._n_requested += 1
         if not self._worker_pending_time:
             return False
         self._substep_backend_socket.send_pyobj(msg)
         self._worker_pending_time.pop()
+        self.report('resume pending')
         return True
 
     def start(self):
@@ -229,8 +240,7 @@ class WorkerManager(object):
         worker.start()
         self._substep_workers.append(worker)
         self._n_working_workers += 1
-        env.logger.debug(
-            f'Start a substep worker, {self._n_working_workers} in total')
+        self.report('start worker')
 
     def check_workers(self):
         '''Kill workers that have been pending for a while and check if all workers
@@ -251,13 +261,16 @@ class WorkerManager(object):
             self._substep_backend_socket.send_pyobj(None)
         self._n_working_workers -= n_kill
         self._worker_pending_time = [now]*len(kept)
-        env.logger.debug(
-            f'Kill {n_kill} substep worker. {self._n_working_workers} remains.')
+        self.report('kill pending workers')
 
     def kill_all(self):
         '''Kill all workers'''
+
         for worker in self._worker_pending_time:
             self._substep_backend_socket.send_pyobj(None)
+            self._n_working_workers -= 1
+        self._worker_pending_time = []
+        self.report('kill all pending workers')
 
 
 
