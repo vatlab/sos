@@ -239,7 +239,7 @@ class LocalHost:
 
         res = tf.result
         if not res or 'ret_code' not in res:
-            return {'ret_code': 1, 'exception': ValueError(f'No result is found for task {task_id}')}
+            return {'ret_code': 1, 'exception': ValueError(f'No result is received for task {task_id}')}
 
         try:
             if res['ret_code'] != 0 or env.verbosity >= 3:

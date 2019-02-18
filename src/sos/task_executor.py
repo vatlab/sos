@@ -120,7 +120,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         raise
     except ProcessKilled:
         tf.status = 'aborted'
-        raise
+        raise ProcessKilled('task interrupted')
     finally:
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
 

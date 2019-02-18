@@ -545,7 +545,7 @@ class ProcessKilled(Error):
     '''Process is killed'''
 
     def __init__(self, msg=''):
-        Error.__init__(self, 'A SoS worker has failed or has been killed externally. Quitting.')
+        Error.__init__(self, msg)
 
 def get_traceback():
     output = StringIO()
