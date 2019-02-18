@@ -194,7 +194,7 @@ class SoS_SubStep_Worker(mp.Process):
         self.daemon = True
 
     def run(self):
-        
+
         # env.logger.warning(f'Substep worker created {os.getpid()}')
 
         env.config.update(self.config)
@@ -209,7 +209,6 @@ class SoS_SubStep_Worker(mp.Process):
             env.master_socket.send_pyobj(self.LRU_READY)
             msg = env.master_socket.recv_pyobj()
             if not msg:
-                env.logger.error(f'stop substep worker {os.getpid()}')
                 break
 
             env.logger.debug(f'Substep worker {os.getpid()} receives request {short_repr(msg)}')
