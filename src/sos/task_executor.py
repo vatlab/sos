@@ -6,16 +6,21 @@ import copy
 import os
 import subprocess
 import time
+import signal
+
 from collections import OrderedDict, Mapping, Sequence
 
 from .eval import SoS_eval, SoS_exec
 from .monitor import ProcessMonitor
 from .targets import (InMemorySignature, file_target,
                       sos_step, dynamic, sos_targets)
-from .utils import StopInputGroup, env, pickleable
+from .utils import StopInputGroup, env, pickleable, ProcessKilled
 from .tasks import TaskFile, remove_task_files
 from .step_executor import parse_shared_vars
 from .executor_utils import __null_func__, get_traceback_msg, prepare_env, clear_output
+
+def signal_handler(*args, **kwargs):
+    raise ProcessKilled()
 
 def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
     shared = {}
@@ -100,13 +105,25 @@ def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
 
 def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_interval=5,
                  resource_monitor_interval=60):
+    '''Execute single or master task, return a dictionary'''
     tf = TaskFile(task_id)
 
     # this will automatically create a pulse file
     tf.status = 'running'
     # write result file
-    res = _execute_task(task_id, verbosity, runmode, sigmode,
+    try:
+        signal.signal(signal.SIGTERM, signal_handler)
+        res = _execute_task(task_id, verbosity, runmode, sigmode,
                         monitor_interval, resource_monitor_interval)
+    except KeyboardInterrupt:
+        tf.status = 'aborted'
+        raise
+    except ProcessKilled:
+        tf.status = 'aborted'
+        raise
+    finally:
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
     if res['ret_code'] != 0 and 'exception' in res:
         with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'), 'a') as err:
             err.write(f'Task {task_id} exits with code {res["ret_code"]}')
@@ -127,6 +144,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         # the task is started very quickly so the task has satus 'pending',
         # the task might be considered already running.
         tf.status = 'completed' if res['ret_code'] == 0 else 'failed'
+
 
     return res['ret_code']
 
@@ -504,6 +522,9 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
     except subprocess.CalledProcessError as e:
         return {'ret_code': e.returncode, 'task': task_id, 'shared': {},
                 'exception': RuntimeError(e.stderr)}
+    except ProcessKilled:
+        env.logger.error(f'{task_id} ``interrupted``')
+        raise
     except Exception as e:
         msg = get_traceback_msg(e)
         # env.logger.error(f'{task_id} ``failed``: {msg}')
