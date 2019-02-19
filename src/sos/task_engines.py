@@ -32,6 +32,10 @@ class TaskEngine(threading.Thread):
         self.alias = self.config['alias']
         self.engine_ready = threading.Event()
 
+        # tasks that we need to wait for a while to confirm its status
+        # it will be in pending until it is confirmed that either
+        # it has been canceled or already running.
+        self.pending_running_tasks = {}
         self.running_tasks = []
         self.pending_tasks = []
         self.submitting_tasks = {}
@@ -269,12 +273,22 @@ class TaskEngine(threading.Thread):
             #
             if task_id in self.task_status and self.task_status[task_id]:
                 if self.task_status[task_id] == 'running':
-                    self.running_tasks.append(task_id)
+                    if task_id in self.running_pending_tasks:
+                        if time.time() - self.running_pending_tasks[task_id] > 60:
+                            # more than 60 seconds and is still running,
+                            # it is actually a running status
+                            self.running_pending_tasks.pop(task_id)
+                            self.running_tasks.append(task_id)
+                        else:
+                            # still waiting
+                            return
+                    else:
+                        self.running_pending_tasks[task_id] = time.time()
                     env.logger.info(f'{task_id} ``already runnng``')
                     self.notify_controller({
                         'queue': self.agent.alias,
                         'task_id': task_id,
-                        'status': 'running',
+                        'status': 'pending',
                         'update_only': False,
                         'tags': self.task_info['tid'].get('tags', '')
                     })
@@ -284,6 +298,8 @@ class TaskEngine(threading.Thread):
                 # resubmit the job. In the case of not-rerun, the task would be marked
                 # completed very soon.
                 elif self.task_status[task_id] == 'completed':
+                    if task_id in self.running_pending_tasks:
+                        self.running_pending_tasks.pop(task_id)
                     if task_id in env.config.get('resumed_tasks', []):
                         # force re-execution, but it is possible that this task has been
                         # executed but quit in no-wait mode (or canceled by user). More
@@ -297,6 +313,11 @@ class TaskEngine(threading.Thread):
                 elif self.task_status[task_id] != 'new':
                     env.logger.info(
                         f'{task_id} ``restart`` from status ``{self.task_status[task_id]}``')
+
+            # it is no longer in running status
+            if task_id in self.running_pending_tasks:
+                env.logger.error(f'{task_id} confirmed to be canceled, restarting')
+                self.running_pending_tasks.pop(task_id)
 
             # self.notify_controller('{} ``queued``'.format(task_id))
             self.pending_tasks.append(task_id)
