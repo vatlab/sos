@@ -2203,18 +2203,24 @@ time.sleep(4)
 time.sleep(4)
 ''')
         ret = subprocess.Popen(['sos', 'run', 'testKill'])
-        time.sleep(2)
         proc = psutil.Process(ret.pid)
-        children = proc.children(recursive=True)
-        children[0].terminate()
+        while True:
+            children = proc.children(recursive=True)
+            if len(children) == 1:
+                children[0].terminate()
+                break
+            time.sleep(0.1)
         ret.wait()
         self.assertNotEqual(ret.returncode, 0)
         #
         ret = subprocess.Popen(['sos', 'run', 'testKill'])
-        time.sleep(2)
         proc = psutil.Process(ret.pid)
-        children = proc.children(recursive=True)
-        children[0].kill()
+        while True:
+            children = proc.children(recursive=True)
+            if len(children) == 1:
+                children[0].kill()
+                break
+            time.sleep(0.1)
         ret.wait()
         self.assertNotEqual(ret.returncode, 0)
 
@@ -2230,19 +2236,25 @@ import time
 input: for_each=dict(i=range(4))
 time.sleep(2)
 ''')
-        ret = subprocess.Popen(['sos', 'run', 'testKillSubstep'])
-        time.sleep(2)
+        ret = subprocess.Popen(['sos', 'run', 'testKillSubstep', '-j3'])
         proc = psutil.Process(ret.pid)
-        children = proc.children(recursive=True)
-        children[-1].terminate()
+        while True:
+            children = proc.children(recursive=True)
+            if len(children) == 3:
+                children[-1].terminate()
+                break
+            time.sleep(0.1)
         ret.wait()
         self.assertNotEqual(ret.returncode, 0)
         #
-        ret = subprocess.Popen(['sos', 'run', 'testKillSubstep'])
-        time.sleep(2)
+        ret = subprocess.Popen(['sos', 'run', 'testKillSubstep', '-j3'])
         proc = psutil.Process(ret.pid)
-        children = proc.children(recursive=True)
-        children[-1].kill()
+        while True:
+            children = proc.children(recursive=True)
+            if len(children) == 3:
+                children[-1].kill()
+                break
+            time.sleep(0.1)
         ret.wait()
         self.assertNotEqual(ret.returncode, 0)
 
@@ -2253,25 +2265,37 @@ time.sleep(2)
         import time
         with open('testKillTask.sos', 'w') as tk:
             tk.write('''
-import time
 
 [1]
 task:
+import time
 time.sleep(10)
 ''')
-        ret = subprocess.Popen(['sos', 'run', 'testKillTask'])
-        time.sleep(3)
+        ret = subprocess.Popen(['sos', 'run', 'testKillTask', '-s', 'force'])
         proc = psutil.Process(ret.pid)
-        children = proc.children(recursive=True)
-        children[-1].terminate()
+        while True:
+            children = proc.children(recursive=True)
+            execute = [x for x in children if 'execute' in x.cmdline()]
+            if len(execute) >= 1:
+                # a bug: if the process is killed too quickly (the signal
+                # function is not called), this will fail.
+                time.sleep(1)
+                execute[0].terminate()
+                break
+            time.sleep(0.1)
         ret.wait()
         self.assertNotEqual(ret.returncode, 0)
         #
         ret = subprocess.Popen(['sos', 'run', 'testKillTask'])
-        time.sleep(3)
         proc = psutil.Process(ret.pid)
-        children = proc.children(recursive=True)
-        children[-1].kill()
+        while True:
+            children = proc.children(recursive=True)
+            execute = [x for x in children if 'execute' in x.cmdline()]
+            if len(execute) >= 1:
+                time.sleep(1)
+                execute[0].kill()
+                break
+            time.sleep(0.1)        
         ret.wait()
         self.assertNotEqual(ret.returncode, 0)
 
