@@ -405,7 +405,7 @@ output: f"{A}.txt"
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['res'], ['2.txt', '4.txt'])
-        
+
     def testForEachAsTargetProperty(self):
         '''Test for_each option of input'''
         self.touch(['a.txt', 'b.txt', 'a.pdf'])
@@ -812,7 +812,7 @@ vars = [1]
 vars2 = ['a']
 
 input: files, group_by=2
-output: f"{_input[0]}1", group_with=('vars', 'vars2') 
+output: f"{_input[0]}1", group_with=('vars', 'vars2')
 run: expand=True
     touch {_output}
 
@@ -2186,6 +2186,95 @@ depends: traced(_input.with_suffix('.bam.bai'))
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 2)
         self.assertEqual(res['__completed__']['__step_skipped__'], 1)
-        
+
+
+    def testKillWorker(self):
+        '''Test if the workflow can error out after a worker is killed'''
+        import psutil
+        import time
+        with open('testKill.sos', 'w') as tk:
+            tk.write('''
+import time
+
+[1]
+time.sleep(4)
+
+[2]
+time.sleep(4)
+''')
+        ret = subprocess.Popen(['sos', 'run', 'testKill'])
+        time.sleep(2)
+        proc = psutil.Process()
+        children = proc.children(recursive=True)
+        children[0].terminate()
+        ret.wait()
+        self.assertNotEqual(ret.returncode, 0)
+        #
+        ret = subprocess.Popen(['sos', 'run', 'testKill'])
+        time.sleep(2)
+        proc = psutil.Process()
+        children = proc.children(recursive=True)
+        children[0].kill()
+        ret.wait()
+        self.assertNotEqual(ret.returncode, 0)
+
+    def testKillSubstepWorker(self):
+        '''Test if the workflow can error out after a worker is killed'''
+        import psutil
+        import time
+        with open('testKillSubstep.sos', 'w') as tk:
+            tk.write('''
+import time
+
+[1]
+input: for_each=dict(i=range(4))
+time.sleep(2)
+''')
+        ret = subprocess.Popen(['sos', 'run', 'testKillSubstep'])
+        time.sleep(2)
+        proc = psutil.Process()
+        children = proc.children(recursive=True)
+        children[-1].terminate()
+        ret.wait()
+        self.assertNotEqual(ret.returncode, 0)
+        #
+        ret = subprocess.Popen(['sos', 'run', 'testKillSubstep'])
+        time.sleep(2)
+        proc = psutil.Process()
+        children = proc.children(recursive=True)
+        children[-1].kill()
+        ret.wait()
+        self.assertNotEqual(ret.returncode, 0)
+
+
+    def testKillTask(self):
+        '''Test if the workflow can error out after a worker is killed'''
+        import psutil
+        import time
+        with open('testKillTask.sos', 'w') as tk:
+            tk.write('''
+import time
+
+[1]
+task:
+time.sleep(10)
+''')
+        ret = subprocess.Popen(['sos', 'run', 'testKillTask'])
+        time.sleep(3)
+        proc = psutil.Process()
+        children = proc.children(recursive=True)
+        children[-1].terminate()
+        ret.wait()
+        self.assertNotEqual(ret.returncode, 0)
+        #
+        ret = subprocess.Popen(['sos', 'run', 'testKillTask'])
+        time.sleep(3)
+        proc = psutil.Process()
+        children = proc.children(recursive=True)
+        children[-1].kill()
+        ret.wait()
+        self.assertNotEqual(ret.returncode, 0)
+
+
 if __name__ == '__main__':
     unittest.main()
