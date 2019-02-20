@@ -2299,6 +2299,26 @@ time.sleep(10)
         ret.wait()
         self.assertNotEqual(ret.returncode, 0)
 
+    def testConcurrentRunningTasks(self):
+        '''Test two sos instances running the same task'''
+        import psutil
+        import time
+        with open('testKillTask.sos', 'w') as tk:
+            tk.write('''
+
+[1]
+task:
+import time
+time.sleep(5)
+''')
+        ret1 = subprocess.Popen(['sos', 'run', 'testKillTask', '-s', 'force'])
+        ret2 = subprocess.Popen(['sos', 'run', 'testKillTask', '-s', 'force'])
+        ret1.wait()
+        ret2.wait()
+        self.assertEqual(ret1.returncode, 0)
+        self.assertEqual(ret2.returncode, 0)
+
+
 
 if __name__ == '__main__':
     unittest.main()

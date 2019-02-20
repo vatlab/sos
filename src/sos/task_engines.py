@@ -35,7 +35,7 @@ class TaskEngine(threading.Thread):
         # tasks that we need to wait for a while to confirm its status
         # it will be in pending until it is confirmed that either
         # it has been canceled or already running.
-        self.pending_running_tasks = {}
+        self.running_pending_tasks = {}
         self.running_tasks = []
         self.pending_tasks = []
         self.submitting_tasks = {}
