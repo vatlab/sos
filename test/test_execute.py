@@ -2295,7 +2295,7 @@ time.sleep(10)
                 time.sleep(1)
                 execute[0].kill()
                 break
-            time.sleep(0.1)        
+            time.sleep(0.1)
         ret.wait()
         self.assertNotEqual(ret.returncode, 0)
 
@@ -2318,7 +2318,37 @@ time.sleep(5)
         self.assertEqual(ret1.returncode, 0)
         self.assertEqual(ret2.returncode, 0)
 
+    def testRestartOrphanedTasks(self):
+        '''Test restarting orphaned tasks which displays as running at first.'''
+        import psutil
+        import time
+        subprocess.call(['sos', 'purge', '--all'])
 
+        with open('testOrphan.sos', 'w') as tk:
+            tk.write('''
+
+[1]
+task:
+import time
+time.sleep(12)
+''')
+        ret = subprocess.Popen(['sos', 'run', 'testOrphan', '-s', 'force'])
+        proc = psutil.Process(ret.pid)
+        while True:
+            children = proc.children(recursive=True)
+            execute = [x for x in children if 'execute' in x.cmdline()]
+            if len(execute) >= 1:
+                # a bug: if the process is killed too quickly (the signal
+                # function is not called), this will fail.
+                time.sleep(1)
+                execute[0].kill()
+                break
+            time.sleep(0.1)
+        proc.kill()
+        #
+        ret = subprocess.Popen(['sos', 'run', 'testOrphan'])
+        ret.wait()
+        self.assertEqual(ret.returncode, 0)
 
 if __name__ == '__main__':
     unittest.main()

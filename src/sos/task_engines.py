@@ -144,10 +144,10 @@ class TaskEngine(threading.Thread):
         self.engine_ready.set()
         while True:
             # if no new task, does not do anything.
-            if self.running_tasks and time.time() - self._last_status_check > self.status_check_interval:
+            if (self.running_tasks or self.running_pending_tasks) and time.time() - self._last_status_check > self.status_check_interval:
                 if self._status_checker is None:
                     self._status_checker = self._thread_workers.submit(
-                        self.query_tasks, self.running_tasks, check_all=False,
+                        self.query_tasks, self.running_tasks + list(self.running_pending_tasks.keys()), check_all=False,
                         verbosity=3, numeric_times=True)
                     continue
                 elif self._status_checker.running():
@@ -162,7 +162,7 @@ class TaskEngine(threading.Thread):
                         continue
                     try:
                         tid, tags, ct, st, dr, tst = line.split('\t')
-                        if tid not in self.running_tasks:
+                        if tid not in self.running_tasks + list(self.running_pending_tasks.keys()):
                             env.logger.trace(
                                 f'Task {tid} removed since status check.')
                             continue
@@ -400,6 +400,11 @@ class TaskEngine(threading.Thread):
             # terminal states, remove tasks from task list
             if status in ('completed', 'failed', 'aborted') and task_id in self.running_tasks:
                 self.running_tasks.remove(task_id)
+            # for running pending tasks
+            if status == 'aborted' and task_id in self.running_pending_tasks:
+                self.pending_tasks.append(task_id)
+                self.task_status[task_id] = 'pending'
+                self.running_pending_tasks.pop(task_id)
 
     def query_tasks(self, tasks=None, check_all=False, verbosity=1, html=False, numeric_times=False, age=None, tags=None, status=None):
         try:
