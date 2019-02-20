@@ -86,15 +86,21 @@ def execute_substep(stmt, global_def='', task='', task_params='', proc_vars={}, 
     assert '_index' in proc_vars
     assert 'result_push_socket' in config["sockets"]
 
-    try:
-        res_socket = create_socket(env.zmq_context, zmq.PUSH)
-        res_socket.connect(f'tcp://127.0.0.1:{config["sockets"]["result_push_socket"]}')
-        res = _execute_substep(stmt=stmt, global_def=global_def, task=task,
+    # this should not happen but check nevertheless
+    if env.result_socket_port is not None and env.result_socket_port != config["sockets"]["result_push_socket"]:
+        close_socket(env.result_socket)
+        env.result_socket = None
+
+    if env.result_socket is None:
+        env.result_socket = create_socket(env.zmq_context, zmq.PUSH)
+        env.result_socket_port = config["sockets"]["result_push_socket"]
+        env.result_socket.connect(f'tcp://127.0.0.1:{env.result_socket_port}')
+        
+    res = _execute_substep(stmt=stmt, global_def=global_def, task=task,
             task_params=task_params, proc_vars=proc_vars,
             shared_vars=shared_vars, config=config)
-        res_socket.send_pyobj(res)
-    finally:
-        close_socket(res_socket)
+    env.result_socket.send_pyobj(res)
+    
 
 def _execute_substep(stmt, global_def, task, task_params, proc_vars, shared_vars, config):
     # passing configuration and port numbers to the subprocess

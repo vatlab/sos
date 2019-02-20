@@ -209,6 +209,9 @@ class SoS_SubStep_Worker(mp.Process):
         env.master_socket.connect(f'tcp://127.0.0.1:{self.config["sockets"]["substep_backend"]}')
         env.logger.trace(f'Substep worker {os.getpid()} started')
 
+        env.result_socket = None
+        env.result_socket_port = None
+
         while True:
             env.master_socket.send_pyobj(self.LRU_READY)
             msg = env.master_socket.recv_pyobj()
@@ -221,6 +224,7 @@ class SoS_SubStep_Worker(mp.Process):
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
         kill_all_subprocesses(os.getpid())
 
+        close_socket(env.result_socket, 'substep result', now=True)
         close_socket(env.master_socket, 'substep backend', now=True)
         disconnect_controllers(env.zmq_context)
 
