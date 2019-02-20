@@ -172,7 +172,7 @@ class ExecutionManager(object):
     def cleanup(self) -> None:
         self.procs = [x for x in self.procs if x is not None]
 
-    def terminate(self, brutal: bool = False) -> None:
+    def terminate(self) -> None:
         self.cleanup()
         for proc in self.procs + self.pool:
             # the process might have been killed #1212
@@ -181,7 +181,7 @@ class ExecutionManager(object):
                 proc.socket.send_pyobj(None)
             close_socket(proc.socket, now=True)
         cnt = 0
-        while cnt < 200:
+        while cnt < 500:
             # wait at most 5 second for all processes to be
             # finished by themselves.
             if any(x.worker.is_alive() for x in self.procs + self.pool if x.worker):
@@ -192,8 +192,6 @@ class ExecutionManager(object):
         # if the workers cannot kill themselves, give a warning
         for proc in self.procs + self.pool:
             if proc.worker.is_alive():
-                if not brutal:
-                    env.logger.warning(f'Process {proc.worker.pid} has to be explicitly killed.')
                 proc.worker.terminate()
                 proc.worker.join()
 
@@ -1348,11 +1346,8 @@ class Base_Executor:
         except Exception as e:
             if not isinstance(e, ExecuteError):
                 exec_error.append(self.workflow.name, e)
-            manager.terminate(brutal=True)
-            manager = None
         finally:
-            if manager:
-                manager.terminate()
+            manager.terminate()
         #
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
@@ -1541,7 +1536,7 @@ class Base_Executor:
         except Exception as e:
             if not isinstance(e, ExecuteError):
                 exec_error.append(self.workflow.name, e)
-            manager.terminate(brutal=True)
+            manager.terminate()
 
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()

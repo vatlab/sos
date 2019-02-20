@@ -91,6 +91,10 @@ class SoS_Worker(mp.Process):
             try:
                 work = env.master_socket.recv_pyobj()
                 if work is None:
+                    # it can take a while for the worker to shutdown but
+                    # we no longer needs this signal handler if the worker
+                    # has started quiting
+                    signal.signal(signal.SIGTERM, signal.SIG_DFL)
                     break
                 env.logger.debug(
                     f'Worker {self.name} receives request {short_repr(work)}')
