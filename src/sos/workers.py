@@ -429,7 +429,7 @@ class WorkerManager(object):
                 self._last_pending_time[ports[0]] = time.time()
             self._available_ports.add(ports[0])
             self._worker_backend_socket.send_pyobj({})
-            self.report(f'pending with port {ports}')
+            self.report(f'pending with port {ports} at level {level}')
 
     def start(self):
         worker = SoS_Worker(env.config)
