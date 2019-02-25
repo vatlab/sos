@@ -307,7 +307,7 @@ class WorkerManager(object):
         self._n_processed = 0
 
         self._worker_alive_time = time.time()
-        self._last_avail_time = time.time()
+        self._last_pending_time = {}
 
         self._substep_requests = []
         self._step_requests = {}
@@ -378,11 +378,12 @@ class WorkerManager(object):
             # if the port is available
             port = [x for x in ports if x in self._step_requests][0]
             self._worker_backend_socket.send_pyobj(self._step_requests.pop(port))
-            self._last_avail_time = time.time()
             self._n_processed += 1
             self.report(f'Step {port} processed')
             # port should be in claimed ports
             self._claimed_ports.remove(port)
+            if ports[0] in self._last_pending_time:
+                self._last_pending_time.pop(ports[0])
         elif any(port in self._claimed_ports for port in ports):
             # the port is claimed, but the real message is not yet available
             self._worker_backend_socket.send_pyobj({})
@@ -403,18 +404,29 @@ class WorkerManager(object):
             # port is not claimed, free to use for substep worker
             msg = self._substep_requests.pop()
             self._worker_backend_socket.send_pyobj(msg)
-            self._last_avail_time = time.time()
             self._n_processed += 1
             self.report(f'Substep processed with {ports[0]}')
             # port can however be in available ports
             for port in ports:
                 if port in self._available_ports:
                     self._available_ports.remove(port)
+                if port in self._last_pending_time:
+                    self._last_pending_time.pop(port)
         elif request_blocking:
             self._worker_backend_socket.send_pyobj({})
             return ports[0]
+        elif level == 0 and ports[0] in self._last_pending_time and time.time() - self._last_pending_time[ports[0]] > 5:
+            # kill the worker
+            for port in ports:
+                if port in self._available_ports:
+                    self._available_ports.remove(port)
+            self._worker_backend_socket.send_pyobj(None)
+            self._num_workers -= 1
+            self.report(f'Kill standing {msg[1:]}')
+            self._last_pending_time.pop(ports[0])
         else:
-            # the port will be available for others to use
+            if level == 0 and ports[0] not in self._last_pending_time:
+                self._last_pending_time[ports[0]] = time.time()
             self._available_ports.add(ports[0])
             self._worker_backend_socket.send_pyobj({})
             self.report(f'pending with port {ports}')
@@ -434,25 +446,7 @@ class WorkerManager(object):
             self._workers = [worker for worker in self._workers if worker.is_alive()]
             if len(self._workers) < self._num_workers:
                 raise ProcessKilled('One of the workers has been killed.')
-        # if there is at least one request has been processed in 5 seconds
-        if time.time() - self._last_avail_time < 5:
-            return
-        # we keep at least one worker
-        attempts = self._num_workers - 1
-        while attempts > 0:
-            attempts -= 1
-            if not self._worker_backend_socket.poll(100):
-                continue
-            msg = self._worker_backend_socket.recv_pyobj()
-            if any(port in self._claimed_ports for port in msg[1:]) or msg[0] > 0:
-                self._worker_backend_socket.send_pyobj({})
-                continue
-            for port in msg[1:]:
-                if port in self._available_ports:
-                    self._available_ports.remove(port)
-            self._worker_backend_socket.send_pyobj(None)
-            self._num_workers -= 1
-            self.report(f'Kill standing {msg[1:]}')
+
 
     def kill_all(self):
         '''Kill all workers'''
