@@ -115,6 +115,8 @@ sos_run('a+b', shared=['executed', 'inputs'])
         self.assertEqual(sorted(env.sos_dict['executed']), sorted(['c', 'a_1', 'a_2', 'a_3', 'a_4',
                                                                    'b_1', 'b_2', 'b_3', 'b_4']))
         env.sos_dict.pop('executed', None)
+
+    def testLoopedNestedWorkflow(self):
         # step will be looped
         self.touch(['a.txt', 'b.txt'])
         script = SoS_Script('''
@@ -152,6 +154,9 @@ sos_run('a', shared=['executed', 'inputs'])
             if file_target(file).exists():
                 file_target(file).unlink()
         #
+
+    def testSingleLoopedNestedWorkflow(self):
+        self.touch(['a.txt', 'b.txt'])
         env.sos_dict.pop('executed', None)
         # allow specifying a single step
         # step will be looped
@@ -198,7 +203,10 @@ sos_run('a:2', shared='executed')
                          'c_0', 'c_1', 'a_2', 'a_2'])
         #
         env.sos_dict.pop('executed', None)
+
+    def testRecursiveNestedWorkflow(self):
         # recursive subworkflow not allowed
+        self.touch(['a.txt', 'b.txt'])
         script = SoS_Script('''
 if 'executed' not in locals():
     executed = []
@@ -247,7 +255,10 @@ sos_run('a+b', shared='executed')
         #
         #
         env.sos_dict.pop('executed', None)
+
+    def testSubworkflowWithOptions(self):
         # nested subworkflow with step option and others
+        self.touch(['a.txt', 'b.txt'])
         script = SoS_Script('''
 if 'executed' not in locals():
     executed = []

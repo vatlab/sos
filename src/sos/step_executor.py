@@ -342,7 +342,14 @@ class Base_Step_Executor:
         assert isinstance(ifiles, sos_targets)
 
         if env.sos_dict.get('__dynamic_input__', False):
-            self.verify_dynamic_targets([x for x in ifiles if isinstance(x, file_target)])
+            runner = self.verify_dynamic_targets([x for x in ifiles if isinstance(x, file_target)])
+            try:
+                yreq = next(runner)
+                while True:
+                    yres = yield yreq
+                    yreq = runner.send(yres)
+            except StopIteration as e:
+                pass
 
         # input file is the filtered files
         env.sos_dict.set('step_input', ifiles)
@@ -354,6 +361,7 @@ class Base_Step_Executor:
         return ifiles.groups
 
     def verify_dynamic_targets(self, target):
+        yield None
         return True
 
     def process_depends_args(self, dfiles: sos_targets, **kwargs):
@@ -364,7 +372,14 @@ class Base_Step_Executor:
             raise ValueError(r"Depends needs to handle undetermined")
 
         if env.sos_dict.get('__dynamic_depends__', False):
-            self.verify_dynamic_targets([x for x in dfiles if isinstance(x, file_target)])
+            runner = self.verify_dynamic_targets([x for x in dfiles if isinstance(x, file_target)])
+            try:
+                yreq = next(runner)
+                while True:
+                    yres = yield yreq
+                    yreq = runner.send(yres)
+            except StopIteration as e:
+                pass
 
         env.sos_dict.set('_depends', dfiles)
         env.sos_dict.set('step_depends', dfiles)
@@ -517,11 +532,26 @@ class Base_Step_Executor:
 
     def wait_for_tasks(self, tasks, all_submitted):
         # this will be redefined in subclasses
+        yield None
+        return {}
+
+    def wait_for_subworkflows(self, workflow_results):
+        yield None
+        raise RuntimeError('Subworkflow is not supported in interactive mode')
         return {}
 
     def wait_for_results(self, all_submitted):
+        # this is a generator function because wait_for_tasks is a generator
+        # function and needs to yield to the caller
         if self.concurrent_substep:
-            self.wait_for_substep()
+            try:
+                runner = self.wait_for_substep()
+                yreq = next(runner)
+                while True:
+                    yres = yield yreq
+                    yreq = runner.send(yres)
+            except StopIteration as e:
+                pass
 
         if self.task_manager is None:
             return {}
@@ -532,7 +562,15 @@ class Base_Step_Executor:
             self.submit_tasks(tasks)
 
         # waiting for results of specified IDs
-        results = self.wait_for_tasks(self.task_manager._submitted_tasks, all_submitted)
+        try:
+            #1218
+            runner = self.wait_for_tasks(self.task_manager._submitted_tasks, all_submitted)
+            yreq = next(runner)
+            while True:
+                yres = yield yreq
+                yreq = runner.send(yres)
+        except StopIteration as e:
+            results = e.value
         #
         # report task
         # what we should do here is to get the alias of the Host
@@ -626,6 +664,8 @@ class Base_Step_Executor:
             raise RuntimeError(e.stderr)
         except ArgumentError:
             raise
+        except ProcessKilled:
+            raise
         except Exception as e:
             raise RuntimeError(get_traceback_msg(e))
 
@@ -636,10 +676,12 @@ class Base_Step_Executor:
         env.config['sockets']['result_push_socket'] = port
 
     def handle_unknown_target(self, e):
+        # wait for the clearnce of unknown target
+        yield None
         raise e
 
-    def submit_substep(self, substep):
-        send_message_to_controller(substep)
+    def submit_substep(self, param):
+        send_message_to_controller(['substep', param])
 
     def process_returned_substep_result(self, till=None, wait=True):
         while True:
@@ -648,6 +690,7 @@ class Base_Step_Executor:
                     return
             elif self._completed_concurrent_substeps == till:
                 return
+            yield self.result_pull_socket
             res = self.result_pull_socket.recv_pyobj()
             if 'exception' in res and isinstance(res['exception'], ProcessKilled):
                 raise res['exception']
@@ -669,8 +712,16 @@ class Base_Step_Executor:
 
     def wait_for_substep(self):
         while self._completed_concurrent_substeps < len(self.proc_results):
-            self.process_returned_substep_result(till=len(self.proc_results),
-                wait=True)
+            try:
+                runner = self.process_returned_substep_result(till=len(self.proc_results),
+                    wait=True)
+                yreq = next(runner)
+                while True:
+                    yres = yield yreq
+                    yreq = runner.send(yres)
+            except StopIteration:
+                pass
+
 
     def collect_result(self):
         # only results will be sent back to the master process
@@ -819,9 +870,23 @@ class Base_Step_Executor:
                                 )
                             dfiles = expand_depends_files(*args)
                             # dfiles can be Undetermined
-                            self.process_depends_args(dfiles, **kwargs)
+                            runner = self.process_depends_args(dfiles, **kwargs)
+                            try:
+                                yreq = next(runner)
+                                while True:
+                                    yres = yield yreq
+                                    yreq = runner.send(yres)
+                            except StopIteration as e:
+                                pass
                         except (UnknownTarget, RemovedTarget) as e:
-                            self.handle_unknown_target(e)
+                            runner = self.handle_unknown_target(e)
+                            try:
+                                yreq = next(runner)
+                                while True:
+                                    yres = yield yreq
+                                    yreq = runner.send(yres)
+                            except StopIteration as e:
+                                pass
                             continue
                         except UnavailableLock:
                             raise
@@ -855,13 +920,27 @@ class Base_Step_Executor:
                     # Files will be expanded differently with different running modes
                     input_files: sos_targets = expand_input_files(*args,
                         **{k:v for k, v in kwargs.items() if k not in SOS_INPUT_OPTIONS})
-                    self._substeps = self.process_input_args(
+                    runner = self.process_input_args(
                         input_files, **{k:v for k, v in kwargs.items() if k in SOS_INPUT_OPTIONS})
+                    try:
+                        yreq = next(runner)
+                        while True:
+                            yres = yield yreq
+                            yreq = runner.send(yres)
+                    except StopIteration as e:
+                        self._substeps = e.value
                     #
                     if 'concurrent' in kwargs and kwargs['concurrent'] is False:
                         self.concurrent_substep = False
                 except (UnknownTarget, RemovedTarget) as e:
-                    self.handle_unknown_target(e)
+                    runner = self.handle_unknown_target(e)
+                    try:
+                        yreq = next(runner)
+                        while True:
+                            yres = yield yreq
+                            yreq = runner.send(yres)
+                    except StopIteration as e:
+                        pass
                     continue
                 except UnavailableLock:
                     raise
@@ -904,6 +983,13 @@ class Base_Step_Executor:
         self._all_outputs = set()
         self._subworkflow_results = []
 
+        if any('sos_run' in x[1] for x in self.step.statements[input_statement_idx:]) and \
+            'shared' not in self.step.options and not self.step.task and \
+            self.step.statements[-1][0] == '!' and \
+            (len(self.step.statements) == 1 or self.step.statements[-2][0] == ':') and \
+            is_sos_run_the_only_last_stmt(self.step.statements[-1][1]):
+            env.sos_dict.set('__concurrent_subworkflow__', True)
+
         if self.concurrent_substep:
             if len(self._substeps) <= 1 or env.config['run_mode'] == 'dryrun':
                 self.concurrent_substep = False
@@ -914,15 +1000,7 @@ class Base_Step_Executor:
                     'Substeps are executed sequentially because of existence of directives between statements.')
             elif any('sos_run' in x[1] for x in self.step.statements[input_statement_idx:]):
                 self.concurrent_substep = False
-                if 'shared' not in self.step.options and not self.step.task and \
-                    len([x for x in self.step.statements[input_statement_idx:] if x[0] == '!']) == 1 and \
-                    self.step.statements[-1][0] == '!' and \
-                    is_sos_run_the_only_last_stmt(self.step.statements[-1][1]):
-                    env.sos_dict.set('__concurrent_subworkflow__', True)
-                    env.logger.debug(
-                        'Running nested workflows concurrently.')
-                else:
-                    env.logger.debug(
+                env.logger.debug(
                         'Substeps are executed sequentially because of existence of multiple nested workflow.')
             else:
                 self.prepare_substep()
@@ -1028,7 +1106,14 @@ class Base_Step_Executor:
                                     try:
                                         dfiles = expand_depends_files(*args)
                                         # dfiles can be Undetermined
-                                        self.process_depends_args(dfiles, **kwargs)
+                                        runner = self.process_depends_args(dfiles, **kwargs)
+                                        try:
+                                            yreq = next(runner)
+                                            while True:
+                                                yres = yield yreq
+                                                yreq = runner.send(yres)
+                                        except StopIteration as e:
+                                            pass
                                         self.depends_groups[idx] = env.sos_dict['_depends']
                                         self.log('_depends')
                                     except Exception as e:
@@ -1040,7 +1125,14 @@ class Base_Step_Executor:
                                 # everything is ok, break
                                 break
                             except (UnknownTarget, RemovedTarget) as e:
-                                self.handle_unknown_target(e)
+                                runner = self.handle_unknown_target(e)
+                                try:
+                                    yreq = next(runner)
+                                    while True:
+                                        yres = yield yreq
+                                        yreq = runner.send(yres)
+                                except StopIteration as e:
+                                    pass
                                 continue
                             except UnavailableLock:
                                 raise
@@ -1295,24 +1387,37 @@ class Base_Step_Executor:
                 # if not concurrent, we have to wait for the completion of the task
                 if 'concurrent' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['concurrent'] is False:
                     # in this case the steps must be executed not concurrently
-                    self.wait_for_results(all_submitted=False)
+                    runner = self.wait_for_results(all_submitted=False)
+                    try:
+                        yreq = next(runner)
+                        while True:
+                            yres = yield yreq
+                            yreq = runner.send(yres)
+                    except StopIteration:
+                        pass
                 #
                 # endfor loop for each input group
                 #
             if self._subworkflow_results:
-                wf_ids = sum([x['pending_workflows'] for x in self._subworkflow_results], [])
-                for _ in wf_ids:
-                    # here we did not check if workflow ids match
-                    res = env.__socket__.recv_pyobj()
-                    if res is None:
-                        sys.exit(0)
-                    elif isinstance(res, Exception):
-                        raise res
+                try:
+                    runner = self.wait_for_subworkflows(self._subworkflow_results)
+                    yreq = next(runner)
+                    while True:
+                        yres = yield yreq
+                        yreq = runner.send(yres)
+                except StopIteration:
+                    pass
                 env.sos_dict.pop('__concurrent_subworkflow__')
-                # otherwise there should be nothing interesting in subworkflow
-                # return value (shared is not handled)
 
-            self.wait_for_results(all_submitted=True)
+            runner = self.wait_for_results(all_submitted=True)
+            try:
+                yreq = next(runner)
+                while True:
+                    yres = yield yreq
+                    yreq = runner.send(yres)
+            except StopIteration:
+                pass
+
             for idx, res in enumerate(self.proc_results):
                 if 'sig_skipped' in res:
                     self.completed['__substep_skipped__'] += 1
@@ -1426,14 +1531,19 @@ class Step_Executor(Base_Step_Executor):
         self.socket.send_pyobj(['tasks', host] + tasks)
 
     def wait_for_tasks(self, tasks, all_submitted):
+        # wait for task is a generator function that yields the request
+        # to the runner
         if not tasks:
             return {}
         # when we wait, the "outsiders" also need to see the tags etc
         # of the tasks so we have to write to the database. #156
         send_message_to_controller(['commit_sig'])
+
         # wait till the executor responde
         results = {}
         while True:
+            # yield an indicator of what is requested, for debugging purpose
+            yield self.socket
             res = self.socket.recv_pyobj()
             if res is None:
                 sys.exit(0)
@@ -1444,9 +1554,22 @@ class Step_Executor(Base_Step_Executor):
                 break
         return results
 
+    def wait_for_subworkflows(self, workflow_results):
+        '''Wait for results from subworkflows'''
+        wf_ids = sum([x['pending_workflows'] for x in workflow_results], [])
+        for wf_id in wf_ids:
+            # here we did not check if workflow ids match
+            yield self.socket
+            res = self.socket.recv_pyobj()
+            if res is None:
+                sys.exit(0)
+            elif isinstance(res, Exception):
+                raise res
+
     def handle_unknown_target(self, e):
         self.socket.send_pyobj(['missing_target', e.target])
-        res = self.socket.recv()
+        yield self.socket
+        res = self.socket.recv_pyobj()
         if not res:
             raise e
 
@@ -1463,13 +1586,23 @@ class Step_Executor(Base_Step_Executor):
             return
 
         self.socket.send_pyobj(['dependent_target'] + traced)
-        res = self.socket.recv()
-        if res != b'target_resolved':
+        yield self.socket
+        res = self.socket.recv_pyobj()
+        if res != 'target_resolved':
             raise RuntimeError(f'Failed to veryify dependent target {traced}')
 
     def run(self):
         try:
-            res = Base_Step_Executor.run(self)
+            try:
+                # 1218
+                runner = Base_Step_Executor.run(self)
+                yreq = next(runner)
+                while True:
+                    yres = yield yreq
+                    yreq = runner.send(yres)
+            except StopIteration as e:
+                res = e.value
+
             if self.socket is not None:
                 env.logger.debug(
                     f'Step {self.step.step_name()} sends result {short_repr(res)}')
@@ -1479,9 +1612,12 @@ class Step_Executor(Base_Step_Executor):
         except Exception as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
-            if self.socket is not None:
+            if self.socket is not None and not self.socket.closed:
                 env.logger.debug(
                     f'Step {self.step.step_name()} sends exception {e}')
-                self.socket.send_pyobj(e)
+                if isinstance(e, ProcessKilled):
+                    raise
+                else:
+                    self.socket.send_pyobj(e)
             else:
                 raise e

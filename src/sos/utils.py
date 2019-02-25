@@ -281,9 +281,22 @@ class RuntimeEnvironments(object):
         self.master_push_socket = None
         self.master_request_socket = None
 
+        self._sub_idx = 0
+        self._sub_envs = [{}]
+
         # this function is used by tests to reset environments
         # after finishing an test
         self.reset()
+
+    def switch(self, idx):
+        # save old env
+        if idx == self._sub_idx:
+            return
+        self._sub_envs[self._sub_idx]['sos_dict'] = self.sos_dict
+        if len(self._sub_envs) <= idx:
+            self._sub_envs.append({'sos_dict': WorkflowDict()})
+        self.sos_dict = self._sub_envs[idx]['sos_dict']
+        self._sub_idx = idx
 
     _exec_dir = None
     _temp_dir = os.path.join(tempfile.gettempdir(), getpass.getuser(), '.sos')
@@ -1575,7 +1588,6 @@ def dot_to_gif(filename: str, warn=None):
             newImages[pngFile] = newImg
 
         # create a gif file from images
-        gifFile = os.path.join(tempDirectory, 'sosDot.gif')
         try:
             with BytesIO() as output:
                 newImages[pngFiles[0]].save(output, save_all=True, format='GIF',
@@ -1619,3 +1631,4 @@ def separate_options(options: str) -> List[str]:
                 pieces[idx] += '\n' + pieces[idx + 1]
                 pieces.pop(idx + 1)
     return pieces
+

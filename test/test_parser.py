@@ -1971,7 +1971,7 @@ with open(_output, 'w') as out:
 input: output_from('A')
 
 with open(_input) as content:
-    assert(content, 'A_2\n')
+    assert content.read() == 'A_2\n'
 
 ''')
         wf = script.workflow()

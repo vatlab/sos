@@ -114,6 +114,14 @@ class SoS_DAG(nx.DiGraph):
         self._all_output_files = defaultdict(list)
         # index of mini
         self._forward_workflow_id = 0
+        # if dag has been changed
+        self._dirty = True
+
+    def mark_dirty(self, dirty=True):
+        self._dirty = dirty
+
+    def dirty(self):
+        return self._dirty
 
     def new_forward_workflow(self):
         self._forward_workflow_id += 1
@@ -235,7 +243,7 @@ class SoS_DAG(nx.DiGraph):
                     else:
                         missing.append(x)
         else:
-            missing = [x for x in self._all_depends_files.keys() if x not in self._all_output_files and not x.target_exists()]            
+            missing = [x for x in self._all_depends_files.keys() if x not in self._all_output_files and not x.target_exists()]
         for x in targets:
             if x not in self._all_output_files:
                 if x.target_exists('target'):
@@ -322,6 +330,7 @@ class SoS_DAG(nx.DiGraph):
                 for j in out_node:
                     if j != i:
                         self.add_edge(j, i)
+        self.mark_dirty()
 
     def save(self, dest=None):
         if not dest:
