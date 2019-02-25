@@ -422,7 +422,7 @@ class WorkerManager(object):
                     self._available_ports.remove(port)
             self._worker_backend_socket.send_pyobj(None)
             self._num_workers -= 1
-            self.report(f'Kill standing {msg[1:]}')
+            self.report(f'Kill standing {ports[0]}')
             self._last_pending_time.pop(ports[0])
         else:
             if level == 0 and ports[0] not in self._last_pending_time:
