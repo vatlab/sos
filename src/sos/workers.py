@@ -25,6 +25,34 @@ from .utils import (WorkflowDict, env, get_traceback, load_config_files,
 def signal_handler(*args, **kwargs):
     raise ProcessKilled()
 
+class Runner(object):
+    def __init__(self, runner):
+        self._runner = runner
+        self._poller = 0
+
+    def run_until_waiting(self):
+        try:
+            # if poller is not initialized, run the runner to get the first poller
+            if self._poller == 0:
+                self._poller = next(self._runner)
+
+            while True:
+                if self._poller is None:
+                    self._poller = self._runner.send(None)
+                    continue
+
+                if self._poller.poll(200):
+                    self._poller = self._runner.send(None)
+                    continue
+
+                # the poller is not ready, let us break
+                return self
+        except StopIteration as e:
+            return True
+
+    def can_proceed(self):
+        return self._poller == 0 or self._poller.poll(0)
+
 class SoS_Worker(mp.Process):
     '''
     Worker process to process SoS step or workflow in separate process.
@@ -53,6 +81,35 @@ class SoS_Worker(mp.Process):
         self._master_sockets = []
         self._master_ports = []
         self._stack_idx = 0
+        self._runners = []
+        self._env_idx = []
+
+    def waiting_runners(self):
+        # check if
+        return [idx for idx, runner in enumerate(self._runners) if isinstance(runner, Runner) and runner.can_proceed()]
+
+    def completed_runners(self):
+        return [idx for idx, runner in enumerate(self._runners) if runner is True]
+
+    def available_ports(self):
+        return [port for port, runner in zip(self._master_ports, self._runners) if runner is True]
+
+    def switch_to(self, idx):
+        if len(self._master_sockets) > idx:
+            # if current stack is ok
+            env.master_socket = self._master_sockets[idx]
+            env.switch(self._env_idx[idx])
+        else:
+            assert idx == len(self._master_ports)
+            # a new socket is needed
+            env.master_socket = create_socket(env.zmq_context, zmq.PAIR)
+            port = env.master_socket.bind_to_random_port('tcp://127.0.0.1')
+            # switch to a new env_idx and returns new_idx, old_idx
+            self._env_idx.append(env.request_new()[0])
+            self._master_sockets.append(env.master_socket)
+            self._master_ports.append(port)
+            self._runners.append(True)
+            env.logger.trace(f'WORKER {self.name} ({os.getpid()}) creates ports {self._master_ports}')
 
     def run(self):
         # env.logger.warning(f'Worker created {os.getpid()}')
@@ -65,12 +122,6 @@ class SoS_Worker(mp.Process):
 
         signal.signal(signal.SIGTERM, signal_handler)
 
-        # create at last one master socket
-        env.master_socket = create_socket(env.zmq_context, zmq.PAIR)
-        port = env.master_socket.bind_to_random_port('tcp://127.0.0.1')
-        self._master_sockets.append(env.master_socket)
-        self._master_ports.append(port)
-
         # result socket used by substeps
         env.result_socket = None
         env.result_socket_port = None
@@ -78,8 +129,54 @@ class SoS_Worker(mp.Process):
         # wait to handle jobs
         while True:
             try:
-                if not self._process_job():
+                wr = self.waiting_runners()
+                if wr:
+                    for idx in wr:
+                        self.switch_to(idx)
+                        # it can be True for completion and Runner itself for continue
+                        self._runners[idx] = self._runners[idx].run_until_waiting()
+                    continue
+
+                cr = self.completed_runners()
+                # using an completed slot or create a new one
+                new_idx = len(self._runners) if not cr else cr[0]
+                self.switch_to(new_idx)
+
+                # although we have chosen one port, but we hae advertised multiple ports
+                # and the executor might choose another one. We therefore need to send all
+                # avilable ports to the controller. We also need to send a flag to let the
+                # controller know if we have any pending job, and the controller might decide
+                # to kill this worker.
+                env.ctrl_socket.send_pyobj([len(wr)] + self.available_ports())
+                reply = env.ctrl_socket.recv_pyobj()
+
+                if reply is None:
+                    if len(wr) != 0:
+                        env.logger.error(f'WORKER terminates with pending tasks. sos might not be termianting properly.')
+                    env.logger.trace(f'WORKER {self.name} ({os.getpid()}) quits after receiving None.')
                     break
+                if not reply: # if an empty job is returned
+                    time.sleep(0.1)
+                    continue
+                #
+                # if a real job is returned, run it. _process_job will either return True
+                # or a runner in case it is interrupted.
+                env.logger.trace(
+                    f'WORKER {self.name} ({os.getpid()}, {len(wr)} pending) receives {self._type_of_work(reply)} request {self._name_of_work(reply)} with master port {self._master_ports[new_idx]}')
+
+                if 'task' in reply:
+                    self.run_substep(reply)
+                    env.logger.trace(
+                        f'WORKER {self.name} ({os.getpid()}) completes substep {self._name_of_work(reply)}')
+                    self._runners[new_idx] = True
+
+                master_port = reply['config']['sockets']['master_port']
+                if master_port != self._master_ports[new_idx]:
+                    new_idx = self._master_ports.index(master_port)
+                    self.switch_to(new_idx)
+
+                # step and workflow can yield
+                self._runners[new_idx] = Runner(self.run_step(**reply) if 'section' in reply else self.run_workflow(**reply))
             except ProcessKilled:
                 # in theory, this will not be executed because the exception
                 # will be caught by the step executor, and then sent to the master
@@ -98,25 +195,6 @@ class SoS_Worker(mp.Process):
         close_socket(env.ctrl_socket, now=True)
         disconnect_controllers(env.zmq_context)
 
-    def push_env(self):
-        self._stack_idx += 1
-        env.switch(self._stack_idx)
-        if len(self._master_sockets) > self._stack_idx:
-            # if current stack is ok
-            env.master_socket = self._master_sockets[self._stack_idx]
-        else:
-            # a new socket is needed
-            env.master_socket = create_socket(env.zmq_context, zmq.PAIR)
-            port = env.master_socket.bind_to_random_port('tcp://127.0.0.1')
-            self._master_sockets.append(env.master_socket)
-            self._master_ports.append(port)
-            env.logger.trace(f'WORKER {self.name} ({os.getpid()}) creates ports {self._master_ports}')
-
-    def pop_env(self):
-        self._stack_idx -= 1
-        env.switch(self._stack_idx)
-        env.master_socket = self._master_sockets[self._stack_idx]
-
     def _type_of_work(self, work):
         if 'section' in work:
             return 'step'
@@ -132,61 +210,6 @@ class SoS_Worker(mp.Process):
             return work['workflow_id']
         else:
             return 'substep'
-
-    def _process_job(self):
-        # send all the available sockets...
-        env.ctrl_socket.send_pyobj([self._stack_idx] + self._master_ports[self._stack_idx:])
-        work = env.ctrl_socket.recv_pyobj()
-
-        if work is None:
-            if self._stack_idx != 0:
-                env.logger.error(f'WORKER terminates with pending tasks. sos might not be termianting properly.')
-            env.logger.trace(f'WORKER {self.name} ({os.getpid()}) quits after receiving None.')
-            return False
-        elif not work: # an empty task {}
-            time.sleep(0.1)
-            return True
-
-        env.logger.trace(
-            f'WORKER {self.name} ({os.getpid()}, level {self._stack_idx}) receives {self._type_of_work(work)} request {self._name_of_work(work)} with master port {self._master_ports[self._stack_idx]}')
-
-        if 'task' in work:
-            self.run_substep(work)
-            env.logger.trace(
-                f'WORKER {self.name} ({os.getpid()}) completes substep {self._name_of_work(work)}')
-            return True
-
-        master_port = work['config']['sockets']['master_port']
-        if master_port != self._master_ports[self._stack_idx]:
-            idx = self._master_ports.index(master_port)
-            self._master_sockets[idx], self._master_sockets[self._stack_idx] = self._master_sockets[self._stack_idx], self._master_sockets[idx]
-            self._master_ports[idx], self._master_ports[self._stack_idx] = self._master_ports[self._stack_idx], self._master_ports[idx]
-            env.master_socket = self._master_sockets[self._stack_idx]
-
-        # step and workflow can yield
-        runner = self.run_step(**work) if 'section' in work else self.run_workflow(**work)
-        try:
-            poller = next(runner)
-            while True:
-                # if request is None, it is a normal "break" and
-                # we do not need to jump off
-                if poller is None:
-                    poller = runner.send(None)
-                    continue
-
-                while True:
-                    if poller.poll(200):
-                        poller = runner.send(None)
-                        break
-                    # now let us ask if the master has something else for us
-                    self.push_env()
-                    self._process_job()
-                    self.pop_env()
-        except StopIteration as e:
-            pass
-        env.logger.trace(
-            f'WORKER {self.name} ({os.getpid()}) completes request {self._type_of_work(work)} request {self._name_of_work(work)}')
-        return True
 
     def run_workflow(self, workflow_id, wf, targets, args, shared, config, **kwargs):
         #
@@ -243,7 +266,6 @@ class SoS_Worker(mp.Process):
         # correct __step_output__ of the step, whereas shared might contain
         # __step_output__ from auxiliary steps. #526
         env.sos_dict.quick_update(context)
-
         executor = Step_Executor(
             section, env.master_socket, mode=env.config['run_mode'])
 
@@ -291,7 +313,7 @@ class WorkerManager(object):
 
     def report(self, msg):
         return
-        env.logger.trace(f'{msg.upper()}: {self._num_workers} workers (of which {len(self._blocking_ports)} is blocking), {self._n_requested} requested, {self._n_processed} processed')
+        env.logger.warning(f'{msg.upper()}: {self._num_workers} workers (of which {len(self._blocking_ports)} is blocking), {self._n_requested} requested, {self._n_processed} processed')
 
     def add_request(self, msg_type, msg):
         self._n_requested += 1
@@ -388,14 +410,14 @@ class WorkerManager(object):
                     self._available_ports.remove(port)
             self._worker_backend_socket.send_pyobj(None)
             self._num_workers -= 1
-            self.report(f'Kill standing {msg[1:]}')
+            self.report(f'Kill standing {ports}')
             self._last_pending_time.pop(ports[0])
         else:
             if level == 0 and ports[0] not in self._last_pending_time:
                 self._last_pending_time[ports[0]] = time.time()
             self._available_ports.add(ports[0])
             self._worker_backend_socket.send_pyobj({})
-            self.report(f'pending with port {ports}')
+            self.report(f'pending with port {ports} at level {level}')
 
     def start(self):
         worker = SoS_Worker(env.config)

@@ -291,6 +291,21 @@ class RuntimeEnvironments(object):
         # after finishing an test
         self.reset()
 
+    def request_new(self):
+        old_idx = self._sub_idx
+        # if we can find an old empty env, use it
+        for idx, subenv in enumerate(self._sub_envs):
+            if idx != old_idx and not subenv:
+                self.switch(idx)
+                return idx, old_idx
+        # otherwise allocate a new one
+        self.switch(len(self._sub_envs))
+        return self._sub_idx, old_idx
+
+    def restore_to_old(self, new_idx, old_idx):
+        self.switch(old_idx)
+        env._sub_envs[new_idx].clear()
+
     def switch(self, idx):
         # save old env
         if idx == self._sub_idx:
@@ -298,8 +313,11 @@ class RuntimeEnvironments(object):
         self._sub_envs[self._sub_idx]['sos_dict'] = self.sos_dict
         if len(self._sub_envs) <= idx:
             self._sub_envs.append({'sos_dict': WorkflowDict()})
+        if not self._sub_envs[idx]:
+            self._sub_envs[idx] = {'sos_dict': WorkflowDict()}
         self.sos_dict = self._sub_envs[idx]['sos_dict']
         self._sub_idx = idx
+        # env.logger.error(f"{os.getpid()} switch to {idx} {env.sos_dict.get('num', 'unknown')}")
 
     _exec_dir = None
     _temp_dir = os.path.join(tempfile.gettempdir(), getpass.getuser(), '.sos')

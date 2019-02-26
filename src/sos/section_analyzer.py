@@ -345,7 +345,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     #    return analysis_cache[analysis_key]
 
     # use a fresh env for analysis
-    env.switch(1)
+    new_env, old_env = env.request_new()
     try:
         prepare_env(section.global_def, section.global_vars)
 
@@ -371,6 +371,6 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     # analysis_cache[analysis_key] = res
     finally:
         # restore env
-        env.switch(0)
+        env.restore_to_old(new_env, old_env)
 
     return res
