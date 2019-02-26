@@ -601,7 +601,7 @@ class Base_Executor:
         default_input: sos_targets = sos_targets([])
         for idx, section in enumerate(sections):
             #
-            res = analyze_section(section, default_input)
+            res = analyze_section(section, default_input=default_input)
 
             environ_vars = res['environ_vars']
             signature_vars = res['signature_vars']
@@ -654,7 +654,7 @@ class Base_Executor:
         # will become input, set to None
         env.sos_dict['__step_output__'] = sos_targets()
         #
-        res = analyze_section(section, default_output=env.sos_dict['__default_output__'])
+        res = analyze_section(section, default_output=env.sos_dict['__default_output__'], context=context)
         if isinstance(target, sos_step) and target.target_name() != section.step_name():
             # sos_step target "name" can be matched to "name_10" etc so we will have to
             # ensure that the target is outputted from the "name_10" step.

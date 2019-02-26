@@ -334,7 +334,7 @@ def get_output_from_steps(stmt, last_step):
 # analysis_cache = {}
 
 def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = None,
-    default_output: Optional[sos_targets] = None,
+    default_output: Optional[sos_targets] = None, context={},
     vars_and_output_only: bool = False) -> Dict[str, Any]:
     '''Analyze a section for how it uses input and output, what variables
     it uses, and input, output, etc.'''
@@ -347,7 +347,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     # use a fresh env for analysis
     new_env, old_env = env.request_new()
     try:
-        prepare_env(section.global_def, section.global_vars)
+        prepare_env(section.global_def, section.global_vars, context)
 
         env.sos_dict.set('step_name', section.step_name())
         env.sos_dict.set('__null_func__', __null_func__)
