@@ -124,7 +124,7 @@ def get_traceback_msg(e):
     else:
         return f'{error_class}: {detail}'
 
-def prepare_env(gdef, gvars, extra_vars={}):
+def prepare_env(gdef, gvars={}, extra_vars={}):
     '''clear current sos_dict, execute global_def (definitions and imports),
     and inject global variables'''
     env.sos_dict.clear()
