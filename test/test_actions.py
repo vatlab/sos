@@ -417,7 +417,7 @@ download: dest_dir='tmp'
         #
 
     @unittest.skipIf(not with_network or 'TRAVIS' in os.environ, 'Skip test because of no internet connection or in travis test')
-    def testDownloadLargeFile(self):        
+    def testDownloadMissingFile(self):
         # this will take a while
         script = SoS_Script(r'''
 [0]
@@ -438,6 +438,10 @@ download: dest_dir='tmp', decompress=True, max_jobs=2
         self.assertRaises(Exception, Base_Executor(wf).run)
         #self.assertLess(time.time() - start, 3)
         #
+
+
+    @unittest.skipIf(not with_network or 'TRAVIS' in os.environ, 'Skip test because of no internet connection or in travis test')
+    def testDownloadLargeFile(self):
         # test decompress tar.gz, .zip and .gz files
         script = SoS_Script(r'''
 [0]

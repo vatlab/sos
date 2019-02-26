@@ -23,7 +23,7 @@ from collections import Sequence
 from functools import wraps
 
 from tqdm import tqdm as ProgressBar
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 
 from .eval import interpolate
 from .parser import SoS_Script
@@ -862,7 +862,7 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
         filenames = [dest_file]
     #
     succ = [(False, None) for x in urls]
-    with ThreadPoolExecutor(max_workers=max_jobs) as executor:
+    with ProcessPoolExecutor(max_workers=max_jobs) as executor:
         for idx, (url, filename) in enumerate(zip(urls, filenames)):
             # if there is alot, start download
             succ[idx] = executor.submit(downloadURL, url, filename, decompress, idx)
