@@ -400,7 +400,7 @@ class TaskEngine(threading.Thread):
             # terminal states, remove tasks from task list
             if status in ('completed', 'failed', 'aborted') and task_id in self.running_tasks:
                 self.running_tasks.remove(task_id)
-                if task_id in self.running_pending_tasks:
+                if status in ('completed', 'failed') and task_id in self.running_pending_tasks:
                     self.running_pending_tasks.pop(task_id)
             # for running pending tasks
             if status == 'aborted' and task_id in self.running_pending_tasks:

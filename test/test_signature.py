@@ -604,7 +604,7 @@ sh:
 input: for_each={'i': range(5)}, concurrent=True
 output: dynamic(f'rep_{i}/*.res')
 
-import random
+import random, os
 os.makedirs(f'rep_{i}', exist_ok=True)
 path(f'rep_{i}/{random.randint(0, 10000)}.res').touch()
 ''')

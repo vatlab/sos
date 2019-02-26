@@ -150,6 +150,7 @@ class TestTask(unittest.TestCase):
         with open(os.path.join(tdir, 'aaa.pp'), 'w') as aaa:
             aaa.write('something')
         script = r"""
+import os
 [0]
 task: workdir={0!r}
 
@@ -235,6 +236,7 @@ run:
         #
         # use option env
         script = SoS_Script(r"""
+import os
 [1]
 task: env={'PATH': 'temp' + os.pathsep + os.environ['PATH']}
 run:
