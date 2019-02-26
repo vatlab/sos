@@ -6,6 +6,7 @@
 #
 # Utility functions used by various executors.
 #
+import ast
 import os
 import sys
 import re
@@ -19,7 +20,7 @@ from tokenize import generate_tokens
 
 from .targets import (RemovedTarget, file_target, sos_targets, sos_step,
     dynamic, sos_variable, RuntimeInfo, textMD5)
-from .utils import env, short_repr, format_HHMMSS, expand_size
+from .utils import env, short_repr, format_HHMMSS, expand_size, load_config_files
 from .eval import SoS_eval, SoS_exec, stmtHash
 from ._version import __version__
 from .tasks import TaskParams
@@ -125,25 +126,15 @@ def get_traceback_msg(e):
     else:
         return f'{error_class}: {detail}'
 
-def prepare_env(global_def='', extra_dict={}):
-    # initial values
-    env.sos_dict.set('SOS_VERSION', __version__)
-    try:
-        # global def could fail due to execution on remote host...
-        # we also execute global_def way before others and allows variables set by
-        # global_def be overwritten by other passed variables
-        #
-        # note that we do not handle parameter in tasks because values should already be
-        # in sos_task dictionary
-        gd = strip_param_defs(global_def)
-        env.sos_dict.quick_update(extra_dict)
-        SoS_exec('''\
-import os, sys
-from sos.runtime import *
-''' + gd)
-    except Exception as e:
-        env.logger.warning(
-            f'Failed to execute global definition {short_repr(gd)}: {e}')
+def prepare_env(gdef, gvars):
+    '''clear current sos_dict, execute global_def (definitions and imports),
+    and inject global variables'''
+    env.sos_dict.clear()
+
+    if gdef:
+        exec(compile(gdef, filename="<ast>", mode="exec"),
+            env.sos_dict._dict)
+    env.sos_dict.quick_update(gvars)
 
 def statementMD5(stmts):
     def _get_tokens(statement):
@@ -155,7 +146,7 @@ def statementMD5(stmts):
             tokens.extend(_get_tokens(stmt))
     return textMD5(' '.join(tokens))
 
-def create_task(global_def, task_stmt, task_params):
+def create_task(global_def, global_vars, task_stmt, task_params):
     env.sos_dict.set('_runtime', {})
     if task_params:
         args, kwargs = SoS_eval(f'__null_func__({task_params})',
@@ -229,7 +220,7 @@ def create_task(global_def, task_stmt, task_params):
     taskdef = TaskParams(
         name='{} (index={})'.format(
             env.sos_dict['step_name'], env.sos_dict['_index']),
-        global_def=global_def,
+        global_def=(global_def, global_vars),
         task=task_stmt,          # task
         sos_dict=task_vars,
         tags=task_tags
@@ -358,3 +349,4 @@ def verify_input(ignore_internal_targets=False):
             if not target.target_exists('target') and not \
                 (ignore_internal_targets and isinstance(target, (sos_variable, sos_step))):
                 raise RemovedTarget(target)
+

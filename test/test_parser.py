@@ -1386,28 +1386,6 @@ executed.append(step_name)
         self.assertEqual(env.sos_dict['executed'], [
                          'a_1', 'a_2', 'a_3', 'a_4', 'c', 'd'])
 
-    def testIncludeWithNamespace(self):
-        '''Test include a workflow that uses variables from its own global module'''
-        self.touch(['a.txt', 'b.txt'])
-        #
-        with open('inc.sos', 'w') as sos:
-            sos.write('''
-# test sos script
-
-# global definition
-parameter: parB = 10
-
-[A_1]
-a = parB + 1
-
-''')
-        script = SoS_Script('''
-%include inc
-
-''')
-        wf = script.workflow('inc.A')
-        Base_Executor(wf).run(mode='dryrun')
-
     def testYAMLConfig(self):
         '''Test config file in yaml format'''
         with open('myconfig.yml', 'w') as config:

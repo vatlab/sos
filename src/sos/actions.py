@@ -518,7 +518,6 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
         if key not in all_parameters and key not in SOS_ACTION_OPTIONS:
             raise ValueError(f'No parameter {key} is defined for workflow {workflow}')
 
-    args['__args__'] = env.sos_dict['__args__']
     if shared is None:
         shared = []
     elif isinstance(shared, str):

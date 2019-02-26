@@ -19,9 +19,8 @@ from typing import Dict, List, Optional, Tuple, Any, Set
 from uuid import UUID, uuid4
 
 from .eval import on_demand_options
-from .syntax import (INDENTED, SOS_AS, SOS_CELL, SOS_DIRECTIVE, SOS_DIRECTIVES,
-                     SOS_ELIF, SOS_ELSE, SOS_ENDIF, SOS_FORMAT_LINE,
-                     SOS_FORMAT_VERSION, SOS_FROM_INCLUDE, SOS_IF, SOS_INCLUDE,
+from .syntax import (INDENTED, SOS_CELL, SOS_DIRECTIVE, SOS_DIRECTIVES,
+                     SOS_FORMAT_LINE, SOS_FORMAT_VERSION,
                      SOS_MAGIC, SOS_SECTION_HEADER, SOS_SECTION_NAME,
                      SOS_SECTION_OPTION, SOS_STRU, SOS_SUBWORKFLOW, SOS_ACTION_OPTIONS)
 from .targets import file_target, path, paths, sos_targets, textMD5
@@ -226,7 +225,7 @@ class SoS_Step:
         self.parameters: Dict = {}
         self.substep_parameters: Set = set()
         # step processes
-        self.global_def = ''
+        self.global_stmts = ''
         self.task = ''
         self.task_params = ''
         self.last_step = None
@@ -579,13 +578,13 @@ class SoS_Workflow:
     '''A SoS workflow with multiple steps. It is created from multiple sections of a SoS script
     and consists of multiple SoS_Step.'''
 
-    def __init__(self, content: 'SoS_ScriptContent', workflow_name: str, allowed_steps: Optional[str], sections: List[SoS_Step], global_def: str) -> None:
+    def __init__(self, content: 'SoS_ScriptContent', workflow_name: str, allowed_steps: Optional[str], sections: List[SoS_Step], global_stmts: str) -> None:
         '''create a workflow from its name and a list of SoS_Sections (using name matching)'''
         self.content = content
         self.name = workflow_name if workflow_name else 'default'
         self.sections: List = []
         self.auxiliary_sections: List = []
-        self.global_def = global_def
+        self.global_stmts = global_stmts
         #
         for section in sections:
             for name, index, alias in section.names:
@@ -715,14 +714,6 @@ class SoS_ScriptContent:
             with open(self.filename) as script:
                 return script.read()
 
-    def add(self, content: str = '', filename: Optional[str] = None) -> None:
-        if filename and not content:
-            with open(filename) as script:
-                content = script.read()
-        if filename not in [x[1] for x in self.included]:
-            self.included.append((content, filename))
-            self.md5 = self.calc_md5()
-
     def __repr__(self):
         return f'{self.md5}: filename: {self.filename}, content: {self.content}'
 
@@ -788,7 +779,7 @@ class SoS_Script:
             self.sos_script = '<string>'
             self.content = SoS_ScriptContent(content, None)
         # save a parsed version of the script for displaying purpose only
-        self.global_def = ''
+        self.global_stmts = ''
 
         self.description = []
         self._last_comment = ''
@@ -846,22 +837,6 @@ class SoS_Script:
 
         return content, script_file
 
-    def _include_namespace(self, sos_file: str, alias: Optional[str]) -> None:
-        content, script_file = self._find_include_file(sos_file)
-        self.content.add(content, script_file)
-        script = SoS_Script(content, script_file)
-        if not alias:
-            alias = sos_file
-        # section names are changed from A to sos_file.A
-        for section in script.sections:
-            for idx in range(len(section.names)):
-                section.names[idx] = [alias + '.' + section.names[idx][0]] + \
-                    list(section.names[idx][1:])
-        # The global definition of sos_file should be accessible as
-        # sos_file.name
-        self.sections.extend(script.sections)
-        self.global_def += f"{alias} = sos_namespace_({repr(script.global_def)})\n"
-
     def add_comment(self, line: str) -> None:
         '''Keeping track of "last comment" for section and parameter '''
         # the rule is like
@@ -877,31 +852,6 @@ class SoS_Script:
     def clear_comment(self):
         self._last_comment = ''
 
-    def _include_content(self, sos_file: str, name_map: Dict[str, str]) -> None:
-        content, script_file = self._find_include_file(sos_file)
-        #
-        self.content.add(content, script_file)
-        script = SoS_Script(content, script_file)
-        if not name_map:
-            self.sections.extend(script.sections)
-            self.global_def += script.global_def
-        else:
-            # if name_map, we only include selected names from the script
-            for section in script.sections:
-                for name, _, _ in section.names:
-                    if any(fnmatch.fnmatch(x, name) for x in name_map):
-                        # match ...
-                        self.sections.append(section)
-            # global_def is more complicated
-            self.global_def += f"__{sos_file} = sos_namespace_({repr(script.global_def)})\n"
-            #
-            self.global_def += f'''
-for __n, __v in {repr(name_map)}.items():
-    if hasattr(__{sos_file}, __n):
-        globals()[__v if __v else __n] = getattr(__{sos_file}, __n)
-'''
-            # env.logger.trace(self.global_def)
-
     def _read(self, fp: TextIOBase) -> None:
         self.sections: List = []
         self.format_version: str = '1.0'
@@ -912,8 +862,6 @@ for __n, __v in {repr(name_map)}.items():
         cursect = None
         all_step_names = []
         #
-        condition_ignore = False
-        condition_met = None
         # this ParsingError is a container for all parsing errors. It will be
         # raised after parsing if there is at least one parsing error.
         parsing_errors = ParsingError(self.sos_script)
@@ -923,105 +871,7 @@ for __n, __v in {repr(name_map)}.items():
             if SOS_MAGIC.match(line):
                 continue
 
-            if SOS_STRU.match(line):
-                if SOS_INCLUDE.match(line) or SOS_FROM_INCLUDE.match(line):
-                    if cursect is not None:
-                        parsing_errors.append(
-                            lineno, line, 'include magic can only be defined before any other statemetns.')
-
-                    # handle import
-                    mo = SOS_INCLUDE.match(line)
-                    if mo:
-                        sos_files = [x.strip()
-                                     for x in mo.group('sos_files').split(',')]
-                        for sos_file in sos_files:
-                            ma = SOS_AS.match(sos_file)
-                            self._include_namespace(
-                                ma.group('name'), alias=ma.group('alias'))
-                        continue
-                    mo = SOS_FROM_INCLUDE.match(line)
-                    if mo:
-                        sos_file = mo.group('sos_file')
-                        name_map = {}
-                        if mo.group('names') != '*':
-                            for wf in mo.group('names').split(','):
-                                ma = SOS_AS.match(wf.strip())
-                                if not ma:
-                                    parsing_errors.append(
-                                        lineno, line, f'unacceptable include name "{wf}"')
-                                else:
-                                    name_map[ma.group('name')] = ma.group(
-                                        'alias')
-                        self._include_content(sos_file, name_map=name_map)
-                        continue
-
-                mo = SOS_CELL.match(line)
-                if mo:
-                    continue
-
-                mo = SOS_IF.match(line)
-                if mo:
-                    cond = mo.group('condition')
-                    try:
-                        cond_value = eval(cond)
-                    except Exception as e:
-                        parsing_errors.append(
-                            lineno, line, f'Invalid expression {cond}: {e}')
-                        continue
-                    #
-                    if cond_value:
-                        condition_met = True
-                        condition_ignore = False
-                    else:
-                        condition_met = False
-                        condition_ignore = True
-                    continue
-
-                mo = SOS_ELIF.match(line)
-                if mo:
-                    if condition_met is None:
-                        parsing_errors.append(
-                            lineno, line, f'%elif not following %if: {line}')
-                        continue
-
-                    if condition_met:
-                        condition_ignore = True
-                        continue
-
-                    cond = mo.group('condition')
-                    try:
-                        cond_value = eval(cond)
-                    except Exception as e:
-                        parsing_errors.append(
-                            lineno, line, f'Invalid expression {cond}: {e}')
-
-                    if cond_value:
-                        condition_met = True
-                        condition_ignore = False
-                    continue
-
-                mo = SOS_ELSE.match(line)
-                if mo:
-                    if condition_met is None:
-                        parsing_errors.append(
-                            lineno, line, f'%else not following %if: {line}')
-                        continue
-
-                    condition_ignore = condition_met
-                    continue
-
-                mo = SOS_ENDIF.match(line)
-                if mo:
-                    condition_met = None
-                    condition_ignore = False
-                    continue
-
-                else:
-                    parsing_errors.append(
-                        lineno, line, f'Unrecognized SoS magic statement: {line}')
-                    continue
-
-            if condition_ignore:
+            if SOS_CELL.match(line):
                 continue
 
             # comments in SoS scripts are mostly informative
@@ -1286,10 +1136,6 @@ for __n, __v in {repr(name_map)}.items():
                     parsing_errors.append(
                         cursect.lineno, ''.join(cursect.values[:5]), str(e))
 
-        # non-matching %if ...
-        if condition_met is not None:
-            parsing_errors.append(lineno, '', 'Non-matching %if and %endif')
-
         #
         # if there is any parsing error, raise an exception
         #
@@ -1306,7 +1152,7 @@ for __n, __v in {repr(name_map)}.items():
                 self.sections[-1].statements.extend(section.statements)
                 self.sections[-1].task = section.task
                 self.sections[-1].task_params = section.task_params
-                self.global_def = ''
+                self.global_stmts = ''
                 global_parameters.update(section.parameters)
             # The sections should have been finalized so there is no need to finalize
             # again. In particular, finalizing a section would reset existing task #833
@@ -1319,7 +1165,7 @@ for __n, __v in {repr(name_map)}.items():
                         parsing_errors.append(cursect.lineno, f'{statement[1]}:{statement[2]}',
                                               'Global section cannot contain sos input, ouput, and task statements')
                     else:
-                        self.global_def += statement[1]
+                        self.global_stmts += statement[1]
                 global_parameters.update(sec.parameters)
         # remove the global section after inserting it to each step of the process
         self.sections = [x for x in self.sections if not x.is_global]
@@ -1328,11 +1174,9 @@ for __n, __v in {repr(name_map)}.items():
             raise parsing_errors
         #
         for section in self.sections:
-            # for nested / included sections, we need to keep their own global definition
-            if '.' not in section.names[0][0]:
-                section.global_def = self.global_def
-                section.global_parameters = global_parameters
-                section.parameters.update(global_parameters)
+            section.global_stmts = self.global_stmts
+            section.global_parameters = global_parameters
+            section.parameters.update(global_parameters)
             #
             section.md5 = textMD5(section.get_tokens())
 
@@ -1341,7 +1185,7 @@ for __n, __v in {repr(name_map)}.items():
         This function might be called recursively because of nested
         workflow.'''
         if workflow_name is None and not use_default:
-            return SoS_Workflow(self.content, '', '', self.sections, self.global_def)
+            return SoS_Workflow(self.content, '', '', self.sections, self.global_stmts)
         allowed_steps = None
         if not workflow_name:
             wf_name = ''
@@ -1381,20 +1225,8 @@ for __n, __v in {repr(name_map)}.items():
         elif wf_name not in self.workflows and wf_name != 'default':
             raise ValueError(
                 f'Workflow {wf_name} is undefined. Available workflows are: {", ".join(self.workflows)}')
-        # do not send extra parameters of ...
-        #sections = []
-        # for section in self.sections:
-        #    # skip, skip=True, skip=1 etc are all allowed.
-        #    if 'provides' in section.options or 'shared' in section.options:
-        #        # section global is shared by all workflows
-        #        sections.append(section)
-        #        continue
-        #    for name, index, _ in section.names:
-        #        # exact match or filename like match if name contains * etc
-        #        if fnmatch.fnmatch(wf_name, name):
-        #            sections.append(section)
-        #            break
-        return SoS_Workflow(self.content, wf_name, allowed_steps, self.sections, self.global_def)
+
+        return SoS_Workflow(self.content, wf_name, allowed_steps, self.sections, self.global_stmts)
 
     def print_help(self, script_name: str):
         '''print a help message from the script'''

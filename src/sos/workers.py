@@ -17,7 +17,7 @@ from ._version import __version__
 from .controller import (close_socket, connect_controllers, create_socket,
                          disconnect_controllers)
 from .eval import SoS_exec
-from .executor_utils import kill_all_subprocesses
+from .executor_utils import kill_all_subprocesses, prepare_env
 from .targets import sos_targets
 from .utils import (WorkflowDict, env, get_traceback, load_config_files,
                     short_repr, ProcessKilled)
@@ -30,8 +30,7 @@ class SoS_Worker(mp.Process):
     Worker process to process SoS step or workflow in separate process.
     '''
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None, args: Optional[Any] = None,
-            **kwargs) -> None:
+    def __init__(self, config: Optional[Dict[str, Any]] = None, **kwargs) -> None:
         '''
 
         config:
@@ -50,32 +49,10 @@ class SoS_Worker(mp.Process):
         #
         self.config = config
 
-        self.args = [] if args is None else args
-
         # there can be multiple jobs for this worker, each using their own port and socket
         self._master_sockets = []
         self._master_ports = []
         self._stack_idx = 0
-
-    def reset_dict(self):
-        env.sos_dict = WorkflowDict()
-        env.parameter_vars.clear()
-
-        env.sos_dict.set('__args__', self.args)
-        # initial values
-        env.sos_dict.set('SOS_VERSION', __version__)
-        env.sos_dict.set('__step_output__', sos_targets())
-
-        # load configuration files
-        load_config_files(env.config['config_file'])
-
-        SoS_exec('import os, sys, glob', None)
-        SoS_exec('from sos.runtime import *', None)
-
-        if isinstance(self.args, dict):
-            for key, value in self.args.items():
-                if not key.startswith('__'):
-                    env.sos_dict.set(key, value)
 
     def run(self):
         # env.logger.warning(f'Worker created {os.getpid()}')
@@ -217,9 +194,11 @@ class SoS_Worker(mp.Process):
         # get workflow, args, shared, and config
         from .workflow_executor import Base_Executor
 
-        self.args = args
+        # Execute global namespace. The reason why this is executed outside of
+        # step is that the content of the dictioary might be overridden by context
+        prepare_env(wf.global_def, wf.global_vars)
+
         env.config.update(config)
-        self.reset_dict()
         # we are in a separate process and need to set verbosity from workflow config
         # but some tests do not provide verbosity
         env.verbosity = config.get('verbosity', 2)
@@ -251,20 +230,10 @@ class SoS_Worker(mp.Process):
         env.config.update(config)
         env.verbosity = verbosity
         #
-        self.args = args
-        self.reset_dict()
-
         # Execute global namespace. The reason why this is executed outside of
         # step is that the content of the dictioary might be overridden by context
         # variables.
-        try:
-            SoS_exec(section.global_def)
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(e.stderr)
-        except RuntimeError:
-            if env.verbosity > 2:
-                sys.stderr.write(get_traceback())
-            raise
+        prepare_env(section.global_def, section.global_vars)
 
         # clear existing keys, otherwise the results from some random result
         # might mess with the execution of another step that does not define input
@@ -422,14 +391,14 @@ class WorkerManager(object):
                     self._available_ports.remove(port)
             self._worker_backend_socket.send_pyobj(None)
             self._num_workers -= 1
-            self.report(f'Kill standing {ports[0]}')
+            self.report(f'Kill standing {msg[1:]}')
             self._last_pending_time.pop(ports[0])
         else:
             if level == 0 and ports[0] not in self._last_pending_time:
                 self._last_pending_time[ports[0]] = time.time()
             self._available_ports.add(ports[0])
             self._worker_backend_socket.send_pyobj({})
-            self.report(f'pending with port {ports} at level {level}')
+            self.report(f'pending with port {ports}')
 
     def start(self):
         worker = SoS_Worker(env.config)

@@ -120,7 +120,7 @@ def get_signature_vars(section):
 
     # signature vars should contain parameters defined in global section
     # #1155
-    signature_vars = set(section.parameters.keys() & accessed_vars(strip_param_defs(section.global_def)))
+    signature_vars = set(section.parameters.keys() & accessed_vars(strip_param_defs(section.global_stmts)))
 
     input_idx = find_statement(section, 'input')
     after_input_idx = 0 if input_idx is None else input_idx + 1
@@ -344,43 +344,33 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     #if analysis_key in analysis_cache:
     #    return analysis_cache[analysis_key]
 
-    # initialiaze environment, without handling parameter
-    prepare_env()
+    # use a fresh env for analysis
+    env.switch(1)
+    try:
+        prepare_env(section.global_def, section.global_vars)
 
-    env.sos_dict.set('step_name', section.step_name())
-    env.sos_dict.set('__null_func__', __null_func__)
-    env.logger.trace(f'Analyzing {section.step_name()}')
+        env.sos_dict.set('step_name', section.step_name())
+        env.sos_dict.set('__null_func__', __null_func__)
+        env.logger.trace(f'Analyzing {section.step_name()}')
 
-    #
-    # Here we need to get "contant" values from the global section
-    # Because parameters are considered variable, they has to be
-    # removed.
-    #
-    if section.global_def:
-        try:
-            SoS_exec(strip_param_defs(section.global_def))
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(e.stderr)
-        except RuntimeError as e:
-            if env.verbosity > 2:
-                sys.stderr.write(get_traceback())
-            raise RuntimeError(
-                f'Failed to execute statements\n"{section.global_def}"\n{e}')
-
-    res = {
-        'step_name': section.step_name(),
-        'step_output': get_step_output(section, default_output),
-        # variables starting with __ are internals...
-        'environ_vars': get_environ_vars(section),
-        'signature_vars': get_signature_vars(section),
-        'changed_vars': get_changed_vars(section)
-    }
-    if not vars_and_output_only:
-        inps = get_step_input(section, default_input)
-        res['step_input'] = inps[0]
-        res['dynamic_input'] = inps[1]
-        deps = get_step_depends(section)
-        res['step_depends'] = deps[0]
-        res['dynamic_depends'] = deps[1]
+        res = {
+            'step_name': section.step_name(),
+            'step_output': get_step_output(section, default_output),
+            # variables starting with __ are internals...
+            'environ_vars': get_environ_vars(section),
+            'signature_vars': get_signature_vars(section),
+            'changed_vars': get_changed_vars(section)
+        }
+        if not vars_and_output_only:
+            inps = get_step_input(section, default_input)
+            res['step_input'] = inps[0]
+            res['dynamic_input'] = inps[1]
+            deps = get_step_depends(section)
+            res['step_depends'] = deps[0]
+            res['dynamic_depends'] = deps[1]
     # analysis_cache[analysis_key] = res
+    finally:
+        # restore env
+        env.switch(0)
+
     return res

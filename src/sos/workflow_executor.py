@@ -20,7 +20,7 @@ from threading import Event
 
 from ._version import __version__
 from .dag import SoS_DAG
-from .eval import SoS_exec
+from .eval import SoS_exec, analyze_global_statements
 from .hosts import Host
 from .parser import SoS_Workflow
 from .pattern import extract_pattern
@@ -222,6 +222,14 @@ class Base_Executor:
 
         env.config['workflow_id'] = self.md5
         env.sos_dict.set('workflow_id', self.md5)
+        #
+        # prepare global definition and variables
+        global_def, global_vars = analyze_global_statements(self.workflow.global_stmts)
+        self.workflow.global_def = global_def
+        self.workflow_global_vars = global_vars
+        for section in self.workflow.sections:
+            section.global_def = global_def
+            section.global_vars = global_vars
 
     def write_workflow_info(self):
         # if this is the outter most workflow, master)id should have =
@@ -309,7 +317,7 @@ class Base_Executor:
 
         env.sos_dict.set('workflow_id', self.md5)
         env.sos_dict.set('master_id', env.config['master_id'])
-        env.sos_dict.set('__args__', self.args)
+        env.config['__args__'] = self.args
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
         env.sos_dict.set('__step_output__', sos_targets([]))
@@ -794,7 +802,7 @@ class Base_Executor:
                 # and node._node_index == runnable._node_index + 1:
                 node._context.update(env.sos_dict.clone_selected_vars(
                     node._context['__signature_vars__'] | node._context['__environ_vars__']
-                    | {'_input', '__step_output__', '__args__'}))
+                    | {'_input', '__step_output__'}))
             node._context.update(svar)
             if node._status == 'target_pending':
                 if all(x.target_exists('target') for x in node._pending_targets):

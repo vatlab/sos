@@ -4,15 +4,14 @@
 # Distributed under the terms of the 3-clause BSD License.
 import pkg_resources
 
-from .eval import interpolate, sos_namespace_
+from .eval import interpolate
 from .pattern import expand_pattern
 from .targets import path, paths
 from .utils import get_output, logger, sos_handle_parameter_
 
 # silent pyflakes
 logger, get_output, sos_handle_parameter_
-interpolate, sos_namespace_
-expand_pattern, path, paths
+interpolate, expand_pattern, path, paths
 
 
 def _load_group(group: str) -> None:

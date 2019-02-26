@@ -5,9 +5,11 @@
 
 import ast
 import sys
+import pickle
 from typing import Any, Dict, Optional, Set
 
-from .utils import env, as_fstring
+from .utils import env, as_fstring, load_config_files, pickleable
+from ._version import __version__
 
 
 def interpolate(text, global_dict=None, local_dict=None):
@@ -134,18 +136,6 @@ class Undetermined(object):
         return self
 
 
-class sos_namespace_(object):
-    '''A namespace that is created by evaluating statements
-    and use the results as attributes of the object.'''
-
-    def __init__(self, stmts: str) -> None:
-        # we need to define functions defined by sos ...
-        exec('from sos.runtime import *', self.__dict__)
-        # the results of the statments will be saved as
-        # attribute of this object.
-        SoS_exec(stmts, _dict=self.__dict__)
-
-
 class on_demand_options(object):
     '''Expression that will be evaluated upon request.'''
 
@@ -179,3 +169,49 @@ class on_demand_options(object):
 
     def __repr__(self):
         return repr(self._expressions)
+
+
+
+class KeepOnlyImportAndDefine(ast.NodeTransformer):
+    def __init__(self):
+        self.level = 0
+
+    def generic_visit(self, node):
+        self.level += 1
+        if self.level == 2 and not isinstance(node, (ast.Import, ast.ImportFrom, ast.FunctionDef, ast.ClassDef)):
+            # print(f'remove {node}')
+            ret = None
+        else:
+            ret = super(KeepOnlyImportAndDefine, self).generic_visit(node)
+        self.level -= 1
+        return ret
+
+def analyze_global_statements(global_stmt):
+    # find all import and function definition ...
+    env.sos_dict.clear()
+    env.sos_dict.set('SOS_VERSION', __version__)
+    # first load CONFIG, this will create CONFIG
+    load_config_files()
+
+    # run only import, def, and class of the global_def
+    transformer = KeepOnlyImportAndDefine()
+    global_def = transformer.visit(ast.parse('from sos.runtime import *\n' + global_stmt))
+    exec(compile(global_def, filename="<ast>", mode="exec"),
+        env.sos_dict._dict)
+    defined_keys = set(env.sos_dict.keys())
+
+    # execute the entire statement
+    try:
+        SoS_exec(global_stmt)
+    except Exception as e:
+        raise RuntimeError(f'Failed to execute global statement {global_stmt}: {e}')
+    #
+    global_vars = {k:env.sos_dict[k] for k in (set(env.sos_dict.keys()) - defined_keys) | {'SOS_VERSION', 'CONFIG'}}
+    # test if global vars can be pickled
+    try:
+        pickle.dumps(global_vars)
+    except:
+        for key in set(env.sos_dict.keys()) - defined_keys:
+            if not pickleable(env.sos_dict[key], key):
+                raise ValueError(f'Variable {key} cannot be defined in global section because it cannot be pickled to workers.')
+    return global_def, global_vars
