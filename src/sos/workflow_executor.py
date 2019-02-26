@@ -11,16 +11,14 @@ import sys
 import time
 import uuid
 import zmq
-import pickle
 
 from collections import defaultdict, Sequence
 from io import StringIO
 from typing import Any, Dict, List, Optional, Union
 from threading import Event
 
-from ._version import __version__
 from .dag import SoS_DAG
-from .eval import SoS_exec, analyze_global_statements
+from .eval import analyze_global_statements
 from .hosts import Host
 from .parser import SoS_Workflow
 from .pattern import extract_pattern
@@ -31,8 +29,7 @@ from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
                       UnknownTarget, file_target, path, paths,
                       sos_step, sos_targets, sos_variable, textMD5,
                       named_output)
-from .utils import (Error, WorkflowDict, env, get_traceback,
-                    load_config_files, pickleable, short_repr)
+from .utils import Error, env, get_traceback, pickleable, short_repr
 from .executor_utils import prepare_env
 
 __all__ = []

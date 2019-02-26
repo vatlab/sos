@@ -6,7 +6,6 @@
 #
 # Utility functions used by various executors.
 #
-import ast
 import os
 import sys
 import re
@@ -20,9 +19,8 @@ from tokenize import generate_tokens
 
 from .targets import (RemovedTarget, file_target, sos_targets, sos_step,
     dynamic, sos_variable, RuntimeInfo, textMD5)
-from .utils import env, short_repr, format_HHMMSS, expand_size, load_config_files
-from .eval import SoS_eval, SoS_exec, stmtHash
-from ._version import __version__
+from .utils import env, format_HHMMSS, expand_size
+from .eval import SoS_eval, stmtHash
 from .tasks import TaskParams
 from .syntax import SOS_TAG, SOS_RUNTIME_OPTIONS
 from .controller import request_answer_from_controller

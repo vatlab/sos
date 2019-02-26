@@ -22,7 +22,7 @@ from .eval import on_demand_options
 from .syntax import (INDENTED, SOS_CELL, SOS_DIRECTIVE, SOS_DIRECTIVES,
                      SOS_FORMAT_LINE, SOS_FORMAT_VERSION,
                      SOS_MAGIC, SOS_SECTION_HEADER, SOS_SECTION_NAME,
-                     SOS_SECTION_OPTION, SOS_STRU, SOS_SUBWORKFLOW, SOS_ACTION_OPTIONS)
+                     SOS_SECTION_OPTION, SOS_SUBWORKFLOW, SOS_ACTION_OPTIONS)
 from .targets import file_target, path, paths, sos_targets, textMD5
 from .utils import Error, env, locate_script, as_fstring, valid_expr_till, format_par, separate_options
 

@@ -6,26 +6,31 @@
 import multiprocessing as mp
 import os
 import signal
-import subprocess
-import sys
 import time
 from typing import Any, Dict, Optional
 
 import zmq
 
-from ._version import __version__
 from .controller import (close_socket, connect_controllers, create_socket,
                          disconnect_controllers)
-from .eval import SoS_exec
 from .executor_utils import kill_all_subprocesses, prepare_env
-from .targets import sos_targets
-from .utils import (WorkflowDict, env, get_traceback, load_config_files,
-                    short_repr, ProcessKilled)
+from .utils import env, ProcessKilled
 
 def signal_handler(*args, **kwargs):
     raise ProcessKilled()
 
 class Runner(object):
+    '''
+    This runner class takea a generator function and run it. 
+    1. When the generator returns None, continue to run without yielding.
+    2. When the generator returns a poller, continue is it receives any message in 0.2s.
+    3. Otherwise return False.
+    4. The the generator completes, return True.
+
+    So in summary, the Runner returns
+    1. True if all completed, return value from generator is ignored.
+    2. `self` if waiting.
+    '''
     def __init__(self, runner):
         self._runner = runner
         self._poller = 0
@@ -47,7 +52,7 @@ class Runner(object):
 
                 # the poller is not ready, let us break
                 return self
-        except StopIteration as e:
+        except StopIteration:
             return True
 
     def can_proceed(self):
@@ -80,8 +85,9 @@ class SoS_Worker(mp.Process):
         # there can be multiple jobs for this worker, each using their own port and socket
         self._master_sockets = []
         self._master_ports = []
-        self._stack_idx = 0
+        # current runner, which can be a runner or True if the runner has completed
         self._runners = []
+        # env index, which contains sos_dict for each runner
         self._env_idx = []
 
     def waiting_runners(self):
@@ -180,8 +186,8 @@ class SoS_Worker(mp.Process):
                     new_idx = self._master_ports.index(master_port)
                     self.switch_to(new_idx)
 
-                # step and workflow can yield
-                self._runners[new_idx] = Runner(self.run_step(**reply) if 'section' in reply else self.run_workflow(**reply))
+                # step and workflow can yield. Here we call run_until_waiting directly because we know the Runner can proceed.
+                self._runners[new_idx] = Runner(self.run_step(**reply) if 'section' in reply else self.run_workflow(**reply)).run_until_waiting()
             except ProcessKilled:
                 # in theory, this will not be executed because the exception
                 # will be caught by the step executor, and then sent to the master
@@ -441,11 +447,10 @@ class WorkerManager(object):
             if len(self._workers) < self._num_workers:
                 raise ProcessKilled('One of the workers has been killed.')
 
-
     def kill_all(self):
         '''Kill all workers'''
         while self._num_workers > 0 and self._worker_backend_socket.poll(1000):
             msg = self._worker_backend_socket.recv_pyobj()
             self._worker_backend_socket.send_pyobj(None)
             self._num_workers -= 1
-            self.report('Kill {msg[1:]}')
+            self.report(f'Kill {msg[1:]}')

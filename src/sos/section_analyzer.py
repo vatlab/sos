@@ -4,16 +4,14 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import ast
-import subprocess
-import sys
 
 from collections import  Mapping, Sequence
 from typing import Any, Dict, Optional
 
-from .eval import SoS_eval, SoS_exec, accessed_vars
+from .eval import SoS_eval, accessed_vars
 from .parser import SoS_Step
 from .targets import (dynamic, remote, sos_targets, sos_step, named_output)
-from .utils import env, get_traceback
+from .utils import env
 from .executor_utils import  __null_func__, prepare_env, strip_param_defs
 from .syntax import SOS_TARGETS_OPTIONS
 

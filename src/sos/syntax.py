@@ -225,19 +225,6 @@ _CONFIG_NAME = r'''
    '''
 
 
-_SOS_STRU_TMPL = r'''                   # structural directive
-    ^%(if                               # %if
-    |elif                               # %elif
-    |else                               # %else
-    |endif                              # %endif
-    |cell                               # %cell
-    |set_options                        # %set_options
-    |include                            # %include
-    |from                               # %from
-    )(\s+.*)?
-    $
-    '''
-
 _SOS_MAGIC_TMPL = r'''                  # SOS magic
     ^%(dict                             # %dict
     |run                                # %run
@@ -312,7 +299,6 @@ SOS_FORMAT_VERSION = LazyRegex(_FORMAT_VERSION_TMPL, re.VERBOSE)
 SOS_DIRECTIVE = LazyRegex(_DIRECTIVE_TMPL, re.VERBOSE)
 SOS_ASSIGNMENT = LazyRegex(_ASSIGNMENT_TMPL, re.VERBOSE)
 CONFIG_NAME = LazyRegex(_CONFIG_NAME, re.VERBOSE)
-SOS_STRU = LazyRegex(_SOS_STRU_TMPL, re.VERBOSE)
 SOS_MAGIC = LazyRegex(_SOS_MAGIC_TMPL, re.VERBOSE)
 SOS_CELL = LazyRegex(_SOS_CELL_TMPL, re.VERBOSE)
 SOS_CELL_LINE = LazyRegex(_SOS_CELL_LINE_TMPL, re.VERBOSE)
