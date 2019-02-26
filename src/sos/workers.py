@@ -422,6 +422,7 @@ class WorkerManager(object):
     def start(self):
         worker = SoS_Worker(env.config)
         worker.start()
+        self._worker_alive_time = time.time()
         self._workers.append(worker)
         self._num_workers += 1
         self.report('start worker')
