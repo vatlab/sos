@@ -1857,6 +1857,24 @@ with open(_input) as content:
         self.assertTrue(os.path.isfile('A_1.txt'))
         self.assertTrue(os.path.isfile('A_2.txt'))
 
+    def testExecyteGlobalSection(self):
+        '''Global section should be executed only once #1219'''
+        script = SoS_Script(r'''
+[global]
+parameter: A=[1, 2]
+parameter: B=[]
+B.extend(A)
+
+[default]
+assert B == [1, 2]
+input: for_each=dict(i=range(2))
+assert B == [1, 2]
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
+
+
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
     # unittest.TextTestRunner(, suite).run()
