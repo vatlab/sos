@@ -33,7 +33,7 @@ def stdoutIO():
     sys.stderr = olderr
 
 
-def execute_substep(stmt, global_def='', global_vars, task='', task_params='', proc_vars={}, shared_vars=[], config={}):
+def execute_substep(stmt, global_def, global_vars, task='', task_params='', proc_vars={}, shared_vars=[], config={}):
     '''Execute a substep with specific input etc
 
     Substep executed by this function should be self-contained. It can contain

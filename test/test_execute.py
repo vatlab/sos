@@ -1094,6 +1094,7 @@ for i in range(4):
         os.mkdir('temp')
         #
         script = SoS_Script('''
+import os
 [1]
 
 from pathlib import Path

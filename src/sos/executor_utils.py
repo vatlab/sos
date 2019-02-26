@@ -126,7 +126,7 @@ def get_traceback_msg(e):
     else:
         return f'{error_class}: {detail}'
 
-def prepare_env(gdef, gvars):
+def prepare_env(gdef, gvars, extra_vars={}):
     '''clear current sos_dict, execute global_def (definitions and imports),
     and inject global variables'''
     env.sos_dict.clear()
@@ -135,6 +135,7 @@ def prepare_env(gdef, gvars):
         exec(compile(gdef, filename="<ast>", mode="exec"),
             env.sos_dict._dict)
     env.sos_dict.quick_update(gvars)
+    env.sos_dict.quick_update(extra_vars)
 
 def statementMD5(stmts):
     def _get_tokens(statement):

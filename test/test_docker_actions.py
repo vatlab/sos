@@ -195,6 +195,7 @@ MAINTAINER someone@microsoft.com
     def testDockerImage(self):
         '''Test docker_image option'''
         script = SoS_Script(r'''
+import os
 [0]
 fastq_files = glob.glob('data/*.fastq')
 input_volume = os.path.dirname(fastq_files[0])

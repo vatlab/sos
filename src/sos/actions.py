@@ -363,7 +363,7 @@ class SoS_ExecuteScript:
                 transcribe(self.script, cmd=transcript_cmd)
                 # if not notebook, not task, signature database is avaialble.
                 if env.sos_dict['_index'] == 0 and env.config['run_mode'] != 'interactive' \
-                    and '__std_out__' not in env.sos_dict and hasattr(env, 'master_push_socket'):
+                    and '__std_out__' not in env.sos_dict and hasattr(env, 'master_push_socket') and env.master_push_socket is not None:
                     send_message_to_controller(['workflow_sig', 'transcript', env.sos_dict['step_name'],
                                               repr({'start_time': time.time(), 'command': transcript_cmd, 'script': self.script})])
 

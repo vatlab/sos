@@ -8,7 +8,7 @@ import sys
 import pickle
 from typing import Any, Dict, Optional, Set
 
-from .utils import env, as_fstring, load_config_files, pickleable
+from .utils import env, as_fstring, load_config_files, pickleable, ArgumentError
 from ._version import __version__
 
 
@@ -203,6 +203,8 @@ def analyze_global_statements(global_stmt):
     # execute the entire statement
     try:
         SoS_exec(global_stmt)
+    except ArgumentError as e:
+        raise
     except Exception as e:
         raise RuntimeError(f'Failed to execute global statement {global_stmt}: {e}')
     #

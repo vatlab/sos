@@ -311,7 +311,7 @@ parameter: b = int
 [0]
 ''')
         wf = script.workflow()
-        self.assertRaises(ArgumentError, Base_Executor(wf).run, mode='dryrun')
+        self.assertRaises(ArgumentError, Base_Executor, wf)
         #
         script = SoS_Script('''
 parameter: b = list
@@ -319,15 +319,15 @@ parameter: b = list
 ''')
         self.assertEqual(list(wf.parameters().keys()), ['b'])
         wf = script.workflow()
-        self.assertRaises(ArgumentError, Base_Executor(wf).run, mode='dryrun')
+        self.assertRaises(ArgumentError, Base_Executor, wf)
         # also require the type
         script = SoS_Script('''
 parameter: b = int
 [0]
 ''')
         wf = script.workflow()
-        self.assertRaises(ArgumentError, Base_Executor(
-            wf, args=['--b', 'file']).run, mode='dryrun')
+        self.assertRaises(ArgumentError, Base_Executor,
+            wf, args=['--b', 'file'])
         #
         script = SoS_Script('''
 parameter: b = int
@@ -406,8 +406,8 @@ parameter: a = 5
 [0]
 ''')
         wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(
-            wf, args=['--a', 7]).run, mode='dryrun')
+        self.assertRaises(Exception, Base_Executor,
+            wf, args=['--a', 7])
         #self.assertEqual(env.sos_dict['a'], 4)
         #
         # test parameters with dash
@@ -1434,68 +1434,6 @@ print(_output)
         # this does not work before until we make variable output available sooner
         Base_Executor(wf).run(mode='dryrun')
 
-    def testInclude(self):
-        '''Test include keyword'''
-        with open('inc.sos', 'w') as ts:
-            ts.write('''
-# a slave script to be included
-gv = 1
-[A_1]
-[A_2]
-[B]
-''')
-        script = SoS_Script('''
-%include inc
-res = inc.gv
-[0]
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run(mode='dryrun')
-        Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['res'], 1)
-        #
-        # include with alias
-        script = SoS_Script('''
-%include inc as tt
-res1 = tt.gv
-[0]
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run(mode='dryrun')
-        Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['res1'], 1)
-        os.remove('inc.sos')
-
-    def testFromInclude(self):
-        '''Test include keyword'''
-        with open('inc.sos', 'w') as ts:
-            ts.write('''
-# a slave script to be included
-gv = 1
-[A_1]
-[A_2]
-[B]
-''')
-        script = SoS_Script('''
-%from inc include gv
-[0]
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run(mode='dryrun')
-        Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['gv'], 1)
-        #
-        # include with alias
-        script = SoS_Script('''
-%from inc include gv as g
-res1 = g
-[0]
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run(mode='dryrun')
-        Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['res1'], 1)
-
     def testCell(self):
         '''Test ignoring %cell'''
         SoS_Script('''
@@ -1503,47 +1441,6 @@ res1 = g
 [step ]
 a = 1
 ''')
-
-    def testIfElse(self):
-        '''Test if/elif/else/endif structural directive'''
-        # no matching %endif
-        self.assertRaises(ParsingError, SoS_Script, '''
-%if 1
-a = 1
-%else
-a=2
-''')
-        # no if for else
-        self.assertRaises(ParsingError, SoS_Script, '''
-%else
-a=2
-''')
-        # no conditon for if
-        self.assertRaises(ParsingError, SoS_Script, '''
-%if
-a=2
-%endif
-''')
-        # no conditon for elif
-        self.assertRaises(ParsingError, SoS_Script, '''
-%if 1
-%elif
-a=2
-%endif
-[0]
-''')
-        # test if else
-        script = SoS_Script('''
-%if 0
-a = 1
-%else
-a = 2
-%endif
-[0]
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['a'], 2)
 
     def testOverwriteKeyword(self):
         '''Test overwrite sos keyword with user defined one.'''
@@ -1570,7 +1467,8 @@ run:
     touch a.txt
 ''')
         wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf).run)
+        # this is ok, see https://github.com/vatlab/SoS/issues/1221
+        Base_Executor(wf).run()
 
     def testComments(self):
         '''Test the use of comments in sos script'''

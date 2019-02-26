@@ -191,6 +191,7 @@ task:
    print(f'{_output}')
 ''')
         wf = script.workflow('A')
+        Base_Executor(wf)
         for section in wf.sections:
             res = analyze_section(section)
             if section.names[0][1] == '1':
@@ -226,6 +227,7 @@ input:  output_from('B')
 input: something_unknown, sos_groups(output_from(['C1', 'C2']), by=2), group_by=1
 ''')
         wf = script.workflow('A')
+        Base_Executor(wf)
         for section in wf.sections:
             res = analyze_section(section)
             if section.names[0][1] == 1:
