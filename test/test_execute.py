@@ -2312,7 +2312,7 @@ time.sleep(10)
         '''Test two sos instances running the same task'''
         import psutil
         import time
-        with open('testKillTask.sos', 'w') as tk:
+        with open('testRunTask.sos', 'w') as tk:
             tk.write('''
 
 [1]
@@ -2320,8 +2320,8 @@ task:
 import time
 time.sleep(5)
 ''')
-        ret1 = subprocess.Popen(['sos', 'run', 'testKillTask', '-s', 'force'])
-        ret2 = subprocess.Popen(['sos', 'run', 'testKillTask', '-s', 'force'])
+        ret1 = subprocess.Popen(['sos', 'run', 'testRunTask', '-s', 'force'])
+        ret2 = subprocess.Popen(['sos', 'run', 'testRunTask', '-s', 'force'])
         ret1.wait()
         ret2.wait()
         self.assertEqual(ret1.returncode, 0)

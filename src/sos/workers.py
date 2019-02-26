@@ -94,6 +94,9 @@ class SoS_Worker(mp.Process):
     def available_ports(self):
         return [port for port, runner in zip(self._master_ports, self._runners) if runner is True]
 
+    def num_pending(self):
+        return len([runner for runner in self._runners if isinstance(runner, Runner)])
+
     def switch_to(self, idx):
         if len(self._master_sockets) > idx:
             # if current stack is ok
@@ -147,7 +150,7 @@ class SoS_Worker(mp.Process):
                 # avilable ports to the controller. We also need to send a flag to let the
                 # controller know if we have any pending job, and the controller might decide
                 # to kill this worker.
-                env.ctrl_socket.send_pyobj([len(wr)] + self.available_ports())
+                env.ctrl_socket.send_pyobj([self.num_pending()] + self.available_ports())
                 reply = env.ctrl_socket.recv_pyobj()
 
                 if reply is None:
@@ -163,7 +166,7 @@ class SoS_Worker(mp.Process):
                 # if a real job is returned, run it. _process_job will either return True
                 # or a runner in case it is interrupted.
                 env.logger.trace(
-                    f'WORKER {self.name} ({os.getpid()}, {len(wr)} pending) receives {self._type_of_work(reply)} request {self._name_of_work(reply)} with master port {self._master_ports[new_idx]}')
+                    f'WORKER {self.name} ({os.getpid()}, {self.num_pending()} pending) receives {self._type_of_work(reply)} request {self._name_of_work(reply)} with master port {self._master_ports[new_idx]}')
 
                 if 'task' in reply:
                     self.run_substep(reply)
@@ -359,9 +362,9 @@ class WorkerManager(object):
             env.logger.debug(f'Increasing maximum number of workers to {self._max_workers} to accommodate a blocking subworkflow.')
             return port
 
-    def process_request(self, level, ports, request_blocking=False):
-        '''port is the open port at the worker, level is the level of stack.
-        A non-zero level means that the worker is pending on something while
+    def process_request(self, num_pending, ports, request_blocking=False):
+        '''port is the open port at the worker, num_pending is the num_pending of stack.
+        A non-zero num_pending means that the worker is pending on something while
         looking for new job, so the worker should not be killed.
         '''
         if any(port in self._step_requests for port in ports):
@@ -405,7 +408,7 @@ class WorkerManager(object):
         elif request_blocking:
             self._worker_backend_socket.send_pyobj({})
             return ports[0]
-        elif level == 0 and ports[0] in self._last_pending_time and time.time() - self._last_pending_time[ports[0]] > 5:
+        elif num_pending == 0 and ports[0] in self._last_pending_time and time.time() - self._last_pending_time[ports[0]] > 5:
             # kill the worker
             for port in ports:
                 if port in self._available_ports:
@@ -415,11 +418,11 @@ class WorkerManager(object):
             self.report(f'Kill standing {ports}')
             self._last_pending_time.pop(ports[0])
         else:
-            if level == 0 and ports[0] not in self._last_pending_time:
+            if num_pending == 0 and ports[0] not in self._last_pending_time:
                 self._last_pending_time[ports[0]] = time.time()
             self._available_ports.add(ports[0])
             self._worker_backend_socket.send_pyobj({})
-            self.report(f'pending with port {ports} at level {level}')
+            self.report(f'pending with port {ports} at num_pending {num_pending}')
 
     def start(self):
         worker = SoS_Worker(env.config)
