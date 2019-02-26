@@ -158,6 +158,7 @@ class SoS_Worker(mp.Process):
                 if not reply: # if an empty job is returned
                     time.sleep(0.1)
                     continue
+
                 #
                 # if a real job is returned, run it. _process_job will either return True
                 # or a runner in case it is interrupted.
@@ -169,6 +170,7 @@ class SoS_Worker(mp.Process):
                     env.logger.trace(
                         f'WORKER {self.name} ({os.getpid()}) completes substep {self._name_of_work(reply)}')
                     self._runners[new_idx] = True
+                    continue
 
                 master_port = reply['config']['sockets']['master_port']
                 if master_port != self._master_ports[new_idx]:
