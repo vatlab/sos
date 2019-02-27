@@ -21,7 +21,7 @@ def signal_handler(*args, **kwargs):
 
 class Runner(object):
     '''
-    This runner class takea a generator function and run it. 
+    This runner class takea a generator function and run it.
     1. When the generator returns None, continue to run without yielding.
     2. When the generator returns a poller, continue is it receives any message in 0.2s.
     3. Otherwise return False.
@@ -319,7 +319,7 @@ class WorkerManager(object):
         self._available_ports = set()
         self._claimed_ports = set()
 
-        delf._last_pending_msg = time.time()
+        self._last_pending_msg = time.time()
 
         # start a worker
         self.start()
