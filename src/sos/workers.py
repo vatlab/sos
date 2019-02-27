@@ -325,8 +325,7 @@ class WorkerManager(object):
         self.start()
 
     def report(self, msg):
-        return
-        env.logger.warning(f'{msg.upper()}: {self._num_workers} workers (of which {len(self._blocking_ports)} is blocking), {self._n_requested} requested, {self._n_processed} processed')
+        env.log_to_file('WORKER', f'{msg.upper()}: {self._num_workers} workers (of which {len(self._blocking_ports)} is blocking), {self._n_requested} requested, {self._n_processed} processed')
 
     def add_request(self, msg_type, msg):
         self._n_requested += 1

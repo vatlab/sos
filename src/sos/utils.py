@@ -329,7 +329,7 @@ class RuntimeEnvironments(object):
             topic = 'GENERAL'
         if topic not in env.config['debug_info']:
             return
-        self.logger.debug(topic.upper() + ': ' + str(msg))
+        self.logger.debug(topic + ' - ' + str(msg))
 
     def reset(self):
         # logger
@@ -418,14 +418,11 @@ class RuntimeEnvironments(object):
 
         if 'SOS_DEBUG' in os.environ:
             logfile = logging.FileHandler(os.path.join(os.path.expanduser('~'), 'sos_debug.log'), mode='a')
+            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+            logfile.setFormatter(formatter)
             logfile.setLevel(logging.DEBUG)
             self._logger.addHandler(logfile)
-            env.config['debug'] = set(os.environ['SOS_DEBUG'].split(','))
-            if 'ALL' in env.config['debug']:
-                env.config['debug'] |= {
-                    'GENERAL', 'WORKER', 'CONTROLLER', 'VARIABLE', 'TARGET',
-                    'EXECUTOR', 'ZERONQ', 'TASK', 'ACTION', 'STEP'
-                }
+
     #
     # attribute exec_dir
 
@@ -482,6 +479,13 @@ class RuntimeEnvironments(object):
 env = RuntimeEnvironments()
 logger = env.logger
 
+if 'SOS_DEBUG' in os.environ:
+    env.config['debug_info'] = set(os.environ['SOS_DEBUG'].split(','))
+    if 'ALL' in env.config['debug_info']:
+        env.config['debug_info'] |= {
+            'GENERAL', 'WORKER', 'CONTROLLER', 'VARIABLE', 'TARGET',
+            'EXECUTOR', 'ZERONQ', 'TASK', 'ACTION', 'STEP', 'DAG'
+        }
 
 #
 # String formatting
