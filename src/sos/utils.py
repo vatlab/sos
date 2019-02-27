@@ -417,9 +417,9 @@ class RuntimeEnvironments(object):
             self._logger.addHandler(cout)
 
         if 'SOS_DEBUG' in os.environ:
-            logfile_info = [x for x in os.environ['SOS_DEBUG'].split(',') if x.startswith('LOGFILE=')]
+            logfile_info = [x for x in os.environ['SOS_DEBUG'].split(',') if '.' in x]
             if logfile_info:
-                logfile = logging.FileHandler(os.path.expanduser(logfile_info[0].split('=',1)[1]), mode='a')
+                logfile = logging.FileHandler(os.path.expanduser(logfile_info[0]), mode='a')
             else:
                 logfile = logging.FileHandler(os.path.join(os.path.expanduser('~'), 'sos_debug.log'), mode='a')
             formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
