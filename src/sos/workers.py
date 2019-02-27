@@ -349,11 +349,14 @@ class WorkerManager(object):
         if self._n_processed > 0 and not self._available_ports and self._num_workers < self._max_workers:
             self.start()
 
-    def worker_available(self, blocking):
+    def worker_available(self, blocking, excluded):
         if self._available_ports:
-            claimed = self._available_ports.pop()
-            self._claimed_ports.add(claimed)
-            return claimed
+            usable = [x for x in self._available_ports if x not in excluded]
+            if usable:
+                claimed = usable[0]
+                self._available_ports.remove(usable[0])
+                self._claimed_ports.add(claimed)
+                return claimed
 
         if not blocking:
             # no available port, can we start a new worker?
@@ -368,7 +371,7 @@ class WorkerManager(object):
                 raise RuntimeError('No worker is started after 5 seconds')
             msg = self._worker_backend_socket.recv_pyobj()
             port = self.process_request(msg[0], msg[1:], request_blocking=True)
-            if port is None:
+            if port is None or port in excluded:
                 continue
             self._claimed_ports.add(port)
             self._max_workers += 1

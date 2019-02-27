@@ -310,7 +310,7 @@ class Controller(threading.Thread):
                 if not found:
                     self.master_request_socket.send_pyobj(None)
             elif msg[0] == 'worker_available':
-                self.master_request_socket.send_pyobj(self.workers.worker_available(msg[1]))
+                self.master_request_socket.send_pyobj(self.workers.worker_available(msg[1], msg[2:]))
             elif msg[0] == 'done':
                 # handle all ctl_push_msgs #1062
                 while True:

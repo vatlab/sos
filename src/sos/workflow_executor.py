@@ -140,7 +140,16 @@ class ExecutionManager(object):
 
         # ask the controller for a worker. If the next job is blocking, we
         # ask for a separate blocking.
-        master_port = request_answer_from_controller(['worker_available', self._is_next_job_blocking()])
+        #
+        # NOTE: #1222
+        #
+        # It is possible that a port is said to be avialble since the worker have completed the
+        # job but the executor has not finished working on the return value. In this case the
+        # port is still used by the executor and cannot be used for new jobs. Because of this we
+        # have to temporarily exclude the ports that are active in the executor from the selection.
+        #
+        master_port = request_answer_from_controller(['worker_available', self._is_next_job_blocking()] +
+            [x.port for x in self.procs if self.procs])
         # no worker is available
         if master_port is None:
             return False
