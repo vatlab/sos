@@ -319,7 +319,7 @@ class WorkerManager(object):
         self._available_ports = set()
         self._claimed_ports = set()
 
-        self._last_pending_msg = time.time()
+        self._last_pending_msg = {}
 
         # start a worker
         self.start()
@@ -429,9 +429,10 @@ class WorkerManager(object):
                 self._last_pending_time[ports[0]] = time.time()
             self._available_ports.add(ports[0])
             self._worker_backend_socket.send_pyobj({})
-            if time.time() - self._last_pending_msg > 1.0:
+            ports = tuple(ports)
+            if (ports, num_pending) not in self._last_pending_msg or time.time() - self._last_pending_msg[(ports, num_pending)] > 1.0:
                 self.report(f'pending with port {ports} at num_pending {num_pending}')
-                self._last_pending_msg = time.time()
+                self._last_pending_msg[(ports, num_pending)] = time.time()
 
     def start(self):
         worker = SoS_Worker(env.config)
