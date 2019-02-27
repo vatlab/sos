@@ -31,9 +31,13 @@ class Runner(object):
     1. True if all completed, return value from generator is ignored.
     2. `self` if waiting.
     '''
-    def __init__(self, runner):
+    def __init__(self, runner, name):
         self._runner = runner
         self._poller = 0
+        self._name = name
+
+    def __repr__(self):
+        return self._name
 
     def run_until_waiting(self):
         try:
@@ -120,6 +124,9 @@ class SoS_Worker(mp.Process):
             self._runners.append(True)
             env.log_to_file('WORKER', f'WORKER {self.name} ({os.getpid()}) creates ports {self._master_ports}')
 
+    def __repr__(self):
+        return self.name + ' ' +  ' '.join(str(x) if isinstance(x, Runner) else str(idx) for idx,x in enumerate(self._runners))
+
     def run(self):
         # env.logger.warning(f'Worker created {os.getpid()}')
         env.config.update(self.config)
@@ -130,7 +137,6 @@ class SoS_Worker(mp.Process):
         env.ctrl_socket.connect(f'tcp://127.0.0.1:{self.config["sockets"]["worker_backend"]}')
 
         signal.signal(signal.SIGTERM, signal_handler)
-
         # result socket used by substeps
         env.result_socket = None
         env.result_socket_port = None
@@ -187,7 +193,9 @@ class SoS_Worker(mp.Process):
                     self.switch_to(new_idx)
 
                 # step and workflow can yield. Here we call run_until_waiting directly because we know the Runner can proceed.
-                self._runners[new_idx] = Runner(self.run_step(**reply) if 'section' in reply else self.run_workflow(**reply)).run_until_waiting()
+                self._runners[new_idx] = Runner(self.run_step(**reply) if 'section' in reply else self.run_workflow(**reply),
+                    name=self._name_of_work(reply)).run_until_waiting()
+                env.log_to_file('WORKER', 'STATUS ' + self._name_of_work(reply) + str(self))
             except ProcessKilled:
                 # in theory, this will not be executed because the exception
                 # will be caught by the step executor, and then sent to the master
@@ -227,7 +235,6 @@ class SoS_Worker(mp.Process):
         #
         # get workflow, args, shared, and config
         from .workflow_executor import Base_Executor
-
         env.config.update(config)
         # we are in a separate process and need to set verbosity from workflow config
         # but some tests do not provide verbosity
