@@ -56,7 +56,7 @@ class Runner(object):
             return True
 
     def can_proceed(self):
-        return self._poller == 0 or self._poller.poll(0)
+        return self._poller.poll(0)
 
 class SoS_Worker(mp.Process):
     '''

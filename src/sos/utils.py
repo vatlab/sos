@@ -327,7 +327,7 @@ class RuntimeEnvironments(object):
         if not msg:
             msg = topic
             topic = 'GENERAL'
-        if topic not in env.config['debug_info']:
+        if 'SOS_DEBUG' not in os.environ or topic not in os.environ['SOS_DEBUG'] and 'ALL' not in os.environ['SOS_DEBUG']:
             return
         self.logger.debug(topic + ' - ' + str(msg))
 
@@ -482,14 +482,6 @@ class RuntimeEnvironments(object):
 # set up environment variable and a default logger
 env = RuntimeEnvironments()
 logger = env.logger
-
-if 'SOS_DEBUG' in os.environ:
-    env.config['debug_info'] = set(os.environ['SOS_DEBUG'].split(','))
-    if 'ALL' in env.config['debug_info']:
-        env.config['debug_info'] |= {
-            'GENERAL', 'WORKER', 'CONTROLLER', 'VARIABLE', 'TARGET',
-            'EXECUTOR', 'ZERONQ', 'TASK', 'ACTION', 'STEP', 'DAG'
-        }
 
 #
 # String formatting
