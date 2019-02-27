@@ -199,9 +199,9 @@ class WorkflowDict(object):
         '''A short cut to set value to key without triggering any logging
         or warning message.'''
         if hasattr(value, 'labels'):
-            env.logger.trace(f"Set {key} to {short_repr(value)} with labels {short_repr(value.labels)}")
+            env.log_to_file('VARIABLE', f"Set {key} to {short_repr(value)} with labels {short_repr(value.labels)}")
         else:
-            env.logger.trace(f"Set {key} to {short_repr(value)} of type {value.__class__.__name__}")
+            env.log_to_file('VARIABLE', f"Set {key} to {short_repr(value)} of type {value.__class__.__name__}")
         self._dict[key] = value
         # if self._change_all_cap_vars is not None and key.isupper():
         #    self._check_readonly(key, value)
@@ -322,9 +322,14 @@ class RuntimeEnvironments(object):
     _exec_dir = None
     _temp_dir = os.path.join(tempfile.gettempdir(), getpass.getuser(), '.sos')
 
-    def log_to_file(self, msg):
-        with open(os.path.join(os.path.expanduser('~'), 'sos_debug.log'), 'a') as log:
-            log.write(f'{msg}\n')
+    def log_to_file(self, topic, msg=''):
+        # if only one parameter is given, assuming ALL topic and topic is the message
+        if not msg:
+            msg = topic
+            topic = 'GENERAL'
+        if topic not in env.config['debug_info']:
+            return
+        self.logger.debug(topic.upper() + ': ' + str(msg))
 
     def reset(self):
         # logger
@@ -350,7 +355,8 @@ class RuntimeEnvironments(object):
             'run_mode': 'run',
             'verbosity': 1,
             # determined later
-            'master_id': ''
+            'master_id': '',
+            'debug_info': {'GENERAL'},
         })
 
         #
@@ -370,9 +376,6 @@ class RuntimeEnvironments(object):
     #
 
     def _set_logger(self, unused=None):
-        if not hasattr(logging, 'TRACE'):
-            logging.TRACE = 5
-            logging.addLevelName(logging.TRACE, "TRACE")
         # create a logger, we current use the regular logger but we should
         # switch to multiprocessing.get_logger if we notice trouble in, for example,
         # logging from multiple processes.
@@ -381,24 +384,19 @@ class RuntimeEnvironments(object):
         while self._logger.hasHandlers():
             self._logger.removeHandler(self._logger.handlers[0])
         self._logger.setLevel(logging.DEBUG)
-        self._logger.trace = lambda msg, * \
-            args: self._logger._log(logging.TRACE, msg, args)
         levels = {
             0: logging.ERROR,
             1: logging.WARNING,
             2: logging.INFO,
             3: logging.DEBUG,
-            4: logging.TRACE,
+            4: logging.DEBUG,
             None: logging.INFO
         }
 
         if self._logging_socket:
-            PUBHandler.formatters[logging.TRACE] = logging.Formatter(
-                "%(levelname)s %(filename)s:%(lineno)d - %(message)s\n")
             socket_handler = PUBHandler(self._logging_socket)
             # debug informaiton and time is always written to the log file
             socket_handler.setLevel(levels[self._verbosity])
-
 
             #ch.setFormatter(logging.Formatter(
             #    '%(asctime)s: %(levelname)s: %(message)s'))
@@ -417,6 +415,17 @@ class RuntimeEnvironments(object):
             cout.setFormatter(ColoredFormatter(
                 '%(color_levelname)s: %(color_msg)s'))
             self._logger.addHandler(cout)
+
+        if 'SOS_DEBUG' in os.environ:
+            logfile = logging.FileHandler(os.path.join(os.path.expanduser('~'), 'sos_debug.log'), mode='a')
+            logfile.setLevel(logging.DEBUG)
+            self._logger.addHandler(logfile)
+            env.config['debug'] = set(os.environ['SOS_DEBUG'].split(','))
+            if 'ALL' in env.config['debug']:
+                env.config['debug'] |= {
+                    'GENERAL', 'WORKER', 'CONTROLLER', 'VARIABLE', 'TARGET',
+                    'EXECUTOR', 'ZERONQ', 'TASK', 'ACTION', 'STEP'
+                }
     #
     # attribute exec_dir
 

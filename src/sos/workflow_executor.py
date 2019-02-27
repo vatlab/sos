@@ -293,9 +293,9 @@ class Base_Executor:
             raise
         finally:
             # end progress bar when the master workflow stops
-            env.logger.trace(f'Stop controller from {os.getpid()}')
+            env.log_to_file('EXECUTOR', f'Stop controller from {os.getpid()}')
             request_answer_from_controller(['done', succ])
-            env.logger.trace('disconntecting master')
+            env.log_to_file('EXECUTOR', 'disconntecting master')
             # if the process is failed, some workers might be killed, resulting
             # in nonresponseness from the master, and the socket context cannot
             # be killed in this case.
@@ -957,7 +957,7 @@ class Base_Executor:
                         file_target(filename).unlink()
                         env.logger.debug(f'Remove placeholder {filename}')
                 except Exception as e:
-                    env.logger.trace(
+                    env.log_to_file('EXECUTOR',
                         f'Failed to remove placeholder {filename}: {e}')
 
     def run_as_master(self, targets=None, mode=None) -> Dict[str, Any]:
@@ -1035,7 +1035,7 @@ class Base_Executor:
                                     runnable._host.submit_task(task)
                                 runnable._status = 'task_pending'
                                 dag.save(env.config['output_dag'])
-                                env.logger.trace('Step becomes task_pending')
+                                env.log_to_file('EXECUTOR', 'Step becomes task_pending')
                             except Exception as e:
                                 proc.socket.send_pyobj(
                                     {x: {'ret_code': 1, 'task': x, 'output': {}, 'exception': e} for x in new_tasks})

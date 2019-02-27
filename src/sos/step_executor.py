@@ -634,7 +634,7 @@ class Base_Step_Executor:
             env.logger.info(
                 f'{"Checking" if env.config["run_mode"] == "dryrun" else "Running"} ``{self.step.step_name(True)}``: {self.step.comment.strip()}')
         elif stage == 'input statement':
-            env.logger.trace(f'Handling input statement {msg}')
+            env.log_to_file('STEP', f'Handling input statement {msg}')
         elif stage == '_input':
             if env.sos_dict['_input'] is not None:
                 env.logger.debug(
@@ -803,7 +803,7 @@ class Base_Step_Executor:
         # _index is needed for pre-input action's active option and for debug output of scripts
         env.sos_dict.set('_index', 0)
 
-        env.logger.trace(
+        env.log_to_file('STEP',
             f'Executing step {env.sos_dict["step_name"]} with step_input {env.sos_dict["step_input"]} and step_output {env.sos_dict["step_output"]}')
 
         if self.step.task_params:
@@ -1147,7 +1147,7 @@ class Base_Step_Executor:
                     elif is_last_runblock:
                         try:
                             if self.concurrent_substep:
-                                env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} concurrently')
+                                env.log_to_file('STEP', f'Execute substep {env.sos_dict["step_name"]} concurrently')
 
                                 # the ignatures are supposed to be written by substep worker, however
                                 # the substep worker might send tasks back to the step worker and
@@ -1192,7 +1192,7 @@ class Base_Step_Executor:
                                 self.process_returned_substep_result(wait=False)
                             else:
                                 if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified():
-                                    env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} without signature')
+                                    env.log_to_file('STEP', f'Execute substep {env.sos_dict["step_name"]} without signature')
                                     try:
                                         if is_input_verified:
                                             verify_input()
@@ -1222,7 +1222,7 @@ class Base_Step_Executor:
                                         env.sos_dict['_depends'],
                                         env.sos_dict['__signature_vars__'],
                                         shared_vars=self.vars_to_be_shared)
-                                    env.logger.trace(f'Execute substep {env.sos_dict["step_name"]} with signature {sig.sig_id}')
+                                    env.log_to_file('STEP', f'Execute substep {env.sos_dict["step_name"]} with signature {sig.sig_id}')
                                     # if singaure match, we skip the substep even  if
                                     # there are tasks.
                                     matched = validate_step_sig(sig)
@@ -1310,7 +1310,7 @@ class Base_Step_Executor:
                         env.sos_dict['_depends'],
                         env.sos_dict['__signature_vars__'],
                         shared_vars=self.vars_to_be_shared)
-                    env.logger.trace(f'Check task-only step {env.sos_dict["step_name"]} with signature {sig.sig_id}')
+                    env.log_to_file('STEP', f'Check task-only step {env.sos_dict["step_name"]} with signature {sig.sig_id}')
                     matched = validate_step_sig(sig)
                     skip_index = bool(matched)
                     if matched:

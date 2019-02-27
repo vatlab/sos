@@ -332,7 +332,7 @@ class SoS_ExecuteScript:
                                              f'{env.sos_dict["step_name"]}_{env.sos_dict["_index"]}_{str(uuid.uuid4())[:8]}{self.suffix}')
             # with open(debug_script_file, 'w') as sfile:
             #    sfile.write(self.script)
-            # env.logger.trace(self.script)
+            # env.log_to_file('ACTION', self.script)
 
             try:
                 p = None
@@ -1086,7 +1086,7 @@ def pandoc(script=None, input=None, output=None, args='{input:q} --output {outpu
     try:
         p = None
         cmd = interpolate(f'pandoc {args}', {'input': input, 'output': output})
-        env.logger.trace(f'Running command "{cmd}"')
+        env.log_to_file('ACTION', f'Running command "{cmd}"')
         if env.config['run_mode'] == 'interactive':
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
             from .utils import pexpect_run

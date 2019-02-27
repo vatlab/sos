@@ -118,7 +118,7 @@ class SoS_Worker(mp.Process):
             self._master_sockets.append(env.master_socket)
             self._master_ports.append(port)
             self._runners.append(True)
-            env.logger.trace(f'WORKER {self.name} ({os.getpid()}) creates ports {self._master_ports}')
+            env.log_to_file('WORKER', f'WORKER {self.name} ({os.getpid()}) creates ports {self._master_ports}')
 
     def run(self):
         # env.logger.warning(f'Worker created {os.getpid()}')
@@ -162,7 +162,7 @@ class SoS_Worker(mp.Process):
                 if reply is None:
                     if len(wr) != 0:
                         env.logger.error(f'WORKER terminates with pending tasks. sos might not be termianting properly.')
-                    env.logger.trace(f'WORKER {self.name} ({os.getpid()}) quits after receiving None.')
+                    env.log_to_file('WORKER', f'WORKER {self.name} ({os.getpid()}) quits after receiving None.')
                     break
                 if not reply: # if an empty job is returned
                     time.sleep(0.1)
@@ -171,12 +171,12 @@ class SoS_Worker(mp.Process):
                 #
                 # if a real job is returned, run it. _process_job will either return True
                 # or a runner in case it is interrupted.
-                env.logger.trace(
+                env.log_to_file('WORKER',
                     f'WORKER {self.name} ({os.getpid()}, {self.num_pending()} pending) receives {self._type_of_work(reply)} request {self._name_of_work(reply)} with master port {self._master_ports[new_idx]}')
 
                 if 'task' in reply:
                     self.run_substep(reply)
-                    env.logger.trace(
+                    env.log_to_file('WORKER',
                         f'WORKER {self.name} ({os.getpid()}) completes substep {self._name_of_work(reply)}')
                     self._runners[new_idx] = True
                     continue

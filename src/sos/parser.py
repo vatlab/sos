@@ -1011,7 +1011,7 @@ class SoS_Script:
                                     lineno, line, 'Invalid section option')
                     except Exception as e:
                         parsing_errors.append(lineno, line, str(e))
-                    env.logger.trace('Header parsed with names {} and options {}'
+                    env.log_to_file('EXECUTOR', 'Header parsed with names {} and options {}'
                                      .format(step_names, step_options))
                 for name in step_names:
                     prev_workflows = [x[0]

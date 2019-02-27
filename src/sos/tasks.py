@@ -215,7 +215,7 @@ class TaskFile(object):
             if self.status == 'running':
                 env.logger.debug('Running task is not updated')
                 return
-        
+
             # keep original stuff but update params, which could contain
             # new runtime info
             self.params = params
@@ -1428,7 +1428,7 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
             for f in to_be_removed[task]:
                 try:
                     if verbosity > 3:
-                        env.logger.trace(f'Remove {f}')
+                        env.log_to_file('TASK', f'Remove {f}')
                     os.remove(f)
                 except Exception as e:
                     removed = False

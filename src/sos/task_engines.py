@@ -163,7 +163,7 @@ class TaskEngine(threading.Thread):
                     try:
                         tid, tags, ct, st, dr, tst = line.split('\t')
                         if tid not in self.running_tasks + list(self.running_pending_tasks.keys()):
-                            env.logger.trace(
+                            env.log_to_file('TASK',
                                 f'Task {tid} removed since status check.')
                             continue
                         self.task_info[tid]['date'] = [float(ct) if ct.strip() else None,
@@ -220,7 +220,7 @@ class TaskEngine(threading.Thread):
                                         })
                                     self.task_status[tid] = 'failed'
                         # else:
-                        #    env.logger.trace('{} is still being submitted.'.format(k))
+                        #    env.log_to_file('TASK', '{} is still being submitted.'.format(k))
                     for k in submitted:
                         self.submitting_tasks.pop(k)
 
@@ -249,7 +249,7 @@ class TaskEngine(threading.Thread):
                     if not slot:
                         continue
                     for tid in slot:
-                        env.logger.trace(
+                        env.log_to_file('TASK',
                             f'Start submitting {tid} (status: {self.task_status.get(tid, "unknown")})')
                     self.submitting_tasks[tuple(slot)] = self._thread_workers.submit(
                         self.execute_tasks, slot)
@@ -356,7 +356,7 @@ class TaskEngine(threading.Thread):
 
     def update_task_status(self, task_id, status):
         #
-        env.logger.trace(f'STATUS {task_id}\t{status}\n')
+        env.log_to_file('TASK', f'STATUS {task_id}\t{status}\n')
         #
         with threading.Lock():
             if task_id in self.canceled_tasks and status != 'aborted':
@@ -520,7 +520,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
 
     def execute_tasks(self, task_ids):
         if not super(BackgroundProcess_TaskEngine, self).execute_tasks(task_ids):
-            env.logger.trace(f'Failed to prepare task {task_ids}')
+            env.log_to_file('TASK', f'Failed to prepare task {task_ids}')
             return False
         if self.job_template:
             if not self._submit_task_with_template(task_ids):
@@ -533,7 +533,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
     def _submit_task(self, task_ids):
         # if no template, use a default command
         cmd = f"sos execute {' '.join(task_ids)} -v {env.verbosity} -s {env.config['sig_mode']} {'--dryrun' if env.config['run_mode'] == 'dryrun' else ''}"
-        env.logger.trace(f'Execute "{cmd}" (waiting={self.wait_for_task})')
+        env.log_to_file('TASK', f'Execute "{cmd}" (waiting={self.wait_for_task})')
         self.agent.run_command(cmd, wait_for_task=self.wait_for_task)
         return True
 
