@@ -78,11 +78,15 @@ class dummy_node:
 
 
 class ProcInfo(object):
-    def __init__(self, socket, port, step) -> None:
+    def __init__(self, socket, port, step, name) -> None:
         self.socket = socket
         self.port = port
         self.step = step
+        self.name = name
         self._last_alive = time.time()
+
+    def __repr__(self):
+        return self.name
 
     def set_status(self, status: str) -> None:
         self.step._status = status
@@ -120,12 +124,12 @@ class ExecutionManager(object):
 
     def add_placeholder_worker(self, runnable, socket):
         runnable._status = 'step_pending'
-        self.procs.append(ProcInfo(socket=socket, port=None, step=runnable))
+        self.procs.append(ProcInfo(socket=socket, port=None, step=runnable, name='nested'))
         self.poller.register(socket, zmq.POLLIN)
 
     def push_to_queue(self, runnable, spec):
         # try to avoid interference between tasks
-        self.step_queue.append([runnable, copy.deepcopy(spec)])
+        self.step_queue.insert(0, [runnable, copy.deepcopy(spec)])
 
     def _is_next_job_blocking(self):
         return 'blocking' in self.step_queue[-1][1] and self.step_queue[-1][1]['blocking']
@@ -148,17 +152,42 @@ class ExecutionManager(object):
         send_message_to_controller(['step' if 'section' in spec else 'workflow', spec])
 
         # if there is a pooled proc with the same port, let us use it to avoid re-creating a socket
+        proc_with_port = [idx for idx,proc in enumerate(self.procs) if proc.port == master_port]
+        if proc_with_port:
+            raise RuntimeError(f'worker {str(self.procs[proc_with_port[0]])} already uses this port {master_port}')
+
         proc_with_port = [idx for idx,proc in enumerate(self.pool) if proc.port == master_port]
+
+        if len(proc_with_port) > 1:
+            raise RuntimeError('this should not happen')
         if proc_with_port:
             self.procs.append(self.pool[proc_with_port[0]])
             self.pool.pop(proc_with_port[0])
             self.procs[-1].step = runnable
+            # env.logger.error(f'Connection to existing socket with port {master_port} for {self._name_of_work(spec)} ({self._num_of_procs()} total)')
         else:
-            master_socket = create_socket(env.zmq_context, zmq.PAIR, 'pair socket for step worker')
-            master_socket.connect(f'tcp://127.0.0.1:{master_port}')
-            # we need to create a ProcInfo to keep track of the step
-            self.procs.append(ProcInfo(socket=master_socket, port=master_port, step=runnable))
+            try:
+                master_socket = create_socket(env.zmq_context, zmq.PAIR, 'pair socket for step worker')
+                master_socket.connect(f'tcp://127.0.0.1:{master_port}')
+                # we need to create a ProcInfo to keep track of the step
+                self.procs.append(ProcInfo(socket=master_socket, port=master_port, step=runnable, name=self._name_of_work(spec)))
+                # env.logger.error(f'Connection to new socket with port {master_port} for {self._name_of_work(spec)} ({self._num_of_procs()} total)')
+            except Exception as e:
+                import psutil
+                myproc = psutil.Process(os.getpid())
+                raise RuntimeError(f'{os.getpid()} has {len(myproc.open_files())} open files and {len(myproc.connections())} open connections. {e}')
         return True
+
+    def _num_of_procs(self):
+        return len([x for x in self.procs if x is not None])
+
+    def _name_of_work(self, work):
+        if 'section' in work:
+            return work['section'].step_name()
+        elif 'wf' in work:
+            return work['workflow_id']
+        else:
+            return 'substep'
 
     def all_done(self) -> bool:
         return not self.step_queue and (not self.procs or all(x is None for x in self.procs))
@@ -1010,7 +1039,7 @@ class Base_Executor:
                         continue
 
                     # receieve something from the worker
-                    res = proc.socket.recv_pyobj(zmq.NOBLOCK)
+                    res = proc.socket.recv_pyobj()
                     runnable = proc.step
                     # if this is NOT a result, rather some request for task, step, workflow etc
                     if isinstance(res, list):
@@ -1169,7 +1198,7 @@ class Base_Executor:
                         runnable._child_socket.send_pyobj(res)
                         # this is a onetime use socket that passes results from
                         # nested workflow to master
-                        runnable._child_socket.LINGER = 0
+                        #runnable._child_socket.LINGER = 0
                         close_socket(runnable._child_socket)
                     elif isinstance(res, UnavailableLock):
                         self.handle_unavailable_lock(res, dag, runnable)
@@ -1351,6 +1380,7 @@ class Base_Executor:
 
         wf_result = {'__workflow_id__': my_workflow_id, 'shared': {}}
 
+        env.log_to_file('WORKER', f'- SUBSTART - Run workflow W{env.config["workflow_vars"].get("idx", "?")}')
         # this is the initial targets specified by subworkflow, users
         # should specify named_output directly if needed.
         dag = self.initialize_dag(targets=targets)
@@ -1436,7 +1466,7 @@ class Base_Executor:
                         exec_error.append(runnable._node_id, res)
                         raise exec_error
                     elif '__step_name__' in res:
-                        env.log_to_file('EXECUTOR', f'Nested receive step result ')
+                        env.log_to_file('EXECUTOR', f'Nested receive step result {res}')
                         self.step_completed(res, dag, runnable)
                     else:
                         raise RuntimeError(
@@ -1477,6 +1507,8 @@ class Base_Executor:
 
                     socket = create_socket(env.zmq_context, zmq.PAIR, 'worker pair socket')
                     port = socket.bind_to_random_port('tcp://127.0.0.1')
+                    env.log_to_file('WORKER', f'- SUBRUN - SEND STEP S{env.config["workflow_vars"].get("idx", "?")}')
+
                     parent_socket.send_pyobj(['step', step_id, section, runnable._context, shared, self.args,
                                               env.config, env.verbosity, port])
                     # the nested workflow also needs a step to receive result
