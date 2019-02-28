@@ -114,6 +114,7 @@ class ExecutionManager(object):
         # they will be executed in random but at a higher priority than the steps
         # on the master process.
         self.step_queue = []
+        self.workflow_queue = []
         self.poller = zmq.Poller() if dummy else None
         self._dummy = dummy
 
@@ -129,13 +130,16 @@ class ExecutionManager(object):
 
     def push_to_queue(self, runnable, spec):
         # try to avoid interference between tasks
-        self.step_queue.insert(0, [runnable, copy.deepcopy(spec)])
+        if 'section' in spec:
+            self.step_queue.insert(0, [runnable, copy.deepcopy(spec)])
+        else:
+            self.workflow_queue.insert(0, [runnable, copy.deepcopy(spec)])
 
     def _is_next_job_blocking(self):
-        return 'blocking' in self.step_queue[-1][1] and self.step_queue[-1][1]['blocking']
+        return self.workflow_queue and self.workflow_queue[-1][1]['blocking']
 
     def send_to_worker(self):
-        if not self.step_queue:
+        if not self.step_queue and not self.workflow_queue:
             return False
 
         # ask the controller for a worker. If the next job is blocking, we
@@ -154,7 +158,8 @@ class ExecutionManager(object):
         if master_port is None:
             return False
 
-        runnable, spec = self.step_queue.pop()
+        runnable, spec = self.step_queue.pop() if self.step_queue else self.workflow_queue.pop()
+
         if 'sockets' not in spec['config']:
             spec['config']['sockets'] = {}
         spec['config']['sockets']['master_port'] = master_port
@@ -199,7 +204,7 @@ class ExecutionManager(object):
             return 'substep'
 
     def all_done(self) -> bool:
-        return not self.step_queue and (not self.procs or all(x is None for x in self.procs))
+        return not self.step_queue and not self.workflow_queue and (not self.procs or all(x is None for x in self.procs))
 
     def dispose(self, idx: int) -> None:
         self.poller.unregister(self.procs[idx].socket)
