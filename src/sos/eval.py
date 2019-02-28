@@ -190,6 +190,10 @@ def analyze_global_statements(global_stmt):
     # find all import and function definition ...
     env.sos_dict.clear()
     env.sos_dict.set('SOS_VERSION', __version__)
+    env.sos_dict.set('master_id', '')
+    env.sos_dict.set('workflow_id', '')
+    env.sos_dict.set('step_name', '')
+    env.sos_dict.set('step_id', '')
     # first load CONFIG, this will create CONFIG
     load_config_files()
 
