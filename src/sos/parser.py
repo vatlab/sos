@@ -226,6 +226,8 @@ class SoS_Step:
         self.substep_parameters: Set = set()
         # step processes
         self.global_stmts = ''
+        self.global_def = ''
+        self.global_vars = {}
         self.task = ''
         self.task_params = ''
         self.last_step = None
