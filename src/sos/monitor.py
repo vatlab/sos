@@ -119,8 +119,7 @@ class ProcessMonitor(threading.Thread):
                 # the warning message is usually:
                 # WARNING: psutil.NoSuchProcess no process found with pid XXXXX
                 # env.logger.warning(e)
-                env.logger.debug(
-                    f'Monitor of {self.task_id} failed with message {e}')
+                env.logger.debug(f'Monitor of {self.task_id} failed with message {e}')
                 break
 
 

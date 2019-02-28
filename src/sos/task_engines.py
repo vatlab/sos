@@ -341,8 +341,7 @@ class TaskEngine(threading.Thread):
     def summarize_status(self):
         from collections import Counter
         statuses = Counter(self.task_status.values())
-        env.logger.debug(
-            ' '.join(f'{x}: {y}' for x, y in statuses.items()))
+        env.logger.debug(' '.join(f'{x}: {y}' for x, y in statuses.items()))
 
     def check_task_status(self, task_id, unknown='pending'):
         # we wait for the engine to start
@@ -360,8 +359,7 @@ class TaskEngine(threading.Thread):
         #
         with threading.Lock():
             if task_id in self.canceled_tasks and status != 'aborted':
-                env.logger.debug(
-                    f'Task {task_id} is still not killed (status {status})')
+                env.logger.debug(f'Task {task_id} is still not killed (status {status})')
                 status = 'aborted'
             if status != 'missing':
                 if task_id not in self.task_info:

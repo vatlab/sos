@@ -190,7 +190,7 @@ def get_step_depends(section):
         finally:
             [env.sos_dict.dict().pop(x) for x in svars]
             env.sos_dict.quick_update(old_values)
-    # env.logger.debug(f"Args {value} cannot be determined: {e}")
+    env.log_to_file('STEP', f"Args {value} cannot be determined: {e}")
     return step_depends, dynamic_depends
 
 
@@ -270,8 +270,7 @@ def get_step_output(section, default_output):
     except SyntaxError:
         raise
     except Exception as e:
-        pass
-        # env.logger.debug(f"Args {value} cannot be determined: {e}")
+        env.log_to_file('STEP', f"Args {value} cannot be determined: {e}")
     finally:
         [env.sos_dict.dict().pop(x) for x in svars]
         env.sos_dict.quick_update(old_values)

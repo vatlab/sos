@@ -78,7 +78,7 @@ def collect_task_result(task_id, sos_dict, skipped=False, signature=None):
         else:
             raise ValueError(
                 f'Option shared should be a string, a mapping of expression, or a list of string or mappings. {svars} provided')
-        env.logger.debug(
+        env.log_to_file('TASK',
             f'task {task_id} (index={env.sos_dict["_index"]}) return shared variable {shared}')
 
     # the difference between sos_dict and env.sos_dict is that sos_dict (the original version) can have remote() targets

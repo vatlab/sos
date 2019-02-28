@@ -770,7 +770,7 @@ def cmd_preview(args, unknown_args):
         rargs = ['sos', 'preview'] + args.items + ['--html']
         if args.style:
             rargs += ['-s', args.style] + unknown_args
-        env.logger.debug('Running "{}"'.format(' '.join(rargs)))
+        env.log_to_file('GENERAL', 'Running "{}"'.format(' '.join(rargs)))
         msgs = eval(host._host_agent.check_output(rargs))
     else:
         from .preview import get_previewers
@@ -926,7 +926,7 @@ def cmd_execute(args, workflow_args):
                         [x for x in res if x == 'failed']),
                     len([x for x in res if x.startswith('aborted')])))
         if all(x == 'completed' for x in res):
-            env.logger.debug('Put results for {}'.format(args.tasks))
+            env.log_to_file('TASK', f'Put results for {args.tasks}')
             res = host.retrieve_results(args.tasks)
             return
         elif all(x != 'pending' for x in res) and not args.wait:
@@ -1239,7 +1239,7 @@ def cmd_remove(args, unknown_args):
                 continue
             if p.size() == 0:
                 try:
-                    env.logger.debug(f'Remove placeholder file {ph}')
+                    env.log_to_file('GENERAL', f'Remove placeholder file {ph}')
                     p.unlink()
                     removed += 1
                 except Exception as e:

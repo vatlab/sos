@@ -434,14 +434,12 @@ class RemoteHost:
         for source in sorted(sending.keys()):
             dest = sending[source]
             if self.is_shared(source):
-                env.logger.debug(
-                    f'Skip sending {source} on shared file system')
+                env.log_to_file('TASK', f'Skip sending {source} on shared file system')
             else:
-                env.logger.debug(
-                    f'Sending ``{source}`` to {self.alias}:{dest}')
+                env.log_to_file('TASK', f'Sending ``{source}`` to {self.alias}:{dest}')
                 cmd = cfg_interpolate(self._get_send_cmd(rename=os.path.basename(source) != os.path.basename(dest)),
                                       {'source': sos_targets(str(source).rstrip('/')), 'dest': sos_targets(dest), 'host': self.address, 'port': self.port})
-                env.logger.debug(cmd)
+                env.log_to_file('TASK', cmd)
                 ret = subprocess.call(
                     cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                 if (ret != 0):
@@ -476,7 +474,7 @@ class RemoteHost:
             else:
                 cmd = cfg_interpolate(self._get_receive_cmd(rename=os.path.basename(source) != os.path.basename(dest)),
                                       {'source': sos_targets(str(source).rstrip('/')), 'dest': sos_targets(dest), 'host': self.address, 'port': self.port})
-                env.logger.debug(cmd)
+                env.log_to_file('TASK', cmd)
                 try:
                     ret = subprocess.call(
                         cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
@@ -574,12 +572,12 @@ class RemoteHost:
                 continue
             elif isinstance(task_vars[var], str):
                 runtime[var] = self._map_var(task_vars[var])
-                env.logger.debug(
+                env.log_to_file('TASK',
                     f'On {self.alias}: ``{var}`` = {short_repr(task_vars[var])}')
             elif isinstance(task_vars[var], (Sequence, set)):
                 runtime[var] = type(task_vars[var])(
                     self._map_var(task_vars[var]))
-                env.logger.debug(
+                env.log_to_file('TASK',
                     f'On {self.alias}: ``{var}`` = {short_repr(task_vars[var])}')
             else:
                 env.logger.warning(
@@ -617,7 +615,7 @@ class RemoteHost:
         except Exception as e:
             raise ValueError(
                 f'Failed to run command {cmd}: {e} ({env.sos_dict["CONFIG"]})')
-        env.logger.debug(f'Executing command ``{cmd}``')
+        env.log_to_file('TASK', f'Executing command ``{cmd}``')
         try:
             return subprocess.check_output(cmd, shell=True).decode()
         except Exception as e:
@@ -633,7 +631,7 @@ class RemoteHost:
                 'cmd': cmd, 'cur_dir': self._map_var(os.getcwd())})
         except Exception as e:
             raise ValueError(f'Failed to run command {cmd}: {e}')
-        env.logger.debug(f'Executing command ``{cmd}``')
+        env.log_to_file('TASK', f'Executing command ``{cmd}``')
         try:
             return subprocess.check_call(cmd, shell=True, **kwargs)
         except Exception as e:
@@ -649,7 +647,7 @@ class RemoteHost:
                 'cmd': cmd, 'cur_dir': self._map_var(os.getcwd())})
         except Exception as e:
             raise ValueError(f'Failed to run command {cmd}: {e}')
-        env.logger.debug(f'Executing command ``{cmd}``')
+        env.log_to_file('TASK', f'Executing command ``{cmd}``')
         if realtime:
             from .utils import pexpect_run
             return pexpect_run(cmd)
@@ -674,7 +672,7 @@ class RemoteHost:
             if not os.access(lfile, os.W_OK):
                 os.chmod(lfile, stat.S_IREAD | stat.S_IWRITE)
             os.remove(lfile)
-        env.logger.debug(receive_cmd)
+        env.log_to_file('TASK', receive_cmd)
         ret = subprocess.call(receive_cmd, shell=True,
                               stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         if (ret != 0):
@@ -689,8 +687,7 @@ class RemoteHost:
         res = tf.result
 
         if not res:
-            env.logger.debug(
-                f'Result for {task_id} is not received (no result)')
+            env.logger.debug(f'Result for {task_id} is not received (no result)')
             return {'ret_code': 1, 'output': {}}
 
         if ('ret_code' in res and res['ret_code'] != 0) or ('succ' in res and res['succ'] != 0):
@@ -792,8 +789,7 @@ class Host:
             if env.sos_dict['CONFIG']['localhost'] not in env.sos_dict['CONFIG']['hosts']:
                 raise ValueError(
                     f"Undefined localhost {env.sos_dict['CONFIG']['localhost']}")
-            env.logger.debug(
-                f"Using hardcoded localhost {env.sos_dict['CONFIG']['localhost']}")
+            env.log_to_file('TASK', f"Using hardcoded localhost {env.sos_dict['CONFIG']['localhost']}")
             return env.sos_dict['CONFIG']['localhost']
         raise ValueError(
             "No localhost could be identified from hostname, ip address, or a localhost key in config file")

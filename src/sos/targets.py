@@ -607,7 +607,7 @@ class file_target(path, BaseTarget):
 
     def create_placeholder(self):
         # create an empty placeholder file
-        env.logger.debug(f'Create placeholder target {self}')
+        env.log_to_file('TARGET', f'Create placeholder target {self}')
         self.touch()
         send_message_to_controller(['workflow_sig', 'placeholder', 'file_target', str(self)])
 

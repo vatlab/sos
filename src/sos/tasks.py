@@ -213,7 +213,7 @@ class TaskFile(object):
     def save(self, params):
         if os.path.isfile(self.task_file):
             if self.status == 'running':
-                env.logger.debug('Running task is not updated')
+                env.logger.debug('Running task {self.task_file} is not updated')
                 return
 
             # keep original stuff but update params, which could contain
@@ -1441,7 +1441,7 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, tags=None, verbos
             with open(cache_file, 'wb') as cache:
                 pickle.dump(status_cache, cache)
     elif verbosity > 1:
-        env.logger.debug('No matching tasks')
+        env.logger.debug('No matching tasks to purge')
     if purge_all and age is None and status is None and tags is None:
         matched = glob.glob(os.path.join(
             os.path.expanduser('~'), '.sos', 'tasks', '*'))

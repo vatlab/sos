@@ -239,7 +239,7 @@ class SoS_Worker(mp.Process):
         # we are in a separate process and need to set verbosity from workflow config
         # but some tests do not provide verbosity
         env.verbosity = config.get('verbosity', 2)
-        env.logger.debug(
+        env.log_to_file('WORKER',
             f'Worker {self.name} working on a workflow {workflow_id} with args {args}')
 
         executer = Base_Executor(wf, args=args, shared=shared, config=config)
@@ -263,7 +263,7 @@ class SoS_Worker(mp.Process):
     def run_step(self, section, context, shared, args, config, verbosity):
         from .step_executor import Step_Executor
 
-        env.logger.debug(
+        env.env.log_to_file('WORKER',
             f'Worker {self.name} working on {section.step_name()} with args {args}')
         env.config.update(config)
         env.verbosity = verbosity

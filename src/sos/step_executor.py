@@ -1517,7 +1517,7 @@ class Step_Executor(Base_Step_Executor):
 
 
     def submit_tasks(self, tasks):
-        env.logger.debug(f'Send {tasks}')
+        env.log_to_file('TASK', f'Send {tasks}')
         if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
             host = env.sos_dict['_runtime']['queue']
         else:
@@ -1599,8 +1599,7 @@ class Step_Executor(Base_Step_Executor):
                 res = e.value
 
             if self.socket is not None:
-                env.logger.debug(
-                    f'Step {self.step.step_name()} sends result {short_repr(res)}')
+                env.log_to_file('STEP', f'Step {self.step.step_name()} sends result {short_repr(res)}')
                 self.socket.send_pyobj(res)
             else:
                 return res
@@ -1608,8 +1607,7 @@ class Step_Executor(Base_Step_Executor):
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
             if self.socket is not None and not self.socket.closed:
-                env.logger.debug(
-                    f'Step {self.step.step_name()} sends exception {e}')
+                env.log_to_file('STEP', f'Step {self.step.step_name()} sends exception {e}')
                 if isinstance(e, ProcessKilled):
                     raise
                 else:

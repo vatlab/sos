@@ -241,7 +241,7 @@ class WorkflowDict(object):
         self.set(key, value)
 
     def _log(self, key, value):
-        env.logger.debug(f'Set ``{key}`` = ``{short_repr(value)}``')
+        env.log_to_file('VARIABLE', f'Set ``{key}`` = ``{short_repr(value)}``')
 
 
     def _warn(self, key, value):
@@ -631,8 +631,7 @@ def pickleable(obj, name):
         pickle.dumps(obj)
         return True
     except Exception as e:
-        env.logger.debug(
-            f'Object {name} with value {short_repr(obj)} is not passed because it is not pickleable: {e}')
+        env.logger.debug(f'Object {name} with value {short_repr(obj)} is not passed because it is not pickleable: {e}')
         return False
 
 

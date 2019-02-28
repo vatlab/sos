@@ -531,7 +531,7 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
         my_name = env.sos_dict['step_name']
         args_output = ', '.join(f'{x}={short_repr(y)}' for x,
                                 y in args.items() if not x.startswith('__'))
-        env.logger.debug('Executing workflow ``{}`` with input ``{}`` and {}'
+        env.log_to_file('ACTION', 'Executing workflow ``{}`` with input ``{}`` and {}'
                          .format(workflow, short_repr(env.sos_dict.get('_input', None), True),
                                  'no args' if not args_output else args_output))
 
@@ -1000,7 +1000,7 @@ def report(script=None, input=None, output=None, **kwargs):
             writer(script.rstrip() + '\n\n')
         if input is not None:
             if isinstance(input, (str, file_target)):
-                env.logger.debug(f'Loading report from {input}')
+                env.log_to_file('ACTION', f'Loading report from {input}')
                 with open(input) as ifile:
                     writer(ifile.read().rstrip() + '\n\n')
             elif isinstance(input, Sequence):
