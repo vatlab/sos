@@ -263,7 +263,7 @@ class SoS_Worker(mp.Process):
     def run_step(self, section, context, shared, args, config, verbosity):
         from .step_executor import Step_Executor
 
-        env.env.log_to_file('WORKER',
+        env.log_to_file('WORKER',
             f'Worker {self.name} working on {section.step_name()} with args {args}')
         env.config.update(config)
         env.verbosity = verbosity
