@@ -28,7 +28,7 @@ def _load_group(group: str) -> None:
                 import re
                 from ._version import __version__
                 from pkg_resources import parse_version
-                m = re.search("Requirement.parse\('sos>=([^)]*)'\)", str(e))
+                m = re.search(r"Requirement.parse\('sos>=([^)]*)'\)", str(e))
                 if m:
                     if parse_version(__version__) < parse_version(m.group(1)):
                         logger.warning(
