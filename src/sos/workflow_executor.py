@@ -1129,10 +1129,10 @@ class Base_Executor:
                             # step sent from nested workflow
                             step_id = res[1]
                             step_params = res[2:]
-                            env.log_to_file('EXECUTOR',
-                                f'Master receives step request {step_id} with args {step_params[3]}')
 
                             section, context, shared, args, config, verbosity, port = step_params
+                            env.log_to_file('EXECUTOR',
+                                f'Master receives step request for step {section.step_name()}')
                             # run it!
                             runnable = dummy_node(section.step_name())
                             runnable._node_id = step_id
@@ -1185,8 +1185,6 @@ class Base_Executor:
                     # be used... until the next time the worker use the same socket for another step
                     manager.mark_idle(idx)
 
-                    env.log_to_file('EXECUTOR',
-                        f'Master receive a result {short_repr(res)}')
                     if hasattr(runnable, '_from_nested'):
                         # if the runnable is from nested, we will need to send the result back
                         # to the nested workflow
@@ -1211,13 +1209,13 @@ class Base_Executor:
                         exec_error.append(runnable._node_id, res)
                         raise exec_error
                     elif '__step_name__' in res:
-                        env.log_to_file('EXECUTOR', f'Master receive step result ')
+                        env.log_to_file('EXECUTOR', f'Master receive result for step {res["__step_name__"]}')
                         self.step_completed(res, dag, runnable)
                     elif '__workflow_id__' in res:
                         # result from a workflow
                         # the worker process has been returned to the pool, now we need to
                         # notify the step that is waiting for the result
-                        env.log_to_file('EXECUTOR', f'Master receive workflow result')
+                        env.log_to_file('EXECUTOR', f'Master receive result for workflow {res["__workflow_id__"]}')
                         # aggregate steps etc with subworkflows
                         for k, v in res['__completed__'].items():
                             self.completed[k] += v
@@ -1445,8 +1443,6 @@ class Base_Executor:
                     # process but real socket. When the step is done. The socket needs to be
                     # closed.
                     manager.dispose(idx)
-                    env.log_to_file('EXECUTOR',
-                        f'Nested receive a result {short_repr(res)}')
                     if isinstance(res, UnavailableLock):
                         self.handle_unavailable_lock(res, dag, runnable)
                     elif isinstance(res, RemovedTarget):
@@ -1464,7 +1460,7 @@ class Base_Executor:
                         exec_error.append(runnable._node_id, res)
                         raise exec_error
                     elif '__step_name__' in res:
-                        env.log_to_file('EXECUTOR', f'Nested receive step result {res}')
+                        env.log_to_file('EXECUTOR', f'Nested receives result for step {res["__step_name__"]}')
                         self.step_completed(res, dag, runnable)
                     else:
                         raise RuntimeError(
@@ -1479,6 +1475,7 @@ class Base_Executor:
                     # with status.
                     runnable = dag.find_executable()
                     if runnable is None:
+                        env.log_to_file('EXECUTOR', 'Nested has no submitable job')
                         manager.report()
                         dag.mark_dirty(False)
                         break
@@ -1502,7 +1499,7 @@ class Base_Executor:
                     # send the step to the parent
                     step_id = uuid.uuid4()
                     env.log_to_file('EXECUTOR',
-                        f'Nested send step {section.step_name()} to master with args {self.args} and context {runnable._context}')
+                        f'Nested send step {section.step_name()} to master')
 
                     socket = create_socket(env.zmq_context, zmq.PAIR, 'worker pair socket')
                     port = socket.bind_to_random_port('tcp://127.0.0.1')
