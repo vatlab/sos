@@ -896,15 +896,16 @@ class Base_Executor:
             (target + '.zapped').unlink()
 
         if dag.regenerate_target(target):
-            # runnable._depends_targets.append(target)
-            # dag._all_depends_files[target].append(runnable)
+            # runnable._depends_targets.extend(target)
+            # if runnable not in dag._all_depends_files[target]:
+            #     dag._all_depends_files[target].append(runnable)
+
             dag.build()
             #
             cycle = dag.circular_dependencies()
             if cycle:
                 raise RuntimeError(
                     f'Circular dependency detected {cycle} after regeneration. It is likely a later step produces input of a previous step.')
-
         else:
             if self.resolve_dangling_targets(dag, sos_targets(target)) == 0:
                 raise RuntimeError(
