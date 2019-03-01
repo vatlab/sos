@@ -94,12 +94,12 @@ class TestUtils(unittest.TestCase):
 
     def testAccessedVars(self):
         '''Test accessed vars of a SoS expression or statement.'''
-        self.assertEqual(accessed_vars('''a = 1'''), {'a'})
-        self.assertEqual(accessed_vars('''a = b + 2.0'''), {'a', 'b'})
-        self.assertEqual(accessed_vars('''a = "C"'''), {'a'})
-        self.assertEqual(accessed_vars('''a = "C" + f"{D}"'''), {'a', 'D'})
+        self.assertEqual(accessed_vars('''a = 1'''), set())
+        self.assertEqual(accessed_vars('''a = b + 2.0'''), {'b'})
+        self.assertEqual(accessed_vars('''a = "C"'''), set())
+        self.assertEqual(accessed_vars('''a = "C" + f"{D}"'''), {'D'})
         self.assertEqual(accessed_vars(
-            '''a = 1 + f"{D + 20:f}" '''), {'a', 'D'})
+            '''a = 1 + f"{D + 20:f}" '''), {'D'})
         self.assertEqual(accessed_vars('''k, "a.txt", "b.txt", par=f(something) '''), {
                          'k', 'f', 'something', '__NULLFUNC__'})
         # this is a complicated case because the actual variable depends on the
