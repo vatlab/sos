@@ -111,8 +111,7 @@ class ColoredFormatter(logging.Formatter):
         # color for different logging levels. The current terminal color
         # is used for INFO
         self.LEVEL_COLOR = {
-            'TRACE': 'DARK_CYAN',
-            'DEBUG': 'BLUE',
+            'DEBUG': 'DARK_CYAN',
             'WARNING': 'PURPLE',
             'ERROR': 'RED',
             'CRITICAL': 'RED_BG',
@@ -417,12 +416,19 @@ class RuntimeEnvironments(object):
             self._logger.addHandler(cout)
 
         if 'SOS_DEBUG' in os.environ:
-            logfile_info = [x for x in os.environ['SOS_DEBUG'].split(',') if '.' in x]
+            logfile_info = [x for x in os.environ['SOS_DEBUG'].split(',') if '.' in x or x == '-']
+            print(logfile_info)
             if logfile_info:
-                logfile = logging.FileHandler(os.path.expanduser(logfile_info[0]), mode='a')
+                if logfile_info[0] == '-':
+                    logfile = logging.StreamHandler()
+                    formatter = ColoredFormatter(
+                        '%(color_levelname)s: %(color_msg)s')
+                else:
+                    logfile = logging.FileHandler(os.path.expanduser(logfile_info[0]), mode='a')
+                    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
             else:
                 logfile = logging.FileHandler(os.path.join(os.path.expanduser('~'), 'sos_debug.log'), mode='a')
-            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+                formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
             logfile.setFormatter(formatter)
             logfile.setLevel(logging.DEBUG)
             self._logger.addHandler(logfile)
