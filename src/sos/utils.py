@@ -326,7 +326,7 @@ class RuntimeEnvironments(object):
         if not msg:
             msg = topic
             topic = 'GENERAL'
-        if 'SOS_DEBUG' not in os.environ or topic not in os.environ['SOS_DEBUG'] and 'ALL' not in os.environ['SOS_DEBUG']:
+        if 'SOS_DEBUG' not in os.environ or (topic not in os.environ['SOS_DEBUG'] and 'ALL' not in os.environ['SOS_DEBUG']):
             return
         self.logger.debug(topic + ' - ' + str(msg))
 
