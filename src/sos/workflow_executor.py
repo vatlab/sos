@@ -78,15 +78,14 @@ class dummy_node:
 
 
 class ProcInfo(object):
-    def __init__(self, socket, port, step, name) -> None:
+    def __init__(self, socket, port, step) -> None:
         self.socket = socket
         self.port = port
         self.step = step
-        self.name = name
         self._last_alive = time.time()
 
     def __repr__(self):
-        return self.name
+        return f'{self.step}/{self.step._status}' +  (f' on {self.step._pending_targets}' if self.step._status == 'target_pending' else '')
 
     def set_status(self, status: str) -> None:
         self.step._status = status
@@ -107,7 +106,8 @@ class ExecutionManager(object):
     For nested workflows (dummy=True), a poller will be created.
     '''
     # this class managers workers and their status ...
-    def __init__(self, dummy=False) -> None:
+    def __init__(self, name, dummy=False) -> None:
+        self.workflow_name = name
         self.procs = []
         self.pool = []
         # steps sent and queued from the nested workflow
@@ -118,14 +118,12 @@ class ExecutionManager(object):
         self.poller = zmq.Poller() if dummy else None
         self._dummy = dummy
 
-    def report(self):
-        env.log_to_file('EXECUTOR', ('NESTED: ' if self._dummy else 'MASTER: ') + ', '.join(
-            f'{proc.step} {proc.step._status}' for proc in self.procs if proc is not None
-        ))
+    def report(self, msg=''):
+        env.log_to_file('EXECUTOR', f"{env.sos_dict['workflow_id']}({self.workflow_name}) {msg} {', '.join(str(proc) for proc in self.procs if proc is not None)}")
 
     def add_placeholder_worker(self, runnable, socket):
         runnable._status = 'step_pending'
-        self.procs.append(ProcInfo(socket=socket, port=None, step=runnable, name='nested'))
+        self.procs.append(ProcInfo(socket=socket, port=None, step=runnable))
         self.poller.register(socket, zmq.POLLIN)
 
     def push_to_queue(self, runnable, spec):
@@ -139,7 +137,7 @@ class ExecutionManager(object):
         return self.workflow_queue and self.workflow_queue[-1][1]['blocking']
 
     def send_to_worker(self):
-        env.log_to_file('EXECUTOR', f'Send work to worker, {len(self.step_queue)} steps and {len(self.workflow_queue)} workflows pending.')
+        env.log_to_file('WORKER', f'Executor send work to worker, {len(self.step_queue)} steps and {len(self.workflow_queue)} workflows pending.')
         if not self.step_queue and not self.workflow_queue:
             return False
 
@@ -180,24 +178,15 @@ class ExecutionManager(object):
             self.procs.append(self.pool[proc_with_port[0]])
             self.pool.pop(proc_with_port[0])
             self.procs[-1].step = runnable
-            # env.logger.error(f'Connection to existing socket with port {master_port} for {self._name_of_work(spec)} ({self._num_of_procs()} total)')
         else:
             master_socket = create_socket(env.zmq_context, zmq.PAIR, 'pair socket for step worker')
             master_socket.connect(f'tcp://127.0.0.1:{master_port}')
             # we need to create a ProcInfo to keep track of the step
-            self.procs.append(ProcInfo(socket=master_socket, port=master_port, step=runnable, name=self._name_of_work(spec)))
+            self.procs.append(ProcInfo(socket=master_socket, port=master_port, step=runnable))
         return True
 
     def _num_of_procs(self):
         return len([x for x in self.procs if x is not None])
-
-    def _name_of_work(self, work):
-        if 'section' in work:
-            return work['section'].step_name()
-        elif 'wf' in work:
-            return work['workflow_id']
-        else:
-            return 'substep'
 
     def all_done(self) -> bool:
         return not self.step_queue and not self.workflow_queue and (not self.procs or all(x is None for x in self.procs))
@@ -1033,12 +1022,11 @@ class Base_Executor:
                 raise RuntimeError(f'No step to generate target {targets}')
 
         # manager of processes
-        manager = ExecutionManager()
+        manager = ExecutionManager(name=self.workflow.name)
         #
         try:
             exec_error = ExecuteError(self.workflow.name)
             while True:
-                manager.report()
                 # step 1: check existing jobs and see if they are completed
                 for idx, proc in enumerate(manager.procs):
                     if proc is None:
@@ -1297,6 +1285,7 @@ class Base_Executor:
                     # with status.
                     runnable = dag.find_executable()
                     if runnable is None:
+                        manager.report('No more executable')
                         # do not try to find executable until the dag becomes dirty again
                         dag.mark_dirty(False)
                         break
@@ -1396,12 +1385,11 @@ class Base_Executor:
         dag = self.initialize_dag(targets=targets)
 
         # the mansger will have all fake executors
-        manager = ExecutionManager(dummy=True)
+        manager = ExecutionManager(name=self.workflow.name, dummy=True)
         #
         try:
             exec_error = ExecuteError(self.workflow.name)
             while True:
-                manager.report()
                 # if there are running or pending steps, check if there is any message from master
                 if manager.procs:
                     # continue only if we get any message from any of the sockets
@@ -1491,6 +1479,7 @@ class Base_Executor:
                     # with status.
                     runnable = dag.find_executable()
                     if runnable is None:
+                        manager.report()
                         dag.mark_dirty(False)
                         break
 
