@@ -389,7 +389,7 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
 
         env.sos_dict.set('step_name', section.step_name())
         env.sos_dict.set('__null_func__', __null_func__)
-        env.log_to_file('STEP', f'Analyzing {section.step_name()}')
+        env.log_to_file('STEP', f'Analyzing {section.step_name()} {"(output only)" if vars_and_output_only else ""}')
 
         res = {
             'step_name': section.step_name(),
