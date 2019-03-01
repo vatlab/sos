@@ -200,14 +200,14 @@ def parse_shared_vars(option):
         shared_vars.add(option)
     elif isinstance(option, Mapping):
         for val in option.values():
-            shared_vars |= accessed_vars(val)
+            shared_vars |= accessed_vars(val, mode='eval')
     elif isinstance(option, Sequence):
         for item in option:
             if isinstance(item, str):
                 shared_vars.add(item)
             elif isinstance(item, Mapping):
                 for val in item.values():
-                    shared_vars |= accessed_vars(val)
+                    shared_vars |= accessed_vars(val, mode='eval')
     return shared_vars
 
 def evaluate_shared(vars, option):

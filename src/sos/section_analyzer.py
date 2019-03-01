@@ -123,12 +123,12 @@ def get_all_used_vars(section):
         elif statement[0] == '!':
             all_used_vars |= accessed_vars(statement[1])
         elif statement[0] == ':':
-            all_used_vars |= accessed_vars(statement[2])
+            all_used_vars |= accessed_vars(statement[2], mode='eval')
             if statement[1] != 'input':
                 continue
             if 'paired_with' in statement[2]:
                 try:
-                    pws = get_names_of_param('paired_with', statement[2],  extra_dict=env.sos_dict.dict())
+                    pws = get_names_of_param('paired_with', statement[2], extra_dict=env.sos_dict.dict())
                     all_used_vars |= set(pws)
                 except Exception as e:
                     raise ValueError(f'Failed to parse parameter paired_with: {e}')

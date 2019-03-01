@@ -52,17 +52,18 @@ def get_accessed(node):
     return names
 
 
-def accessed_vars(statement: str, filename: str = '<string>', mode: str = 'exec') -> Set[str]:
+def accessed_vars(statement: str, mode: str = 'exec') -> Set[str]:
     '''Parse a Python statement and analyze the symbols used. The result
     will be used to determine what variables a step depends upon.'''
     try:
-        return get_accessed(ast.parse(statement, filename, mode))
+        if mode == 'exec':
+            return get_accessed(ast.parse(statement, '<string>', 'exec'))
+        else:
+            res = get_accessed(ast.parse('__NULL__(' + statement + ')', '<string>', 'eval'))
+            res.remove('__NULL__')
+            return res
     except:
-        # try to treat them as parameters
-        try:
-            return get_accessed(ast.parse('__NULLFUNC__(' + statement + ')', filename, mode))
-        except:
-            raise RuntimeError(f'Failed to parse statement: {statement}')
+        raise RuntimeError(f'Failed to parse statement: {statement} in {mode} mode')
 
 def get_used_in_func(node):
     '''Get names, but ignore variables names to the left hand side
