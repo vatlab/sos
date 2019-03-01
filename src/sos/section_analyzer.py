@@ -116,7 +116,7 @@ def get_presubstep_vars(section):
     '''Get variables which are variables used by input statement and statements before it'''
     input_idx = find_statement(section, 'input')
     if input_idx is None:
-        return
+        return set()
 
     presubstep_vars = set()
     for statement in section.statements[:input_idx+1]:
@@ -385,12 +385,12 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
     finally:
         # restore env
         env.restore_to_old(new_env, old_env)
-    presubstep_vars = get_presubstep_vars(section)
 
-    #1225
-    # The global section can contain a lot of variables, some of which can be large. Here we
-    # found all variables that will be used in the step, including ones used in substep (signature_vars)
-    # and ones that will be used in input statement etc.
+    # #1225
+    # # The global section can contain a lot of variables, some of which can be large. Here we
+    # # found all variables that will be used in the step, including ones used in substep (signature_vars)
+    # # and ones that will be used in input statement etc.
+    presubstep_vars = get_presubstep_vars(section)
     section.global_vars = {x:y for x,y in section.global_vars.items() if x in res['signature_vars']
         or x in presubstep_vars}
 
