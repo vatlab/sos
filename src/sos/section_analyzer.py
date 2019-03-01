@@ -131,6 +131,8 @@ def get_signature_vars(section):
     # finally, tasks..
     if section.task:
         signature_vars |= accessed_vars(section.task)
+
+    section.global_vars = {x:y for x,y in section.global_vars.items() if x in signature_vars}
     return {x for x in signature_vars if not x.startswith('__')}
 
 def get_step_depends(section):
