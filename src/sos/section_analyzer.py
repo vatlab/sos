@@ -112,21 +112,17 @@ def get_environ_vars(section):
             environ_vars.add(arg[0])
     return environ_vars
 
-def get_presubstep_vars(section):
+def get_all_used_vars(section):
     '''Get variables which are variables used by input statement and statements before it'''
-    input_idx = find_statement(section, 'input')
-    if input_idx is None:
-        return set()
-
-    presubstep_vars = set()
-    for statement in section.statements[:input_idx+1]:
+    all_used_vars = set()
+    for statement in section.statements:
         if statement[0] == '=':
-            presubstep_vars |= accessed_vars('='.join(statement[1:3]))
+            all_used_vars |= accessed_vars('='.join(statement[1:3]))
         elif statement[0] == '!':
-            presubstep_vars |= accessed_vars(statement[1])
+            all_used_vars |= accessed_vars(statement[1])
         elif statement[0] == ':':
-            presubstep_vars |= accessed_vars(statement[2])
-    return presubstep_vars
+            all_used_vars |= accessed_vars(statement[2])
+    return all_used_vars
 
 def get_signature_vars(section):
     '''Get signature variables which are variables that will be
@@ -387,11 +383,8 @@ def analyze_section(section: SoS_Step, default_input: Optional[sos_targets] = No
         env.restore_to_old(new_env, old_env)
 
     # #1225
-    # # The global section can contain a lot of variables, some of which can be large. Here we
-    # # found all variables that will be used in the step, including ones used in substep (signature_vars)
-    # # and ones that will be used in input statement etc.
-    presubstep_vars = get_presubstep_vars(section)
-    section.global_vars = {x:y for x,y in section.global_vars.items() if x in res['signature_vars']
-        or x in presubstep_vars}
-
+    # The global section can contain a lot of variables, some of which can be large. Here we
+    # found all variables that will be used in the step, including ones used in substep (signature_vars)
+    # and ones that will be used in input statement etc.
+    section.global_vars = {x:y for x,y in section.global_vars.items() if x in get_all_used_vars(section)}
     return res
