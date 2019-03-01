@@ -182,16 +182,10 @@ class ExecutionManager(object):
             self.procs[-1].step = runnable
             # env.logger.error(f'Connection to existing socket with port {master_port} for {self._name_of_work(spec)} ({self._num_of_procs()} total)')
         else:
-            try:
-                master_socket = create_socket(env.zmq_context, zmq.PAIR, 'pair socket for step worker')
-                master_socket.connect(f'tcp://127.0.0.1:{master_port}')
-                # we need to create a ProcInfo to keep track of the step
-                self.procs.append(ProcInfo(socket=master_socket, port=master_port, step=runnable, name=self._name_of_work(spec)))
-                # env.logger.error(f'Connection to new socket with port {master_port} for {self._name_of_work(spec)} ({self._num_of_procs()} total)')
-            except Exception as e:
-                import psutil
-                myproc = psutil.Process(os.getpid())
-                raise RuntimeError(f'{os.getpid()} has {len(myproc.open_files())} open files and {len(myproc.connections())} open connections. {e}')
+            master_socket = create_socket(env.zmq_context, zmq.PAIR, 'pair socket for step worker')
+            master_socket.connect(f'tcp://127.0.0.1:{master_port}')
+            # we need to create a ProcInfo to keep track of the step
+            self.procs.append(ProcInfo(socket=master_socket, port=master_port, step=runnable, name=self._name_of_work(spec)))
         return True
 
     def _num_of_procs(self):
