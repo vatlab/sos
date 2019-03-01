@@ -379,7 +379,6 @@ class Base_Executor:
         self._target_patterns = defaultdict(list)
 
         for step in sections:
-            env.logger.warning(f'analyzing {step.step_name()}')
             if not hasattr(step, '_analyzed'):
                 self.analyze_auxiliary_step(step)
                 step._analyzed = True
@@ -438,10 +437,6 @@ class Base_Executor:
                             raise ValueError(f'Unacceptable value for option pattern {patterns}')
                 else:
                     raise ValueError(f'Unacceptable value for option pattern {patterns}')
-
-        env.logger.warning('target map')
-        for k,v in self._target_map():
-            env.logger.warning(f'{k}   {v}')
 
     def match(self, target: BaseTarget) -> Union[Dict[str, str], bool]:
         if not hasattr(self, '_target_map'):
@@ -631,7 +626,7 @@ class Base_Executor:
         for idx, section in enumerate(sections):
             #
             res = analyze_section(section, default_input=default_input)
-            env.logger.error(res)
+
             environ_vars = res['environ_vars']
             signature_vars = res['signature_vars']
             changed_vars = res['changed_vars']
@@ -901,9 +896,9 @@ class Base_Executor:
             (target + '.zapped').unlink()
 
         if dag.regenerate_target(target):
-            # runnable._depends_targets.extend(target)
-            # if runnable not in dag._all_depends_files[target]:
-            #     dag._all_depends_files[target].append(runnable)
+            runnable._depends_targets.extend(target)
+            if runnable not in dag._all_depends_files[target]:
+                dag._all_depends_files[target].append(runnable)
 
             dag.build()
             #
