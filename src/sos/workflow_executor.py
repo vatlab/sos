@@ -139,6 +139,7 @@ class ExecutionManager(object):
         return self.workflow_queue and self.workflow_queue[-1][1]['blocking']
 
     def send_to_worker(self):
+        env.log_to_file('EXECUTOR', f'Send work to worker, {len(self.step_queue)} steps and {len(self.workflow_queue)} workflows pending.')
         if not self.step_queue and not self.workflow_queue:
             return False
 
@@ -156,6 +157,7 @@ class ExecutionManager(object):
             [x.port for x in self.procs if self.procs])
         # no worker is available
         if master_port is None:
+            env.log_to_file('EXECUTOR', f'No worker is available ({len([x.port for x in self.procs if self.procs])} ports excluded)')
             return False
 
         runnable, spec = self.step_queue.pop() if self.step_queue else self.workflow_queue.pop()
