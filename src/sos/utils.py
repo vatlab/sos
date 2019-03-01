@@ -417,7 +417,6 @@ class RuntimeEnvironments(object):
 
         if 'SOS_DEBUG' in os.environ:
             logfile_info = [x for x in os.environ['SOS_DEBUG'].split(',') if '.' in x or x == '-']
-            print(logfile_info)
             if logfile_info:
                 if logfile_info[0] == '-':
                     logfile = logging.StreamHandler()
