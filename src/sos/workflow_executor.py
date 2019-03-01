@@ -896,9 +896,9 @@ class Base_Executor:
             (target + '.zapped').unlink()
 
         if dag.regenerate_target(target):
-            # runnable._depends_targets.extend(target)
-            # if runnable not in dag._all_depends_files[target]:
-            #     dag._all_depends_files[target].append(runnable)
+            runnable._depends_targets.extend(target)
+            if runnable not in dag._all_depends_files[target]:
+                dag._all_depends_files[target].append(runnable)
 
             dag.build()
             #
