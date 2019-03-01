@@ -8,9 +8,9 @@ import ast
 from collections import  Mapping, Sequence
 from typing import Any, Dict, Optional
 
-from .eval import SoS_eval, accessed_vars
+from .eval import SoS_eval, accessed_vars, used_in_func
 from .parser import SoS_Step
-from .targets import (dynamic, remote, sos_targets, sos_step, named_output)
+from .targets import dynamic, remote, sos_targets, sos_step, named_output
 from .utils import env
 from .executor_utils import  __null_func__, prepare_env, strip_param_defs
 from .syntax import SOS_TARGETS_OPTIONS
@@ -112,6 +112,8 @@ def get_environ_vars(section):
             environ_vars.add(arg[0])
     return environ_vars
 
+
+
 def get_all_used_vars(section):
     '''Get variables which are variables used by input statement and statements before it'''
     all_used_vars = set()
@@ -143,7 +145,13 @@ def get_all_used_vars(section):
                         all_used_vars |= set(pw.split(','))
                 except Exception as e:
                     raise ValueError(f'Failed to parse parameter for_each: {e}')
-    return all_used_vars
+    if section.task:
+        all_used_vars |= accessed_vars(section.task)
+
+    # now we have a list of global variables that are actually used in the functions
+    # this is specifically designed to handle the last case in #1225
+    func_with_vars = [y for x,y in used_in_func(section.global_stmts).items() if x in all_used_vars]
+    return set.union(all_used_vars, *func_with_vars)
 
 def get_signature_vars(section):
     '''Get signature variables which are variables that will be

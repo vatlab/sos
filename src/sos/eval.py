@@ -32,19 +32,58 @@ def cfg_interpolate(text, local_dict={}):
             text = res
     return res
 
+def get_accessed(node):
+    '''Get names, but ignore variables names to the left hand side
+    That is to say, in case of
+       a = b + 1
+    we consider b as "being accessed", while a is not.
+    '''
+    if isinstance(node, ast.Assign):
+        return get_accessed(node.value)
+    elif isinstance(node, ast.Name):
+        return {node.id}
+    names = set()
+    if isinstance(node, list):
+        for x in node:
+            names |= get_accessed(x)
+    else:
+        for x in ast.iter_child_nodes(node):
+            names |= get_accessed(x)
+    return names
+
 
 def accessed_vars(statement: str, filename: str = '<string>', mode: str = 'exec') -> Set[str]:
     '''Parse a Python statement and analyze the symbols used. The result
     will be used to determine what variables a step depends upon.'''
     try:
-        return {node.id for node in ast.walk(ast.parse(statement, filename, mode)) if isinstance(node, ast.Name)}
+        return get_accessed(ast.parse(statement, filename, mode))
     except:
         # try to treat them as parameters
         try:
-            return {node.id for node in ast.walk(ast.parse('__NULLFUNC__(' + statement + ')', filename, mode)) if isinstance(node, ast.Name)}
+            return get_accessed(ast.parse('__NULLFUNC__(' + statement + ')', filename, mode))
         except:
             raise RuntimeError(f'Failed to parse statement: {statement}')
 
+def get_used_in_func(node):
+    '''Get names, but ignore variables names to the left hand side
+    That is to say, in case of
+       a = b + 1
+    we consider b as "being accessed", while a is not.
+    '''
+    if isinstance(node, ast.FunctionDef):
+        return {node.name : get_accessed(node.body)}
+    names = {}
+    for node in ast.iter_child_nodes(node):
+        names.update(get_used_in_func(node))
+    return names
+
+def used_in_func(statement: str, filename: str = '<string>', mode: str = 'exec'):
+    '''Parse a Python statement and analyze the symbols used. The result
+    will be used to determine what variables a step depends upon.'''
+    try:
+        return get_used_in_func(ast.parse(statement, filename, mode))
+    except Exception as e:
+        raise RuntimeError(f'Failed to parse statement: {statement} {e}')
 
 def SoS_eval(expr: str, extra_dict: dict = {}) -> Any:
     '''Evaluate an expression with sos dict.'''
