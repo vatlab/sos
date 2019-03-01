@@ -1180,7 +1180,9 @@ class Base_Step_Executor:
                                 self.proc_results.append({})
                                 self.submit_substep(dict(stmt=statement[1],
                                     global_def=self.step.global_def,
-                                    global_vars=self.step.global_vars,
+                                    #1225: the step might contain large variables from global section, but
+                                    # we do not have to sent them if they are not used in substeps.
+                                    global_vars={x:y for x,y in self.step.global_vars.items() if x in env.sos_dict['__signature_vars__']},
                                     task=self.step.task,
                                     task_params=self.step.task_params,
                                     proc_vars=env.sos_dict.clone_selected_vars(proc_vars),
