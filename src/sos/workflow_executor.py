@@ -379,6 +379,7 @@ class Base_Executor:
         self._target_patterns = defaultdict(list)
 
         for step in sections:
+            env.logger.warning(f'analyzing {step.step_name()}')
             if not hasattr(step, '_analyzed'):
                 self.analyze_auxiliary_step(step)
                 step._analyzed = True
@@ -437,6 +438,10 @@ class Base_Executor:
                             raise ValueError(f'Unacceptable value for option pattern {patterns}')
                 else:
                     raise ValueError(f'Unacceptable value for option pattern {patterns}')
+
+        env.logger.warning('target map')
+        for k,v in self._target_map():
+            env.logger.warning(f'{k}   {v}')
 
     def match(self, target: BaseTarget) -> Union[Dict[str, str], bool]:
         if not hasattr(self, '_target_map'):
@@ -521,7 +526,7 @@ class Base_Executor:
                         # this is only useful for executing auxiliary steps and
                         # might interfere with the step analysis
                         env.sos_dict.pop('__default_output__', None)
-                        env.log_to_file('EXECUTOR',
+                        env.log_to_file('DAG',
                                 f'Adding {len(sections)} steps to resolve target {target}')
 
                         n_added = self.add_forward_workflow(dag, sections, satisfies=target)
@@ -621,12 +626,12 @@ class Base_Executor:
         '''
         dag.new_forward_workflow()
 
-        env.log_to_file('EXECUTOR', f'Adding mini-workflow with {len(sections)} to resolve {satisfies}')
+        env.log_to_file('DAG', f'Adding mini-workflow with {len(sections)} sections')
         default_input: sos_targets = sos_targets([])
         for idx, section in enumerate(sections):
             #
             res = analyze_section(section, default_input=default_input)
-
+            env.logger.error(res)
             environ_vars = res['environ_vars']
             signature_vars = res['signature_vars']
             changed_vars = res['changed_vars']
@@ -704,7 +709,7 @@ class Base_Executor:
 
         # add a single step
         # build DAG with input and output files of step
-        env.log_to_file('EXECUTOR',
+        env.log_to_file('DAG',
             f'Adding step {res["step_name"]} with output {short_repr(res["step_output"])} to resolve target {target}')
 
         context['__signature_vars__'] = res['signature_vars']
@@ -896,9 +901,9 @@ class Base_Executor:
             (target + '.zapped').unlink()
 
         if dag.regenerate_target(target):
-            runnable._depends_targets.extend(target)
-            if runnable not in dag._all_depends_files[target]:
-                dag._all_depends_files[target].append(runnable)
+            # runnable._depends_targets.extend(target)
+            # if runnable not in dag._all_depends_files[target]:
+            #     dag._all_depends_files[target].append(runnable)
 
             dag.build()
             #

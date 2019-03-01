@@ -185,6 +185,8 @@ def get_step_depends(section):
     for stmt_idx in ([] if input_idx is None else [input_idx]) + ([] if depends_idx is None else [depends_idx]):
         # input statement
         stmt = section.statements[stmt_idx][2]
+        if 'sos_step' in stmt:
+            step_depends.extend([sos_step(x) for x in get_sos_step_steps(stmt)])
         if 'output_from' in stmt:
             step_depends.extend([sos_step(x) for x in get_output_from_steps(stmt, section.last_step)])
         if 'named_output' in stmt:
@@ -323,6 +325,16 @@ def get_step_output(section, default_output):
                 raise ValueError(
                     f'Defined output fail to produce expected output: {step_output} generated, {default_output} expected.')
     return step_output
+
+def get_sos_step_steps(stmt):
+    '''
+    Extract sos_step(x) from statement
+    '''
+    opt_values = get_param_of_function('sos_step', stmt, extra_dict=env.sos_dict.dict())
+    for value in opt_values:
+        if len(value) != 1:
+            raise ValueError('sos_step only accept one and only one parameter')
+    return [x[0] for x in opt_values]
 
 def get_output_from_steps(stmt, last_step):
     '''
