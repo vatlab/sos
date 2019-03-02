@@ -1873,6 +1873,21 @@ assert B == [1, 2]
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    def testParaFromNestedWorkflow(self):
+        '''Test passing arguments to nested workflow #1229'''
+        script = SoS_Script(r'''
+[A]
+parameter: param = str
+print(param)
+
+[B]
+print(step_name)
+
+[default]
+sos_run('B+A')
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
 
 
 if __name__ == '__main__':

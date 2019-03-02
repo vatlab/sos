@@ -255,7 +255,11 @@ class Base_Executor:
         env.config['workflow_id'] = self.md5
         env.sos_dict.set('workflow_id', self.md5)
         env.config['workflow_vars'] = args if isinstance(args, dict) else {}
-        env.config['workflow_args'] = args if isinstance(args, list) else []
+        #
+        # in case the Executor is called directly with args=[...], we use
+        # args as command line argument. This usage is widely used in our test cases.
+        if isinstance(args, list) and args:
+            env.config['workflow_args'] = args
         #
         # prepare global definition and variables
         global_def, global_vars = analyze_global_statements(self.workflow.global_stmts)
