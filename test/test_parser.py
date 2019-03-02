@@ -1887,7 +1887,7 @@ print(step_name)
 sos_run('B+A')
 ''')
         wf = script.workflow()
-        Base_Executor(wf).run()
+        Base_Executor(wf, args=['--param', '2']).run()
 
 
 if __name__ == '__main__':
