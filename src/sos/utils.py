@@ -358,9 +358,13 @@ class RuntimeEnvironments(object):
             'verbosity': 1,
             # determined later
             'master_id': '',
-            'debug_info': {'GENERAL'},
+            'SOS_DEBUG': set(),
         })
-
+        if 'SOS_DEBUG' in os.environ:
+            self.config['SOS_DEBUG'] = set([x for x in os.environ['SOS_DEBUG'].split(',') if '.' not in x and x != '-'])
+            if 'ALL' in self.config['SOS_DEBUG']:
+                self.config['SOS_DEBUG'] |= {'ACTION', 'CONTROLLER', 'DAG', 'EXECUTOR', 'GENERAL',
+                    'STEP', 'TARGET', 'TASK', 'VARIABLE', 'WORKER'}
         #
         # global dictionaries used by SoS during the
         # execution of SoS workflows

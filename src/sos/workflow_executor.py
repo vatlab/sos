@@ -119,7 +119,7 @@ class ExecutionManager(object):
         self._dummy = dummy
 
     def report(self, msg=''):
-        if 'EXECUTOR', f"{env.sos_dict['workflow_id']}({self.workflow_name}) {msg} {' in env.config['SOS_DEBUG']:
+        if 'EXECUTOR' in env.config['SOS_DEBUG']:
             env.log_to_file('EXECUTOR', f"{env.sos_dict['workflow_id']}({self.workflow_name}) {msg} {', '.join(str(proc) for proc in self.procs if proc is not None)}")
 
     def add_placeholder_worker(self, runnable, socket):
