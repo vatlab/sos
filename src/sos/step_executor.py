@@ -634,7 +634,8 @@ class Base_Step_Executor:
             env.logger.info(
                 f'{"Checking" if env.config["run_mode"] == "dryrun" else "Running"} ``{self.step.step_name(True)}``: {self.step.comment.strip()}')
         elif stage == 'input statement':
-            env.log_to_file('STEP', f'Handling input statement {msg}')
+            if 'STEP' in env.config['SOS_DEBUG']:
+                env.log_to_file('STEP', f'Handling input statement {msg}')
         elif stage == '_input':
             if env.sos_dict['_input'] is not None:
                 env.logger.debug(
@@ -1147,7 +1148,8 @@ class Base_Step_Executor:
                     elif is_last_runblock:
                         try:
                             if self.concurrent_substep:
-                                env.log_to_file('STEP', f'Execute substep {env.sos_dict["step_name"]} concurrently')
+                                if 'STEP' in env.config['SOS_DEBUG']:
+                                    env.log_to_file('STEP', f'Execute substep {env.sos_dict["step_name"]} concurrently')
 
                                 # the ignatures are supposed to be written by substep worker, however
                                 # the substep worker might send tasks back to the step worker and
@@ -1194,7 +1196,8 @@ class Base_Step_Executor:
                                 self.process_returned_substep_result(wait=False)
                             else:
                                 if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified():
-                                    env.log_to_file('STEP', f'Execute substep {env.sos_dict["step_name"]} without signature')
+                                    if 'STEP' in env.config['SOS_DEBUG']:
+                                        env.log_to_file('STEP', f'Execute substep {env.sos_dict["step_name"]} without signature')
                                     try:
                                         if is_input_verified:
                                             verify_input()
@@ -1224,7 +1227,8 @@ class Base_Step_Executor:
                                         env.sos_dict['_depends'],
                                         env.sos_dict['__signature_vars__'],
                                         shared_vars=self.vars_to_be_shared)
-                                    env.log_to_file('STEP', f'Execute substep {env.sos_dict["step_name"]} with signature {sig.sig_id}')
+                                    if 'STEP' in env.config['SOS_DEBUG']:
+                                        env.log_to_file('STEP', f'Execute substep {env.sos_dict["step_name"]} with signature {sig.sig_id}')
                                     # if singaure match, we skip the substep even  if
                                     # there are tasks.
                                     matched = validate_step_sig(sig)
@@ -1312,7 +1316,8 @@ class Base_Step_Executor:
                         env.sos_dict['_depends'],
                         env.sos_dict['__signature_vars__'],
                         shared_vars=self.vars_to_be_shared)
-                    env.log_to_file('STEP', f'Check task-only step {env.sos_dict["step_name"]} with signature {sig.sig_id}')
+                    if 'STEP' in env.config['SOS_DEBUG']:
+                        env.log_to_file('STEP', f'Check task-only step {env.sos_dict["step_name"]} with signature {sig.sig_id}')
                     matched = validate_step_sig(sig)
                     skip_index = bool(matched)
                     if matched:
@@ -1519,7 +1524,8 @@ class Step_Executor(Base_Step_Executor):
 
 
     def submit_tasks(self, tasks):
-        env.log_to_file('TASK', f'Send {tasks}')
+        if 'TASK' in env.config['SOS_DEBUG']:
+            env.log_to_file('TASK', f'Send {tasks}')
         if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
             host = env.sos_dict['_runtime']['queue']
         else:
@@ -1601,7 +1607,8 @@ class Step_Executor(Base_Step_Executor):
                 res = e.value
 
             if self.socket is not None:
-                env.log_to_file('STEP', f'Step {self.step.step_name()} sends result {short_repr(res)}')
+                if 'STEP' in env.config['SOS_DEBUG']:
+                    env.log_to_file('STEP', f'Step {self.step.step_name()} sends result {short_repr(res)}')
                 self.socket.send_pyobj(res)
             else:
                 return res
@@ -1609,7 +1616,8 @@ class Step_Executor(Base_Step_Executor):
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
             if self.socket is not None and not self.socket.closed:
-                env.log_to_file('STEP', f'Step {self.step.step_name()} sends exception {e}')
+                if 'STEP' in env.config['SOS_DEBUG']:
+                    env.log_to_file('STEP', f'Step {self.step.step_name()} sends exception {e}')
                 if isinstance(e, ProcessKilled):
                     raise
                 else:

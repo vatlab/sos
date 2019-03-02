@@ -351,7 +351,8 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
         # subtask
         subtask = True
         task_id, params, sig_content = task_id
-        env.log_to_file('TASK', f'Executing subtask {task_id}')
+        if 'TASK' in env.config['SOS_DEBUG']:
+            env.log_to_file('TASK', f'Executing subtask {task_id}')
 
     if hasattr(params, 'task_stack'):
         return _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode,

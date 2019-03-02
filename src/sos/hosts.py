@@ -434,12 +434,15 @@ class RemoteHost:
         for source in sorted(sending.keys()):
             dest = sending[source]
             if self.is_shared(source):
-                env.log_to_file('TASK', f'Skip sending {source} on shared file system')
+                if 'TASK' in env.config['SOS_DEBUG']:
+                    env.log_to_file('TASK', f'Skip sending {source} on shared file system')
             else:
-                env.log_to_file('TASK', f'Sending ``{source}`` to {self.alias}:{dest}')
+                if 'TASK' in env.config['SOS_DEBUG']:
+                    env.log_to_file('TASK', f'Sending ``{source}`` to {self.alias}:{dest}')
                 cmd = cfg_interpolate(self._get_send_cmd(rename=os.path.basename(source) != os.path.basename(dest)),
                                       {'source': sos_targets(str(source).rstrip('/')), 'dest': sos_targets(dest), 'host': self.address, 'port': self.port})
-                env.log_to_file('TASK', cmd)
+                if 'TASK' in env.config['SOS_DEBUG']:
+                    env.log_to_file('TASK', cmd)
                 ret = subprocess.call(
                     cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                 if (ret != 0):
@@ -474,7 +477,8 @@ class RemoteHost:
             else:
                 cmd = cfg_interpolate(self._get_receive_cmd(rename=os.path.basename(source) != os.path.basename(dest)),
                                       {'source': sos_targets(str(source).rstrip('/')), 'dest': sos_targets(dest), 'host': self.address, 'port': self.port})
-                env.log_to_file('TASK', cmd)
+                if 'TASK' in env.config['SOS_DEBUG']:
+                    env.log_to_file('TASK', cmd)
                 try:
                     ret = subprocess.call(
                         cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
@@ -615,7 +619,8 @@ class RemoteHost:
         except Exception as e:
             raise ValueError(
                 f'Failed to run command {cmd}: {e} ({env.sos_dict["CONFIG"]})')
-        env.log_to_file('TASK', f'Executing command ``{cmd}``')
+        if 'TASK' in env.config['SOS_DEBUG']:
+            env.log_to_file('TASK', f'Executing command ``{cmd}``')
         try:
             return subprocess.check_output(cmd, shell=True).decode()
         except Exception as e:
@@ -631,7 +636,8 @@ class RemoteHost:
                 'cmd': cmd, 'cur_dir': self._map_var(os.getcwd())})
         except Exception as e:
             raise ValueError(f'Failed to run command {cmd}: {e}')
-        env.log_to_file('TASK', f'Executing command ``{cmd}``')
+        if 'TASK' in env.config['SOS_DEBUG']:
+            env.log_to_file('TASK', f'Executing command ``{cmd}``')
         try:
             return subprocess.check_call(cmd, shell=True, **kwargs)
         except Exception as e:
@@ -647,7 +653,8 @@ class RemoteHost:
                 'cmd': cmd, 'cur_dir': self._map_var(os.getcwd())})
         except Exception as e:
             raise ValueError(f'Failed to run command {cmd}: {e}')
-        env.log_to_file('TASK', f'Executing command ``{cmd}``')
+        if 'TASK' in env.config['SOS_DEBUG']:
+            env.log_to_file('TASK', f'Executing command ``{cmd}``')
         if realtime:
             from .utils import pexpect_run
             return pexpect_run(cmd)
@@ -672,7 +679,8 @@ class RemoteHost:
             if not os.access(lfile, os.W_OK):
                 os.chmod(lfile, stat.S_IREAD | stat.S_IWRITE)
             os.remove(lfile)
-        env.log_to_file('TASK', receive_cmd)
+        if 'TASK' in env.config['SOS_DEBUG']:
+            env.log_to_file('TASK', receive_cmd)
         ret = subprocess.call(receive_cmd, shell=True,
                               stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         if (ret != 0):
@@ -789,7 +797,8 @@ class Host:
             if env.sos_dict['CONFIG']['localhost'] not in env.sos_dict['CONFIG']['hosts']:
                 raise ValueError(
                     f"Undefined localhost {env.sos_dict['CONFIG']['localhost']}")
-            env.log_to_file('TASK', f"Using hardcoded localhost {env.sos_dict['CONFIG']['localhost']}")
+            if 'TASK' in env.config['SOS_DEBUG']:
+                env.log_to_file('TASK', f"Using hardcoded localhost {env.sos_dict['CONFIG']['localhost']}")
             return env.sos_dict['CONFIG']['localhost']
         raise ValueError(
             "No localhost could be identified from hostname, ip address, or a localhost key in config file")

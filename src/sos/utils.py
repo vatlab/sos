@@ -198,9 +198,11 @@ class WorkflowDict(object):
         '''A short cut to set value to key without triggering any logging
         or warning message.'''
         if hasattr(value, 'labels'):
-            env.log_to_file('VARIABLE', f"Set {key} to {short_repr(value)} with labels {short_repr(value.labels)}")
+            if 'VARIABLE' in env.config['SOS_DEBUG']:
+                env.log_to_file('VARIABLE', f"Set {key} to {short_repr(value)} with labels {short_repr(value.labels)}")
         else:
-            env.log_to_file('VARIABLE', f"Set {key} to {short_repr(value)} of type {value.__class__.__name__}")
+            if 'VARIABLE' in env.config['SOS_DEBUG']:
+                env.log_to_file('VARIABLE', f"Set {key} to {short_repr(value)} of type {value.__class__.__name__}")
         self._dict[key] = value
         # if self._change_all_cap_vars is not None and key.isupper():
         #    self._check_readonly(key, value)
@@ -240,7 +242,8 @@ class WorkflowDict(object):
         self.set(key, value)
 
     def _log(self, key, value):
-        env.log_to_file('VARIABLE', f'Set ``{key}`` = ``{short_repr(value)}``')
+        if 'VARIABLE' in env.config['SOS_DEBUG']:
+            env.log_to_file('VARIABLE', f'Set ``{key}`` = ``{short_repr(value)}``')
 
 
     def _warn(self, key, value):
