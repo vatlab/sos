@@ -25,12 +25,20 @@ def get_param_of_function(name, param_list, extra_dict={}):
             try:
                 params.append([ast.literal_eval(arg)])
             except Exception as e:
-                params.append([eval(compile(ast.Expression(body=arg), filename='<string>', mode="eval"), extra_dict)])
+                env.log_to_file('STEP', 'Failed to evaluate parameter of function {name} from {param_list}: {e}')
+                try:
+                    params.append([eval(compile(ast.Expression(body=arg), filename='<string>', mode="eval"), extra_dict)])
+                except Exception as e:
+                    env.log_to_file('STEP', 'Failed to evaluate parameter of function {name} from {param_list}: {e}')
         for kwarg in func.keywords:
             try:
                 params.append([kwarg.arg, ast.literal_eval(kwarg.value)])
             except Exception as e:
-                params.append([kwarg.arg, eval(compile(ast.Expression(body=kwarg.value), filename='<string>', mode="eval"), extra_dict)])
+                env.log_to_file('STEP', 'Failed to evaluate parameter of function {name} from {param_list}: {e}')
+                try:
+                    params.append([kwarg.arg, eval(compile(ast.Expression(body=kwarg.value), filename='<string>', mode="eval"), extra_dict)])
+                except Exception as e:
+                    env.log_to_file('STEP', 'Failed to evaluate parameter of function {name} from {param_list}: {e}')
     return params
 
 def get_names_of_param(name, param_list, extra_dict={}):
