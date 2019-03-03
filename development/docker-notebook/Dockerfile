@@ -73,6 +73,10 @@ ARG	    DUMMY=unknown
 RUN     DUMMY=${DUMMY} pip install sos sos-notebook sos-r sos-julia sos-python sos-matlab sos-javascript sos-bash sos-bioinfo --upgrade
 
 RUN     python -m sos_notebook.install
-RUN     jupyter labextension install jupyterlab-sos
+
+# install the alpha version of jupyter lab to demonstrate jupyterlab-sos
+RUN     pip install jupyterlab==1.0.0a1
+RUN     jupyter labextension install transient-display-data@0.2.1
+RUN     jupyter labextension install jupyterlab-sos@0.4.2
 
 USER    jovyan
