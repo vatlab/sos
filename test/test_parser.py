@@ -1889,6 +1889,97 @@ sos_run('B+A')
         wf = script.workflow()
         Base_Executor(wf, args=['--param', '2']).run()
 
+    def testIndentedAction(self):
+        '''Test the use of indented action in script format'''
+        #
+        # not indented
+        script = SoS_Script(r'''
+[1]
+if True:
+    sh:
+echo something
+
+[2]
+for i in range(2):
+    sh:
+echo something
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # not indented double action
+        script = SoS_Script(r'''
+[1]
+if True:
+    sh:
+echo something
+
+    python:
+print(1)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # not indented Python structure
+        script = SoS_Script(r'''
+[1]
+if True:
+    sh:
+echo something
+else:
+    python:
+print(1)
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+        #  indented
+        script = SoS_Script(r'''
+[1]
+if True:
+    sh:
+        echo something
+
+[2]
+for i in range(2):
+    sh:
+        echo something
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # indented double action
+        script = SoS_Script(r'''
+[1]
+if True:
+    sh:
+        echo something
+    python:
+        print(1)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # indented Python structure
+        script = SoS_Script(r'''
+[1]
+if True:
+    sh:
+        echo something
+else:
+    python:
+        print(1)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # indented, nested structure
+        script = SoS_Script(r'''
+[1]
+for i in range(2):
+    if True:
+        sh:
+            echo something
+    else:
+        python:
+            print(1)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
