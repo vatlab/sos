@@ -284,7 +284,7 @@ class SoS_Step:
         ''' check self._script and see if it is indented '''
         # get all leading space, tab and newline
         leading = INDENTED.match(self._script)
-        return leading is not None and bool(leading.group(2))
+        return 0 if leading is None else len(leading.group(2))
 
     def category(self) -> Optional[str]:
         '''Determine the category of existing statement'''
@@ -955,6 +955,12 @@ class SoS_Script:
                     action_value = mo.group('action_value') + '\n'
                     cursect.add_script(
                             action_name, action_value, lineno)
+                elif cursect.indented_script() > re.search('\S', line).start():
+                    try:
+                        cursect.wrap_script()
+                    except Exception as e:
+                        parsing_errors.append(lineno, line, str(e))
+                    cursect.extend(line)
                 else:
                     cursect.extend(line)
                 continue
@@ -1124,7 +1130,6 @@ class SoS_Script:
                 # if the script is indented and the line is not, the script
                 # is ended.
                 if not line[0].isspace() and cursect.indented_script():
-                    cursect.wrap_script()
                     try:
                         cursect.wrap_script()
                     except Exception as e:
