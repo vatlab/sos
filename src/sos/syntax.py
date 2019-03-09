@@ -198,9 +198,23 @@ _DIRECTIVE_TMPL = r'''
     (?P<directive_name>                #
     (?!({})\s*:)                       # not a python keyword followed by : (can be input)
     ({}                                # name of directive
-    |[a-zA-Z][\w\d_]*))                #    or action
+    |[a-zA-Z][\w\d_]*))             #    or action
     \s*:\s*                            # followed by :
     (?P<directive_value>               # and values that can be
+    ([^:.|=&@$^<>].*)?$)               # name followed by and values, which can be
+                                       # constant 'a', "b", variable or function call
+                                       # a(), or arbitrary expression (['a'...], dictionary, set
+                                       # etc) which is difficult to match, so we use negative
+                                       # pattern to exclude expressions starting with :, | etc
+    '''.format('|'.join(keyword.kwlist), '|'.join(SOS_DIRECTIVES))
+
+_INDENTED_ACTION_TMPL = r'''
+    ^                                  # from start of line but allow space
+    (?P<action_name>                   #
+    (?!\s+({}|{})\s*:)                 # not a python keyword or SoS directive followed by :
+    (\s+[a-zA-Z][\w\d_]*))             #    or action
+    \s*:\s*                            # followed by :
+    (?P<action_value>                  # and values that can be
     ([^:.|=&@$^<>].*)?$)               # name followed by and values, which can be
                                        # constant 'a', "b", variable or function call
                                        # a(), or arbitrary expression (['a'...], dictionary, set
@@ -297,6 +311,7 @@ SOS_SECTION_OPTION = LazyRegex(_SECTION_OPTION_TMPL, re.VERBOSE)
 SOS_FORMAT_LINE = LazyRegex(_FORMAT_LINE_TMPL, re.VERBOSE)
 SOS_FORMAT_VERSION = LazyRegex(_FORMAT_VERSION_TMPL, re.VERBOSE)
 SOS_DIRECTIVE = LazyRegex(_DIRECTIVE_TMPL, re.VERBOSE)
+SOS_INDENTED_ACTION = LazyRegex(_INDENTED_ACTION_TMPL, re.VERBOSE)
 SOS_ASSIGNMENT = LazyRegex(_ASSIGNMENT_TMPL, re.VERBOSE)
 CONFIG_NAME = LazyRegex(_CONFIG_NAME, re.VERBOSE)
 SOS_MAGIC = LazyRegex(_SOS_MAGIC_TMPL, re.VERBOSE)

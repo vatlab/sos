@@ -20,7 +20,7 @@ from uuid import UUID, uuid4
 
 from .eval import on_demand_options
 from .syntax import (INDENTED, SOS_CELL, SOS_DIRECTIVE, SOS_DIRECTIVES,
-                     SOS_FORMAT_LINE, SOS_FORMAT_VERSION,
+                     SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_INDENTED_ACTION,
                      SOS_MAGIC, SOS_SECTION_HEADER, SOS_SECTION_NAME,
                      SOS_SECTION_OPTION, SOS_SUBWORKFLOW, SOS_ACTION_OPTIONS)
 from .targets import file_target, path, paths, sos_targets, textMD5
@@ -935,7 +935,28 @@ class SoS_Script:
             #
             # a continuation of previous item?
             if line[0].isspace() and cursect is not None and not cursect.empty():
-                cursect.extend(line)
+                mo = SOS_INDENTED_ACTION.match(line)
+                if mo:
+                    #
+                    if cursect:
+                        cursect.values = []
+                        # allow multiple process-style actions
+                        try:
+                            cursect.wrap_script()
+                        except Exception as e:
+                            parsing_errors.append(
+                                cursect.lineno, ''.join(cursect.values[:5]), str(e))
+                    else:
+                        self.sections.append(SoS_Step(is_global=True))
+                        cursect = self.sections[-1]
+
+                    action_name = mo.group('action_name')
+                    # newline should be kept in case of multi-line directive
+                    action_value = mo.group('action_value') + '\n'
+                    cursect.add_script(
+                            action_name, action_value, lineno)
+                else:
+                    cursect.extend(line)
                 continue
             #
             # is it a continuation of uncompleted directive?
