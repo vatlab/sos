@@ -1917,7 +1917,7 @@ echo something
 print(1)
 ''')
         wf = script.workflow()
-        Base_Executor(wf).run()
+        self.assertRaises(Exception, Base_Executor(wf).run)
         # not indented Python structure
         script = SoS_Script(r'''
 [1]
@@ -1977,6 +1977,14 @@ for i in range(2):
     else:
         python:
             print(1)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        #
+        # wrong nested action
+        script = SoS_Script(r'''
+report:
+    name: 'a.txt'
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()

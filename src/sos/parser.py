@@ -936,32 +936,64 @@ class SoS_Script:
             # a continuation of previous item?
             if line[0].isspace() and cursect is not None and not cursect.empty():
                 mo = SOS_INDENTED_ACTION.match(line)
+
                 if mo:
                     #
-                    if cursect:
-                        cursect.values = []
-                        # allow multiple process-style actions
-                        try:
-                            cursect.wrap_script()
-                        except Exception as e:
-                            parsing_errors.append(
-                                cursect.lineno, ''.join(cursect.values[:5]), str(e))
-                    else:
-                        self.sections.append(SoS_Step(is_global=True))
-                        cursect = self.sections[-1]
+                    # case 0:
+                    #
+                    # [1]
+                    #    python: whatever
+                    #
+                    if not cursect:
+                        parsing_errors.append(
+                            cursect.lineno, ''.join(cursect.values[:5]), 'Section cannot start from indented action.')
+                        continue
 
+                    # case 1:
+                    #
+                    # [1]
+                    # if True:
+                    #    report:
+                    #        something
+                    #    whatever: <- this line
+                    if cursect.category() == 'script':
+                        if cursect.indented_script() > re.search('\S', line).start():
+                            try:
+                                cursect.wrap_script()
+                            except Exception as e:
+                                parsing_errors.append(
+                                    cursect.lineno, ''.join(cursect.values[:5]), str(e))
+                        else:
+                    # case 2:
+                    #
+                    # if True:
+                    #     report:
+                    #        name: whatever
+                            cursect.extend(line)
+                            continue
+
+                    # not script, or a the script has been wrapped
                     action_name = mo.group('action_name')
                     # newline should be kept in case of multi-line directive
                     action_value = mo.group('action_value') + '\n'
                     cursect.add_script(
                             action_name, action_value, lineno)
                 elif cursect.indented_script() > re.search('\S', line).start():
+                    # case of wrapping previous script with NO indented action
+                    #
+                    # if True:
+                    #     sh:
+                    #        has indent
+                    #     this line <-  NOT match
+                    # or this line <- NOT match
                     try:
                         cursect.wrap_script()
                     except Exception as e:
                         parsing_errors.append(lineno, line, str(e))
                     cursect.extend(line)
                 else:
+                    # other cases
+                    #
                     cursect.extend(line)
                 continue
             #
