@@ -600,7 +600,7 @@ class RemoteHost:
 
     def send_task_file(self, task_file):
         send_cmd = cfg_interpolate('ssh -q {address} -p {port} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks" && ' +
-                                   'rsync --ignore-existing -a --no-g -e "ssh -p {port}" {job_file:ap} {address}:.sos/tasks/',
+                                   'rsync --ignore-existing -a --no-g -e "ssh -q -p {port}" {job_file:ap} {address}:.sos/tasks/',
                                    {'job_file': sos_targets(task_file), 'address': self.address, 'port': self.port})
         # use scp for this simple case
         try:
@@ -1083,7 +1083,7 @@ def test_ssh(host):
         return 'OK'
     address, port = host.address, host.port
     try:
-        cmd = cfg_interpolate('ssh {host} -p {port} true', {
+        cmd = cfg_interpolate('ssh -q {host} -p {port} true', {
             'host': address, 'port': port})
         env.logger.info(cmd)
         p = pexpect.spawn(cmd)
