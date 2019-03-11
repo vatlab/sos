@@ -19,7 +19,7 @@ from tokenize import generate_tokens
 
 from .targets import (RemovedTarget, file_target, sos_targets, sos_step,
     dynamic, sos_variable, RuntimeInfo, textMD5)
-from .utils import env, format_HHMMSS, expand_size
+from .utils import env, format_HHMMSS, expand_size, load_config_files
 from .eval import SoS_eval, stmtHash
 from .tasks import TaskParams
 from .syntax import SOS_TAG, SOS_RUNTIME_OPTIONS
@@ -124,7 +124,7 @@ def get_traceback_msg(e):
     else:
         return f'{error_class}: {detail}'
 
-def prepare_env(gdef, gvars={}, extra_vars={}):
+def prepare_env(gdef, gvars={}, extra_vars={}, host='localhost'):
     '''clear current sos_dict, execute global_def (definitions and imports),
     and inject global variables'''
     env.sos_dict.clear()
@@ -134,6 +134,22 @@ def prepare_env(gdef, gvars={}, extra_vars={}):
             env.sos_dict._dict)
     env.sos_dict.quick_update(gvars)
     env.sos_dict.quick_update(extra_vars)
+    if 'CONFIG' not in env.sos_dict:
+        # if this is in sos notebook
+        load_config_files()
+    # expose `paths` of localhost
+    if host == 'localhost':
+        if 'localhost' not in env.sos_dict['CONFIG']:
+            return
+        if 'hosts' not in env.sos_dict['CONFIG'] or env.sos_dict['CONFIG']['localhost'] not in env.sos_dict['CONFIG']['hosts']:
+            raise RuntimeError(f"Localhost {env.sos_dict['CONFIG']['localhost']} is not defined in CONFIG['hosts']")
+        cfg = env.sos_dict['CONFIG']['hosts'][env.sos_dict['CONFIG']['localhost']]
+    else:
+        if 'hosts' not in env.sos_dict['CONFIG'] or host not in env.sos_dict['CONFIG']['hosts']:
+            raise RuntimeError(f"Remote host {host} is not defined in CONFIG['hosts']. Available ones are {CONFIG['hosts'].keys()}")
+        cfg = env.sos_dict['CONFIG']['hosts'][host]
+    if 'paths' in cfg:
+        env.sos_dict.quick_update(cfg['paths'])
 
 def statementMD5(stmts):
     def _get_tokens(statement):
