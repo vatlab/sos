@@ -522,11 +522,29 @@ class path(type(Path())):
         'R': lambda x: x,
     }
 
-    # def __new__(cls, *args, **kwargs):
-    #    if cls is Path:
-    #        cls = WindowsPath if os.name == 'nt' else PosixPath
-    #
-    #    return cls._from_parts(args).expanduser()
+    def __new__(cls, *args, **kwargs):
+        if cls is Path:
+           cls = WindowsPath if os.name == 'nt' else PosixPath
+
+        if 'name' in kwargs:
+            try:
+                if 'default' in kwargs:
+                    return cls._from_parts([env.sos_dict['CONFIG']['hosts'][env.sos_dict['__host__']]['paths'].get(
+                        kwargs['name'], kwargs['default'])]).expanduser()
+                else:
+                    return cls._from_parts([env.sos_dict['CONFIG']['hosts'][env.sos_dict['__host__']]['paths'][kwargs['name']]]).expanduser()
+            except:
+                if '__host__' not in env.sos_dict:
+                    raise RuntimeError('Incomplete sos environment: missing __host__ definition.')
+                if 'CONFIG' not in env.sos_dict or 'hosts' not in env.sos_dict['CONFIG']:
+                    raise RuntimeError('Incomplete sos environment: missing hosts definition.')
+                if env.sos_dict['__host__'] not in env.sos_dict['CONFIG']['hosts']:
+                    raise RuntimeError('Incomplete sos environment: undefined host {env.sos_dict["__host__"]}')
+                if 'paths' not in env.sos_dict['CONFIG']['hosts'][env.sos_dict['__host__']]:
+                    raise RuntimeError('Incomplete sos environment: paths not defined for host {env.sos_dict["__host__"]}')
+                if kwargs['name'] not in env.sos_dict['CONFIG']['hosts'][env.sos_dict['__host__']]['paths']:
+                    raise ValueError('{kwargs["name"]} not defined for host {env.sos_dict["__host__"]}')
+        return cls._from_parts(args).expanduser()
 
     def _init(self, template=None):
         super(path, self)._init(template)

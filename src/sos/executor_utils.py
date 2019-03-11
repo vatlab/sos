@@ -124,7 +124,7 @@ def get_traceback_msg(e):
     else:
         return f'{error_class}: {detail}'
 
-def prepare_env(gdef, gvars={}, extra_vars={}, host='localhost'):
+def prepare_env(gdef='', gvars={}, extra_vars={}, host='localhost'):
     '''clear current sos_dict, execute global_def (definitions and imports),
     and inject global variables'''
     env.sos_dict.clear()
@@ -137,19 +137,25 @@ def prepare_env(gdef, gvars={}, extra_vars={}, host='localhost'):
     if 'CONFIG' not in env.sos_dict:
         # if this is in sos notebook
         load_config_files()
+    if 'hosts' not in env.sos_dict['CONFIG']:
+        CONFIG['hosts'] = {'localhost': {'paths': {}}}
     # expose `paths` of localhost
     if host == 'localhost':
-        if 'localhost' not in env.sos_dict['CONFIG']:
-            return
-        if 'hosts' not in env.sos_dict['CONFIG'] or env.sos_dict['CONFIG']['localhost'] not in env.sos_dict['CONFIG']['hosts']:
-            raise RuntimeError(f"Localhost {env.sos_dict['CONFIG']['localhost']} is not defined in CONFIG['hosts']")
-        cfg = env.sos_dict['CONFIG']['hosts'][env.sos_dict['CONFIG']['localhost']]
+        if 'localhost' in env.sos_dict['CONFIG']:
+            if 'hosts' not in env.sos_dict['CONFIG'] or env.sos_dict['CONFIG']['localhost'] not in env.sos_dict['CONFIG']['hosts']:
+                raise RuntimeError(f"Localhost {env.sos_dict['CONFIG']['localhost']} is not defined in CONFIG['hosts']")
+            env.sos_dict.set('__host__', env.sos_dict['CONFIG']['localhost'])
+        else:
+            if 'hosts' in env.sos_dict['CONFIG']:
+                if 'localhost' not in env.sos_dict['hosts']:
+                    raise RuntimeError('locahost is not defined in "hosts".')
+            elif 'paths' not in env.sos_dict['CONFIG']['hosts']['localhost']:
+                env.sos_dict['CONFIG']['hosts']['localhost']['paths'] = {}
+            env.sos_dict.set('__host__', 'localhost')
     else:
         if 'hosts' not in env.sos_dict['CONFIG'] or host not in env.sos_dict['CONFIG']['hosts']:
             raise RuntimeError(f"Remote host {host} is not defined in CONFIG['hosts']. Available ones are {CONFIG['hosts'].keys()}")
-        cfg = env.sos_dict['CONFIG']['hosts'][host]
-    if 'paths' in cfg:
-        env.sos_dict.quick_update(cfg['paths'])
+        env.sos_dict.set('__host__', host)
 
 def statementMD5(stmts):
     def _get_tokens(statement):
