@@ -643,5 +643,15 @@ a = 1
         self.assertRaises(Exception, Base_Executor(wf).run)
 
 
+    def testOptionNameOfPath(self):
+        '''Test the use of option name of path'''
+        script = SoS_Script('''
+import os
+assert path(name='home') == os.environ['HOME']
+assert path(name='nonexisting', default='whatever') == 'whatever'
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={'config_file': os.path.join(os.path.expanduser('~'), 'docker.yml')}).run()
+
 if __name__ == '__main__':
     unittest.main()
