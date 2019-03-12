@@ -137,8 +137,9 @@ def prepare_env(gdef='', gvars={}, extra_vars={}, host='localhost'):
     if 'CONFIG' not in env.sos_dict:
         # if this is in sos notebook
         load_config_files()
-    if 'hosts' not in env.sos_dict['CONFIG']:
-        env.sos_dict['CONFIG']['hosts'] = {'localhost': {'paths': {}}}
+    if 'hosts' not in env.sos_dict['CONFIG'] and 'localhost' not in env.sos_dict['CONFIG']:
+        env.sos_dict['CONFIG']['localhost'] = 'localhost'
+        env.sos_dict['CONFIG']['hosts'] = {'localhost': {'paths': {}, 'address': 'localhost'}}
     # expose `paths` of localhost
     if host == 'localhost':
         if 'localhost' in env.sos_dict['CONFIG']:
