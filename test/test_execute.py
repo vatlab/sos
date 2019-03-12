@@ -97,23 +97,6 @@ a =1
                                          stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos convert -h', stderr=subprocess.DEVNULL,
                                          stdout=subprocess.DEVNULL, shell=True), 0)
-        #self.assertEqual(subprocess.call('sos convert sos-ipynb -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        #
-        self.assertEqual(subprocess.call('sos config -h', stderr=subprocess.DEVNULL,
-                                         stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos config -g --get',
-                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos config', stderr=subprocess.DEVNULL,
-                                         stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos config --get',
-                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos config -g --set a 5',
-                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos config --get a',
-                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos config -g --unset a',
-                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        #
 
     def testInterpolation(self):
         '''Test string interpolation during execution'''
@@ -174,21 +157,6 @@ output: add_a([f"{x}_{y}_process.txt" for x,y in zip(name, model)])
         self.assertEqual(env.sos_dict['res'],  ['aa_1_process.txt',
                                                 'ab_2_process.txt', 'ac_2_process.txt'])
 
-    def testGlobalVars(self):
-        '''Test SoS defined variables'''
-        script = SoS_Script(r"""
-[0]
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['SOS_VERSION'], __version__)
-        self.assertTrue(isinstance(env.sos_dict['CONFIG'], dict))
-        #
-        with open('local_cfg.yml', 'w') as cfg:
-            cfg.write('my_config: 5')
-        #
-        Base_Executor(wf, config={'config_file': 'local_cfg.yml'}).run()
-        self.assertEqual(env.sos_dict['CONFIG']['my_config'], 5)
 
     def testFuncDef(self):
         '''Test defintion of function that can be used by other steps'''
