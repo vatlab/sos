@@ -20,7 +20,7 @@ from tokenize import generate_tokens
 from .targets import (RemovedTarget, file_target, sos_targets, sos_step,
     dynamic, sos_variable, RuntimeInfo, textMD5)
 from .utils import env, format_HHMMSS, expand_size, load_config_files
-from .eval import SoS_eval, stmtHash
+from .eval import SoS_eval, stmtHash, analyze_global_statements
 from .tasks import TaskParams
 from .syntax import SOS_TAG, SOS_RUNTIME_OPTIONS
 from .controller import request_answer_from_controller
@@ -129,9 +129,15 @@ def prepare_env(gdef='', gvars={}, extra_vars={}, host='localhost'):
     and inject global variables'''
     env.sos_dict.clear()
 
+    if not gdef and not gvars:
+        # SoS Notebook calls prepare_env without global statement from a
+        # particular
+        gdef, gvars = analyze_global_statements('')
+
     if gdef:
         exec(compile(gdef, filename="<ast>", mode="exec"),
             env.sos_dict._dict)
+
     env.sos_dict.quick_update(gvars)
     env.sos_dict.quick_update(extra_vars)
     if 'CONFIG' not in env.sos_dict:
