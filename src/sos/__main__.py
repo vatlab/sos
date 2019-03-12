@@ -4,6 +4,7 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import argparse
+import ast
 import os
 import sys
 import datetime
@@ -1599,7 +1600,7 @@ def cmd_config(args, workflow_args):
         values = []
         for v in args.__set_config__[1:]:
             try:
-                v_val = eval(v)
+                v_val = ast.literal_eval(v)
                 # test if the value can be saved by yaml
                 yaml.safe_dump(v_val)
                 v = v_val
