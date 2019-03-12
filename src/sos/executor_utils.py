@@ -138,7 +138,7 @@ def prepare_env(gdef='', gvars={}, extra_vars={}, host='localhost'):
         # if this is in sos notebook
         load_config_files()
     if 'hosts' not in env.sos_dict['CONFIG']:
-        CONFIG['hosts'] = {'localhost': {'paths': {}}}
+        env.sos_dict['CONFIG']['hosts'] = {'localhost': {'paths': {}}}
     # expose `paths` of localhost
     if host == 'localhost':
         if 'localhost' in env.sos_dict['CONFIG']:
@@ -147,14 +147,14 @@ def prepare_env(gdef='', gvars={}, extra_vars={}, host='localhost'):
             env.sos_dict.set('__host__', env.sos_dict['CONFIG']['localhost'])
         else:
             if 'hosts' in env.sos_dict['CONFIG']:
-                if 'localhost' not in env.sos_dict['hosts']:
+                if 'localhost' not in env.sos_dict['CONFIG']['hosts']:
                     raise RuntimeError('locahost is not defined in "hosts".')
             elif 'paths' not in env.sos_dict['CONFIG']['hosts']['localhost']:
                 env.sos_dict['CONFIG']['hosts']['localhost']['paths'] = {}
             env.sos_dict.set('__host__', 'localhost')
     else:
         if 'hosts' not in env.sos_dict['CONFIG'] or host not in env.sos_dict['CONFIG']['hosts']:
-            raise RuntimeError(f"Remote host {host} is not defined in CONFIG['hosts']. Available ones are {CONFIG['hosts'].keys()}")
+            raise RuntimeError(f"Remote host {host} is not defined in CONFIG['hosts']. Available ones are {env.sos_dict['CONFIG']['hosts'].keys()}")
         env.sos_dict.set('__host__', host)
 
 def statementMD5(stmts):
