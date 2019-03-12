@@ -1213,9 +1213,7 @@ def load_config_files(filename=None):
 
     if 'user_name' not in cfg:
         cfg['user_name'] = getpass.getuser().lower()
-    env.sos_dict.set('CONFIG', cfg)
     # handle keyword "based_on", which should fill the dictionary with others.
-
     def process_based_on(cfg, item):
         if 'based_on' in item:
             if not isinstance(item['based_on'], (str, list)) or not item['based_on']:
@@ -1256,8 +1254,35 @@ def load_config_files(filename=None):
     for v in cfg.values():
         if isinstance(v, dict):
             process_based_on(cfg, v)
-    return cfg
-
+    # interpolation
+    def interpolate_value(cfg, item):
+        res = {}
+        for k, v in item.items():
+            if isinstance(v, dict):
+                # v should be processed in place
+                res[k] = interpolate_value(cfg, v)
+            elif isinstance(v, str) and '{' in v and '}' in v:
+                try:
+                    res[k] = eval(as_fstring(v), copy.copy(item), copy.copy(cfg))
+                except Exception as e:
+                    raise ValueError(f'Failed to interpolate {v}: {e}')
+            else:
+                res[k] = v
+        return res
+    #
+    res = {}
+    for k, v in cfg.items():
+        if isinstance(v, dict):
+            res[k] = interpolate_value(cfg, v)
+        elif isinstance(v, str) and '{' in v and '}' in v:
+            try:
+                res[k] = eval(as_fstring(v), copy.copy(cfg))
+            except Exception as e:
+                raise ValueError(f'Failed to interpolate {v}: {e}')
+        else:
+            res[k] = v
+    env.sos_dict.set('CONFIG', res)
+    return res
 
 def format_duration(time_diff_secs, short=True):
     secs = int(time_diff_secs)
