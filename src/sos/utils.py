@@ -1264,8 +1264,10 @@ def load_config_files(filename=None):
             elif isinstance(v, str) and '{' in v and '}' in v:
                 try:
                     res[k] = eval(as_fstring(v), copy.copy(item), copy.copy(cfg))
-                except Exception as e:
-                    raise ValueError(f'Failed to interpolate {v}: {e}')
+                except:
+                    # if there is something cannot be resolved, it is ok because
+                    # it might require some other variables such as walltime.
+                    res[k] = v
             else:
                 res[k] = v
         return res
@@ -1277,8 +1279,8 @@ def load_config_files(filename=None):
         elif isinstance(v, str) and '{' in v and '}' in v:
             try:
                 res[k] = eval(as_fstring(v), copy.copy(cfg))
-            except Exception as e:
-                raise ValueError(f'Failed to interpolate {v}: {e}')
+            except:
+                res[k] = v
         else:
             res[k] = v
     env.sos_dict.set('CONFIG', res)

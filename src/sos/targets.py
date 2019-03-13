@@ -546,6 +546,21 @@ class path(type(Path())):
                     raise ValueError('{kwargs["name"]} not defined for host {env.sos_dict["__host__"]}')
         return cls._from_parts(args).expanduser()
 
+    @staticmethod
+    def names(host=None):
+        if host is None:
+            if '__host__' not in env.sos_dict:
+                raise RuntimeError('Incomplete sos environment: missing __host__ definition.')
+            host = env.sos_dict['__host__']
+        if 'CONFIG' not in env.sos_dict or 'hosts' not in env.sos_dict['CONFIG']:
+            raise RuntimeError('Incomplete sos environment: missing hosts definition.')
+        if host not in env.sos_dict['CONFIG']['hosts']:
+            raise RuntimeError('Incomplete sos environment: undefined host {host}')
+        if 'paths' not in env.sos_dict['CONFIG']['hosts'][host]:
+            return []
+        else:
+            return list(env.sos_dict['CONFIG']['hosts'][host]['paths'].keys())
+
     def _init(self, template=None):
         super(path, self)._init(template)
         if not (self._drv or self._root) and self._parts and self._parts[0][:1] == '~':

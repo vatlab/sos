@@ -649,6 +649,8 @@ a = 1
 import os
 assert path(name='home') == os.environ['HOME']
 assert path(name='nonexisting', default='whatever') == 'whatever'
+assert path.names() == ['home']
+assert path.names('docker') == ['home']
 ''')
         wf = script.workflow()
         Base_Executor(wf, config={'config_file': os.path.join(os.path.expanduser('~'), 'docker.yml')}).run()

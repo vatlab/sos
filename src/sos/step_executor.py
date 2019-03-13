@@ -556,6 +556,12 @@ class Base_Step_Executor:
         if self.task_manager is None:
             return {}
 
+        #
+        # report task
+        # what we should do here is to get the alias of the Host
+        # because it can be different (e.g. not localhost
+        queue = env.sos_dict['_runtime']['queue']
+
         # submit the last batch of tasks
         tasks = self.task_manager.get_job(all_tasks=True)
         if tasks:
@@ -571,16 +577,7 @@ class Base_Step_Executor:
                 yreq = runner.send(yres)
         except StopIteration as e:
             results = e.value
-        #
-        # report task
-        # what we should do here is to get the alias of the Host
-        # because it can be different (e.g. not localhost
-        if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
-            queue = env.sos_dict['_runtime']['queue']
-        elif env.config['default_queue']:
-            queue = env.config['default_queue']
-        else:
-            queue = 'localhost'
+
 
         for id, result in results.items():
             # turn to string to avoid naming lookup issue
@@ -833,7 +830,11 @@ class Base_Step_Executor:
                     ['!', self.step.task]
                 )
             self.step.task = None
-
+        elif 'queue' not in env.sos_dict['_runtime'] or not env.sos_dict['_runtime']['queue']:
+            if env.config['default_queue']:
+                env.sos_dict['_runtime']['queue'] = env.config['default_queue']
+            else:
+                env.sos_dict['_runtime']['queue'] = 'localhost'
 
         # look for input statement.
         input_statement_idx = [idx for idx, x in enumerate(
@@ -1526,12 +1527,7 @@ class Step_Executor(Base_Step_Executor):
     def submit_tasks(self, tasks):
         if 'TASK' in env.config['SOS_DEBUG']:
             env.log_to_file('TASK', f'Send {tasks}')
-        if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
-            host = env.sos_dict['_runtime']['queue']
-        else:
-            # otherwise, use workflow default
-            host = '__default__'
-        self.socket.send_pyobj(['tasks', host] + tasks)
+        self.socket.send_pyobj(['tasks', env.sos_dict['_runtime']['queue']] + tasks)
 
     def wait_for_tasks(self, tasks, all_submitted):
         # wait for task is a generator function that yields the request
