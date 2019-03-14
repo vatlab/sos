@@ -550,6 +550,43 @@ class RemoteHost:
             else:
                 self.send_to_host(task_vars['_runtime']['to_host'])
 
+        # map variables
+        # translate cur_dir, home_dir, and workdir
+        runtime['_runtime']['cur_dir'] = self._map_var(task_vars['_runtime']['cur_dir'])
+        runtime['_runtime']['home_dir'] = self._map_var(task_vars['_runtime']['home_dir'])
+        if 'workdir' in task_vars['_runtime']:
+            runtime['_runtime']['workdir'] = self._map_var(task_vars['_runtime']['workdir'])
+
+        mapped_vars = {'_input', '_output',
+                       '_depends', 'input', 'output', 'depends'}
+        if 'mapp_vars' in task_vars['_runtime']:
+            if isinstance(task_vars['_runtime']['mapped_vars_vars'], str):
+                mapped_vars.add(task_vars['_runtime']['mapped_vars_vars'])
+            elif isinstance(task_vars['_runtime']['mapped_vars_vars'], (set, Sequence)):
+                mapped_vars |= set(task_vars['_runtime']['mapped_vars_vars'])
+            else:
+                raise ValueError(
+                    f'Unacceptable value for runtime option mapped_vars_vars: {task_vars["_runtime"]["mapped_vars_vars"]}')
+
+        for var in mapped_vars:
+            if var not in task_vars:
+                # input, output, depends might not exist
+                continue
+            if not task_vars[var]:
+                continue
+            elif isinstance(task_vars[var], str):
+                runtime[var] = self._map_var(task_vars[var])
+                env.log_to_file('TASK',
+                    f'On {self.alias}: ``{var}`` = {short_repr(task_vars[var])}')
+            elif isinstance(task_vars[var], (Sequence, set)):
+                runtime[var] = type(task_vars[var])(
+                    self._map_var(task_vars[var]))
+                env.log_to_file('TASK',
+                    f'On {self.alias}: ``{var}`` = {short_repr(task_vars[var])}')
+            else:
+                env.logger.warning(
+                    f'Failed to map {var} of type {task_vars[var].__class__.__name__}')
+
         # server restrictions #488
         for key in ('max_mem', 'max_cores', 'max_walltime'):
             if key in self.config:
