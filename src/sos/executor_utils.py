@@ -202,13 +202,6 @@ def create_task(global_def, global_vars, task_stmt, task_params):
     env.sos_dict['_runtime']['run_mode'] = env.config.get(
         'run_mode', 'run')
     env.sos_dict['_runtime']['home_dir'] = os.path.expanduser('~')
-    if 'workdir' in env.sos_dict['_runtime'] and not os.path.isdir(os.path.expanduser(env.sos_dict['_runtime']['workdir'])):
-        try:
-            os.makedirs(os.path.expanduser(
-                env.sos_dict['_runtime']['workdir']))
-        except Exception:
-            raise RuntimeError(
-                f'Failed to create workdir {env.sos_dict["_runtime"]["workdir"]}')
 
     # NOTE: we do not explicitly include 'step_input', 'step_output',
     # 'step_depends' and 'CONFIG'
