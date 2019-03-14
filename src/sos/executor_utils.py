@@ -175,7 +175,7 @@ def statementMD5(stmts):
     return textMD5(' '.join(tokens))
 
 def create_task(global_def, global_vars, task_stmt, task_params):
-    env.sos_dict.set('_runtime', {})
+    # env.sos_dict.set('_runtime', {})
     if task_params:
         args, kwargs = SoS_eval(f'__null_func__({task_params})',
             extra_dict={'__null_func__': __null_func__})
