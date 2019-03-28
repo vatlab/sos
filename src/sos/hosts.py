@@ -324,7 +324,7 @@ class RemoteHost:
 
     def _get_execute_cmd(self) -> str:
         return self.config.get('execute_cmd',
-                               '''ssh ''' + self.cm_opts + ''' -q {host} -p {port} "bash --login -c '[ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && {cmd}'" ''')
+                               '''ssh ''' + self.cm_opts + ''' -q {host} -p {port} "bash --login -c '{cmd}'" ''')
 
     def _get_query_cmd(self):
         return self.config.get('query_cmd',
@@ -605,7 +605,7 @@ class RemoteHost:
         try:
             cmd = cfg_interpolate(self.execute_cmd, {
                 'host': self.address, 'port': self.port,
-                'cmd': cmd, 'cur_dir': self._map_var(os.getcwd())})
+                'cmd': cmd})
         except Exception as e:
             raise ValueError(
                 f'Failed to run command {cmd}: {e} ({env.sos_dict["CONFIG"]})')
@@ -623,7 +623,7 @@ class RemoteHost:
         try:
             cmd = cfg_interpolate(self.execute_cmd, {
                 'host': self.address, 'port': self.port,
-                'cmd': cmd, 'cur_dir': self._map_var(os.getcwd())})
+                'cmd': cmd})
         except Exception as e:
             raise ValueError(f'Failed to run command {cmd}: {e}')
         if 'TASK' in env.config['SOS_DEBUG']:
@@ -640,7 +640,7 @@ class RemoteHost:
         try:
             cmd = cfg_interpolate(self.execute_cmd, {
                 'host': self.address, 'port': self.port,
-                'cmd': cmd, 'cur_dir': self._map_var(os.getcwd())})
+                'cmd': cmd})
         except Exception as e:
             raise ValueError(f'Failed to run command {cmd}: {e}')
         if 'TASK' in env.config['SOS_DEBUG']:
@@ -706,20 +706,7 @@ class RemoteHost:
                         f'{task_id} ``received`` {short_repr(list(received.keys()))}')
             if 'from_host' in job_dict['_runtime'] and env.config['run_mode'] != 'dryrun':
                 if isinstance(job_dict['_runtime']['from_host'], dict):
-                    fh = {}
-                    for x, y in job_dict['_runtime']['from_host'].items():
-                        if y.startswith('/'):
-                            fh[x] = y
-                        elif y.startswith('~'):
-                            fh[x] = self._map_var(
-                                job_dict['_runtime']['home_dir']) + y[1:]
-                        else:
-                            fh[x] = self._map_var(
-                                job_dict['_runtime']['cur_dir']) + '/' + y
-                    received = self.receive_from_host(fh)
-                else:
-                    received = self.receive_from_host(
-                        job_dict['_runtime']['from_host'])
+                    received = self.receive_from_host(job_dict['_runtime']['from_host'])
                 if received:
                     env.logger.info(
                         f'{task_id} ``received`` {short_repr(list(received.keys()))}')
