@@ -539,11 +539,11 @@ class path(type(Path())):
                 if 'CONFIG' not in env.sos_dict or 'hosts' not in env.sos_dict['CONFIG']:
                     raise RuntimeError('Incomplete sos environment: missing hosts definition.')
                 if env.sos_dict['__host__'] not in env.sos_dict['CONFIG']['hosts']:
-                    raise RuntimeError('Incomplete sos environment: undefined host {env.sos_dict["__host__"]}')
+                    raise RuntimeError(f'Incomplete sos environment: undefined host {env.sos_dict["__host__"]}')
                 if 'paths' not in env.sos_dict['CONFIG']['hosts'][env.sos_dict['__host__']]:
-                    raise RuntimeError('Incomplete sos environment: paths not defined for host {env.sos_dict["__host__"]}')
+                    raise RuntimeError(f'Incomplete sos environment: paths not defined for host {env.sos_dict["__host__"]}')
                 if kwargs['name'] not in env.sos_dict['CONFIG']['hosts'][env.sos_dict['__host__']]['paths']:
-                    raise ValueError('{kwargs["name"]} not defined for host {env.sos_dict["__host__"]}')
+                    raise ValueError(f'{kwargs["name"]} not defined for host {env.sos_dict["__host__"]}')
         return cls._from_parts(args).expanduser()
 
     @staticmethod
