@@ -327,7 +327,7 @@ class TaskFile(object):
             content = fh.read()
         return lzma.compress(content)
 
-    def add_outputs(self):
+    def add_outputs(self, keep_result=False):
         # get header
         shell = self._get_content('.sh')
         pulse = self._get_content('.pulse')
@@ -337,14 +337,24 @@ class TaskFile(object):
             with open(self.task_file, 'r+b') as fh:
                 header = self._read_header(fh)
                 if header.result_size != 0:
-                    self._reset(fh)
+                    if not keep_result:
+                        self._reset(fh)
+                        result_size = 0
+                        signature_size = 0
+                    else:
+                        result_size = header.result_size
+                        signature_size = header.signature_size
+                        fh.seek(self.header_size + header.params_size + header.runtime_size + header.shell_size +
+                            header.pulse_size + header.stdout_size + header.stderr_size, 0)
+                        result = fh.read(header.result_size)
+                        signature = fh.read(header.signature_size)
                 header = header._replace(
                     shell_size=len(shell),
                     pulse_size=len(pulse),
                     stdout_size=len(stdout),
                     stderr_size=len(stderr),
-                    result_size=0,
-                    signature_size=0
+                    result_size=result_size,
+                    signature_size=signature_size
                 )
                 self._write_header(fh, header)
                 fh.seek(self.header_size + header.params_size + header.runtime_size, 0)
@@ -356,6 +366,10 @@ class TaskFile(object):
                     fh.write(stdout)
                 if stderr:
                     fh.write(stderr)
+                if result_size > 0:
+                    fh.write(result)
+                if signature_size > 0:
+                    fh.write(signature)
 
     def add_result(self, result: dict):
         result_block = lzma.compress(pickle.dumps(result))
@@ -791,7 +805,14 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
     if status in ['failed', 'completed', 'aborted']:
         # thse are terminal states. We simply return them
         # only change of the task file will trigger recheck of status
-        status_files = {task_file: os.stat(task_file).st_mtime}
+        stdout_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.out')
+        stderr_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.err')
+        # 1242
+        if os.path.isfile(stdout_file) or os.path.isfile(stderr_file):
+            tf.add_outputs(keep_result=True)
+        remove_task_files(task, ['.out', '.err'])
+        # stdout and stderr files should not exist
+        status_files = {task_file: os.stat(task_file).st_mtime, stdout_file: 0, stderr_file: 0}
         return dict(status=status, files=status_files)
 
     pulse_file = os.path.join(os.path.expanduser(
