@@ -324,7 +324,7 @@ class RemoteHost:
 
     def _get_execute_cmd(self) -> str:
         return self.config.get('execute_cmd',
-                               '''ssh ''' + self.cm_opts + ''' -q {host} -p {port} "bash --login -c '{cmd}'" ''')
+                               '''ssh ''' + self.cm_opts + ''' -q {host} -p {port} "bash --login -c '[ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && {cmd}'" ''')
 
     def _get_query_cmd(self):
         return self.config.get('query_cmd',
@@ -605,7 +605,7 @@ class RemoteHost:
         try:
             cmd = cfg_interpolate(self.execute_cmd, {
                 'host': self.address, 'port': self.port,
-                'cmd': cmd})
+                'cmd': cmd, 'workdir': self._map_var(os.getcwd())})
         except Exception as e:
             raise ValueError(
                 f'Failed to run command {cmd}: {e} ({env.sos_dict["CONFIG"]})')
@@ -623,7 +623,7 @@ class RemoteHost:
         try:
             cmd = cfg_interpolate(self.execute_cmd, {
                 'host': self.address, 'port': self.port,
-                'cmd': cmd})
+                'cmd': cmd, 'workdir': self._map_var(os.getcwd())})
         except Exception as e:
             raise ValueError(f'Failed to run command {cmd}: {e}')
         if 'TASK' in env.config['SOS_DEBUG']:
@@ -640,7 +640,7 @@ class RemoteHost:
         try:
             cmd = cfg_interpolate(self.execute_cmd, {
                 'host': self.address, 'port': self.port,
-                'cmd': cmd})
+                'cmd': cmd, 'workdir': self._map_var(os.getcwd())})
         except Exception as e:
             raise ValueError(f'Failed to run command {cmd}: {e}')
         if 'TASK' in env.config['SOS_DEBUG']:
