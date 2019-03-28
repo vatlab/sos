@@ -324,7 +324,7 @@ class RemoteHost:
 
     def _get_execute_cmd(self) -> str:
         return self.config.get('execute_cmd',
-                               '''ssh ''' + self.cm_opts + ''' -q {host} -p {port} "bash --login -c '[ -d {cur_dir} ] || mkdir -p {cur_dir}; cd {cur_dir} && {cmd}'" ''')
+                               '''ssh ''' + self.cm_opts + ''' -q {host} -p {port} "bash --login -c '[ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && {cmd}'" ''')
 
     def _get_query_cmd(self):
         return self.config.get('query_cmd',
@@ -412,15 +412,7 @@ class RemoteHost:
                 env.logger.info(f'``Ignore`` {ignored}')
             items = [x for x in items if isinstance(x, (str, path))]
         elif isinstance(items, dict):
-            for x, y in items.items():
-                if not isinstance(x, str):
-                    env.logger.warning(
-                        f'Unrecognized item to be sent to host: {x}')
-                if not isinstance(y, (str, path)):
-                    env.logger.warning(
-                        f'Unrecognized item to be sent to host: {y}')
-            items = {x: str(y) for x, y in items.items() if isinstance(
-                x, str) and isinstance(y, (str, path))}
+            items = items
         else:
             env.logger.warning(
                 f'Unrecognized items to be sent to host: {items}')
@@ -546,27 +538,14 @@ class RemoteHost:
         if 'to_host' in task_vars['_runtime']:
             env.logger.info(
                 f'{task_id} ``sending`` {short_repr(task_vars["_runtime"]["to_host"])}')
-            if isinstance(task_vars['_runtime']['to_host'], dict):
-                th = {}
-                for x, y in task_vars['_runtime']['to_host'].items():
-                    if y.startswith('/'):
-                        th[x] = y
-                    elif y.startswith('~'):
-                        th[x] = self._map_var(
-                            task_vars['_runtime']['home_dir']) + y[1:]
-                    else:
-                        th[x] = self._map_var(
-                            task_vars['_runtime']['cur_dir']) + '/' + y
-                self.send_to_host(th)
-            else:
-                self.send_to_host(task_vars['_runtime']['to_host'])
+            self.send_to_host(task_vars['_runtime']['to_host'])
 
         # map variables
-        # translate cur_dir, home_dir, and workdir
-        runtime['_runtime']['cur_dir'] = self._map_var(task_vars['_runtime']['cur_dir'])
-        runtime['_runtime']['home_dir'] = self._map_var(task_vars['_runtime']['home_dir'])
-        if 'workdir' in task_vars['_runtime']:
-            runtime['_runtime']['workdir'] = self._map_var(task_vars['_runtime']['workdir'])
+        if 'workdir' not in task_vars['_runtime']:
+            runtime['_runtime']['workdir'] = self._map_var(os.getcwd())
+        # for backward compatibility #1244
+        runtime['_runtime']['cur_dir'] = runtime['_runtime']['workdir']
+        runtime['_runtime']['home_dir'] = self._map_var(os.path.expanduser('~'))
 
         mapped_vars = {'_input', '_output',
                        '_depends', 'input', 'output', 'depends'}
