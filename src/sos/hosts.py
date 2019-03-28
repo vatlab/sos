@@ -255,6 +255,7 @@ class RemoteHost:
 
     def __init__(self, config: Dict[str, Union[str, int, List[str]]]) -> None:
         self.config = config
+        self.cm_opts = self._get_control_master_options()
         self.alias = self.config['alias']
         #
         self.address = self.config['address']
@@ -298,26 +299,36 @@ class RemoteHost:
                 f'Unacceptable path_mapue for configuration path_map: {path_map}')
         return res
 
+    def _get_control_master_options(self):
+        master_dir = os.path.join(os.path.expanduser('~'), '.ssh', 'controlmasters')
+        if not os.path.isdir(master_dir):
+            try:
+                os.makedirs(master_dir, exist_ok=True)
+            except Exception as e:
+                env.logger.debug(f'Failed to create ssh control master directory {master_dir}: {e}')
+                return ''
+        return f'-o "ControlMaster=auto" -o "ControlPath={master_dir}/%r@%h:%p" -o "ControlPersist=10m"'
+
     def _get_send_cmd(self, rename=False):
         if rename:
-            return '''ssh -q {host} -p {port} "mkdir -p {dest:dpq}" && ''' + \
-                '''rsync -a --no-g -e 'ssh -p {port}' {source:aep} "{host}:{dest:dep}" && ''' + \
-                '''ssh -q {host} -p {port} "mv {dest:dep}/{source:b} {dest:ep}" '''
-        return '''ssh -q {host} -p {port} "mkdir -p {dest:dpq}" && rsync -a --no-g -e 'ssh -p {port}' {source:aep} "{host}:{dest:dep}"'''
+            return 'ssh ' + self.cm_opts + ''' -q {host} -p {port} "mkdir -p {dest:dpq}" && ''' + \
+                '''rsync -a --no-g -e 'ssh ''' + self.cm_opts + ''' -p {port}' {source:aep} "{host}:{dest:dep}" && ''' + \
+                '''ssh ''' + self.cm_opts + ''' -q {host} -p {port} "mv {dest:dep}/{source:b} {dest:ep}" '''
+        return 'ssh ' + self.cm_opts + ''' -q {host} -p {port} "mkdir -p {dest:dpq}" && rsync -a --no-g -e 'ssh -p {port}' {source:aep} "{host}:{dest:dep}"'''
 
     def _get_receive_cmd(self, rename=False):
         if rename:
-            return '''rsync -a --no-g -e 'ssh -p {port}' {host}:{source:e} "{dest:adep}" && ''' + \
+            return '''rsync -a --no-g -e 'ssh ''' + self.cm_opts + ''' -p {port}' {host}:{source:e} "{dest:adep}" && ''' + \
                 '''mv "{dest:adep}/{source:b}" "{dest:aep}"'''
-        return '''rsync -a --no-g -e 'ssh -p {port}' {host}:{source:e} "{dest:adep}"'''
+        return '''rsync -a --no-g -e 'ssh ''' + self.cm_opts + ''' -p {port}' {host}:{source:e} "{dest:adep}"'''
 
     def _get_execute_cmd(self) -> str:
         return self.config.get('execute_cmd',
-                               '''ssh -q {host} -p {port} "bash --login -c '[ -d {cur_dir} ] || mkdir -p {cur_dir}; cd {cur_dir} && {cmd}'" ''')
+                               '''ssh ''' + self.cm_opts + ''' -q {host} -p {port} "bash --login -c '[ -d {cur_dir} ] || mkdir -p {cur_dir}; cd {cur_dir} && {cmd}'" ''')
 
     def _get_query_cmd(self):
         return self.config.get('query_cmd',
-                               '''ssh -q {host} -p {port} "bash --login -c 'sos status {task} -v 0'" ''')
+                               '''ssh ''' + self.cm_opts + ''' -q {host} -p {port} "bash --login -c 'sos status {task} -v 0'" ''')
 
     def is_shared(self, path):
         fullpath = os.path.abspath(os.path.expanduser(path))
@@ -599,8 +610,8 @@ class RemoteHost:
         self.send_task_file(task_file)
 
     def send_task_file(self, task_file):
-        send_cmd = cfg_interpolate('ssh -q {address} -p {port} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks" && ' +
-                                   'rsync --ignore-existing -a --no-g -e "ssh -q -p {port}" {job_file:ap} {address}:.sos/tasks/',
+        send_cmd = cfg_interpolate('ssh ' + self.cm_opts + ' -q {address} -p {port} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks" && ' +
+                                   'rsync --ignore-existing -a --no-g -e "ssh ' + self.cm_opts + ' -q -p {port}" {job_file:ap} {address}:.sos/tasks/',
                                    {'job_file': sos_targets(task_file), 'address': self.address, 'port': self.port})
         # use scp for this simple case
         try:
@@ -867,12 +878,12 @@ class Host:
                 # if paths are defined for both local and remote host, define path_map
                 if ('paths' in cfg[LOCAL] and cfg[LOCAL]['paths']) and ('paths' in cfg[REMOTE] and cfg[REMOTE]['paths']):
                     if any(k not in cfg[REMOTE]['paths'] for k in cfg[LOCAL]['paths'].keys()):
-                        raise ValueError(
-                            f'One or more local paths {",".join(cfg[LOCAL]["paths"].keys())} cannot be mapped to remote host {REMOTE} with paths {",".join(cfg[REMOTE]["paths"].keys())}')
+                        env.logger.debug(
+                            f'One or more local paths {", ".join(cfg[LOCAL]["paths"].keys())} cannot be mapped to remote host {REMOTE} with paths {",".join(cfg[REMOTE]["paths"].keys())}')
                     #
                     self.config['path_map'].extend([
                         f'{normalize_value(cfg[LOCAL]["paths"][x])} -> {normalize_value(cfg[REMOTE]["paths"][x])}'
-                        for x in cfg[LOCAL]['paths'].keys()])
+                        for x in cfg[LOCAL]['paths'].keys() if x in cfg[REMOTE]['paths']])
         elif LOCAL == REMOTE:
             # now we have checked local and remote are not defined, but they are the same, so
             # it is safe to assume that they are both local hosts
