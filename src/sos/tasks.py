@@ -951,7 +951,7 @@ def print_task_status(tasks, check_all=False, verbosity: int=1, html: bool=False
             y in tags for y in TaskFile(x[0]).tags.split())]
 
     if not all_tasks:
-        env.logger.info('No matching tasks are identified.')
+        env.logger.info('No matching tasks are identified. Use option -a to check all tasks.')
         return
 
     raw_status = check_tasks([x[0] for x in all_tasks], check_all)
