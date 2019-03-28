@@ -348,6 +348,9 @@ class TaskFile(object):
                             header.pulse_size + header.stdout_size + header.stderr_size, 0)
                         result = fh.read(header.result_size)
                         signature = fh.read(header.signature_size)
+                else:
+                    result_size = 0
+                    signature_size = 0
                 header = header._replace(
                     shell_size=len(shell),
                     pulse_size=len(pulse),
