@@ -39,7 +39,7 @@ def _load_group(group: str) -> None:
                 logger.warning(
                     f'Failed to load target {_entrypoint.name}: {e}')
             else:
-                logger.trace(f'Failed to load target {_entrypoint.name}: {e}')
+                logger.debug(f'Failed to load target {_entrypoint.name}: {e}')
 
 
 _load_group('sos_targets')
