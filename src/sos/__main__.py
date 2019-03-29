@@ -319,7 +319,7 @@ def cmd_run(args, workflow_args):
         elif os.path.basename(argv[0]) == 'sos-runner':
             argv[0] = 'sos-runner'
         # execute the command on remote host
-        sys.exit(host._host_agent.check_call(argv))
+        sys.exit(host._host_agent.check_call(argv, under_workdir=True))
 
     # '' means no -d
     dt = datetime.datetime.now().strftime('%m%d%y_%H%M')
@@ -773,7 +773,7 @@ def cmd_preview(args, unknown_args):
             rargs += ['-s', args.style] + unknown_args
         if 'GENERAL' in env.config['SOS_DEBUG']:
             env.log_to_file('GENERAL', 'Running "{}"'.format(' '.join(rargs)))
-        msgs = eval(host._host_agent.check_output(rargs))
+        msgs = eval(host._host_agent.check_output(rargs, under_workdir=True))
     else:
         from .preview import get_previewers
         previewers = get_previewers()

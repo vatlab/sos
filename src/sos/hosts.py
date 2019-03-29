@@ -196,7 +196,7 @@ class LocalHost:
         if task_file != dest_task_file:
             shutil.copyfile(task_file, dest_task_file)
 
-    def check_output(self, cmd):
+    def check_output(self, cmd, under_workdir=False):
         # get the output of command
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
@@ -207,7 +207,7 @@ class LocalHost:
             env.logger.warning(f'Check output of {cmd} failed: {e}')
             raise
 
-    def check_call(self, cmd, **kwargs):
+    def check_call(self, cmd, under_workdir=False, **kwargs):
         # get the output of command
         try:
             return subprocess.check_call(cmd, shell=isinstance(cmd, str), **kwargs)
@@ -262,7 +262,6 @@ class RemoteHost:
         self.port = self.config.get('port', 22)
         self.shared_dirs = self._get_shared_dirs()
         self.path_map = self._get_path_map()
-        self.execute_cmd = self._get_execute_cmd()
 
     def _get_shared_dirs(self) -> List[Any]:
         value = self.config.get('shared', [])
@@ -322,9 +321,10 @@ class RemoteHost:
                 '''mv "{dest:adep}/{source:b}" "{dest:aep}"'''
         return '''rsync -a --no-g -e 'ssh ''' + self.cm_opts + ''' -p {port}' {host}:{source:e} "{dest:adep}"'''
 
-    def _get_execute_cmd(self) -> str:
-        return self.config.get('execute_cmd',
-                               '''ssh ''' + self.cm_opts + ''' -q {host} -p {port} "bash --login -c '[ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && {cmd}'" ''')
+    def _get_execute_cmd(self, under_workdir=True) -> str:
+        ireturn self.config.get('execute_cmd',
+                               'ssh ' + self.cm_opts + """ -q {host} -p {port} "bash --login -c '""" +
+                               ('[ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && ' if under_workdir else '') + ''' {cmd}'" ''')
 
     def _get_query_cmd(self):
         return self.config.get('query_cmd',
@@ -599,11 +599,11 @@ class RemoteHost:
             raise RuntimeError(
                 f'Failed to copy job {task_file} to {self.alias} using command {send_cmd}: {e}')
 
-    def check_output(self, cmd: object) -> object:
+    def check_output(self, cmd: object, under_workdir=False) -> object:
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
-            cmd = cfg_interpolate(self.execute_cmd, {
+            cmd = cfg_interpolate(self._get_execute_cmd(under_workdir=under_workdir), {
                 'host': self.address, 'port': self.port,
                 'cmd': cmd, 'workdir': self._map_var(os.getcwd())})
         except Exception as e:
@@ -617,11 +617,11 @@ class RemoteHost:
             env.logger.debug(f'Check output of {cmd} failed: {e}')
             raise
 
-    def check_call(self, cmd, **kwargs):
+    def check_call(self, cmd, under_workdir=False, **kwargs):
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
-            cmd = cfg_interpolate(self.execute_cmd, {
+            cmd = cfg_interpolate(self._get_execute_cmd(under_workdir=under_workdir), {
                 'host': self.address, 'port': self.port,
                 'cmd': cmd, 'workdir': self._map_var(os.getcwd())})
         except Exception as e:
@@ -638,7 +638,7 @@ class RemoteHost:
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
-            cmd = cfg_interpolate(self.execute_cmd, {
+            cmd = cfg_interpolate(self._get_execute_cmd(under_workdir=False), {
                 'host': self.address, 'port': self.port,
                 'cmd': cmd, 'workdir': self._map_var(os.getcwd())})
         except Exception as e:
