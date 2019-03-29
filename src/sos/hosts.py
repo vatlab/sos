@@ -322,7 +322,7 @@ class RemoteHost:
         return '''rsync -a --no-g -e 'ssh ''' + self.cm_opts + ''' -p {port}' {host}:{source:e} "{dest:adep}"'''
 
     def _get_execute_cmd(self, under_workdir=True) -> str:
-        ireturn self.config.get('execute_cmd',
+        return self.config.get('execute_cmd',
                                'ssh ' + self.cm_opts + """ -q {host} -p {port} "bash --login -c '""" +
                                ('[ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && ' if under_workdir else '') + ''' {cmd}'" ''')
 
