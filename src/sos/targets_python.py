@@ -63,7 +63,7 @@ class Py_Module(BaseTarget):
                     return True
                 elif self._version[0] not in ('=', '>', '<', '!') and pkg_resources.parse_version(ver) == pkg_resources.parse_version(self._version):
                     return True
-                env.logger.error(f'Version {ver} of installed {name} does not match specified version {self._version}')
+                env.logger.warning(f'Version {ver} of installed {name} does not match specified version {self._version}')
                 return False
             return True
 
