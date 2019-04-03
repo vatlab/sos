@@ -79,45 +79,45 @@ depends: Py_Module('tabulate<2.0')
 
     def testUpgradePyModule(self):
         '''Test upgrade py module #1246'''
-        # first install rpy2 == 2.9.4
+        # first install tabulate == 0.7.5
         script = SoS_Script(r'''
 [10]
-depends: Py_Module('rpy2==2.9.4', autoinstall=True)
+depends: Py_Module('tabulate==0.7.5', autoinstall=True)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
         # test should pass
         script = SoS_Script(r'''
 [10]
-depends: Py_Module('rpy2'), Py_Module('rpy2==2.9.4')
+depends: Py_Module('tabulate'), Py_Module('tabulate==0.7.5')
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
         # test for newer version should fail
         script = SoS_Script(r'''
 [10]
-depends: Py_Module('rpy2==3.0.1')
+depends: Py_Module('tabulate==0.8.3')
 ''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
         # auto install should work
         script = SoS_Script(r'''
 [10]
-depends: Py_Module('rpy2==3.0.1', autoinstall=True)
+depends: Py_Module('tabulate==0.8.3', autoinstall=True)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
         # test for old version should fail
         script = SoS_Script(r'''
 [10]
-depends: Py_Module('rpy2'), Py_Module('rpy2==3.0.1')
+depends: Py_Module('tabulate'), Py_Module('tabulate==0.8.3')
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
         # test for old version should fail
         script = SoS_Script(r'''
 [10]
-depends: Py_Module('rpy2==2.9.4')
+depends: Py_Module('tabulate==0.7.5')
 ''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
