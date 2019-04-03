@@ -364,7 +364,7 @@ class RuntimeEnvironments(object):
             self.config['SOS_DEBUG'] = set([x for x in os.environ['SOS_DEBUG'].split(',') if '.' not in x and x != '-'])
             if 'ALL' in self.config['SOS_DEBUG']:
                 self.config['SOS_DEBUG'] |= {'ACTION', 'CONTROLLER', 'DAG', 'EXECUTOR', 'GENERAL',
-                    'STEP', 'TARGET', 'TASK', 'VARIABLE', 'WORKER'}
+                    'STEP', 'TARGET', 'TASK', 'VARIABLE', 'WORKER', 'NOTEBOOK', 'KERNEL'}
         #
         # global dictionaries used by SoS during the
         # execution of SoS workflows
