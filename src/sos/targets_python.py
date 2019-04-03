@@ -63,15 +63,16 @@ class Py_Module(BaseTarget):
                 elif self._version[0] not in ('=', '>', '<', '!') and pkg_resources.parse_version(ver) == pkg_resources.parse_version(self._version):
                     pass
                 else:
-                    env.logger.warning(f'Version {ver} of installed {name} does not match specified version {self._version}')
+                    env.logger.warning(f'Version {ver} of installed {name} does not match specified version {self._version}.')
                     reinstall = True
-        if not reinstall:
+        if spam_spec and not reinstall:
             return True
         if not autoinstall:
             return False
         # try to install it?
         import subprocess
-        cmd = ['pip', 'install', '-U', self._module if self._autoinstall is True else self._autoinstall]
+        cmd = ['pip', 'install'] + ([] if self._version else ['-U']) + [
+            self._module + (self._version if self._version else '') if self._autoinstall is True else self._autoinstall]
         env.logger.info(f'Installing python module {name} with command {" ".join(cmd)}')
         ret = subprocess.call(cmd)
         if reinstall:

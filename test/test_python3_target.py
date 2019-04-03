@@ -77,5 +77,51 @@ depends: Py_Module('tabulate<2.0')
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    def testUpgradePyModule(self):
+        '''Test upgrade py module #1246'''
+        # first install rpy2 == 2.9.4
+        script = SoS_Script(r'''
+[10]
+depends: Py_Module('rpy2==2.9.4', autoinstall=True)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # test should pass
+        script = SoS_Script(r'''
+[10]
+depends: Py_Module('rpy2'), Py_Module('rpy2==2.9.4')
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # test for newer version should fail
+        script = SoS_Script(r'''
+[10]
+depends: Py_Module('rpy2==3.0.1')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+        # auto install should work
+        script = SoS_Script(r'''
+[10]
+depends: Py_Module('rpy2==3.0.1', autoinstall=True)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # test for old version should fail
+        script = SoS_Script(r'''
+[10]
+depends: Py_Module('rpy2'), Py_Module('rpy2==3.0.1')
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # test for old version should fail
+        script = SoS_Script(r'''
+[10]
+depends: Py_Module('rpy2==2.9.4')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+
+
 if __name__ == '__main__':
     unittest.main()
