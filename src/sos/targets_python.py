@@ -37,6 +37,7 @@ class Py_Module(BaseTarget):
         pip install if necessary.'''
         spam_spec = importlib.util.find_spec(name)
         if spam_spec is not None:
+            reinstall = False
             if self._version:
                 mod = importlib.__import__(name)
                 if hasattr(mod, '__version__'):
@@ -46,32 +47,32 @@ class Py_Module(BaseTarget):
                         ver = pkg_resources.get_distribution(name).version
                     except Exception as e:
                         env.logger.debug(f'Failed to get version of {name}: {e}')
-                        return True
                 env.logger.debug(f'Comparing exiting version {ver} against requested version {self._version}')
                 if self._version.startswith('==') and pkg_resources.parse_version(ver) == pkg_resources.parse_version(self._version[2:]):
-                    return True
+                    pass
                 elif self._version.startswith('<=') and pkg_resources.parse_version(ver) <= pkg_resources.parse_version(self._version[2:]):
-                    return True
+                    pass
                 elif self._version.startswith('<') and not self._version.startswith('<=') and pkg_resources.parse_version(ver) < pkg_resources.parse_version(self._version[1:]):
-                    return True
+                    pass
                 elif self._version.startswith('>=') and pkg_resources.parse_version(ver) >= pkg_resources.parse_version(self._version[2:]):
-                    return True
+                    pass
                 # the case of >
                 elif self._version.startswith('>') and not self._version.startswith('>=') and pkg_resources.parse_version(ver) > pkg_resources.parse_version(self._version[1:]):
-                    return True
+                    pass
                 elif self._version.startswith('!=') and pkg_resources.parse_version(ver) != pkg_resources.parse_version(self._version[2:]):
-                    return True
+                    pass
                 elif self._version[0] not in ('=', '>', '<', '!') and pkg_resources.parse_version(ver) == pkg_resources.parse_version(self._version):
-                    return True
-                env.logger.warning(f'Version {ver} of installed {name} does not match specified version {self._version}')
-                return False
+                    pass
+                else:
+                    env.logger.warning(f'Version {ver} of installed {name} does not match specified version {self._version}')
+                    reinstall = True
+        if not reinstall:
             return True
-
         if not autoinstall:
             return False
         # try to install it?
         import subprocess
-        cmd = ['pip', 'install', self._module if self._autoinstall is True else self._autoinstall]
+        cmd = ['pip', 'install', '-U', self._module if self._autoinstall is True else self._autoinstall]
         env.logger.info(f'Installing python module {name} with command {" ".join(cmd)}')
         ret = subprocess.call(cmd)
         # try to check version
