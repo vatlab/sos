@@ -3,9 +3,6 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
-import importlib
-import pkg_resources
-
 from .targets import BaseTarget, textMD5
 from .utils import env
 
@@ -35,9 +32,11 @@ class Py_Module(BaseTarget):
     def _install(self, name, autoinstall):
         '''Check existence of Python module and install it using command
         pip install if necessary.'''
+        import importlib
+        import pkg_resources
         spam_spec = importlib.util.find_spec(name)
+        reinstall = False
         if spam_spec is not None:
-            reinstall = False
             if self._version:
                 mod = importlib.__import__(name)
                 if hasattr(mod, '__version__'):
@@ -75,6 +74,9 @@ class Py_Module(BaseTarget):
         cmd = ['pip', 'install', '-U', self._module if self._autoinstall is True else self._autoinstall]
         env.logger.info(f'Installing python module {name} with command {" ".join(cmd)}')
         ret = subprocess.call(cmd)
+        if reinstall:
+            import sys
+            importlib.reload(sys.modules[name])
         # try to check version
         return ret == 0 and self._install(name, False)
 
