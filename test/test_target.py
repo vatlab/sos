@@ -647,7 +647,9 @@ a = 1
         '''Test the use of option name of path'''
         script = SoS_Script('''
 import os
-assert path(name='home') == os.environ['HOME']
+# windows might not have HOME
+if 'HOME' in os.environ:
+    assert path(name='home') == os.environ['HOME']
 assert path(name='nonexisting', default='whatever') == 'whatever'
 assert path.names() == ['home']
 assert path.names('docker') == ['home']
