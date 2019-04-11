@@ -634,7 +634,7 @@ class Base_Step_Executor:
             if 'STEP' in env.config['SOS_DEBUG']:
                 env.log_to_file('STEP', f'Handling input statement {msg}')
         elif stage == '_input':
-            if env.sos_dict['_input'] is not None:
+            if env.sos_dict['_input'] is not None and len(env.sos_dict['_input']) > 0:
                 env.logger.debug(
                     f'_input: ``{short_repr(env.sos_dict["_input"])}``')
         elif stage == '_depends':
@@ -684,8 +684,17 @@ class Base_Step_Executor:
     def process_returned_substep_result(self, till=None, wait=True):
         while True:
             if not wait:
-                if not self.result_pull_socket.poll(0):
-                    return
+                # 1213
+                cur_index = env.sos_dict['_index']
+                num_workers = env.config.get('max_procs', 1)
+                pending_substeps = (cur_index - self._completed_concurrent_substeps) // num_workers
+                if pending_substeps < 10:
+                    # if there are more than 10 pending substeps for each worker
+                    # we wait indefinitely for the results
+                    if not self.result_pull_socket.poll(0):
+                        return
+                elif 'STEP' in env.config['SOS_DEBUG']:
+                    env.log_to_file('STEP', f'Wait for more substeps to be done before submitting. (index={cur_index}, processed={self._completed_concurrent_substeps})')
             elif self._completed_concurrent_substeps == till:
                 return
             yield self.result_pull_socket
@@ -1150,7 +1159,7 @@ class Base_Step_Executor:
                         try:
                             if self.concurrent_substep:
                                 if 'STEP' in env.config['SOS_DEBUG']:
-                                    env.log_to_file('STEP', f'Execute substep {env.sos_dict["step_name"]} concurrently')
+                                    env.log_to_file('STEP', f'Execute substep {env.sos_dict["step_name"]} {idx} concurrently with {self._completed_concurrent_substeps} completed')
 
                                 # the ignatures are supposed to be written by substep worker, however
                                 # the substep worker might send tasks back to the step worker and
@@ -1191,10 +1200,16 @@ class Base_Step_Executor:
                                     proc_vars=env.sos_dict.clone_selected_vars(proc_vars),
                                     shared_vars=self.vars_to_be_shared,
                                     config=env.config))
-
                                 # we check if the previous task has been completed and process them
                                 # because further steps might need to be done
-                                self.process_returned_substep_result(wait=False)
+                                try:
+                                    runner = self.process_returned_substep_result(wait=False)
+                                    yreq = next(runner)
+                                    while True:
+                                        yres = yield yreq
+                                        yreq = runner.send(yres)
+                                except StopIteration:
+                                     pass
                             else:
                                 if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified():
                                     if 'STEP' in env.config['SOS_DEBUG']:
