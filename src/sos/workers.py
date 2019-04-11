@@ -461,6 +461,9 @@ class WorkerManager(object):
         are alive. '''
         if time.time() - self._worker_alive_time > 5:
             self._worker_alive_time = time.time()
+            # join processes if they are now gone, it should not do anything bad
+            # if the process is still running
+            [worker.join() for worker in self._workers if not worker.is_alive()]
             self._workers = [worker for worker in self._workers if worker.is_alive()]
             if len(self._workers) < self._num_workers:
                 raise ProcessKilled('One of the workers has been killed.')
@@ -472,3 +475,5 @@ class WorkerManager(object):
             self._worker_backend_socket.send_pyobj(None)
             self._num_workers -= 1
             self.report(f'Kill {msg[1:]}')
+        # join all processes
+        [worker.join() for worker in self._workers]
