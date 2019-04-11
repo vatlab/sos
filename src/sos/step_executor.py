@@ -1119,7 +1119,7 @@ class Base_Step_Executor:
                                         self.depends_groups[idx] = env.sos_dict['_depends']
                                         self.log('_depends')
                                     except Exception as e:
-                                        env.logger.info(e)
+                                        #env.logger.info(e)
                                         raise
                                 else:
                                     raise RuntimeError(
