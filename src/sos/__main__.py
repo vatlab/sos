@@ -202,10 +202,10 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
                             help=workflow_spec)
     parser.add_argument('-j', type=int, metavar='JOBS',
-                        dest='__max_procs__', default=max(os.cpu_count() // 2, 1),
+                        dest='__max_procs__', default=min(max(os.cpu_count() // 2, 1), 8),
                         help='''Maximum number of worker processes for the execution of steps in
             a workflow and substeps in a step (with input option concurrent), default to half of
-            number of CPUs''')
+            number of CPUs, or 8, whichever is smaller''')
     parser.add_argument('-J', type=int, metavar='EXTERNAL_JOBS',
                         dest='__max_running_jobs__',
                         help='''Maximum number of externally running tasks. This option
