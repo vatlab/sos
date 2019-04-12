@@ -2276,7 +2276,6 @@ time.sleep(10)
         ret.wait()
         self.assertNotEqual(ret.returncode, 0)
 
-    @unittest.skipIf('TRAVIS' in os.environ, 'Skip test because travis fails on this test for unknown reason')
     def testConcurrentRunningTasks(self):
         '''Test two sos instances running the same task'''
         import psutil
