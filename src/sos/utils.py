@@ -313,11 +313,13 @@ class RuntimeEnvironments(object):
         if idx == self._sub_idx:
             return
         self._sub_envs[self._sub_idx]['sos_dict'] = self.sos_dict
+        self._sub_envs[self._sub_idx]['config'] = copy.deepcopy(env.config)
         if len(self._sub_envs) <= idx:
-            self._sub_envs.append({'sos_dict': WorkflowDict()})
+            self._sub_envs.append({'sos_dict': WorkflowDict(), 'config': copy.deepcopy(env.config)})
         if not self._sub_envs[idx]:
-            self._sub_envs[idx] = {'sos_dict': WorkflowDict()}
+            self._sub_envs[idx] = {'sos_dict': WorkflowDict(), 'config': copy.deepcopy(env.config)}
         self.sos_dict = self._sub_envs[idx]['sos_dict']
+        env.config = self._sub_envs[idx]['config']
         self._sub_idx = idx
         # env.logger.error(f"{os.getpid()} switch to {idx} {env.sos_dict.get('num', 'unknown')}")
 
