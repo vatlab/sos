@@ -57,7 +57,7 @@ class TaskEngine(threading.Thread):
             self.max_running_jobs = self.config['max_running_jobs']
         else:
             # default
-            self.max_running_jobs = max(os.cpu_count() // 2, 1)
+            self.max_running_jobs = min(max(os.cpu_count() // 2, 4), 24)
         #
         # multiple thread job submission does not work because the threads share the
         # same namespace with variables such as sos_dict. Variables changed by
