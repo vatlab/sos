@@ -227,10 +227,11 @@ class TaskEngine(threading.Thread):
                         self.submitting_tasks.pop(k)
 
             if self.pending_tasks:
-                # check active (non-terminal) status, including those are pending, submitted, and running
-                num_active_tasks = len([x for x in self.task_status.values() if x not in ('completed', 'failed', 'aborted', 'new')])
-                if num_active_tasks >= self.max_running_jobs:
-                    continue
+                with threading.Lock():
+                    # check active (non-terminal) status, including those are pending, submitted, and running
+                    num_active_tasks = len([x for x in self.task_status.values() if x not in ('completed', 'failed', 'aborted', 'new')])
+                    if num_active_tasks >= self.max_running_jobs:
+                        continue
 
                 # assign tasks to self.max_running_jobs workers
                 slots = [[] for i in range(self.max_running_jobs)]
