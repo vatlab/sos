@@ -228,7 +228,7 @@ class TaskEngine(threading.Thread):
 
             if self.pending_tasks:
                 # check active (non-terminal) status, including those are pending, submitted, and running
-                num_active_tasks = len([x for x in self.task_status.values() if x not in ('completed', 'failed', 'aborted')])
+                num_active_tasks = len([x for x in self.task_status.values() if x not in ('completed', 'failed', 'aborted', 'new')])
                 if num_active_tasks >= self.max_running_jobs:
                     continue
 
