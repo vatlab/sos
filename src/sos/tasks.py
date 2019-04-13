@@ -111,17 +111,15 @@ class MasterTaskParams(TaskParams):
                         val0 + (1 if self.num_workers > 0 else 0)
                 elif key == 'name':
                     self.sos_dict['_runtime']['name'] = f'{val0}_{len(self.task_stack) + 1}'
-
             self.tags.extend(params.tags)
         #
         # input, output, preserved vars etc
         for key in ['_input', '_output', '_depends']:
-            if key in params.sos_dict and isinstance(params.sos_dict[key], list):
+            if key in params.sos_dict and isinstance(params.sos_dict[key], sos_targets):
                 if key == '__builtins__':
                     continue
                 # do not extend duplicated input etc
-                self.sos_dict[key].extend(
-                    list(set(params.sos_dict[key]) - set(self.sos_dict[key])))
+                self.sos_dict[key].extend(params.sos_dict[key])
         #
         self.task_stack.append([task_id, params])
         self.tags = sorted(list(set(self.tags)))
