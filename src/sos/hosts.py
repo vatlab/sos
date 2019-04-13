@@ -697,7 +697,6 @@ class RemoteHost:
             # do we need to copy files? We need to consult original task file
             # not the converted one
             job_dict = params.sos_dict
-            env.logger.error(job_dict)
             if job_dict['_output'] and not isinstance(job_dict['_output'], Undetermined) and env.config['run_mode'] != 'dryrun':
                 received = self.receive_from_host(
                     [x for x in job_dict['_output'] if isinstance(x, (str, path))])
