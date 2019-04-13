@@ -79,6 +79,8 @@ class TaskEngine(threading.Thread):
         # allows stacking of up to 1000 tasks, but PBS queue does not
         # allow stacking.
         self.batch_size = 1
+        # let us report the status of task engine from time to time
+        self.last_report = time.time()
 
     def notify_controller(self, msg):
         if env.config['exec_mode']:
@@ -143,8 +145,8 @@ class TaskEngine(threading.Thread):
         self._last_status_check = time.time()
         self.engine_ready.set()
         while True:
-            # if no new task, does not do anything.
-            if (self.running_tasks or self.running_pending_tasks) and time.time() - self._last_status_check > self.status_check_interval:
+            # if there are running tasks or pending tasks, we need to monitor the status of the queue
+            if (self.running_tasks or self.running_pending_tasks or self.pending_tasks) and time.time() - self._last_status_check > self.status_check_interval:
                 if self._status_checker is None:
                     self._status_checker = self._thread_workers.submit(
                         self.query_tasks, self.running_tasks + list(self.running_pending_tasks.keys()), check_all=False, verbosity=3, numeric_times=True)
@@ -229,8 +231,12 @@ class TaskEngine(threading.Thread):
                 num_active_tasks = len(
                     self.submitting_tasks) + len(self.running_tasks)
                 if num_active_tasks >= self.max_running_jobs:
+                    if time.time() - self.last_report > 60:
+                        self.last_report = time.time()
+                        env.logger.info(f'{len(self.pending_tasks)} tasks are pending ({num_active_tasks} tasks are being processed)')
                     continue
 
+                self.last_report = time.time()
                 # assign tasks to self.max_running_jobs workers
                 slots = [[] for i in range(self.max_running_jobs)]
                 sample_slots = list(range(self.max_running_jobs))
