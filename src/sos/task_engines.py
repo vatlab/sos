@@ -233,7 +233,7 @@ class TaskEngine(threading.Thread):
                 if num_active_tasks >= self.max_running_jobs:
                     if time.time() - self.last_report > 60:
                         self.last_report = time.time()
-                        env.logger.info(f'{len(self.pending_tasks)} tasks are pending ({num_active_tasks} tasks are being processed)')
+                        env.logger.info(f'Waiting for the completion of ``{num_active_tasks}`` task{"s" if num_active_tasks > 1 else ""} before submitting ``{len(self.pending_tasks)}`` pending ones.')
                     continue
 
                 self.last_report = time.time()
@@ -264,6 +264,11 @@ class TaskEngine(threading.Thread):
                     for slot in slots:
                         for tid in slot:
                             self.pending_tasks.remove(tid)
+            elif (self.running_tasks or self.running_pending_tasks) and time.time() - self.last_report > 60:
+                # if there is no  pending tasks
+                self.last_report = time.time()
+                n_running = len(self.running_tasks) + len(self.running_pending_tasks)
+                env.logger.info(f'Waiting for the completion of ``{n_running}`` task{"s" if n_running > 1 else ""}.')
 
     def submit_task(self, task_id):
         # we wait for the engine to start
