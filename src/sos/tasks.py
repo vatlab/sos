@@ -52,7 +52,6 @@ class MasterTaskParams(TaskParams):
                          'step_input': sos_targets(), 'step_output': sos_targets(),
                          'step_depends': sos_targets(), 'step_name': '',
                          '_index': 0}
-        self.sos_dict = {'_runtime': {}}
         self.num_workers = num_workers
         self.tags = []
         # a collection of tasks that will be executed by the master task
