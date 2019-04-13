@@ -147,7 +147,7 @@ class TaskEngine(threading.Thread):
             if (self.running_tasks or self.running_pending_tasks) and time.time() - self._last_status_check > self.status_check_interval:
                 if self._status_checker is None:
                     self._status_checker = self._thread_workers.submit(
-                        self.query_tasks, check_all=True, verbosity=3, numeric_times=True)
+                        self.query_tasks, self.running_tasks + list(self.running_pending_tasks.keys()), check_all=False, verbosity=3, numeric_times=True)
                     continue
                 elif self._status_checker.running():
                     time.sleep(0.01)
@@ -164,7 +164,6 @@ class TaskEngine(threading.Thread):
                         if tid not in self.running_tasks + list(self.running_pending_tasks.keys()):
                             # we keep track of status of non-related tasks to check if the job queues
                             # are overwhelmed
-                            self.task_status[tid] = tst
                             env.log_to_file('TASK',
                                 f'Task {tid} removed since status check.')
                             continue
@@ -227,11 +226,10 @@ class TaskEngine(threading.Thread):
                         self.submitting_tasks.pop(k)
 
             if self.pending_tasks:
-                with threading.Lock():
-                    # check active (non-terminal) status, including those are pending, submitted, and running
-                    num_active_tasks = len([x for x in self.task_status.values() if x not in ('completed', 'failed', 'aborted', 'new')])
-                    if num_active_tasks >= self.max_running_jobs:
-                        continue
+                num_active_tasks = len(
+                    self.submitting_tasks) + len(self.running_tasks)
+                if num_active_tasks >= self.max_running_jobs:
+                    continue
 
                 # assign tasks to self.max_running_jobs workers
                 slots = [[] for i in range(self.max_running_jobs)]
