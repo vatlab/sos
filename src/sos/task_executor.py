@@ -190,7 +190,7 @@ def _validate_task_signature(sig, saved_sig, task_id, is_subtask):
 
 
 def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode,
-                       monitor_interval, resource_monitor_interval):
+                       monitor_interval, resource_monitor_interval, master_runtime):
     '''If this is a master task, execute as individual tasks'''
     m = ProcessMonitor(task_id, monitor_interval=monitor_interval,
                        resource_monitor_interval=resource_monitor_interval,
@@ -256,7 +256,8 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
                     tdef.sos_dict.update(params.common_dict)
                 results.append(p.apply_async(_execute_task,
                                              ((tid, tdef, {tid: sig_content.get(tid, {})}), verbosity, runmode,
-                                              sigmode, None, None), callback=copy_out_and_err))
+                                              sigmode, None, None, {x:master_runtime.get(x, {}) for x in ('_runtime', tid)}),
+                                              callback=copy_out_and_err))
             for idx, r in enumerate(results):
                 results[idx] = r.get()
             p.close()
@@ -277,7 +278,8 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
                     tdef.sos_dict.update(params.common_dict)
                 # no monitor process for subtasks
                 res = _execute_task((tid, tdef, {tid: sig_content.get(tid, {})}), verbosity=verbosity, runmode=runmode,
-                                    sigmode=sigmode, monitor_interval=None, resource_monitor_interval=None)
+                                    sigmode=sigmode, monitor_interval=None, resource_monitor_interval=None,
+                                    {x:master_runtime.get(x, {}) for x in ('_runtime', tid)})
                 try:
                     copy_out_and_err(res)
                 except Exception as e:
@@ -336,7 +338,7 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
 
 
 def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_interval=5,
-                  resource_monitor_interval=60):
+                  resource_monitor_interval=60, master_runtime={}):
     '''A function that execute specified task within a local dictionary
     (from SoS env.sos_dict). This function should be self-contained in that
     it can be handled by a task manager, be executed locally in a separate
@@ -344,7 +346,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
     # start a monitoring file, which would be killed after the job
     # is done (killed etc)
     if isinstance(task_id, str):
-        params = TaskFile(task_id).get_params_with_runtime()
+        params, master_runtime = TaskFile(task_id).get_params_and_runtime()
         sig_content = TaskFile(task_id).signature
         subtask = False
     else:
@@ -354,9 +356,16 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
         if 'TASK' in env.config['SOS_DEBUG']:
             env.log_to_file('TASK', f'Executing subtask {task_id}')
 
+    # update local runtime with master runtime
+    if '_runtime' in master_runtime:
+        params.sos_dict['_runtime'].update(master_runtime['_runtime'])
+    if task_id in master_runtime:
+        params.sos_dict.update(master_runtime[task_id])
+
     if hasattr(params, 'task_stack'):
         return _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode,
-                                  monitor_interval, resource_monitor_interval)
+                                  monitor_interval, resource_monitor_interval,
+                                  master_runtime)
 
     global_def, task, sos_dict = params.global_def, params.task, params.sos_dict
 

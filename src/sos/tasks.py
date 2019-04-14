@@ -534,7 +534,7 @@ class TaskFile(object):
 
     runtime = property(_get_runtime, _set_runtime)
 
-    def get_params_with_runtime(self):
+    def get_params_and_runtime(self):
         with open(self.task_file, 'rb') as fh:
             header = self._read_header(fh)
             if header.params_size == 0 and header.runtime_size == 0:
@@ -556,10 +556,7 @@ class TaskFile(object):
                 except Exception as e:
                     env.logger.error(f'Failed to obtain runtime of task {self.task_id}: {e}')
                     runtime = {'_runtime': {}}
-                params.sos_dict['_runtime'].update(runtime['_runtime'])
-                runtime.pop('_runtime')
-                params.sos_dict.update(runtime)
-            return params
+            return params, runtime
 
     def _get_status(self):
         if not os.path.isfile(self.task_file):

@@ -514,7 +514,8 @@ class RemoteHost:
         tf = TaskFile(task_id)
         params = tf.params
         task_vars = params.sos_dict
-        runtime = {'_runtime': {x: task_vars['_runtime'][x] for x in ('verbosity', 'sig_mode', 'run_mode')}}
+        runtime = {'_runtime': {x: task_vars['_runtime'][x] for x in ('verbosity', 'sig_mode', 'run_mode')},
+            task_id: {}}
 
         if self.config.get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
                 and self.config['max_mem'] < task_vars['_runtime']['mem']:
@@ -566,17 +567,37 @@ class RemoteHost:
             if not task_vars[var]:
                 continue
             elif isinstance(task_vars[var], str):
-                runtime[var] = self._map_var(task_vars[var])
+                runtime[task_id][var] = self._map_var(task_vars[var])
                 env.log_to_file('TASK',
                     f'On {self.alias}: ``{var}`` = {short_repr(task_vars[var])}')
             elif isinstance(task_vars[var], (Sequence, set)):
-                runtime[var] = type(task_vars[var])(
+                runtime[task_id][var] = type(task_vars[var])(
                     self._map_var(task_vars[var]))
                 env.log_to_file('TASK',
                     f'On {self.alias}: ``{var}`` = {short_repr(task_vars[var])}')
             else:
                 env.logger.warning(
                     f'Failed to map {var} of type {task_vars[var].__class__.__name__}')
+
+        # master task??
+        if hasattr(params, 'task_stack'):
+            for tid, tdef in params.task_stack:
+                runtime[tid] = {}
+
+                for var in mapped_vars:
+                    if var not in tdef.sos_dict:
+                        # input, output, depends might not exist
+                        continue
+                    if not tdef.sos_dict[var]:
+                        continue
+                    elif isinstance(tdef.sos_dict[var], str):
+                        runtime[tid][var] = self._map_var(tdef.sos_dict[var])
+                    elif isinstance(tdef.sos_dict[var], (Sequence, set)):
+                        runtime[tid][var] = type(tdef.sos_dict[var])(
+                            self._map_var(tdef.sos_dict[var]))
+                    else:
+                        env.logger.warning(
+                            f'Failed to map {var} of type {tdef.sos_dict[var].__class__.__name__}')
 
         # server restrictions #488
         for key in ('max_mem', 'max_cores', 'max_walltime'):
