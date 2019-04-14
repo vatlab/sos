@@ -925,7 +925,7 @@ with open(_input, 'r') as inf, open(_output, 'w') as outf:
         for i in range(4):
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
             with open(f'test_{i}.bak') as outf:
-                self.assertEqual(outf.read(), f'test_{i}_{val},bak')
+                self.assertEqual(outf.read(), f'test_{i}_{val}.bak')
             self.assertTrue(os.path.isfile(f'test_{i}.bak'))
             with open(f'test_{i}.bak') as outf:
                 self.assertEqual(outf.read(), f'test_{i}_{val}.bak')
