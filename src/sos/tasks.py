@@ -335,7 +335,6 @@ class TaskFile(object):
                 header = self._read_header(fh)
                 if header.result_size != 0:
                     if not keep_result:
-                        self._reset(fh)
                         result_size = 0
                         signature_size = 0
                     else:
