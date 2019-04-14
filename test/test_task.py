@@ -918,7 +918,7 @@ with open(_input, 'r') as inf, open(_output, 'w') as outf:
         Base_Executor(wf, args=['--g', str(val)],
             config={
             'config_file': '~/docker.yml',
-            'default_queue': 'ts',
+            'default_queue': 'docker',
             'sig_mode': 'force',
         }).run()
         # now check if
@@ -961,7 +961,7 @@ with open(_input, 'r') as inf, open(_output, 'w') as outf:
         Base_Executor(wf, args=['--g', str(val)],
             config={
             'config_file': '~/docker.yml',
-            'default_queue': 'ts',
+            'default_queue': 'docker',
             'sig_mode': 'force',
         }).run()
         # now check if
