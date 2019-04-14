@@ -583,7 +583,6 @@ class RemoteHost:
         if hasattr(params, 'task_stack'):
             for tid, tdef in params.task_stack:
                 runtime[tid] = {}
-
                 for var in mapped_vars:
                     if var not in tdef.sos_dict:
                         # input, output, depends might not exist

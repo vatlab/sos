@@ -578,7 +578,6 @@ class Base_Step_Executor:
         except StopIteration as e:
             results = e.value
 
-
         for id, result in results.items():
             # turn to string to avoid naming lookup issue
             rep_result = {x: (y if isinstance(y, (int, bool, float, str)) else short_repr(
@@ -1440,8 +1439,10 @@ class Base_Step_Executor:
                 if 'sig_skipped' in res:
                     self.completed['__substep_skipped__'] += 1
                     self.completed['__substep_completed__'] -= 1
-                if 'output' in res:
-                    self.output_groups[idx] = res["output"]
+                # we do not update output_groups with res['output'] because
+                # the results might be rent from remote host with remote filenames
+                #if 'output' in res:
+                #    self.output_groups[idx] = res["output"]
 
             # check results
             for proc_result in [x for x in self.proc_results if x['ret_code'] == 0]:

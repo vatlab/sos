@@ -279,7 +279,7 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode, sigmode
                 # no monitor process for subtasks
                 res = _execute_task((tid, tdef, {tid: sig_content.get(tid, {})}), verbosity=verbosity, runmode=runmode,
                                     sigmode=sigmode, monitor_interval=None, resource_monitor_interval=None,
-                                    {x:master_runtime.get(x, {}) for x in ('_runtime', tid)})
+                                    master_runtime={x:master_runtime.get(x, {}) for x in ('_runtime', tid)})
                 try:
                     copy_out_and_err(res)
                 except Exception as e:
