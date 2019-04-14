@@ -989,6 +989,85 @@ with open(_input, 'r') as inf, open(_output, 'w') as outf:
             with open(f'test_{i}.bak') as outf:
                 self.assertEqual(outf.read(), f'test_{i}_{val}.bak')
 
+    def testRemoteInputTarget(self):
+        '''Test the use of remote target'''
+        if os.path.isfile(f'vars.sh'):
+            os.remove(f'vars.sh')
+        if os.path.isfile(f'vars1.sh'):
+            os.remove(f'vars1.sh')
+        script = SoS_Script('''
+
+[10]
+input: remote('/lib/init/vars.sh')
+output: f'vars1.sh'
+
+task:
+
+with open(_input, 'r') as inf, open(_output, 'w') as outf:
+	outf.write(inf.read())
+''')
+        wf = script.workflow()
+        Base_Executor(wf,
+            config={
+            'config_file': '~/docker.yml',
+            'default_queue': 'docker',
+            'sig_mode': 'force',
+        }).run()
+        self.assertFalse(os.path.isfile('vars.sh'))
+        self.assertTrue(os.path.isfile('vars1.sh'))
+
+
+    def testRemoteOutputTarget(self):
+        '''Test the use of remote target'''
+        if os.path.isfile(f'vars.sh'):
+            os.remove(f'vars.sh')
+        if os.path.isfile(f'vars1.sh'):
+            os.remove(f'vars1.sh')
+        script = SoS_Script('''
+[10]
+input: remote('/lib/init/vars.sh')
+output: remote(f'vars1.sh')
+
+task:
+
+with open(_input, 'r') as inf, open(_output, 'w') as outf:
+	outf.write(inf.read())
+''')
+        wf = script.workflow()
+        Base_Executor(wf,
+            config={
+            'config_file': '~/docker.yml',
+            'default_queue': 'docker',
+            'sig_mode': 'force',
+        }).run()
+        self.assertFalse(os.path.isfile('vars.sh'))
+        self.assertFalse(os.path.isfile('vars1.sh'))
+        #
+        # case with trunksize
+        if os.path.isfile(f'vars.sh'):
+            os.remove(f'vars.sh')
+        if os.path.isfile(f'vars1.sh'):
+            os.remove(f'vars1.sh')
+        script = SoS_Script('''
+[10]
+import os
+input: remote('/lib/init/vars.sh'), remote('/lib/init/init-d-script'), group_by=1
+output: remote(os.path.basename(str(_input)))
+
+task: trunk_size=2
+
+with open(_input, 'r') as inf, open(_output, 'w') as outf:
+	outf.write(inf.read())
+''')
+        wf = script.workflow()
+        Base_Executor(wf,
+            config={
+            'config_file': '~/docker.yml',
+            'default_queue': 'docker',
+            'sig_mode': 'force',
+        }).run()
+        self.assertFalse(os.path.isfile('vars.sh'))
+        self.assertFalse(os.path.isfile('init-d-script'))
 
 if __name__ == '__main__':
     unittest.main()

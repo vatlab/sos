@@ -393,7 +393,7 @@ class RemoteHost:
                 k = max(matched, key=len)
                 dest = self.path_map[k] + dest[len(k):]
             else:
-                env.logger.warning(
+                env.logger.debug(
                     f'Path {source} is not under any specified paths of localhost and is mapped to {dest} on remote host.')
             return dest.replace('\\', '/')
         elif isinstance(source, (Sequence, set, sos_targets)):
@@ -403,7 +403,7 @@ class RemoteHost:
             env.logger.debug(f'Ignore unmappable source {source}')
             return source
 
-    def _revert_map_var(self, dest):
+    def _reverse_map_var(self, dest):
         if isinstance(dest, path):
             dest = str(dest)
         if isinstance(dest, str):
@@ -413,11 +413,11 @@ class RemoteHost:
                 k = max(matched, key=len)
                 dest = k + dest[len(self.path_map[k]):]
             else:
-                env.logger.warning(
+                env.logger.debug(
                     f'Path {dest} is not under any specified paths of localhost and is mapped to {dest} on local host.')
             return dest.replace('\\', '/')
         elif isinstance(dest, (Sequence, set, sos_targets)):
-            ret = [self._revert_map_var(x) for x in dest]
+            ret = [self._reverse_map_var(x) for x in dest]
             return [x for x in ret if x is not None]
         else:
             env.logger.debug(f'Ignore unmappable source {dest}')
@@ -553,7 +553,7 @@ class RemoteHost:
 
         if task_vars['_input'] and not isinstance(task_vars['_input'], Undetermined):
             env.logger.info(
-                f'{task_id} ``sending`` {short_repr(task_vars["_input"])}')
+                f'{task_id} ``sending`` {short_repr(task_vars["_input"])} if needed')
             self.send_to_host(task_vars['_input'])
         if task_vars['_depends'] and not isinstance(task_vars['_depends'], Undetermined):
             env.logger.info(
@@ -754,12 +754,19 @@ class RemoteHost:
                         f'{task_id} ``received`` {short_repr(list(received.keys()))}')
         # we need to translate result from remote path to local
         if 'output' in res:
-            res['output'] = sos_targets(self._revert_map_var(res['output']))
+            if job_dict['_output'].undetermined():
+                res['output'] = sos_targets(self._reverse_map_var(res['output']))
+            else:
+                res['output'] = job_dict['_output']
         if 'subtasks' in res:
-            for tid in res['subtasks']:
-                if 'output' in res['subtasks'][tid]:
-                    res['subtasks'][tid]['output'] = sos_targets(self._revert_map_var(
-                        res['subtasks'][tid]['output']))
+            for tid, subparams in params.task_stack:
+                if tid in res['subtasks'] and 'output' in res['subtasks'][tid]:
+                    if subparams.sos_dict['_output'].undetermined():
+                        res['subtasks'][tid]['output'] = sos_targets(self._reverse_map_var(
+                            res['subtasks'][tid]['output']))
+                    else:
+                        res['subtasks'][tid]['output'] = subparams.sos_dict['_output']
+        env.logger.error(res)
         return res
 
 
