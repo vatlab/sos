@@ -361,7 +361,7 @@ class RemoteHost:
                 env.logger.warning(
                     f'Path {source} is not under any specified paths of localhost and is mapped to {dest} on remote host.')
             result[source] = dest.replace('\\', '/')
-        elif isinstance(source, (Sequence, set)):
+        elif isinstance(source, (Sequence, set, sos_targets)):
             for src in source:
                 result.update(self._map_path(src))
         else:
@@ -395,12 +395,32 @@ class RemoteHost:
                 env.logger.warning(
                     f'Path {source} is not under any specified paths of localhost and is mapped to {dest} on remote host.')
             return dest.replace('\\', '/')
-        elif isinstance(source, (Sequence, set)):
+        elif isinstance(source, (Sequence, set, sos_targets)):
             ret = [self._map_var(x) for x in source]
             return [x for x in ret if x is not None]
         else:
             env.logger.debug(f'Ignore unmappable source {source}')
             return source
+
+    def _revert_map_var(self, dest):
+        if isinstance(dest, path):
+            dest = str(dest)
+        if isinstance(dest, str):
+            matched = [l for l,r in self.path_map.items() if dest.startswith(r) and (len(r) == len(dest) or r.endswith('/') or r.endswith('\\') or dest[len(r)] in ('/', '\\'))]
+            if matched:
+                # pick the longest key that matches
+                k = max(matched, key=len)
+                dest = k + dest[len(self.path_map[k]):]
+            else:
+                env.logger.warning(
+                    f'Path {dest} is not under any specified paths of localhost and is mapped to {dest} on local host.')
+            return dest.replace('\\', '/')
+        elif isinstance(dest, (Sequence, set, sos_targets)):
+            ret = [self._revert_map_var(x) for x in dest]
+            return [x for x in ret if x is not None]
+        else:
+            env.logger.debug(f'Ignore unmappable source {dest}')
+            return dest
 
     def send_to_host(self, items):
         # we only copy files and directories, not other types of targets
@@ -731,6 +751,14 @@ class RemoteHost:
                 if received:
                     env.logger.info(
                         f'{task_id} ``received`` {short_repr(list(received.keys()))}')
+        # we need to translate result from remote path to local
+        if 'output' in res:
+            res['output'] = sos_targets(self._revert_map_var(res['output']))
+        if 'subtasks' in res:
+            for tid in res['subtasks']:
+                if 'output' in res['subtasks'][tid]:
+                    res['subtasks'][tid]['output'] = sos_targets(self._revert_map_var(
+                        res['subtasks'][tid]['output']))
         return res
 
 

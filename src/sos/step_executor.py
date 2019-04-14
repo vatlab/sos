@@ -1439,10 +1439,8 @@ class Base_Step_Executor:
                 if 'sig_skipped' in res:
                     self.completed['__substep_skipped__'] += 1
                     self.completed['__substep_completed__'] -= 1
-                # we do not update output_groups with res['output'] because
-                # the results might be rent from remote host with remote filenames
-                #if 'output' in res:
-                #    self.output_groups[idx] = res["output"]
+                if 'output' in res:
+                    self.output_groups[idx] = res["output"]
 
             # check results
             for proc_result in [x for x in self.proc_results if x['ret_code'] == 0]:
