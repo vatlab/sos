@@ -514,7 +514,7 @@ class RemoteHost:
         tf = TaskFile(task_id)
         params = tf.params
         task_vars = params.sos_dict
-        runtime = {'_runtime': {}}
+        runtime = {'_runtime': {x: task_vars['_runtime'][x] for x in ('verbosity', 'sig_mode', 'run_mode')}}
 
         if self.config.get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
                 and self.config['max_mem'] < task_vars['_runtime']['mem']:
@@ -586,6 +586,7 @@ class RemoteHost:
         # only update task file if there are runtime information
         if len(runtime) > 1 or runtime['_runtime']:
             tf.runtime = runtime
+
         tf.status = 'pending'
         self.send_task_file(task_file)
 
