@@ -556,6 +556,8 @@ class TaskFile(object):
                 except Exception as e:
                     env.logger.error(f'Failed to obtain runtime of task {self.task_id}: {e}')
                     runtime = {'_runtime': {}}
+            else:
+                runtime = {'_runtime': {}}
             return params, runtime
 
     def _get_status(self):
