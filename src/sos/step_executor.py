@@ -1474,6 +1474,9 @@ class Base_Step_Executor:
                     # corner case. Let us simply rerunt he entire step.
                     else:
                         raise excp
+                else:
+                    raise RuntimeError(f"Substep failed with return code {proc_result['ret_code']}")
+
             # if output is Undetermined, re-evalulate it
             # finalize output from output_groups because some output might be skipped
             # this is the final version of the output but we do maintain output

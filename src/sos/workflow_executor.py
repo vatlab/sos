@@ -138,10 +138,11 @@ class ExecutionManager(object):
         return self.workflow_queue and self.workflow_queue[-1][1]['blocking']
 
     def send_to_worker(self):
-        if 'WORKER' in env.config['SOS_DEBUG']:
-            env.log_to_file('WORKER', f'Executor send work to worker, {len(self.step_queue)} steps and {len(self.workflow_queue)} workflows pending.')
         if not self.step_queue and not self.workflow_queue:
             return False
+
+        if 'WORKER' in env.config['SOS_DEBUG']:
+            env.log_to_file('WORKER', f'Executor send work to worker, {len(self.step_queue)} steps and {len(self.workflow_queue)} workflows pending.')
 
         # ask the controller for a worker. If the next job is blocking, we
         # ask for a separate blocking.

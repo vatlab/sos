@@ -728,7 +728,7 @@ class RemoteHost:
 
         if not res:
             env.logger.debug(f'Result for {task_id} is not received (no result)')
-            return {'ret_code': 1, 'output': sos_targets()}
+            return {'ret_code': 1, 'exception': RuntimeError(f'Task {task_id} failed or aborted'), 'output': sos_targets()}
 
         if ('ret_code' in res and res['ret_code'] != 0) or ('succ' in res and res['succ'] != 0):
             _show_err_and_out(task_id, res)
