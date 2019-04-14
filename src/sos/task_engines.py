@@ -264,11 +264,18 @@ class TaskEngine(threading.Thread):
                     for slot in slots:
                         for tid in slot:
                             self.pending_tasks.remove(tid)
-            elif (self.running_tasks or self.running_pending_tasks) and time.time() - self.last_report > 60:
-                # if there is no  pending tasks
-                self.last_report = time.time()
-                n_running = len(self.running_tasks) + len(self.running_pending_tasks)
-                env.logger.info(f'Waiting for the completion of ``{n_running}`` task{"s" if n_running > 1 else ""}.')
+            elif self.running_tasks or self.running_pending_tasks:
+                if time.time() - self.last_report > 60:
+                    # if there is no  pending tasks
+                    self.last_report = time.time()
+                    n_running = len(self.running_tasks) + len(self.running_pending_tasks)
+                    env.logger.info(f'Waiting for the completion of ``{n_running}`` task{"s" if n_running > 1 else ""}.')
+            else:
+                if time.time() - self.last_report > 60:
+                    self.last_report = time.time()
+                    if 'TASK' in env.config['SOS_DEBUG']:
+                        env.log_to_file('TASK', f'No running or pending task. Task engine is idle.')
+
 
     def submit_task(self, task_id):
         # we wait for the engine to start
@@ -403,7 +410,7 @@ class TaskEngine(threading.Thread):
                             'tags': self.task_info['tid'].get('tags', '')
                         })
             self.task_status[task_id] = status
-            if status == 'pening' and task_id not in self.pending_tasks:
+            if status == 'pening' and task_id not in self.pending_tasks and task_id not in self.submitting_tasks:
                 self.pending_tasks.append(task_id)
             if status == 'running' and task_id not in self.running_tasks:
                 self.running_tasks.append(task_id)

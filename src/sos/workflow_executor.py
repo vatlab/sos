@@ -1057,7 +1057,7 @@ class Base_Executor:
                     # if this is NOT a result, rather some request for task, step, workflow etc
                     if isinstance(res, list):
                         if res[0] == 'tasks':
-                            env.log_to_file('EXECUTOR',
+                            env.log_to_file('TASK',
                                 f'Master receives task request {res}')
                             host = res[1]
                             if host == '__default__':
@@ -1075,7 +1075,6 @@ class Base_Executor:
                                 for task in new_tasks:
                                     runnable._host.submit_task(task)
                                 runnable._status = 'task_pending'
-                                dag.save(env.config['output_dag'])
                                 if 'EXECUTOR' in env.config['SOS_DEBUG']:
                                     env.log_to_file('EXECUTOR', 'Step becomes task_pending')
                             except Exception as e:

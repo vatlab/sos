@@ -773,8 +773,6 @@ class Host:
             if env.sos_dict['CONFIG']['localhost'] not in env.sos_dict['CONFIG']['hosts']:
                 raise ValueError(
                     f"Undefined localhost {env.sos_dict['CONFIG']['localhost']}")
-            if 'TASK' in env.config['SOS_DEBUG']:
-                env.log_to_file('TASK', f"Using hardcoded localhost {env.sos_dict['CONFIG']['localhost']}")
             return env.sos_dict['CONFIG']['localhost']
         raise ValueError(
             "No localhost could be identified from hostname, ip address, or a localhost key in config file")
