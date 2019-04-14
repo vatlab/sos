@@ -70,14 +70,14 @@ class MasterTaskParams(TaskParams):
         # walltime
         if not self.task_stack:
             for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem', 'max_mem', 'map_vars',
-                        'name', 'cur_dir', 'home_dir', 'verbosity', 'sig_mode', 'run_mode'):
+                        'name', 'workdir', 'verbosity', 'sig_mode', 'run_mode'):
                 if key in params.sos_dict['_runtime'] and params.sos_dict['_runtime'][key] is not None:
                     self.sos_dict['_runtime'][key] = params.sos_dict['_runtime'][key]
             self.sos_dict['step_name'] = params.sos_dict['step_name']
             self.tags = params.tags
         else:
             for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem', 'max_mem',
-                        'name', 'cur_dir', 'home_dir'):
+                        'name', 'workdir'):
                 val0 = self.task_stack[0][1].sos_dict['_runtime'].get(
                     key, None)
                 val = params.sos_dict['_runtime'].get(key, None)

@@ -374,6 +374,8 @@ class RemoteHost:
     #
     def _map_var(self, source):
         cwd = os.getcwd()
+        if isinstance(source, path):
+            source = str(source)
         if isinstance(source, str):
             dest = os.path.abspath(os.path.expanduser(source))
             # we use samefile to avoid problems with case-insensitive file system #522
@@ -541,11 +543,10 @@ class RemoteHost:
             self.send_to_host(task_vars['_runtime']['to_host'])
 
         # map variables
-        if 'workdir' not in task_vars['_runtime']:
+        if 'workdir' in task_vars['_runtime']:
+            runtime['_runtime']['workdir'] = self._map_var(task_vars['_runtime']['workdir'])
+        else:
             runtime['_runtime']['workdir'] = self._map_var(os.getcwd())
-        # for backward compatibility #1244
-        runtime['_runtime']['cur_dir'] = runtime['_runtime']['workdir']
-        runtime['_runtime']['home_dir'] = self._map_var(os.path.expanduser('~'))
 
         mapped_vars = {'_input', '_output',
                        '_depends', 'input', 'output', 'depends'}

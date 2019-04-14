@@ -560,14 +560,15 @@ class BackgroundProcess_TaskEngine(TaskEngine):
         '''Submit tasks by interpolating a shell script defined in job_template'''
         runtime = self.config
         runtime.update({
-            'cur_dir': os.getcwd(),
+            'workdir': os.getcwd(),
+            'cur_dir': os.getcwd(),  # for backward compatibility
             'verbosity': env.verbosity,
             'sig_mode': env.config.get('sig_mode', 'default'),
             'run_mode': env.config.get('run_mode', 'run'),
             'home_dir': os.path.expanduser('~')})
         if '_runtime' in env.sos_dict:
             runtime.update({x: env.sos_dict['_runtime'][x] for x in (
-                'nodes', 'cores', 'mem', 'walltime') if x in env.sos_dict['_runtime']})
+                'nodes', 'cores', 'workdir', 'mem', 'walltime') if x in env.sos_dict['_runtime']})
         if 'nodes' not in runtime:
             runtime['nodes'] = 1
         if 'cores' not in runtime:

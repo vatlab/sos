@@ -129,6 +129,9 @@ class ColoredFormatter(logging.Formatter):
             # for INFO, use default color
             record.color_levelname = record.levelname
             record.color_msg = emphasize(record.msg)
+        # for testing certain error message
+        if 'workdir' in record.color_msg:
+            print(get_traceback())
         return logging.Formatter.format(self, record)
 
 
