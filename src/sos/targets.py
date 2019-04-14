@@ -1309,7 +1309,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
         for grp in grps:
             if not isinstance(grp, sos_targets):
-                raise RuntimeError(f'_output should be of type sos_targets: {grp} of type {grp.__class__.__name__} returned. Please report this bug to SoS developers')
+                raise RuntimeError(f'_output should be of type sos_targets: {grp} of type {grp.__class__.__name__} returned.')
             start_idx = len(self._targets)
             grp_size = len(grp)
             self._targets.extend(grp._targets)

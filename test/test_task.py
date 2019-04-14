@@ -197,7 +197,7 @@ print('I am {}, done'.format(_index))
 repeat = range(4)
 input: for_each='repeat'
 
-task: 
+task:
 
 import time
 print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
@@ -801,9 +801,9 @@ _output.touch()
 [2]
 input: group_with = 'chunks'
 output: summary_stats = f'{_input}.summary', ld_matrix = f'{_input}.result'
-task: 
+task:
 
-python3: expand="${ }" 
+python3: expand="${ }"
        open("${_output['summary_stats']}", 'w').close()
        open("${_output['ld_matrix']}", 'w').close()
 ''')
@@ -830,7 +830,7 @@ print(f'this is task {i}')
         '''Test passing of parameters in global section to tasks #1155'''
         script = SoS_Script('''\
 [global]
-parameter: par=5 
+parameter: par=5
 def a():
   print(par)
 
@@ -886,6 +886,49 @@ assert _input == f'{_index+1}.out'
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
+
+    def testSyncInputOutput(self):
+        '''Test sync input and output with remote host'''
+        for i in range(4):
+            if os.path.isfile(f'test_{i}.txt'):
+                os.remove(f'test_{i}.txt')
+            if os.path.isfile(f'test_{i}.bak'):
+                os.remove(f'test_{i}.bak')
+        import random
+        script = SoS_Script('''
+parameter: g = 100
+
+[10]
+input: for_each=dict(i=range(4))
+output: f'test_{i}.txt'
+
+with open(f'test_{i}.txt', 'w') as tst:
+    tst.write(f'test_{i}_{g}')
+
+[20]
+output: _input.with_suffix('.bak')
+
+task:
+
+with open(_input, 'r') as inf, open(_output, 'w') as outf:
+	outf.write(inf.read() + '.bak')
+''')
+        wf = script.workflow()
+        val = random.randint(1, 10000)
+        Base_Executor(wf, args=['--g', str(val)],
+            config={
+            'config_file': '~/docker.yml',
+            'default_queue': 'ts',
+            'sig_mode': 'force',
+        }).run()
+        # now check if
+        for i in range(4):
+            self.assertTrue(os.path.isfile(f'test_{i}.txt'))
+            with open(f'test_{i}.bak') as outf:
+                self.assertEqual(outf.read(), f'test_{i}_{val},bak')
+            self.assertTrue(os.path.isfile(f'test_{i}.bak'))
+            with open(f'test_{i}.bak') as outf:
+                self.assertEqual(outf.read(), f'test_{i}_{val}.bak')
 
 
 if __name__ == '__main__':
