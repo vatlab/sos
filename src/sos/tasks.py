@@ -436,7 +436,10 @@ class TaskFile(object):
             if header.params_size == 0:
                 return {}
             else:
-                return pickle.loads(lzma.decompress(fh.read(header.params_size)))
+                try:
+                    return pickle.loads(lzma.decompress(fh.read(header.params_size)))
+                except Exception as e:
+                    raise RuntimeError(f'Failed to obtain params of task {self.task_id}: {e}')
 
 
     def _set_params(self, params):
@@ -486,7 +489,11 @@ class TaskFile(object):
             if header.runtime_size == 0:
                 return {}
             fh.seek(self.header_size + header.params_size, 0)
-            return pickle.loads(lzma.decompress(fh.read(header.runtime_size)))
+            try:
+                return pickle.loads(lzma.decompress(fh.read(header.runtime_size)))
+            except Exception as e:
+                env.logger.error(f'Failed to obtain runtime of task {self.task_id}: {e}')
+                return {'_runtime': {}}
 
     def _set_runtime(self, runtime):
         runtime_block = lzma.compress(pickle.dumps(runtime))
@@ -498,14 +505,15 @@ class TaskFile(object):
                     fh.seek(self.header_size + header.params_size, 0)
                     fh.write(runtime_block)
                 else:
+                    env.logger.error('expanding runtime')
                     params = fh.read(header.params_size)
                     fh.seek(self.header_size + header.params_size + header.runtime_size, 0)
-                    shell = fh.read(header.shell_size)
-                    pulse = fh.read(header.pulse_size)
-                    stdout = fh.read(header.stdout_size)
-                    stderr = fh.read(header.stderr_size)
-                    result = fh.read(header.result_size)
-                    signature = fh.read(header.signature_size)
+                    shell = fh.read(header.shell_size) if header.shell_size else b''
+                    pulse = fh.read(header.pulse_size) if header.pulse_size else b''
+                    stdout = fh.read(header.stdout_size) if header.stdout_size else b''
+                    stderr = fh.read(header.stderr_size) if header.stderr_size else b''
+                    result = fh.read(header.result_size) if header.result_size else b''
+                    signature = fh.read(header.signature_size) if header.signature_size else b''
                     header = header._replace(runtime_size=len(runtime_block))
                     self._write_header(fh, header)
                     fh.write(params)
@@ -537,11 +545,19 @@ class TaskFile(object):
             if header.params_size == 0:
                 params = {}
             else:
-                params = pickle.loads(lzma.decompress(fh.read(header.params_size)))
+                try:
+                    params = pickle.loads(lzma.decompress(fh.read(header.params_size)))
+                except Exception as e:
+                    env.logger.error(f'Failed to obtain params with runtime of task {self.task_id}: {e}')
+                    params = {}
             if '_runtime' not in params.sos_dict:
                 params.sos_dict['_runtime'] = {}
             if header.runtime_size > 0:
-                runtime = pickle.loads(lzma.decompress(fh.read(header.runtime_size)))
+                try:
+                    runtime = pickle.loads(lzma.decompress(fh.read(header.runtime_size)))
+                except Exception as e:
+                    env.logger.error(f'Failed to obtain runtime of task {self.task_id}: {e}')
+                    runtime = {'_runtime': {}}
                 params.sos_dict['_runtime'].update(runtime['_runtime'])
                 runtime.pop('_runtime')
                 params.sos_dict.update(runtime)
