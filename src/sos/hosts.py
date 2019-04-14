@@ -747,11 +747,13 @@ class RemoteHost:
                     env.logger.info(
                         f'{task_id} ``received`` {short_repr(list(received.keys()))}')
             if 'from_host' in job_dict['_runtime'] and env.config['run_mode'] != 'dryrun':
-                if isinstance(job_dict['_runtime']['from_host'], dict):
+                if isinstance(job_dict['_runtime']['from_host'], (dict, str)):
                     received = self.receive_from_host(job_dict['_runtime']['from_host'])
-                if received:
-                    env.logger.info(
-                        f'{task_id} ``received`` {short_repr(list(received.keys()))}')
+                    if received:
+                        env.logger.info(
+                            f'{task_id} ``received`` {short_repr(list(received.keys()))}')
+                else:
+                    env.logger.warning(f"Expecting a dictionary from from_host: {job_dict['_runtime']['from_host']} received")
         # we need to translate result from remote path to local
         if 'output' in res:
             if job_dict['_output'].undetermined():
@@ -766,7 +768,6 @@ class RemoteHost:
                             res['subtasks'][tid]['output']))
                     else:
                         res['subtasks'][tid]['output'] = subparams.sos_dict['_output']
-        env.logger.error(res)
         return res
 
 

@@ -1069,5 +1069,117 @@ with open(_input, 'r') as inf, open(_output, 'w') as outf:
         self.assertFalse(os.path.isfile('vars.sh'))
         self.assertFalse(os.path.isfile('init-d-script'))
 
+
+    @unittest.skipIf(not has_docker, "Docker container not usable")
+    def testDelayedInterpolation(self):
+        '''Test delayed interpolation with expression involving remote objects'''
+        # purge all previous tasks
+        if file_target('test.py').exists():
+            file_target('test.py').unlink()
+        if file_target('test.py.bak').exists():
+            file_target('test.py.bak').unlink()
+        script = SoS_Script('''
+[10]
+output: remote('test.py')
+task:
+run:
+    touch test.py
+
+[20]
+output: remote(f"{_input:R}.bak")
+task:
+run: expand=True
+    cp {_input} {_output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={
+                'config_file': '~/docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker',
+                'sig_mode': 'force',
+                }).run()
+        # this file is remote only
+        self.assertFalse(os.path.isfile('test.py'))
+        self.assertFalse(os.path.isfile('test.py.bak'))
+
+
+    @unittest.skipIf(not has_docker, "Docker container not usable")
+    def testFromHostOption(self):
+        '''Test from_remote option'''
+        if os.path.isfile('llp'):
+            os.remove('llp')
+        script = SoS_Script('''
+[10]
+task: from_host='llp'
+with open('llp', 'w') as llp:
+    llp.write("LLP")
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={
+            'config_file': '~/docker.yml',
+            'wait_for_task': True,
+            'default_queue': 'docker',
+            'sig_mode': 'force',
+            }).run()
+        self.assertTrue(os.path.isfile('llp'))
+        os.remove('llp')
+        # dict form
+        script = SoS_Script('''
+[10]
+task: from_host={'llp': 'll'}
+with open('llp', 'w') as llp:
+    llp.write("LLP")
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={
+                'config_file': '~/docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker',
+                }).run()
+        self.assertTrue(os.path.isfile('llp'))
+        os.remove('llp')
+
+    @unittest.skipIf(not has_docker, "Docker container not usable")
+    def testLocalFromHostOption(self):
+        '''Test from_remote option'''
+        if os.path.isfile('llp'):
+            os.remove('llp')
+        script = SoS_Script('''
+[10]
+task: from_host='llp'
+sh:
+    echo "LLP" > llp
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={
+                'config_file': '~/docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'sig_mode': 'force',
+                'default_queue': 'localhost',
+                }).run()
+        self.assertTrue(os.path.isfile('llp'))
+        os.remove('llp')
+        # dict form
+        script = SoS_Script('''
+[10]
+task: from_host={'llp': 'll'}
+sh:
+    echo "LLP" > ll
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={
+                'config_file': '~/docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'sig_mode': 'force',
+                'default_queue': 'localhost',
+                }).run()
+        self.assertTrue(os.path.isfile('llp'))
+        os.remove('llp')
+
+
 if __name__ == '__main__':
     unittest.main()
