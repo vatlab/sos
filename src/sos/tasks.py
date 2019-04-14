@@ -504,7 +504,6 @@ class TaskFile(object):
                     fh.seek(self.header_size + header.params_size, 0)
                     fh.write(runtime_block)
                 else:
-                    env.logger.error('expanding runtime')
                     params = fh.read(header.params_size)
                     fh.seek(self.header_size + header.params_size + header.runtime_size, 0)
                     shell = fh.read(header.shell_size) if header.shell_size else b''
