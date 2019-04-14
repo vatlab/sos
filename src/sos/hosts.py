@@ -152,7 +152,7 @@ class LocalHost:
             raise ValueError(f'Missing task definition {task_file}')
 
         tf = TaskFile(task_id)
-        params = tf.params
+        params, old_runtime = tf.get_params_and_runtime()
         # clear possible previous result
         task_vars = params.sos_dict
         runtime = {'_runtime': {}}
@@ -178,7 +178,8 @@ class LocalHost:
                     f'Task {task_id} requested more walltime ({task_vars["_runtime"]["walltime"]}) than allowed max_walltime ({self.config["max_walltime"]})')
                 return False
 
-        if len(runtime) > 1 or runtime['_runtime']:
+        # if the task has been running remotely, we need to reset runtime for local execution
+        if len(runtime) > 1 or runtime['_runtime'] or runtime != old_runtime:
             tf.runtime = runtime
         tf.status = 'pending'
         #
@@ -532,7 +533,7 @@ class RemoteHost:
         if not os.path.isfile(task_file):
             raise ValueError(f'Missing task definition {task_file}')
         tf = TaskFile(task_id)
-        params = tf.params
+        params, old_runtime = tf.get_params_and_runtime()
         task_vars = params.sos_dict
         runtime = {'_runtime': {x: task_vars['_runtime'][x] for x in ('verbosity', 'sig_mode', 'run_mode')},
             task_id: {}}
@@ -624,7 +625,7 @@ class RemoteHost:
                 runtime['_runtime'][key] = format_HHMMSS(self.config[key]) if key == 'max_walltime' else self.config[key]
 
         # only update task file if there are runtime information
-        if len(runtime) > 1 or runtime['_runtime']:
+        if len(runtime) > 1 or runtime['_runtime'] or runtime != old_runtime:
             tf.runtime = runtime
 
         tf.status = 'pending'

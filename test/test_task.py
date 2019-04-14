@@ -887,7 +887,7 @@ assert _input == f'{_index+1}.out'
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    def testSyncInputOutput(self):
+    def testSyncInputOutputAndRerun(self):
         '''Test sync input and output with remote host'''
         for i in range(4):
             if os.path.isfile(f'test_{i}.txt'):
@@ -922,6 +922,22 @@ with open(_input, 'r') as inf, open(_output, 'w') as outf:
             'sig_mode': 'force',
         }).run()
         # now check if
+        for i in range(4):
+            self.assertTrue(os.path.isfile(f'test_{i}.txt'))
+            with open(f'test_{i}.bak') as outf:
+                self.assertEqual(outf.read(), f'test_{i}_{val}.bak')
+            self.assertTrue(os.path.isfile(f'test_{i}.bak'))
+            with open(f'test_{i}.bak') as outf:
+                self.assertEqual(outf.read(), f'test_{i}_{val}.bak')
+        #
+        # test rerun the task file on local host
+        for i in range(4):
+            if os.path.isfile(f'test_{i}.txt'):
+                os.remove(f'test_{i}.txt')
+            if os.path.isfile(f'test_{i}.bak'):
+                os.remove(f'test_{i}.bak')
+        Base_Executor(wf, args=['--g', str(val)],
+            config={ 'sig_mode': 'force' }).run()
         for i in range(4):
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
             with open(f'test_{i}.bak') as outf:
@@ -972,6 +988,7 @@ with open(_input, 'r') as inf, open(_output, 'w') as outf:
             self.assertTrue(os.path.isfile(f'test_{i}.bak'))
             with open(f'test_{i}.bak') as outf:
                 self.assertEqual(outf.read(), f'test_{i}_{val}.bak')
+
 
 if __name__ == '__main__':
     unittest.main()
