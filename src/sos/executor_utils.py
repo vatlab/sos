@@ -149,12 +149,14 @@ def prepare_env(gdef='', gvars={}, extra_vars={}, host='localhost'):
     if host == 'localhost':
         if 'localhost' in env.sos_dict['CONFIG']:
             if 'hosts' not in env.sos_dict['CONFIG'] or env.sos_dict['CONFIG']['localhost'] not in env.sos_dict['CONFIG']['hosts']:
-                raise RuntimeError(f"Localhost {env.sos_dict['CONFIG']['localhost']} is not defined in CONFIG['hosts']")
+                env.logger.warning(f"Localhost {env.sos_dict['CONFIG']['localhost']} is not defined in CONFIG['hosts']")
+                env.sos_dict['CONFIG']['hosts'][env.sos_dict['CONFIG']['localhost']] = {'paths': {}, 'address': 'localhost'}
             env.sos_dict.set('__host__', env.sos_dict['CONFIG']['localhost'])
         else:
             if 'hosts' in env.sos_dict['CONFIG']:
                 if 'localhost' not in env.sos_dict['CONFIG']['hosts']:
-                    raise RuntimeError('locahost is not defined in "hosts".')
+                    env.logger.warning('locahost is not defined in "hosts".')
+                    env.sos_dict['CONFIG']['hosts']['localhost'] = {'paths': {}, 'address': 'localhost'}
             elif 'paths' not in env.sos_dict['CONFIG']['hosts']['localhost']:
                 env.sos_dict['CONFIG']['hosts']['localhost']['paths'] = {}
             env.sos_dict.set('__host__', 'localhost')
