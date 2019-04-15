@@ -1389,7 +1389,7 @@ def copy_public_key(host, agent, password):
     #
     # ssh
     try:
-        cmd = f"ssh {agent.address} -p {agent.port} '[ -d .ssh ] || mkdir .ssh; cat id_rsa.pub.{host} >> .ssh/authorized_keys; rm -f id_rsa.pub.{host}'"
+        cmd = f"ssh {agent.address} -p {agent.port} '[ -d .ssh ] || mkdir .ssh && chmod 700 .ssh; cat id_rsa.pub.{host} >> .ssh/authorized_keys; rm -f id_rsa.pub.{host}'"
         env.logger.info(cmd)
         p = pexpect.spawn(cmd, echo=False)
         i = p.expect(["(?i)are you sure you want to continue connecting",
