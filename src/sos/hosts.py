@@ -423,6 +423,13 @@ class RemoteHost:
             env.logger.debug(f'Ignore unmappable source {dest}')
             return dest
 
+    def _remote_abs(self, path):
+        # return an absolute path relative to remote host
+        path = str(path)
+        if os.path.isabs(path):
+            return path
+        return os.path.join(self._map_var(os.getcwd()), path)
+
     def send_to_host(self, items):
         # we only copy files and directories, not other types of targets
         if isinstance(items, str):
@@ -455,10 +462,9 @@ class RemoteHost:
             sending = self._map_path(items)
         else:
             sending = items
-
         sent = {}
         for source in sorted(sending.keys()):
-            dest = sending[source]
+            dest = self._remote_abs(sending[source])
             if self.is_shared(source):
                 if 'TASK' in env.config['SOS_DEBUG']:
                     env.log_to_file('TASK', f'Skip sending {source} on shared file system')
@@ -481,10 +487,10 @@ class RemoteHost:
         if isinstance(items, dict):
             # specify as local:remote
             # needs remote:local
-            receiving = {y: str(x) for x, y in items.items()}
+            receiving = {self._remote_abs(y): str(x) for x, y in items.items()}
         else:
             # y could be path
-            receiving = {y: str(x) for x, y in self._map_path(items).items()}
+            receiving = {self._remote_abs(y): str(x) for x, y in self._map_path(items).items()}
         #
         received = {}
         for source in sorted(receiving.keys()):
