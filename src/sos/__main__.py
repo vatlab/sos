@@ -602,8 +602,8 @@ def get_remote_parser(desc_only=False):
                                      description='''Listing and testing remote configurations''')
     if desc_only:
         return parser
-    parser.add_argument('action', choices=['list', 'status', 'setup', 'test'],
-                        help='''List, check status, setup, or test configuration of all or specified remote hosts''')
+    parser.add_argument('action', choices=['list', 'status', 'setup', 'test', 'login'],
+                        help='''List, check status, setup, login or test configuration of all or specified remote hosts''')
     parser.add_argument('hosts', nargs='*', metavar='hosts',
                         help='''Hosts to be checked or tested. All hosts defined in SoS configurations will be
         included if unspecified. As a special case for "sos remote setup", an address is acceptable even if it
@@ -639,6 +639,13 @@ def cmd_remote(args, workflow_args):
         elif args.action == 'test':
             from .hosts import test_queues
             test_queues(cfg, args.hosts, args.verbosity)
+        elif args.action == 'login':
+            from .hosts import login_host
+            if not args.hosts:
+                raise ValueError('Please specify a host to login')
+            if len(args.hosts) > 1:
+                raise ValueError(f'Please specify only one host to login. {args.hosts} provided.')
+            login_host(cfg, args.hosts[0])
     except Exception as e:
         from .utils import get_traceback
         if args.verbosity and args.verbosity > 2:
