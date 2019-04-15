@@ -740,26 +740,27 @@ class RemoteHost:
         if ('ret_code' in res and res['ret_code'] != 0) or ('succ' in res and res['succ'] != 0):
             _show_err_and_out(task_id, res)
             env.logger.info(f'Ignore remote results for failed job {task_id}')
-        else:
-            if env.verbosity >= 3:
-                _show_err_and_out(task_id, res)
-            # do we need to copy files? We need to consult original task file
-            # not the converted one
-            job_dict = params.sos_dict
-            if job_dict['_output'] and not isinstance(job_dict['_output'], Undetermined) and env.config['run_mode'] != 'dryrun':
-                received = self.receive_from_host(
-                    [x for x in job_dict['_output'] if isinstance(x, (str, path))])
+            return res
+
+        if env.verbosity >= 3:
+            _show_err_and_out(task_id, res)
+        # do we need to copy files? We need to consult original task file
+        # not the converted one
+        job_dict = params.sos_dict
+        if job_dict['_output'] and not isinstance(job_dict['_output'], Undetermined) and env.config['run_mode'] != 'dryrun':
+            received = self.receive_from_host(
+                [x for x in job_dict['_output'] if isinstance(x, (str, path))])
+            if received:
+                env.logger.info(
+                    f'{task_id} ``received`` {short_repr(list(received.keys()))}')
+        if 'from_host' in job_dict['_runtime'] and env.config['run_mode'] != 'dryrun':
+            if isinstance(job_dict['_runtime']['from_host'], (dict, str)):
+                received = self.receive_from_host(job_dict['_runtime']['from_host'])
                 if received:
                     env.logger.info(
                         f'{task_id} ``received`` {short_repr(list(received.keys()))}')
-            if 'from_host' in job_dict['_runtime'] and env.config['run_mode'] != 'dryrun':
-                if isinstance(job_dict['_runtime']['from_host'], (dict, str)):
-                    received = self.receive_from_host(job_dict['_runtime']['from_host'])
-                    if received:
-                        env.logger.info(
-                            f'{task_id} ``received`` {short_repr(list(received.keys()))}')
-                else:
-                    env.logger.warning(f"Expecting a dictionary from from_host: {job_dict['_runtime']['from_host']} received")
+            else:
+                env.logger.warning(f"Expecting a dictionary from from_host: {job_dict['_runtime']['from_host']} received")
         # we need to translate result from remote path to local
         if 'output' in res:
             if job_dict['_output'].undetermined():
