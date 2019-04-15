@@ -4,12 +4,16 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import os
+import sys
 import subprocess
 import unittest
 
 from sos.hosts import Host
 from sos.targets import file_target
 from sos.utils import env
+from sos.parser import  SoS_Script
+from sos.workflow_executor import Base_Executor
+
 
 has_docker = True
 try:

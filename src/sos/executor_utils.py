@@ -6,7 +6,6 @@
 #
 # Utility functions used by various executors.
 #
-import os
 import sys
 import re
 import psutil
