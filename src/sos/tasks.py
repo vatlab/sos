@@ -140,7 +140,10 @@ class MasterTaskParams(TaskParams):
                 common_keys = {key for key in common_keys if key in params.sos_dict and common_dict[key] == params.sos_dict[key]}
             if not common_keys:
                 break
-        self.common_dict = {x:common_dict[x] for x in common_keys}
+        # if there is only one subtask, _output will be moved out of subtasks and makes
+        # the retrival of outputs difficult.
+        common_keys.discard('_output')
+        self.common_dict = {x:common_dict[x] for x in common_keys }
         for _, params in self.task_stack:
             params.sos_dict = {k:v for k,v in params.sos_dict.items() if k not in common_keys}
         return self

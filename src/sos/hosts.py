@@ -740,36 +740,45 @@ class RemoteHost:
         if ('ret_code' in res and res['ret_code'] != 0) or ('succ' in res and res['succ'] != 0):
             _show_err_and_out(task_id, res)
             env.logger.info(f'Ignore remote results for failed job {task_id}')
-        else:
-            if env.verbosity >= 3:
-                _show_err_and_out(task_id, res)
-            # do we need to copy files? We need to consult original task file
-            # not the converted one
-            job_dict = params.sos_dict
-            if job_dict['_output'] and not isinstance(job_dict['_output'], Undetermined) and env.config['run_mode'] != 'dryrun':
-                received = self.receive_from_host(
-                    [x for x in job_dict['_output'] if isinstance(x, (str, path))])
+            return res
+
+        if env.verbosity >= 3:
+            _show_err_and_out(task_id, res)
+        # do we need to copy files? We need to consult original task file
+        # not the converted one
+        job_dict = params.sos_dict
+        if '_output' in job_dict and job_dict['_output'] and not isinstance(job_dict['_output'], Undetermined) and env.config['run_mode'] != 'dryrun':
+            received = self.receive_from_host(
+                [x for x in job_dict['_output'] if isinstance(x, (str, path))])
+            if received:
+                env.logger.info(
+                    f'{task_id} ``received`` {short_repr(list(received.keys()))}')
+        if 'from_host' in job_dict['_runtime'] and env.config['run_mode'] != 'dryrun':
+            if isinstance(job_dict['_runtime']['from_host'], (dict, str)):
+                received = self.receive_from_host(job_dict['_runtime']['from_host'])
                 if received:
                     env.logger.info(
                         f'{task_id} ``received`` {short_repr(list(received.keys()))}')
-            if 'from_host' in job_dict['_runtime'] and env.config['run_mode'] != 'dryrun':
-                if isinstance(job_dict['_runtime']['from_host'], (dict, str)):
-                    received = self.receive_from_host(job_dict['_runtime']['from_host'])
-                    if received:
-                        env.logger.info(
-                            f'{task_id} ``received`` {short_repr(list(received.keys()))}')
-                else:
-                    env.logger.warning(f"Expecting a dictionary from from_host: {job_dict['_runtime']['from_host']} received")
+            else:
+                env.logger.warning(f"Expecting a dictionary from from_host: {job_dict['_runtime']['from_host']} received")
         # we need to translate result from remote path to local
         if 'output' in res:
-            if job_dict['_output'].undetermined():
+            if '_output' not in job_dict:
+                # this should exist, but let us check it for robustness
+                env.logger.warning('Missing _output in task dict')
+                res['output'] = sos_targets()
+            elif job_dict['_output'].undetermined():
                 res['output'] = sos_targets(self._reverse_map_var(res['output']))
             else:
                 res['output'] = job_dict['_output']
         if 'subtasks' in res:
             for tid, subparams in params.task_stack:
                 if tid in res['subtasks'] and 'output' in res['subtasks'][tid]:
-                    if subparams.sos_dict['_output'].undetermined():
+                    if '_output' not in subparams.sos_dict:
+                        # this should not happen
+                        env.logger.warning('Missing _output in subparams')
+                        res['subtasks'][tid]['output'] = sos_targets()
+                    elif subparams.sos_dict['_output'].undetermined():
                         res['subtasks'][tid]['output'] = sos_targets(self._reverse_map_var(
                             res['subtasks'][tid]['output']))
                     else:
@@ -1355,7 +1364,7 @@ def copy_public_key(host, agent, password):
             import getpass
             password = getpass.getpass(
                 f'Please enter password for {agent.address}: ')
-        cmd = f"scp {os.path.expanduser('~')}/.ssh/id_rsa.pub {agent.address}:id_rsa.pub.{host}"
+        cmd = f"scp -P {agent.port if agent.port else 22} {os.path.expanduser('~')}/.ssh/id_rsa.pub {agent.address}:id_rsa.pub.{host}"
         env.logger.info(cmd)
         p = pexpect.spawn(cmd, echo=False)
         i = p.expect(["(?i)are you sure you want to continue connecting",
@@ -1380,7 +1389,7 @@ def copy_public_key(host, agent, password):
     #
     # ssh
     try:
-        cmd = f"ssh {agent.address} -p {agent.port} '[ -d .ssh ] || mkdir .ssh; cat id_rsa.pub.{host} >> .ssh/authorized_keys; rm -f id_rsa.pub.{host}'"
+        cmd = f"ssh {agent.address} -p {agent.port} '[ -d .ssh ] || mkdir .ssh && chmod 700 .ssh; cat id_rsa.pub.{host} >> .ssh/authorized_keys; rm -f id_rsa.pub.{host}'"
         env.logger.info(cmd)
         p = pexpect.spawn(cmd, echo=False)
         i = p.expect(["(?i)are you sure you want to continue connecting",
