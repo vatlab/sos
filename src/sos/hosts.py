@@ -1355,7 +1355,7 @@ def copy_public_key(host, agent, password):
             import getpass
             password = getpass.getpass(
                 f'Please enter password for {agent.address}: ')
-        cmd = f"scp {os.path.expanduser('~')}/.ssh/id_rsa.pub {agent.address}:id_rsa.pub.{host}"
+        cmd = f"scp -P {agent.port if agent.port else 22} {os.path.expanduser('~')}/.ssh/id_rsa.pub {agent.address}:id_rsa.pub.{host}"
         env.logger.info(cmd)
         p = pexpect.spawn(cmd, echo=False)
         i = p.expect(["(?i)are you sure you want to continue connecting",
