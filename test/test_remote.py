@@ -127,8 +127,13 @@ with open('llp', 'w') as llp:
             'sig_mode': 'force',
             }).run()
         self.assertTrue(os.path.isfile('llp'))
-        os.remove('llp')
+
+    @unittest.skipIf(not has_docker, "Docker container not usable")
+    def testFromHostOptionDict(self):
         # dict form
+        if os.path.isfile('llp'):
+            os.remove('llp')
+
         script = SoS_Script('''
 [10]
 task: from_host={'llp': 'll'}
@@ -138,12 +143,9 @@ with open('llp', 'w') as llp:
         wf = script.workflow()
         Base_Executor(wf, config={
                 'config_file': '~/docker.yml',
-                # do not wait for jobs
-                'wait_for_task': True,
                 'default_queue': 'docker',
                 }).run()
         self.assertTrue(os.path.isfile('llp'))
-        os.remove('llp')
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testLocalFromHostOption(self):
