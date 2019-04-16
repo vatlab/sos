@@ -887,6 +887,7 @@ assert _input == f'{_index+1}.out'
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testSyncInputOutputAndRerun(self):
         '''Test sync input and output with remote host'''
         for i in range(4):
@@ -946,6 +947,7 @@ with open(_input, 'r') as inf, open(_output, 'w') as outf:
             with open(f'test_{i}.bak') as outf:
                 self.assertEqual(outf.read(), f'test_{i}_{val}.bak')
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testSyncMasterTask(self):
         '''Test sync input and output with remote host with trunksize'''
         for i in range(4):
@@ -989,6 +991,7 @@ with open(_input, 'r') as inf, open(_output, 'w') as outf:
             with open(f'test_{i}.bak') as outf:
                 self.assertEqual(outf.read(), f'test_{i}_{val}.bak')
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testRemoteInputTarget(self):
         '''Test the use of remote target'''
         if os.path.isfile(f'vars.sh'):
@@ -1016,7 +1019,7 @@ with open(_input, 'r') as inf, open(_output, 'w') as outf:
         self.assertFalse(os.path.isfile('vars.sh'))
         self.assertTrue(os.path.isfile('vars1.sh'))
 
-
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testRemoteOutputTarget(self):
         '''Test the use of remote target'''
         if os.path.isfile(f'vars.sh'):
