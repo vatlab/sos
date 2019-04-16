@@ -590,39 +590,14 @@ class TaskFile(object):
     last_updated = property(_get_last_updated)
 
     def _set_status(self, status):
-        with open(self.task_file, 'r+b') as fh:
-            fh.seek(2, 0)
-            if status == 'skipped':
-                # special status, set completed_time = running_time
-                # to make sure duration is zero
-                now = time.time()
-                sts = TaskStatus['completed'].value
-                # update status and last modified
-                fh.write(struct.pack('!hd', sts, now))
-                # also set 'run'
-                fh.seek(3 * 8, 1)
-                fh.write(struct.pack('!d', now))
-                # from the current location, move by status
-                fh.seek(2 * 8, 1)
-                fh.write(struct.pack('!d', now))
-            else:
-                # if completed, we make sure that the duration will not
-                # be zero even if the task is completed very rapidly
-                now = time.time() + (0.01 if status == 'completed' else 0)
-                sts = TaskStatus[status].value
-                # update status and last modified
-                fh.write(struct.pack('!hd', sts, now))
-                # from the current location, move by status
-                fh.seek(sts * 8, 1)
-                fh.write(struct.pack('!d', now))
         # if restarting the task, make sure all irrelevant files
         # are removed
         if status == 'pending':
             remove_task_files(self.task_id, ['.pulse', '.out', '.err', '.job_id', '.sh'])
         elif status == 'running':
             # setting to running status ... refresh the pulse file
-            with open(os.path.join(os.path.expanduser(
-                    '~'), '.sos', 'tasks', self.task_id + '.pulse'), 'w') as pd:
+            pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.task_id + '.pulse')
+            with open(pulse_file, 'w') as pd:
                 pd.write(f'#task: {self.task_id}\n')
                 pd.write(
                     f'#started at {datetime.now().strftime("%A, %d. %B %Y %I:%M%p")}\n#\n')
@@ -630,7 +605,39 @@ class TaskFile(object):
             # terminal status
             remove_task_files(
                 self.task_id, ['.sh', '.job_id', '.out', '.err', '.pulse'])
-
+        with fasteners.InterProcessLock(os.path.join(env.temp_dir, self.task_id + '.lck')):
+            with open(self.task_file, 'r+b') as fh:
+                fh.seek(2, 0)
+                if status == 'skipped':
+                    # special status, set completed_time = running_time
+                    # to make sure duration is zero
+                    now = time.time()
+                    sts = TaskStatus['completed'].value
+                    # update status and last modified
+                    fh.write(struct.pack('!hd', sts, now))
+                    # also set 'run'
+                    fh.seek(3 * 8, 1)
+                    fh.write(struct.pack('!d', now))
+                    # from the current location, move by status
+                    fh.seek(2 * 8, 1)
+                    fh.write(struct.pack('!d', now))
+                else:
+                    if status == 'running':
+                        # wait for the pulse file to be created before updating task status
+                        while True:
+                            if os.path.isfile(pulse_file):
+                                break
+                            else:
+                                time.sleep(0.01)
+                    # if completed, we make sure that the duration will not
+                    # be zero even if the task is completed very rapidly
+                    now = time.time() + (0.01 if status == 'completed' else 0)
+                    sts = TaskStatus[status].value
+                    # update status and last modified
+                    fh.write(struct.pack('!hd', sts, now))
+                    # from the current location, move by status
+                    fh.seek(sts * 8, 1)
+                    fh.write(struct.pack('!d', now))
 
     status = property(_get_status, _set_status)
 
