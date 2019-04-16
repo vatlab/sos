@@ -155,7 +155,9 @@ class LocalHost:
         params, old_runtime = tf.get_params_and_runtime()
         # clear possible previous result
         task_vars = params.sos_dict
-        runtime = {'_runtime': {'workdir': task_vars['_runtime']['workdir'] if 'workdir' in task_vars['_runtime'] else os.getcwd() }}
+        runtime = {'_runtime': {x: task_vars['_runtime'][x] for x in
+            ('verbosity', 'sig_mode', 'run_mode', 'walltime', 'cores', 'mem') if x in task_vars['_runtime']}}
+        runtime['_runtime']['workdir'] = task_vars['_runtime']['workdir'] if 'workdir' in task_vars['_runtime'] else os.getcwd()
 
         if 'max_mem' in self.config or 'max_cores' in self.config or 'max_walltime' in self.config:
             for key in ('max_mem', 'max_cores', 'max_walltime'):
@@ -541,7 +543,8 @@ class RemoteHost:
         tf = TaskFile(task_id)
         params, old_runtime = tf.get_params_and_runtime()
         task_vars = params.sos_dict
-        runtime = {'_runtime': {x: task_vars['_runtime'][x] for x in ('verbosity', 'sig_mode', 'run_mode')},
+        runtime = {'_runtime': {x: task_vars['_runtime'][x] for x in
+            ('verbosity', 'sig_mode', 'run_mode', 'walltime', 'cores', 'mem') if x in task_vars['_runtime']},
             task_id: {}}
 
         if self.config.get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
