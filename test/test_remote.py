@@ -82,6 +82,12 @@ run:
             content = w.read()
             self.assertTrue('something' in content, 'Got {}'.format(content))
             self.assertTrue('adf' in content, 'Got {}'.format(content))
+        # test sos remote run
+        self.assertEqual(subprocess.call(
+            'sos remote run docker --cmd cp result_remote.txt result_remote1.txt -c  ~/docker.yml', shell=True), 0)
+        self.assertEqual(subprocess.call(
+            'sos remote pull docker --files result_remote1.txt -c ~/docker.yml', shell=True), 0)
+        self.assertTrue(file_target('result_remote1.txt').target_exists())
 
     @unittest.skipIf(sys.platform == 'win32' or not has_docker, 'No symbloc link problem under win32 or no docker')
     def testToHostRename(self):
