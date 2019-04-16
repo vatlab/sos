@@ -24,7 +24,7 @@ from zmq.log.handlers import PUBHandler
 
 import urllib.parse
 import urllib.request
-from collections import Sequence, Mapping, Set, defaultdict
+from collections import Sequence, Mapping, Set, defaultdict, KeysView
 from html.parser import HTMLParser
 from io import FileIO, StringIO, BytesIO
 from typing import Optional, List, Dict
@@ -163,10 +163,17 @@ def short_repr(obj, noneAsNA=False):
         else:
             first_key = list(obj.keys())[0]
             return f'{short_repr(first_key)}:{short_repr(obj[first_key])}, ... ({len(obj)} items)'
+    elif isinstance(obj, KeysView):
+        if not obj:
+            return ''
+        elif len(obj) == 1:
+            return short_repr(next(iter(obj)))
+        else:
+            return f'{short_repr(next(iter(obj)))}, ... ({len(obj)} items)'
     #elif hasattr(obj, 'target_name'):
     #    return obj.target_name()
     else:
-        ret = repr(obj)
+        ret = str(obj)
         if len(ret) > 40:
             return f'{repr(obj)[:35]}...'
         else:

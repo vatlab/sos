@@ -561,17 +561,17 @@ class RemoteHost:
                 f'Task {task_id} requested more walltime ({task_vars["_runtime"]["walltime"]}) than allowed max_walltime ({self.config["max_walltime"]})')
 
         if task_vars['_input'] and not isinstance(task_vars['_input'], Undetermined):
-            env.logger.info(
-                f'{task_id} ``sending`` {short_repr(task_vars["_input"])} if needed')
-            self.send_to_host(task_vars['_input'])
+            sent = self.send_to_host(task_vars['_input'])
+            if sent:
+                env.logger.info(f'{task_id} ``sent`` {short_repr(sent.keys())} to {self.alias}')
         if task_vars['_depends'] and not isinstance(task_vars['_depends'], Undetermined):
-            env.logger.info(
-                f'{task_id} ``sending`` {short_repr(task_vars["_depends"])}')
-            self.send_to_host(task_vars['_depends'])
+            sent = self.send_to_host(task_vars['_depends'])
+            if sent:
+                env.logger.info(f'{task_id} ``sent`` {short_repr(sent.keys())} to {self.alias}')
         if 'to_host' in task_vars['_runtime']:
-            env.logger.info(
-                f'{task_id} ``sending`` {short_repr(task_vars["_runtime"]["to_host"])}')
-            self.send_to_host(task_vars['_runtime']['to_host'])
+            sent = self.send_to_host(task_vars['_runtime']['to_host'])
+            if sent:
+                env.logger.info(f'{task_id} ``sent`` {short_repr(sent.keys())} to {self.alias}')
 
         # map variables
         if 'workdir' in task_vars['_runtime']:
@@ -755,13 +755,13 @@ class RemoteHost:
                 [x for x in job_dict['_output'] if isinstance(x, (str, path))])
             if received:
                 env.logger.info(
-                    f'{task_id} ``received`` {short_repr(list(received.keys()))}')
+                    f'{task_id} ``received`` {short_repr(received.keys())} from {self.alias}')
         if 'from_host' in job_dict['_runtime'] and env.config['run_mode'] != 'dryrun':
             if isinstance(job_dict['_runtime']['from_host'], (dict, str)):
                 received = self.receive_from_host(job_dict['_runtime']['from_host'])
                 if received:
                     env.logger.info(
-                        f'{task_id} ``received`` {short_repr(list(received.keys()))}')
+                        f'{task_id} ``received`` {short_repr(received.keys())} from {self.alias}')
             else:
                 env.logger.warning(f"Expecting a dictionary from from_host: {job_dict['_runtime']['from_host']} received")
         # we need to translate result from remote path to local
