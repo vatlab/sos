@@ -155,7 +155,7 @@ class LocalHost:
         params, old_runtime = tf.get_params_and_runtime()
         # clear possible previous result
         task_vars = params.sos_dict
-        runtime = {'_runtime': {}}
+        runtime = {'_runtime': {'workdir': task_vars['_runtime']['workdir'] if 'workdir' in task_vars['_runtime'] else os.getcwd() }}
 
         if 'max_mem' in self.config or 'max_cores' in self.config or 'max_walltime' in self.config:
             for key in ('max_mem', 'max_cores', 'max_walltime'):
