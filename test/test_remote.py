@@ -56,7 +56,7 @@ class TestRemote(unittest.TestCase):
         with open('local.txt', 'w') as w:
             w.write('something')
         self.assertEqual(subprocess.call(
-            'sos push local.txt -c ~/docker.yml --to docker', shell=True), 0)
+            'sos remote push docker --files local.txt -c ~/docker.yml', shell=True), 0)
         with open('test_remote.sos', 'w') as tr:
             tr.write('''
 [10]
@@ -75,7 +75,7 @@ run:
         #self.assertEqual(subprocess.call('sos preview result_remote.txt -c ~/docker.yml -r docker', shell=True), 0)
         #self.assertNotEqual(subprocess.call('sos preview result_remote.txt', shell=True), 0)
         self.assertEqual(subprocess.call(
-            'sos pull result_remote.txt -c ~/docker.yml --from docker', shell=True), 0)
+            'sos remote pull docker --files result_remote.txt -c ~/docker.yml', shell=True), 0)
         self.assertTrue(file_target('result_remote.txt').target_exists())
         #self.assertEqual(subprocess.call('sos preview result_remote.txt', shell=True), 0)
         with open('result_remote.txt') as w:

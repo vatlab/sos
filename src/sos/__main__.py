@@ -616,7 +616,7 @@ def get_remote_parser(desc_only=False):
     parser.add_argument('-p', '--password', help='''Password used to copy public key to remote hosts. You will be prompted
             for a password if a password is needed and is not passed from command line. The same password will be used for
             all specified hosts so you will need to use separate setup commands for hosts with different passwords.''')
-    parser.add_argument('--items', nargs='*', help='''files or directories to be push or pulled for action "push" or "pull"''')
+    parser.add_argument('--files', nargs='*', help='''files or directories to be push or pulled for action "push" or "pull"''')
     parser.add_argument('--cmd', nargs='*', help='''commands to be executed by action "run"''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
                         help='''Output error (0), warning (1), info (2) and debug (3)
@@ -657,15 +657,15 @@ def cmd_remote(args, workflow_args):
             from .hosts import run_command_on_hosts
             run_command_on_hosts(cfg, args.hosts, args.cmd, args.verbosity)
         elif args.action == 'push':
-            if not args.items:
-                raise ValueError('Please specify files to push to remote host with option --items')
+            if not args.files:
+                raise ValueError('Please specify files to push to remote host with option --files')
             from .hosts import push_to_hosts
-            push_to_hosts(cfg, args.hosts, args.items, args.verbosity)
+            push_to_hosts(cfg, args.hosts, args.files, args.verbosity)
         elif args.action == 'pull':
-            if not args.items:
-                raise ValueError('Please specify files to pull from remote host with option --items')
+            if not args.files:
+                raise ValueError('Please specify files to pull from remote host with option --files')
             from .hosts import pull_from_host
-            pull_from_host(cfg, args.hosts, args.items, args.verbosity)
+            pull_from_host(cfg, args.hosts, args.files, args.verbosity)
         else:
             raise ValueError("Unacceptable remote action. Use command 'sos remote -h' to check allowable actions.")
     except Exception as e:
