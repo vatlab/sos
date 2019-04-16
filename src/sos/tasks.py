@@ -590,21 +590,6 @@ class TaskFile(object):
     last_updated = property(_get_last_updated)
 
     def _set_status(self, status):
-        # if restarting the task, make sure all irrelevant files
-        # are removed
-        if status == 'pending':
-            remove_task_files(self.task_id, ['.pulse', '.out', '.err', '.job_id', '.sh'])
-        elif status == 'running':
-            # setting to running status ... refresh the pulse file
-            pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.task_id + '.pulse')
-            with open(pulse_file, 'w') as pd:
-                pd.write(f'#task: {self.task_id}\n')
-                pd.write(
-                    f'#started at {datetime.now().strftime("%A, %d. %B %Y %I:%M%p")}\n#\n')
-        elif status in ('aborted', 'completed', 'failed'):
-            # terminal status
-            remove_task_files(
-                self.task_id, ['.sh', '.job_id', '.out', '.err', '.pulse'])
         with fasteners.InterProcessLock(os.path.join(env.temp_dir, self.task_id + '.lck')):
             with open(self.task_file, 'r+b') as fh:
                 fh.seek(2, 0)
@@ -623,6 +608,12 @@ class TaskFile(object):
                     fh.write(struct.pack('!d', now))
                 else:
                     if status == 'running':
+                        # setting to running status ... refresh the pulse file
+                        pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.task_id + '.pulse')
+                        with open(pulse_file, 'w') as pd:
+                            pd.write(f'#task: {self.task_id}\n')
+                            pd.write(
+                                f'#started at {datetime.now().strftime("%A, %d. %B %Y %I:%M%p")}\n#\n')
                         # wait for the pulse file to be created before updating task status
                         while True:
                             if os.path.isfile(pulse_file):
@@ -638,6 +629,12 @@ class TaskFile(object):
                     # from the current location, move by status
                     fh.seek(sts * 8, 1)
                     fh.write(struct.pack('!d', now))
+                    # if restarting the task, make sure all irrelevant files
+                    # are removed or finishing tasks.
+                    if status in ('aborted', 'completed', 'failed', 'pending'):
+                        # terminal status
+                        remove_task_files(
+                            self.task_id, ['.sh', '.job_id', '.out', '.err', '.pulse'])
 
     status = property(_get_status, _set_status)
 
