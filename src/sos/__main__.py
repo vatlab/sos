@@ -602,8 +602,11 @@ def get_remote_parser(desc_only=False):
                                      description='''Listing and testing remote configurations''')
     if desc_only:
         return parser
-    parser.add_argument('action', choices=['list', 'status', 'setup', 'test', 'login'],
-                        help='''List, check status, setup, login or test configuration of all or specified remote hosts''')
+    parser.add_argument('action', choices=['list', 'status', 'setup', 'test', 'login', 'push', 'pull', 'run'],
+                        help='''List (list), check status of tasks (status), setup public-key
+                         authentication (setup), test configuration (test), login (login), push files
+                         to one or more remote hosts (push), pull files from a remote host,
+                         or execute command (run) on one or all or specified remote hosts''')
     parser.add_argument('hosts', nargs='*', metavar='hosts',
                         help='''Hosts to be checked or tested. All hosts defined in SoS configurations will be
         included if unspecified. As a special case for "sos remote setup", an address is acceptable even if it
@@ -613,6 +616,8 @@ def get_remote_parser(desc_only=False):
     parser.add_argument('-p', '--password', help='''Password used to copy public key to remote hosts. You will be prompted
             for a password if a password is needed and is not passed from command line. The same password will be used for
             all specified hosts so you will need to use separate setup commands for hosts with different passwords.''')
+    parser.add_argument('--items', nargs='*', help='''files or directories to be push or pulled for action "push" or "pull"''')
+    parser.add_argument('--cmd', nargs='*', help='''commands to be executed by action "run"''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
                         help='''Output error (0), warning (1), info (2) and debug (3)
             information to standard output (default to 2). More debug information could be
@@ -646,6 +651,23 @@ def cmd_remote(args, workflow_args):
             if len(args.hosts) > 1:
                 raise ValueError(f'Please specify only one host to login. {args.hosts} provided.')
             login_host(cfg, args.hosts[0])
+        elif args.action == 'run':
+            if not args.cmd:
+                raise ValueError('Please specify a command to execute with option --cmd')
+            from .hosts import run_command_on_hosts
+            run_command_on_hosts(cfg, args.hosts, args.cmd, args.verbosity)
+        elif args.action == 'push':
+            if not args.items:
+                raise ValueError('Please specify files to push to remote host with option --items')
+            from .hosts import push_to_hosts
+            push_to_hosts(cfg, args.hosts, args.items, args.verbosity)
+        elif args.action == 'pull':
+            if not args.items:
+                raise ValueError('Please specify files to pull from remote host with option --items')
+            from .hosts import pull_from_host
+            pull_from_host(cfg, args.hosts, args.items, args.verbosity)
+        else:
+            raise ValueError("Unacceptable remote action. Use command 'sos remote -h' to check allowable actions.")
     except Exception as e:
         from .utils import get_traceback
         if args.verbosity and args.verbosity > 2:
@@ -1752,13 +1774,13 @@ def main():
         add_sub_parser(subparsers, get_status_parser(
             desc_only='status' != subcommand))
         #
-        # command push
+        # command push, replaced by sos remote push
         add_sub_parser(subparsers, get_push_parser(
-            desc_only='push' != subcommand))
+            desc_only='push' != subcommand), hidden=True)
         #
-        # command pull
+        # command pull, replaced by sos remote pull
         add_sub_parser(subparsers, get_pull_parser(
-            desc_only='pull' != subcommand))
+            desc_only='pull' != subcommand), hidden=True)
         #
         # command remote
         add_sub_parser(subparsers, get_remote_parser(

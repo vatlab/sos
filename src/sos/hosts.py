@@ -1490,3 +1490,79 @@ def login_host(cfg, host):
         os.execvp('ssh', ['ssh', address, '-p', str(port)])
     except Exception as e:
         raise RuntimeError(f'Failed to log in to {host}: {e}')
+
+
+def run_command_on_hosts(cfg, hosts, cmd, verbosity):
+    env.verbosity = verbosity
+    if not hosts:
+        hosts = cfg.get('hosts', [])
+    if not hosts:
+        env.logger.warning(
+            "No remote host or task queue is defined in ~/.sos/hosts.yml.")
+        return
+    for host in hosts:
+        # runing command on all hosts
+        try:
+            env.logger.info(f'Running ``{" ".join(cmd)}`` on ``{host}``')
+            h = Host(host)
+            print(h._host_agent.check_output(cmd, under_workdir=True))
+        except Exception as e:
+            from .utils import get_traceback
+            if verbosity and verbosity > 2:
+                sys.stderr.write(get_traceback())
+            env.logger.error(e)
+
+def push_to_hosts(cfg, hosts, items, verbosity):
+    env.verbosity = verbosity
+    if not hosts:
+        hosts = cfg.get('hosts', [])
+    if not hosts:
+        env.logger.warning(
+            "No remote host or task queue is defined in ~/.sos/hosts.yml.")
+        return
+    for host in hosts:
+        try:
+            env.logger.info(f'Pushing ``{" ".join(items)}`` to ``{host}``')
+
+            h = Host(host)
+            #
+            sent = h.send_to_host(items)
+            #
+            print('{} item{} sent:\n{}'.format(len(sent),
+                                            ' is' if len(
+                                                sent) <= 1 else 's are',
+                                            '\n'.join(['{} => {}'.format(x, sent[x]) for x in sorted(sent.keys())])))
+        except Exception as e:
+            from .utils import get_traceback
+            if verbosity and verbosity > 2:
+                sys.stderr.write(get_traceback())
+            env.logger.error(e)
+            sys.exit(1)
+
+def pull_from_host(cfg, hosts, items, verbosity):
+    env.verbosity = verbosity
+    if not hosts:
+        hosts = cfg.get('hosts', [])
+    if not hosts:
+        env.logger.warning(
+            "No remote host or task queue is defined in ~/.sos/hosts.yml.")
+        return
+    if len(hosts) > 1:
+        raise ValueError('Can only pull from a single remote host.')
+    try:
+        env.logger.info(f'Pulling ``{" ".join(items)}`` from ``{hosts[0]}``')
+
+        host = Host(hosts[0])
+        #
+        received = host.receive_from_host(items)
+        #
+        print('{} item{} received:\n{}'.format(len(received),
+                                               ' is' if len(
+                                                   received) <= 1 else 's are',
+                                               '\n'.join(['{} <= {}'.format(x, received[x]) for x in sorted(received.keys())])))
+    except Exception as e:
+        from .utils import get_traceback
+        if verbosity and verbosity > 2:
+            sys.stderr.write(get_traceback())
+        env.logger.error(e)
+        sys.exit(1)
