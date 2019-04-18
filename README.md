@@ -18,21 +18,16 @@ if you have helped fixing bugs or making improvements to the source code.
 
 # Installing SoS
 
-With Python 3.6 and above installed ([anaconda python](https://www.continuum.io/downloads) is recommended), you can install the SoS Workflow System and its extensions with command
+With Python 3.6 and above installed ([anaconda python](https://www.continuum.io/downloads) is recommended), you can install the SoS Workflow System with command
 
 ```
 % pip install sos
 ```
-
-You can install the latest git version of SoS with commands
-
+and also
 ```
-% git clone https://github.com/vatlab/SoS.git
-% cd SoS
-% pip install . -U
+% pop install sos-pbs
 ```
-although the development version can be less stable than the released
-version.
+if you would like to use SoS with a remote batch system such as LSF or Slurm.
 
 You can install SoS Notebook, and register the sos kernel with Jupyter using the following commands
 
