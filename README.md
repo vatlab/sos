@@ -52,7 +52,7 @@ Different modules might be needed to assist data exchange among kernels. Please 
 ### Change Log of SoS and SoS Notebook
 
 SoS 0.19.0
-* [sos#1056](https://github.com/vatlab/SoS/issues/1056), [sos1218](https://github.com/vatlab/SoS/issues/1218): Use a new shared execution model to enforce optio `-j`.
+* [sos#1056](https://github.com/vatlab/SoS/issues/1056), [sos#1218](https://github.com/vatlab/SoS/issues/1218): Use a new shared execution model to enforce optio `-j`.
 * [sos#1219](https://github.com/vatlab/SoS/issues/1219): Make sure global sections are executed only once
 
 SoS Notebook 0.18.5
