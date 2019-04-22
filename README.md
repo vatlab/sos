@@ -8,7 +8,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/vatlab/SOS/badge.svg)](https://coveralls.io/github/vatlab/SOS)
 
 **Script of Scripts (SoS)** is a Jupyter-based **polyglot notebook** that allows the use of multiple Jupyter kernels in one notebook, and
-a **workflow engine** for the execution of workflows in both process- and outcome-oriented styles. It is designed for data scientists and bioinformatics who routinely work with scripts in different languages such as R, Python, Perl, and bash.
+a **workflow engine** for the execution of workflows in both process- and outcome-oriented styles. It is designed for data scientists and bioinformatics who routinely work with scripts in different languages such as bash, Python, R, and SAS.
 
 Please refer to the [SoS homepage](http://vatlab.github.io/SOS) for more information.
 
