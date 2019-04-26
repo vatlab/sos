@@ -35,7 +35,6 @@ from tqdm import tqdm as ProgressBar
 
 __all__ = ['logger', 'get_output']
 
-
 COLOR_CODE = {
     'ENDC': 0,  # RESET COLOR
     'BOLD': 1,
@@ -80,7 +79,7 @@ COLOR_CODE = {
 }
 
 
-def colorstr(astr: str, color: Optional[str]=None) -> str:
+def colorstr(astr: str, color: Optional[str] = None) -> str:
     color_code = 0 if color is None else COLOR_CODE[color]
     if sys.platform == 'win32':
         return astr
@@ -88,7 +87,7 @@ def colorstr(astr: str, color: Optional[str]=None) -> str:
         return f'\033[{color_code}m{astr}\033[0m'
 
 
-def emphasize(msg: str, color: Optional[str]=None):
+def emphasize(msg: str, color: Optional[str] = None):
     level_color = 0 if color is None else COLOR_CODE[color]
     # display text within `` and `` in green
     if sys.platform == 'win32':
@@ -96,7 +95,8 @@ def emphasize(msg: str, color: Optional[str]=None):
     elif level_color == 0:
         return re.sub(r'``([^`]*)``', '\033[32m\\1\033[0m', str(msg))
     else:
-        return re.sub(r'``([^`]*)``', f'\033[0m\033[32m\\1\033[0m\033[{level_color}m', str(msg))
+        return re.sub(r'``([^`]*)``',
+                      f'\033[0m\033[32m\\1\033[0m\033[{level_color}m', str(msg))
 
 
 class ColoredFormatter(logging.Formatter):
@@ -140,7 +140,8 @@ def short_repr(obj, noneAsNA=False):
     if obj is None:
         return 'unspecified' if noneAsNA else 'None'
     elif isinstance(obj, str) and len(obj) > 80:
-        return '{}...{}'.format(obj[:60].replace('\n', '\\n'), obj[-20:].replace('\n', '\\n'))
+        return '{}...{}'.format(obj[:60].replace('\n', '\\n'),
+                                obj[-20:].replace('\n', '\\n'))
     elif isinstance(obj, (str, int, float, bool)):
         return repr(obj)
     elif hasattr(obj, '__short_repr__'):
@@ -179,6 +180,7 @@ def short_repr(obj, noneAsNA=False):
         else:
             return ret
 
+
 #
 # SoS Workflow dictionary
 #
@@ -209,10 +211,16 @@ class WorkflowDict(object):
         or warning message.'''
         if hasattr(value, 'labels'):
             if 'VARIABLE' in env.config['SOS_DEBUG']:
-                env.log_to_file('VARIABLE', f"Set {key} to {short_repr(value)} with labels {short_repr(value.labels)}")
+                env.log_to_file(
+                    'VARIABLE',
+                    f"Set {key} to {short_repr(value)} with labels {short_repr(value.labels)}"
+                )
         else:
             if 'VARIABLE' in env.config['SOS_DEBUG']:
-                env.log_to_file('VARIABLE', f"Set {key} to {short_repr(value)} of type {value.__class__.__name__}")
+                env.log_to_file(
+                    'VARIABLE',
+                    f"Set {key} to {short_repr(value)} of type {value.__class__.__name__}"
+                )
         self._dict[key] = value
         # if self._change_all_cap_vars is not None and key.isupper():
         #    self._check_readonly(key, value)
@@ -247,22 +255,30 @@ class WorkflowDict(object):
             self._log(key, value)
         if env.config['run_mode'] == 'prepare':
             self._warn(key, value)
-        if key in ('input', 'output', 'depends', '_input', '_output', '_depends', '_runtime'):
+        if key in ('input', 'output', 'depends', '_input', '_output',
+                   '_depends', '_runtime'):
             raise ValueError(f'Variable {key} can only be set by SoS')
         self.set(key, value)
 
     def _log(self, key, value):
         if 'VARIABLE' in env.config['SOS_DEBUG']:
-            env.log_to_file('VARIABLE', f'Set ``{key}`` = ``{short_repr(value)}``')
-
+            env.log_to_file('VARIABLE',
+                            f'Set ``{key}`` = ``{short_repr(value)}``')
 
     def _warn(self, key, value):
-        if key.startswith('_') and not key.startswith('__') and key not in ('_input', '_output', '_step', '_index', '_depends', '_runtime'):
+        if key.startswith('_') and not key.startswith('__') and key not in (
+                '_input', '_output', '_step', '_index', '_depends', '_runtime'):
             env.logger.warning(
-                f'{key}: Variables with leading underscore is reserved for SoS temporary variables.')
+                f'{key}: Variables with leading underscore is reserved for SoS temporary variables.'
+            )
 
     def clone_selected_vars(self, selected=None):
-        return {x: copy.deepcopy(y) for x, y in self._dict.items() if (not selected or x in selected) and pickleable(y, x)}
+        return {
+            x: copy.deepcopy(y)
+            for x, y in self._dict.items()
+            if (not selected or x in selected) and pickleable(y, x)
+        }
+
 
 #
 # Runtime environment
@@ -324,13 +340,20 @@ class RuntimeEnvironments(object):
             return
         self._sub_envs[self._sub_idx]['sos_dict'] = self.sos_dict
         self._sub_envs[self._sub_idx]['config'] = copy.deepcopy(env.config)
-        self._sub_envs[self._sub_idx]['socket'] = env.__socket__ if hasattr(env, '__socket__') else None
+        self._sub_envs[self._sub_idx]['socket'] = env.__socket__ if hasattr(
+            env, '__socket__') else None
         if len(self._sub_envs) <= idx:
-            self._sub_envs.append({'sos_dict': WorkflowDict(), 'config': copy.deepcopy(env.config),
-                 'socket': env.__socket__ if hasattr(env, '__socket__') else None})
+            self._sub_envs.append({
+                'sos_dict': WorkflowDict(),
+                'config': copy.deepcopy(env.config),
+                'socket': env.__socket__ if hasattr(env, '__socket__') else None
+            })
         if not self._sub_envs[idx]:
-            self._sub_envs[idx] = {'sos_dict': WorkflowDict(), 'config': copy.deepcopy(env.config),
-                 'socket': env.__socket__ if hasattr(env, '__socket__') else None}
+            self._sub_envs[idx] = {
+                'sos_dict': WorkflowDict(),
+                'config': copy.deepcopy(env.config),
+                'socket': env.__socket__ if hasattr(env, '__socket__') else None
+            }
         self.sos_dict = self._sub_envs[idx]['sos_dict']
         env.config = self._sub_envs[idx]['config']
         env.__socket__ = self._sub_envs[idx]['socket']
@@ -345,7 +368,9 @@ class RuntimeEnvironments(object):
         if not msg:
             msg = topic
             topic = 'GENERAL'
-        if 'SOS_DEBUG' not in os.environ or (topic not in os.environ['SOS_DEBUG'] and 'ALL' not in os.environ['SOS_DEBUG']):
+        if 'SOS_DEBUG' not in os.environ or (
+                topic not in os.environ['SOS_DEBUG'] and
+                'ALL' not in os.environ['SOS_DEBUG']):
             return
         self.logger.debug(topic + ' - ' + str(msg))
 
@@ -377,10 +402,10 @@ class RuntimeEnvironments(object):
             'SOS_DEBUG': set(),
         })
         if 'SOS_DEBUG' in os.environ:
-            self.config['SOS_DEBUG'] = set([x for x in os.environ['SOS_DEBUG'].split(',') if '.' not in x and x != '-'])
-            if 'ALL' in self.config['SOS_DEBUG']:
-                self.config['SOS_DEBUG'] |= {'ACTION', 'CONTROLLER', 'DAG', 'EXECUTOR', 'GENERAL',
-                    'STEP', 'TARGET', 'TASK', 'VARIABLE', 'WORKER', 'NOTEBOOK', 'KERNEL'}
+            self.config['SOS_DEBUG'] = set([
+                x for x in os.environ['SOS_DEBUG'].split(',')
+                if '.' not in x and x != '-'
+            ])
         #
         # global dictionaries used by SoS during the
         # execution of SoS workflows
@@ -391,8 +416,13 @@ class RuntimeEnvironments(object):
         # this directory will be used by a lot of processes
         self.exec_dir = os.getcwd()
 
-        os.makedirs(os.path.join(os.path.expanduser(
-            '~'), '.sos', 'tasks'), exist_ok=True)
+        os.makedirs(
+            os.path.join(os.path.expanduser('~'), '.sos', 'tasks'),
+            exist_ok=True)
+
+    def debugging(self, code):
+        return 'ALL' in self.config['SOS_DEBUG'] or code in self.config['SOS_DEBUG']
+
     #
     # attribute logger
     #
@@ -434,23 +464,31 @@ class RuntimeEnvironments(object):
             # output to standard output
             cout = logging.StreamHandler()
             cout.setLevel(levels[self._verbosity])
-            cout.setFormatter(ColoredFormatter(
-                '%(color_levelname)s: %(color_msg)s'))
+            cout.setFormatter(
+                ColoredFormatter('%(color_levelname)s: %(color_msg)s'))
             self._logger.addHandler(cout)
 
         if 'SOS_DEBUG' in os.environ:
-            logfile_info = [x for x in os.environ['SOS_DEBUG'].split(',') if '.' in x or x == '-']
+            logfile_info = [
+                x for x in os.environ['SOS_DEBUG'].split(',')
+                if '.' in x or x == '-'
+            ]
             if logfile_info:
                 if logfile_info[0] == '-':
                     logfile = logging.StreamHandler()
                     formatter = ColoredFormatter(
                         '%(color_levelname)s: %(color_msg)s')
                 else:
-                    logfile = logging.FileHandler(os.path.expanduser(logfile_info[0]), mode='a')
-                    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+                    logfile = logging.FileHandler(
+                        os.path.expanduser(logfile_info[0]), mode='a')
+                    formatter = logging.Formatter(
+                        '%(asctime)s - %(levelname)s - %(message)s')
             else:
-                logfile = logging.FileHandler(os.path.join(os.path.expanduser('~'), 'sos_debug.log'), mode='a')
-                formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+                logfile = logging.FileHandler(
+                    os.path.join(os.path.expanduser('~'), 'sos_debug.log'),
+                    mode='a')
+                formatter = logging.Formatter(
+                    '%(asctime)s - %(levelname)s - %(message)s')
             logfile.setFormatter(formatter)
             logfile.setLevel(logging.DEBUG)
             self._logger.addHandler(logfile)
@@ -486,6 +524,7 @@ class RuntimeEnvironments(object):
     @property
     def logger(self):
         return self._logger
+
     #
     # attribute verbosity
     #
@@ -495,8 +534,10 @@ class RuntimeEnvironments(object):
             self._verbosity = v
             # reset logger to appropriate logging level
             self._set_logger()
+
     #
     verbosity = property(lambda self: self._verbosity, _set_verbosity)
+
     #
     # attribute logfile
     #
@@ -510,6 +551,7 @@ class RuntimeEnvironments(object):
 # set up environment variable and a default logger
 env = RuntimeEnvironments()
 logger = env.logger
+
 
 #
 # String formatting
@@ -565,6 +607,7 @@ def dehtml(text):
         env.logger.warning(f'Failed to dehtml text: {e}')
         return text
 
+
 # exception classes
 
 
@@ -586,7 +629,7 @@ class Error(Exception):
     # a new property that takes lookup precedence.
     message = property(_get_message, _set_message)
 
-    def __init__(self, msg: str='') -> None:
+    def __init__(self, msg: str = '') -> None:
         self.message: str = msg
         Exception.__init__(self, msg)
 
@@ -610,11 +653,13 @@ class TerminateExecution(Error):
     def __init__(self, msg):
         Error.__init__(self, msg)
 
+
 class ProcessKilled(Error):
     '''Process is killed'''
 
     def __init__(self, msg=''):
         Error.__init__(self, msg)
+
 
 def get_traceback():
     output = StringIO()
@@ -623,8 +668,8 @@ def get_traceback():
     traceback.print_tb(exc_traceback, limit=1, file=output)
     # print "*** print_exception:"
     try:
-        traceback.print_exception(exc_type, exc_value, exc_traceback,
-                                  limit=5, file=output)
+        traceback.print_exception(
+            exc_type, exc_value, exc_traceback, limit=5, file=output)
     except Exception:
         # the above function call can fail under Python 3.4 for some
         # exception but we do not really care if that happens
@@ -659,7 +704,9 @@ def pickleable(obj, name):
         pickle.dumps(obj)
         return True
     except Exception as e:
-        env.logger.debug(f'Object {name} with value {short_repr(obj)} is not passed because it is not pickleable: {e}')
+        env.logger.debug(
+            f'Object {name} with value {short_repr(obj)} is not passed because it is not pickleable: {e}'
+        )
         return False
 
 
@@ -683,8 +730,7 @@ def stable_repr(obj):
     if hasattr(obj, '__stable_repr__'):
         return obj.__stable_repr__()
     if isinstance(obj, Mapping):
-        items = [stable_repr(k) + ':' + stable_repr(obj[k])
-                 for k in obj.keys()]
+        items = [stable_repr(k) + ':' + stable_repr(obj[k]) for k in obj.keys()]
         return '{' + ', '.join(sorted(items)) + '}'
     if isinstance(obj, Set):
         items = [stable_repr(x) for x in obj]
@@ -692,6 +738,7 @@ def stable_repr(obj):
     if isinstance(obj, Sequence):
         return '[' + ', '.join(stable_repr(k) for k in obj) + ']'
     return repr(obj)
+
 
 #
 # A utility function that returns output of a command
@@ -711,6 +758,7 @@ def get_output(cmd, show_command=False, prompt='$ '):
     else:
         return output
 
+
 #
 # search a path and locate script and other files
 #
@@ -724,7 +772,10 @@ def locate_script(filename, start=''):
     #
     token = urllib.parse.urlparse(filename)
     # if no scheme or netloc, the URL is not acceptable
-    if all([getattr(token, qualifying_attr) for qualifying_attr in ('scheme', 'netloc')]):
+    if all([
+            getattr(token, qualifying_attr)
+            for qualifying_attr in ('scheme', 'netloc')
+    ]):
         try:
             local_filename, _ = urllib.request.urlretrieve(filename)
             with open(local_filename) as script:
@@ -745,21 +796,25 @@ def locate_script(filename, start=''):
                 cfg = yaml.safe_load(config)
         except Exception:
             raise RuntimeError(
-                f'Failed to parse global sos config file {sos_config_file}, is it in JSON format?')
+                f'Failed to parse global sos config file {sos_config_file}, is it in JSON format?'
+            )
         #
         pathes.extend(cfg.get('sos_path', []))
     #
     for path in pathes:
         if not path:
             continue
-        attemp = os.path.join(os.path.expanduser(
-            path), os.path.expanduser(filename))
+        attemp = os.path.join(
+            os.path.expanduser(path), os.path.expanduser(filename))
         if os.path.isfile(attemp):
             return ('', attemp)
         # is it an URL?
         token = urllib.parse.urlparse(path)
         # if no scheme or netloc, the URL is not acceptable
-        if all([getattr(token, qualifying_attr) for qualifying_attr in ('scheme', 'netloc')]):
+        if all([
+                getattr(token, qualifying_attr)
+                for qualifying_attr in ('scheme', 'netloc')
+        ]):
             url = path + ('' if path.endswith('/') else '/') + filename
             try:
                 local_filename, _ = urllib.request.urlretrieve(url)
@@ -770,7 +825,6 @@ def locate_script(filename, start=''):
                 pass
     #
     raise ValueError(f'Failed to locate {filename}')
-
 
 
 def valid_expr_till(text):
@@ -790,6 +844,7 @@ def valid_expr_till(text):
             pos -= 1
     return 0
 
+
 def check_last_piece(text):
     pos = 0
     while True:
@@ -803,6 +858,7 @@ def check_last_piece(text):
             return True
         else:
             pos = spos + 2
+
 
 def split_fstring(text):
     # now that we have the correct sigil
@@ -825,7 +881,9 @@ def split_fstring(text):
         # skip '{'
         rhs_pieces = text[spos + 1:].split('}')
         if len(rhs_pieces) == 1:
-            raise SyntaxError(f'Invalid f-string {text}: missing right sigil at {text[pos:pos+20]}')
+            raise SyntaxError(
+                f'Invalid f-string {text}: missing right sigil at {text[pos:pos+20]}'
+            )
         # rhs = 'whatever }' :r} something else {}
         #
         # we need to include } in expression
@@ -836,8 +894,10 @@ def split_fstring(text):
                 break
             # the last one, still not valid
             if n == len(rhs_pieces):
-                raise SyntaxError(f'Invalid f-string "{text}": invalid or empty expression')
+                raise SyntaxError(
+                    f'Invalid f-string "{text}": invalid or empty expression')
     return pieces
+
 
 def as_fstring(text):
     """expansion with python f-string, usually ok, but with the case
@@ -866,8 +926,9 @@ def as_fstring(text):
         if pos == 0:
             raise SyntaxError(f'invalid expression in {pieces[idx]}')
         args.append(pieces[idx][:pos])
-        pieces[idx] = '{' + str(idx//2) + pieces[idx][pos:] + '}'
+        pieces[idx] = '{' + str(idx // 2) + pieces[idx][pos:] + '}'
     return repr(''.join(pieces)) + '.format(' + ', '.join(args) + ')'
+
 
 def natural_keys(text):
     '''
@@ -880,10 +941,12 @@ def natural_keys(text):
 
 def transcribe(text, cmd=None):
     if cmd is not None:
-        text = '{}:\n{}'.format(
-            cmd, '    ' + text.replace('\n', '\n    ') + '\n')
-    with fasteners.InterProcessLock(os.path.join(env.temp_dir, 'transcript.lck')):
-        with open(os.path.join(env.exec_dir, '.sos', 'transcript.txt'), 'a') as trans:
+        text = '{}:\n{}'.format(cmd,
+                                '    ' + text.replace('\n', '\n    ') + '\n')
+    with fasteners.InterProcessLock(
+            os.path.join(env.temp_dir, 'transcript.lck')):
+        with open(os.path.join(env.exec_dir, '.sos', 'transcript.txt'),
+                  'a') as trans:
             trans.write(text)
 
 
@@ -897,8 +960,7 @@ def dict_merge(dct, merge_dct):
     :return: None
     """
     for k, v in merge_dct.items():
-        if (k in dct and isinstance(dct[k], dict)
-                and isinstance(v, dict)):
+        if (k in dct and isinstance(dct[k], dict) and isinstance(v, dict)):
             dict_merge(dct[k], v)
         else:
             dct[k] = v
@@ -909,10 +971,14 @@ def dict_merge(dct, merge_dct):
 # for its compact size
 
 
-def pretty_size(n, pow=0, b=1024, u='B', pre=[''] + [p + 'i'for p in'KMGTPEZY']):
-    pow, n = min(int(math.log(max(n * b**pow, 1), b)),
-                 len(pre) - 1), n * b**pow
-    return "%%.%if %%s%%s" % abs(pow % (-pow - 1)) % (n / b**float(pow), pre[pow], u)
+def pretty_size(n,
+                pow=0,
+                b=1024,
+                u='B',
+                pre=[''] + [p + 'i' for p in 'KMGTPEZY']):
+    pow, n = min(int(math.log(max(n * b**pow, 1), b)), len(pre) - 1), n * b**pow
+    return "%%.%if %%s%%s" % abs(pow %
+                                 (-pow - 1)) % (n / b**float(pow), pre[pow], u)
 
 
 def expand_size(size):
@@ -951,6 +1017,7 @@ def find_symbolic_links(item):
 
 
 class ActivityNotifier(threading.Thread):
+
     def __init__(self, msg, delay=5):
         threading.Thread.__init__(self)
         self.msg = msg
@@ -969,11 +1036,12 @@ class ActivityNotifier(threading.Thread):
                 break
             if not prog:
                 print(self.msg)
-                prog = ProgressBar(desc='', position=0,
-                                   bar_format='{desc}', total=100000000)
+                prog = ProgressBar(
+                    desc='', position=0, bar_format='{desc}', total=100000000)
             second_elapsed = time.time() - self.start_time
             prog.set_description('Elapsed time {}{}'.format(
-                '' if second_elapsed < 86400 else f'{int(second_elapsed/86400)} day{"s" if second_elapsed > 172800 else ""} ',
+                '' if second_elapsed < 86400 else
+                f'{int(second_elapsed/86400)} day{"s" if second_elapsed > 172800 else ""} ',
                 time.strftime('%H:%M:%S', time.gmtime(second_elapsed))))
             prog.update(1)
 
@@ -1005,7 +1073,7 @@ class ArgumentError(Error):
 
     def __init__(self, msg):
         Error.__init__(self, msg)
-        self.args = (msg, )
+        self.args = (msg,)
 
 
 def _parse_error(msg):
@@ -1052,7 +1120,9 @@ def sos_handle_parameter_(key, defvalue):
                 feature_parser.add_argument(
                     f'--{key.replace("_", "-")}', dest=key, action='store_true')
                 feature_parser.add_argument(
-                    f'--no-{key.replace("_", "-")}', dest=key, action='store_false')
+                    f'--no-{key.replace("_", "-")}',
+                    dest=key,
+                    action='store_false')
         else:
             if defvalue is None:
                 defvalue = str
@@ -1062,23 +1132,35 @@ def sos_handle_parameter_(key, defvalue):
             if '_' in key:
                 feature_parser = parser.add_mutually_exclusive_group(
                     required=True)
-                feature_parser.add_argument(f'--{key}', dest=key, type=str
-                                            if hasattr(defvalue, '__iter__') and defvalue not in (file_target, path) else defvalue,
-                                            help='', nargs='+' if defvalue not in (str, file_target) and hasattr(defvalue, '__iter__') else '?')
-                feature_parser.add_argument(f'--{key.replace("_", "-")}', dest=key,
-                                            type=str if hasattr(defvalue, '__iter__') and defvalue not in (
-                                                file_target, path) else defvalue,
-                                            help='', nargs='+' if defvalue not in(str, file_target) and hasattr(defvalue, '__iter__') else '?')
+                feature_parser.add_argument(
+                    f'--{key}',
+                    dest=key,
+                    type=str if hasattr(defvalue, '__iter__') and
+                    defvalue not in (file_target, path) else defvalue,
+                    help='',
+                    nargs='+' if defvalue not in (str, file_target) and
+                    hasattr(defvalue, '__iter__') else '?')
+                feature_parser.add_argument(
+                    f'--{key.replace("_", "-")}',
+                    dest=key,
+                    type=str if hasattr(defvalue, '__iter__') and
+                    defvalue not in (file_target, path) else defvalue,
+                    help='',
+                    nargs='+' if defvalue not in (str, file_target) and
+                    hasattr(defvalue, '__iter__') else '?')
             else:
-                parser.add_argument(f'--{key}', dest=key,
-                                    type=str if hasattr(defvalue, '__iter__') and defvalue not in (
-                                        file_target, path) else defvalue,
-                                    help='', required=True,
-                                    nargs='+' if defvalue not in (str, file_target, path) and hasattr(defvalue, '__iter__') else '?')
+                parser.add_argument(
+                    f'--{key}',
+                    dest=key,
+                    type=str if hasattr(defvalue, '__iter__') and
+                    defvalue not in (file_target, path) else defvalue,
+                    help='',
+                    required=True,
+                    nargs='+' if defvalue not in (str, file_target, path) and
+                    hasattr(defvalue, '__iter__') else '?')
     else:
         if isinstance(defvalue, bool):
-            feature_parser = parser.add_mutually_exclusive_group(
-                required=False)
+            feature_parser = parser.add_mutually_exclusive_group(required=False)
             feature_parser.add_argument(
                 f'--{key}', dest=key, action='store_true')
             feature_parser.add_argument(
@@ -1087,7 +1169,9 @@ def sos_handle_parameter_(key, defvalue):
                 feature_parser.add_argument(
                     f'--{key.replace("_", "-")}', dest=key, action='store_true')
                 feature_parser.add_argument(
-                    f'--no-{key.replace("_", "-")}', dest=key, action='store_false')
+                    f'--no-{key.replace("_", "-")}',
+                    dest=key,
+                    action='store_false')
             feature_parser.set_defaults(**{key: defvalue})
         else:
             if isinstance(defvalue, (file_target, path)):
@@ -1111,23 +1195,33 @@ def sos_handle_parameter_(key, defvalue):
             if '_' in key:
                 feature_parser = parser.add_mutually_exclusive_group(
                     required=False)
-                feature_parser.add_argument(f'--{key}', dest=key, type=deftype,
-                                            nargs='*' if isinstance(defvalue, Sequence) and not isinstance(
-                                                defvalue, str) else '?',
-                                            default=defvalue)
-                feature_parser.add_argument(f'--{key.replace("_", "-")}', dest=key, type=deftype,
-                                            nargs='*' if isinstance(defvalue, Sequence) and not isinstance(
-                                                defvalue, str) else '?',
-                                            default=defvalue)
+                feature_parser.add_argument(
+                    f'--{key}',
+                    dest=key,
+                    type=deftype,
+                    nargs='*' if isinstance(defvalue, Sequence) and
+                    not isinstance(defvalue, str) else '?',
+                    default=defvalue)
+                feature_parser.add_argument(
+                    f'--{key.replace("_", "-")}',
+                    dest=key,
+                    type=deftype,
+                    nargs='*' if isinstance(defvalue, Sequence) and
+                    not isinstance(defvalue, str) else '?',
+                    default=defvalue)
             else:
-                parser.add_argument(f'--{key}', dest=key, type=deftype,
-                                    nargs='*' if isinstance(defvalue,
-                                                            Sequence) and not isinstance(defvalue, str) else '?',
-                                    default=defvalue)
+                parser.add_argument(
+                    f'--{key}',
+                    dest=key,
+                    type=deftype,
+                    nargs='*' if isinstance(defvalue, Sequence) and
+                    not isinstance(defvalue, str) else '?',
+                    default=defvalue)
     #
     parser.error = _parse_error
     parsed, _ = parser.parse_known_args(env.config['workflow_args'])
     return ret_type(vars(parsed)[key]) if ret_type else vars(parsed)[key]
+
 
 # def is_locked(lockfile):
 #    lock = fasteners.InterProcessLock(lockfile)
@@ -1137,6 +1231,7 @@ def sos_handle_parameter_(key, defvalue):
 #        return False
 #    else:
 #        return True
+
 
 class TimeoutInterProcessLock(fasteners.InterProcessLock):
     #
@@ -1177,7 +1272,8 @@ class TimeoutInterProcessLock(fasteners.InterProcessLock):
                         pass
                 if not msg:
                     env.logger.warning(
-                        f'Failed to obtain lock {self.path} after {self.timeout} seconds, perhaps you will have to remove the lock file manually.')
+                        f'Failed to obtain lock {self.path} after {self.timeout} seconds, perhaps you will have to remove the lock file manually.'
+                    )
                     msg = True
 
 
@@ -1192,18 +1288,19 @@ def load_config_files(filename=None):
                 cfg = yaml.safe_load(config)
         except Exception as e:
             raise RuntimeError(
-                f'Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})')
+                f'Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})'
+            )
 
     # global site file
-    sos_config_file = os.path.join(
-        os.path.expanduser('~'), '.sos', 'hosts.yml')
+    sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'hosts.yml')
     if os.path.isfile(sos_config_file):
         try:
             with open(sos_config_file) as config:
                 dict_merge(cfg, yaml.safe_load(config))
         except Exception as e:
             raise RuntimeError(
-                f'Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})')
+                f'Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})'
+            )
     # global config file
     sos_config_file = os.path.join(
         os.path.expanduser('~'), '.sos', 'config.yml')
@@ -1213,7 +1310,8 @@ def load_config_files(filename=None):
                 dict_merge(cfg, yaml.safe_load(config))
         except Exception as e:
             raise RuntimeError(
-                f'Failed to parse global sos config file {sos_config_file}, is it in YAML/JSON format? ({e})')
+                f'Failed to parse global sos config file {sos_config_file}, is it in YAML/JSON format? ({e})'
+            )
     # user-specified configuration file.
     if filename is None and 'config_file' in env.config:
         filename = env.config['config_file']
@@ -1225,16 +1323,19 @@ def load_config_files(filename=None):
                 dict_merge(cfg, yaml.safe_load(config))
         except Exception as e:
             raise RuntimeError(
-                f'Failed to parse config file {filename}, is it in YAML/JSON format? ({e})')
+                f'Failed to parse config file {filename}, is it in YAML/JSON format? ({e})'
+            )
 
     if 'user_name' not in cfg:
         cfg['user_name'] = getpass.getuser().lower()
     # handle keyword "based_on", which should fill the dictionary with others.
     def process_based_on(cfg, item):
         if 'based_on' in item:
-            if not isinstance(item['based_on'], (str, list)) or not item['based_on']:
+            if not isinstance(item['based_on'],
+                              (str, list)) or not item['based_on']:
                 raise ValueError(
-                    f'A string is expected for key based_on. {item["based_on"]} obtained')
+                    f'A string is expected for key based_on. {item["based_on"]} obtained'
+                )
 
             referred_keys = [item['based_on']] if isinstance(
                 item['based_on'], str) else item['based_on']
@@ -1266,6 +1367,7 @@ def load_config_files(filename=None):
                     # v should be processed in place
                     process_based_on(cfg, v)
             return item
+
     #
     for v in cfg.values():
         if isinstance(v, dict):
@@ -1279,7 +1381,8 @@ def load_config_files(filename=None):
                 res[k] = interpolate_value(cfg, v)
             elif isinstance(v, str) and '{' in v and '}' in v:
                 try:
-                    res[k] = eval(as_fstring(v), copy.copy(item), copy.copy(cfg))
+                    res[k] = eval(
+                        as_fstring(v), copy.copy(item), copy.copy(cfg))
                 except:
                     # if there is something cannot be resolved, it is ok because
                     # it might require some other variables such as walltime.
@@ -1287,6 +1390,7 @@ def load_config_files(filename=None):
             else:
                 res[k] = v
         return res
+
     #
     res = {}
     for k, v in cfg.items():
@@ -1302,13 +1406,11 @@ def load_config_files(filename=None):
     env.sos_dict.set('CONFIG', res)
     return res
 
+
 def format_duration(time_diff_secs, short=True):
     secs = int(time_diff_secs)
-    rec = [
-        (secs // (3600 * 24), 'day'),
-        (secs % (3600 * 24) // 3600, 'hr'),
-        (secs % 3600 // 60, 'min'),
-        (secs % 60, 'sec')]
+    rec = [(secs // (3600 * 24), 'day'), (secs % (3600 * 24) // 3600, 'hr'),
+           (secs % 3600 // 60, 'min'), (secs % 60, 'sec')]
     txt = [f'{x} {y}' for x, y in rec if x > 0]
     return (txt[0] if short else ' '.join(txt)) if txt else '0s'
 
@@ -1322,10 +1424,12 @@ def format_HHMMSS(v):
             return format_HHMMSS(expand_time(v))
         except Exception as e:
             raise ValueError(
-                f'walltime should be specified as a integer with unit s (default), h, m, d or string in the format of HH:MM:SS. "{v}" specified ({e})')
+                f'walltime should be specified as a integer with unit s (default), h, m, d or string in the format of HH:MM:SS. "{v}" specified ({e})'
+            )
     else:
         raise ValueError(
-            f'walltime should be specified as a integer with unit s (default), h, m, d or string in the format of HH:MM:SS. "{v}" of type {v.__class__.__name__} specified')
+            f'walltime should be specified as a integer with unit s (default), h, m, d or string in the format of HH:MM:SS. "{v}" of type {v.__class__.__name__} specified'
+        )
     return f'{h:02d}:{m:02d}:{s:02d}'
 
 
@@ -1346,7 +1450,8 @@ def expand_time(v, default_unit='s') -> int:
                 return sign * (h * 60 * 60 + m * 60 + s)
             except Exception as e:
                 raise ValueError(
-                    f'Input of option walltime should be an integer with unit s (default), h, m, d or a string in the format of HH:MM:SS. {v} specified: {e}')
+                    f'Input of option walltime should be an integer with unit s (default), h, m, d or a string in the format of HH:MM:SS. {v} specified: {e}'
+                )
         #
         try:
             unit = {'s': 1, 'm': 60, 'h': 3600, 'd': 3600 * 24}[v[-1]]
@@ -1358,12 +1463,14 @@ def expand_time(v, default_unit='s') -> int:
             return sign * unit * int(v)
         except Exception:
             raise ValueError(
-                f'Unacceptable time for parameter age, expecting [+/-] num [s|m|h|d] or HH:MM:SS (e.g. +5h): {v} provided')
+                f'Unacceptable time for parameter age, expecting [+/-] num [s|m|h|d] or HH:MM:SS (e.g. +5h): {v} provided'
+            )
     elif isinstance(v, int):
         return v
     else:
         raise ValueError(
-            f'Input of option walltime should be an integer with unit s (default), h, m, d or a string in the format of HH:MM:SS. {v} specified.')
+            f'Input of option walltime should be an integer with unit s (default), h, m, d or a string in the format of HH:MM:SS. {v} specified.'
+        )
 
 
 def tail_of_file(filename, n, ansi2html=False):
@@ -1447,8 +1554,7 @@ def load_var(line):
 def version_info(module: str):
     # return the version of Python module
     try:
-        code = ("import %s; version=str(%s.__version__)" %
-                (module, module))
+        code = ("import %s; version=str(%s.__version__)" % (module, module))
         ns_g: Dict = {}
         ns_l: Dict = {}
         exec(compile(code, "<string>", "exec"), ns_g, ns_l)
@@ -1485,6 +1591,7 @@ def convertAnsi2html(txt):
         replace('\033[0m', '</font>'). \
         replace('\n', '<br>')
 
+
 # log to file for debugging purpose only
 
 
@@ -1495,7 +1602,9 @@ def remove_arg(argv, arg):
     else:
         r_idx = r_idx[0]
     # find next option
-    r_next = [idx for idx, x in enumerate(argv[r_idx+1:]) if x.startswith('-')]
+    r_next = [
+        idx for idx, x in enumerate(argv[r_idx + 1:]) if x.startswith('-')
+    ]
     if r_next:
         argv = argv[:r_idx] + argv[r_idx + 1 + r_next[0]:]
     else:
@@ -1504,11 +1613,17 @@ def remove_arg(argv, arg):
 
 
 def pexpect_run(cmd, shell=False, win_width=None, stdout_socket=None):
+
     def send_output(output):
         if stdout_socket:
-            stdout_socket.send_multipart([b'PRINT', env.config.get('slave_id', '').encode(), output.encode()])
+            stdout_socket.send_multipart([
+                b'PRINT',
+                env.config.get('slave_id', '').encode(),
+                output.encode()
+            ])
         else:
             sys.stdout.write(output)
+
     if sys.platform == 'win32':
         import pexpect
         import pexpect.popen_spawn as ps
@@ -1538,7 +1653,8 @@ def pexpect_run(cmd, shell=False, win_width=None, stdout_socket=None):
             else:
                 if shell:
                     child = pexpect.spawn(
-                        '/bin/bash', ['-c', subprocess.list2cmdline(cmd)], timeout=None)
+                        '/bin/bash', ['-c', subprocess.list2cmdline(cmd)],
+                        timeout=None)
                 else:
                     child = pexpect.spawn(
                         subprocess.list2cmdline(cmd), timeout=None)
@@ -1568,7 +1684,8 @@ def format_par(name, par):
                 return f'--[no-]{name} (required)'
             elif val is None:
                 return f'--{name} VAL (required)'
-            elif val not in (str, file_target, path) and hasattr(val, '__iter__'):
+            elif val not in (str, file_target, path) and hasattr(
+                    val, '__iter__'):
                 return f'--{name} VAL VAL ... (as {val.__class__.__name__}, required)'
             else:
                 return f'--{name} VAL (as {val.__name__}, required)'
@@ -1599,8 +1716,11 @@ def dot_to_gif(filename: str, warn=None):
     with open(filename) as dot, tempfile.TemporaryDirectory() as tempDirectory:
         content = dot.read()
         # find out subworkflows
-        subworkflows = [line.split()[2].strip(
-            '"') for line in content.splitlines() if line.startswith('strict digraph')]
+        subworkflows = [
+            line.split()[2].strip('"')
+            for line in content.splitlines()
+            if line.startswith('strict digraph')
+        ]
         # find out unique subgraphs
         unique_subworkflows = list(dict.fromkeys(subworkflows))
         #
@@ -1612,17 +1732,20 @@ def dot_to_gif(filename: str, warn=None):
         if len(pngFiles) == 1:
             return b64_of(outfile)
         # create a gif files from multiple png files
-        pngFiles.sort(key=lambda x: int(
-            os.path.basename(x)[:-3].split('.')[1] or 0))
+        pngFiles.sort(
+            key=lambda x: int(os.path.basename(x)[:-3].split('.')[1] or 0))
         # find maximum size for all graphs corresponding to their subgraphs
         maxWidth = 0
         wf_maxHeight = {}
         images = {}
         for subworkflow in unique_subworkflows:
-            wf_images = {png: Image.open(png) for png, wf in zip(
-                pngFiles, subworkflows) if wf == subworkflow}
-            maxWidth = max(maxWidth, max(
-                [x.size[0] for x in wf_images.values()]))
+            wf_images = {
+                png: Image.open(png)
+                for png, wf in zip(pngFiles, subworkflows)
+                if wf == subworkflow
+            }
+            maxWidth = max(maxWidth,
+                           max([x.size[0] for x in wf_images.values()]))
             wf_maxHeight[subworkflow] = max(
                 [x.size[1] for x in wf_images.values()]) + 20
             images.update(wf_images)
@@ -1648,8 +1771,8 @@ def dot_to_gif(filename: str, warn=None):
             lastGraph[subworkflow] = image
             # we need to stitch figures together
             try:
-                newImg = Image.new("RGB", (maxWidth, totalHeight),
-                                    color=0xFFFFFF)
+                newImg = Image.new(
+                    "RGB", (maxWidth, totalHeight), color=0xFFFFFF)
                 y_loc = 0
                 for wf in unique_subworkflows:
                     # if current, use the new one
@@ -1659,13 +1782,12 @@ def dot_to_gif(filename: str, warn=None):
                         img = lastGraph[wf]
                     else:
                         continue
-                    newImg.paste(
-                        img, ((maxWidth - img.size[0]) // 2, y_loc + 20))
+                    newImg.paste(img,
+                                 ((maxWidth - img.size[0]) // 2, y_loc + 20))
                     draw = ImageDraw.Draw(newImg)
                     # font = ImageFont.truetype("sans-serif.ttf", 8)
                     # , font=font)
-                    draw.text((5, y_loc + 5), wf,
-                                (0, 0, 0), font=font)
+                    draw.text((5, y_loc + 5), wf, (0, 0, 0), font=font)
                     y_loc += wf_maxHeight[wf]
             except Exception as e:
                 if warn:
@@ -1676,9 +1798,13 @@ def dot_to_gif(filename: str, warn=None):
         # create a gif file from images
         try:
             with BytesIO() as output:
-                newImages[pngFiles[0]].save(output, save_all=True, format='GIF',
+                newImages[pngFiles[0]].save(
+                    output,
+                    save_all=True,
+                    format='GIF',
                     append_images=[newImages[x] for x in pngFiles[1:]],
-                    duration=400, loop=0)
+                    duration=400,
+                    loop=0)
                 return base64.b64encode(output.getvalue()).decode('ascii')
         except Exception as e:
             if warn:
@@ -1693,8 +1819,10 @@ def separate_options(options: str) -> List[str]:
     while True:
         try:
             # test current group
-            compile(pieces[idx].strip(), filename='<string>',
-                    mode='exec' if '=' in pieces[idx] else 'eval')
+            compile(
+                pieces[idx].strip(),
+                filename='<string>',
+                mode='exec' if '=' in pieces[idx] else 'eval')
             # if it is ok, go next
             idx += 1
             if idx == len(pieces):
@@ -1717,4 +1845,3 @@ def separate_options(options: str) -> List[str]:
                 pieces[idx] += '\n' + pieces[idx + 1]
                 pieces.pop(idx + 1)
     return pieces
-
