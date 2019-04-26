@@ -34,6 +34,7 @@ with_network = internet_on()
 
 
 class TestUtils(unittest.TestCase):
+
     def setUp(self):
         env.reset()
 
@@ -42,14 +43,17 @@ class TestUtils(unittest.TestCase):
         for verbosity in [0, 1, 2, 3, 4]:
             env.verbosity = verbosity
             logger.debug(
-                'Verbosity {}:debug message with ``empahsized text`` in between'.format(env.verbosity))
+                'Verbosity {}:debug message with ``empahsized text`` in between'
+                .format(env.verbosity))
             logger.info(
-                'Verbosity {}:info message with ``empahsized text`` in between'.format(env.verbosity))
+                'Verbosity {}:info message with ``empahsized text`` in between'
+                .format(env.verbosity))
             logger.warning(
-                'Verbosity {}:warning message with ``empahsized text`` in between'.format(env.verbosity))
+                'Verbosity {}:warning message with ``empahsized text`` in between'
+                .format(env.verbosity))
             logger.error(
-                'Verbosity {}:error message with ``empahsized text`` in between'.format(env.verbosity))
-
+                'Verbosity {}:error message with ``empahsized text`` in between'
+                .format(env.verbosity))
 
     def testWorkflowDict(self):
         '''Test workflow dict with attribute access'''
@@ -73,8 +77,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(res['path'], [None])
         self.assertEqual(res['to'], [None])
         self.assertEqual(res['file'], [None])
-        res = extract_pattern('{path}/{to}/{file}.txt',
-                              ['/tmp/test/1.txt.txt'])
+        res = extract_pattern('{path}/{to}/{file}.txt', ['/tmp/test/1.txt.txt'])
         self.assertEqual(res['path'], ['/tmp'])
         self.assertEqual(res['to'], ['test'])
         self.assertEqual(res['file'], ['1.txt'])
@@ -84,13 +87,17 @@ class TestUtils(unittest.TestCase):
             'a': 100,
             'b': 'file name',
             'c': ['file1', 'file2', 'file 3'],
-            'd': {'a': 'file1', 'b': 'file2'},
+            'd': {
+                'a': 'file1',
+                'b': 'file2'
+            },
         })
         self.assertEqual(expand_pattern('{b}.txt'), ['file name.txt'])
-        self.assertEqual(expand_pattern('{c}.txt'), [
-                         'file1.txt', 'file2.txt', 'file 3.txt'])
-        self.assertEqual(expand_pattern('{a}_{c}.txt'), [
-                         '100_file1.txt', '100_file2.txt', '100_file 3.txt'])
+        self.assertEqual(
+            expand_pattern('{c}.txt'), ['file1.txt', 'file2.txt', 'file 3.txt'])
+        self.assertEqual(
+            expand_pattern('{a}_{c}.txt'),
+            ['100_file1.txt', '100_file2.txt', '100_file 3.txt'])
 
     def testAccessedVars(self):
         '''Test accessed vars of a SoS expression or statement.'''
@@ -98,16 +105,17 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(accessed_vars('''a = b + 2.0'''), {'b'})
         self.assertEqual(accessed_vars('''a = "C"'''), set())
         self.assertEqual(accessed_vars('''a = "C" + f"{D}"'''), {'D'})
-        self.assertEqual(accessed_vars(
-            '''a = 1 + f"{D + 20:f}" '''), {'D'})
-        self.assertEqual(accessed_vars('''k, "a.txt", "b.txt", par=f(something) ''',
-            mode='eva'), {'k', 'f', 'something'})
+        self.assertEqual(accessed_vars('''a = 1 + f"{D + 20:f}" '''), {'D'})
+        self.assertEqual(
+            accessed_vars(
+                '''k, "a.txt", "b.txt", par=f(something) ''', mode='eva'),
+            {'k', 'f', 'something'})
         # this is a complicated case because the actual variable depends on the
         # result of an expression... However, in the NO-evaluation case, this is
         # the best we can do.
         self.assertEqual(accessed_vars('''c + f"{D + 1}" '''), {'c', 'D'})
-        self.assertEqual(accessed_vars('''a, b=2, c=d ''', mode='eva'), {'a', 'd'})
-
+        self.assertEqual(
+            accessed_vars('''a, b=2, c=d ''', mode='eva'), {'a', 'd'})
 
     def testProgressBar(self):
         '''Test progress bar'''
@@ -135,8 +143,7 @@ run:
         # would incorrectly be executed as bat
         if sys.platform == 'win32':
             return
-        for text in ('"""a"""', '"b"',
-                     r'"""\na\\nb"""', r"'''a\nb'''",
+        for text in ('"""a"""', '"b"', r'"""\na\\nb"""', r"'''a\nb'''",
                      """ "a'\\"='" """):
             script = SoS_Script(r'''
 a = 1
@@ -144,8 +151,7 @@ run: expand=True
    #!/usr/bin/env python
    with open('tmp.txt', 'w') as tmp:
       tmp.write({} + '{}')
-k = """b"""'''.format(text, '{a}')
-            )
+k = """b"""'''.format(text, '{a}'))
             wf = script.workflow()
             Base_Executor(wf).run()
             with open('tmp.txt') as tmp:
@@ -203,14 +209,13 @@ task:
                 self.assertEqual(res['changed_vars'], {'b'})
             elif section.names[0][1] == '2':
                 self.assertEqual(res['step_input'], sos_targets())
-                self.assertEqual(res['step_depends'], sos_targets(
-                    'some.txt', executable('ls')))
+                self.assertEqual(res['step_depends'],
+                                 sos_targets('some.txt', executable('ls')))
                 self.assertTrue(res['step_output'].unspecified())
                 # for_each will not be used for DAG
-                self.assertEqual(res['environ_vars'], {
-                                 'b', 'for_each', 'executable'})
-                self.assertEqual(res['signature_vars'], {
-                                 'r', 'time', 'random'})
+                self.assertEqual(res['environ_vars'],
+                                 {'b', 'for_each', 'executable'})
+                self.assertEqual(res['signature_vars'], {'r', 'time', 'random'})
                 self.assertEqual(res['changed_vars'], set())
             elif section.names[0][1] == '4':
                 self.assertTrue('output' in res['signature_vars'])
@@ -231,14 +236,15 @@ input: something_unknown, sos_groups(output_from(['C1', 'C2']), by=2), group_by=
         for section in wf.sections:
             res = analyze_section(section)
             if section.names[0][1] == 1:
-                self.assertEqual(res['step_depends'], sos_targets(sos_step('B')))
+                self.assertEqual(res['step_depends'],
+                                 sos_targets(sos_step('B')))
             if section.names[0][1] == 2:
-                self.assertTrue(res['step_depends'] == sos_targets(sos_step('C1'), sos_step('C2')))
+                self.assertTrue(res['step_depends'] == sos_targets(
+                    sos_step('C1'), sos_step('C2')))
 
     def testOnDemandOptions(self):
         '''Test options that are evaluated upon request.'''
-        options = on_demand_options(
-            {'a': '"est"', 'b': 'c', 'c': 'e + 2'})
+        options = on_demand_options({'a': '"est"', 'b': 'c', 'c': 'e + 2'})
         env.sos_dict = WorkflowDict({
             'e': 10,
         })
@@ -274,21 +280,22 @@ input: something_unknown, sos_groups(output_from(['C1', 'C2']), by=2), group_by=
     def testSplitFstring(self):
         '''Test function to split f-string in pieces '''
         for string, pieces in [
-            ('hello world' , ['hello world']),
-            ('hello world {' , None),
-            ('{ hello world' , None),
-            ('hello world {}' , None),
-            ('hello world {a b}' , None),
-            ('{{hello world' , ['{{hello world']),
-            ('hello {{}} world' , ['hello {{}} world']),
-            ('hello {{ world }}' , ['hello {{ world }}']),
-            ('hello }} world' , ['hello }} world']),
-            ('hello {1} world' , ['hello ', '1', ' world']),
-            ('hello {a+b } }} world' , ['hello ', 'a+b ', ' }} world']),
-            ('hello {a+b:r} }} world' , ['hello ', 'a+b:r', ' }} world']),
-            ('hello {{{a+b!r} }} world' , ['hello {{', 'a+b!r', ' }} world']),
-            ('hello {a+b + {1,2}.pop() } }} world' , ['hello ', 'a+b + {1,2}.pop() ', ' }} world']),
-            ]:
+            ('hello world', ['hello world']),
+            ('hello world {', None),
+            ('{ hello world', None),
+            ('hello world {}', None),
+            ('hello world {a b}', None),
+            ('{{hello world', ['{{hello world']),
+            ('hello {{}} world', ['hello {{}} world']),
+            ('hello {{ world }}', ['hello {{ world }}']),
+            ('hello }} world', ['hello }} world']),
+            ('hello {1} world', ['hello ', '1', ' world']),
+            ('hello {a+b } }} world', ['hello ', 'a+b ', ' }} world']),
+            ('hello {a+b:r} }} world', ['hello ', 'a+b:r', ' }} world']),
+            ('hello {{{a+b!r} }} world', ['hello {{', 'a+b!r', ' }} world']),
+            ('hello {a+b + {1,2}.pop() } }} world',
+             ['hello ', 'a+b + {1,2}.pop() ', ' }} world']),
+        ]:
             if pieces is None:
                 self.assertRaises(SyntaxError, split_fstring, string)
             else:
@@ -297,23 +304,28 @@ input: something_unknown, sos_groups(output_from(['C1', 'C2']), by=2), group_by=
     def testAsFstring(self):
         '''Test as fstring '''
         for string, fstring in [
-            ('hello world' , 'fr"""hello world"""'),
-            ('{{hello world' , 'fr"""{{hello world"""'),
-            ('hello {{}} world' , 'fr"""hello {{}} world"""'),
-            ('hello {{ world }}' , 'fr"""hello {{ world }}"""'),
-            ('hello }} \n world' , 'fr"""hello }} \n world"""'),
-            (r'hello }} \n world' , 'fr"""hello }} \\n world"""'),
-            ('hello {1} world' , 'fr"""hello {1} world"""'),
-            ('hello {a+b } }} world' , 'fr"""hello {a+b } }} world"""'),
-            ('hello {a+b:r} }} world' , 'fr"""hello {a+b:r} }} world"""'),
-            ('''hello """ \'\'\' {a+b } }} world''', 'f\'hello """ \\\'\\\'\\\' {a+b } }} world\''),
-            ('hello {{{a+b!r} }} world' , 'fr"""hello {{{a+b!r} }} world"""'),
-            ('hello {a+b + {1,2}.pop() } }} world' , 'fr"""hello {a+b + {1,2}.pop() } }} world"""'),
-            ('''hello {'a'+b !r} }} world''' , 'fr"""hello {\'a\'+b !r} }} world"""'),
-            ('''hello """ \'\'\' {'a'+"b" + {"c", "D"}.pop() } }} world''' ,
-                '\'hello """ \\\'\\\'\\\' {0} }} world\'.format(\'a\'+"b" + {"c", "D"}.pop() )'),
-            ]:
+            ('hello world', 'fr"""hello world"""'),
+            ('{{hello world', 'fr"""{{hello world"""'),
+            ('hello {{}} world', 'fr"""hello {{}} world"""'),
+            ('hello {{ world }}', 'fr"""hello {{ world }}"""'),
+            ('hello }} \n world', 'fr"""hello }} \n world"""'),
+            (r'hello }} \n world', 'fr"""hello }} \\n world"""'),
+            ('hello {1} world', 'fr"""hello {1} world"""'),
+            ('hello {a+b } }} world', 'fr"""hello {a+b } }} world"""'),
+            ('hello {a+b:r} }} world', 'fr"""hello {a+b:r} }} world"""'),
+            ('''hello """ \'\'\' {a+b } }} world''',
+             'f\'hello """ \\\'\\\'\\\' {a+b } }} world\''),
+            ('hello {{{a+b!r} }} world', 'fr"""hello {{{a+b!r} }} world"""'),
+            ('hello {a+b + {1,2}.pop() } }} world',
+             'fr"""hello {a+b + {1,2}.pop() } }} world"""'),
+            ('''hello {'a'+b !r} }} world''',
+             'fr"""hello {\'a\'+b !r} }} world"""'),
+            ('''hello """ \'\'\' {'a'+"b" + {"c", "D"}.pop() } }} world''',
+             '\'hello """ \\\'\\\'\\\' {0} }} world\'.format(\'a\'+"b" + {"c", "D"}.pop() )'
+            ),
+        ]:
             self.assertEqual(as_fstring(string), fstring)
+
 
 if __name__ == '__main__':
     unittest.main()

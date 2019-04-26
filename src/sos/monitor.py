@@ -12,10 +12,17 @@ import psutil
 from .utils import env, expand_time, format_HHMMSS
 from .tasks import TaskFile
 
+
 class ProcessMonitor(threading.Thread):
-    def __init__(self, task_id, monitor_interval,
-                 resource_monitor_interval, max_walltime=None, max_mem=None,
-                 max_procs=None, sos_dict={}):
+
+    def __init__(self,
+                 task_id,
+                 monitor_interval,
+                 resource_monitor_interval,
+                 max_walltime=None,
+                 max_mem=None,
+                 max_procs=None,
+                 sos_dict={}):
         threading.Thread.__init__(self)
         self.task_id = task_id
         self.pid = os.getpid()
@@ -28,10 +35,10 @@ class ProcessMonitor(threading.Thread):
             self.max_walltime = expand_time(self.max_walltime)
         self.max_mem = max_mem
         self.max_procs = max_procs
-        self.task_file = os.path.join(os.path.expanduser(
-            '~'), '.sos', 'tasks', task_id + '.task')
-        self.pulse_file = os.path.join(os.path.expanduser(
-            '~'), '.sos', 'tasks', task_id + '.pulse')
+        self.task_file = os.path.join(
+            os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
+        self.pulse_file = os.path.join(
+            os.path.expanduser('~'), '.sos', 'tasks', task_id + '.pulse')
         # remove previous status file, which could be readonly if the job is killed
         if os.path.isfile(self.pulse_file):
             if not os.access(self.pulse_file, os.W_OK):
@@ -40,7 +47,8 @@ class ProcessMonitor(threading.Thread):
         self.sos_dict = sos_dict
         with open(self.pulse_file, 'a') as pd:
             pd.write(
-                '#time\tproc_cpu\tproc_mem\tchildren\tchildren_cpu\tchildren_mem\n')
+                '#time\tproc_cpu\tproc_mem\tchildren\tchildren_cpu\tchildren_mem\n'
+            )
 
     def _check(self):
         current_process = psutil.Process(self.pid)
@@ -56,8 +64,8 @@ class ProcessMonitor(threading.Thread):
         return par_cpu, par_mem, n_children, ch_cpu, ch_mem
 
     def _exceed_resource(self, msg):
-        err_file = os.path.join(os.path.expanduser(
-            '~'), '.sos', 'tasks', self.task_id + '.err')
+        err_file = os.path.join(
+            os.path.expanduser('~'), '.sos', 'tasks', self.task_id + '.err')
         with open(err_file, 'a') as err:
             err.write(msg + '\n')
         tf = TaskFile(self.task_id)
@@ -67,7 +75,6 @@ class ProcessMonitor(threading.Thread):
         # kill the task
         p = psutil.Process(self.pid)
         p.kill()
-
 
     def run(self):
         counter = 0
@@ -93,25 +100,31 @@ class ProcessMonitor(threading.Thread):
                     os.utime(self.pulse_file, None)
                 else:
                     cpu, mem, nch, ch_cpu, ch_mem = self._check()
-                    if 'peak_cpu' not in self.sos_dict or self.sos_dict['peak_cpu'] < cpu + ch_cpu:
+                    if 'peak_cpu' not in self.sos_dict or self.sos_dict[
+                            'peak_cpu'] < cpu + ch_cpu:
                         self.sos_dict['peak_cpu'] = cpu + ch_cpu
-                    if 'peak_mem' not in self.sos_dict or self.sos_dict['peak_mem'] < mem + ch_mem:
+                    if 'peak_mem' not in self.sos_dict or self.sos_dict[
+                            'peak_mem'] < mem + ch_mem:
                         self.sos_dict['peak_mem'] = mem + ch_mem
 
                     with open(self.pulse_file, 'a') as pd:
                         pd.write(
-                            f'{time.time()}\t{cpu:.2f}\t{mem}\t{nch}\t{ch_cpu}\t{ch_mem}\n')
+                            f'{time.time()}\t{cpu:.2f}\t{mem}\t{nch}\t{ch_cpu}\t{ch_mem}\n'
+                        )
                     if self.max_procs is not None and cpu + ch_cpu > self.max_procs:
                         self._exceed_resource(
-                            f'Task {self.task_id} exits because of excessive use of procs (used {cpu + ch_cpu}, limit {self.max_procs})')
+                            f'Task {self.task_id} exits because of excessive use of procs (used {cpu + ch_cpu}, limit {self.max_procs})'
+                        )
                     if self.max_mem is not None and mem + ch_mem > self.max_mem:
                         self._exceed_resource(
-                            f'Task {self.task_id} exits because of excessive use of max_mem (used {mem + ch_mem}, limit {self.max_mem})')
+                            f'Task {self.task_id} exits because of excessive use of max_mem (used {mem + ch_mem}, limit {self.max_mem})'
+                        )
                 # walltime can be checked more frequently and does not have to wait for resource option
                 elapsed = time.time() - start_time
                 if self.max_walltime is not None and elapsed > self.max_walltime:
                     self._exceed_resource(
-                        f'Task {self.task_id} exits because of excessive run time (used {format_HHMMSS(int(elapsed))}, limit {format_HHMMSS(self.max_walltime)})')
+                        f'Task {self.task_id} exits because of excessive run time (used {format_HHMMSS(int(elapsed))}, limit {format_HHMMSS(self.max_walltime)})'
+                    )
                 time.sleep(self.monitor_interval)
                 counter += 1
             except Exception as e:
@@ -119,7 +132,8 @@ class ProcessMonitor(threading.Thread):
                 # the warning message is usually:
                 # WARNING: psutil.NoSuchProcess no process found with pid XXXXX
                 # env.logger.warning(e)
-                env.logger.debug(f'Monitor of {self.task_id} failed with message {e}')
+                env.logger.debug(
+                    f'Monitor of {self.task_id} failed with message {e}')
                 break
 
 
@@ -159,13 +173,14 @@ def summarizeExecution(task_id, pulses, status='Unknown'):
     except Exception:
         second_elapsed = 0
     result = [
-        ('status', status),
-        ('task', task_id),
-        ('nproc', str(peak_nch)),
-        ('start', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))),
+        ('status', status), ('task', task_id), ('nproc', str(peak_nch)),
+        ('start', time.strftime('%Y-%m-%d %H:%M:%S',
+                                time.localtime(start_time))),
         ('end', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(end_time))),
-        ('duration', ('' if second_elapsed < 86400 else f'{int(second_elapsed/86400)} day{"s" if second_elapsed > 172800 else ""} ') +
-         time.strftime('%H:%M:%S', time.gmtime(second_elapsed))),
+        ('duration',
+         ('' if second_elapsed < 86400 else
+          f'{int(second_elapsed/86400)} day{"s" if second_elapsed > 172800 else ""} '
+         ) + time.strftime('%H:%M:%S', time.gmtime(second_elapsed))),
         ('cpu_peak', f'{peak_cpu:.1f}'),
         ('cpu_avg', f'{0 if count == 0 else accu_cpu/count:.1f}'),
         ('mem_peak', f'{peak_mem/1024/1024:.1f}Mb'),

@@ -29,8 +29,8 @@ except ImportError:
     has_docker = False
 
 
-
 class TimeoutException(Exception):
+
     def __init__(self, msg=''):
         self.msg = msg
 
@@ -58,8 +58,10 @@ def time_limit(seconds, msg=''):
             # if the action ends in specified time, timer is canceled
             timer.cancel()
     else:
+
         def signal_handler(signum, frame):
             raise TimeoutException("Timed out for option {}".format(msg))
+
         signal.signal(signal.SIGALRM, signal_handler)
         signal.alarm(seconds)
         try:
@@ -72,12 +74,15 @@ try:
     with time_limit(2, 'check docker daemon'):
         has_docker = SoS_DockerClient().client is not None
 except Exception as e:
-    print('Cannot connect to a docker daemon in 2 seconds. Assuming no docker environment.')
+    print(
+        'Cannot connect to a docker daemon in 2 seconds. Assuming no docker environment.'
+    )
     print(e)
     has_docker = False
 
 
 class TestDockerActions(unittest.TestCase):
+
     def setUp(self):
         self.olddir = os.getcwd()
         try:
@@ -105,7 +110,8 @@ class TestDockerActions(unittest.TestCase):
         #
         self.temp_files.extend(files)
 
-    @unittest.skipIf(not has_docker or sys.platform == 'win32', 'Skip test because docker is not installed.')
+    @unittest.skipIf(not has_docker or sys.platform == 'win32',
+                     'Skip test because docker is not installed.')
     def testBashInDocker(self):
         '''Test action bash in docker environment'''
         script = SoS_Script(r'''
@@ -127,8 +133,9 @@ echo 'Echo'
 #''')
 #        wf = script.workflow()
 #        Base_Executor(wf).run()
-        
-    @unittest.skipIf(not has_docker  or sys.platform == 'win32', 'Skip test because docker is not installed.')
+
+    @unittest.skipIf(not has_docker or sys.platform == 'win32',
+                     'Skip test because docker is not installed.')
     def testShInDocker(self):
         '''Test action sh in docker environment'''
         # test docker
@@ -142,7 +149,8 @@ echo 'Echo
         #
         Base_Executor(wf).run(mode='dryrun')
 
-    @unittest.skipIf(not has_docker  or sys.platform == 'win32', 'Skip test because docker is not installed.')
+    @unittest.skipIf(not has_docker or sys.platform == 'win32',
+                     'Skip test because docker is not installed.')
     def testDockerBuildLinuxImage(self):
         '''Test action docker build'''
         script = SoS_Script(r'''
@@ -175,7 +183,8 @@ WORKDIR /home
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    @unittest.skipIf(not has_docker  or sys.platform != 'win32', 'Skip test because docker is not installed.')
+    @unittest.skipIf(not has_docker or sys.platform != 'win32',
+                     'Skip test because docker is not installed.')
     def testDockerBuildWindowsImage(self):
         '''Test action docker build'''
         script = SoS_Script(r'''
@@ -190,8 +199,9 @@ MAINTAINER someone@microsoft.com
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        
-    @unittest.skipIf(not has_docker or sys.platform == 'win32', 'Skip test because docker is not installed.')
+
+    @unittest.skipIf(not has_docker or sys.platform == 'win32',
+                     'Skip test because docker is not installed.')
     def testDockerImage(self):
         '''Test docker_image option'''
         script = SoS_Script(r'''
@@ -211,7 +221,10 @@ run: container='docker://compbio/ngseasy-fastqc:1.0-r001',
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    @unittest.skipIf(not has_docker or 'TRAVIS' in os.environ  or sys.platform == 'win32', 'Skip test because docker is not installed, or in travis, which failed for unknown reason')
+    @unittest.skipIf(
+        not has_docker or 'TRAVIS' in os.environ or sys.platform == 'win32',
+        'Skip test because docker is not installed, or in travis, which failed for unknown reason'
+    )
     def testDockerImageFromFile(self):
         '''Test docker_image load from a file.'''
         # image from a saved file
@@ -232,7 +245,8 @@ run: container='docker://blang/busybox-bash', docker_file = 'hello.tar'
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    @unittest.skipIf(not has_docker  or sys.platform == 'win32', 'Skip test because docker is not installed.')
+    @unittest.skipIf(not has_docker or sys.platform == 'win32',
+                     'Skip test because docker is not installed.')
     def testDockerScriptAction(self):
         '''Test action sh in docker environment'''
         # test docker
@@ -244,7 +258,8 @@ echo 'Echo'
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    @unittest.skipIf(not has_docker or sys.platform == 'win32', 'Skip test because docker is not installed.')
+    @unittest.skipIf(not has_docker or sys.platform == 'win32',
+                     'Skip test because docker is not installed.')
     def testPortOption(self):
         '''Test use of option port in action'''
         script = SoS_Script(r'''
@@ -262,7 +277,6 @@ echo 'Echo'
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-
 
 if __name__ == '__main__':
     unittest.main()

@@ -16,8 +16,10 @@ from .controller import (close_socket, connect_controllers, create_socket,
 from .executor_utils import kill_all_subprocesses, prepare_env
 from .utils import env, ProcessKilled
 
+
 def signal_handler(*args, **kwargs):
     raise ProcessKilled()
+
 
 class Runner(object):
     '''
@@ -31,6 +33,7 @@ class Runner(object):
     1. True if all completed, return value from generator is ignored.
     2. `self` if waiting.
     '''
+
     def __init__(self, runner, name):
         self._runner = runner
         self._poller = 0
@@ -62,12 +65,14 @@ class Runner(object):
     def can_proceed(self):
         return self._poller.poll(0)
 
+
 class SoS_Worker(mp.Process):
     '''
     Worker process to process SoS step or workflow in separate process.
     '''
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None, **kwargs) -> None:
+    def __init__(self, config: Optional[Dict[str, Any]] = None,
+                 **kwargs) -> None:
         '''
 
         config:
@@ -96,16 +101,25 @@ class SoS_Worker(mp.Process):
 
     def waiting_runners(self):
         # check if
-        return [idx for idx, runner in enumerate(self._runners) if isinstance(runner, Runner) and runner.can_proceed()]
+        return [
+            idx for idx, runner in enumerate(self._runners)
+            if isinstance(runner, Runner) and runner.can_proceed()
+        ]
 
     def completed_runners(self):
-        return [idx for idx, runner in enumerate(self._runners) if runner is True]
+        return [
+            idx for idx, runner in enumerate(self._runners) if runner is True
+        ]
 
     def available_ports(self):
-        return [port for port, runner in zip(self._master_ports, self._runners) if runner is True]
+        return [
+            port for port, runner in zip(self._master_ports, self._runners)
+            if runner is True
+        ]
 
     def num_pending(self):
-        return len([runner for runner in self._runners if isinstance(runner, Runner)])
+        return len(
+            [runner for runner in self._runners if isinstance(runner, Runner)])
 
     def switch_to(self, idx):
         if len(self._master_sockets) > idx:
@@ -123,10 +137,15 @@ class SoS_Worker(mp.Process):
             self._master_ports.append(port)
             self._runners.append(True)
             if env.is_debugging('WORKER'):
-                env.log_to_file('WORKER', f'WORKER {self.name} ({os.getpid()}) creates ports {self._master_ports}')
+                env.log_to_file(
+                    'WORKER',
+                    f'WORKER {self.name} ({os.getpid()}) creates ports {self._master_ports}'
+                )
 
     def __repr__(self):
-        return self.name + ' ' +  ' '.join(str(x) if isinstance(x, Runner) else str(idx) for idx,x in enumerate(self._runners))
+        return self.name + ' ' + ' '.join(
+            str(x) if isinstance(x, Runner) else str(idx)
+            for idx, x in enumerate(self._runners))
 
     def run(self):
         # env.logger.warning(f'Worker created {os.getpid()}')
@@ -134,8 +153,10 @@ class SoS_Worker(mp.Process):
         env.zmq_context = connect_controllers()
 
         # create controller socket
-        env.ctrl_socket = create_socket(env.zmq_context, zmq.REQ, 'worker backend')
-        env.ctrl_socket.connect(f'tcp://127.0.0.1:{self.config["sockets"]["worker_backend"]}')
+        env.ctrl_socket = create_socket(env.zmq_context, zmq.REQ,
+                                        'worker backend')
+        env.ctrl_socket.connect(
+            f'tcp://127.0.0.1:{self.config["sockets"]["worker_backend"]}')
 
         signal.signal(signal.SIGTERM, signal_handler)
         # result socket used by substeps
@@ -150,7 +171,8 @@ class SoS_Worker(mp.Process):
                     for idx in wr:
                         self.switch_to(idx)
                         # it can be True for completion and Runner itself for continue
-                        self._runners[idx] = self._runners[idx].run_until_waiting()
+                        self._runners[idx] = self._runners[
+                            idx].run_until_waiting()
                     continue
 
                 cr = self.completed_runners()
@@ -163,29 +185,39 @@ class SoS_Worker(mp.Process):
                 # avilable ports to the controller. We also need to send a flag to let the
                 # controller know if we have any pending job, and the controller might decide
                 # to kill this worker.
-                env.ctrl_socket.send_pyobj([self.num_pending()] + self.available_ports())
+                env.ctrl_socket.send_pyobj([self.num_pending()] +
+                                           self.available_ports())
                 reply = env.ctrl_socket.recv_pyobj()
 
                 if reply is None:
                     if len(wr) != 0:
-                        env.logger.error(f'WORKER terminates with pending tasks. sos might not be termianting properly.')
+                        env.logger.error(
+                            f'WORKER terminates with pending tasks. sos might not be termianting properly.'
+                        )
                     if env.is_debugging('WORKER'):
-                        env.log_to_file('WORKER', f'WORKER {self.name} ({os.getpid()}) quits after receiving None.')
+                        env.log_to_file(
+                            'WORKER',
+                            f'WORKER {self.name} ({os.getpid()}) quits after receiving None.'
+                        )
                     break
-                if not reply: # if an empty job is returned
+                if not reply:  # if an empty job is returned
                     time.sleep(0.1)
                     continue
 
                 #
                 # if a real job is returned, run it. _process_job will either return True
                 # or a runner in case it is interrupted.
-                env.log_to_file('WORKER',
-                    f'WORKER {self.name} ({os.getpid()}, {self.num_pending()} pending) receives {self._type_of_work(reply)} request {self._name_of_work(reply)} with master port {self._master_ports[new_idx]}')
+                env.log_to_file(
+                    'WORKER',
+                    f'WORKER {self.name} ({os.getpid()}, {self.num_pending()} pending) receives {self._type_of_work(reply)} request {self._name_of_work(reply)} with master port {self._master_ports[new_idx]}'
+                )
 
                 if 'task' in reply:
                     self.run_substep(reply)
-                    env.log_to_file('WORKER',
-                        f'WORKER {self.name} ({os.getpid()}) completes substep {self._name_of_work(reply)}')
+                    env.log_to_file(
+                        'WORKER',
+                        f'WORKER {self.name} ({os.getpid()}) completes substep {self._name_of_work(reply)}'
+                    )
                     self._runners[new_idx] = True
                     continue
 
@@ -195,10 +227,14 @@ class SoS_Worker(mp.Process):
                     self.switch_to(new_idx)
 
                 # step and workflow can yield. Here we call run_until_waiting directly because we know the Runner can proceed.
-                self._runners[new_idx] = Runner(self.run_step(**reply) if 'section' in reply else self.run_workflow(**reply),
+                self._runners[new_idx] = Runner(
+                    self.run_step(**reply)
+                    if 'section' in reply else self.run_workflow(**reply),
                     name=self._name_of_work(reply)).run_until_waiting()
                 if env.is_debugging('WORKER'):
-                    env.log_to_file('WORKER', 'STATUS ' + self._name_of_work(reply) + str(self))
+                    env.log_to_file(
+                        'WORKER',
+                        'STATUS ' + self._name_of_work(reply) + str(self))
             except ProcessKilled:
                 # in theory, this will not be executed because the exception
                 # will be caught by the step executor, and then sent to the master
@@ -233,7 +269,8 @@ class SoS_Worker(mp.Process):
         else:
             return 'substep'
 
-    def run_workflow(self, workflow_id, wf, targets, args, shared, config, **kwargs):
+    def run_workflow(self, workflow_id, wf, targets, args, shared, config,
+                     **kwargs):
         #
         #
         # get workflow, args, shared, and config
@@ -242,16 +279,20 @@ class SoS_Worker(mp.Process):
         # we are in a separate process and need to set verbosity from workflow config
         # but some tests do not provide verbosity
         env.verbosity = config.get('verbosity', 2)
-        env.log_to_file('WORKER',
-            f'Worker {self.name} working on a workflow {workflow_id} with args {args}')
+        env.log_to_file(
+            'WORKER',
+            f'Worker {self.name} working on a workflow {workflow_id} with args {args}'
+        )
 
         executer = Base_Executor(wf, args=args, shared=shared, config=config)
         # we send the socket to subworkflow, which would send
         # everything directly to the master process, so we do not
         # have to collect result here
         try:
-            runner = executer.run_as_nested(targets=targets, parent_socket=env.master_socket,
-                         my_workflow_id=workflow_id)
+            runner = executer.run_as_nested(
+                targets=targets,
+                parent_socket=env.master_socket,
+                my_workflow_id=workflow_id)
             try:
                 yreq = next(runner)
                 while True:
@@ -266,15 +307,18 @@ class SoS_Worker(mp.Process):
     def run_step(self, section, context, shared, args, config, verbosity):
         from .step_executor import Step_Executor
 
-        env.log_to_file('WORKER',
-            f'Worker {self.name} working on {section.step_name()} with args {args}')
+        env.log_to_file(
+            'WORKER',
+            f'Worker {self.name} working on {section.step_name()} with args {args}'
+        )
         env.config.update(config)
         env.verbosity = verbosity
         #
         # Execute global namespace. The reason why this is executed outside of
         # step is that the content of the dictioary might be overridden by context
         # variables.
-        prepare_env(section.global_def, section.global_vars, env.config['workflow_vars'])
+        prepare_env(section.global_def, section.global_vars,
+                    env.config['workflow_vars'])
 
         # clear existing keys, otherwise the results from some random result
         # might mess with the execution of another step that does not define input
@@ -336,7 +380,10 @@ class WorkerManager(object):
 
     def report(self, msg):
         if env.is_debugging('WORKER'):
-            env.log_to_file('WORKER', f'{msg.upper()}: {self._num_workers} workers (of which {len(self._blocking_ports)} is blocking), {self._n_requested} requested, {self._n_processed} processed')
+            env.log_to_file(
+                'WORKER',
+                f'{msg.upper()}: {self._num_workers} workers (of which {len(self._blocking_ports)} is blocking), {self._n_requested} requested, {self._n_processed} processed'
+            )
 
     def add_request(self, msg_type, msg):
         self._n_requested += 1
@@ -380,7 +427,9 @@ class WorkerManager(object):
             self._claimed_ports.add(port)
             self._max_workers += 1
             self._blocking_ports.add(port)
-            env.logger.debug(f'Increasing maximum number of workers to {self._max_workers} to accommodate a blocking subworkflow.')
+            env.logger.debug(
+                f'Increasing maximum number of workers to {self._max_workers} to accommodate a blocking subworkflow.'
+            )
             return port
 
     def process_request(self, num_pending, ports, request_blocking=False):
@@ -391,7 +440,8 @@ class WorkerManager(object):
         if any(port in self._step_requests for port in ports):
             # if the port is available
             port = [x for x in ports if x in self._step_requests][0]
-            self._worker_backend_socket.send_pyobj(self._step_requests.pop(port))
+            self._worker_backend_socket.send_pyobj(
+                self._step_requests.pop(port))
             self._n_processed += 1
             self.report(f'Step {port} processed')
             # port should be in claimed ports
@@ -405,7 +455,9 @@ class WorkerManager(object):
         elif any(port in self._blocking_ports for port in ports):
             # in block list but appear to be idle, kill it
             self._max_workers -= 1
-            env.logger.debug(f'Reduce maximum number of workers to {self._max_workers} after completion of a blocking subworkflow.')
+            env.logger.debug(
+                f'Reduce maximum number of workers to {self._max_workers} after completion of a blocking subworkflow.'
+            )
             for port in ports:
                 if port in self._blocking_ports:
                     self._blocking_ports.remove(port)
@@ -429,7 +481,9 @@ class WorkerManager(object):
         elif request_blocking:
             self._worker_backend_socket.send_pyobj({})
             return ports[0]
-        elif num_pending == 0 and ports[0] in self._last_pending_time and time.time() - self._last_pending_time[ports[0]] > 5:
+        elif num_pending == 0 and ports[
+                0] in self._last_pending_time and time.time(
+                ) - self._last_pending_time[ports[0]] > 5:
             # kill the worker
             for port in ports:
                 if port in self._available_ports:
@@ -444,8 +498,10 @@ class WorkerManager(object):
             self._available_ports.add(ports[0])
             self._worker_backend_socket.send_pyobj({})
             ports = tuple(ports)
-            if (ports, num_pending) not in self._last_pending_msg or time.time() - self._last_pending_msg[(ports, num_pending)] > 1.0:
-                self.report(f'pending with port {ports} at num_pending {num_pending}')
+            if (ports, num_pending) not in self._last_pending_msg or time.time(
+            ) - self._last_pending_msg[(ports, num_pending)] > 1.0:
+                self.report(
+                    f'pending with port {ports} at num_pending {num_pending}')
                 self._last_pending_msg[(ports, num_pending)] = time.time()
 
     def start(self):
@@ -464,7 +520,9 @@ class WorkerManager(object):
             # join processes if they are now gone, it should not do anything bad
             # if the process is still running
             [worker.join() for worker in self._workers if not worker.is_alive()]
-            self._workers = [worker for worker in self._workers if worker.is_alive()]
+            self._workers = [
+                worker for worker in self._workers if worker.is_alive()
+            ]
             if len(self._workers) < self._num_workers:
                 raise ProcessKilled('One of the workers has been killed.')
 

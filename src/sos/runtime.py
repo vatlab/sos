@@ -32,12 +32,12 @@ def _load_group(group: str) -> None:
                 if m:
                     if parse_version(__version__) < parse_version(m.group(1)):
                         logger.warning(
-                            f'Failed to load target {_entrypoint.name}: please upgrade your version of sos from {__version__} to at least version {m.group(1)}')
+                            f'Failed to load target {_entrypoint.name}: please upgrade your version of sos from {__version__} to at least version {m.group(1)}'
+                        )
                         continue
             if _name == 'run':
                 # this is critical so we print the warning
-                logger.warning(
-                    f'Failed to load target {_entrypoint.name}: {e}')
+                logger.warning(f'Failed to load target {_entrypoint.name}: {e}')
             else:
                 logger.debug(f'Failed to load target {_entrypoint.name}: {e}')
 

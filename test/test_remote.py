@@ -11,9 +11,8 @@ import unittest
 from sos.hosts import Host
 from sos.targets import file_target
 from sos.utils import env
-from sos.parser import  SoS_Script
+from sos.parser import SoS_Script
 from sos.workflow_executor import Base_Executor
-
 
 has_docker = True
 try:
@@ -35,6 +34,7 @@ except subprocess.CalledProcessError:
 
 
 class TestRemote(unittest.TestCase):
+
     def setUp(self):
         env.reset()
         # self.resetDir('~/.sos')
@@ -55,8 +55,10 @@ class TestRemote(unittest.TestCase):
             os.remove('local.txt')
         with open('local.txt', 'w') as w:
             w.write('something')
-        self.assertEqual(subprocess.call(
-            'sos remote push docker --files local.txt -c ~/docker.yml', shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos remote push docker --files local.txt -c ~/docker.yml',
+                shell=True), 0)
         with open('test_remote.sos', 'w') as tr:
             tr.write('''
 [10]
@@ -69,13 +71,17 @@ run:
   echo 'adf' >> 'result_remote.txt'
 
 ''')
-        self.assertEqual(subprocess.call(
-            'sos run test_remote.sos -c ~/docker.yml -r docker -s force', shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos run test_remote.sos -c ~/docker.yml -r docker -s force',
+                shell=True), 0)
         self.assertFalse(file_target('result_remote.txt').target_exists())
         #self.assertEqual(subprocess.call('sos preview result_remote.txt -c ~/docker.yml -r docker', shell=True), 0)
         #self.assertNotEqual(subprocess.call('sos preview result_remote.txt', shell=True), 0)
-        self.assertEqual(subprocess.call(
-            'sos remote pull docker --files result_remote.txt -c ~/docker.yml', shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos remote pull docker --files result_remote.txt -c ~/docker.yml',
+                shell=True), 0)
         self.assertTrue(file_target('result_remote.txt').target_exists())
         #self.assertEqual(subprocess.call('sos preview result_remote.txt', shell=True), 0)
         with open('result_remote.txt') as w:
@@ -83,13 +89,18 @@ run:
             self.assertTrue('something' in content, 'Got {}'.format(content))
             self.assertTrue('adf' in content, 'Got {}'.format(content))
         # test sos remote run
-        self.assertEqual(subprocess.call(
-            'sos remote run docker --cmd cp result_remote.txt result_remote1.txt -c  ~/docker.yml', shell=True), 0)
-        self.assertEqual(subprocess.call(
-            'sos remote pull docker --files result_remote1.txt -c ~/docker.yml', shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos remote run docker --cmd cp result_remote.txt result_remote1.txt -c  ~/docker.yml',
+                shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos remote pull docker --files result_remote1.txt -c ~/docker.yml',
+                shell=True), 0)
         self.assertTrue(file_target('result_remote1.txt').target_exists())
 
-    @unittest.skipIf(sys.platform == 'win32' or not has_docker, 'No symbloc link problem under win32 or no docker')
+    @unittest.skipIf(sys.platform == 'win32' or not has_docker,
+                     'No symbloc link problem under win32 or no docker')
     def testToHostRename(self):
         '''Test to_host with dictionary'''
         script = SoS_Script(r'''
@@ -103,16 +114,17 @@ with open('2.txt', 'a') as t:
   t.write('2\n')
 ''')
         wf = script.workflow()
-        Base_Executor(wf, config={
+        Base_Executor(
+            wf,
+            config={
                 'config_file': '~/docker.yml',
                 'default_queue': 'docker',
                 'sig_mode': 'force',
-                }).run()
+            }).run()
         self.assertTrue(os.path.isfile('3.txt'))
         with open('3.txt') as txt:
             content = txt.read()
             self.assertEqual('1\n2\n', content, 'Got {}'.format(content))
-
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testFromHostOption(self):
@@ -126,11 +138,13 @@ with open('llp', 'w') as llp:
     llp.write("LLP")
 ''')
         wf = script.workflow()
-        Base_Executor(wf, config={
-            'config_file': '~/docker.yml',
-            'wait_for_task': True,
-            'default_queue': 'docker',
-            'sig_mode': 'force',
+        Base_Executor(
+            wf,
+            config={
+                'config_file': '~/docker.yml',
+                'wait_for_task': True,
+                'default_queue': 'docker',
+                'sig_mode': 'force',
             }).run()
         self.assertTrue(os.path.isfile('llp'))
 
@@ -147,10 +161,12 @@ with open('llp', 'w') as llp:
     llp.write("LLP")
 ''')
         wf = script.workflow()
-        Base_Executor(wf, config={
+        Base_Executor(
+            wf,
+            config={
                 'config_file': '~/docker.yml',
                 'default_queue': 'docker',
-                }).run()
+            }).run()
         self.assertTrue(os.path.isfile('llp'))
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
@@ -165,13 +181,15 @@ sh:
     echo "LLP" > llp
 ''')
         wf = script.workflow()
-        Base_Executor(wf, config={
+        Base_Executor(
+            wf,
+            config={
                 'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'sig_mode': 'force',
                 'default_queue': 'localhost',
-                }).run()
+            }).run()
         self.assertTrue(os.path.isfile('llp'))
         os.remove('llp')
         # dict form
@@ -182,15 +200,18 @@ sh:
     echo "LLP" > ll
 ''')
         wf = script.workflow()
-        Base_Executor(wf, config={
+        Base_Executor(
+            wf,
+            config={
                 'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'sig_mode': 'force',
                 'default_queue': 'localhost',
-                }).run()
+            }).run()
         self.assertTrue(os.path.isfile('llp'))
         os.remove('llp')
+
 
 if __name__ == '__main__':
     unittest.main()

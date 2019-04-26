@@ -3,7 +3,6 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
-
 import shutil
 import unittest
 
@@ -14,6 +13,7 @@ from sos.workflow_executor import Base_Executor
 
 
 class TestActions(unittest.TestCase):
+
     def setUp(self):
         env.reset()
         self.temp_files = []

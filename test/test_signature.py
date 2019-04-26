@@ -17,6 +17,7 @@ from sos.workflow_executor import Base_Executor
 
 
 class TestSignature(unittest.TestCase):
+
     def setUp(self):
         env.reset()
         subprocess.call('sos remove -s', shell=True)
@@ -46,7 +47,8 @@ class TestSignature(unittest.TestCase):
         os.mkdir(os.path.expanduser(dirname))
 
     def testSignature(self):
-        self._testSignature(r"""
+        self._testSignature(
+            r"""
 [*_0]
 output: 'temp/a.txt', 'temp/b.txt'
 task:
@@ -62,7 +64,8 @@ run(f" cp {_input} {_dest[0]} ")
 """, 2)
 
     def testSignature1(self):
-        self._testSignature(r"""
+        self._testSignature(
+            r"""
 [*_0]
 output: 'temp/a.txt', 'temp/b.txt'
 
@@ -80,7 +83,8 @@ run(f" cp {_input} {_dest[0]} ")
         # script format
 
     def testSignature2(self):
-        self._testSignature(r"""
+        self._testSignature(
+            r"""
 [*_0]
 output: 'temp/a.txt', 'temp/b.txt'
 
@@ -131,7 +135,8 @@ print(a)
 
     def testSignatureWithoutOutput(self):
         # signature without output file
-        self._testSignature(r"""
+        self._testSignature(
+            r"""
 [*_0]
 output: []
 
@@ -192,8 +197,8 @@ cp {_input} {_dest[0]}
             self.assertTrue(tc.read(), 'a.txt')
         with open('temp/d.txt') as td:
             self.assertTrue(td.read(), 'b.txt')
-        self.assertEqual(env.sos_dict['oa'], sos_targets(
-            'temp/c.txt', 'temp/d.txt'))
+        self.assertEqual(env.sos_dict['oa'],
+                         sos_targets('temp/c.txt', 'temp/d.txt'))
         #
         # now in assert mode, the signature should be there
         env.config['sig_mode'] = 'assert'
@@ -251,7 +256,8 @@ run(f"touch {_output}")
         except Exception:
             pass
 
-    @unittest.skipIf(sys.platform == 'win32', 'Windows executable cannot execute bash loop.')
+    @unittest.skipIf(sys.platform == 'win32',
+                     'Windows executable cannot execute bash loop.')
     def testSignatureAfterRemovalOfFiles(self):
         '''test action shrink'''
         if os.path.isfile('largefile.txt'):
@@ -292,7 +298,8 @@ run: expand='${ }'
         self.assertEqual(res['__completed__']['__step_completed__'], 1)
         file_target('largefile.txt').unlink()
 
-    @unittest.skipIf(sys.platform == 'win32', 'Windows executable cannot be created with chmod.')
+    @unittest.skipIf(sys.platform == 'win32',
+                     'Windows executable cannot be created with chmod.')
     def testRemovalOfIntermediateFiles(self):
         # if we zap the file, it
         for f in ['midfile.txt', 'finalfile.txt', 'midfile.txt.zapped']:
@@ -479,11 +486,11 @@ run: expand=True
             file_target('myfile_{}.txt'.format(t)).unlink()
 
     def testOutputFromSignature(self):
-        'Test restoration of output from signature'''
+        'Test restoration of output from signature' ''
         self.touch(['1.txt', '2.txt'])
         for f in ('1.out', '2.out', '1.2.out', '2.3.out'):
             if file_target(f).exists():
-                file_target(f).unlink()        
+                file_target(f).unlink()
         script = SoS_Script('''
 parameter: K = [2,3]
 
@@ -545,7 +552,7 @@ run: expand=True
         wf = script.workflow()
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 0.5)
-        self.assertEqual(ts,  os.path.getmtime('b1.out'))
+        self.assertEqual(ts, os.path.getmtime('b1.out'))
 
     def testActionSignature(self):
         '''Test action signature'''
@@ -593,7 +600,6 @@ sh:
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 0)
 
-
     def testSignatureWithDynamicOutput(self):
         '''Test return of output from dynamic output'''
         for i in range(5):
@@ -631,7 +637,6 @@ sh: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
         env.config['sig_mode'] = 'default'
-
 
     def testRebuidSignature(self):
         '''Test rebuilding signature'''
@@ -673,8 +678,6 @@ _output.touch()
         env.config['sig_mode'] = 'ignore'
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__substep_completed__'], 1)
-
-
 
     def testRebuidSignatureWithSubsteps(self):
         '''Test rebuilding signature'''
@@ -720,7 +723,6 @@ _output.touch()
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__substep_completed__'], 4)
 
-
     def testRebuidSignatureWithTasks(self):
         '''Test rebuilding signature'''
         for i in range(4):
@@ -730,7 +732,7 @@ _output.touch()
 [A_1]
 input: for_each=dict(i=range(2))
 output: f'a_{i}.txt'
-task: 
+task:
 _output.touch()
 ''')
         wf = script.workflow()
@@ -781,12 +783,16 @@ _output.touch()
 input: 'out.txt'
 ''')
         wf = script.workflow()
-        res = Base_Executor(wf, config={'trace_existing': True},
-                args=['--par', '10']).run()
+        res = Base_Executor(
+            wf, config={
+                'trace_existing': True
+            }, args=['--par', '10']).run()
         self.assertEqual(res['__completed__']['__substep_completed__'], 2)
         # change parameter, the step should not be skipped
-        res = Base_Executor(wf, config={'trace_existing': True},
-                args=['--par', '20']).run()
+        res = Base_Executor(
+            wf, config={
+                'trace_existing': True
+            }, args=['--par', '20']).run()
         self.assertEqual(res['__completed__']['__substep_completed__'], 2)
 
 

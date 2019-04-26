@@ -17,23 +17,32 @@ for name in ('PUSH', 'PULL', 'PAIR', 'REQ', 'REP'):
 
 g_sockets = set()
 
+
 def create_socket(context, socket_type, desc=''):
     socket = context.socket(socket_type)
     g_sockets.add(socket.fd)
     if env.is_debugging('CONTROLLER'):
-        env.log_to_file('CONTROLLER', f'{os.getpid()} {desc}: new socket of type {EVENT_MAP.get(socket_type, "UNKNOWN")} with handler {socket.fd} ({len(g_sockets)} total)' )
+        env.log_to_file(
+            'CONTROLLER',
+            f'{os.getpid()} {desc}: new socket of type {EVENT_MAP.get(socket_type, "UNKNOWN")} with handler {socket.fd} ({len(g_sockets)} total)'
+        )
     return socket
+
 
 def close_socket(socket, desc='', now=False):
     if socket is None:
         return
     g_sockets.remove(socket.fd)
     if env.is_debugging('CONTROLLER'):
-        env.log_to_file('CONTROLLER', f'{os.getpid()} {desc}: closes socket with handler {socket.fd} ({len(g_sockets)} left)' )
+        env.log_to_file(
+            'CONTROLLER',
+            f'{os.getpid()} {desc}: closes socket with handler {socket.fd} ({len(g_sockets)} left)'
+        )
     if now:
         socket.LINGER = 0
     socket.close()
     return socket
+
 
 def zmq_term(context):
     #
@@ -41,23 +50,28 @@ def zmq_term(context):
     # otherwise g_sockets will contain sockets from the parental process
 
     # if g_sockets:
-        # env.logger.warning(f'{os.getpid()} terminting zmq with {len(g_sockets)} unclosed sockets: {g_sockets}')
+    # env.logger.warning(f'{os.getpid()} terminting zmq with {len(g_sockets)} unclosed sockets: {g_sockets}')
     context.term()
+
 
 def send_message_to_controller(msg):
     if env.master_push_socket is None:
-        env.master_push_socket = create_socket(env.zmq_context, zmq.PUSH, 'master push')
+        env.master_push_socket = create_socket(env.zmq_context, zmq.PUSH,
+                                               'master push')
         env.master_push_socket.connect(
             f'tcp://127.0.0.1:{env.config["sockets"]["master_push"]}')
     env.master_push_socket.send_pyobj(msg)
 
+
 def request_answer_from_controller(msg):
     if env.master_request_socket is None:
-        env.master_request_socket = create_socket(env.zmq_context, zmq.REQ, 'master request')
+        env.master_request_socket = create_socket(env.zmq_context, zmq.REQ,
+                                                  'master request')
         env.master_request_socket.connect(
             f'tcp://127.0.0.1:{env.config["sockets"]["master_request"]}')
     env.master_request_socket.send_pyobj(msg)
     return env.master_request_socket.recv_pyobj()
+
 
 def connect_controllers(context=None):
     if not context:
@@ -101,14 +115,17 @@ def disconnect_controllers(context=None):
         close_socket(env.tapping_listener_socket, now=True)
 
     if env.is_debugging('CONTROLLER'):
-        env.log_to_file('CONTROLLER', f'Disconnecting sockets from {os.getpid()}')
+        env.log_to_file('CONTROLLER',
+                        f'Disconnecting sockets from {os.getpid()}')
 
     if context:
         if env.is_debugging('CONTROLLER'):
             env.log_to_file('CONTROLLER', f'terminate context at {os.getpid()}')
         zmq_term(context)
 
+
 class DotProgressBar:
+
     def __init__(self, context, interval=1):
         self.context = context
         self.interval = interval * 1000
@@ -120,7 +137,8 @@ class DotProgressBar:
         self._substep_cnt = 0
 
         # broker to handle the execution of substeps
-        self.progress_push_socket = create_socket(self.context, zmq.PUSH, 'progress push')
+        self.progress_push_socket = create_socket(self.context, zmq.PUSH,
+                                                  'progress push')
         self.progress_port = self.progress_push_socket.bind_to_random_port(
             'tcp://127.0.0.1')
 
@@ -128,7 +146,8 @@ class DotProgressBar:
         self.thread.start()
 
     def run(self):
-        progress_pull_socket = create_socket(self.context, zmq.PULL, 'progress pull')
+        progress_pull_socket = create_socket(self.context, zmq.PULL,
+                                             'progress pull')
         progress_pull_socket.connect(f'tcp://127.0.0.1:{self.progress_port}')
 
         # leading progress bar
@@ -142,7 +161,7 @@ class DotProgressBar:
                 return
             if not progress_pull_socket.poll(self.interval):
                 if _pulse_cnt == 10:
-                    sys.stderr.write('\b \b'*_pulse_cnt)
+                    sys.stderr.write('\b \b' * _pulse_cnt)
                     _pulse_cnt = 0
                 else:
                     sys.stderr.write('\033[97m.\033[0m')
@@ -151,7 +170,7 @@ class DotProgressBar:
             else:
                 msg = progress_pull_socket.recv().decode()
                 # print update message
-                sys.stderr.write('\b \b'*_pulse_cnt + msg)
+                sys.stderr.write('\b \b' * _pulse_cnt + msg)
                 _pulse_cnt = 0
                 sys.stderr.flush()
 
@@ -160,7 +179,7 @@ class DotProgressBar:
             if time.time() - self._substep_last_updated < 1:
                 return
             if self._substep_cnt == self._subprogressbar_size:
-                update_str = '\b \b'* self._substep_cnt + '\033[90m.\033[0m'
+                update_str = '\b \b' * self._substep_cnt + '\033[90m.\033[0m'
                 self._substep_cnt = 0
             else:
                 update_str = '\033[90m.\033[0m'
@@ -170,14 +189,14 @@ class DotProgressBar:
             if time.time() - self._substep_last_updated < 1:
                 return
             if self._substep_cnt == self._subprogressbar_size:
-                update_str = '\b \b'* self._substep_cnt + '\033[32m.\033[0m'
+                update_str = '\b \b' * self._substep_cnt + '\033[32m.\033[0m'
                 self._substep_cnt = 0
             else:
                 update_str = '\033[32m.\033[0m'
             self._substep_cnt += 1
             self._substep_last_updated = time.time()
         elif prog_type == 'step_completed':
-            update_str = '\b \b'*self._substep_cnt
+            update_str = '\b \b' * self._substep_cnt
             self._substep_cnt = 0
             if status == 1:  # completed
                 update_str += '\033[32m#\033[0m'
@@ -197,6 +216,7 @@ class DotProgressBar:
         self.update('done', msg)
         self.stop_event.set()
 
+
 class Controller(threading.Thread):
     '''This controller is used by both sos and sos-notebook, and there
     can be two controllers one as a slave (sos) and one as a master
@@ -204,6 +224,7 @@ class Controller(threading.Thread):
     need to talk to the same controller (signature, controller etc) when
     they are executed in sos or sos notebook.
     '''
+
     def __init__(self, ready, kernel=None):
         threading.Thread.__init__(self)
         #self.daemon = True
@@ -242,7 +263,8 @@ class Controller(threading.Thread):
                 self.workers.add_request(msg[0], msg[1])
             elif msg[0] == 'nprocs':
                 if env.is_debugging('CONTROLLER'):
-                    env.log_to_file('CONTROLLER', f'Active running process set to {msg[1]}')
+                    env.log_to_file('CONTROLLER',
+                                    f'Active running process set to {msg[1]}')
                 self._nprocs = msg[1]
             elif msg[0] == 'progress':
                 if msg[1] == 'substep_ignored':
@@ -251,9 +273,11 @@ class Controller(threading.Thread):
                     self._completed[msg[2]] += 1
                 elif msg[1] == 'step_completed':
                     self._completed_steps[msg[3]] = msg[4]
-                if env.verbosity == 1 and env.config['run_mode'] != 'interactive':
+                if env.verbosity == 1 and env.config[
+                        'run_mode'] != 'interactive':
                     # update progress bar
-                    self._progress_bar.update(msg[1], msg[2] if len(msg) > 2 else None)
+                    self._progress_bar.update(msg[1],
+                                              msg[2] if len(msg) > 2 else None)
             elif msg[0] == 'workflow_sig':
                 self.workflow_signatures.write(*msg[1:])
             elif msg[0] == 'step_sig':
@@ -264,14 +288,16 @@ class Controller(threading.Thread):
             else:
                 env.logger.warning(f'Unknown message passed {msg}')
         except Exception as e:
-            env.logger.warning(f'Failed to handle master push message {msg}: {e}')
+            env.logger.warning(
+                f'Failed to handle master push message {msg}: {e}')
 
     def handle_master_request_msg(self, msg):
         try:
             # make sure all records have been saved before returning information
             while True:
                 if self.master_push_socket.poll(0):
-                    self.handle_master_push_msg(self.master_push_socket.recv_pyobj())
+                    self.handle_master_push_msg(
+                        self.master_push_socket.recv_pyobj())
                 else:
                     break
             if msg[0] == 'workflow_sig':
@@ -295,17 +321,23 @@ class Controller(threading.Thread):
             elif msg[0] == 'nprocs':
                 self.master_request_socket.send_pyobj(self._nprocs)
             elif msg[0] == 'sos_step':
-                self.master_request_socket.send_pyobj(msg[1] in self._completed_steps
-                                               or msg[1] in [x.rsplit('_', 1)[0] for x in self._completed_steps.keys()])
+                self.master_request_socket.send_pyobj(
+                    msg[1] in self._completed_steps or msg[1] in
+                    [x.rsplit('_', 1)[0] for x in self._completed_steps.keys()])
             elif msg[0] == 'step_output':
                 step_name = msg[1]
                 if step_name in self._completed_steps:
-                    self.master_request_socket.send_pyobj(self._completed_steps[step_name])
+                    self.master_request_socket.send_pyobj(
+                        self._completed_steps[step_name])
                 else:
                     # now, step_name might actually be a workflow name, in which
                     # case we need to return the last step of the workflow
-                    steps = sorted([x for x in self._completed_steps.keys() if x.rsplit('_', 1)[0] == step_name])
-                    self.master_request_socket.send_pyobj(self._completed_steps[steps[-1]] if steps else None)
+                    steps = sorted([
+                        x for x in self._completed_steps.keys()
+                        if x.rsplit('_', 1)[0] == step_name
+                    ])
+                    self.master_request_socket.send_pyobj(
+                        self._completed_steps[steps[-1]] if steps else None)
             elif msg[0] == 'named_output':
                 name = msg[1]
                 found = False
@@ -317,7 +349,8 @@ class Controller(threading.Thread):
                 if not found:
                     self.master_request_socket.send_pyobj(None)
             elif msg[0] == 'worker_available':
-                self.master_request_socket.send_pyobj(self.workers.worker_available(msg[1], msg[2:]))
+                self.master_request_socket.send_pyobj(
+                    self.workers.worker_available(msg[1], msg[2:]))
             elif msg[0] == 'done':
                 # handle all ctl_push_msgs #1062
                 while True:
@@ -336,16 +369,20 @@ class Controller(threading.Thread):
                         else:
                             break
 
-                if env.verbosity == 1 and env.config['run_mode'] != 'interactive':
-                    num_steps = len(set(self._completed.keys())
-                                 | set(self._ignored.keys()))
+                if env.verbosity == 1 and env.config[
+                        'run_mode'] != 'interactive':
+                    num_steps = len(
+                        set(self._completed.keys())
+                        | set(self._ignored.keys()))
                     num_completed = sum(self._completed.values())
                     num_ignored = sum(self._ignored.values())
                     completed_text = f'{num_completed} job{"s" if num_completed > 1 else ""} completed' if num_completed else ''
                     ignored_text = f'{num_ignored} job{"s" if num_ignored > 1 else ""} ignored' if num_ignored else ''
                     steps_text = f'{num_steps} step{"s" if num_steps > 1 else ""} processed'
                     succ = '' if msg[1] else 'Failed with '
-                    self._progress_bar.done(f'{succ}{steps_text} ({completed_text}{", " if num_completed and num_ignored else ""}{ignored_text})')
+                    self._progress_bar.done(
+                        f'{succ}{steps_text} ({completed_text}{", " if num_completed and num_ignored else ""}{ignored_text})'
+                    )
 
                 self.master_request_socket.send_pyobj('bye')
 
@@ -356,7 +393,6 @@ class Controller(threading.Thread):
         except Exception as e:
             env.logger.warning(f'Failed to respond controller {msg}: {e}')
             self.master_request_socket.send_pyobj(None)
-
 
     def handle_worker_backend_msg(self, msg):
         # msg should be a port number from the worker
@@ -403,37 +439,48 @@ class Controller(threading.Thread):
         if 'sockets' not in env.config:
             env.config['sockets'] = {}
 
-        self.master_push_socket = create_socket(self.context, zmq.PULL, 'controller master_pull')
-        env.config['sockets']['master_push'] = self.master_push_socket.bind_to_random_port(
-            'tcp://127.0.0.1')
-        self.master_request_socket = create_socket(self.context, zmq.REP, 'controller master_request')
-        env.config['sockets']['master_request'] = self.master_request_socket.bind_to_random_port(
-            'tcp://127.0.0.1')
+        self.master_push_socket = create_socket(self.context, zmq.PULL,
+                                                'controller master_pull')
+        env.config['sockets'][
+            'master_push'] = self.master_push_socket.bind_to_random_port(
+                'tcp://127.0.0.1')
+        self.master_request_socket = create_socket(self.context, zmq.REP,
+                                                   'controller master_request')
+        env.config['sockets'][
+            'master_request'] = self.master_request_socket.bind_to_random_port(
+                'tcp://127.0.0.1')
 
         # broker to handle the execution of substeps
-        self.worker_backend_socket = create_socket(self.context, zmq.REP, 'controller backend rep')  # ROUTER
-        env.config['sockets']['worker_backend'] = self.worker_backend_socket.bind_to_random_port(
-            'tcp://127.0.0.1')
-
+        self.worker_backend_socket = create_socket(
+            self.context, zmq.REP, 'controller backend rep')  # ROUTER
+        env.config['sockets'][
+            'worker_backend'] = self.worker_backend_socket.bind_to_random_port(
+                'tcp://127.0.0.1')
 
         # tapping
         if env.config['exec_mode'] == 'master':
             self.tapping_logging_socket = create_socket(self.context, zmq.PULL)
-            env.config['sockets']['tapping_logging'] = self.tapping_logging_socket.bind_to_random_port(
-                'tcp://127.0.0.1')
+            env.config['sockets'][
+                'tapping_logging'] = self.tapping_logging_socket.bind_to_random_port(
+                    'tcp://127.0.0.1')
 
             self.tapping_listener_socket = create_socket(self.context, zmq.PULL)
-            env.config['sockets']['tapping_listener'] = self.tapping_listener_socket.bind_to_random_port(
-                'tcp://127.0.0.1')
+            env.config['sockets'][
+                'tapping_listener'] = self.tapping_listener_socket.bind_to_random_port(
+                    'tcp://127.0.0.1')
 
-            self.tapping_controller_socket = create_socket(self.context, zmq.PUSH)
-            env.config['sockets']['tapping_controller'] = self.tapping_controller_socket.bind_to_random_port(
-                'tcp://127.0.0.1')
+            self.tapping_controller_socket = create_socket(
+                self.context, zmq.PUSH)
+            env.config['sockets'][
+                'tapping_controller'] = self.tapping_controller_socket.bind_to_random_port(
+                    'tcp://127.0.0.1')
 
         if env.config['exec_mode'] == 'slave':
-            self.tapping_controller_socket = create_socket(self.context, zmq.PULL)
+            self.tapping_controller_socket = create_socket(
+                self.context, zmq.PULL)
             self.tapping_controller_socket.connect(
-                f'tcp://127.0.0.1:{env.config["sockets"]["tapping_controller"]}')
+                f'tcp://127.0.0.1:{env.config["sockets"]["tapping_controller"]}'
+            )
 
         #monitor_socket = self.master_request_socket.get_monitor_socket()
         # tell others that the sockets are ready
@@ -441,7 +488,8 @@ class Controller(threading.Thread):
 
         # create a manager
         from .workers import WorkerManager
-        self.workers = WorkerManager(env.config['max_procs'], self.worker_backend_socket)
+        self.workers = WorkerManager(env.config['max_procs'],
+                                     self.worker_backend_socket)
 
         # Process messages from receiver and controller
         poller = zmq.Poller()
@@ -480,7 +528,8 @@ class Controller(threading.Thread):
                             break
 
                 if self.master_request_socket in socks:
-                    if not self.handle_master_request_msg(self.master_request_socket.recv_pyobj()):
+                    if not self.handle_master_request_msg(
+                            self.master_request_socket.recv_pyobj()):
                         break
 
                 if self.worker_backend_socket in socks:
@@ -503,8 +552,6 @@ class Controller(threading.Thread):
                     if self.tapping_controller_socket in socks:
                         self.handle_tapping_controller_msg(
                             self.tapping_controller_socket.recv_pyobj())
-
-
 
                 # if monitor_socket in socks:
                 #     evt = recv_monitor_message(monitor_socket)
@@ -547,4 +594,5 @@ class Controller(threading.Thread):
                 close_socket(self.tapping_controller_socket, now=True)
 
             if env.is_debugging('CONTROLLER'):
-                env.log_to_file('CONTROLLER', f'controller stopped {os.getpid()}')
+                env.log_to_file('CONTROLLER',
+                                f'controller stopped {os.getpid()}')

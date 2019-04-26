@@ -468,7 +468,7 @@ class RuntimeEnvironments(object):
                 ColoredFormatter('%(color_levelname)s: %(color_msg)s'))
             self._logger.addHandler(cout)
 
-        if 'SOS_DEBUG' in os.environ:
+        if 'SOS_DEBUG' in os.environ and env.environ['SOS_DEBUG']:
             logfile_info = [
                 x for x in os.environ['SOS_DEBUG'].split(',')
                 if '.' in x or x == '-'

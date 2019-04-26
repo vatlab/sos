@@ -13,11 +13,14 @@ from .utils import env, format_duration, dot_to_gif
 from .controller import request_answer_from_controller
 from ._version import __version__
 
+
 class WorkflowSig(object):
+
     def __init__(self, workflow_id):
         self.data = defaultdict(lambda: defaultdict(list))
 
-        for entry_type, id, item in request_answer_from_controller(['workflow_sig', 'records', workflow_id]):
+        for entry_type, id, item in request_answer_from_controller(
+            ['workflow_sig', 'records', workflow_id]):
             try:
                 self.data[entry_type][id].append(item.strip())
             except Exception as e:
@@ -25,8 +28,8 @@ class WorkflowSig(object):
 
     def convert_time(self, info):
         for key in [x for x in info.keys() if x.endswith('_time')]:
-            info[key + '_str'] = time.strftime(
-                '%Y-%m-%d %H:%M:%S', time.localtime(info[key]))
+            info[key + '_str'] = time.strftime('%Y-%m-%d %H:%M:%S',
+                                               time.localtime(info[key]))
         if 'start_time' in info and 'end_time' in info:
             info['duration'] = int(info['end_time'] - info['start_time'])
             info['duration_str'] = format_duration(info['duration'])
@@ -59,14 +62,18 @@ class WorkflowSig(object):
             return {}
 
     def tasks(self):
+
         def merge_dict(items):
             ret = {}
             for item in items:
                 ret.update(eval(item))
             return ret
+
         try:
             # there can be multiple task status for each id
-            tasks = {id: merge_dict(res) for id, res in self.data['task'].items()}
+            tasks = {
+                id: merge_dict(res) for id, res in self.data['task'].items()
+            }
             for val in tasks.values():
                 self.convert_time(val)
                 if 'peak_cpu' in val:
@@ -79,14 +86,20 @@ class WorkflowSig(object):
 
     def steps(self):
         try:
-            return {wf: [self.convert_time(eval(x)) for x in steps] for wf, steps in self.data['step'].items()}
+            return {
+                wf: [self.convert_time(eval(x)) for x in steps
+                    ] for wf, steps in self.data['step'].items()
+            }
         except Exception as e:
             env.logger.warning(e)
             return {}
 
     def transcripts(self):
         try:
-            return {step: [self.convert_time(eval(x)) for x in items] for step, items in self.data['transcript'].items()}
+            return {
+                step: [self.convert_time(eval(x)) for x in items
+                      ] for step, items in self.data['transcript'].items()
+            }
         except Exception as e:
             env.logger.warning(e)
             return {}
@@ -106,8 +119,8 @@ def calc_timeline(info, start_time, total_duration):
         return
     info['before_percent'] = int(
         (info['start_time'] - start_time) * 100 / total_duration)
-    info['during_percent'] = max(
-        1, int(info['duration'] * 100 / total_duration))
+    info['during_percent'] = max(1,
+                                 int(info['duration'] * 100 / total_duration))
     info['after_percent'] = 100 - \
         info['before_percent'] - info['during_percent']
     return info
@@ -119,8 +132,7 @@ def render_report(output_file, workflow_id):
     from jinja2 import Environment, PackageLoader, select_autoescape
     environment = Environment(
         loader=PackageLoader('sos', 'templates'),
-        autoescape=select_autoescape(['html', 'xml'])
-    )
+        autoescape=select_autoescape(['html', 'xml']))
     environment.filters['basename'] = os.path.basename
     template = environment.get_template('workflow_report.tpl')
 
@@ -131,17 +143,16 @@ def render_report(output_file, workflow_id):
         'transcripts': data.transcripts(),
         'sos_version': __version__,
         'user': getpass.getuser(),
-        'time_now_str': time.strftime(
-            '%Y-%m-%d %H:%M:%S', time.localtime()),
+        'time_now_str': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()),
     }
     # derived context
-    context['master_id'] = next(
-        iter(context['workflows'].values()))['master_id']
+    context['master_id'] = next(iter(
+        context['workflows'].values()))['master_id']
     try:
         # calculate percentage
         start_time = context['workflows'][context['master_id']]['start_time']
-        total_duration = context['workflows'][context['master_id']
-                                              ]['end_time'] - start_time
+        total_duration = context['workflows'][
+            context['master_id']]['end_time'] - start_time
         for info in context['workflows'].values():
             calc_timeline(info, start_time, total_duration)
         for steps in context['steps'].values():

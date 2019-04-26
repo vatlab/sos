@@ -13,5 +13,4 @@ def julia(script, args='', **kwargs):
     particular, content of one or more files  specified by option input would be
     prepended before the specified script.
     '''
-    return SoS_ExecuteScript(
-        script, 'julia', '.jl', args).run(**kwargs)
+    return SoS_ExecuteScript(script, 'julia', '.jl', args).run(**kwargs)

@@ -8,15 +8,23 @@ import re
 
 from typing import Callable, List
 
-SOS_TARGETS_OPTIONS = ['group_by', 'paired_with', 'pattern', 'group_with', 'for_each', 'remove_empty_groups']
+SOS_TARGETS_OPTIONS = [
+    'group_by', 'paired_with', 'pattern', 'group_with', 'for_each',
+    'remove_empty_groups'
+]
 SOS_INPUT_OPTIONS = ['concurrent']
 SOS_OUTPUT_OPTIONS = ['group_with']
 SOS_DEPENDS_OPTIONS: List = []
-SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'active', 'walltime', 'nodes',
-                       'cores', 'mem', 'shared', 'env', 'prepend_path', 'queue', 'to_host',
-                       'from_host', 'map_vars', 'name', 'trunk_size', 'trunk_workers', 'tags']
-SOS_ACTION_OPTIONS = ['workdir', 'container', 'engine', 'docker_image', 'docker_file', 'active', 'input', 'output',
-                      'allow_error', 'tracked', 'stdout', 'stderr', 'default_env', 'env']
+SOS_RUNTIME_OPTIONS = [
+    'workdir', 'concurrent', 'active', 'walltime', 'nodes', 'cores', 'mem',
+    'shared', 'env', 'prepend_path', 'queue', 'to_host', 'from_host',
+    'map_vars', 'name', 'trunk_size', 'trunk_workers', 'tags'
+]
+SOS_ACTION_OPTIONS = [
+    'workdir', 'container', 'engine', 'docker_image', 'docker_file', 'active',
+    'input', 'output', 'allow_error', 'tracked', 'stdout', 'stderr',
+    'default_env', 'env'
+]
 
 SOS_DIRECTIVES = ['input', 'output', 'depends', 'task', 'parameter']
 SOS_SECTION_OPTIONS = ['provides', 'shared', 'workdir']
@@ -25,7 +33,8 @@ SOS_KEYWORDS = SOS_INPUT_OPTIONS + SOS_OUTPUT_OPTIONS + SOS_DEPENDS_OPTIONS + SO
     + SOS_ACTION_OPTIONS + SOS_DIRECTIVES + SOS_SECTION_OPTIONS
 
 SOS_USAGES = {
-    'input': '''
+    'input':
+        '''
 input: filename, filename, ... [group_by=GROUP] [filetype=FILETYPE]
           [paired_with=PAIRS] [for_each=VARS] [pattern=PATTEN]
 
@@ -33,20 +42,23 @@ Specify input targets of a SoS step.
 
 See online documentation for details of variables.
 ''',
-    'output': '''
+    'output':
+        '''
 output: target, target, ...
 
 Specify output targets of a SoS step.
 
 See online documentation for details of variables.
 ''',
-    'depends': '''
+    'depends':
+        '''
 depends: target, target, ...
 
 Specify dependent targets of a SoS step.
 
 See online documentation for details of variables.
-'''}
+'''
+}
 
 #
 # This code is copied from Bazzar to compile regular expressions only when they
@@ -61,14 +73,17 @@ class LazyRegex(object):
     # These are the parameters on a real _sre.SRE_Pattern object, which we
     # will map to local members so that we don't have the proxy overhead.
     _regex_attributes_to_copy = [
-        '__copy__', '__deepcopy__', 'findall', 'finditer', 'match',
-        'scanner', 'search', 'split', 'sub', 'subn'
+        '__copy__', '__deepcopy__', 'findall', 'finditer', 'match', 'scanner',
+        'search', 'split', 'sub', 'subn'
     ]
 
     # We use slots to keep the overhead low. But we need a slot entry for
     # all of the attributes we will copy
-    __slots__ = ['_real_regex', '_regex_args', '_regex_kwargs',
-                 ] + _regex_attributes_to_copy
+    __slots__ = [
+        '_real_regex',
+        '_regex_args',
+        '_regex_kwargs',
+    ] + _regex_attributes_to_copy
 
     def __init__(self, *args, **kwargs) -> None:
         """Create a new proxy object, passing in the args to pass to re.compile
@@ -141,7 +156,6 @@ _GLOBAL_SECTION_HEADER_TMPL = r'''
     global\s*                          # global
     \]\s*$                             # ]
     '''
-
 
 _SECTION_NAME_TMPL = r'''
     ^\s*                               # start
@@ -237,7 +251,6 @@ _CONFIG_NAME = r'''
    [a-zA-Z0-9_]*)*
    $
    '''
-
 
 _SOS_MAGIC_TMPL = r'''                  # SOS magic
     ^%(dict                             # %dict

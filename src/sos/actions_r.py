@@ -17,7 +17,14 @@ from sos.utils import env
 from .targets_r import R_library
 
 
-@SoS_Action(acceptable_args=['script', 'args'], default_args={'default_env': {'R_DEFAULT_PACKAGES': 'datasets,methods,utils,stats,grDevices,graphics'}})
+@SoS_Action(
+    acceptable_args=['script', 'args'],
+    default_args={
+        'default_env': {
+            'R_DEFAULT_PACKAGES':
+                'datasets,methods,utils,stats,grDevices,graphics'
+        }
+    })
 def R(script, args='', **kwargs):
     '''Execute specified script with command Rscript, with default options
     "--default-packages=datasets,methods,utils,stats,grDevices,graphics". This action accepts
@@ -27,12 +34,15 @@ def R(script, args='', **kwargs):
     '''
     # > getOption('defaultPackages')
     # [1] "datasets"  "utils"     "grDevices" "graphics"  "stats"     "methods"
-    return SoS_ExecuteScript(
-        script, 'Rscript', '.R', args).run(**kwargs)
+    return SoS_ExecuteScript(script, 'Rscript', '.R', args).run(**kwargs)
 
 
 @SoS_Action(acceptable_args=['script', 'args'])
-def Rmarkdown(script=None, input=None, output=None, args='{input:r}, output_file={output:ar}', **kwargs):
+def Rmarkdown(script=None,
+              input=None,
+              output=None,
+              args='{input:r}, output_file={output:ar}',
+              **kwargs):
     '''Convert input file to output using Rmarkdown
 
     The input can be specified in three ways:
@@ -63,8 +73,9 @@ def Rmarkdown(script=None, input=None, output=None, args='{input:r}, output_file
     output = sos_targets(output)
     if len(output) == 0:
         write_to_stdout = True
-        output = sos_targets(tempfile.NamedTemporaryFile(
-            mode='w+t', suffix='.html', delete=False).name)
+        output = sos_targets(
+            tempfile.NamedTemporaryFile(
+                mode='w+t', suffix='.html', delete=False).name)
     else:
         write_to_stdout = False
     #
@@ -75,13 +86,16 @@ def Rmarkdown(script=None, input=None, output=None, args='{input:r}, output_file
         #        runtime = c("auto", "static", "shiny"),
         #        clean = TRUE, params = NULL, knit_meta = NULL, envir = parent.frame(),
         #        run_Rmarkdown = TRUE, quiet = FALSE, encoding = getOption("encoding"))
-        cmd = interpolate(f'Rscript -e "rmarkdown::render({args})"',
-                          {'input': input, 'output': output})
+        cmd = interpolate(f'Rscript -e "rmarkdown::render({args})"', {
+            'input': input,
+            'output': output
+        })
         if env.is_debugging('ACTION'):
             env.log_to_file('ACTION', f'Running command "{cmd}"')
         if env.config['run_mode'] == 'interactive':
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
-            p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            p = subprocess.Popen(
+                cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             #pid = p.pid
             out, err = p.communicate()
             sys.stdout.write(out.decode())
@@ -96,10 +110,13 @@ def Rmarkdown(script=None, input=None, output=None, args='{input:r}, output_file
     if ret != 0:
         temp_file = os.path.join('.sos', f'{"Rmarkdown"}_{os.getpid()}.md')
         shutil.copyfile(str(input), temp_file)
-        cmd = interpolate(f'Rscript -e "rmarkdown::render({args})"',
-                          {'input': input, 'output': sos_targets(temp_file)})
+        cmd = interpolate(f'Rscript -e "rmarkdown::render({args})"', {
+            'input': input,
+            'output': sos_targets(temp_file)
+        })
         raise RuntimeError(
-            f'Failed to execute script. Please use command \n"{cmd}"\nunder {os.getcwd()} to test it.')
+            f'Failed to execute script. Please use command \n"{cmd}"\nunder {os.getcwd()} to test it.'
+        )
     if write_to_stdout:
         with open(str(output[0])) as out:
             sys.stdout.write(out.read())

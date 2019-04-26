@@ -14,6 +14,7 @@ from sos.workflow_executor import Base_Executor
 
 
 class TestNested(unittest.TestCase):
+
     def setUp(self):
         env.reset()
         subprocess.call('sos remove -s', shell=True)
@@ -112,8 +113,10 @@ sos_run('a+b', shared=['executed', 'inputs'])
         wf = script.workflow('c')
         Base_Executor(wf).run()
         # order of execution is not guaranteed
-        self.assertEqual(sorted(env.sos_dict['executed']), sorted(['c', 'a_1', 'a_2', 'a_3', 'a_4',
-                                                                   'b_1', 'b_2', 'b_3', 'b_4']))
+        self.assertEqual(
+            sorted(env.sos_dict['executed']),
+            sorted(
+                ['c', 'a_1', 'a_2', 'a_3', 'a_4', 'b_1', 'b_2', 'b_3', 'b_4']))
         env.sos_dict.pop('executed', None)
 
     def testLoopedNestedWorkflow(self):
@@ -147,8 +150,8 @@ sos_run('a', shared=['executed', 'inputs'])
 ''')
         wf = script.workflow('c')
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['executed'], [
-                         'c', 'a_1', 'a_2', 'a_1', 'a_2'])
+        self.assertEqual(env.sos_dict['executed'],
+                         ['c', 'a_1', 'a_2', 'a_1', 'a_2'])
         #self.assertEqual(env.sos_dict['inputs'], [['a.txt'], ['a.txt'], ['a.txt.a1'], ['b.txt'], ['b.txt'], ['b.txt.a1']])
         for file in ('a.txt.a1', 'a.txt.a1.a2', 'b.txt.a1', 'b.txt.a1.a2'):
             if file_target(file).exists():
@@ -177,8 +180,7 @@ sos_run('a:2', shared='executed')
 ''')
         wf = script.workflow('c')
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['executed'], [
-                         'c_0', 'c_1', 'a_2',  'a_2'])
+        self.assertEqual(env.sos_dict['executed'], ['c_0', 'c_1', 'a_2', 'a_2'])
         env.sos_dict.pop('executed', None)
         # allow specifying a single step
         # step will be looped
@@ -199,8 +201,7 @@ sos_run('a:2', shared='executed')
 ''')
         wf = script.workflow('c')
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['executed'], [
-                         'c_0', 'c_1', 'a_2', 'a_2'])
+        self.assertEqual(env.sos_dict['executed'], ['c_0', 'c_1', 'a_2', 'a_2'])
         #
         env.sos_dict.pop('executed', None)
 
@@ -250,8 +251,9 @@ sos_run('a+b', shared='executed')
 ''')
         wf = script.workflow('c')
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['executed'], ['c_0', 'c_1', 'a_1', 'a_2', 'a_3',
-                                                    'b_1', 'b_2', 'a_1', 'a_2'])
+        self.assertEqual(
+            env.sos_dict['executed'],
+            ['c_0', 'c_1', 'a_1', 'a_2', 'a_3', 'b_1', 'b_2', 'a_1', 'a_2'])
         #
         #
         env.sos_dict.pop('executed', None)
@@ -282,8 +284,8 @@ input: 'a.txt', 'b.txt', group_by='single'
 ''')
         wf = script.workflow('b')
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['executed'], [
-                         'b', 'a_3', 'a_1', 'a_3', 'a_1'])
+        self.assertEqual(env.sos_dict['executed'],
+                         ['b', 'a_3', 'a_1', 'a_3', 'a_1'])
         env.sos_dict.pop('executed', None)
         wf = script.workflow('d')
         Base_Executor(wf).run()
@@ -322,13 +324,13 @@ sos_run(wf, shared='executed')
 ''')
         wf = script.workflow()
         Base_Executor(wf, args=['--wf', 'b']).run()
-        self.assertEqual(env.sos_dict['executed'], [
-                         'default', 'b_1', 'b_2', 'b_3'])
+        self.assertEqual(env.sos_dict['executed'],
+                         ['default', 'b_1', 'b_2', 'b_3'])
         #
         env.sos_dict.pop('executed', None)
         Base_Executor(wf, args=['--wf', 'a']).run()
-        self.assertEqual(env.sos_dict['executed'], [
-                         'default', 'a_1', 'a_2', 'a_3'])
+        self.assertEqual(env.sos_dict['executed'],
+                         ['default', 'a_1', 'a_2', 'a_3'])
 
     def testSoSRun(self):
         '''Test action sos_run with keyword parameters'''
@@ -395,7 +397,9 @@ for k in range(2):
         # until run time, the DAG should not contain nested workflow
         # until runtime.
         #
-        for f in ['B0.txt', 'B0.txt.p', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
+        for f in [
+                'B0.txt', 'B0.txt.p', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p'
+        ]:
             if file_target(f).exists():
                 file_target(f).unlink()
         #
@@ -429,7 +433,9 @@ for i in range(3):
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow('ALL')
         Base_Executor(wf).run()
-        for f in ['B0.txt', 'B0.txt.p', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
+        for f in [
+                'B0.txt', 'B0.txt.p', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p'
+        ]:
             self.assertTrue(file_target(f).target_exists())
             file_target(f).unlink()
 
@@ -548,7 +554,9 @@ sos_run('mse')
         shutil.copy(sos_config_file, 'test.yml')
         #
         subprocess.call(
-            'sos config --set sos_path {0}/crazy_path {0}/crazy_path/more_crazy/'.format(os.getcwd()), shell=True)
+            'sos config --set sos_path {0}/crazy_path {0}/crazy_path/more_crazy/'
+            .format(os.getcwd()),
+            shell=True)
         #
         if not os.path.isdir('crazy_path'):
             os.mkdir('crazy_path')
@@ -559,7 +567,9 @@ sos_run('mse')
 sos_run('cc', source='crazy_slave.sos')
 
 ''')
-        with open(os.path.join('crazy_path', 'more_crazy', 'crazy_slave.sos'), 'w') as crazy:
+        with open(
+                os.path.join('crazy_path', 'more_crazy', 'crazy_slave.sos'),
+                'w') as crazy:
             crazy.write('''
 [cc_0]
 print('hay, I am crazy')
@@ -624,8 +634,10 @@ sos_run('whatever', source='another.sos')
         wf = script.workflow()
         # this should be ok.
         Base_Executor(wf).run()
-        self.assertTrue(os.path.isfile('a.txt'),
-                        'a.txt should have been created by nested workflow from another file')
+        self.assertTrue(
+            os.path.isfile('a.txt'),
+            'a.txt should have been created by nested workflow from another file'
+        )
 
     def testConcurrentSubWorkflow(self):
         '''Test concurrent subworkflow sos_run '''
@@ -645,8 +657,6 @@ sos_run('A', idx=i)
         # this should be ok.
         Base_Executor(wf, config={'max_procs': 8}).run()
         self.assertTrue(time.time() - st < 30)
-
-
 
     def testSoSMultiWorkflow(self):
         '''Test multiple workflows in sos_run '''
@@ -670,7 +680,6 @@ sos_run(['A', 'B'], idx=i)
         # this should be ok.
         Base_Executor(wf, config={'max_procs': 8}).run()
         self.assertTrue(time.time() - st < 20)
-
 
     def testPassOfArgs(self):
         '''Test passing of arguments through sos_run #1164'''
@@ -709,7 +718,6 @@ sos_run('A', c=2)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-
 
     def testNestedDynamicDepends(self):
         '''Test the execution of nested workflow with dynamic depends'''

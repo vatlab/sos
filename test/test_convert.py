@@ -14,6 +14,7 @@ from sos.utils import env
 
 
 class TestConvert(unittest.TestCase):
+
     def setUp(self):
         env.reset()
         if not os.path.isdir('temp'):
@@ -54,13 +55,15 @@ report('this is action report')
             args.view = False
             script_to_html(script_file, script_file + '.html', args=args)
             #
-            self.assertEqual(subprocess.call(
-                ['sos', 'convert', script_file, '--to', 'html']), 0)
+            self.assertEqual(
+                subprocess.call(['sos', 'convert', script_file, '--to',
+                                 'html']), 0)
 
     def testExtractWorkflow(self):
         '''Test extract workflow from ipynb file'''
         content = extract_workflow('sample_workflow.ipynb')
-        self.assertEqual(content, '''\
+        self.assertEqual(
+            content, '''\
 #!/usr/bin/env sos-runner
 #fileformat=SOS1.0
 
@@ -70,7 +73,7 @@ report('this is action report')
 a = 1
 # this comment will become the comment for parameter b
 parameter: b=2
-parameter: c=3 
+parameter: c=3
 # this comment will become the comment for parameter d
 parameter: d='d'
 

@@ -15,8 +15,8 @@ from sos.utils import env
 from sos.workflow_executor import Base_Executor
 
 
-
 class TestOutcome(unittest.TestCase):
+
     def setUp(self):
         env.reset()
         subprocess.call('sos remove -s', shell=True)
@@ -44,7 +44,6 @@ class TestOutcome(unittest.TestCase):
             shutil.rmtree(os.path.expanduser(dirname))
         os.mkdir(os.path.expanduser(dirname))
 
-    
     def removeIfExists(self, targets):
         if isinstance(targets, str):
             targets = [targets]
@@ -126,7 +125,8 @@ output: pa='t_pa_none.txt'
 _output.touch()
 ''')
         wf = script.workflow(use_default=False)
-        self.assertRaises(Exception, Base_Executor(wf).run, targets=['t_pa.txt'])
+        self.assertRaises(
+            Exception, Base_Executor(wf).run, targets=['t_pa.txt'])
 
     def testProvidesPattern(self):
         '''Test sos run -t filename with pattern matching'''
@@ -138,7 +138,6 @@ _output.touch()
         wf = script.workflow(use_default=False)
         Base_Executor(wf).run(targets=['t_ma.txt'])
         self.assertTrue(os.path.isfile('t_ma.txt'))
-
 
 
 if __name__ == '__main__':

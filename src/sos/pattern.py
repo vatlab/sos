@@ -38,19 +38,23 @@ def regex(filepattern: str) -> str:
                 raise ValueError(
                     "If multiple wildcards of the same name "
                     "appear in a string, eventual constraints have to be defined "
-                    "at the first occurence and will be inherited by the others.")
+                    "at the first occurence and will be inherited by the others."
+                )
             f.append(f"(?P={wildcard})")
         else:
             wildcards.add(wildcard)
-            f.append("(?P<{}>{})".format(wildcard, match.group("constraint") if
-                                         match.group("constraint") else ".+"))
+            f.append("(?P<{}>{})".format(
+                wildcard,
+                match.group("constraint")
+                if match.group("constraint") else ".+"))
         last = match.end()
     f.append(re.escape(filepattern[last:]))
     f.append("$")  # ensure that the match spans the whole file
     return "".join(f)
 
 
-def glob_wildcards(pattern: str, files: Optional[List[str]] = None) -> Dict[str, Union[List[Any], List[str]]]:
+def glob_wildcards(pattern: str, files: Optional[List[str]] = None
+                  ) -> Dict[str, Union[List[Any], List[str]]]:
     """
     Glob the values of the wildcards by matching the given pattern to the filesystem.
     Returns a named tuple with a list of values for each wildcard.
@@ -60,13 +64,12 @@ def glob_wildcards(pattern: str, files: Optional[List[str]] = None) -> Dict[str,
         # we perform path matching with / slash only
         pattern = pattern.replace('\\', '/')
     first_wildcard = re.search("{[^{]", pattern)
-    dirname = os.path.dirname(pattern[:first_wildcard.start(
-    )]) if first_wildcard else os.path.dirname(pattern)
+    dirname = os.path.dirname(pattern[:first_wildcard.start()]
+                             ) if first_wildcard else os.path.dirname(pattern)
     if not dirname:
         dirname = "."
 
-    names = [match.group('name')
-             for match in SOS_WILDCARD.finditer(pattern)]
+    names = [match.group('name') for match in SOS_WILDCARD.finditer(pattern)]
     res = {x: [] for x in names}
     pattern = re.compile(regex(pattern))
 
@@ -90,6 +93,7 @@ def apply_wildcards(pattern: str,
                     fail_dynamic: bool = False,
                     dynamic_fill: None = None,
                     keep_dynamic: bool = False) -> str:
+
     def format_match(match):
         name = match.group("name")
         try:
@@ -134,13 +138,15 @@ def expand_pattern(pattern: str) -> List[str]:
     for key in res.keys():
         if key not in env.sos_dict:
             raise ValueError(f'Undefined variable {key} in pattern {pattern}')
-        if not isinstance(env.sos_dict[key], str) and isinstance(env.sos_dict[key], collections.Sequence):
+        if not isinstance(env.sos_dict[key], str) and isinstance(
+                env.sos_dict[key], collections.Sequence):
             if sz is None:
                 sz = len(env.sos_dict[key])
                 wildcard = [copy.deepcopy(wildcard[0]) for x in range(sz)]
             elif sz != len(env.sos_dict[key]):
                 raise ValueError(
-                    f'Variables in output pattern should have the same length (other={sz}, len({key})={len(env.sos_dict[key])})')
+                    f'Variables in output pattern should have the same length (other={sz}, len({key})={len(env.sos_dict[key])})'
+                )
             for idx, value in enumerate(env.sos_dict[key]):
                 wildcard[idx][key] = value
         else:
@@ -148,6 +154,12 @@ def expand_pattern(pattern: str) -> List[str]:
                 v[key] = env.sos_dict[key]
     #
     for card in wildcard:
-        ofiles.append(apply_wildcards(pattern, card, fill_missing=False,
-                                      fail_dynamic=False, dynamic_fill=None, keep_dynamic=False))
+        ofiles.append(
+            apply_wildcards(
+                pattern,
+                card,
+                fill_missing=False,
+                fail_dynamic=False,
+                dynamic_fill=None,
+                keep_dynamic=False))
     return ofiles

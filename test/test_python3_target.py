@@ -12,6 +12,7 @@ from sos.workflow_executor import Base_Executor
 
 
 class TestPython3Target(unittest.TestCase):
+
     def setUp(self):
         env.reset()
         self.temp_files = []
@@ -38,7 +39,8 @@ report: output='report.md', expand=True
         Base_Executor(wf).run()
         self.assertTrue(file_target('report.md').target_exists('target'))
         with open('report.md') as rep:
-            self.assertEqual(rep.read().strip(), '''
+            self.assertEqual(
+                rep.read().strip(), '''
 -----  ------  -------------
 Sun    696000     1.9891e+09
 Earth    6371  5973.6

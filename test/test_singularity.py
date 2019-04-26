@@ -13,7 +13,9 @@ from sos.targets import file_target
 from sos.utils import env
 from sos.workflow_executor import Base_Executor
 
+
 class TestSingularityActions(unittest.TestCase):
+
     def setUp(self):
         self.olddir = os.getcwd()
         try:
@@ -30,7 +32,8 @@ class TestSingularityActions(unittest.TestCase):
             file_target(f).unlink()
         os.chdir(self.olddir)
 
-    @unittest.skipIf(not shutil.which('singularity'), 'Skip test because docker is not installed.')
+    @unittest.skipIf(not shutil.which('singularity'),
+                     'Skip test because docker is not installed.')
     def testBashInSingularity(self):
         '''Test action bash in singularity environment'''
         script = SoS_Script(r'''
@@ -41,7 +44,8 @@ echo 'Echo'
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    @unittest.skipIf(not shutil.which('singularity')  or sys.platform == 'win32', 'Skip test because docker is not installed.')
+    @unittest.skipIf(not shutil.which('singularity') or sys.platform == 'win32',
+                     'Skip test because docker is not installed.')
     def testSingularityBuildLinuxImage(self):
         '''Test action singularity build'''
         script = SoS_Script(r'''
@@ -55,7 +59,7 @@ From: ubuntu:16.04
     export LC_ALL=C
     export PATH=/usr/games:$PATH
 %runscript
-    fortune | cowsay | lolcat 
+    fortune | cowsay | lolcat
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -65,7 +69,7 @@ singularity_build(src='shub://GodloveD/lolcow', dest='lolcow_shub.simg', sudo=Tr
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        #	
+        #
         script = SoS_Script(r'''
 singularity_build(src='docker://godlovedc/lolcow', dest='lolcow_docker.simg', sudo=True, notest=True)
 ''')

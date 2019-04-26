@@ -15,7 +15,9 @@ from .eval import cfg_interpolate
 from .utils import env, expand_time
 from .tasks import TaskFile
 
+
 class TaskEngine(threading.Thread):
+
     def __init__(self, agent):
         threading.Thread.__init__(self)
         self.daemon = True
@@ -89,7 +91,8 @@ class TaskEngine(threading.Thread):
             msg['cell_id'] = env.config.get('slave_id', '')
             env.tapping_listener_socket.send_pyobj({
                 'msg_type': 'task_status',
-                'data': msg})
+                'data': msg
+            })
 
     def monitor_tasks(self, tasks=None, status=None, age=None):
         '''Start monitoring specified or all tasks'''
@@ -102,23 +105,33 @@ class TaskEngine(threading.Thread):
         # we only monitor running tasks
         with threading.Lock():
             for task in tasks:
-                if self.task_status[task] in ('submitted', 'running') and task not in self.running_tasks:
+                if self.task_status[task] in (
+                        'submitted',
+                        'running') and task not in self.running_tasks:
                     # these tasks will be actively monitored
                     self.running_tasks.append(task)
         #
         if age is not None:
             age = expand_time(age, default_unit='d')
-        return sorted([(x, self.task_status[x], self.task_info[x].get('data', (time.time(), None, None))) for x in tasks
-                       if (status is None or self.task_status[x] in status) and
-                       (age is None or
-                        ((age > 0 and time.time() - self.task_info[x].get('date', (time.time(), None, None))[0] > age)
-                         or (age < 0 and time.time() - self.task_info[x].get('date', (time.time(), None, None))[0] < -age)))],
+        return sorted([
+            (x, self.task_status[x], self.task_info[x].get(
+                'data', (time.time(), None, None)))
+            for x in tasks
+            if (status is None or self.task_status[x] in status) and
+            (age is None or (
+                (age > 0 and time.time() -
+                 self.task_info[x].get('date',
+                                       (time.time(), None, None))[0] > age) or
+                (age < 0 and time.time() -
+                 self.task_info[x].get('date',
+                                       (time.time(), None, None))[0] < -age)))
+        ],
                       key=lambda x: -x[2][0])
 
     def get_tasks(self):
         with threading.Lock():
-            pending = copy.deepcopy(
-                self.pending_tasks + list(self.submitting_tasks.keys()))
+            pending = copy.deepcopy(self.pending_tasks +
+                                    list(self.submitting_tasks.keys()))
             running = copy.deepcopy(self.running_tasks)
         return pending, running
 
@@ -136,20 +149,31 @@ class TaskEngine(threading.Thread):
                     tid, tags, ct, st, dr, tst = line.split('\t')
                     # for some reason on windows there can be a \r at the end
                     self.task_status[tid] = tst.strip()
-                    self.task_info[tid]['date'] = [float(ct) if ct.strip() else None,
-                        float(st) if st.strip() else None, float(dr) if dr.strip() else None]
+                    self.task_info[tid]['date'] = [
+                        float(ct) if ct.strip() else None,
+                        float(st) if st.strip() else None,
+                        float(dr) if dr.strip() else None
+                    ]
                     self.task_info[tid]['tags'] = tags
                 except Exception as e:
                     env.logger.warning(
-                        f'Unrecognized response "{line}" ({e.__class__.__name__}): {e}')
+                        f'Unrecognized response "{line}" ({e.__class__.__name__}): {e}'
+                    )
         self._last_status_check = time.time()
         self.engine_ready.set()
         while True:
             # if there are running tasks or pending tasks, we need to monitor the status of the queue
-            if (self.running_tasks or self.running_pending_tasks or self.pending_tasks) and time.time() - self._last_status_check > self.status_check_interval:
+            if (self.running_tasks or self.running_pending_tasks or
+                    self.pending_tasks) and time.time(
+                    ) - self._last_status_check > self.status_check_interval:
                 if self._status_checker is None:
                     self._status_checker = self._thread_workers.submit(
-                        self.query_tasks, self.running_tasks + list(self.running_pending_tasks.keys()), check_all=False, verbosity=3, numeric_times=True)
+                        self.query_tasks,
+                        self.running_tasks +
+                        list(self.running_pending_tasks.keys()),
+                        check_all=False,
+                        verbosity=3,
+                        numeric_times=True)
                     continue
                 elif self._status_checker.running():
                     time.sleep(0.01)
@@ -163,20 +187,25 @@ class TaskEngine(threading.Thread):
                         continue
                     try:
                         tid, tags, ct, st, dr, tst = line.split('\t')
-                        if tid not in self.running_tasks + list(self.running_pending_tasks.keys()):
+                        if tid not in self.running_tasks + list(
+                                self.running_pending_tasks.keys()):
                             # we keep track of status of non-related tasks to check if the job queues
                             # are overwhelmed
-                            env.log_to_file('TASK',
+                            env.log_to_file(
+                                'TASK',
                                 f'Task {tid} removed since status check.')
                             continue
-                        self.task_info[tid]['date'] = [float(ct) if ct.strip() else None,
+                        self.task_info[tid]['date'] = [
+                            float(ct) if ct.strip() else None,
                             float(st) if st.strip() else None,
-                            float(dr) if dr.strip() else None]
+                            float(dr) if dr.strip() else None
+                        ]
                         self.task_info[tid]['tags'] = tags
                         self.update_task_status(tid, tst)
                     except Exception as e:
                         env.logger.warning(
-                            f'Unrecognized response "{line}" ({e.__class__.__name__}): {e}')
+                            f'Unrecognized response "{line}" ({e.__class__.__name__}): {e}'
+                        )
                 self.summarize_status()
                 self._last_status_check = time.time()
             else:
@@ -195,32 +224,48 @@ class TaskEngine(threading.Thread):
                                     if tid in self.canceled_tasks:
                                         # task is canceled while being prepared
                                         self.notify_controller({
-                                            'queue': self.agent.alias,
-                                            'task_id': tid,
-                                            'status': 'aborted',
-                                            'update_only': True,
-                                            'tags': self.task_info['tid'].get('tags', '')
+                                            'queue':
+                                                self.agent.alias,
+                                            'task_id':
+                                                tid,
+                                            'status':
+                                                'aborted',
+                                            'update_only':
+                                                True,
+                                            'tags':
+                                                self.task_info['tid'].get(
+                                                    'tags', '')
                                         })
                                     else:
                                         self.running_tasks.append(tid)
-                                        self.notify_controller(
-                                            {
-                                                'queue': self.agent.alias,
-                                                'task_id': tid,
-                                                'status': 'submitted',
-                                                'update_only': True,
-                                                'tags': self.task_info['tid'].get('tags', '')
-                                            })
+                                        self.notify_controller({
+                                            'queue':
+                                                self.agent.alias,
+                                            'task_id':
+                                                tid,
+                                            'status':
+                                                'submitted',
+                                            'update_only':
+                                                True,
+                                            'tags':
+                                                self.task_info['tid'].get(
+                                                    'tags', '')
+                                        })
                             else:
                                 for tid in k:
-                                    self.notify_controller(
-                                        {
-                                            'queue': self.agent.alias,
-                                            'task_id': tid,
-                                            'status': 'failed',
-                                            'update_only': True,
-                                            'tags': self.task_info['tid'].get('tags', '')
-                                        })
+                                    self.notify_controller({
+                                        'queue':
+                                            self.agent.alias,
+                                        'task_id':
+                                            tid,
+                                        'status':
+                                            'failed',
+                                        'update_only':
+                                            True,
+                                        'tags':
+                                            self.task_info['tid'].get(
+                                                'tags', '')
+                                    })
                                     self.task_status[tid] = 'failed'
                         # else:
                         #    env.log_to_file('TASK', '{} is still being submitted.'.format(k))
@@ -228,12 +273,14 @@ class TaskEngine(threading.Thread):
                         self.submitting_tasks.pop(k)
 
             if self.pending_tasks:
-                num_active_tasks = len(
-                    self.submitting_tasks) + len(self.running_tasks)
+                num_active_tasks = len(self.submitting_tasks) + len(
+                    self.running_tasks)
                 if num_active_tasks >= self.max_running_jobs:
                     if time.time() - self.last_report > 60:
                         self.last_report = time.time()
-                        env.logger.info(f'Waiting for the completion of ``{num_active_tasks}`` task{"s" if num_active_tasks > 1 else ""} before submitting ``{len(self.pending_tasks)}`` pending ones.')
+                        env.logger.info(
+                            f'Waiting for the completion of ``{num_active_tasks}`` task{"s" if num_active_tasks > 1 else ""} before submitting ``{len(self.pending_tasks)}`` pending ones.'
+                        )
                     continue
 
                 self.last_report = time.time()
@@ -241,7 +288,9 @@ class TaskEngine(threading.Thread):
                 slots = [[] for i in range(self.max_running_jobs)]
                 sample_slots = list(range(self.max_running_jobs))
                 random.shuffle(sample_slots)
-                for i, tid in enumerate(self.pending_tasks[:self.batch_size * self.max_running_jobs]):
+                for i, tid in enumerate(
+                        self.pending_tasks[:self.batch_size *
+                                           self.max_running_jobs]):
                     if self.task_status[tid] == 'running':
                         env.logger.info(f'{tid} ``runnng``')
                     elif tid in self.canceled_tasks:
@@ -255,10 +304,13 @@ class TaskEngine(threading.Thread):
                     if not slot:
                         continue
                     for tid in slot:
-                        env.log_to_file('TASK',
-                            f'Start submitting {tid} (status: {self.task_status.get(tid, "unknown")})')
-                    self.submitting_tasks[tuple(slot)] = self._thread_workers.submit(
-                        self.execute_tasks, slot)
+                        env.log_to_file(
+                            'TASK',
+                            f'Start submitting {tid} (status: {self.task_status.get(tid, "unknown")})'
+                        )
+                    self.submitting_tasks[tuple(
+                        slot)] = self._thread_workers.submit(
+                            self.execute_tasks, slot)
                 #
                 with threading.Lock():
                     for slot in slots:
@@ -268,14 +320,18 @@ class TaskEngine(threading.Thread):
                 if time.time() - self.last_report > 60:
                     # if there is no  pending tasks
                     self.last_report = time.time()
-                    n_running = len(self.running_tasks) + len(self.running_pending_tasks)
-                    env.logger.info(f'Waiting for the completion of ``{n_running}`` task{"s" if n_running > 1 else ""}.')
+                    n_running = len(self.running_tasks) + len(
+                        self.running_pending_tasks)
+                    env.logger.info(
+                        f'Waiting for the completion of ``{n_running}`` task{"s" if n_running > 1 else ""}.'
+                    )
             else:
                 if time.time() - self.last_report > 60:
                     self.last_report = time.time()
                     if env.is_debugging('TASK'):
-                        env.log_to_file('TASK', f'No running or pending task. Task engine is idle.')
-
+                        env.log_to_file(
+                            'TASK',
+                            f'No running or pending task. Task engine is idle.')
 
     def submit_task(self, task_id):
         # we wait for the engine to start
@@ -292,7 +348,8 @@ class TaskEngine(threading.Thread):
             if task_id in self.task_status and self.task_status[task_id]:
                 if self.task_status[task_id] == 'running':
                     if task_id in self.running_pending_tasks:
-                        if time.time() - self.running_pending_tasks[task_id] > 60:
+                        if time.time(
+                        ) - self.running_pending_tasks[task_id] > 60:
                             # more than 60 seconds and is still running,
                             # it is actually a running status
                             self.running_pending_tasks.pop(task_id)
@@ -330,11 +387,13 @@ class TaskEngine(threading.Thread):
                         env.logger.info(f'{task_id} ``re-execute completed``')
                 elif self.task_status[task_id] != 'new':
                     env.logger.info(
-                        f'{task_id} ``restart`` from status ``{self.task_status[task_id]}``')
+                        f'{task_id} ``restart`` from status ``{self.task_status[task_id]}``'
+                    )
 
             # it is no longer in running status
             if task_id in self.running_pending_tasks:
-                env.logger.error(f'{task_id} confirmed to be canceled, restarting')
+                env.logger.error(
+                    f'{task_id} confirmed to be canceled, restarting')
                 self.running_pending_tasks.pop(task_id)
 
             # self.notify_controller('{} ``queued``'.format(task_id))
@@ -378,46 +437,49 @@ class TaskEngine(threading.Thread):
         #
         with threading.Lock():
             if task_id in self.canceled_tasks and status != 'aborted':
-                env.logger.debug(f'Task {task_id} is still not killed (status {status})')
+                env.logger.debug(
+                    f'Task {task_id} is still not killed (status {status})')
                 status = 'aborted'
             if status != 'missing':
                 if task_id not in self.task_info:
                     self.task_info[task_id]['date'] = [None, None, None]
-                if task_id in self.task_status and self.task_status[task_id] == status:
-                    self.notify_controller(
-                        {
-                            'queue': self.agent.alias,
-                            'task_id': task_id,
-                            'status': status,
-                            'update_only': True,
-                            'start_time': self.task_info[task_id]['date'][1],
-                            'tags': self.task_info['tid'].get('tags', '')
-                        })
+                if task_id in self.task_status and self.task_status[
+                        task_id] == status:
+                    self.notify_controller({
+                        'queue': self.agent.alias,
+                        'task_id': task_id,
+                        'status': status,
+                        'update_only': True,
+                        'start_time': self.task_info[task_id]['date'][1],
+                        'tags': self.task_info['tid'].get('tags', '')
+                    })
                 else:
                     if status == 'running':
                         if task_id not in self.task_info:
                             self.task_info[task_id]['date'] = [
-                                time.time(), time.time(), 0]
+                                time.time(), time.time(), 0
+                            ]
                         elif not self.task_info[task_id]['date'][1]:
                             self.task_info[task_id]['date'][1] = time.time()
-                    self.notify_controller(
-                        {
-                            'queue': self.agent.alias,
-                            'task_id': task_id,
-                            'status': status,
-                            'update_only': True,
-                            'start_time': self.task_info[task_id]['date'][1],
-                            'tags': self.task_info['tid'].get('tags', '')
-                        })
+                    self.notify_controller({
+                        'queue': self.agent.alias,
+                        'task_id': task_id,
+                        'status': status,
+                        'update_only': True,
+                        'start_time': self.task_info[task_id]['date'][1],
+                        'tags': self.task_info['tid'].get('tags', '')
+                    })
             self.task_status[task_id] = status
             if status == 'pening' and task_id not in self.pending_tasks and task_id not in self.submitting_tasks:
                 self.pending_tasks.append(task_id)
             if status == 'running' and task_id not in self.running_tasks:
                 self.running_tasks.append(task_id)
             # terminal states, remove tasks from task list
-            if status in ('completed', 'failed', 'aborted') and task_id in self.running_tasks:
+            if status in ('completed', 'failed',
+                          'aborted') and task_id in self.running_tasks:
                 self.running_tasks.remove(task_id)
-                if status in ('completed', 'failed') and task_id in self.running_pending_tasks:
+                if status in ('completed', 'failed'
+                             ) and task_id in self.running_pending_tasks:
                     self.running_pending_tasks.pop(task_id)
             # for running pending tasks
             if status == 'aborted' and task_id in self.running_pending_tasks:
@@ -425,26 +487,41 @@ class TaskEngine(threading.Thread):
                 self.task_status[task_id] = 'pending'
                 self.running_pending_tasks.pop(task_id)
 
-    def query_tasks(self, tasks=None, check_all=False, verbosity=1, html=False, numeric_times=False, age=None, tags=None, status=None):
+    def query_tasks(self,
+                    tasks=None,
+                    check_all=False,
+                    verbosity=1,
+                    html=False,
+                    numeric_times=False,
+                    age=None,
+                    tags=None,
+                    status=None):
         try:
             if not check_all and not tasks:
                 from .signatures import WorkflowSignatures
                 workflow_signatures = WorkflowSignatures()
-                tasks = [x for x in workflow_signatures.tasks() if os.path.isfile(
-                    os.path.join(os.path.expanduser('~'), '.sos', 'tasks', x + '.task'))]
-            return self.agent.check_output("sos status {} -v {} {} {} {} {} {} {}".format(
-                '' if tasks is None else ' '.join(tasks), verbosity,
-                '--all' if check_all else '',
-                '--html' if html else '',
-                '--numeric-times' if numeric_times else '',
-                f'--age {age}' if age else '',
-                f'--tags {" ".join(tags)}' if tags else '',
-                f'--status {" ".join(status)}' if status else '',
-            ))
+                tasks = [
+                    x for x in workflow_signatures.tasks() if os.path.isfile(
+                        os.path.join(
+                            os.path.expanduser('~'), '.sos', 'tasks', x +
+                            '.task'))
+                ]
+            return self.agent.check_output(
+                "sos status {} -v {} {} {} {} {} {} {}".format(
+                    '' if tasks is None else ' '.join(tasks),
+                    verbosity,
+                    '--all' if check_all else '',
+                    '--html' if html else '',
+                    '--numeric-times' if numeric_times else '',
+                    f'--age {age}' if age else '',
+                    f'--tags {" ".join(tags)}' if tags else '',
+                    f'--status {" ".join(status)}' if status else '',
+                ))
         except subprocess.CalledProcessError as e:
             if verbosity >= 3:
                 env.logger.warning(
-                    f'Failed to query status of tasks on {self.alias}: {"" if e.stderr is None else e.stderr.decode()}')
+                    f'Failed to query status of tasks on {self.alias}: {"" if e.stderr is None else e.stderr.decode()}'
+                )
             return ''
 
     def kill_tasks(self, tasks, tags=None, all_tasks=False):
@@ -479,16 +556,17 @@ class TaskEngine(threading.Thread):
         #
         # verbosity cannot be send to underlying command because task engines
         # rely on the output of certain verbosity (-v1) to post kill the jobs
-        cmd = "sos kill {} {} {}".format('' if all_tasks else ' '.join(tasks),
-                                         f'--tags {" ".join(tags)}' if tags else '',
-                                         '-a' if all_tasks else '')
+        cmd = "sos kill {} {} {}".format(
+            '' if all_tasks else ' '.join(tasks),
+            f'--tags {" ".join(tags)}' if tags else '',
+            '-a' if all_tasks else '')
 
         try:
             ret = self.agent.check_output(cmd)
             env.logger.debug(f'"{cmd}" executed with response "{ret}"')
         except subprocess.CalledProcessError:
-            env.logger.error(
-                f'Failed to kill all tasks' if all_tasks else f'Failed to kill tasks {" ".join(tasks)}')
+            env.logger.error(f'Failed to kill all tasks' if all_tasks else
+                             f'Failed to kill tasks {" ".join(tasks)}')
             return ''
         return ret
 
@@ -501,26 +579,38 @@ class TaskEngine(threading.Thread):
                 return False
         return True
 
-    def purge_tasks(self, tasks, purge_all=False, age=None, status=None, tags=None, verbosity=2):
+    def purge_tasks(self,
+                    tasks,
+                    purge_all=False,
+                    age=None,
+                    status=None,
+                    tags=None,
+                    verbosity=2):
         try:
             if not tasks and not purge_all:
                 # if not --all and no task is specified, find all tasks in the current directory
                 from .signatures import WorkflowSignatures
                 workflow_signatures = WorkflowSignatures()
-                tasks = [x for x in workflow_signatures.tasks() if os.path.isfile(
-                    os.path.join(os.path.expanduser('~'), '.sos', 'tasks', x + '.task'))]
-            return self.agent.check_output("sos purge {} {} {} {} {} -v {}".format(
-                ' '.join(tasks), '--all' if purge_all else '',
-                f'--age {age}' if age is not None else '',
-                f'--status {" ".join(status)}' if status is not None else '',
-                f'--tags {" ".join(tags)}' if tags is not None else '',
-                verbosity))
+                tasks = [
+                    x for x in workflow_signatures.tasks() if os.path.isfile(
+                        os.path.join(
+                            os.path.expanduser('~'), '.sos', 'tasks', x +
+                            '.task'))
+                ]
+            return self.agent.check_output(
+                "sos purge {} {} {} {} {} -v {}".format(
+                    ' '.join(tasks), '--all' if purge_all else '',
+                    f'--age {age}' if age is not None else '',
+                    f'--status {" ".join(status)}' if status is not None else
+                    '', f'--tags {" ".join(tags)}' if tags is not None else '',
+                    verbosity))
         except subprocess.CalledProcessError:
             env.logger.error(f'Failed to purge tasks {tasks}')
             return ''
 
 
 class BackgroundProcess_TaskEngine(TaskEngine):
+
     def __init__(self, agent):
         super(BackgroundProcess_TaskEngine, self).__init__(agent)
         if 'job_template' in self.config:
@@ -536,7 +626,8 @@ class BackgroundProcess_TaskEngine(TaskEngine):
             self.batch_size = 1000
 
     def execute_tasks(self, task_ids):
-        if not super(BackgroundProcess_TaskEngine, self).execute_tasks(task_ids):
+        if not super(BackgroundProcess_TaskEngine,
+                     self).execute_tasks(task_ids):
             if env.is_debugging('TASK'):
                 env.log_to_file('TASK', f'Failed to prepare task {task_ids}')
             return False
@@ -552,7 +643,8 @@ class BackgroundProcess_TaskEngine(TaskEngine):
         # if no template, use a default command
         cmd = f"sos execute {' '.join(task_ids)} -v {env.verbosity} -s {env.config['sig_mode']} {'--dryrun' if env.config['run_mode'] == 'dryrun' else ''}"
         if env.is_debugging('TASK'):
-            env.log_to_file('TASK', f'Execute "{cmd}" (waiting={self.wait_for_task})')
+            env.log_to_file('TASK',
+                            f'Execute "{cmd}" (waiting={self.wait_for_task})')
         self.agent.run_command(cmd, wait_for_task=self.wait_for_task)
         return True
 
@@ -565,10 +657,14 @@ class BackgroundProcess_TaskEngine(TaskEngine):
             'verbosity': env.verbosity,
             'sig_mode': env.config.get('sig_mode', 'default'),
             'run_mode': env.config.get('run_mode', 'run'),
-            'home_dir': os.path.expanduser('~')})
+            'home_dir': os.path.expanduser('~')
+        })
         if '_runtime' in env.sos_dict:
-            runtime.update({x: env.sos_dict['_runtime'][x] for x in (
-                'nodes', 'cores', 'workdir', 'mem', 'walltime') if x in env.sos_dict['_runtime']})
+            runtime.update({
+                x: env.sos_dict['_runtime'][x]
+                for x in ('nodes', 'cores', 'workdir', 'mem', 'walltime')
+                if x in env.sos_dict['_runtime']
+            })
         if 'nodes' not in runtime:
             runtime['nodes'] = 1
         if 'cores' not in runtime:
@@ -585,11 +681,11 @@ class BackgroundProcess_TaskEngine(TaskEngine):
                 raise ValueError(
                     f'Failed to generate job file for task {task_id}: {e}')
 
-        filename = task_ids[0] + ('.sh' if len(task_ids)
-                                  == 1 else f'-{task_ids[-1]}.sh')
+        filename = task_ids[0] + ('.sh' if len(task_ids) == 1 else
+                                  f'-{task_ids[-1]}.sh')
         # now we need to write a job file
-        job_file = os.path.join(os.path.expanduser(
-            '~'), '.sos', 'tasks', filename)
+        job_file = os.path.join(
+            os.path.expanduser('~'), '.sos', 'tasks', filename)
         # do not translate newline under windows because the script will be executed
         # under linux/mac
         with open(job_file, 'w', newline='') as job:

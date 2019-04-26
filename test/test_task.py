@@ -3,7 +3,6 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
-
 import os
 import shutil
 import subprocess
@@ -14,7 +13,7 @@ import sqlite3
 from contextlib import contextmanager
 
 from sos.hosts import Host
-from sos.parser import  SoS_Script
+from sos.parser import SoS_Script
 from sos.targets import file_target
 from sos.utils import env
 from sos.tasks import TaskParams, TaskFile
@@ -48,13 +47,16 @@ def cd_new(path):
     finally:
         os.chdir(old_dir)
 
+
 def get_tasks():
     conn = sqlite3.connect('.sos/workflow_signatures.db')
     cur = conn.cursor()
     cur.execute('SELECT DISTINCT id FROM workflows WHERE entry_type = "task"')
     return [x[0] for x in cur.fetchall()]
 
+
 class TestTask(unittest.TestCase):
+
     def setUp(self):
         env.reset()
         subprocess.call('sos remove -s', shell=True)
@@ -76,18 +78,25 @@ class TestTask(unittest.TestCase):
     def testTaskFile(self):
         '''Test task file handling'''
         for ext in ('.pulse', '.out', '.err', '.task', '.sh'):
-            filename = os.path.join(os.path.expanduser('~'),
-                                    '.sos', 'tasks', 'ffffffffffffffff' + ext)
+            filename = os.path.join(
+                os.path.expanduser('~'), '.sos', 'tasks',
+                'ffffffffffffffff' + ext)
             if os.path.isfile(filename):
                 os.remove(filename)
-        params = TaskParams(name='ffffffffffffffff',
-                            global_def={}, task='b=a', sos_dict={'a': 1},
-                            tags=['b', 'a'])
+        params = TaskParams(
+            name='ffffffffffffffff',
+            global_def={},
+            task='b=a',
+            sos_dict={'a': 1},
+            tags=['b', 'a'])
         a = TaskFile('ffffffffffffffff')
         a.save(params)
         self.assertEqual(a.tags, 'a b')
         for ext in ('.pulse', '.out', '.err', '.sh'):
-            with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', 'ffffffffffffffff' + ext), 'w') as fh:
+            with open(
+                    os.path.join(
+                        os.path.expanduser('~'), '.sos', 'tasks',
+                        'ffffffffffffffff' + ext), 'w') as fh:
                 fh.write(ext)
         self.assertFalse(a.has_stdout())
         self.assertFalse(a.has_stderr())
@@ -157,7 +166,8 @@ task: workdir={0!r}
 with open(os.path.join({1!r}, 'result.txt'), 'w') as res:
    for file in os.listdir({1!r}):
        res.write(file + '\n')
-""".format(os.path.split(tdir)[0], os.path.split(tdir)[1])
+""".format(os.path.split(tdir)[0],
+           os.path.split(tdir)[1])
         wf = SoS_Script(script).workflow()
         env.config['sig_mode'] = 'force'
         Base_Executor(wf).run()
@@ -218,8 +228,8 @@ print('I am {}, done'.format(_index))
         else:
             with open('temp/temp_cmd', 'w') as tc:
                 tc.write('echo "a"')
-            os.chmod('temp/temp_cmd', stat.S_IXUSR |
-                     stat.S_IWUSR | stat.S_IRUSR)
+            os.chmod('temp/temp_cmd',
+                     stat.S_IXUSR | stat.S_IWUSR | stat.S_IRUSR)
         #
         script = SoS_Script(r"""
 [1]
@@ -309,8 +319,7 @@ run: expand=True
         Base_Executor(wf).run()
         for t in range(10, 13):
             with open(f'myfile_{t}.txt') as tmp:
-                self.assertEqual(tmp.read().strip(),
-                                 str(t) + '_' + str(t - 10))
+                self.assertEqual(tmp.read().strip(), str(t) + '_' + str(t - 10))
             if file_target(f'myfile_{t}.txt').exists():
                 file_target(f'myfile_{t}.txt').unlink()
 
@@ -344,12 +353,14 @@ run:
         time.sleep(5)
         subprocess.call(['sos', 'kill', '--all'])
         for i in range(20):
-            output = subprocess.check_output(
-                ['sos', 'status', '-v', '1']).decode()
+            output = subprocess.check_output(['sos', 'status', '-v',
+                                              '1']).decode()
             if 'killed' in output or 'aborted' in output or 'completed' in output:
                 break
             self.assertFalse(
-                i > 10, 'Task should be killed within 10 seconds, got {}'.format(output))
+                i > 10,
+                'Task should be killed within 10 seconds, got {}'.format(
+                    output))
             time.sleep(1)
         # test purge by status
         subprocess.call(['sos', 'purge', '--status', 'aborted'])
@@ -375,7 +386,6 @@ run: expand=True
         Base_Executor(wf, config={'sig_mode': 'force'}).run()
         for f in [f'con_{x}.txt' for x in range(5)]:
             self.assertTrue(file_target(f).exists())
-
 
     def testSharedOption(self):
         '''Test shared option of task'''
@@ -435,8 +445,6 @@ rng = random.randint(1, 1000)
         #Base_Executor(wf).run()
         #self.assertEqual(var, env.sos_dict['rng'])
 
-
-
     def testTrunkSizeOption(self):
         '''Test option trunk_size'''
         with open('test_trunksize.sos', 'w') as tt:
@@ -452,20 +460,22 @@ run: expand=True
         for i in range(10):
             if os.path.isfile(f'{i}.txt'):
                 file_target(f'{i}.txt').unlink()
-        Base_Executor(wf, config={
-            'sig_mode': 'force',
-            'script': 'test_trunksize.sos',
-            'max_running_jobs': 10,
-            'bin_dirs': [],
-            'workflow_args': [],
-            'output_dag': '',
-            'output_report': None,
-            'targets': [],
-            'max_procs': 4,
-            'default_queue': None,
-            'workflow': 'default',
-            'workdir': '.',
-        }).run()
+        Base_Executor(
+            wf,
+            config={
+                'sig_mode': 'force',
+                'script': 'test_trunksize.sos',
+                'max_running_jobs': 10,
+                'bin_dirs': [],
+                'workflow_args': [],
+                'output_dag': '',
+                'output_report': None,
+                'targets': [],
+                'max_procs': 4,
+                'default_queue': None,
+                'workflow': 'default',
+                'workdir': '.',
+            }).run()
 
         for i in range(10):
             self.assertTrue(os.path.isfile(f'{i}.txt'))
@@ -482,20 +492,22 @@ run: expand=True
     sleep 2
 ''')
         wf = SoS_Script(filename='test_trunkworker.sos').workflow()
-        Base_Executor(wf, config={
-            'sig_mode': 'force',
-            'script': 'test_trunkworker.sos',
-            'max_running_jobs': 10,
-            'bin_dirs': [],
-            'workflow_args': [],
-            'output_dag': '',
-            'output_report': None,
-            'targets': [],
-            'max_procs': 4,
-            'default_queue': None,
-            'workflow': 'default',
-            'workdir': '.',
-        }).run()
+        Base_Executor(
+            wf,
+            config={
+                'sig_mode': 'force',
+                'script': 'test_trunkworker.sos',
+                'max_running_jobs': 10,
+                'bin_dirs': [],
+                'workflow_args': [],
+                'output_dag': '',
+                'output_report': None,
+                'targets': [],
+                'max_procs': 4,
+                'default_queue': None,
+                'workflow': 'default',
+                'workdir': '.',
+            }).run()
         for i in range(10):
             self.assertTrue(os.path.isfile('{}.txt'.format(i)))
 
@@ -512,19 +524,21 @@ sh: expand=True
   echo {} {{i}}
 '''.format(tag, tag))
         wf = SoS_Script(filename='test_tags.sos').workflow()
-        Base_Executor(wf, config={
-            'sig_mode': 'force',
-            'script': 'test_trunkworker.sos',
-            'max_running_jobs': 10,
-            'bin_dirs': [],
-            'workflow_args': [],
-            'output_dag': '',
-            'output_report': None,
-            'targets': [],
-            'max_procs': 4,
-            'workflow': 'default',
-            'workdir': '.',
-        }).run()
+        Base_Executor(
+            wf,
+            config={
+                'sig_mode': 'force',
+                'script': 'test_trunkworker.sos',
+                'max_running_jobs': 10,
+                'bin_dirs': [],
+                'workflow_args': [],
+                'output_dag': '',
+                'output_report': None,
+                'targets': [],
+                'max_procs': 4,
+                'workflow': 'default',
+                'workdir': '.',
+            }).run()
         ret = subprocess.check_output(
             'sos status -t {}'.format(tag), shell=True).decode()
         self.assertEqual(len(ret.splitlines()), 5, "Obtained {}".format(ret))
@@ -540,19 +554,21 @@ sh: expand=True
   echo {} {{i}}
 '''.format(tag1, tag2, tag1))
         wf = SoS_Script(filename='test_tags.sos').workflow()
-        Base_Executor(wf, config={
-            'sig_mode': 'force',
-            'script': 'test_trunkworker.sos',
-            'max_running_jobs': 10,
-            'bin_dirs': [],
-            'workflow_args': [],
-            'output_dag': '',
-            'output_report': None,
-            'targets': [],
-            'max_procs': 4,
-            'workflow': 'default',
-            'workdir': '.',
-        }).run()
+        Base_Executor(
+            wf,
+            config={
+                'sig_mode': 'force',
+                'script': 'test_trunkworker.sos',
+                'max_running_jobs': 10,
+                'bin_dirs': [],
+                'workflow_args': [],
+                'output_dag': '',
+                'output_report': None,
+                'targets': [],
+                'max_procs': 4,
+                'workflow': 'default',
+                'workdir': '.',
+            }).run()
         ret = subprocess.check_output(
             'sos status -t {}'.format(tag2), shell=True).decode()
         self.assertEqual(len(ret.splitlines()), 2, "Obtained {}".format(ret))
@@ -566,11 +582,15 @@ task: mem='2G'
 print('a')
 ''')
         wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf, config={
-            'config_file': '~/docker.yml',
-            'default_queue': 'docker_limited',
-            'sig_mode': 'force',
-        }).run)
+        self.assertRaises(
+            Exception,
+            Base_Executor(
+                wf,
+                config={
+                    'config_file': '~/docker.yml',
+                    'default_queue': 'docker_limited',
+                    'sig_mode': 'force',
+                }).run)
 
     def testLocalMaxMem(self):
         '''Test server restriction max_mem'''
@@ -580,11 +600,15 @@ task: mem='2G'
 print('a')
 ''')
         wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf, config={
-            'config_file': '~/docker.yml',
-            'default_queue': 'local_limited',
-            'sig_mode': 'force',
-        }).run)
+        self.assertRaises(
+            Exception,
+            Base_Executor(
+                wf,
+                config={
+                    'config_file': '~/docker.yml',
+                    'default_queue': 'local_limited',
+                    'sig_mode': 'force',
+                }).run)
 
     def testRuntimeMaxWalltime(self):
         '''Test server max_walltime option'''
@@ -595,11 +619,15 @@ import time
 time.sleep(25)
 ''')
         wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf, config={
-            'config_file': '~/docker.yml',
-            'default_queue': 'docker_limited',
-            'sig_mode': 'force',
-        }).run)
+        self.assertRaises(
+            Exception,
+            Base_Executor(
+                wf,
+                config={
+                    'config_file': '~/docker.yml',
+                    'default_queue': 'docker_limited',
+                    'sig_mode': 'force',
+                }).run)
 
     def testLocalRuntimeMaxWalltime(self):
         '''Test server max_walltime option'''
@@ -610,11 +638,15 @@ import time
 time.sleep(15)
 ''')
         wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf, config={
-            'config_file': '~/docker.yml',
-            'default_queue': 'local_limited',
-            'sig_mode': 'force',
-        }).run)
+        self.assertRaises(
+            Exception,
+            Base_Executor(
+                wf,
+                config={
+                    'config_file': '~/docker.yml',
+                    'default_queue': 'local_limited',
+                    'sig_mode': 'force',
+                }).run)
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testMaxCores(self):
@@ -625,11 +657,15 @@ task: cores=8
 print('a')
 ''')
         wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf, config={
-            'config_file': '~/docker.yml',
-            'default_queue': 'docker_limited',
-            'sig_mode': 'force',
-        }).run)
+        self.assertRaises(
+            Exception,
+            Base_Executor(
+                wf,
+                config={
+                    'config_file': '~/docker.yml',
+                    'default_queue': 'docker_limited',
+                    'sig_mode': 'force',
+                }).run)
 
     def testLocalMaxCores(self):
         '''Test server restriction max_cores'''
@@ -639,17 +675,22 @@ task: cores=8
 print('a')
 ''')
         wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf, config={
-            'config_file': '~/docker.yml',
-            'default_queue': 'local_limited',
-            'sig_mode': 'force',
-        }).run)
+        self.assertRaises(
+            Exception,
+            Base_Executor(
+                wf,
+                config={
+                    'config_file': '~/docker.yml',
+                    'default_queue': 'local_limited',
+                    'sig_mode': 'force',
+                }).run)
 
     def testListHosts(self):
         '''test list hosts using sos status -q'''
         for v in ['0', '1', '3', '4']:
             output = subprocess.check_output(
-                ['sos', 'remote', 'list', '-c', '~/docker.yml', '-q', '-v', v]).decode()
+                ['sos', 'remote', 'list', '-c', '~/docker.yml', '-q', '-v',
+                 v]).decode()
             self.assertTrue('local_limited' in output)
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
@@ -661,12 +702,15 @@ task: walltime='1:00:00'
 print('a')
 ''')
         wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf, config={
-            'config_file': '~/docker.yml',
-            'default_queue': 'docker_limited',
-            'sig_mode': 'force',
-        }).run)
-
+        self.assertRaises(
+            Exception,
+            Base_Executor(
+                wf,
+                config={
+                    'config_file': '~/docker.yml',
+                    'default_queue': 'docker_limited',
+                    'sig_mode': 'force',
+                }).run)
 
     def testPurgeWithoutOption(self):
         '''Test sos purge to remove only tasks related to current directory'''
@@ -696,14 +740,19 @@ touch {_output}
             subprocess.call('sos run test -s force', shell=True)
             tasks_b = get_tasks()
             # only tasks related to this directory will be listed.
-            self.assertEqual(len(tasks_b),
-                len(subprocess.check_output('sos status -v1', shell=True).decode().splitlines()))
+            self.assertEqual(
+                len(tasks_b),
+                len(
+                    subprocess.check_output('sos status -v1',
+                                            shell=True).decode().splitlines()))
             subprocess.call('sos purge', shell=True)
         # check tasks
-        tasks = [x.split()[0] for x in subprocess.check_output('sos status -v1 --all', shell=True).decode().splitlines()]
+        tasks = [
+            x.split()[0] for x in subprocess.check_output(
+                'sos status -v1 --all', shell=True).decode().splitlines()
+        ]
         self.assertTrue(all(x in tasks for x in tasks_a))
         self.assertFalse(any(x in tasks for x in tasks_b))
-
 
     def testPurgeAllWithOption(self):
         '''Test sos purge all with options such as -s completed'''
@@ -721,16 +770,25 @@ touch {_output}
             tasks = get_tasks()
             subprocess.call('sos purge --all -s failed', shell=True)
         # check tasks
-        taskstatus = [x.split()[0] for x in subprocess.check_output('sos status --all -v1', shell=True).decode().splitlines()]
+        taskstatus = [
+            x.split()[0] for x in subprocess.check_output(
+                'sos status --all -v1', shell=True).decode().splitlines()
+        ]
         self.assertTrue(all(x in taskstatus for x in tasks))
         # purge one of them
         subprocess.call(f'sos purge {tasks[0]}', shell=True)
-        taskstatus = [x.split()[0] for x in subprocess.check_output('sos status --all -v1', shell=True).decode().splitlines()]
+        taskstatus = [
+            x.split()[0] for x in subprocess.check_output(
+                'sos status --all -v1', shell=True).decode().splitlines()
+        ]
         self.assertTrue(tasks[0] not in taskstatus)
         self.assertTrue(tasks[1] in taskstatus)
         #
         subprocess.call(f'sos purge --all', shell=True)
-        taskstatus = [x.split()[0] for x in subprocess.check_output('sos status --all -v1', shell=True).decode().splitlines()]
+        taskstatus = [
+            x.split()[0] for x in subprocess.check_output(
+                'sos status --all -v1', shell=True).decode().splitlines()
+        ]
         self.assertTrue(tasks[1] not in taskstatus)
 
     def testResubmitTaskWithDifferentWalltime(self):
@@ -744,7 +802,8 @@ echo 0.1
 ''')
             subprocess.call('sos run test -s force', shell=True)
             tasks = get_tasks()
-            out = subprocess.check_output(f'sos status {tasks[0]} -v4', shell=True)
+            out = subprocess.check_output(
+                f'sos status {tasks[0]} -v4', shell=True)
             self.assertTrue('00:01:00' in out.decode())
             with open('test1.sos', 'w') as tst:
                 tst.write('''
@@ -756,9 +815,9 @@ echo 0.1
             new_tasks = get_tasks()
             self.assertEqual(tasks, new_tasks)
             #
-            out = subprocess.check_output(f'sos status {tasks[0]} -v4', shell=True)
+            out = subprocess.check_output(
+                f'sos status {tasks[0]} -v4', shell=True)
             self.assertTrue('00:02:00' in out.decode())
-
 
     def testTaskSignature(self):
         '''Test re-execution of tasks'''
@@ -778,7 +837,6 @@ sleep 2
             #
             subprocess.call('sos run test', shell=True)
             self.assertLess(tf.tags_created_start_and_duration()[3], 1)
-
 
     def testWrongHost(self):
         script = SoS_Script('''
@@ -809,7 +867,6 @@ python3: expand="${ }"
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-
 
     def testRepeatedTasks(self):
         '''Test statement before task #1142 '''
@@ -916,12 +973,14 @@ with open(_input, 'r') as inf, open(_output, 'w') as outf:
 ''')
         wf = script.workflow()
         val = random.randint(1, 10000)
-        Base_Executor(wf, args=['--g', str(val)],
+        Base_Executor(
+            wf,
+            args=['--g', str(val)],
             config={
-            'config_file': '~/docker.yml',
-            'default_queue': 'docker',
-            'sig_mode': 'force',
-        }).run()
+                'config_file': '~/docker.yml',
+                'default_queue': 'docker',
+                'sig_mode': 'force',
+            }).run()
         # now check if
         for i in range(4):
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
@@ -937,8 +996,10 @@ with open(_input, 'r') as inf, open(_output, 'w') as outf:
                 os.remove(f'test_{i}.txt')
             if os.path.isfile(f'test_{i}.bak'):
                 os.remove(f'test_{i}.bak')
-        Base_Executor(wf, args=['--g', str(val)],
-            config={ 'sig_mode': 'force' }).run()
+        Base_Executor(
+            wf, args=['--g', str(val)], config={
+                'sig_mode': 'force'
+            }).run()
         for i in range(4):
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
             with open(f'test_{i}.bak') as outf:
@@ -976,12 +1037,14 @@ with open(_input, 'r') as inf, open(_output, 'w') as outf:
 ''')
         wf = script.workflow()
         val = random.randint(1, 10000)
-        Base_Executor(wf, args=['--g', str(val)],
+        Base_Executor(
+            wf,
+            args=['--g', str(val)],
             config={
-            'config_file': '~/docker.yml',
-            'default_queue': 'docker',
-            'sig_mode': 'force',
-        }).run()
+                'config_file': '~/docker.yml',
+                'default_queue': 'docker',
+                'sig_mode': 'force',
+            }).run()
         # now check if
         for i in range(4):
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
@@ -1010,12 +1073,13 @@ with open(_input, 'r') as inf, open(_output, 'w') as outf:
 	outf.write(inf.read())
 ''')
         wf = script.workflow()
-        Base_Executor(wf,
+        Base_Executor(
+            wf,
             config={
-            'config_file': '~/docker.yml',
-            'default_queue': 'docker',
-            'sig_mode': 'force',
-        }).run()
+                'config_file': '~/docker.yml',
+                'default_queue': 'docker',
+                'sig_mode': 'force',
+            }).run()
         self.assertFalse(os.path.isfile('vars.sh'))
         self.assertTrue(os.path.isfile('vars1.sh'))
 
@@ -1037,12 +1101,13 @@ with open(_input, 'r') as inf, open(_output, 'w') as outf:
 	outf.write(inf.read())
 ''')
         wf = script.workflow()
-        Base_Executor(wf,
+        Base_Executor(
+            wf,
             config={
-            'config_file': '~/docker.yml',
-            'default_queue': 'docker',
-            'sig_mode': 'force',
-        }).run()
+                'config_file': '~/docker.yml',
+                'default_queue': 'docker',
+                'sig_mode': 'force',
+            }).run()
         self.assertFalse(os.path.isfile('vars.sh'))
         self.assertFalse(os.path.isfile('vars1.sh'))
         #
@@ -1063,15 +1128,15 @@ with open(_input, 'r') as inf, open(_output, 'w') as outf:
 	outf.write(inf.read())
 ''')
         wf = script.workflow()
-        Base_Executor(wf,
+        Base_Executor(
+            wf,
             config={
-            'config_file': '~/docker.yml',
-            'default_queue': 'docker',
-            'sig_mode': 'force',
-        }).run()
+                'config_file': '~/docker.yml',
+                'default_queue': 'docker',
+                'sig_mode': 'force',
+            }).run()
         self.assertFalse(os.path.isfile('vars.sh'))
         self.assertFalse(os.path.isfile('init-d-script'))
-
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testDelayedInterpolation(self):
@@ -1095,16 +1160,19 @@ run: expand=True
     cp {_input} {_output}
 ''')
         wf = script.workflow()
-        Base_Executor(wf, config={
+        Base_Executor(
+            wf,
+            config={
                 'config_file': '~/docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker',
                 'sig_mode': 'force',
-                }).run()
+            }).run()
         # this file is remote only
         self.assertFalse(os.path.isfile('test.py'))
         self.assertFalse(os.path.isfile('test.py.bak'))
+
 
 if __name__ == '__main__':
     unittest.main()

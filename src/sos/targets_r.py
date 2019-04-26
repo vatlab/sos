@@ -15,11 +15,15 @@ class R_library(BaseTarget):
 
     LIB_STATUS_CACHE = {}
 
-    def __init__(self, library, version=None, repos='http://cran.us.r-project.org', autoinstall=False):
+    def __init__(self,
+                 library,
+                 version=None,
+                 repos='http://cran.us.r-project.org',
+                 autoinstall=False):
         super(R_library, self).__init__()
         self._library = library
         if version is not None:
-            version = (version, ) if isinstance(version, str) else tuple(version)
+            version = (version,) if isinstance(version, str) else tuple(version)
         self._version = version
         self._repos = repos
         self._autoinstall = autoinstall
@@ -34,18 +38,24 @@ class R_library(BaseTarget):
         import tempfile
         import subprocess
 
-        output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.txt', delete=False).name
-        script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.R', delete=False).name
+        output_file = tempfile.NamedTemporaryFile(
+            mode='w+t', suffix='.txt', delete=False).name
+        script_file = tempfile.NamedTemporaryFile(
+            mode='w+t', suffix='.R', delete=False).name
         #
         package_loaded = 'suppressMessages(require(package, character.only=TRUE, quietly=TRUE))'
         version_satisfied = 'TRUE'
         for opt in ('==', '>=', '>', '<=', '<', '!='):
             if opt in name:
                 if version is not None:
-                    raise ValueError(f"Specifying 'version=' option in addition to '{name}' is not allowed")
+                    raise ValueError(
+                        f"Specifying 'version=' option in addition to '{name}' is not allowed"
+                    )
                 name, version = [x.strip() for x in name.split(opt, 1)]
                 if ',' in version:
-                    raise ValueError(f'SoS does not yet support multiple version comparisons. {version} provided')
+                    raise ValueError(
+                        f'SoS does not yet support multiple version comparisons. {version} provided'
+                    )
                 version = (opt + version,)
                 break
         if version is not None:
@@ -56,13 +66,13 @@ class R_library(BaseTarget):
                 if value.startswith('>='):
                     operators.append('>=')
                     version[idx] = value[2:]
-                elif  value.startswith('>'):
+                elif value.startswith('>'):
                     operators.append('>')
                     version[idx] = value[1:]
                 elif value.startswith('<='):
                     operators.append('<=')
                     version[idx] = value[2:]
-                elif  value.startswith('<'):
+                elif value.startswith('<'):
                     operators.append('<')
                     version[idx] = value[1:]
                 elif value.startswith('=='):
@@ -76,8 +86,10 @@ class R_library(BaseTarget):
             # check version and mark version mismatch
             # if current version satisfies any of the
             # requirement the check program quits
-            version_satisfied = '||'.join(
-                [f'(cur_version {y} {repr(x)})' for x, y in zip(version, operators)])
+            version_satisfied = '||'.join([
+                f'(cur_version {y} {repr(x)})'
+                for x, y in zip(version, operators)
+            ])
         #
         if len(glob_wildcards('{repo}@{pkg}', [name])['repo']):
             # package is from github
@@ -136,10 +148,12 @@ class R_library(BaseTarget):
             with open(script_file, 'w') as sfile:
                 sfile.write(install_script)
             #
-            p = subprocess.Popen(['Rscript', '--default-packages=utils', script_file])
+            p = subprocess.Popen(
+                ['Rscript', '--default-packages=utils', script_file])
             ret = p.wait()
             if ret != 0:
-                env.logger.warning(f'Failed to detect or install R library {name}')
+                env.logger.warning(
+                    f'Failed to detect or install R library {name}')
                 return False
         except Exception as e:
             env.logger.error(f'Failed to execute script: {e}')
@@ -153,19 +167,22 @@ class R_library(BaseTarget):
                 lib, cur_version, status = line.split(' ', 2)
                 if status.strip() == "MISSING":
                     env.logger.warning(
-                        f'R library {lib} is not available and cannot be installed.')
+                        f'R library {lib} is not available and cannot be installed.'
+                    )
                 elif status.strip() == "UNAVAILABLE":
-                    env.logger.warning(
-                        f'R library {lib} is not available.')
+                    env.logger.warning(f'R library {lib} is not available.')
                 elif status.strip() == 'AVAILABLE':
-                    env.logger.debug(f'R library {lib} ({cur_version}) is available')
+                    env.logger.debug(
+                        f'R library {lib} ({cur_version}) is available')
                     ret_val = True
                 elif status.strip() == 'INSTALLED':
-                    env.logger.debug(f'R library {lib} ({cur_version}) has been installed')
+                    env.logger.debug(
+                        f'R library {lib} ({cur_version}) has been installed')
                     ret_val = True
                 elif status.strip() == 'VERSION_MISMATCH':
                     env.logger.warning(
-                        f'R library {lib} ({cur_version}) does not satisfy version requirement ({"/".join(version)})!')
+                        f'R library {lib} ({cur_version}) does not satisfy version requirement ({"/".join(version)})!'
+                    )
                 else:
                     raise RuntimeError(f'This should not happen: {line}')
         try:
@@ -175,15 +192,20 @@ class R_library(BaseTarget):
         return ret_val
 
     def target_exists(self, mode='any'):
-        if (self._library, self._version, self._autoinstall) in self.LIB_STATUS_CACHE:
-            return self.LIB_STATUS_CACHE[(self._library, self._version, self._autoinstall)]
+        if (self._library, self._version,
+                self._autoinstall) in self.LIB_STATUS_CACHE:
+            return self.LIB_STATUS_CACHE[(self._library, self._version,
+                                          self._autoinstall)]
         else:
             # check if R is installed
             if not shutil.which('Rscript'):
-                env.logger.debug(f'Target R_Library("{self._library}") does not exist because command Rscript is not found.')
+                env.logger.debug(
+                    f'Target R_Library("{self._library}") does not exist because command Rscript is not found.'
+                )
                 return False
             ret = self._install(self._library, self._version, self._repos)
-            self.LIB_STATUS_CACHE[(self._library, self._version, self._autoinstall)] = ret
+            self.LIB_STATUS_CACHE[(self._library, self._version,
+                                   self._autoinstall)] = ret
             return ret
 
     def target_name(self):

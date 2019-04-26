@@ -14,6 +14,7 @@ from sos.workflow_executor import Base_Executor
 
 
 class TestActions(unittest.TestCase):
+
     def setUp(self):
         env.reset()
         self.temp_files = []

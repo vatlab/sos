@@ -36,7 +36,8 @@ class SoS_DockerClient:
         try:
             ret = subprocess.check_output(
                 f'''docker run -t {image} cat /proc/meminfo  | grep MemTotal''',
-                shell=True, stdin=subprocess.DEVNULL)
+                shell=True,
+                stdin=subprocess.DEVNULL)
             # ret: MemTotal:       30208916 kB
             self.tot_mem = int(ret.split()[1])
         except Exception:
@@ -47,9 +48,10 @@ class SoS_DockerClient:
     def _is_image_avail(self, image):
         # the command will return ID of the image if it exists
         try:
-            return bool(subprocess.check_output(
-                f'''docker images {image} --no-trunc --format "{{{{.ID}}}}"''',
-                shell=True))
+            return bool(
+                subprocess.check_output(
+                    f'''docker images {image} --no-trunc --format "{{{{.ID}}}}"''',
+                    shell=True))
         except Exception as e:
             env.logger.warning(f'Failed to check image {image}: {e}')
             return False
@@ -57,8 +59,12 @@ class SoS_DockerClient:
     def _run_cmd(self, cmd, **kwargs):
         if env.config['run_mode'] == 'interactive':
             if 'stdout' in kwargs or 'stderr' in kwargs:
-                child = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                                         stderr=subprocess.PIPE, bufsize=0)
+                child = subprocess.Popen(
+                    cmd,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    bufsize=0)
                 out, err = child.communicate()
                 if 'stdout' in kwargs:
                     if kwargs['stdout'] is not False:
@@ -108,13 +114,17 @@ class SoS_DockerClient:
                     se.close()
 
             elif env.verbosity >= 1:
-                with open(env.sos_dict['__std_out__'], 'ab') as so, open(env.sos_dict['__std_err__'], 'ab') as se:
-                    p = subprocess.Popen(
-                        cmd, shell=True, stderr=se, stdout=so)
+                with open(env.sos_dict['__std_out__'],
+                          'ab') as so, open(env.sos_dict['__std_err__'],
+                                            'ab') as se:
+                    p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
                     ret = p.wait()
             else:
                 p = subprocess.Popen(
-                    cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                    cmd,
+                    shell=True,
+                    stderr=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL)
                 ret = p.wait()
         else:
             if 'stdout' in kwargs:
@@ -149,7 +159,8 @@ class SoS_DockerClient:
     def build(self, script, **kwargs):
         if not self.client:
             raise RuntimeError(
-                'Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
+                'Cannot connect to the Docker daemon. Is the docker daemon running on this host?'
+            )
         with tempfile.TemporaryDirectory(dir=os.getcwd()) as tempdir:
             if script:
                 docker_file = os.path.join(tempdir, 'Dockerfile')
@@ -159,27 +170,32 @@ class SoS_DockerClient:
             else:
                 if 'file' not in kwargs:
                     raise RuntimeError(
-                        'Docker file must be specified with option file if not directly included.')
+                        'Docker file must be specified with option file if not directly included.'
+                    )
                 file_opt = ['--file', kwargs['file']]
 
             other_opts = []
             for arg, value in kwargs.items():
                 # boolean args
-                if arg in ('compress', 'disable_content_trust', 'force_rm', 'memory_swap',
-                           'no_cache', 'pull', 'quiet', 'rm', 'squash', 'stream'):
+                if arg in ('compress', 'disable_content_trust', 'force_rm',
+                           'memory_swap', 'no_cache', 'pull', 'quiet', 'rm',
+                           'squash', 'stream'):
                     if value is True:
                         other_opts.append(f'--{arg.replace("_", "-")}')
                     else:
                         env.logger.warning(
-                            f'Boolean {arg} is ignored (True should be provided)')
-                elif arg in ('add_host', 'build_arg', 'cache_from', 'cgroup_parent',
-                             'cpu_period', 'cpu_quota', 'cpu-shares', 'cpuset_cpus', 'cpuset_mems',
-                             'label', 'memory', 'network', 'platform', 'security_opt', 'shm_size',
-                             'tag', 'target', 'ulimit'):
+                            f'Boolean {arg} is ignored (True should be provided)'
+                        )
+                elif arg in ('add_host', 'build_arg', 'cache_from',
+                             'cgroup_parent', 'cpu_period', 'cpu_quota',
+                             'cpu-shares', 'cpuset_cpus', 'cpuset_mems',
+                             'label', 'memory', 'network', 'platform',
+                             'security_opt', 'shm_size', 'tag', 'target',
+                             'ulimit'):
                     other_opts.extend([f'--{arg.replace("_", "-")}', value])
 
-            cmd = subprocess.list2cmdline(
-                ['docker', 'build'] + file_opt + other_opts)
+            cmd = subprocess.list2cmdline(['docker', 'build'] + file_opt +
+                                          other_opts)
 
             env.logger.debug(cmd)
             if env.config['run_mode'] == 'dryrun':
@@ -193,22 +209,24 @@ class SoS_DockerClient:
                 if script:
                     debug_script_dir = os.path.join(env.exec_dir, '.sos')
                     msg = 'The Dockerfile has been saved to {}/Dockerfile. To reproduce the error please run:\n``{}``'.format(
-                        debug_script_dir, cmd.replace(tempdir, debug_script_dir))
-                    shutil.copy(os.path.join(
-                        tempdir, 'Dockerfile'), debug_script_dir)
+                        debug_script_dir, cmd.replace(tempdir,
+                                                      debug_script_dir))
+                    shutil.copy(
+                        os.path.join(tempdir, 'Dockerfile'), debug_script_dir)
                 else:
                     msg = f'To reproduce this error please run {cmd}'
                 raise subprocess.CalledProcessError(
                     returncode=ret, cmd=cmd, stderr=msg)
         # if a tag is given, check if the image is built
         if 'tag' in kwargs and not self._is_image_avail(kwargs['tag']):
-            raise RuntimeError(
-                'Image with tag {} is not created.'.format(kwargs['tag']))
+            raise RuntimeError('Image with tag {} is not created.'.format(
+                kwargs['tag']))
 
     def load_image(self, image, **kwargs):
         if not self.client:
             raise RuntimeError(
-                'Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
+                'Cannot connect to the Docker daemon. Is the docker daemon running on this host?'
+            )
         env.logger.info('docker load {}'.format(image))
         try:
             subprocess.call(f'''docker load -i {image} --quiet''', shell=True)
@@ -218,7 +236,8 @@ class SoS_DockerClient:
     def pull(self, image):
         if not self.client:
             raise RuntimeError(
-                'Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
+                'Cannot connect to the Docker daemon. Is the docker daemon running on this host?'
+            )
         if image in self.pulled_images:
             return
         # if image is specified, check if it is available locally. If not, pull it
@@ -226,18 +245,28 @@ class SoS_DockerClient:
         try:
             print(f'HINT: Pulling docker image {image}')
             subprocess.check_output(
-                'docker pull {}'.format(image), stderr=subprocess.STDOUT, shell=True,
+                'docker pull {}'.format(image),
+                stderr=subprocess.STDOUT,
+                shell=True,
                 universal_newlines=True)
         except subprocess.CalledProcessError as exc:
             err_msg = exc.output
         if not self._is_image_avail(image):
-            raise RuntimeError(f'Failed to pull docker image {image}:\n {err_msg}')
+            raise RuntimeError(
+                f'Failed to pull docker image {image}:\n {err_msg}')
         self.pulled_images.add(image)
 
-    def run(self, image, script='', interpreter='', args='', suffix='.sh', **kwargs):
+    def run(self,
+            image,
+            script='',
+            interpreter='',
+            args='',
+            suffix='.sh',
+            **kwargs):
         if self.client is None:
             raise RuntimeError(
-                'Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
+                'Cannot connect to the Docker daemon. Is the docker daemon running on this host?'
+            )
         #
         env.logger.debug('docker_run with keyword args {}'.format(kwargs))
         #
@@ -248,7 +277,8 @@ class SoS_DockerClient:
             # tempdir = tempfile.mkdtemp(dir=os.getcwd())
             tempscript = 'docker_run_{}{}'.format(os.getpid(), suffix)
             if script:
-                with open(os.path.join(tempdir, tempscript), 'w') as script_file:
+                with open(os.path.join(tempdir, tempscript),
+                          'w') as script_file:
                     # the input script might have windows new line but the container
                     # will need linux new line for proper execution #1023
                     script_file.write('\n'.join(script.splitlines()))
@@ -270,16 +300,19 @@ class SoS_DockerClient:
                     if isinstance(vol, (str, path)):
                         vol = str(vol)
                     else:
-                        raise ValueError(f'Unacceptable value {vol} for parameter volumes')
+                        raise ValueError(
+                            f'Unacceptable value {vol} for parameter volumes')
                     if vol.count(':') == 0:
                         host_dir, mnt_dir = vol, vol
                     elif vol.count(':') in (1, 2):
                         host_dir, mnt_dir = vol.split(':', 1)
                     else:
-                        raise ValueError(f'Invalid format for volume specification: {vol}')
+                        raise ValueError(
+                            f'Invalid format for volume specification: {vol}')
                     binds.append(
                         f'{path(host_dir).resolve():p}:{path(mnt_dir):p}')
-                    if wdir.startswith(os.path.abspath(os.path.expanduser(host_dir))):
+                    if wdir.startswith(
+                            os.path.abspath(os.path.expanduser(host_dir))):
                         has_wdir = True
                 volumes_opt = ' '.join('-v {}'.format(x) for x in binds)
                 if not has_wdir:
@@ -300,21 +333,30 @@ class SoS_DockerClient:
                     volumes_from_opt = ' '.join(
                         f'--volumes_from={x}' for x in kwargs['volumes_from'])
                 else:
-                    raise RuntimeError('Option volumes_from only accept a string or list of string: {} specified'.format(
-                        kwargs['volumes_from']))
+                    raise RuntimeError(
+                        'Option volumes_from only accept a string or list of string: {} specified'
+                        .format(kwargs['volumes_from']))
 
             # we also need to mount the script
             if script:
                 volumes_opt += f' -v {path(tempdir)/tempscript:p}:/var/lib/sos/{tempscript}'
-            cmd_opt = interpolate(f'{interpreter if isinstance(interpreter, str) else interpreter[0]} {args}', {
-                'filename': sos_targets(f'/var/lib/sos/{tempscript}'),
-                'script': script})
+            cmd_opt = interpolate(
+                f'{interpreter if isinstance(interpreter, str) else interpreter[0]} {args}',
+                {
+                    'filename': sos_targets(f'/var/lib/sos/{tempscript}'),
+                    'script': script
+                })
             #
             workdir_opt = ''
-            if 'docker_workdir' in kwargs and kwargs['docker_workdir'] is not None:
+            if 'docker_workdir' in kwargs and kwargs[
+                    'docker_workdir'] is not None:
                 if not os.path.isabs(kwargs['docker_workdir']):
-                    env.logger.warning('An absolute path is needed for -w option of docker run command. "{}" provided, "{}" used.'
-                                       .format(kwargs['docker_workdir'], os.path.abspath(os.path.expanduser(kwargs['docker_workdir']))))
+                    env.logger.warning(
+                        'An absolute path is needed for -w option of docker run command. "{}" provided, "{}" used.'
+                        .format(
+                            kwargs['docker_workdir'],
+                            os.path.abspath(
+                                os.path.expanduser(kwargs['docker_workdir']))))
                     workdir_opt = f'-w={path(kwargs["docker_workdir"]).resolve():p}'
                 else:
                     workdir_opt = f'-w={path(kwargs["docker_workdir"]):p}'
@@ -328,13 +370,13 @@ class SoS_DockerClient:
                     env_opt = ' '.join(
                         f'-e {x}={y}' for x, y in kwargs['environment'].items())
                 elif isinstance(kwargs['environment'], list):
-                    env_opt = ' '.join(
-                        f'-e {x}' for x in kwargs['environment'])
+                    env_opt = ' '.join(f'-e {x}' for x in kwargs['environment'])
                 elif isinstance(kwargs['environment'], str):
                     env_opt = f'-e {kwargs["environment"]}'
                 else:
-                    raise RuntimeError('Invalid value for option environment (str, list, or dict is allowd, {} provided)'.format(
-                        kwargs['environment']))
+                    raise RuntimeError(
+                        'Invalid value for option environment (str, list, or dict is allowd, {} provided)'
+                        .format(kwargs['environment']))
             #
             port_opt = ''
             if 'port' in kwargs:
@@ -343,11 +385,12 @@ class SoS_DockerClient:
                 elif isinstance(kwargs['port'], (str, int)):
                     port_opt = '-p {}'.format(kwargs['port'])
                 elif isinstance(kwargs['port'], list):
-                    port_opt = ' '.join('-p {}'.format(x)
-                                        for x in kwargs['port'])
+                    port_opt = ' '.join(
+                        '-p {}'.format(x) for x in kwargs['port'])
                 else:
                     raise RuntimeError(
-                        'Invalid value for option port (a list of intergers or True), {} provided'.format(kwargs['port']))
+                        'Invalid value for option port (a list of intergers or True), {} provided'
+                        .format(kwargs['port']))
             #
             name_opt = ''
             if 'name' in kwargs:
@@ -378,21 +421,20 @@ class SoS_DockerClient:
                 # this is for a selinux problem when /var/sos/script cannot be executed
                 security_opt = '--security-opt label:disable'
             cmd = 'docker run --rm {} {} {} {} {} {} {} {} {} {} {} {} {} {}'.format(
-                security_opt,       # security option
-                volumes_opt,        # volumes
-                volumes_from_opt,   # volumes_from
-                name_opt,           # name
-                stdin_opt,          # stdin_optn
-                tty_opt,            # tty
-                port_opt,           # port
-                workdir_opt,        # working dir
-                user_opt,           # user
-                env_opt,            # environment
-                mem_limit_opt,      # memory limit
-                extra_opt,          # any extra parameters
-                image,              # image
-                cmd_opt
-            )
+                security_opt,  # security option
+                volumes_opt,  # volumes
+                volumes_from_opt,  # volumes_from
+                name_opt,  # name
+                stdin_opt,  # stdin_optn
+                tty_opt,  # tty
+                port_opt,  # port
+                workdir_opt,  # working dir
+                user_opt,  # user
+                env_opt,  # environment
+                mem_limit_opt,  # memory limit
+                extra_opt,  # any extra parameters
+                image,  # image
+                cmd_opt)
             env.logger.debug(cmd)
             if env.config['run_mode'] == 'dryrun':
                 print(f'HINT: {cmd}')
@@ -404,9 +446,10 @@ class SoS_DockerClient:
             if ret != 0:
                 debug_script_dir = os.path.join(env.exec_dir, '.sos')
                 msg = 'The script has been saved to {}/{}. To reproduce the error please run:\n``{}``'.format(
-                    debug_script_dir, tempscript, cmd.replace(f'{path(tempdir):p}', f'{path(debug_script_dir):p}'))
-                shutil.copy(os.path.join(tempdir, tempscript),
-                            debug_script_dir)
+                    debug_script_dir, tempscript,
+                    cmd.replace(f'{path(tempdir):p}',
+                                f'{path(debug_script_dir):p}'))
+                shutil.copy(os.path.join(tempdir, tempscript), debug_script_dir)
                 if ret == 125:
                     msg = 'Docker daemon failed (exitcode=125). ' + msg
                 elif ret == 126:
@@ -422,8 +465,12 @@ class SoS_DockerClient:
                         msg = 'Script killed by docker, probably because of lack of RAM (available RAM={:.1f}GB, exitcode=137). '.format(
                             self.tot_mem / 1024 / 1024) + msg
                 else:
-                    out = f", stdout={kwargs['stdout']}" if 'stdout' in kwargs and os.path.isfile(kwargs['stdout']) and os.path.getsize(kwargs['stdout']) > 0 else ''
-                    err = f", stderr={kwargs['stderr']}" if 'stderr' in kwargs and os.path.isfile(kwargs['stderr']) and os.path.getsize(kwargs['stderr']) > 0 else ''
+                    out = f", stdout={kwargs['stdout']}" if 'stdout' in kwargs and os.path.isfile(
+                        kwargs['stdout']) and os.path.getsize(
+                            kwargs['stdout']) > 0 else ''
+                    err = f", stderr={kwargs['stderr']}" if 'stderr' in kwargs and os.path.isfile(
+                        kwargs['stderr']) and os.path.getsize(
+                            kwargs['stderr']) > 0 else ''
                     msg = f"Executing script in docker returns an error (exitcode={ret}{err}{out}).\n{msg}"
                 raise subprocess.CalledProcessError(
                     returncode=ret,

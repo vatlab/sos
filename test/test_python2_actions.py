@@ -13,6 +13,7 @@ from sos.workflow_executor import Base_Executor
 
 
 class TestActions(unittest.TestCase):
+
     def setUp(self):
         env.reset()
         self.temp_files = []
@@ -32,7 +33,8 @@ class TestActions(unittest.TestCase):
         #
         self.temp_files.extend(files)
 
-    @unittest.skipIf(not shutil.which('python2.7'), 'Skip test because of no python2.7 installation')
+    @unittest.skipIf(not shutil.which('python2.7'),
+                     'Skip test because of no python2.7 installation')
     def testPython2(self):
 
         script = SoS_Script(r'''

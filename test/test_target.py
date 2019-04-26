@@ -18,6 +18,7 @@ from sos.workflow_executor import Base_Executor
 
 
 class TestTarget(unittest.TestCase):
+
     def setUp(self):
         env.reset()
         subprocess.call('sos remove -s', shell=True)
@@ -62,7 +63,8 @@ class TestTarget(unittest.TestCase):
         self.assertEqual(c.select(1), ['b1'])
         #
         # test slice of groups
-        res = sos_targets(a=['a.txt', 'b.txt'], b=['c.txt', 'd.txt'], group_by=1)
+        res = sos_targets(
+            a=['a.txt', 'b.txt'], b=['c.txt', 'd.txt'], group_by=1)
         self.assertEqual(len(res.groups), 4)
         self.assertEqual(res.labels, ['a', 'a', 'b', 'b'])
         res_a = res['a']
@@ -74,7 +76,6 @@ class TestTarget(unittest.TestCase):
         self.assertEqual(len(res_a.groups[2]), 0)
         self.assertEqual(len(res_a.groups[3]), 0)
 
-
     def testRemoveTargets(self):
         '''Test sos_target.remove_targets()'''
         a = sos_targets(sos_step('1'), 'a.txt')._group(by=1)
@@ -85,7 +86,6 @@ class TestTarget(unittest.TestCase):
         self.assertEqual(len(a._groups[0]._labels), 0)
         self.assertEqual(a._groups[1]._indexes, [0])
         self.assertEqual(len(a._groups[1]._labels), 1)
-
 
     def testSoSTargetsSignature(self):
         '''Test save and validate signatures of sos_targets'''
@@ -113,47 +113,63 @@ class TestTarget(unittest.TestCase):
 
     def testTargetGroupBy(self):
         '''Test new option group_by to sos_targets'''
-        res = sos_targets('e.txt', 'f.ext', a=['a.txt', 'b.txt'], b=['c.txt', 'd.txt'], group_by=1)
+        res = sos_targets(
+            'e.txt',
+            'f.ext',
+            a=['a.txt', 'b.txt'],
+            b=['c.txt', 'd.txt'],
+            group_by=1)
         self.assertEqual(len(res.groups), 6)
         self.assertEqual(res.labels, ['', '', 'a', 'a', 'b', 'b'])
         #
         res = sos_targets(res, group_by=2)
         self.assertEqual(len(res.groups), 3)
 
-
     def testTargetPairedWith(self):
         '''Test paired_with targets with vars'''
-        res = sos_targets('e.txt', 'f.ext', a=['a.txt', 'b.txt'], b=['c.txt', 'd.txt'], group_by=1).paired_with('_name', ['e', 'f', 'a', 'b', 'c', 'd'])
-        for i,n in enumerate(['e', 'f', 'a', 'b', 'c', 'd']):
+        res = sos_targets(
+            'e.txt',
+            'f.ext',
+            a=['a.txt', 'b.txt'],
+            b=['c.txt', 'd.txt'],
+            group_by=1).paired_with('_name', ['e', 'f', 'a', 'b', 'c', 'd'])
+        for i, n in enumerate(['e', 'f', 'a', 'b', 'c', 'd']):
             self.assertEqual(res[i]._name, n)
         #
         res = copy.deepcopy(res)
-        for i,n in enumerate(['e', 'f', 'a', 'b', 'c', 'd']):
+        for i, n in enumerate(['e', 'f', 'a', 'b', 'c', 'd']):
             self.assertEqual(res[i]._name, n)
         #
         # test assert for length difference
-        self.assertRaises(Exception, sos_targets('e.txt', 'f.ext').paired_with,
-                'name', ['e', 'f', 'a', 'b', 'c', 'd'])
+        self.assertRaises(Exception,
+                          sos_targets('e.txt', 'f.ext').paired_with, 'name',
+                          ['e', 'f', 'a', 'b', 'c', 'd'])
 
     def testTargetGroupWith(self):
         '''Test group_with targets with vars'''
-        res = sos_targets('e.txt', 'f.ext', a=['a.txt', 'b.txt'], b=['c.txt', 'd.txt'], group_by=2).group_with('name', ['a1', 'a2', 'a3'])
-        for i,n in enumerate(['a1', 'a2', 'a3']):
+        res = sos_targets(
+            'e.txt',
+            'f.ext',
+            a=['a.txt', 'b.txt'],
+            b=['c.txt', 'd.txt'],
+            group_by=2).group_with('name', ['a1', 'a2', 'a3'])
+        for i, n in enumerate(['a1', 'a2', 'a3']):
             self.assertEqual(res.groups[i].name, n)
         #
         res = copy.deepcopy(res)
-        for i,n in enumerate(['a1', 'a2', 'a3']):
+        for i, n in enumerate(['a1', 'a2', 'a3']):
             self.assertEqual(res.groups[i].name, n)
         #
         # test assert for length difference
-        self.assertRaises(Exception, sos_targets('e.txt', 'f.ext', group_by=1).group_with,
-                'name', ['e', 'f', 'g'])
-
+        self.assertRaises(Exception,
+                          sos_targets('e.txt', 'f.ext', group_by=1).group_with,
+                          'name', ['e', 'f', 'g'])
 
     def testMergingOfSoSTargets(self):
         '''Test merging of multiple sos targets'''
         # merge 0 to 0
-        res = sos_targets('a.txt', 'b.txt', sos_targets('c.txt', 'd.txt', group_by=1))
+        res = sos_targets('a.txt', 'b.txt',
+                          sos_targets('c.txt', 'd.txt', group_by=1))
         self.assertEqual(len(res), 4)
         self.assertEqual(len(res.groups), 2)
         self.assertEqual(res.groups[0], ['a.txt', 'b.txt', 'c.txt'])
@@ -188,25 +204,27 @@ class TestTarget(unittest.TestCase):
     def testTargetFormat(self):
         '''Test string interpolation of targets'''
         for target, fmt, res in [
-                ('a.txt', '', 'a.txt'),
-                (sos_targets('a.txt'), '', 'a.txt'),
-                (sos_targets(['a.txt']), '', 'a.txt'),
-                (sos_targets([r'c:\path\a.txt']), 'p', '/c/path/a.txt'),
-                (sos_targets([r'c:path\a.txt']), 'p', '/c/path/a.txt'),
-                (sos_targets('/a/b/a.txt'), 'b', 'a.txt'),
-                (sos_targets('a b.txt'), 'q', ("'a b.txt'", '"a b.txt"')),
-                (sos_targets('a b.txt'), 'x', ".txt"),
+            ('a.txt', '', 'a.txt'),
+            (sos_targets('a.txt'), '', 'a.txt'),
+            (sos_targets(['a.txt']), '', 'a.txt'),
+            (sos_targets([r'c:\path\a.txt']), 'p', '/c/path/a.txt'),
+            (sos_targets([r'c:path\a.txt']), 'p', '/c/path/a.txt'),
+            (sos_targets('/a/b/a.txt'), 'b', 'a.txt'),
+            (sos_targets('a b.txt'), 'q', ("'a b.txt'", '"a b.txt"')),
+            (sos_targets('a b.txt'), 'x', ".txt"),
         ]:
             if isinstance(res, str):
                 self.assertEqual(
-                    interpolate('{{target:{}}}'.format(
-                        fmt), globals(), locals()), res,
-                    "Interpolation of {}:{} should be {}".format(target, fmt, res))
+                    interpolate('{{target:{}}}'.format(fmt), globals(),
+                                locals()), res,
+                    "Interpolation of {}:{} should be {}".format(
+                        target, fmt, res))
             else:
                 self.assertTrue(
-                    interpolate('{{target:{}}}'.format(fmt),
-                                globals(), locals()) in res,
-                    "Interpolation of {}:{} should be one of {}".format(target, fmt, res))
+                    interpolate('{{target:{}}}'.format(fmt), globals(),
+                                locals()) in res,
+                    "Interpolation of {}:{} should be one of {}".format(
+                        target, fmt, res))
 
     def testIterTargets(self):
         '''Test iterator interface of targets'''
@@ -363,7 +381,8 @@ run:
         self.assertTrue(os.path.isfile('a.txt'))
         file_target('a.txt').unlink()
 
-    @unittest.skipIf(sys.platform == 'win32', 'Windows executable cannot be created with chmod.')
+    @unittest.skipIf(sys.platform == 'win32',
+                     'Windows executable cannot be created with chmod.')
     def testOutputExecutable(self):
         '''Testing target executable.'''
         # change $PATH so that lls can be found at the current
@@ -422,7 +441,8 @@ run:
             self.assertEqual(at.read().strip(), 'A2')
         file_target('a.txt').unlink()
 
-    @unittest.skipIf(sys.platform == 'win32', 'Windows executable cannot be created with chmod.')
+    @unittest.skipIf(sys.platform == 'win32',
+                     'Windows executable cannot be created with chmod.')
     def testProvidesExecutable(self):
         '''Testing provides executable target.'''
         # change $PATH so that lls can be found at the current
@@ -548,8 +568,8 @@ run:
         # this should be ok.
         Base_Executor(wf).run()
         for file in ['t1.txt', 't2.txt', '5.txt', '10.txt', '20.txt']:
-            self.assertTrue(file_target(file).target_exists(),
-                            file + ' should exist')
+            self.assertTrue(
+                file_target(file).target_exists(), file + ' should exist')
             if file_target(file).exists():
                 file_target(file).unlink()
 
@@ -642,7 +662,6 @@ a = 1
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
 
-
     def testOptionNameOfPath(self):
         '''Test the use of option name of path'''
         script = SoS_Script('''
@@ -655,7 +674,12 @@ assert path.names() == ['home']
 assert path.names('docker') == ['home']
 ''')
         wf = script.workflow()
-        Base_Executor(wf, config={'config_file': os.path.join(os.path.expanduser('~'), 'docker.yml')}).run()
+        Base_Executor(
+            wf,
+            config={
+                'config_file':
+                    os.path.join(os.path.expanduser('~'), 'docker.yml')
+            }).run()
 
 if __name__ == '__main__':
     unittest.main()

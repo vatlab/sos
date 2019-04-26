@@ -15,9 +15,9 @@ from pygments.util import shebang_matches
 
 from ._version import __version__
 from .actions import get_actions
-from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
-                     SOS_OUTPUT_OPTIONS, SOS_RUNTIME_OPTIONS,
-                     SOS_SECTION_HEADER, SOS_SECTION_OPTIONS)
+from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS,
+                     SOS_RUNTIME_OPTIONS, SOS_SECTION_HEADER,
+                     SOS_SECTION_OPTIONS)
 from .utils import env
 
 
@@ -37,8 +37,8 @@ class SoS_Lexer(PythonLexer):
     PythonLexer.tokens['root'].insert(0, (r'(^\w+)\s*:', Keyword.Namespace))
 
     EXTRA_KEYWORDS = set(SOS_INPUT_OPTIONS + SOS_OUTPUT_OPTIONS +
-                         SOS_DEPENDS_OPTIONS + SOS_RUNTIME_OPTIONS + SOS_SECTION_OPTIONS +
-                         get_actions())
+                         SOS_DEPENDS_OPTIONS + SOS_RUNTIME_OPTIONS +
+                         SOS_SECTION_OPTIONS + get_actions())
 
     def get_tokens_unprocessed(self, text):
         for index, token, value in \
@@ -58,77 +58,40 @@ class SoS_Lexer(PythonLexer):
 #
 #
 codemirror_themes = [
-    'default',
-    '3024-day',
-    '3024-night',
-    'abcdef',
-    'ambiance',
-    'base16-dark',
-    'base16-light',
-    'bespin',
-    'blackboard',
-    'cobalt',
-    'colorforth',
-    'darcula',
-    'dracula',
-    'duotone-dark',
-    'duotone-light',
-    'eclipse',
-    'elegant',
-    'erlang-dark',
-    'gruvbox-dark',
-    'hopscotch',
-    'icecoder',
-    'idea',
-    'isotope',
-    'lesser-dark',
-    'liquibyte',
-    'lucario',
-    'material',
-    'mbo',
-    'mdn-like',
-    'midnight',
-    'monokai',
-    'neat',
-    'neo',
-    'night',
-    'oceanic-next',
-    'panda-syntax',
-    'paraiso-dark',
-    'paraiso-light',
-    'pastel-on-dark',
-    'railscasts',
-    'rubyblue',
-    'seti',
-    'shadowfox',
-    'solarized dark',
-    'solarized light',
-    'the-matrix',
-    'tomorrow-night-bright',
-    'tomorrow-night-eighties',
-    'ttcn',
-    'twilight',
-    'vibrant-ink',
-    'xq-dark',
-    'xq-light',
-    'yeti',
-    'zenburn'
+    'default', '3024-day', '3024-night', 'abcdef', 'ambiance', 'base16-dark',
+    'base16-light', 'bespin', 'blackboard', 'cobalt', 'colorforth', 'darcula',
+    'dracula', 'duotone-dark', 'duotone-light', 'eclipse', 'elegant',
+    'erlang-dark', 'gruvbox-dark', 'hopscotch', 'icecoder', 'idea', 'isotope',
+    'lesser-dark', 'liquibyte', 'lucario', 'material', 'mbo', 'mdn-like',
+    'midnight', 'monokai', 'neat', 'neo', 'night', 'oceanic-next',
+    'panda-syntax', 'paraiso-dark', 'paraiso-light', 'pastel-on-dark',
+    'railscasts', 'rubyblue', 'seti', 'shadowfox', 'solarized dark',
+    'solarized light', 'the-matrix', 'tomorrow-night-bright',
+    'tomorrow-night-eighties', 'ttcn', 'twilight', 'vibrant-ink', 'xq-dark',
+    'xq-light', 'yeti', 'zenburn'
 ]
 
 
 def get_script_to_html_parser():
-    parser = argparse.ArgumentParser('sos convert FILE.sos FILE.html (or --to html)',
-                                     description='''Convert sos file to html format with syntax highlighting,
+    parser = argparse.ArgumentParser(
+        'sos convert FILE.sos FILE.html (or --to html)',
+        description='''Convert sos file to html format with syntax highlighting,
         and save the output either to a HTML file or view it in a broaser.''')
-    parser.add_argument('--url', help='''URL to the raw sos file, which will be linked
+    parser.add_argument(
+        '--url',
+        help='''URL to the raw sos file, which will be linked
         to filenames in the HTML output''')
     parser.add_argument('--raw', help=argparse.SUPPRESS)
-    parser.add_argument('--style', choices=codemirror_themes,
-                        help="Code mirror themes for the output",  default='default')
-    parser.add_argument('--linenos', action='store_true',
-                        help=argparse.SUPPRESS)
-    parser.add_argument('--template',
-                        help='''Name or path to an alternative template for
+    parser.add_argument(
+        '--style',
+        choices=codemirror_themes,
+        help="Code mirror themes for the output",
+        default='default')
+    parser.add_argument(
+        '--linenos', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument(
+        '--template',
+        help='''Name or path to an alternative template for
             converting sos script to HTML.  The template can use variables
             "filename" for full name of the script as provided, "basename"
             as the name part of the filename, "script" for the content of
@@ -136,8 +99,10 @@ def get_script_to_html_parser():
             flag to whether or not line numbers should be displayed, "url"
             as an optional URL for the script, and "theme" as provided by
             option --style.''')
-    parser.add_argument('--view', action='store_true',
-                        help='''Open the output file in a broswer. In case
+    parser.add_argument(
+        '--view',
+        action='store_true',
+        help='''Open the output file in a broswer. In case
         no html file is specified, this option will display the HTML file in
         a browser, instead of writing its content to standard output.''')
     return parser
@@ -154,10 +119,10 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
     from jinja2 import Environment, PackageLoader, select_autoescape
     environment = Environment(
         loader=PackageLoader('sos', 'templates'),
-        autoescape=select_autoescape(['html', 'xml'])
-    )
+        autoescape=select_autoescape(['html', 'xml']))
     template = environment.get_template(
-        args.template if args and hasattr(args, 'template') and args.template else 'sos_script.tpl')
+        args.template if args and hasattr(args, 'template') and args.template
+        else 'sos_script.tpl')
 
     with open(script_file) as script:
         content = script.read()
@@ -210,12 +175,15 @@ def extract_workflow(notebook):
         if cell.cell_type != "code":
             continue
         # Non-sos code cells are also ignored
-        if 'kernel' in cell.metadata and cell.metadata['kernel'] not in ('sos', 'SoS', None):
+        if 'kernel' in cell.metadata and cell.metadata['kernel'] not in ('sos',
+                                                                         'SoS',
+                                                                         None):
             continue
         lines = cell.source.split('\n')
         valid_cell = False
         for idx, line in enumerate(lines):
-            if valid_cell or (line.startswith('%include') or line.startswith('%from')):
+            if valid_cell or (line.startswith('%include') or
+                              line.startswith('%from')):
                 content += line + '\n'
             elif SOS_SECTION_HEADER.match(line):
                 valid_cell = True

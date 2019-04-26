@@ -14,8 +14,8 @@ from .controller import close_socket, create_socket, send_message_to_controller
 from .eval import SoS_exec
 from .executor_utils import (clear_output, create_task, get_traceback_msg,
                              kill_all_subprocesses, prepare_env,
-                             reevaluate_output, statementMD5,
-                             validate_step_sig, verify_input)
+                             reevaluate_output, statementMD5, validate_step_sig,
+                             verify_input)
 from .targets import RemovedTarget, RuntimeInfo, UnavailableLock, sos_targets
 from .utils import ArgumentError, StopInputGroup, TerminateExecution, ProcessKilled, env
 
@@ -33,7 +33,14 @@ def stdoutIO():
     sys.stderr = olderr
 
 
-def execute_substep(stmt, global_def, global_vars, task='', task_params='', proc_vars={}, shared_vars=[], config={}):
+def execute_substep(stmt,
+                    global_def,
+                    global_vars,
+                    task='',
+                    task_params='',
+                    proc_vars={},
+                    shared_vars=[],
+                    config={}):
     '''Execute a substep with specific input etc
 
     Substep executed by this function should be self-contained. It can contain
@@ -87,7 +94,8 @@ def execute_substep(stmt, global_def, global_vars, task='', task_params='', proc
     assert 'result_push_socket' in config["sockets"]
 
     # this should not happen but check nevertheless
-    if env.result_socket_port is not None and env.result_socket_port != config["sockets"]["result_push_socket"]:
+    if env.result_socket_port is not None and env.result_socket_port != config[
+            "sockets"]["result_push_socket"]:
         close_socket(env.result_socket)
         env.result_socket = None
 
@@ -96,20 +104,28 @@ def execute_substep(stmt, global_def, global_vars, task='', task_params='', proc
         env.result_socket_port = config["sockets"]["result_push_socket"]
         env.result_socket.connect(f'tcp://127.0.0.1:{env.result_socket_port}')
 
-    res = _execute_substep(stmt=stmt, global_def=global_def, global_vars=global_vars, task=task,
-            task_params=task_params, proc_vars=proc_vars,
-            shared_vars=shared_vars, config=config)
+    res = _execute_substep(
+        stmt=stmt,
+        global_def=global_def,
+        global_vars=global_vars,
+        task=task,
+        task_params=task_params,
+        proc_vars=proc_vars,
+        shared_vars=shared_vars,
+        config=config)
     env.result_socket.send_pyobj(res)
 
 
-def _execute_substep(stmt, global_def, global_vars, task, task_params, proc_vars, shared_vars, config):
+def _execute_substep(stmt, global_def, global_vars, task, task_params,
+                     proc_vars, shared_vars, config):
     # passing configuration and port numbers to the subprocess
     env.config.update(config)
     # prepare a working environment with sos symbols and functions
     prepare_env(global_def, global_vars)
     # update it with variables passed from master process
     env.sos_dict.quick_update(proc_vars)
-    if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'].unspecified():
+    if env.config['sig_mode'] == 'ignore' or env.sos_dict[
+            '_output'].unspecified():
         sig = None
     else:
         sig = RuntimeInfo(
@@ -129,9 +145,15 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params, proc_vars
                 # avoid sig being released in the final statement
                 sig = None
                 # complete case: concurrent ignore without task
-                send_message_to_controller(['progress', 'substep_ignored', env.sos_dict['step_id']])
-                res = {'index': env.sos_dict['_index'], 'ret_code': 0, 'sig_skipped': 1,
-                    'output': matched['output'], 'shared': matched['vars']}
+                send_message_to_controller(
+                    ['progress', 'substep_ignored', env.sos_dict['step_id']])
+                res = {
+                    'index': env.sos_dict['_index'],
+                    'ret_code': 0,
+                    'sig_skipped': 1,
+                    'output': matched['output'],
+                    'shared': matched['vars']
+                }
                 if task:
                     # if there is task, let the master know that the task is
                     # skipped
@@ -157,8 +179,14 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params, proc_vars
                 SoS_exec(stmt, return_result=False)
 
         if task:
-            task_id, taskdef, task_vars = create_task(global_def, global_vars, task, task_params)
-            res = {'index': env.sos_dict['_index'], 'task_id': task_id, 'task_def': taskdef, 'task_vars': task_vars}
+            task_id, taskdef, task_vars = create_task(global_def, global_vars,
+                                                      task, task_params)
+            res = {
+                'index': env.sos_dict['_index'],
+                'task_id': task_id,
+                'task_def': taskdef,
+                'task_vars': task_vars
+            }
         else:
             if env.sos_dict['step_output'].undetermined():
                 env.sos_dict.set('_output', reevaluate_output())
@@ -175,9 +203,11 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params, proc_vars
             if capture_output:
                 res.update({'stdout': outmsg, 'stderr': errmsg})
             # complete case: concurrent execution without task
-            send_message_to_controller(['progress', 'substep_completed', env.sos_dict['step_id']])
+            send_message_to_controller(
+                ['progress', 'substep_completed', env.sos_dict['step_id']])
         return res
-    except (StopInputGroup, TerminateExecution, RemovedTarget, UnavailableLock) as e:
+    except (StopInputGroup, TerminateExecution, RemovedTarget,
+            UnavailableLock) as e:
         # stop_if is not considered as an error
         if isinstance(e, StopInputGroup):
             if e.message:
@@ -203,7 +233,11 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params, proc_vars
                 res['output'] = env.sos_dict['_output']
         else:
             clear_output()
-            res = {'index': env.sos_dict['_index'], 'ret_code': 1, 'exception': e}
+            res = {
+                'index': env.sos_dict['_index'],
+                'ret_code': 1,
+                'exception': e
+            }
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res
@@ -214,7 +248,11 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params, proc_vars
     except subprocess.CalledProcessError as e:
         clear_output()
         # cannot pass CalledProcessError back because it is not pickleable
-        res = {'index': env.sos_dict['_index'], 'ret_code': e.returncode, 'exception': RuntimeError(e.stderr)}
+        res = {
+            'index': env.sos_dict['_index'],
+            'ret_code': e.returncode,
+            'exception': RuntimeError(e.stderr)
+        }
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res
@@ -227,8 +265,11 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params, proc_vars
         return res
     except Exception as e:
         clear_output()
-        res = {'index': env.sos_dict['_index'], 'ret_code': 1,
-               'exception': RuntimeError(get_traceback_msg(e))}
+        res = {
+            'index': env.sos_dict['_index'],
+            'ret_code': 1,
+            'exception': RuntimeError(get_traceback_msg(e))
+        }
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res

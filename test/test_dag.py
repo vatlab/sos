@@ -16,6 +16,7 @@ from sos.workflow_executor import Base_Executor
 
 
 class TestDAG(unittest.TestCase):
+
     def setUp(self):
         env.reset()
         subprocess.call('sos remove -s', shell=True)
@@ -46,10 +47,17 @@ class TestDAG(unittest.TestCase):
             out = StringIO()
             dag.save(out)
             dot = out.getvalue()
-        self.assertEqual(sorted([x.strip() for x in dot.split('\n') if
-                                 x.strip() and not 'digraph' in x]),
-                         sorted([x.strip() for x in content.split('\n') if x.strip() and
-                                 not 'digraph' in x]))
+        self.assertEqual(
+            sorted([
+                x.strip()
+                for x in dot.split('\n')
+                if x.strip() and not 'digraph' in x
+            ]),
+            sorted([
+                x.strip()
+                for x in content.split('\n')
+                if x.strip() and not 'digraph' in x
+            ]))
 
     def testSimpleDAG(self):
         '''Test DAG with simple dependency'''
@@ -69,8 +77,8 @@ class TestDAG(unittest.TestCase):
         ''')
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(dag,
-                       '''strict digraph "" {
+        self.assertDAG(
+            dag, '''strict digraph "" {
 A_2;
 A_4;
 A_1;
@@ -95,8 +103,8 @@ input: 'a.txt'
         ''')
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(dag,
-                       '''strict digraph "" {
+        self.assertDAG(
+            dag, '''strict digraph "" {
 A_2;
 A_4;
 A_1;
@@ -129,8 +137,8 @@ output: 'e.txt'
         ''')
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(dag,
-                       '''strict digraph "" {
+        self.assertDAG(
+            dag, '''strict digraph "" {
 A_2;
 A_4;
 A_1;
@@ -164,8 +172,8 @@ output: 'e.txt'
         ''')
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(dag,
-                       '''strict digraph "" {
+        self.assertDAG(
+            dag, '''strict digraph "" {
 B_2;
 B_4;
 B_1;
@@ -199,8 +207,8 @@ output: 'e.txt'
 
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(dag,
-                       '''strict digraph "" {
+        self.assertDAG(
+            dag, '''strict digraph "" {
 B_1;
 B_4;
 B_2;
@@ -234,8 +242,8 @@ output: 'e.txt'
         ''')
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(dag,
-                       '''
+        self.assertDAG(
+            dag, '''
 strict digraph "" {
 C_1;
 C_4;
@@ -279,8 +287,8 @@ output: 'e.txt'
         dag = Base_Executor(wf).initialize_dag()
         dag.show_nodes()
         # dag.save('a.dot')
-        self.assertDAG(dag,
-                       '''
+        self.assertDAG(
+            dag, '''
 strict digraph "" {
 C_1;
 C_4;
@@ -313,8 +321,8 @@ output: 'e.txt'
         ''')
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(dag,
-                       '''
+        self.assertDAG(
+            dag, '''
 strict digraph "" {
 C_1;
 C_4;
@@ -363,8 +371,8 @@ input: 'a.txt'
         # by sos (without signature)        #
         #
         dag.show_nodes()
-        self.assertDAG(dag,
-                       '''
+        self.assertDAG(
+            dag, '''
 strict digraph "" {
 "K (b.txt)";
 C_3;
@@ -400,7 +408,10 @@ output: 'A.txt'
     def testLongChain(self):
         '''Test long make file style dependencies.'''
         #
-        for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
+        for f in [
+                'A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt',
+                'C1.txt', 'C3.txt', 'C4.txt'
+        ]:
             if file_target(f).exists():
                 file_target(f).unlink()
         #
@@ -462,8 +473,8 @@ run:
         wf = script.workflow()
         #env.verbosity = 4
         dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(dag,
-                       '''
+        self.assertDAG(
+            dag, '''
 strict digraph "" {
 "C4 (C4.txt)";
 "B1 (B1.txt)";
@@ -487,7 +498,10 @@ A_1 -> A_2;
 }
 ''')
         Base_Executor(wf).run()
-        for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
+        for f in [
+                'A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt',
+                'C1.txt', 'C3.txt', 'C4.txt'
+        ]:
             t = file_target(f)
             self.assertTrue(t.target_exists(), f + ' should exist')
             t.unlink()
@@ -495,7 +509,10 @@ A_1 -> A_2;
     def testTarget(self):
         '''Test executing only part of a workflow.'''
         #
-        for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
+        for f in [
+                'A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt',
+                'C1.txt', 'C3.txt', 'C4.txt'
+        ]:
             if file_target(f).exists():
                 file_target(f).unlink()
         #
@@ -558,8 +575,8 @@ run:
         # test 1, we only need to generate target 'B1.txt'
         dag = Base_Executor(wf).initialize_dag(targets=['B1.txt'])
         # note that A2 is no longer mentioned
-        self.assertDAG(dag,
-                       '''
+        self.assertDAG(
+            dag, '''
 strict digraph "" {
 "B3 (B3.txt)";
 "C4 (C4.txt)";
@@ -580,7 +597,10 @@ strict digraph "" {
         Base_Executor(wf).run(targets=['B1.txt'])
         for f in ['A1.txt', 'A2.txt']:
             self.assertFalse(file_target(f).target_exists())
-        for f in ['C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
+        for f in [
+                'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt',
+                'C4.txt'
+        ]:
             t = file_target(f)
             self.assertTrue(t.target_exists())
             t.unlink()
@@ -588,8 +608,8 @@ strict digraph "" {
         # test 2, we would like to generate two files
         dag = Base_Executor(wf).initialize_dag(targets=['B2.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
-        self.assertDAG(dag,
-                       '''
+        self.assertDAG(
+            dag, '''
 strict digraph "" {
 "C4 (C4.txt)";
 "B2 (B2.txt)";
@@ -617,8 +637,8 @@ strict digraph "" {
         #
         dag = Base_Executor(wf).initialize_dag(targets=['B3.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
-        self.assertDAG(dag,
-                       '''
+        self.assertDAG(
+            dag, '''
 strict digraph "" {
 "B3 (B3.txt)";
 "C2 (C2.txt)";
@@ -637,7 +657,9 @@ strict digraph "" {
     def testPatternReuse(self):
         '''Test repeated use of steps that use pattern and produce different files.'''
         #
-        for f in ['A1.txt', 'A2.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
+        for f in [
+                'A1.txt', 'A2.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p'
+        ]:
             if file_target(f).exists():
                 file_target(f).unlink()
         #
@@ -673,8 +695,8 @@ run: expand=True
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(dag,
-                       '''
+        self.assertDAG(
+            dag, '''
 strict digraph "" {
 "P (B2.txt.p)";
 "B1 (B1.txt)";
@@ -690,7 +712,9 @@ A_1 -> A_2;
 }
 ''')
         Base_Executor(wf).run()
-        for f in ['A1.txt', 'A2.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
+        for f in [
+                'A1.txt', 'A2.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p'
+        ]:
             t = file_target(f)
             self.assertTrue(t.target_exists(), '{} should exist'.format(f))
             t.unlink()
@@ -727,8 +751,8 @@ run:
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(dag,
-                       '''
+        self.assertDAG(
+            dag, '''
 strict digraph "" {
 A_1;
 A_2;
@@ -774,8 +798,8 @@ with open(f"{ss}.txt", 'w') as tmp:
 ''')
         wf = script.workflow('A')
         dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(dag,
-                       '''
+        self.assertDAG(
+            dag, '''
 strict digraph "" {
 A_3;
 A_1;
@@ -829,8 +853,8 @@ depends: sos_variable('p')
 ''')
         wf = script.workflow('A')
         dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(dag,
-                       '''
+        self.assertDAG(
+            dag, '''
 strict digraph "" {
 A_1;
 A_4;
@@ -979,11 +1003,13 @@ run:
         wf = script.workflow()
         #
         # test 1, we only need to generate target 'B1.txt'
-        Base_Executor(wf, config={'output_dag': 'test_outofdag1.dot'}
-                      ).initialize_dag(targets=['B1.txt'])
+        Base_Executor(
+            wf, config={
+                'output_dag': 'test_outofdag1.dot'
+            }).initialize_dag(targets=['B1.txt'])
         # note that A2 is no longer mentioned
-        self.assertDAG('test_outofdag1.dot',
-                       '''
+        self.assertDAG(
+            'test_outofdag1.dot', '''
 strict digraph "" {
 "B3 (B3.txt)";
 "C4 (C4.txt)";
@@ -1002,11 +1028,13 @@ strict digraph "" {
 }
 ''')
         # test 2, we would like to generate two files
-        Base_Executor(wf, config={'output_dag': 'test_outofdag2.dot'}
-                      ).initialize_dag(targets=['B2.txt', 'C2.txt'])
+        Base_Executor(
+            wf, config={
+                'output_dag': 'test_outofdag2.dot'
+            }).initialize_dag(targets=['B2.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
-        self.assertDAG('test_outofdag2.dot',
-                       '''
+        self.assertDAG(
+            'test_outofdag2.dot', '''
 strict digraph "" {
 "C4 (C4.txt)";
 "B2 (B2.txt)";
@@ -1024,11 +1052,13 @@ strict digraph "" {
 ''')
         # test 3, generate two separate trees
         #
-        Base_Executor(wf, config={'output_dag': 'test_outofdag3.dot'}
-                      ).initialize_dag(targets=['B3.txt', 'C2.txt'])
+        Base_Executor(
+            wf, config={
+                'output_dag': 'test_outofdag3.dot'
+            }).initialize_dag(targets=['B3.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
-        self.assertDAG('test_outofdag3.dot',
-                       '''
+        self.assertDAG(
+            'test_outofdag3.dot', '''
 strict digraph "" {
 "B3 (B3.txt)";
 "C2 (C2.txt)";
@@ -1139,11 +1169,10 @@ print(step_name)
 depends: sos_step('a'), sos_step('b')
 ''')
         wf = script.workflow()
-        Base_Executor(wf, config={'output_dag': 'test.dot'}
-                      ).run()
+        Base_Executor(wf, config={'output_dag': 'test.dot'}).run()
         # note that A2 is no longer mentioned
-        self.assertDAG('test.dot',
-                       '''
+        self.assertDAG(
+            'test.dot', '''
 strict digraph "" {
 default;
 a_1;
@@ -1179,18 +1208,16 @@ _output.touch()
 input: named_output('A'), named_output('B')
 ''')
         wf = script.workflow()
-        Base_Executor(wf, config={'output_dag': 'test_named_output.dot'}
-                      ).run()
+        Base_Executor(wf, config={'output_dag': 'test_named_output.dot'}).run()
         # note that A2 is no longer mentioned
-        self.assertDAG('test_named_output.dot',
-                       '''
+        self.assertDAG(
+            'test_named_output.dot', '''
 strict digraph "" {
 default;
 "A (B)";
 "A (B)" -> default;
 }
 ''')
-
 
     def testCompoundWorkflow(self):
         '''Test the DAG of compound workflow'''
@@ -1201,8 +1228,8 @@ default;
  ''')
         wf = script.workflow('A+B')
         dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(dag,
-                       '''strict digraph "" {
+        self.assertDAG(
+            dag, '''strict digraph "" {
 A_1;
 A_2;
 B;
@@ -1214,12 +1241,12 @@ A_2 -> B;
 [A_1]
 [A_2]
 [B]
-depends: 
+depends:
  ''')
         wf = script.workflow('A+B')
         dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(dag,
-                       '''strict digraph "" {
+        self.assertDAG(
+            dag, '''strict digraph "" {
 A_1;
 A_2;
 B;
@@ -1241,8 +1268,8 @@ depends: 'a.txt'
         # with more depends
         wf = script.workflow('A+B')
         dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(dag,
-                       '''strict digraph "" {
+        self.assertDAG(
+            dag, '''strict digraph "" {
 A_1;
 A_2;
 B;

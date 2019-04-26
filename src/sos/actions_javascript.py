@@ -12,5 +12,4 @@ def node(script, args='', **kwargs):
     such as input, active, workdir, docker_image and args. In particular, content of one or
     more files  specified by option input would be prepended before the specified script.
     '''
-    return SoS_ExecuteScript(
-        script, 'node', '.js', args).run(**kwargs)
+    return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)

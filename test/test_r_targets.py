@@ -14,6 +14,7 @@ from sos.workflow_executor import Base_Executor
 
 
 class TestTarget(unittest.TestCase):
+
     def setUp(self):
         env.reset()
         subprocess.call('sos remove -s', shell=True)

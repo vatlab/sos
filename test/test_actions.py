@@ -31,6 +31,7 @@ with_network = internet_on()
 
 
 def multi_attempts(fn):
+
     def wrapper(*args, **kwargs):
         for n in range(4):
             try:
@@ -39,10 +40,12 @@ def multi_attempts(fn):
             except Exception:
                 if n > 1:
                     raise
+
     return wrapper
 
 
 class TestActions(unittest.TestCase):
+
     def setUp(self):
         env.reset()
         self.temp_files = []
@@ -140,7 +143,9 @@ fail_if(len(input) == 2)
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
 
-    @unittest.skipIf('TRAVIS' in os.environ, 'Skip test because travis fails on this test for unknown reason')
+    @unittest.skipIf(
+        'TRAVIS' in os.environ,
+        'Skip test because travis fails on this test for unknown reason')
     def testImmediateFailIf(self):
         # test fail_if of killing another running substep
         script = SoS_Script(r"""
@@ -155,8 +160,10 @@ time.sleep(2)
 fail_if(True)
 """)
         wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf, config={'max_procs': 3}).run)
-
+        self.assertRaises(Exception,
+                          Base_Executor(wf, config={
+                              'max_procs': 3
+                          }).run)
 
     def testWarnIf(self):
         '''Test action fail if'''
@@ -189,8 +196,8 @@ result.append(_rep)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['result'], [
-                         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        self.assertEqual(env.sos_dict['result'],
+                         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
         # stop_if should not be treated as error so the previously
         # generated output file will be removed
@@ -242,7 +249,6 @@ assert(step_input.contains('test_stop_if_1.txt'))
         self.assertTrue(os.path.isfile('test_stop_if_0.txt'))
         self.assertTrue(os.path.isfile('test_stop_if_1.txt'))
 
-
     def testSkipIf(self):
         '''Test action stop_if'''
         script = SoS_Script(r'''
@@ -256,8 +262,8 @@ result.append(_rep)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['result'], [
-                         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        self.assertEqual(env.sos_dict['result'],
+                         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
         # stop_if should not be treated as error so the previously
         # generated output file will be removed
@@ -309,7 +315,6 @@ assert(step_input.contains('test_done_if_1.txt'))
         Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('test_done_if_0.txt'))
         self.assertTrue(os.path.isfile('test_done_if_1.txt'))
-
 
     def testRun(self):
         '''Test action run'''
@@ -376,7 +381,8 @@ end
         Base_Executor(wf).run()
 
     @multi_attempts
-    @unittest.skipIf(True, 'Skip test because of no internet connection or in travis test')
+    @unittest.skipIf(
+        True, 'Skip test because of no internet connection or in travis test')
     def testDownload(self):
         '''Test download of resources'''
         if not os.path.isdir('tmp'):
@@ -416,7 +422,9 @@ download: dest_dir='tmp'
         self.assertTrue(os.path.isfile('tmp/refgene.pkl'))
         #
 
-    @unittest.skipIf(not with_network or 'TRAVIS' in os.environ, 'Skip test because of no internet connection or in travis test')
+    @unittest.skipIf(
+        not with_network or 'TRAVIS' in os.environ,
+        'Skip test because of no internet connection or in travis test')
     def testDownloadMissingFile(self):
         # this will take a while
         script = SoS_Script(r'''
@@ -439,8 +447,9 @@ download: dest_dir='tmp', decompress=True, max_jobs=2
         #self.assertLess(time.time() - start, 3)
         #
 
-
-    @unittest.skipIf(not with_network or 'TRAVIS' in os.environ, 'Skip test because of no internet connection or in travis test')
+    @unittest.skipIf(
+        not with_network or 'TRAVIS' in os.environ,
+        'Skip test because of no internet connection or in travis test')
     def testDownloadLargeFile(self):
         # test decompress tar.gz, .zip and .gz files
         script = SoS_Script(r'''
@@ -674,8 +683,8 @@ run: workdir='temp_wdr'
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertTrue(file_target(os.path.join(
-            'temp_wdr', 'a2.txt')).target_exists())
+        self.assertTrue(
+            file_target(os.path.join('temp_wdr', 'a2.txt')).target_exists())
         with open(os.path.join('temp_wdr', 'a.txt')) as tmp:
             self.assertEqual('hello', tmp.read())
 
@@ -734,7 +743,8 @@ report:     input=['a1.md', 'a2.md'], output='out.md'
     def testActiveActionOption(self):
         '''Test the active option of actions'''
         # disallow
-        self.assertRaises(Exception, SoS_Script, '''
+        self.assertRaises(
+            Exception, SoS_Script, '''
 [1]
 rep = range(5)
 input: for_each = 'rep'
@@ -751,12 +761,14 @@ touch temp/{ff}
             ('(1,2)', ['temp/1.txt', 'temp/2.txt']),
             ('[2,3]', ['temp/2.txt', 'temp/3.txt']),
             ('(0,2,4)', ['temp/0.txt', 'temp/2.txt', 'temp/4.txt']),
-            ('slice(1,None)', ['temp/1.txt',
-                               'temp/2.txt', 'temp/3.txt', 'temp/4.txt']),
+            ('slice(1,None)',
+             ['temp/1.txt', 'temp/2.txt', 'temp/3.txt', 'temp/4.txt']),
             ('slice(1,-2)', ['temp/1.txt', 'temp/2.txt']),
             ('slice(None,None,2)', ['temp/0.txt', 'temp/2.txt', 'temp/4.txt']),
-            ('True', ['temp/0.txt', 'temp/1.txt',
-                      'temp/2.txt', 'temp/3.txt', 'temp/4.txt']),
+            ('True', [
+                'temp/0.txt', 'temp/1.txt', 'temp/2.txt', 'temp/3.txt',
+                'temp/4.txt'
+            ]),
             ('False', []),
         ]:
             if os.path.isdir('temp'):
@@ -777,8 +789,8 @@ touch temp/{ff}
             env.config['sig_mode'] = 'force'
             Base_Executor(wf).run()
             files = list(glob.glob(os.path.join('temp', '*.txt')))
-            self.assertEqual(sorted(files), sorted(
-                [x.replace('/', os.sep) for x in result]))
+            self.assertEqual(
+                sorted(files), sorted([x.replace('/', os.sep) for x in result]))
             #
             # test last iteration
             shutil.rmtree('temp')

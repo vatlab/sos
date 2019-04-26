@@ -14,6 +14,7 @@ from sos.workflow_executor import Base_Executor
 
 
 class TestActions(unittest.TestCase):
+
     def setUp(self):
         env.reset()
         self.temp_files = []
@@ -23,7 +24,8 @@ class TestActions(unittest.TestCase):
             if file_target(f).exists():
                 file_target(f).unlink()
 
-    @unittest.skipIf(not shutil.which('Rscript') or not shutil.which('pandoc'), 'R or pandoc not installed')
+    @unittest.skipIf(not shutil.which('Rscript') or not shutil.which('pandoc'),
+                     'R or pandoc not installed')
     def testRmarkdown(self):
         '''Test action Rmarkdown'''
         if file_target('myreport.html').exists():
@@ -48,7 +50,8 @@ Rmarkdown(output=_output[0])
         #
         file_target('myreport.html').unlink()
 
-    @unittest.skipIf(not shutil.which('Rscript') or not shutil.which('pandoc'), 'R or pandoc not installed')
+    @unittest.skipIf(not shutil.which('Rscript') or not shutil.which('pandoc'),
+                     'R or pandoc not installed')
     def testRmarkdownWithInput(self):
         # Rmarkdown with specified input.
         script = SoS_Script(r'''
@@ -70,6 +73,7 @@ Rmarkdown(input='a.md', output=_output[0])
         if file_target('myreport.html').exists():
             file_target('myreport.html').unlink()
 
+
 #     def testRmarkdownWithNoOutput(self):
 #         # another case is no output, so output goes to standard output
 #         # this cannot be tested in travis because of limit on log file.
@@ -88,7 +92,8 @@ Rmarkdown(input='a.md', output=_output[0])
 #         wf = script.workflow()
 #         Base_Executor(wf).run()
 
-    @unittest.skipIf(not shutil.which('Rscript') or not shutil.which('pandoc'), 'R or pandoc not installed')
+    @unittest.skipIf(not shutil.which('Rscript') or not shutil.which('pandoc'),
+                     'R or pandoc not installed')
     def testRmarkdownWithActionOutput(self):
         script = SoS_Script(r'''
 [10]
@@ -109,7 +114,8 @@ Rmarkdown(input=['default_10.md', 'default_20.md'], output='output.html')
             self.assertTrue(file_target(f).exists())
             file_target(f).unlink()
 
-    @unittest.skipIf(not shutil.which('Rscript') or not shutil.which('pandoc'), 'R or pandoc not installed')
+    @unittest.skipIf(not shutil.which('Rscript') or not shutil.which('pandoc'),
+                     'R or pandoc not installed')
     def testRmarkdownToStdout(self):
         script = SoS_Script(r'''
 # generate report
@@ -118,7 +124,6 @@ Rmarkdown:
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-
 
 if __name__ == '__main__':
     unittest.main()

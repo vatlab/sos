@@ -20,6 +20,7 @@ from sos.workflow_executor import Base_Executor
 
 
 class TestConfig(unittest.TestCase):
+
     def setUp(self):
         env.reset()
         subprocess.call('sos remove -s', shell=True)
@@ -49,20 +50,48 @@ class TestConfig(unittest.TestCase):
 
     def testCommandLine(self):
         '''Test command line arguments'''
-        self.assertEqual(subprocess.call('sos config -h', stderr=subprocess.DEVNULL,
-                                         stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos config -g --get',
-                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos config', stderr=subprocess.DEVNULL,
-                                         stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos config --get',
-                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos config -g --set a 5',
-                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos config --get a',
-                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos config -g --unset a',
-                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos config -h',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos config -g --get',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos config',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos config --get',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos config -g --set a 5',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos config --get a',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos config -g --unset a',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
 
     def testGlobalVars(self):
         '''Test SoS defined variables'''
@@ -82,31 +111,63 @@ class TestConfig(unittest.TestCase):
 
     def testConfigSet(self):
         '''Test interpolation of config'''
-        self.assertEqual(subprocess.call('sos config --set cut 0.5 -c myconfig.yml', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos config --set cut 0.5 -c myconfig.yml',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
         load_config_files('myconfig.yml')
         self.assertEqual(env.sos_dict['CONFIG']['cut'], 0.5)
         #
-        self.assertEqual(subprocess.call('sos config --set cut1 0.5 2 3 -c myconfig.yml', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos config --set cut1 0.5 2 3 -c myconfig.yml',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
         load_config_files('myconfig.yml')
         self.assertEqual(env.sos_dict['CONFIG']['cut1'], [0.5, 2, 3])
         #
-        self.assertEqual(subprocess.call('sos config --set cut2 a3 -c myconfig.yml', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos config --set cut2 a3 -c myconfig.yml',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
         load_config_files('myconfig.yml')
         self.assertEqual(env.sos_dict['CONFIG']['cut2'], 'a3')
         #
-        self.assertEqual(subprocess.call('sos config --set cut3 a b c -c myconfig.yml', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos config --set cut3 a b c -c myconfig.yml',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
         load_config_files('myconfig.yml')
         self.assertEqual(env.sos_dict['CONFIG']['cut3'], ['a', 'b', 'c'])
         #
-        self.assertEqual(subprocess.call('''sos config --set cut4 "{'A': 123}" -c myconfig.yml''', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                '''sos config --set cut4 "{'A': 123}" -c myconfig.yml''',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
         load_config_files('myconfig.yml')
         self.assertEqual(env.sos_dict['CONFIG']['cut4'], {'A': 123})
 
     def testInterpolate(self):
         '''Test interpolation of config'''
-        self.assertEqual(subprocess.call('''sos config --set me '{user_name}@my' -c myconfig.yml''', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                '''sos config --set me '{user_name}@my' -c myconfig.yml''',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
         load_config_files('myconfig.yml')
-        self.assertEqual(env.sos_dict['CONFIG']['me'], f'{getpass.getuser().lower()}@my')
+        self.assertEqual(env.sos_dict['CONFIG']['me'],
+                         f'{getpass.getuser().lower()}@my')
+
 
 if __name__ == '__main__':
     unittest.main()

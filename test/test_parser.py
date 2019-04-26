@@ -13,7 +13,6 @@ from sos.utils import ArgumentError, env
 from sos.workflow_executor import Base_Executor
 from sos.converter import extract_workflow
 
-
 section1_sos = '''
 #!/usr/bin/env sos-runner
 #fileformat=SOS1.1
@@ -69,6 +68,7 @@ var4='5'
 
 
 class TestParser(unittest.TestCase):
+
     def setUp(self):
         env.reset()
         subprocess.call('sos remove -s', shell=True)
@@ -93,10 +93,8 @@ class TestParser(unittest.TestCase):
     def testFileFormat(self):
         '''Test recognizing the format of SoS script'''
         # file format must be 'fileformat=SOSx.x'
-        self.assertRaises(ParsingError, SoS_Script,
-                          '#fileformat=SS2')
-        self.assertRaises(ParsingError, SoS_Script,
-                          '#fileformat=SOS1.0beta')
+        self.assertRaises(ParsingError, SoS_Script, '#fileformat=SS2')
+        self.assertRaises(ParsingError, SoS_Script, '#fileformat=SOS1.0beta')
         #
         # parse a larger script with gormat 1.1
         SoS_Script(section1_sos)
@@ -116,15 +114,12 @@ class TestParser(unittest.TestCase):
         script = SoS_Script('''[0]\n[*_1]\n[human_1]''')
         self.assertEqual(sorted(script.workflows), ['', 'human'])
         script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse_2]''')
-        self.assertEqual(sorted(script.workflows), [
-                         '', 'human', 'mouse'])
+        self.assertEqual(sorted(script.workflows), ['', 'human', 'mouse'])
         script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse_2]\n[s*_2]''')
-        self.assertEqual(sorted(script.workflows), [
-                         '', 'human', 'mouse'])
+        self.assertEqual(sorted(script.workflows), ['', 'human', 'mouse'])
         # unnamed
         script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse]\n[s*_2]''')
-        self.assertEqual(sorted(script.workflows), [
-                         '', 'human', 'mouse'])
+        self.assertEqual(sorted(script.workflows), ['', 'human', 'mouse'])
         #
         # workflow name with -
         script = SoS_Script('''[proc-1]\n[test-case_2]''')
@@ -142,7 +137,6 @@ class TestParser(unittest.TestCase):
         # action
         SoS_Script('''a : expand='${ }' ''')
 
-
     def testSections(self):
         '''Test section definitions'''
         # bad names
@@ -156,22 +150,20 @@ class TestParser(unittest.TestCase):
         for name in ['a5', 'a_5', '*_0', 'a*1_100']:
             SoS_Script('[{}]'.format(name))
         # allowed names with alias
-        for name in ['a5 (p1)', 'a_5 (something fun)', '*_0 (no way)', 'a*1_100']:
+        for name in [
+                'a5 (p1)', 'a_5 (something fun)', '*_0 (no way)', 'a*1_100'
+        ]:
             SoS_Script('[{}]'.format(name))
         # duplicate sections
-        self.assertRaises(ParsingError, SoS_Script,
-                          '''[1]\n[1]''')
-        self.assertRaises(ParsingError, SoS_Script,
-                          '''[1]\n[3]\n[2,1]''')
-        self.assertRaises(ParsingError, SoS_Script,
-                          '''[a_1]\n[a_3]\n[*_1]''')
+        self.assertRaises(ParsingError, SoS_Script, '''[1]\n[1]''')
+        self.assertRaises(ParsingError, SoS_Script, '''[1]\n[3]\n[2,1]''')
+        self.assertRaises(ParsingError, SoS_Script, '''[a_1]\n[a_3]\n[*_1]''')
         #
         # no duplicated section header
         SoS_Script('''[a_1]\n[a_3]\n[b*_1]''')
         #
         # global section
-        self.assertRaises(ParsingError, SoS_Script,
-                          '''[global, step_10]''')
+        self.assertRaises(ParsingError, SoS_Script, '''[global, step_10]''')
 
     def testGlobalVariables(self):
         '''Test definition of variables'''
@@ -179,8 +171,7 @@ class TestParser(unittest.TestCase):
         SoS_Script('''a = '1' ''')
         SoS_Script('''a = ['a', 'b'] ''')
         # but this one has incorrect syntax
-        self.assertRaises(ParsingError, SoS_Script,
-                          '''a = 'b  ''')
+        self.assertRaises(ParsingError, SoS_Script, '''a = 'b  ''')
         # This one also does not work because b is not defined.
         #delattr(env, 'sos_dict')
         #script = SoS_Script('''a = b\n[0] ''')
@@ -326,8 +317,8 @@ parameter: b = int
 [0]
 ''')
         wf = script.workflow()
-        self.assertRaises(ArgumentError, Base_Executor,
-            wf, args=['--b', 'file'])
+        self.assertRaises(
+            ArgumentError, Base_Executor, wf, args=['--b', 'file'])
         #
         script = SoS_Script('''
 parameter: b = int
@@ -406,8 +397,7 @@ parameter: a = 5
 [0]
 ''')
         wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor,
-            wf, args=['--a', 7])
+        self.assertRaises(Exception, Base_Executor, wf, args=['--a', 7])
         #self.assertEqual(env.sos_dict['a'], 4)
         #
         # test parameters with dash
@@ -526,7 +516,8 @@ parameter: c_b = list
 
     def testParamInTask(self):
         '''Test specification of parameters in tasks'''
-        self.assertRaises(Exception, SoS_Script, '''\
+        self.assertRaises(
+            Exception, SoS_Script, '''\
 [1]
 output: 'a.txt'
 task:
@@ -542,7 +533,6 @@ parameter: c_b = list
 ''')
         wf = script.workflow()
         self.assertEqual(sorted(list(wf.parameters().keys())), ['a_b', 'c_b'])
-
 
     def testTypeTraitParameter(self):
         # type trait
@@ -825,7 +815,8 @@ python3:
         # with section head in the script,
         # this will not work even if the embedded
         # python script is perfectly valid.
-        self.assertRaises(ParsingError, SoS_Script, '''
+        self.assertRaises(
+            ParsingError, SoS_Script, '''
 [0]
 input: 'filename',  'filename2', opt=value==1
 python3:
@@ -878,7 +869,6 @@ report: expand = "${ }"
         wf = script.workflow()
         Base_Executor(wf).run()
 
-
     def testInput(self):
         '''Test input directive'''
         self.touch(['a.txt', 'b.txt', 'a.pdf', 'a0', 'a1'])
@@ -902,10 +892,12 @@ output: (f"a{x}" for x in _input)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(sorted(env.sos_dict['i']), sos_targets(
-            ['a.txt', 'a0', 'a1', 'b.txt']))
-        self.assertEqual(sorted(env.sos_dict['o']), sos_targets([
-                         'aa.txt', 'aa0', 'aa1', 'ab.txt']))
+        self.assertEqual(
+            sorted(env.sos_dict['i']),
+            sos_targets(['a.txt', 'a0', 'a1', 'b.txt']))
+        self.assertEqual(
+            sorted(env.sos_dict['o']),
+            sos_targets(['aa.txt', 'aa0', 'aa1', 'ab.txt']))
 
     def testGroupBy(self):
         '''Test group_by parameter of step input'''
@@ -923,9 +915,9 @@ executed.append(_input)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['executed'],  [
-                         sos_targets('a1.txt', 'a2.txt', 'a3.txt', 'a4.txt')])
-        self.assertEqual(env.sos_dict['executed'][0].labels, ['0']*4)
+        self.assertEqual(env.sos_dict['executed'],
+                         [sos_targets('a1.txt', 'a2.txt', 'a3.txt', 'a4.txt')])
+        self.assertEqual(env.sos_dict['executed'][0].labels, ['0'] * 4)
         # group_by = 'single'
         script = SoS_Script('''
 [0: shared='executed']
@@ -938,8 +930,12 @@ executed.append(_input)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['executed'],  [sos_targets('a1.txt'), sos_targets(
-            'a2.txt'), sos_targets('a3.txt'), sos_targets('a4.txt')])
+        self.assertEqual(env.sos_dict['executed'], [
+            sos_targets('a1.txt'),
+            sos_targets('a2.txt'),
+            sos_targets('a3.txt'),
+            sos_targets('a4.txt')
+        ])
         # group_by = 'pairs'
         script = SoS_Script('''
 [0: shared='executed']
@@ -952,8 +948,10 @@ executed.append(_input)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['executed'],  [sos_targets(
-            'a1.txt', 'a3.txt'), sos_targets('a2.txt', 'a4.txt')])
+        self.assertEqual(
+            env.sos_dict['executed'],
+            [sos_targets('a1.txt', 'a3.txt'),
+             sos_targets('a2.txt', 'a4.txt')])
         # group_by = 'pairs2'
         script = SoS_Script('''
 [0: shared='executed']
@@ -966,10 +964,10 @@ executed.append(_input)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['executed'],  [
-                sos_targets('a1.txt', 'a2.txt', 'a5.txt', 'a6.txt'),
-                sos_targets('a3.txt', 'a4.txt', 'a7.txt', 'a8.txt')
-                ])
+        self.assertEqual(env.sos_dict['executed'], [
+            sos_targets('a1.txt', 'a2.txt', 'a5.txt', 'a6.txt'),
+            sos_targets('a3.txt', 'a4.txt', 'a7.txt', 'a8.txt')
+        ])
         # group_by = 'pairs3'
         script = SoS_Script('''
 [0: shared='executed']
@@ -982,10 +980,12 @@ executed.append(_input)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['executed'],  [
-                sos_targets('a1.txt', 'a2.txt', 'a3.txt', 'a7.txt', 'a8.txt', 'a9.txt'),
-                sos_targets('a4.txt', 'a5.txt', 'a6.txt', 'a10.txt', 'a11.txt', 'a12.txt')
-                ])
+        self.assertEqual(env.sos_dict['executed'], [
+            sos_targets('a1.txt', 'a2.txt', 'a3.txt', 'a7.txt', 'a8.txt',
+                        'a9.txt'),
+            sos_targets('a4.txt', 'a5.txt', 'a6.txt', 'a10.txt', 'a11.txt',
+                        'a12.txt')
+        ])
 
         # group_by = 'pairwise'
         script = SoS_Script('''
@@ -999,8 +999,11 @@ executed.append(_input)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['executed'],  [sos_targets('a1.txt', 'a2.txt'), sos_targets(
-            'a2.txt', 'a3.txt'), sos_targets('a3.txt', 'a4.txt')])
+        self.assertEqual(env.sos_dict['executed'], [
+            sos_targets('a1.txt', 'a2.txt'),
+            sos_targets('a2.txt', 'a3.txt'),
+            sos_targets('a3.txt', 'a4.txt')
+        ])
         # group_by = 'pairwiseN'
         script = SoS_Script('''
 [0: shared='executed']
@@ -1013,11 +1016,10 @@ executed.append(_input)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['executed'],  [
+        self.assertEqual(env.sos_dict['executed'], [
             sos_targets('a1.txt', 'a2.txt', 'a3.txt', 'a4.txt'),
             sos_targets('a3.txt', 'a4.txt', 'a5.txt', 'a6.txt')
-            ],
-            f'obtained {env.sos_dict["executed"]}')
+        ], f'obtained {env.sos_dict["executed"]}')
 
         # group_by = 'combinations'
         script = SoS_Script('''
@@ -1031,8 +1033,14 @@ executed.append(_input)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['executed'],  [sos_targets('a1.txt', 'a2.txt'), sos_targets('a1.txt', 'a3.txt'),
-                                                     sos_targets('a1.txt', 'a4.txt'), sos_targets('a2.txt', 'a3.txt'), sos_targets('a2.txt', 'a4.txt'), sos_targets('a3.txt', 'a4.txt')])
+        self.assertEqual(env.sos_dict['executed'], [
+            sos_targets('a1.txt', 'a2.txt'),
+            sos_targets('a1.txt', 'a3.txt'),
+            sos_targets('a1.txt', 'a4.txt'),
+            sos_targets('a2.txt', 'a3.txt'),
+            sos_targets('a2.txt', 'a4.txt'),
+            sos_targets('a3.txt', 'a4.txt')
+        ])
 
         # group_by = 'combinations3'
         script = SoS_Script('''
@@ -1046,13 +1054,12 @@ executed.append(_input)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['executed'],
-            [
+        self.assertEqual(env.sos_dict['executed'], [
             sos_targets(['a1.txt', 'a2.txt', 'a3.txt']),
             sos_targets(['a1.txt', 'a2.txt', 'a4.txt']),
             sos_targets(['a1.txt', 'a3.txt', 'a4.txt']),
             sos_targets(['a2.txt', 'a3.txt', 'a4.txt'])
-            ], f'obtained {env.sos_dict["executed"]}')
+        ], f'obtained {env.sos_dict["executed"]}')
         # group_by chunks specified as integers
         script = SoS_Script('''
 [0: shared='executed']
@@ -1068,7 +1075,8 @@ executed.append(_input)
         self.assertEqual(env.sos_dict['executed'], [
             sos_targets('a1.txt', 'a2.txt', 'a3.txt'),
             sos_targets('a4.txt', 'a5.txt', 'a6.txt'),
-            sos_targets('a7.txt', 'a8.txt', 'a9.txt')])
+            sos_targets('a7.txt', 'a8.txt', 'a9.txt')
+        ])
         # group_by chunks specified as integer strings
         script = SoS_Script('''
 [0: shared='executed']
@@ -1082,9 +1090,10 @@ executed.append(_input)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['executed'], [
-                         sos_targets('a1.txt', 'a2.txt', 'a3.txt'),
-                         sos_targets('a4.txt', 'a5.txt', 'a6.txt'),
-                         sos_targets('a7.txt', 'a8.txt', 'a9.txt')])
+            sos_targets('a1.txt', 'a2.txt', 'a3.txt'),
+            sos_targets('a4.txt', 'a5.txt', 'a6.txt'),
+            sos_targets('a7.txt', 'a8.txt', 'a9.txt')
+        ])
         # number of files should be divisible by group_by
         self.touch(['a{}.txt'.format(x) for x in range(1, 10)])
         script = SoS_Script('''
@@ -1134,9 +1143,10 @@ executed.append(_input)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['executed'], [
-                         sos_targets('c.txt'),
-                         sos_targets('a.txt'),
-                         sos_targets('b.txt', 'b1.txt')])
+            sos_targets('c.txt'),
+            sos_targets('a.txt'),
+            sos_targets('b.txt', 'b1.txt')
+        ])
         #
         # group_by='pairsource'
         file_target('c.txt').touch()
@@ -1159,9 +1169,10 @@ executed.append(_input)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['executed'], [
-                         sos_targets('a1.txt', 'b1.txt'),
-                         sos_targets('a2.txt', 'b2.txt')])
+        self.assertEqual(
+            env.sos_dict['executed'],
+            [sos_targets('a1.txt', 'b1.txt'),
+             sos_targets('a2.txt', 'b2.txt')])
         # group_by='pairsource3'
         self.touch(['c{}.txt'.format(x) for x in range(1, 7)])
 
@@ -1185,8 +1196,11 @@ executed.append(_input)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['executed'], [
-                         sos_targets('c1.txt', 'c2.txt', 'c3.txt', 'a1.txt', 'a2.txt', 'a3.txt', 'b1.txt', 'b2.txt', 'b3.txt'),
-                         sos_targets('c4.txt', 'c5.txt', 'c6.txt', 'a4.txt', 'a5.txt', 'a6.txt', 'b4.txt', 'b5.txt', 'b6.txt')])
+            sos_targets('c1.txt', 'c2.txt', 'c3.txt', 'a1.txt', 'a2.txt',
+                        'a3.txt', 'b1.txt', 'b2.txt', 'b3.txt'),
+            sos_targets('c4.txt', 'c5.txt', 'c6.txt', 'a4.txt', 'a5.txt',
+                        'a6.txt', 'b4.txt', 'b5.txt', 'b6.txt')
+        ])
         # group_by='pairsource3'
         self.touch(['c{}.txt'.format(x) for x in range(1, 7)])
 
@@ -1210,8 +1224,9 @@ executed.append(_input)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['executed'], [
-                         sos_targets('c1.txt', 'a1.txt', 'b1.txt', 'b2.txt', 'b3.txt'),
-                         sos_targets('c2.txt', 'a1.txt', 'b4.txt', 'b5.txt', 'b6.txt')])
+            sos_targets('c1.txt', 'a1.txt', 'b1.txt', 'b2.txt', 'b3.txt'),
+            sos_targets('c2.txt', 'a1.txt', 'b4.txt', 'b5.txt', 'b6.txt')
+        ])
         #
         # group by function
         file_target('c.txt').touch()
@@ -1229,9 +1244,8 @@ executed.append(_input)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['executed'], [
-                         ['a0.txt', 'a1.txt', 'a2.txt'],
-                         ['a3.txt', 'a4.txt']])
+        self.assertEqual(env.sos_dict['executed'],
+                         [['a0.txt', 'a1.txt', 'a2.txt'], ['a3.txt', 'a4.txt']])
         #
         # group by lambda function
         file_target('c.txt').touch()
@@ -1246,11 +1260,9 @@ executed.append(_input)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['executed'], [
-                         ['a0.txt', 'a3.txt'],
-                         ['a1.txt', 'a4.txt'],
-                         ['a2.txt', 'a5.txt']])
-
+        self.assertEqual(
+            env.sos_dict['executed'],
+            [['a0.txt', 'a3.txt'], ['a1.txt', 'a4.txt'], ['a2.txt', 'a5.txt']])
 
     def testOutputGroupBy(self):
         '''Test group_by parameter of step output'''
@@ -1269,8 +1281,10 @@ executed.append(_output)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['executed'], [sos_targets(
-            'a0.txt.bak', 'a1.txt.bak'), sos_targets('a2.txt.bak', 'a3.txt.bak')])
+        self.assertEqual(env.sos_dict['executed'], [
+            sos_targets('a0.txt.bak', 'a1.txt.bak'),
+            sos_targets('a2.txt.bak', 'a3.txt.bak')
+        ])
 
     def testStepsWithStepName(self):
         '''Test from steps'''
@@ -1302,16 +1316,14 @@ print(_input)
 
     def testSectionActions(self):
         '''Test actions of sections'''
-        SoS_Script(
-            """
+        SoS_Script("""
 [0]
 func('''
 multiline
 string''', with_option=1
 )
 """)
-        self.assertRaises(ParsingError, SoS_Script,
-                          '''
+        self.assertRaises(ParsingError, SoS_Script, '''
 [0]
 func(
 ''')
@@ -1369,22 +1381,23 @@ executed.append(step_name)
 ''')
         wf = script.workflow('a+b')
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['executed'], ['a_1', 'a_2',
-                                                    'a_3', 'a_4', 'b_1', 'b_2', 'b_3', 'b_4'])
+        self.assertEqual(
+            env.sos_dict['executed'],
+            ['a_1', 'a_2', 'a_3', 'a_4', 'b_1', 'b_2', 'b_3', 'b_4'])
         self.assertEqual(env.sos_dict['a'], 1)
         self.assertEqual(env.sos_dict['input_b1'], ['out_a_4'])
         #
         env.sos_dict.pop('executed', None)
         wf = script.workflow('a: 1-2 + a:4 + b:3-')
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['executed'], ['a_1', 'a_2', 'a_4',
-                                                    'b_3', 'b_4'])
+        self.assertEqual(env.sos_dict['executed'],
+                         ['a_1', 'a_2', 'a_4', 'b_3', 'b_4'])
         #
         env.sos_dict.pop('executed', None)
         wf = script.workflow('a+c+d')
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['executed'], [
-                         'a_1', 'a_2', 'a_3', 'a_4', 'c', 'd'])
+        self.assertEqual(env.sos_dict['executed'],
+                         ['a_1', 'a_2', 'a_3', 'a_4', 'c', 'd'])
 
     def testYAMLConfig(self):
         '''Test config file in yaml format'''
@@ -1407,19 +1420,22 @@ print(CONFIG['StoreOwner'])
 print(CONFIG.get('StoreOwner', 'something'))
 print(CONFIG.get('StoreOwnerSpouse', 'someone else'))
 #print(CONFIG.StoreOwner)
-'''
-                      )
+''')
         # run the command
-        self.assertEqual(subprocess.call('sos run config.sos -c myconfig.yml',
-                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos run config.sos -c myconfig.yml',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
         # now test the value
         script = SoS_Script(filename='config.sos')
         wf = script.workflow()
         Base_Executor(wf, config={'config_file': 'myconfig.yml'}).run()
         self.assertEqual(env.sos_dict['CONFIG']['Price'], 1.05)
         self.assertEqual(env.sos_dict['CONFIG']['StoreOwner'], 'John Doe')
-        self.assertEqual(env.sos_dict['CONFIG']['Fruits'], [
-                         'apple', 'banana', 'pear'])
+        self.assertEqual(env.sos_dict['CONFIG']['Fruits'],
+                         ['apple', 'banana', 'pear'])
 
     def testVarOutput(self):
         '''Test early appearance of variable output'''
@@ -1492,9 +1508,11 @@ run:
         self.assertFalse(
             'this comment will be included but not shown in help' in msg)
         self.assertTrue(
-            msg.count('this comment will become the comment for parameter b'), 1)
+            msg.count('this comment will become the comment for parameter b'),
+            1)
         self.assertTrue(
-            msg.count('this comment will become the comment for parameter d'), 1)
+            msg.count('this comment will become the comment for parameter d'),
+            1)
         self.assertTrue(msg.count('--c 3 (as int)'), 1)
         self.assertTrue(
             msg.count('this is a section comment, will be displayed'), 1)
@@ -1634,7 +1652,6 @@ output: sos_step('A')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
 
-
     def testSoSVariableInInput(self):
         '''Test sos_variable in input statement'''
         script = SoS_Script('''
@@ -1658,7 +1675,6 @@ output: sos_variable('a')
 ''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
-
 
     def testSoSVariableWithKeywordargument(self):
         '''Test output_from in output statement'''
@@ -1720,7 +1736,6 @@ depends: sos_step(1)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-
 
     def testDependsOnStepWithUnspecifiedInput(self):
         for file in ('A_1.txt', 'A_2.txt', 'A_3.txt', 'A_4.txt'):
@@ -1988,6 +2003,7 @@ report:
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
+
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
