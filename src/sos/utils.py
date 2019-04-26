@@ -366,11 +366,11 @@ class RuntimeEnvironments(object):
     def log_to_file(self, topic, msg=''):
         # if only one parameter is given, assuming ALL topic and topic is the message
         if not msg:
-            msg = topic
-            topic = 'GENERAL'
+            self.logger.debug(topic)
+            return
         if 'SOS_DEBUG' not in os.environ or (
-                topic not in os.environ['SOS_DEBUG'] and
-                'ALL' not in os.environ['SOS_DEBUG']):
+                topic not in self.config['SOS_DEBUG'] and
+                'ALL' not in self.config['SOS_DEBUG']):
             return
         self.logger.debug(topic + ' - ' + str(msg))
 
