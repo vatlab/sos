@@ -62,6 +62,7 @@ report('this is action report')
     def testExtractWorkflow(self):
         '''Test extract workflow from ipynb file'''
         content = extract_workflow('sample_workflow.ipynb')
+        print(content)
         self.assertEqual(
             content, '''\
 #!/usr/bin/env sos-runner
