@@ -210,13 +210,15 @@ class WorkflowDict(object):
         '''A short cut to set value to key without triggering any logging
         or warning message.'''
         if hasattr(value, 'labels'):
-            if 'VARIABLE' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+            if 'VARIABLE' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                    'SOS_DEBUG']:
                 env.log_to_file(
                     'VARIABLE',
                     f"Set {key} to {short_repr(value)} with labels {short_repr(value.labels)}"
                 )
         else:
-            if 'VARIABLE' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+            if 'VARIABLE' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                    'SOS_DEBUG']:
                 env.log_to_file(
                     'VARIABLE',
                     f"Set {key} to {short_repr(value)} of type {value.__class__.__name__}"
@@ -261,7 +263,8 @@ class WorkflowDict(object):
         self.set(key, value)
 
     def _log(self, key, value):
-        if 'VARIABLE' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+        if 'VARIABLE' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                'SOS_DEBUG']:
             env.log_to_file('VARIABLE',
                             f'Set ``{key}`` = ``{short_repr(value)}``')
 
@@ -368,9 +371,8 @@ class RuntimeEnvironments(object):
         if not msg:
             self.logger.debug(topic)
             return
-        if 'SOS_DEBUG' not in os.environ or (
-                topic not in self.config['SOS_DEBUG'] and
-                'ALL' not in self.config['SOS_DEBUG']):
+        if topic not in self.config['SOS_DEBUG'] and 'ALL' not in self.config[
+                'SOS_DEBUG']:
             return
         self.logger.debug(topic + ' - ' + str(msg))
 
@@ -419,9 +421,6 @@ class RuntimeEnvironments(object):
         os.makedirs(
             os.path.join(os.path.expanduser('~'), '.sos', 'tasks'),
             exist_ok=True)
-
-    def is_debugging(self, code):
-        return 'ALL' in self.config['SOS_DEBUG'] or code in self.config['SOS_DEBUG']
 
     #
     # attribute logger
@@ -485,7 +484,8 @@ class RuntimeEnvironments(object):
                         '%(asctime)s - %(levelname)s - %(message)s')
             else:
                 logfile = logging.FileHandler(
-                    os.path.join(os.path.expanduser('~'), '.sos', 'sos_debug.log'),
+                    os.path.join(
+                        os.path.expanduser('~'), '.sos', 'sos_debug.log'),
                     mode='a')
                 formatter = logging.Formatter(
                     '%(asctime)s - %(levelname)s - %(message)s')
