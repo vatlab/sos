@@ -8,7 +8,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/vatlab/SOS/badge.svg)](https://coveralls.io/github/vatlab/SOS)
 
 **Script of Scripts (SoS)** is a Jupyter-based **polyglot notebook** that allows the use of multiple Jupyter kernels in one notebook, and
-a **workflow engine** for the execution of workflows in both process- and outcome-oriented styles. It is designed for data scientists and bioinformatics who routinely work with scripts in different languages such as R, Python, Perl, and bash.
+a **workflow engine** for the execution of workflows in both process- and outcome-oriented styles. It is designed for data scientists and bioinformatics who routinely work with scripts in different languages such as bash, Python, R, and SAS.
 
 Please refer to the [SoS homepage](http://vatlab.github.io/SOS) for more information.
 
@@ -18,21 +18,16 @@ if you have helped fixing bugs or making improvements to the source code.
 
 # Installing SoS
 
-With Python 3.6 and above installed ([anaconda python](https://www.continuum.io/downloads) is recommended), you can install the SoS Workflow System and its extensions with command
+With Python 3.6 and above installed ([anaconda python](https://www.continuum.io/downloads) is recommended), you can install the SoS Workflow System with command
 
 ```
 % pip install sos
 ```
-
-You can install the latest git version of SoS with commands
-
+and also
 ```
-% git clone https://github.com/vatlab/SoS.git
-% cd SoS
-% pip install . -U
+% pop install sos-pbs
 ```
-although the development version can be less stable than the released
-version.
+if you would like to use SoS with a remote batch system such as LSF or Slurm.
 
 You can install SoS Notebook, and register the sos kernel with Jupyter using the following commands
 
@@ -52,7 +47,7 @@ Different modules might be needed to assist data exchange among kernels. Please 
 ### Change Log of SoS and SoS Notebook
 
 SoS 0.19.0
-* [sos#1056](](https://github.com/vatlab/SoS/issues/1056), [sos1218](https://github.com/vatlab/SoS/issues/1218): Use a new shared execution model to enforce optio `-j`.
+* [sos#1056](https://github.com/vatlab/SoS/issues/1056), [sos#1218](https://github.com/vatlab/SoS/issues/1218): Use a new shared execution model to enforce optio `-j`.
 * [sos#1219](https://github.com/vatlab/SoS/issues/1219): Make sure global sections are executed only once
 
 SoS Notebook 0.18.5
