@@ -800,7 +800,7 @@ def cmd_preview(args, unknown_args):
         rargs = ['sos', 'preview'] + args.items + ['--html']
         if args.style:
             rargs += ['-s', args.style] + unknown_args
-        if 'GENERAL' in env.config['SOS_DEBUG']:
+        if env.is_debugging('GENERAL'):
             env.log_to_file('GENERAL', 'Running "{}"'.format(' '.join(rargs)))
         msgs = eval(host._host_agent.check_output(rargs, under_workdir=True))
     else:
@@ -957,7 +957,7 @@ def cmd_execute(args, workflow_args):
                         [x for x in res if x == 'failed']),
                     len([x for x in res if x.startswith('aborted')])))
         if all(x == 'completed' for x in res):
-            if 'TASK' in env.config['SOS_DEBUG']:
+            if env.is_debugging('TASK'):
                 env.log_to_file('TASK', f'Put results for {args.tasks}')
             res = host.retrieve_results(args.tasks)
             return
@@ -1271,7 +1271,7 @@ def cmd_remove(args, unknown_args):
                 continue
             if p.size() == 0:
                 try:
-                    if 'GENERAL' in env.config['SOS_DEBUG']:
+                    if env.is_debugging('GENERAL'):
                         env.log_to_file('GENERAL', f'Remove placeholder file {ph}')
                     p.unlink()
                     removed += 1

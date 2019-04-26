@@ -531,7 +531,7 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
         my_name = env.sos_dict['step_name']
         args_output = ', '.join(f'{x}={short_repr(y)}' for x,
                                 y in args.items() if not x.startswith('__'))
-        if 'ACTION' in env.config['SOS_DEBUG']:
+        if env.is_debugging('ACTION'):
             env.log_to_file('ACTION', 'Executing workflow ``{}`` with input ``{}`` and {}'
                          .format(workflow, short_repr(env.sos_dict.get('_input', None), True),
                                  'no args' if not args_output else args_output))
@@ -1001,7 +1001,7 @@ def report(script=None, input=None, output=None, **kwargs):
             writer(script.rstrip() + '\n\n')
         if input is not None:
             if isinstance(input, (str, file_target)):
-                if 'ACTION' in env.config['SOS_DEBUG']:
+                if env.is_debugging('ACTION'):
                     env.log_to_file('ACTION', f'Loading report from {input}')
                 with open(input) as ifile:
                     writer(ifile.read().rstrip() + '\n\n')
@@ -1088,7 +1088,7 @@ def pandoc(script=None, input=None, output=None, args='{input:q} --output {outpu
     try:
         p = None
         cmd = interpolate(f'pandoc {args}', {'input': input, 'output': output})
-        if 'ACTION' in env.config['SOS_DEBUG']:
+        if env.is_debugging('ACTION'):
             env.log_to_file('ACTION', f'Running command "{cmd}"')
         if env.config['run_mode'] == 'interactive':
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook

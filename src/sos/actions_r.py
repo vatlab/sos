@@ -77,7 +77,7 @@ def Rmarkdown(script=None, input=None, output=None, args='{input:r}, output_file
         #        run_Rmarkdown = TRUE, quiet = FALSE, encoding = getOption("encoding"))
         cmd = interpolate(f'Rscript -e "rmarkdown::render({args})"',
                           {'input': input, 'output': output})
-        if 'ACTION' in env.config['SOS_DEBUG']:
+        if env.is_debugging('ACTION'):
             env.log_to_file('ACTION', f'Running command "{cmd}"')
         if env.config['run_mode'] == 'interactive':
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook

@@ -210,13 +210,13 @@ class WorkflowDict(object):
         '''A short cut to set value to key without triggering any logging
         or warning message.'''
         if hasattr(value, 'labels'):
-            if 'VARIABLE' in env.config['SOS_DEBUG']:
+            if env.is_debugging('VARIABLE'):
                 env.log_to_file(
                     'VARIABLE',
                     f"Set {key} to {short_repr(value)} with labels {short_repr(value.labels)}"
                 )
         else:
-            if 'VARIABLE' in env.config['SOS_DEBUG']:
+            if env.is_debugging('VARIABLE'):
                 env.log_to_file(
                     'VARIABLE',
                     f"Set {key} to {short_repr(value)} of type {value.__class__.__name__}"
@@ -261,7 +261,7 @@ class WorkflowDict(object):
         self.set(key, value)
 
     def _log(self, key, value):
-        if 'VARIABLE' in env.config['SOS_DEBUG']:
+        if env.is_debugging('VARIABLE'):
             env.log_to_file('VARIABLE',
                             f'Set ``{key}`` = ``{short_repr(value)}``')
 
@@ -420,7 +420,7 @@ class RuntimeEnvironments(object):
             os.path.join(os.path.expanduser('~'), '.sos', 'tasks'),
             exist_ok=True)
 
-    def debugging(self, code):
+    def is_debugging(self, code):
         return 'ALL' in self.config['SOS_DEBUG'] or code in self.config['SOS_DEBUG']
 
     #

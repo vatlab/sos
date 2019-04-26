@@ -20,7 +20,7 @@ g_sockets = set()
 def create_socket(context, socket_type, desc=''):
     socket = context.socket(socket_type)
     g_sockets.add(socket.fd)
-    if 'CONTROLLER' in env.config['SOS_DEBUG']:
+    if env.is_debugging('CONTROLLER'):
         env.log_to_file('CONTROLLER', f'{os.getpid()} {desc}: new socket of type {EVENT_MAP.get(socket_type, "UNKNOWN")} with handler {socket.fd} ({len(g_sockets)} total)' )
     return socket
 
@@ -28,7 +28,7 @@ def close_socket(socket, desc='', now=False):
     if socket is None:
         return
     g_sockets.remove(socket.fd)
-    if 'CONTROLLER' in env.config['SOS_DEBUG']:
+    if env.is_debugging('CONTROLLER'):
         env.log_to_file('CONTROLLER', f'{os.getpid()} {desc}: closes socket with handler {socket.fd} ({len(g_sockets)} left)' )
     if now:
         socket.LINGER = 0
@@ -61,11 +61,11 @@ def request_answer_from_controller(msg):
 
 def connect_controllers(context=None):
     if not context:
-        if 'CONTROLLER' in env.config['SOS_DEBUG']:
+        if env.is_debugging('CONTROLLER'):
             env.log_to_file('CONTROLLER', f'create context at {os.getpid()}')
         context = zmq.Context()
 
-    if 'CONTROLLER' in env.config['SOS_DEBUG']:
+    if env.is_debugging('CONTROLLER'):
         env.log_to_file('CONTROLLER', f'Connecting sockets from {os.getpid()}')
 
     env.master_push_socket = None
@@ -100,11 +100,11 @@ def disconnect_controllers(context=None):
     if env.config['exec_mode'] in ('master', 'slave'):
         close_socket(env.tapping_listener_socket, now=True)
 
-    if 'CONTROLLER' in env.config['SOS_DEBUG']:
+    if env.is_debugging('CONTROLLER'):
         env.log_to_file('CONTROLLER', f'Disconnecting sockets from {os.getpid()}')
 
     if context:
-        if 'CONTROLLER' in env.config['SOS_DEBUG']:
+        if env.is_debugging('CONTROLLER'):
             env.log_to_file('CONTROLLER', f'terminate context at {os.getpid()}')
         zmq_term(context)
 
@@ -241,7 +241,7 @@ class Controller(threading.Thread):
                 # cache the request, route to first available worker
                 self.workers.add_request(msg[0], msg[1])
             elif msg[0] == 'nprocs':
-                if 'CONTROLLER' in env.config['SOS_DEBUG']:
+                if env.is_debugging('CONTROLLER'):
                     env.log_to_file('CONTROLLER', f'Active running process set to {msg[1]}')
                 self._nprocs = msg[1]
             elif msg[0] == 'progress':
@@ -374,7 +374,7 @@ class Controller(threading.Thread):
         elif msg[0] == b'DEBUG':
             env.logger.debug(msg[1].decode())
         elif msg[0] == b'TRACE':
-            if 'CONTROLLER' in env.config['SOS_DEBUG']:
+            if env.is_debugging('CONTROLLER'):
                 env.log_to_file('CONTROLLER', msg[1].decode())
         elif msg[0] == b'PRINT':
             env.logger.print(*[x.decode() for x in msg[1:]])
@@ -397,7 +397,7 @@ class Controller(threading.Thread):
         #
         self.context = zmq.Context.instance()
 
-        if 'CONTROLLER' in env.config['SOS_DEBUG']:
+        if env.is_debugging('CONTROLLER'):
             env.log_to_file('CONTROLLER', f'controller started {os.getpid()}')
 
         if 'sockets' not in env.config:
@@ -546,5 +546,5 @@ class Controller(threading.Thread):
             if env.config['exec_mode'] in ('master', 'slave'):
                 close_socket(self.tapping_controller_socket, now=True)
 
-            if 'CONTROLLER' in env.config['SOS_DEBUG']:
+            if env.is_debugging('CONTROLLER'):
                 env.log_to_file('CONTROLLER', f'controller stopped {os.getpid()}')

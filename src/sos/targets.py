@@ -640,7 +640,7 @@ class file_target(path, BaseTarget):
 
     def create_placeholder(self):
         # create an empty placeholder file
-        if 'TARGET' in env.config['SOS_DEBUG']:
+        if env.is_debugging('TARGET'):
             env.log_to_file('TARGET', f'Create placeholder target {self}')
         self.touch()
         send_message_to_controller(['workflow_sig', 'placeholder', 'file_target', str(self)])
@@ -1947,7 +1947,7 @@ class RuntimeInfo(InMemorySignature):
 
     def set_output(self, files: sos_targets):
         # add signature file if input and output files are dynamic
-        if 'TARGET' in env.config['SOS_DEBUG']:
+        if env.is_debugging('TARGET'):
             env.log_to_file('TARGET', f'Set output of signature to {files}')
         self.output_files = files
 
@@ -1959,7 +1959,7 @@ class RuntimeInfo(InMemorySignature):
         if not self.output_files.valid():
             raise ValueError(f'Cannot write signature with undetermined output {self.output_files}')
         else:
-            if 'TARGET' in env.config['SOS_DEBUG']:
+            if env.is_debugging('TARGET'):
                 env.log_to_file('TARGET', f'write signature {self.sig_id} with output {self.output_files}')
         ret = super(RuntimeInfo, self).write()
         if ret is False:
@@ -1975,7 +1975,7 @@ class RuntimeInfo(InMemorySignature):
 
     def validate(self):
         '''Check if ofiles and ifiles match signatures recorded in md5file'''
-        if 'TARGET' in env.config['SOS_DEBUG']:
+        if env.is_debugging('TARGET'):
             env.log_to_file('TARGET', f'Validating {self.sig_id}')
         #
         # file not exist?

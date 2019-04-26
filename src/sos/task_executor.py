@@ -353,7 +353,7 @@ def _execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_
         # subtask
         subtask = True
         task_id, params, sig_content = task_id
-        if 'TASK' in env.config['SOS_DEBUG']:
+        if env.is_debugging('TASK'):
             env.log_to_file('TASK', f'Executing subtask {task_id}')
 
     # update local runtime with master runtime

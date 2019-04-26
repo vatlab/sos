@@ -131,7 +131,7 @@ class SoS_DAG(nx.DiGraph):
 
     def add_step(self, step_uuid, node_name, node_index, input_targets: sos_targets, depends_targets: sos_targets,
                  output_targets: sos_targets, context: dict={}):
-        if 'DAG' in env.config['SOS_DEBUG']:
+        if env.is_debugging('DAG'):
             env.log_to_file('DAG', f'add step {node_name}')
         node = SoS_Node(step_uuid, node_name, None if node_index is None else self._forward_workflow_id, node_index, input_targets, depends_targets,
                         output_targets, context)
@@ -170,7 +170,7 @@ class SoS_DAG(nx.DiGraph):
     def find_executable(self):
         '''Find an executable node, which means nodes that has not been completed
         and has no input dependency.'''
-        if 'DAG' in env.config['SOS_DEBUG']:
+        if env.is_debugging('DAG'):
             env.log_to_file('DAG', 'find_executable')
         for node in self.nodes():
             # if it has not been executed
@@ -218,7 +218,7 @@ class SoS_DAG(nx.DiGraph):
             print(edge)
 
     def circular_dependencies(self):
-        if 'DAG' in env.config['SOS_DEBUG']:
+        if env.is_debugging('DAG'):
             env.log_to_file('DAG', 'check circular')
         try:
             return nx.find_cycle(self)
@@ -275,7 +275,7 @@ class SoS_DAG(nx.DiGraph):
 
     def subgraph_from(self, targets: sos_targets):
         '''Trim DAG to keep only nodes that produce targets'''
-        if 'DAG' in env.config['SOS_DEBUG']:
+        if env.is_debugging('DAG'):
             env.log_to_file('DAG', 'create subgraph')
         # first, find all nodes with targets
         subnodes = []
@@ -299,7 +299,7 @@ class SoS_DAG(nx.DiGraph):
         # refer to http://stackoverflow.com/questions/33494376/networkx-add-edges-to-graph-from-node-attributes
         #
         # several cases triggers dependency.
-        if 'DAG' in env.config['SOS_DEBUG']:
+        if env.is_debugging('DAG'):
             env.log_to_file('DAG', 'build DAG')
         for wf in range(self._forward_workflow_id + 1):
             indexed = [x for x in self.nodes() if x._wf_index == wf]
@@ -346,7 +346,7 @@ class SoS_DAG(nx.DiGraph):
         if not dest:
             return
 
-        if 'DAG' in env.config['SOS_DEBUG']:
+        if env.is_debugging('DAG'):
             env.log_to_file('DAG', 'save DAG')
         if not hasattr(self, 'dag_count'):
             self.last_dag = None

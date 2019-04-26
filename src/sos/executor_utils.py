@@ -202,7 +202,7 @@ def create_task(global_def, global_vars, task_stmt, task_params):
         'run_mode', 'run')
     if 'workdir' not in env.sos_dict['_runtime']:
         env.sos_dict['_runtime']['workdir'] = path.cwd()
-    elif 'TASK' in env.config['SOS_DEBUG']:
+    elif env.is_debugging('TASK'):
         env.log_to_file('TASK', f'Using specified workdir {env.sos_dict["_runtime"]["workdir"]}')
 
 

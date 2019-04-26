@@ -122,7 +122,7 @@ class SoS_Worker(mp.Process):
             self._master_sockets.append(env.master_socket)
             self._master_ports.append(port)
             self._runners.append(True)
-            if 'WORKER' in env.config['SOS_DEBUG']:
+            if env.is_debugging('WORKER'):
                 env.log_to_file('WORKER', f'WORKER {self.name} ({os.getpid()}) creates ports {self._master_ports}')
 
     def __repr__(self):
@@ -169,7 +169,7 @@ class SoS_Worker(mp.Process):
                 if reply is None:
                     if len(wr) != 0:
                         env.logger.error(f'WORKER terminates with pending tasks. sos might not be termianting properly.')
-                    if 'WORKER' in env.config['SOS_DEBUG']:
+                    if env.is_debugging('WORKER'):
                         env.log_to_file('WORKER', f'WORKER {self.name} ({os.getpid()}) quits after receiving None.')
                     break
                 if not reply: # if an empty job is returned
@@ -197,7 +197,7 @@ class SoS_Worker(mp.Process):
                 # step and workflow can yield. Here we call run_until_waiting directly because we know the Runner can proceed.
                 self._runners[new_idx] = Runner(self.run_step(**reply) if 'section' in reply else self.run_workflow(**reply),
                     name=self._name_of_work(reply)).run_until_waiting()
-                if 'WORKER' in env.config['SOS_DEBUG']:
+                if env.is_debugging('WORKER'):
                     env.log_to_file('WORKER', 'STATUS ' + self._name_of_work(reply) + str(self))
             except ProcessKilled:
                 # in theory, this will not be executed because the exception
@@ -335,7 +335,7 @@ class WorkerManager(object):
         self.start()
 
     def report(self, msg):
-        if 'WORKER' in env.config['SOS_DEBUG']:
+        if env.is_debugging('WORKER'):
             env.log_to_file('WORKER', f'{msg.upper()}: {self._num_workers} workers (of which {len(self._blocking_ports)} is blocking), {self._n_requested} requested, {self._n_processed} processed')
 
     def add_request(self, msg_type, msg):
