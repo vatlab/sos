@@ -122,7 +122,7 @@ class ExecutionManager(object):
         self._dummy = dummy
 
     def report(self, msg=''):
-        if env.is_debugging('EXECUTOR'):
+        if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file(
                 'EXECUTOR',
                 f"{env.sos_dict['workflow_id']}({self.workflow_name}) {msg} {', '.join(str(proc) for proc in self.procs if proc is not None)}"
@@ -147,7 +147,7 @@ class ExecutionManager(object):
         if not self.step_queue and not self.workflow_queue:
             return False
 
-        if env.is_debugging('WORKER'):
+        if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file(
                 'WORKER',
                 f'Executor send work to worker, {len(self.step_queue)} steps and {len(self.workflow_queue)} workflows pending.'
@@ -169,7 +169,7 @@ class ExecutionManager(object):
             [x.port for x in self.procs if self.procs])
         # no worker is available
         if master_port is None:
-            if env.is_debugging('EXECUTOR'):
+            if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                 env.log_to_file(
                     'EXECUTOR',
                     f'No worker is available ({len([x.port for x in self.procs if self.procs])} ports excluded)'
@@ -366,11 +366,11 @@ class Base_Executor:
             raise
         finally:
             # end progress bar when the master workflow stops
-            if env.is_debugging('EXECUTOR'):
+            if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                 env.log_to_file('EXECUTOR',
                                 f'Stop controller from {os.getpid()}')
             request_answer_from_controller(['done', succ])
-            if env.is_debugging('EXECUTOR'):
+            if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                 env.log_to_file('EXECUTOR', 'disconntecting master')
             # if the process is failed, some workers might be killed, resulting
             # in nonresponseness from the master, and the socket context cannot
@@ -704,7 +704,7 @@ class Base_Executor:
         '''
         dag.new_forward_workflow()
 
-        if env.is_debugging('DAG'):
+        if 'DAG' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file(
                 'DAG', f'Adding mini-workflow with {len(sections)} sections')
         default_input: sos_targets = sos_targets([])
@@ -1118,7 +1118,7 @@ class Base_Executor:
                 try:
                     if os.path.getsize(file_target(filename)) == 0:
                         file_target(filename).unlink()
-                        if env.is_debugging('EXECUTOR'):
+                        if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                             env.log_to_file('EXECUTOR',
                                             f'Remove placeholder {filename}')
                 except Exception as e:
@@ -1201,7 +1201,7 @@ class Base_Executor:
                                 for task in new_tasks:
                                     runnable._host.submit_task(task)
                                 runnable._status = 'task_pending'
-                                if env.is_debugging('EXECUTOR'):
+                                if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                                     env.log_to_file(
                                         'EXECUTOR', 'Step becomes task_pending')
                             except Exception as e:
@@ -1358,7 +1358,7 @@ class Base_Executor:
                     if hasattr(runnable, '_from_nested'):
                         # if the runnable is from nested, we will need to send the result back
                         # to the nested workflow
-                        if env.is_debugging('EXECUTOR'):
+                        if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                             env.log_to_file('EXECUTOR',
                                             f'Master send res to nested')
                         runnable._status = 'completed'
@@ -1374,7 +1374,7 @@ class Base_Executor:
                         self.handle_unknown_target(res.target, dag, runnable)
                     # if the job is failed
                     elif isinstance(res, Exception):
-                        if env.is_debugging('EXECUTOR'):
+                        if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                             env.log_to_file('EXECUTOR',
                                             f'Master received an exception')
                         # env.logger.error(res)
@@ -1383,7 +1383,7 @@ class Base_Executor:
                         exec_error.append(runnable._node_id, res)
                         raise exec_error
                     elif '__step_name__' in res:
-                        if env.is_debugging('EXECUTOR'):
+                        if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                             env.log_to_file(
                                 'EXECUTOR',
                                 f'Master receive result for step {res["__step_name__"]}'
@@ -1393,7 +1393,7 @@ class Base_Executor:
                         # result from a workflow
                         # the worker process has been returned to the pool, now we need to
                         # notify the step that is waiting for the result
-                        if env.is_debugging('EXECUTOR'):
+                        if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                             env.log_to_file(
                                 'EXECUTOR',
                                 f'Master receive result for workflow {res["__workflow_id__"]}'
@@ -1596,7 +1596,7 @@ class Base_Executor:
 
         wf_result = {'__workflow_id__': my_workflow_id, 'shared': {}}
 
-        if env.is_debugging('WORKER'):
+        if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file(
                 'WORKER',
                 f'- SUBSTART - Run workflow W{env.config["workflow_vars"].get("idx", "?")}'
@@ -1679,7 +1679,7 @@ class Base_Executor:
                         self.handle_unknown_target(res.target, dag, runnable)
                     # if the job is failed
                     elif isinstance(res, Exception):
-                        if env.is_debugging('EXECUTOR'):
+                        if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                             env.log_to_file('EXECUTOR',
                                             f'Nested received an exception')
                         runnable._status = 'failed'
@@ -1687,7 +1687,7 @@ class Base_Executor:
                         exec_error.append(runnable._node_id, res)
                         raise exec_error
                     elif '__step_name__' in res:
-                        if env.is_debugging('EXECUTOR'):
+                        if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                             env.log_to_file(
                                 'EXECUTOR',
                                 f'Nested receives result for step {res["__step_name__"]}'
@@ -1707,7 +1707,7 @@ class Base_Executor:
                     # with status.
                     runnable = dag.find_executable()
                     if runnable is None:
-                        if env.is_debugging('EXECUTOR'):
+                        if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                             env.log_to_file('EXECUTOR',
                                             'Nested has no submitable job')
                         manager.report()
@@ -1743,7 +1743,7 @@ class Base_Executor:
                     socket = create_socket(env.zmq_context, zmq.PAIR,
                                            'worker pair socket')
                     port = socket.bind_to_random_port('tcp://127.0.0.1')
-                    if env.is_debugging('WORKER'):
+                    if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                         env.log_to_file(
                             'WORKER',
                             f'- SUBRUN - SEND STEP S{env.config["workflow_vars"].get("idx", "?")}'

@@ -516,11 +516,11 @@ class RemoteHost:
         for source in sorted(sending.keys()):
             dest = self._remote_abs(sending[source])
             if self.is_shared(source):
-                if env.is_debugging('TASK'):
+                if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                     env.log_to_file(
                         'TASK', f'Skip sending {source} on shared file system')
             else:
-                if env.is_debugging('TASK'):
+                if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                     env.log_to_file(
                         'TASK', f'Sending ``{source}`` to {self.alias}:{dest}')
                 cmd = cfg_interpolate(
@@ -532,7 +532,7 @@ class RemoteHost:
                                 'host': self.address,
                                 'port': self.port
                             })
-                if env.is_debugging('TASK'):
+                if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                     env.log_to_file('TASK', cmd)
                 ret = subprocess.call(
                     cmd,
@@ -584,7 +584,7 @@ class RemoteHost:
                                 'host': self.address,
                                 'port': self.port
                             })
-                if env.is_debugging('TASK'):
+                if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                     env.log_to_file('TASK', cmd)
                 try:
                     ret = subprocess.call(
@@ -778,7 +778,7 @@ class RemoteHost:
         except Exception as e:
             raise ValueError(
                 f'Failed to run command {cmd}: {e} ({env.sos_dict["CONFIG"]})')
-        if env.is_debugging('TASK'):
+        if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file('TASK', f'Executing command ``{cmd}``')
         try:
             return subprocess.check_output(cmd, shell=True).decode()
@@ -799,7 +799,7 @@ class RemoteHost:
                 })
         except Exception as e:
             raise ValueError(f'Failed to run command {cmd}: {e}')
-        if env.is_debugging('TASK'):
+        if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file('TASK', f'Executing command ``{cmd}``')
         try:
             return subprocess.check_call(cmd, shell=True, **kwargs)
@@ -820,7 +820,7 @@ class RemoteHost:
                 })
         except Exception as e:
             raise ValueError(f'Failed to run command {cmd}: {e}')
-        if env.is_debugging('TASK'):
+        if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file('TASK', f'Executing command ``{cmd}``')
         if realtime:
             from .utils import pexpect_run
@@ -854,7 +854,7 @@ class RemoteHost:
             if not os.access(lfile, os.W_OK):
                 os.chmod(lfile, stat.S_IREAD | stat.S_IWRITE)
             os.remove(lfile)
-        if env.is_debugging('TASK'):
+        if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file('TASK', receive_cmd)
         ret = subprocess.call(
             receive_cmd,

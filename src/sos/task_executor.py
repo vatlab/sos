@@ -421,7 +421,7 @@ def _execute_task(task_id,
         # subtask
         subtask = True
         task_id, params, sig_content = task_id
-        if env.is_debugging('TASK'):
+        if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file('TASK', f'Executing subtask {task_id}')
 
     # update local runtime with master runtime

@@ -1169,7 +1169,7 @@ class SoS_Script:
                                                       'Invalid section option')
                     except Exception as e:
                         parsing_errors.append(lineno, line, str(e))
-                    if env.is_debugging('EXECUTOR'):
+                    if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                         env.log_to_file(
                             'EXECUTOR',
                             'Header parsed with names {} and options {}'.format(

@@ -328,7 +328,7 @@ class TaskEngine(threading.Thread):
             else:
                 if time.time() - self.last_report > 60:
                     self.last_report = time.time()
-                    if env.is_debugging('TASK'):
+                    if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                         env.log_to_file(
                             'TASK',
                             f'No running or pending task. Task engine is idle.')
@@ -432,7 +432,7 @@ class TaskEngine(threading.Thread):
 
     def update_task_status(self, task_id, status):
         #
-        if env.is_debugging('TASK'):
+        if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file('TASK', f'STATUS {task_id}\t{status}\n')
         #
         with threading.Lock():
@@ -628,7 +628,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
     def execute_tasks(self, task_ids):
         if not super(BackgroundProcess_TaskEngine,
                      self).execute_tasks(task_ids):
-            if env.is_debugging('TASK'):
+            if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                 env.log_to_file('TASK', f'Failed to prepare task {task_ids}')
             return False
         if self.job_template:
@@ -642,7 +642,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
     def _submit_task(self, task_ids):
         # if no template, use a default command
         cmd = f"sos execute {' '.join(task_ids)} -v {env.verbosity} -s {env.config['sig_mode']} {'--dryrun' if env.config['run_mode'] == 'dryrun' else ''}"
-        if env.is_debugging('TASK'):
+        if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file('TASK',
                             f'Execute "{cmd}" (waiting={self.wait_for_task})')
         self.agent.run_command(cmd, wait_for_task=self.wait_for_task)

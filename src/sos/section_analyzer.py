@@ -29,7 +29,7 @@ def get_param_of_function(name, param_list, extra_dict={}):
             try:
                 params.append([ast.literal_eval(arg)])
             except Exception as e:
-                if env.is_debugging('STEP'):
+                if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                     env.log_to_file(
                         'STEP',
                         'Failed to evaluate parameter of function {name} from {param_list}: {e}'
@@ -43,7 +43,7 @@ def get_param_of_function(name, param_list, extra_dict={}):
                                 mode="eval"), extra_dict)
                     ])
                 except Exception as e:
-                    if env.is_debugging('STEP'):
+                    if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                         env.log_to_file(
                             'STEP',
                             'Failed to evaluate parameter of function {name} from {param_list}: {e}'
@@ -52,7 +52,7 @@ def get_param_of_function(name, param_list, extra_dict={}):
             try:
                 params.append([kwarg.arg, ast.literal_eval(kwarg.value)])
             except Exception as e:
-                if env.is_debugging('STEP'):
+                if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                     env.log_to_file(
                         'STEP',
                         'Failed to evaluate parameter of function {name} from {param_list}: {e}'
@@ -67,7 +67,7 @@ def get_param_of_function(name, param_list, extra_dict={}):
                                 mode="eval"), extra_dict)
                     ])
                 except Exception as e:
-                    if env.is_debugging('STEP'):
+                    if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                         env.log_to_file(
                             'STEP',
                             'Failed to evaluate parameter of function {name} from {param_list}: {e}'
@@ -330,7 +330,7 @@ def get_step_depends(section):
         except SyntaxError as e:
             raise
         except Exception as e:
-            if env.is_debugging('STEP'):
+            if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                 env.log_to_file(
                     'STEP',
                     f"Args {value} in depends cannot be determined: {e}")
@@ -431,7 +431,7 @@ def get_step_output(section, default_output):
     except SyntaxError:
         raise
     except Exception as e:
-        if env.is_debugging('STEP'):
+        if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file('STEP', f"Args {value} cannot be determined: {e}")
     finally:
         [env.sos_dict.dict().pop(x) for x in svars]
@@ -531,7 +531,7 @@ def analyze_section(section: SoS_Step,
 
         env.sos_dict.set('step_name', section.step_name())
         env.sos_dict.set('__null_func__', __null_func__)
-        if env.is_debugging('STEP'):
+        if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file(
                 'STEP',
                 f'Analyzing {section.step_name()} {"(output only)" if vars_and_output_only else ""}'

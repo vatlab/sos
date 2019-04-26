@@ -136,7 +136,7 @@ class SoS_Worker(mp.Process):
             self._master_sockets.append(env.master_socket)
             self._master_ports.append(port)
             self._runners.append(True)
-            if env.is_debugging('WORKER'):
+            if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                 env.log_to_file(
                     'WORKER',
                     f'WORKER {self.name} ({os.getpid()}) creates ports {self._master_ports}'
@@ -194,7 +194,7 @@ class SoS_Worker(mp.Process):
                         env.logger.error(
                             f'WORKER terminates with pending tasks. sos might not be termianting properly.'
                         )
-                    if env.is_debugging('WORKER'):
+                    if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                         env.log_to_file(
                             'WORKER',
                             f'WORKER {self.name} ({os.getpid()}) quits after receiving None.'
@@ -231,7 +231,7 @@ class SoS_Worker(mp.Process):
                     self.run_step(**reply)
                     if 'section' in reply else self.run_workflow(**reply),
                     name=self._name_of_work(reply)).run_until_waiting()
-                if env.is_debugging('WORKER'):
+                if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                     env.log_to_file(
                         'WORKER',
                         'STATUS ' + self._name_of_work(reply) + str(self))
@@ -379,7 +379,7 @@ class WorkerManager(object):
         self.start()
 
     def report(self, msg):
-        if env.is_debugging('WORKER'):
+        if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file(
                 'WORKER',
                 f'{msg.upper()}: {self._num_workers} workers (of which {len(self._blocking_ports)} is blocking), {self._n_requested} requested, {self._n_processed} processed'

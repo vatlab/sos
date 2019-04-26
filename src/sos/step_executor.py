@@ -723,7 +723,7 @@ class Base_Step_Executor:
                 f'{"Checking" if env.config["run_mode"] == "dryrun" else "Running"} ``{self.step.step_name(True)}``: {self.step.comment.strip()}'
             )
         elif stage == 'input statement':
-            if env.is_debugging('STEP'):
+            if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                 env.log_to_file('STEP', f'Handling input statement {msg}')
         elif stage == '_input':
             if env.sos_dict['_input'] is not None and len(
@@ -792,7 +792,7 @@ class Base_Step_Executor:
                     # we wait indefinitely for the results
                     if not self.result_pull_socket.poll(0):
                         return
-                elif env.is_debugging('STEP'):
+                elif 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                     env.log_to_file(
                         'STEP',
                         f'Wait for more substeps to be done before submitting. (index={cur_index}, processed={self._completed_concurrent_substeps})'
@@ -926,7 +926,7 @@ class Base_Step_Executor:
         # _index is needed for pre-input action's active option and for debug output of scripts
         env.sos_dict.set('_index', 0)
 
-        if env.is_debugging('STEP'):
+        if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file(
                 'STEP',
                 f'Executing step {env.sos_dict["step_name"]} with step_input {env.sos_dict["step_input"]} and step_output {env.sos_dict["step_output"]}'
@@ -1337,7 +1337,7 @@ class Base_Step_Executor:
                     elif is_last_runblock:
                         try:
                             if self.concurrent_substep:
-                                if env.is_debugging('STEP'):
+                                if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                                     env.log_to_file(
                                         'STEP',
                                         f'Execute substep {env.sos_dict["step_name"]} {idx} concurrently with {self._completed_concurrent_substeps} completed'
@@ -1407,7 +1407,7 @@ class Base_Step_Executor:
                                 if env.config[
                                         'sig_mode'] == 'ignore' or env.sos_dict[
                                             '_output'].unspecified():
-                                    if env.is_debugging('STEP'):
+                                    if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                                         env.log_to_file(
                                             'STEP',
                                             f'Execute substep {env.sos_dict["step_name"]} without signature'
@@ -1454,7 +1454,7 @@ class Base_Step_Executor:
                                         env.sos_dict['_depends'],
                                         env.sos_dict['__signature_vars__'],
                                         shared_vars=self.vars_to_be_shared)
-                                    if env.is_debugging('STEP'):
+                                    if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                                         env.log_to_file(
                                             'STEP',
                                             f'Execute substep {env.sos_dict["step_name"]} with signature {sig.sig_id}'
@@ -1574,7 +1574,7 @@ class Base_Step_Executor:
                         env.sos_dict['_depends'],
                         env.sos_dict['__signature_vars__'],
                         shared_vars=self.vars_to_be_shared)
-                    if env.is_debugging('STEP'):
+                    if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                         env.log_to_file(
                             'STEP',
                             f'Check task-only step {env.sos_dict["step_name"]} with signature {sig.sig_id}'
@@ -1820,7 +1820,7 @@ class Step_Executor(Base_Step_Executor):
         env.__socket__ = socket
 
     def submit_tasks(self, tasks):
-        if env.is_debugging('TASK'):
+        if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file('TASK', f'Send {tasks}')
         self.socket.send_pyobj(['tasks', env.sos_dict['_runtime']['queue']] +
                                tasks)
@@ -1899,7 +1899,7 @@ class Step_Executor(Base_Step_Executor):
                 res = e.value
 
             if self.socket is not None:
-                if env.is_debugging('STEP'):
+                if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                     env.log_to_file(
                         'STEP',
                         f'Step {self.step.step_name()} sends result {short_repr(res)}'
@@ -1911,7 +1911,7 @@ class Step_Executor(Base_Step_Executor):
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
             if self.socket is not None and not self.socket.closed:
-                if env.is_debugging('STEP'):
+                if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                     env.log_to_file(
                         'STEP',
                         f'Step {self.step.step_name()} sends exception {e}')

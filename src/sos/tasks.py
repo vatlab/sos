@@ -1636,7 +1636,7 @@ def purge_tasks(tasks,
             for f in to_be_removed[task]:
                 try:
                     if verbosity > 3:
-                        if env.is_debugging('TASK'):
+                        if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                             env.log_to_file('TASK', f'Remove {f}')
                     os.remove(f)
                 except Exception as e:
