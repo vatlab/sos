@@ -485,7 +485,7 @@ class RuntimeEnvironments(object):
                         '%(asctime)s - %(levelname)s - %(message)s')
             else:
                 logfile = logging.FileHandler(
-                    os.path.join(os.path.expanduser('~'), 'sos_debug.log'),
+                    os.path.join(os.path.expanduser('~'), '.sos', 'sos_debug.log'),
                     mode='a')
                 formatter = logging.Formatter(
                     '%(asctime)s - %(levelname)s - %(message)s')
