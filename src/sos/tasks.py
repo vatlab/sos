@@ -95,33 +95,23 @@ class MasterTaskParams(TaskParams):
                 if val0 != val:
                     raise ValueError(
                         f'All tasks should have the same resource {key}')
-                #
-                nrow = len(self.task_stack) if self.num_workers <= 1 else (
-                    (len(self.task_stack) + 1) // self.num_workers +
-                    (0 if
-                     (len(self.task_stack) + 1) % self.num_workers == 0 else 1))
-                if self.num_workers == 0:
-                    ncol = 1
-                elif nrow > 1:
-                    ncol = self.num_workers
-                else:
-                    ncol = len(self.task_stack) + 1
+
+                n_workers = self.num_workers if self.num_workers >=1 else 1
+                n_batches = len(self.task_stack) // self.num_workers
+                if n_batches * n_workers < len(self.task_stack):
+                    n_batches += 1
 
                 if val0 is None:
                     continue
                 elif key == 'walltime':
                     # if define walltime
                     self.sos_dict['_runtime']['walltime'] = format_HHMMSS(
-                        nrow * expand_time(val0))
+                        n_batches * expand_time(val0))
                 elif key == 'mem':
                     # number of columns * mem for each + 100M for master
-                    self.sos_dict['_runtime']['mem'] = ncol * \
-                        expand_size(val0) + (expand_size('100M')
-                                             if self.num_workers > 0 else 0)
+                    self.sos_dict['_runtime']['mem'] = n_workers * expand_size(val0)
                 elif key == 'cores':
-                    # number of columns * cores for each + 1 for the master
-                    self.sos_dict['_runtime']['cores'] = ncol * \
-                        val0 + (1 if self.num_workers > 0 else 0)
+                    self.sos_dict['_runtime']['cores'] = n_workers * val0
                 elif key == 'name':
                     self.sos_dict['_runtime'][
                         'name'] = f'{val0}_{len(self.task_stack) + 1}'
