@@ -97,7 +97,7 @@ class MasterTaskParams(TaskParams):
                         f'All tasks should have the same resource {key}')
 
                 n_workers = self.num_workers if self.num_workers >=1 else 1
-                n_batches = len(self.task_stack) // self.num_workers
+                n_batches = len(self.task_stack) // n_workers
                 if n_batches * n_workers < len(self.task_stack):
                     n_batches += 1
 
