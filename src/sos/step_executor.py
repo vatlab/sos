@@ -1342,7 +1342,7 @@ class Base_Step_Executor:
                             and all(x.target_exists() for x in env.sos_dict['_output'].targets) \
                             and env.sos_dict['_output'].later_than(env.sos_dict['_input']):
                             env.logger.info(
-                                f'Ignore {env.sos_dict["step_name"]} (index {idx}) with existing output.'
+                                f'Ignore step {env.sos_dict["step_name"]}{f" (substep {idx})" if len(self._substeps) > 0 else ""} with existing output.'
                             )
                             skip_index = True
                             send_message_to_controller([
