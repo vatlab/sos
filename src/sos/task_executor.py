@@ -9,6 +9,7 @@ import time
 import signal
 
 from collections import OrderedDict, Mapping, Sequence
+from contextlib import redirect_stdout, redirect_stderr
 
 from .eval import SoS_eval, SoS_exec
 from .monitor import ProcessMonitor
@@ -437,6 +438,8 @@ def _execute_task(task_id,
 
     global_def, task, sos_dict = params.global_def, params.task, params.sos_dict
 
+    prepare_env(global_def[0], global_def[1])
+
     # task output
     env.sos_dict.set(
         '__std_out__',
@@ -456,8 +459,6 @@ def _execute_task(task_id,
 
     if verbosity is not None:
         env.verbosity = verbosity
-
-    prepare_env(global_def[0], global_def[1])
 
     if '_runtime' not in sos_dict:
         sos_dict['_runtime'] = {}
@@ -602,8 +603,12 @@ def _execute_task(task_id,
                         f'Unacceptable input for option prepend_path: {sos_dict["_runtime"]["prepend_path"]}'
                     )
 
-        # step process
-        SoS_exec(task)
+        with open(env.sos_dict['__std_out__'],
+                  'a') as my_stdout, open(env.sos_dict['__std_err__'],
+                                          'a') as my_stderr:
+            with redirect_stdout(my_stdout), redirect_stderr(my_stderr):
+                # step process
+                SoS_exec(task)
 
         (env.logger.debug
          if subtask else env.logger.info)(f'{task_id} ``completed``')
