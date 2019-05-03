@@ -215,7 +215,7 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                 from .targets import RuntimeInfo
                 sig = RuntimeInfo(func.__name__, script, [], tfiles, [], kwargs)
                 sig.lock()
-                if env.config['sig_mode'] in ('default', 'fast'):
+                if env.config['sig_mode'] in ('default', 'skip'):
                     matched = sig.validate()
                     if isinstance(matched, dict):
                         env.logger.info(
@@ -750,7 +750,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                 prog.update()
                 prog.close()
                 return True
-            elif env.config['sig_mode'] in ('default', 'fast'):
+            elif env.config['sig_mode'] in ('default', 'skip'):
                 prog.update()
                 if sig.validate():
                     prog.set_description(message +

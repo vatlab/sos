@@ -301,7 +301,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         sos dryrun for details of the dryrun mode.''')
     runmode.add_argument(
         '-s',
-        choices=['default', 'ignore', 'force', 'build', 'assert', 'fast'],
+        choices=['default', 'ignore', 'force', 'build', 'assert', 'skip'],
         default='default',
         metavar='SIGMODE',
         dest='__sig_mode__',
@@ -312,7 +312,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             executing the workflow), "build" (build new or overwrite
             existing signature from existing environment and output files),
             "assert" for validating existing files against their signatures,
-            and "fast" for bypassing substep as long as step output exists
+            and "skip" for bypassing substep as long as step output exists
             and later than input files. Please refer to online documentation
             for details about the use of runtime signatures.''')
     runmode.add_argument(
@@ -1090,7 +1090,7 @@ def get_execute_parser(desc_only=False):
     parser.add_argument('tasks', nargs='+', help='''IDs of the task.''')
     parser.add_argument(
         '-s',
-        choices=['default', 'ignore', 'force', 'build', 'assert', 'fast'],
+        choices=['default', 'ignore', 'force', 'build', 'assert', 'skip'],
         default='default',
         metavar='SIGMODE',
         dest='__sig_mode__',
@@ -1101,7 +1101,7 @@ def get_execute_parser(desc_only=False):
             executing the workflow), "build" (build new or overwrite
             existing signature from existing environment and output files),
             "assert" for validating existing files against their signatures,
-            and "fast" for bypassing substep as long as step output exists
+            and "skip" for bypassing substep as long as step output exists
             and later than input files. Please refer to online documentation for
             details about the use of runtime signatures.''')
     parser.add_argument(

@@ -1337,12 +1337,12 @@ class Base_Step_Executor:
                                     f'Failed to process step {key} ({value.strip()}): {e}'
                                 )
                     elif is_last_runblock:
-                        if env.config['sig_mode'] == 'fast' and not self.vars_to_be_shared \
+                        if env.config['sig_mode'] == 'skip' and not self.vars_to_be_shared \
                             and not env.sos_dict['_output'].unspecified() and len(env.sos_dict['_output']) > 0 \
                             and all(x.target_exists() for x in env.sos_dict['_output'].targets) \
                             and env.sos_dict['_output'].later_than(env.sos_dict['_input']):
                             env.logger.info(
-                                f'Ignore step {env.sos_dict["step_name"]}{f" (substep {idx})" if len(self._substeps) > 0 else ""} with existing output.'
+                                f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 0 else ""} is ``skipped`` with existing output.'
                             )
                             skip_index = True
                             send_message_to_controller([
