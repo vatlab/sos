@@ -710,7 +710,8 @@ class file_target(path, BaseTarget):
 
     def create_placeholder(self):
         # create an empty placeholder file
-        if 'TARGET' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+        if 'TARGET' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                'SOS_DEBUG']:
             env.log_to_file('TARGET', f'Create placeholder target {self}')
         self.touch()
         send_message_to_controller(
@@ -1136,6 +1137,20 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
     #def targets(self):
     #    return [x.target_name() if isinstance(x, file_target) else x for x in self._targets]
+
+    def later_than(self, other):
+        '''if the current target is later than the other targets'''
+        # if no input, output is naturally later
+        file_rhs = [x for x in other.targets if isinstance(x, file_target)]
+        if not file_rhs:
+            return True
+        # if no output, but input, we cannot skip
+        file_lhs = [x for x in self._targets if isinstance(x, file_target)]
+        if not file_lhs:
+            return False
+        # now we have both.
+        return min(x.stat().st_mtime for x in file_lhs) > max(
+            x.stat().st_mtime for x in file_rhs)
 
     def extend(self, another, source='', keep_groups=False):
         if isinstance(another, sos_targets):
@@ -2212,7 +2227,8 @@ class RuntimeInfo(InMemorySignature):
 
     def set_output(self, files: sos_targets):
         # add signature file if input and output files are dynamic
-        if 'TARGET' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+        if 'TARGET' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                'SOS_DEBUG']:
             env.log_to_file('TARGET', f'Set output of signature to {files}')
         self.output_files = files
 
@@ -2226,7 +2242,8 @@ class RuntimeInfo(InMemorySignature):
                 f'Cannot write signature with undetermined output {self.output_files}'
             )
         else:
-            if 'TARGET' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+            if 'TARGET' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                    'SOS_DEBUG']:
                 env.log_to_file(
                     'TARGET',
                     f'write signature {self.sig_id} with output {self.output_files}'
@@ -2260,7 +2277,8 @@ class RuntimeInfo(InMemorySignature):
 
     def validate(self):
         '''Check if ofiles and ifiles match signatures recorded in md5file'''
-        if 'TARGET' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+        if 'TARGET' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                'SOS_DEBUG']:
             env.log_to_file('TARGET', f'Validating {self.sig_id}')
         #
         # file not exist?
