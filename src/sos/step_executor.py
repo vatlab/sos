@@ -1350,7 +1350,6 @@ class Base_Step_Executor:
                             if self.concurrent_substep:
                                 self._completed_concurrent_substeps += 1
                                 self.proc_results.append({'index': idx, 'ret_code': 0,
-                                    'sig_skipped': 1,
                                     'output': copy.deepcopy(env.sos_dict['_output'])})
                             send_message_to_controller([
                                 'progress', 'substep_ignored',
