@@ -1345,6 +1345,13 @@ class Base_Step_Executor:
                                 f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 0 else ""} is ``skipped`` with existing output.'
                             )
                             skip_index = True
+                            # if concurrent substep, there might be later steps that needs to be rerun
+                            # and we need to mark some steps has been completed.
+                            if self.concurrent_substep:
+                                self._completed_concurrent_substeps += 1
+                                self.proc_results.append({'index': idx, 'ret_code': 0,
+                                    'sig_skipped': 1,
+                                    'output': copy.deepcopy(env.sos_dict['_output'])})
                             send_message_to_controller([
                                 'progress', 'substep_ignored',
                                 env.sos_dict['step_id']

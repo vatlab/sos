@@ -2197,7 +2197,8 @@ class RuntimeInfo(InMemorySignature):
         if not self._lock.acquire(blocking=False):
             self._lock = None
             raise UnavailableLock(
-                (self.input_files, self.output_files, self.sig_id))
+                (self.input_files, self.output_files, 
+                os.path.join(env.temp_dir, self.sig_id + '.lock')))
         else:
             env.log_to_file(
                 'TARGET',
