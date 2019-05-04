@@ -138,6 +138,7 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
     outmsg = ''
     errmsg = ''
     capture_output = env.config['run_mode'] == 'interactive'
+    idx = env.sos_dict['_index']
     try:
         if sig:
             matched = validate_step_sig(sig)
@@ -148,7 +149,7 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
                 send_message_to_controller(
                     ['progress', 'substep_ignored', env.sos_dict['step_id']])
                 res = {
-                    'index': env.sos_dict['_index'],
+                    'index': idx,
                     'ret_code': 0,
                     'sig_skipped': 1,
                     'output': matched['output'],
@@ -169,6 +170,7 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
         verify_input(ignore_internal_targets=True)
 
         if stmt:
+                                                   
             # statement can be empty for task only substep
             if capture_output:
                 with stdoutIO() as (out, err):
@@ -177,12 +179,14 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
                     errmsg = err.getvalue()
             else:
                 SoS_exec(stmt, return_result=False)
-
+            env.logger.info(
+                f'``{env.sos_dict["step_name"]}`` (index={idx}) is ``completed``.'
+            )                                                        
         if task:
             task_id, taskdef, task_vars = create_task(global_def, global_vars,
                                                       task, task_params)
             res = {
-                'index': env.sos_dict['_index'],
+                'index': idx,
                 'task_id': task_id,
                 'task_def': taskdef,
                 'task_vars': task_vars
@@ -190,7 +194,7 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
         else:
             if env.sos_dict['step_output'].undetermined():
                 env.sos_dict.set('_output', reevaluate_output())
-            res = {'index': env.sos_dict['_index'], 'ret_code': 0}
+            res = {'index': idx, 'ret_code': 0}
             if sig:
                 sig.set_output(env.sos_dict['_output'])
                 # sig.write will use env.master_push_socket
@@ -215,7 +219,7 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
             # we do not really treat this as an exception
             if env.sos_dict['step_output'].undetermined():
                 env.sos_dict.set('_output', reevaluate_output())
-            res = {'index': env.sos_dict['_index'], 'ret_code': 0}
+            res = {'index': idx, 'ret_code': 0}
             if task:
                 res['task_id'] = None
             if not e.keep_output:
@@ -234,7 +238,7 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
         else:
             clear_output()
             res = {
-                'index': env.sos_dict['_index'],
+                'index': idx,
                 'ret_code': 1,
                 'exception': e
             }
@@ -249,7 +253,7 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
         clear_output()
         # cannot pass CalledProcessError back because it is not pickleable
         res = {
-            'index': env.sos_dict['_index'],
+            'index': idx,
             'ret_code': e.returncode,
             'exception': RuntimeError(e.stderr)
         }
@@ -258,15 +262,15 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
         return res
     except ArgumentError as e:
         clear_output()
-        return {'index': env.sos_dict['_index'], 'ret_code': 1, 'exception': e}
+        return {'index': idx, 'ret_code': 1, 'exception': e}
     except ProcessKilled as e:
         clear_output()
-        res = {'index': env.sos_dict['_index'], 'ret_code': 1, 'exception': e}
+        res = {'index': idx, 'ret_code': 1, 'exception': e}
         return res
     except Exception as e:
         clear_output()
         res = {
-            'index': env.sos_dict['_index'],
+            'index': idx,
             'ret_code': 1,
             'exception': RuntimeError(get_traceback_msg(e))
         }

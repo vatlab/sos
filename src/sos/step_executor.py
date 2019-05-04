@@ -1452,6 +1452,9 @@ class Base_Step_Executor:
                                                     return_result=True))
                                         else:
                                             self.execute(statement[1])
+                                        env.logger.info(
+                                            f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 0 else ""} is ``completed``.'
+                                        )                                                                                        
                                     finally:
                                         if not self.step.task:
                                             # if no task, this step is __completed
@@ -1523,6 +1526,9 @@ class Base_Step_Executor:
                                                         return_result=True))
                                             else:
                                                 self.execute(statement[1])
+                                            env.logger.info(
+                                                f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 0 else ""} is ``completed``.'
+                                            )                                                
                                             if 'shared' in self.step.options:
                                                 try:
                                                     self.shared_vars[
