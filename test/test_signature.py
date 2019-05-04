@@ -795,6 +795,47 @@ input: 'out.txt'
             }, args=['--par', '20']).run()
         self.assertEqual(res['__completed__']['__substep_completed__'], 2)
 
+    def testSkipMode(self):
+        '''Test skipping mode of signature'''
+        for i in range(4):
+            with open(f'a_{i}.txt', 'w') as a:
+                a.write(f'a_{i}.txt')
+            if os.path.isfile(f'a_{i}.bak'):
+                os.remove(f'a_{i}.bak')
+        #
+        script = SoS_Script(r'''
+[A_1]
+input: [f'a_{i}.txt' for i in range(4)], group_by=1
+output: _input.with_suffix('.bak')
+
+with open(_input) as ifile, open(_output, 'w') as ofile:
+    ofile.write(ifile.read())
+''')
+        wf = script.workflow()
+        env.config['sig_mode'] = 'default'
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__substep_completed__'], 4)
+        env.config['sig_mode'] = 'default'
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__substep_skipped__'], 4)
+        #
+        env.config['sig_mode'] = 'skip'
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__substep_skipped__'], 4)
+        #
+        # if result file is changed, skip will still skip
+        for i in range(4):
+            with open(f'a_{i}.bak', 'a') as bak:
+                bak.write('extra')
+        #
+        env.config['sig_mode'] = 'skip'
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__substep_skipped__'], 4)
+        # now if we change to default mode, will not skip
+        env.config['sig_mode'] = 'default'
+        res = Base_Executor(wf).run()
+        self.assertEqual(res['__completed__']['__substep_completed__'], 4)
+
 
 if __name__ == '__main__':
     unittest.main()
