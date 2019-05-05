@@ -525,11 +525,10 @@ class Base_Step_Executor:
 
         # create directory
         if ofiles.valid():
-            for ofile in ofiles:
-                if isinstance(ofile, file_target):
-                    parent_dir = ofile.parent
-                    if parent_dir and not parent_dir.is_dir():
-                        parent_dir.mkdir(parents=True, exist_ok=True)
+            parents = set([ofile.parent for ofile in ofiles if isinstance(ofile, file_target)])
+            for parent_dir in parents:
+                if parent_dir and not parent_dir.is_dir():
+                    parent_dir.mkdir(parents=True, exist_ok=True)
 
         # set variables
         env.sos_dict.set('_output', ofiles)
