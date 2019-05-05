@@ -525,9 +525,9 @@ class Base_Step_Executor:
 
         # create directory
         if ofiles.valid():
-            parents = set([ofile.parent for ofile in ofiles if isinstance(ofile, file_target)])
+            parents = set([os.path.abspath(os.path.join(ofile, os.pardir)) for ofile in ofiles if isinstance(ofile, file_target)])
             for parent_dir in parents:
-                if parent_dir and not parent_dir.is_dir():
+                if parent_dir and not os.path.isdir(parent_dir):
                     parent_dir.mkdir(parents=True, exist_ok=True)
 
         # set variables
