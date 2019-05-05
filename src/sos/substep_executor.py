@@ -170,7 +170,7 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
         verify_input(ignore_internal_targets=True)
 
         if stmt:
-                                                   
+
             # statement can be empty for task only substep
             if capture_output:
                 with stdoutIO() as (out, err):
@@ -181,7 +181,7 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
                 SoS_exec(stmt, return_result=False)
             env.logger.info(
                 f'``{env.sos_dict["step_name"]}`` (index={idx}) is ``completed``.'
-            )                                                        
+            )
         if task:
             task_id, taskdef, task_vars = create_task(global_def, global_vars,
                                                       task, task_params)
@@ -237,11 +237,7 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
                 res['output'] = env.sos_dict['_output']
         else:
             clear_output()
-            res = {
-                'index': idx,
-                'ret_code': 1,
-                'exception': e
-            }
+            res = {'index': idx, 'ret_code': 1, 'exception': e}
         if capture_output:
             res.update({'stdout': outmsg, 'stderr': errmsg})
         return res
