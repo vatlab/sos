@@ -528,7 +528,7 @@ class Base_Step_Executor:
             parents = set([os.path.abspath(os.path.join(ofile, os.pardir)) for ofile in ofiles if isinstance(ofile, file_target)])
             for parent_dir in parents:
                 if parent_dir and not os.path.isdir(parent_dir):
-                    parent_dir.mkdir(parents=True, exist_ok=True)
+                    os.mkdirs(parent_dir, exist_ok=True)
 
         # set variables
         env.sos_dict.set('_output', ofiles)
