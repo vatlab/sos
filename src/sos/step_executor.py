@@ -1451,7 +1451,7 @@ class Base_Step_Executor:
                                         else:
                                             self.execute(statement[1])
                                         env.logger.info(
-                                            f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 0 else ""} is ``completed``.'
+                                            f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 0 else ""} is ``completed``{" (pending nested workflow)" if self._subworkflow_results else ""}.'
                                         )
                                     finally:
                                         if not self.step.task:
@@ -1525,7 +1525,7 @@ class Base_Step_Executor:
                                             else:
                                                 self.execute(statement[1])
                                             env.logger.info(
-                                                f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 0 else ""} is ``completed``.'
+                                                f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 0 else ""} is ``completed``{" (pending nested workflow)" if self._subworkflow_results else ""}.'
                                             )
                                             if 'shared' in self.step.options:
                                                 try:
