@@ -806,9 +806,25 @@ class Base_Step_Executor:
                 return
             yield self.result_pull_socket
             res = self.result_pull_socket.recv_pyobj()
-            if 'exception' in res and isinstance(res['exception'],
-                                                 ProcessKilled):
-                raise res['exception']
+            if 'exception' in res:
+                env.logger.error(
+                    f'{self.step.step_name()} (index={res["index"]}) failed.'
+                )
+                if isinstance(res['exception'], ProcessKilled):
+                    raise res['exception']
+                if not env.config['keep_going']:
+                    self.exec_error.append(f'index={res["index"]}', res['exception'])
+                    # try to stop everything but wait till for submitted tasks to
+                    # complete
+                    self._completed_concurrent_substeps + 1
+                    waiting = till - 1 - self._completed_concurrent_substeps
+                    env.logger.debug(f'waiting for {waiting} submitted substeps to complete')
+                    for i in range(waiting):
+                        yield self.result_pull_socket
+                        res = self.result_pull_socket.recv_pyobj()
+                        if 'exception' in res:
+                            self.exec_error.append(f'index={res["index"]}', res['exception'])
+                    raise self.exec_error
             #
             if "index" not in res:
                 raise RuntimeError(
@@ -1428,7 +1444,7 @@ class Base_Step_Executor:
                                 # we check if the previous task has been completed and process them
                                 # because further steps might need to be done
                                 try:
-                                    runner = self.process_returned_substep_result(
+                                    runner = self.process_returned_substep_result(till=idx+1,
                                         wait=False)
                                     yreq = next(runner)
                                     while True:
@@ -1588,7 +1604,7 @@ class Base_Step_Executor:
                             clear_output()
                             if env.config['keep_going']:
                                 env.logger.error(
-                                    f'{self.step.step_name()} (index={idx}) terminated due to exception.'
+                                    f'{self.step.step_name()} (index={idx}) failed.'
                                 )
                                 self.exec_error.append(str(idx), e)
                             else:
@@ -1949,7 +1965,6 @@ class Step_Executor(Base_Step_Executor):
 
     def run(self):
         self.exec_error = ExecuteError(self.step.step_name())
-        self.is_stopping = False
         try:
             try:
                 # 1218

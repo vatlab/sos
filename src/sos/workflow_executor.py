@@ -1378,7 +1378,7 @@ class Base_Executor:
                         # stop raising exce_error immediately, which would terminates other substeps
                         # 1265
                         env.logger.error(
-                            f'Step {runnable} terminated with exception {res.__class__.__name__} '
+                            f'Step {runnable} failed'
                         )
                     elif '__step_name__' in res:
                         env.log_to_file(
@@ -1680,7 +1680,7 @@ class Base_Executor:
                         dag.save(env.config['output_dag'])
                         exec_error.append(runnable._node_id, res)
                         env.logger.error(
-                            f'Step {runnable} terminated with exception {res.__class__.__name__} '
+                            f'Step {runnable} failed'
                         )
                         if not env.config['keep_going']:
                             manager.stop_dag()
