@@ -1296,10 +1296,12 @@ def load_config_files(filename=None):
     if os.path.isfile(sos_config_file):
         try:
             with open(sos_config_file) as config:
-                dict_merge(cfg, yaml.safe_load(config))
+                gd = yaml.safe_load(config)
+            dict_merge(cfg, gd)
         except Exception as e:
-            raise RuntimeError(
-                f'Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})'
+            print(get_traceback())
+            env.logger.warning(
+                f'Failed to parse global sos hosts file {sos_config_file}: {e}'
             )
     # global config file
     sos_config_file = os.path.join(
@@ -1307,10 +1309,11 @@ def load_config_files(filename=None):
     if os.path.isfile(sos_config_file):
         try:
             with open(sos_config_file) as config:
-                dict_merge(cfg, yaml.safe_load(config))
+                gd = yaml.safe_load(config)
+            dict_merge(cfg, gd)
         except Exception as e:
-            raise RuntimeError(
-                f'Failed to parse global sos config file {sos_config_file}, is it in YAML/JSON format? ({e})'
+            env.logger.warning(
+                f'Failed to parse global sos config file {sos_config_file}: {e}'
             )
     # user-specified configuration file.
     if filename is None and 'config_file' in env.config:
@@ -1320,10 +1323,11 @@ def load_config_files(filename=None):
             raise RuntimeError(f'Config file {filename} not found')
         try:
             with open(os.path.expanduser(filename)) as config:
-                dict_merge(cfg, yaml.safe_load(config))
+                gd = yaml.safe_load(config)
+            dict_merge(cfg, gd)
         except Exception as e:
-            raise RuntimeError(
-                f'Failed to parse config file {filename}, is it in YAML/JSON format? ({e})'
+            env.logger.warning(
+                f'Failed to parse config file {filename}: {e}'
             )
 
     if 'user_name' not in cfg:
