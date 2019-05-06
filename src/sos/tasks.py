@@ -676,13 +676,13 @@ class TaskFile(object):
                     # from the current location, move by status
                     fh.seek(sts * 8, 1)
                     fh.write(struct.pack('!d', now))
-                    # if restarting the task, make sure all irrelevant files
-                    # are removed or finishing tasks.
-                    if status in ('aborted', 'completed', 'failed', 'pending'):
-                        # terminal status
-                        remove_task_files(
-                            self.task_id,
-                            ['.sh', '.job_id', '.out', '.err', '.pulse'])
+            # if restarting the task, make sure all irrelevant files
+            # are removed or finishing tasks.
+            if status in ('aborted', 'completed', 'failed', 'pending'):
+                # terminal status
+                remove_task_files(
+                    self.task_id,
+                    ['.sh', '.job_id', '.out', '.err', '.pulse'])
 
     status = property(_get_status, _set_status)
 

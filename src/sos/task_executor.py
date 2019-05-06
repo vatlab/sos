@@ -169,11 +169,7 @@ def execute_task(task_id,
         tf.add_result(res)
         if sig:
             tf.add_signature(sig)
-        # **after** result file is created, remove other files
-        #
-        # NOTE: if the pulse is not removed. When another sos process checkes
-        # the task is started very quickly so the task has satus 'pending',
-        # the task might be considered already running.
+        # this will remove pulse and other files
         tf.status = 'completed' if res['ret_code'] == 0 else 'failed'
 
     return res['ret_code']
