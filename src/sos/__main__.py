@@ -321,6 +321,15 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         dest='trace_existing',
         help='''Trace existing targets and re-execute the steps that generate
             them to make sure that the targets are current.''')
+    runmode.add_argument(
+        '-k',
+        action='store_true',
+        dest='keep_going',
+        help='''Keep completing the DAG even after some step has failed. By
+            default, SoS will stop executing the DAG (but wait until all
+            running jobs are completed) when an error happens. With this
+            option, SoS will mark a branch of DAG as failed but still tries
+            to complete other parts of the DAG.''')
     # run in tapping mode etc
     runmode.add_argument(
         '-m', nargs='+', dest='exec_mode', help=argparse.SUPPRESS)
@@ -468,6 +477,7 @@ def cmd_run(args, workflow_args):
             'bin_dirs': args.__bin_dirs__,
             'workflow_args': workflow_args,
             'trace_existing': args.trace_existing,
+            'keep_going': args.keep_going,
             # tapping etc
             'exec_mode': args.exec_mode
         }
@@ -611,6 +621,7 @@ def cmd_dryrun(args, workflow_args):
     args.__bin_dirs__ = []
     args.__remote__ = None
     args.exec_mode = None
+    args.keep_going = False
     cmd_run(args, workflow_args)
 
 

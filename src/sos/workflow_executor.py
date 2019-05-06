@@ -120,6 +120,7 @@ class ExecutionManager(object):
         self.workflow_queue = []
         self.poller = zmq.Poller() if dummy else None
         self._dummy = dummy
+        self.stopping = False
 
     def report(self, msg=''):
         env.log_to_file(
@@ -218,6 +219,12 @@ class ExecutionManager(object):
     def all_done(self) -> bool:
         return not self.step_queue and not self.workflow_queue and (
             not self.procs or all(x is None for x in self.procs))
+
+    def stopping(self):
+        self.stopping = True
+        self.step_queue = []
+        self.workflow_queue = []
+
 
     def dispose(self, idx: int) -> None:
         self.poller.unregister(self.procs[idx].socket)
@@ -1206,6 +1213,8 @@ class Base_Executor:
                                 })
                                 env.logger.error(e)
                                 proc.set_status('failed')
+                                if not env.config['keep_going']:
+                                    manager.stopping()
                         elif res[0] == 'missing_target':
                             # the target that is missing from the running step
                             missed = res[1]
@@ -1223,6 +1232,8 @@ class Base_Executor:
                                     # otherwise say the target cannot be resolved
                                     proc.socket.send_pyobj('')
                                     proc.set_status('failed')
+                                    if not env.config['keep_going']:
+                                        manager.stopping()
                             else:
                                 # if the missing target is from master, resolve from here
                                 try:
@@ -1235,6 +1246,8 @@ class Base_Executor:
                                     env.logger.error(e)
                                     proc.socket.send_pyobj('')
                                     proc.set_status('failed')
+                                    if not env.config['keep_going']:
+                                        manager.stopping()
                         elif res[0] == 'dependent_target':
                             # The target might be dependent on other steps and we
                             # are trying to extend the DAG to verify the target
@@ -1351,8 +1364,7 @@ class Base_Executor:
                         # to the nested workflow
                         env.log_to_file('EXECUTOR',
                                         f'Master send res to nested')
-                        runnable._status = 'failed' if isinstance(
-                            res, Exception) else 'completed'
+                        runnable._status = 'completed'
                         dag.save(env.config['output_dag'])
                         runnable._child_socket.send_pyobj(res)
                         # this is a onetime use socket that passes results from
@@ -1381,6 +1393,8 @@ class Base_Executor:
                                             proc.set_status('failed')
                                             manager.mark_idle(midx)
                         runnable._status = 'failed'
+                        if not env.config['keep_going']:
+                            manager.stopping()
                         dag.save(env.config['output_dag'])
                         exec_error.append(runnable._node_id, res)
                         # stop raising exce_error immediately, which would terminates other substeps
@@ -1477,7 +1491,7 @@ class Base_Executor:
 
                 # step 3: check if there is room and need for another job
                 while True:
-                    if not dag.dirty():
+                    if not dag.dirty() or manager.stopping:
                         break
                     # find any step that can be executed and run it, and update the DAT
                     # with status.
@@ -1690,7 +1704,8 @@ class Base_Executor:
                         env.logger.error(
                             f'Step {runnable} terminated with exception {res.__class__.__name__} '
                         )
-
+                        if not env.config['keep_going']:
+                            manager.stopping()
                         #raise exec_error
                     elif '__step_name__' in res:
                         env.log_to_file(
@@ -1707,7 +1722,7 @@ class Base_Executor:
 
                 # step 3: find steps to run
                 while True:
-                    if not dag.dirty():
+                    if not dag.dirty() or manager.stopping:
                         break
                     # with status.
                     runnable = dag.find_executable()
