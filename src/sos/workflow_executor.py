@@ -120,7 +120,10 @@ class ExecutionManager(object):
         self.workflow_queue = []
         self.poller = zmq.Poller() if dummy else None
         self._dummy = dummy
-        self.stopping = False
+        self._stopping = False
+
+    def is_stopping(self):
+        return self._stopping
 
     def report(self, msg=''):
         env.log_to_file(
@@ -220,11 +223,10 @@ class ExecutionManager(object):
         return not self.step_queue and not self.workflow_queue and (
             not self.procs or all(x is None for x in self.procs))
 
-    def stopping(self):
-        self.stopping = True
+    def stop_dag(self):
+        self._stopping = True
         self.step_queue = []
         self.workflow_queue = []
-
 
     def dispose(self, idx: int) -> None:
         self.poller.unregister(self.procs[idx].socket)
@@ -1214,7 +1216,7 @@ class Base_Executor:
                                 env.logger.error(e)
                                 proc.set_status('failed')
                                 if not env.config['keep_going']:
-                                    manager.stopping()
+                                    manager.stop_dag()
                         elif res[0] == 'missing_target':
                             # the target that is missing from the running step
                             missed = res[1]
@@ -1233,7 +1235,7 @@ class Base_Executor:
                                     proc.socket.send_pyobj('')
                                     proc.set_status('failed')
                                     if not env.config['keep_going']:
-                                        manager.stopping()
+                                        manager.stop_dag()
                             else:
                                 # if the missing target is from master, resolve from here
                                 try:
@@ -1247,7 +1249,7 @@ class Base_Executor:
                                     proc.socket.send_pyobj('')
                                     proc.set_status('failed')
                                     if not env.config['keep_going']:
-                                        manager.stopping()
+                                        manager.stop_dag()
                         elif res[0] == 'dependent_target':
                             # The target might be dependent on other steps and we
                             # are trying to extend the DAG to verify the target
@@ -1394,7 +1396,7 @@ class Base_Executor:
                                             manager.mark_idle(midx)
                         runnable._status = 'failed'
                         if not env.config['keep_going']:
-                            manager.stopping()
+                            manager.stop_dag()
                         dag.save(env.config['output_dag'])
                         exec_error.append(runnable._node_id, res)
                         # stop raising exce_error immediately, which would terminates other substeps
@@ -1491,7 +1493,7 @@ class Base_Executor:
 
                 # step 3: check if there is room and need for another job
                 while True:
-                    if not dag.dirty() or manager.stopping:
+                    if not dag.dirty() or manager.is_stopping():
                         break
                     # find any step that can be executed and run it, and update the DAT
                     # with status.
@@ -1705,7 +1707,7 @@ class Base_Executor:
                             f'Step {runnable} terminated with exception {res.__class__.__name__} '
                         )
                         if not env.config['keep_going']:
-                            manager.stopping()
+                            manager.stop_dag()
                         #raise exec_error
                     elif '__step_name__' in res:
                         env.log_to_file(
@@ -1722,7 +1724,7 @@ class Base_Executor:
 
                 # step 3: find steps to run
                 while True:
-                    if not dag.dirty() or manager.stopping:
+                    if not dag.dirty() or manager.is_stopping():
                         break
                     # with status.
                     runnable = dag.find_executable()

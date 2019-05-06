@@ -8,6 +8,7 @@ import os
 import sys
 import shutil
 import subprocess
+import time
 import unittest
 
 from sos._version import __version__
@@ -2326,6 +2327,41 @@ time.sleep(12)
         ret = subprocess.Popen(['sos', 'run', 'testOrphan'])
         ret.wait()
         self.assertEqual(ret.returncode, 0)
+
+    def testKeepGoing(self):
+        # test fail_if of killing another running substep
+        if os.path.isfile('11.txt'):
+            os.remove('11.txt')
+        script = SoS_Script(r"""
+import time
+
+[10]
+time.sleep(8)
+
+[11]
+output: '11.txt'
+_output.touch()
+
+[20]
+input: None
+time.sleep(2)
+fail_if(True)
+""")
+        st = time.time()
+        wf = script.workflow()
+        self.assertRaises(Exception,
+                          Base_Executor(wf).run)
+        self.assertTrue(time.time() - st >= 8,
+                'Test test should fail only after step 10 is completed')
+        self.assertFalse(os.path.isfile('11.txt'))
+        #
+        self.assertRaises(Exception,
+                          Base_Executor(wf, config={
+                              'keep_going': True
+                          }).run)
+        self.assertTrue(time.time() - st >= 8,
+                'Test test should fail only after step 10 is completed')
+        self.assertTrue(os.path.isfile('11.txt'))
 
 if __name__ == '__main__':
     unittest.main()
