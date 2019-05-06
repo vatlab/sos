@@ -18,11 +18,35 @@ from tokenize import generate_tokens
 
 from .targets import (RemovedTarget, file_target, sos_targets, sos_step, path,
                       dynamic, sos_variable, RuntimeInfo, textMD5)
-from .utils import env, format_HHMMSS, expand_size, load_config_files
+from .utils import env, Error, format_HHMMSS, expand_size, load_config_files, get_traceback
 from .eval import SoS_eval, stmtHash, analyze_global_statements
 from .tasks import TaskParams
 from .syntax import SOS_TAG, SOS_RUNTIME_OPTIONS
 from .controller import request_answer_from_controller
+
+class ExecuteError(Error):
+    """An exception to collect exceptions raised during run time so that
+    other branches of the DAG would continue if some nodes fail to execute."""
+
+    def __init__(self, workflow: str) -> None:
+        Error.__init__(self)
+        self.workflow = workflow
+        self.errors = []
+        self.traces = []
+        self.args = (workflow,)
+
+    def append(self, line: str, error: Exception) -> None:
+        lines = [x for x in line.split('\n') if x.strip()]
+        if not lines:
+            short_line = '<empty>'
+        else:
+            short_line = lines[0][:40] if len(lines[0]) > 40 else lines[0]
+        if short_line in self.errors:
+            return
+        self.errors.append(short_line)
+        self.traces.append(get_traceback())
+        newline = '\n' if self.message else ''
+        self.message += f'{newline}[{short_line}]: {error}'
 
 
 def __null_func__(*args, **kwargs) -> Any:

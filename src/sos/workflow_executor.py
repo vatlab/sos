@@ -28,8 +28,8 @@ from .section_analyzer import analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock, UnknownTarget,
                       file_target, path, paths, sos_step, sos_targets,
                       sos_variable, textMD5, named_output)
-from .utils import Error, env, get_traceback, pickleable, short_repr
-from .executor_utils import prepare_env
+from .utils import env, get_traceback, pickleable, short_repr
+from .executor_utils import prepare_env, ExecuteError
 
 __all__ = []
 
@@ -40,30 +40,6 @@ __all__ = []
 # except:
 #     pass
 
-
-class ExecuteError(Error):
-    """An exception to collect exceptions raised during run time so that
-    other branches of the DAG would continue if some nodes fail to execute."""
-
-    def __init__(self, workflow: str) -> None:
-        Error.__init__(self)
-        self.workflow = workflow
-        self.errors = []
-        self.traces = []
-        self.args = (workflow,)
-
-    def append(self, line: str, error: Exception) -> None:
-        lines = [x for x in line.split('\n') if x.strip()]
-        if not lines:
-            short_line = '<empty>'
-        else:
-            short_line = lines[0][:40] if len(lines[0]) > 40 else lines[0]
-        if short_line in self.errors:
-            return
-        self.errors.append(short_line)
-        self.traces.append(get_traceback())
-        newline = '\n' if self.message else ''
-        self.message += f'{newline}[{short_line}]: {error}'
 
 
 class dummy_node:

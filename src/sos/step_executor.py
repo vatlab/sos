@@ -19,7 +19,7 @@ from .eval import SoS_eval, SoS_exec, accessed_vars
 from .executor_utils import (__named_output__, __null_func__, __output_from__,
                              __traced__, clear_output, create_task,
                              get_traceback_msg, reevaluate_output, statementMD5,
-                             validate_step_sig, verify_input)
+                             validate_step_sig, verify_input, ExecuteError)
 from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS,
                      SOS_TARGETS_OPTIONS)
 from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
@@ -525,7 +525,11 @@ class Base_Step_Executor:
 
         # create directory
         if ofiles.valid():
-            parents = set([os.path.abspath(os.path.join(ofile, os.pardir)) for ofile in ofiles if isinstance(ofile, file_target)])
+            parents = set([
+                os.path.abspath(os.path.join(ofile, os.pardir))
+                for ofile in ofiles
+                if isinstance(ofile, file_target)
+            ])
             for parent_dir in parents:
                 if parent_dir and not os.path.isdir(parent_dir):
                     os.makedirs(parent_dir, exist_ok=True)
@@ -1348,8 +1352,14 @@ class Base_Step_Executor:
                             # and we need to mark some steps has been completed.
                             if self.concurrent_substep:
                                 self._completed_concurrent_substeps += 1
-                                self.proc_results.append({'index': idx, 'ret_code': 0,
-                                    'output': copy.deepcopy(env.sos_dict['_output'])})
+                                self.proc_results.append({
+                                    'index':
+                                        idx,
+                                    'ret_code':
+                                        0,
+                                    'output':
+                                        copy.deepcopy(env.sos_dict['_output'])
+                                })
                             send_message_to_controller([
                                 'progress', 'substep_ignored',
                                 env.sos_dict['step_id']
@@ -1772,13 +1782,19 @@ class Base_Step_Executor:
                     #
                     # in theory, we should be able to handled removed target from here
                     # by rerunning the substep, but we it is too much work for this
-                    # corner case. Let us simply rerunt he entire step.
+                    # corner case. Let us simply rerun the entire step.
                     else:
-                        raise excp
+                        self.exec_error.append(f'index={proc_result["index"]}',
+                                               excp)
                 else:
-                    raise RuntimeError(
-                        f"Substep failed with return code {proc_result['ret_code']}"
-                    )
+                    self.exec_error.append(
+                        RuntimeError(
+                            f"Substep failed with return code {proc_result['ret_code']}"
+                        ))
+
+            # this is after all substeps have been completed
+            if self.exec_error.errors:
+                raise self.exec_error
 
             # if output is Undetermined, re-evalulate it
             # finalize output from output_groups because some output might be skipped
@@ -1921,6 +1937,8 @@ class Step_Executor(Base_Step_Executor):
             raise RuntimeError(f'Failed to veryify dependent target {traced}')
 
     def run(self):
+        self.exec_error = ExecuteError(self.step.step_name())
+        self.is_stopping = False
         try:
             try:
                 # 1218
@@ -1945,15 +1963,16 @@ class Step_Executor(Base_Step_Executor):
         except Exception as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
+            if isinstance(e, ProcessKilled):
+                raise
+            self.exec_error.append(self.step.step_name(), e)
+        #
+        if self.exec_error.errors:
             if self.socket is not None and not self.socket.closed:
-                if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
-                        'SOS_DEBUG']:
-                    env.log_to_file(
-                        'STEP',
-                        f'Step {self.step.step_name()} sends exception {e}')
-                if isinstance(e, ProcessKilled):
-                    raise
-                else:
-                    self.socket.send_pyobj(e)
+                env.log_to_file(
+                    'STEP',
+                    f'Step {self.step.step_name()} sends exception {self.exec_error}'
+                )
+                self.socket.send_pyobj(self.exec_error)
             else:
-                raise e
+                raise self.exec_error
