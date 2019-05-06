@@ -122,11 +122,10 @@ class ExecutionManager(object):
         self._dummy = dummy
 
     def report(self, msg=''):
-        if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-            env.log_to_file(
-                'EXECUTOR',
-                f"{env.sos_dict['workflow_id']}({self.workflow_name}) {msg} {', '.join(str(proc) for proc in self.procs if proc is not None)}"
-            )
+        env.log_to_file(
+            'EXECUTOR',
+            f"{env.sos_dict['workflow_id']}({self.workflow_name}) {msg} {', '.join(str(proc) for proc in self.procs if proc is not None)}"
+        )
 
     def add_placeholder_worker(self, runnable, socket):
         runnable._status = 'step_pending'
@@ -147,11 +146,10 @@ class ExecutionManager(object):
         if not self.step_queue and not self.workflow_queue:
             return False
 
-        if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-            env.log_to_file(
-                'WORKER',
-                f'Executor send work to worker, {len(self.step_queue)} steps and {len(self.workflow_queue)} workflows pending.'
-            )
+        env.log_to_file(
+            'WORKER',
+            f'Executor send work to worker, {len(self.step_queue)} steps and {len(self.workflow_queue)} workflows pending.'
+        )
 
         # ask the controller for a worker. If the next job is blocking, we
         # ask for a separate blocking.
@@ -169,11 +167,10 @@ class ExecutionManager(object):
             [x.port for x in self.procs if self.procs])
         # no worker is available
         if master_port is None:
-            if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-                env.log_to_file(
-                    'EXECUTOR',
-                    f'No worker is available ({len([x.port for x in self.procs if self.procs])} ports excluded)'
-                )
+            env.log_to_file(
+                'EXECUTOR',
+                f'No worker is available ({len([x.port for x in self.procs if self.procs])} ports excluded)'
+            )
             return False
 
         runnable, spec = self.step_queue.pop(
@@ -366,12 +363,9 @@ class Base_Executor:
             raise
         finally:
             # end progress bar when the master workflow stops
-            if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-                env.log_to_file('EXECUTOR',
-                                f'Stop controller from {os.getpid()}')
+            env.log_to_file('EXECUTOR', f'Stop controller from {os.getpid()}')
             request_answer_from_controller(['done', succ])
-            if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-                env.log_to_file('EXECUTOR', 'disconntecting master')
+            env.log_to_file('EXECUTOR', 'disconntecting master')
             # if the process is failed, some workers might be killed, resulting
             # in nonresponseness from the master, and the socket context cannot
             # be killed in this case.
@@ -704,9 +698,8 @@ class Base_Executor:
         '''
         dag.new_forward_workflow()
 
-        if 'DAG' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-            env.log_to_file(
-                'DAG', f'Adding mini-workflow with {len(sections)} sections')
+        env.log_to_file('DAG',
+                        f'Adding mini-workflow with {len(sections)} sections')
         default_input: sos_targets = sos_targets([])
         for idx, section in enumerate(sections):
             #
@@ -1118,9 +1111,8 @@ class Base_Executor:
                 try:
                     if os.path.getsize(file_target(filename)) == 0:
                         file_target(filename).unlink()
-                        if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-                            env.log_to_file('EXECUTOR',
-                                            f'Remove placeholder {filename}')
+                        env.log_to_file('EXECUTOR',
+                                        f'Remove placeholder {filename}')
                 except Exception as e:
                     env.log_to_file(
                         'EXECUTOR',
@@ -1201,9 +1193,8 @@ class Base_Executor:
                                 for task in new_tasks:
                                     runnable._host.submit_task(task)
                                 runnable._status = 'task_pending'
-                                if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-                                    env.log_to_file(
-                                        'EXECUTOR', 'Step becomes task_pending')
+                                env.log_to_file('EXECUTOR',
+                                                'Step becomes task_pending')
                             except Exception as e:
                                 proc.socket.send_pyobj({
                                     x: {
@@ -1358,10 +1349,10 @@ class Base_Executor:
                     if hasattr(runnable, '_from_nested'):
                         # if the runnable is from nested, we will need to send the result back
                         # to the nested workflow
-                        if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-                            env.log_to_file('EXECUTOR',
-                                            f'Master send res to nested')
-                        runnable._status = 'completed'
+                        env.log_to_file('EXECUTOR',
+                                        f'Master send res to nested')
+                        runnable._status = 'failed' if isinstance(
+                            res, Exception) else 'completed'
                         dag.save(env.config['output_dag'])
                         runnable._child_socket.send_pyobj(res)
                         # this is a onetime use socket that passes results from
@@ -1374,30 +1365,27 @@ class Base_Executor:
                         self.handle_unknown_target(res.target, dag, runnable)
                     # if the job is failed
                     elif isinstance(res, Exception):
-                        if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-                            env.log_to_file('EXECUTOR',
-                                            f'Master received an exception')
+                        env.log_to_file('EXECUTOR',
+                                        f'Master received an exception')
                         # env.logger.error(res)
                         runnable._status = 'failed'
                         dag.save(env.config['output_dag'])
                         exec_error.append(runnable._node_id, res)
                         raise exec_error
                     elif '__step_name__' in res:
-                        if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-                            env.log_to_file(
-                                'EXECUTOR',
-                                f'Master receive result for step {res["__step_name__"]}'
-                            )
+                        env.log_to_file(
+                            'EXECUTOR',
+                            f'Master receive result for step {res["__step_name__"]}'
+                        )
                         self.step_completed(res, dag, runnable)
                     elif '__workflow_id__' in res:
                         # result from a workflow
                         # the worker process has been returned to the pool, now we need to
                         # notify the step that is waiting for the result
-                        if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-                            env.log_to_file(
-                                'EXECUTOR',
-                                f'Master receive result for workflow {res["__workflow_id__"]}'
-                            )
+                        env.log_to_file(
+                            'EXECUTOR',
+                            f'Master receive result for workflow {res["__workflow_id__"]}'
+                        )
                         # aggregate steps etc with subworkflows
                         for k, v in res['__completed__'].items():
                             self.completed[k] += v
@@ -1596,11 +1584,10 @@ class Base_Executor:
 
         wf_result = {'__workflow_id__': my_workflow_id, 'shared': {}}
 
-        if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-            env.log_to_file(
-                'WORKER',
-                f'- SUBSTART - Run workflow W{env.config["workflow_vars"].get("idx", "?")}'
-            )
+        env.log_to_file(
+            'WORKER',
+            f'- SUBSTART - Run workflow W{env.config["workflow_vars"].get("idx", "?")}'
+        )
         # this is the initial targets specified by subworkflow, users
         # should specify named_output directly if needed.
         dag = self.initialize_dag(targets=targets)
@@ -1679,19 +1666,21 @@ class Base_Executor:
                         self.handle_unknown_target(res.target, dag, runnable)
                     # if the job is failed
                     elif isinstance(res, Exception):
-                        if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-                            env.log_to_file('EXECUTOR',
-                                            f'Nested received an exception')
+                        env.log_to_file('EXECUTOR',
+                                        f'Nested received an exception')
                         runnable._status = 'failed'
                         dag.save(env.config['output_dag'])
                         exec_error.append(runnable._node_id, res)
-                        raise exec_error
+                        env.logger.error(
+                            f'Step {runnable} terminated with exception {res.__class__.__name__} '
+                        )
+
+                        #raise exec_error
                     elif '__step_name__' in res:
-                        if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-                            env.log_to_file(
-                                'EXECUTOR',
-                                f'Nested receives result for step {res["__step_name__"]}'
-                            )
+                        env.log_to_file(
+                            'EXECUTOR',
+                            f'Nested receives result for step {res["__step_name__"]}'
+                        )
                         self.step_completed(res, dag, runnable)
                     else:
                         raise RuntimeError(
@@ -1707,9 +1696,8 @@ class Base_Executor:
                     # with status.
                     runnable = dag.find_executable()
                     if runnable is None:
-                        if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-                            env.log_to_file('EXECUTOR',
-                                            'Nested has no submitable job')
+                        env.log_to_file('EXECUTOR',
+                                        'Nested has no submitable job')
                         manager.report()
                         dag.mark_dirty(False)
                         break
@@ -1743,11 +1731,10 @@ class Base_Executor:
                     socket = create_socket(env.zmq_context, zmq.PAIR,
                                            'worker pair socket')
                     port = socket.bind_to_random_port('tcp://127.0.0.1')
-                    if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-                        env.log_to_file(
-                            'WORKER',
-                            f'- SUBRUN - SEND STEP S{env.config["workflow_vars"].get("idx", "?")}'
-                        )
+                    env.log_to_file(
+                        'WORKER',
+                        f'- SUBRUN - SEND STEP S{env.config["workflow_vars"].get("idx", "?")}'
+                    )
 
                     parent_socket.send_pyobj([
                         'step', step_id, section, runnable._context, shared,
@@ -1779,7 +1766,7 @@ class Base_Executor:
         except Exception as e:
             if not isinstance(e, ExecuteError):
                 exec_error.append(self.workflow.name, e)
-            manager.terminate()
+            # manager.terminate()
 
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
