@@ -807,23 +807,28 @@ class Base_Step_Executor:
             yield self.result_pull_socket
             res = self.result_pull_socket.recv_pyobj()
             if 'exception' in res:
-                env.logger.error(
-                    f'{self.step.step_name()} (index={res["index"]}) failed.'
-                )
                 if isinstance(res['exception'], ProcessKilled):
                     raise res['exception']
-                if not env.config['keep_going']:
-                    self.exec_error.append(f'index={res["index"]}', res['exception'])
+                if env.config['keep_going']:
+                    env.logger.error(
+                        f'{self.step.step_name()} (index={res["index"]}) failed.'
+                    )
+                else:
+                    self.exec_error.append(f'index={res["index"]}',
+                                           res['exception'])
                     # try to stop everything but wait till for submitted tasks to
                     # complete
                     self._completed_concurrent_substeps + 1
                     waiting = till - 1 - self._completed_concurrent_substeps
-                    env.logger.debug(f'waiting for {waiting} submitted substeps to complete')
+                    env.logger.error(
+                        f'{self.step.step_name()} (index={res["index"]}) failed.{f" Terminating after completing {waiting} submitted substeps." if waiting else ""}'
+                    )
                     for i in range(waiting):
                         yield self.result_pull_socket
                         res = self.result_pull_socket.recv_pyobj()
                         if 'exception' in res:
-                            self.exec_error.append(f'index={res["index"]}', res['exception'])
+                            self.exec_error.append(f'index={res["index"]}',
+                                                   res['exception'])
                     raise self.exec_error
             #
             if "index" not in res:
@@ -1444,8 +1449,8 @@ class Base_Step_Executor:
                                 # we check if the previous task has been completed and process them
                                 # because further steps might need to be done
                                 try:
-                                    runner = self.process_returned_substep_result(till=idx+1,
-                                        wait=False)
+                                    runner = self.process_returned_substep_result(
+                                        till=idx + 1, wait=False)
                                     yreq = next(runner)
                                     while True:
                                         yres = yield yreq
