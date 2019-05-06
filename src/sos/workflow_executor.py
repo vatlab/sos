@@ -1368,10 +1368,26 @@ class Base_Executor:
                         env.log_to_file('EXECUTOR',
                                         f'Master received an exception')
                         # env.logger.error(res)
+                        if runnable._status == 'workflow_running_pending':
+                            for pwf in runnable._pending_workflows:
+                                for midx, proc in enumerate(manager.procs):
+                                    if proc is None:
+                                        continue
+                                    if proc.in_status(
+                                            'workflow_pending'
+                                    ) and pwf in proc.step._pending_workflows:
+                                        proc.step._pending_workflows.remove(pwf)
+                                        if not proc.step._pending_workflows:
+                                            proc.set_status('failed')
+                                            manager.mark_idle(midx)
                         runnable._status = 'failed'
                         dag.save(env.config['output_dag'])
                         exec_error.append(runnable._node_id, res)
-                        raise exec_error
+                        # stop raising exce_error immediately, which would terminates other substeps
+                        # 1265
+                        env.logger.error(
+                            f'Step {runnable} terminated with exception {res.__class__.__name__} '
+                        )
                     elif '__step_name__' in res:
                         env.log_to_file(
                             'EXECUTOR',

@@ -8,6 +8,7 @@ import os
 import shutil
 import socket
 import sys
+import time
 import unittest
 
 from sos.parser import SoS_Script
@@ -143,27 +144,52 @@ fail_if(len(input) == 2)
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
 
-    @unittest.skipIf(
-        'TRAVIS' in os.environ,
-        'Skip test because travis fails on this test for unknown reason')
-    def testImmediateFailIf(self):
+    def testDelayedFailIf(self):
         # test fail_if of killing another running substep
         script = SoS_Script(r"""
 import time
 
 [10]
-time.sleep(2000)
+time.sleep(8)
 
 [20]
 input: None
 time.sleep(2)
 fail_if(True)
 """)
+        st = time.time()
         wf = script.workflow()
         self.assertRaises(Exception,
                           Base_Executor(wf, config={
                               'max_procs': 3
                           }).run)
+        self.assertTrue(time.time() - st >= 8,
+                'Test test should fail only after step 10 is completed')
+
+    def testDelayedFailIfFromNestedWorkflow(self):
+        # test fail_if of killing another running substep
+        script = SoS_Script(r"""
+import time
+
+[default]
+sos_run('a')
+
+[a_10]
+time.sleep(8)
+
+[a_20]
+input: None
+time.sleep(2)
+fail_if(True)
+""")
+        st = time.time()
+        wf = script.workflow()
+        self.assertRaises(Exception,
+                          Base_Executor(wf, config={
+                              'max_procs': 3
+                          }).run)
+        self.assertTrue(time.time() - st >= 8,
+                'Test test should fail only after step 10 is completed')
 
     def testWarnIf(self):
         '''Test action fail if'''
