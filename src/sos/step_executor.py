@@ -1586,7 +1586,13 @@ class Base_Step_Executor:
                             break
                         except Exception as e:
                             clear_output()
-                            raise
+                            if env.config['keep_going']:
+                                env.logger.error(
+                                    f'{self.step.step_name()} (index={idx}) terminated due to exception.'
+                                )
+                                self.exec_error.append(str(idx), e)
+                            else:
+                                raise
                     else:
                         # if it is not the last statement group (e.g. statements before :output)
                         # we execute locally without anything like signature
@@ -1719,6 +1725,11 @@ class Base_Step_Executor:
                 #
                 # endfor loop for each input group
                 #
+            # if error happened but we allow all substeps to be completed, we now
+            # raise exception
+            if self.exec_error.errors:
+                raise self.exec_error
+
             if self._subworkflow_results:
                 try:
                     runner = self.wait_for_subworkflows(

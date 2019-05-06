@@ -20,6 +20,7 @@ from sos.workflow_executor import Base_Executor
 
 
 def multi_attempts(fn):
+
     def wrapper(*args, **kwargs):
         for n in range(4):
             try:
@@ -28,10 +29,12 @@ def multi_attempts(fn):
             except Exception:
                 if n > 1:
                     raise
+
     return wrapper
 
 
 class TestExecute(unittest.TestCase):
+
     def setUp(self):
         env.reset()
         subprocess.call('sos remove -s', shell=True)
@@ -72,32 +75,80 @@ a =1
         result = subprocess.check_output(
             'sos --version', stderr=subprocess.STDOUT, shell=True).decode()
         self.assertTrue(result.startswith('sos {}'.format(__version__)))
-        self.assertEqual(subprocess.call('sos', stderr=subprocess.DEVNULL,
-                                         stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos -h', stderr=subprocess.DEVNULL,
-                                         stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos run -h', stderr=subprocess.DEVNULL,
-                                         stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos -h',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos run -h',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
         #
-        self.assertEqual(subprocess.call('sos run test_cl -w -W',
-                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
-        self.assertEqual(subprocess.call('sos-runner -h', stderr=subprocess.DEVNULL,
-                                         stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos dryrun -h', stderr=subprocess.DEVNULL,
-                                         stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos dryrun test_cl',
-                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos dryrun test_cl.sos',
-                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos dryrun test_cl L',
-                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos-runner test_cl L',
-                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos run test_cl -w -W',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 1)
+        self.assertEqual(
+            subprocess.call(
+                'sos-runner -h',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos dryrun -h',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos dryrun test_cl',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos dryrun test_cl.sos',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos dryrun test_cl L',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos-runner test_cl L',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
         # script help
-        self.assertEqual(subprocess.call('sos-runner test_cl -h',
-                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos convert -h', stderr=subprocess.DEVNULL,
-                                         stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos-runner test_cl -h',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
+        self.assertEqual(
+            subprocess.call(
+                'sos convert -h',
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                shell=True), 0)
 
     def testInterpolation(self):
         '''Test string interpolation during execution'''
@@ -130,8 +181,9 @@ output: [f'{x}_{y}_processed.txt' for x,y in zip(name, model)]
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['res'],  ['a_1_processed.txt',
-                                                'b_2_processed.txt', 'c_2_processed.txt'])
+        self.assertEqual(
+            env.sos_dict['res'],
+            ['a_1_processed.txt', 'b_2_processed.txt', 'c_2_processed.txt'])
         #
         script = SoS_Script(r"""
 [0: shared={'res':'step_output'}]
@@ -141,8 +193,9 @@ output: [f"{x}_{y}_process.txt" for x,y in zip(name, model)]
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['res'],  ['a_1_process.txt',
-                                                'b_2_process.txt', 'c_2_process.txt'])
+        self.assertEqual(
+            env.sos_dict['res'],
+            ['a_1_process.txt', 'b_2_process.txt', 'c_2_process.txt'])
         #
         script = SoS_Script(r"""
 [0: shared={'res':'step_output'}]
@@ -155,9 +208,9 @@ output: add_a([f"{x}_{y}_process.txt" for x,y in zip(name, model)])
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['res'],  ['aa_1_process.txt',
-                                                'ab_2_process.txt', 'ac_2_process.txt'])
-
+        self.assertEqual(
+            env.sos_dict['res'],
+            ['aa_1_process.txt', 'ab_2_process.txt', 'ac_2_process.txt'])
 
     def testFuncDef(self):
         '''Test defintion of function that can be used by other steps'''
@@ -184,10 +237,10 @@ output: [x + '.res' for x in _input]
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertTrue(file_target('test_input.txt.res').resolve()
-                        in env.sos_dict['res'])
-        self.assertTrue(file_target('test_input1.txt.res').resolve()
-                        in env.sos_dict['res'])
+        self.assertTrue(
+            file_target('test_input.txt.res').resolve() in env.sos_dict['res'])
+        self.assertTrue(
+            file_target('test_input1.txt.res').resolve() in env.sos_dict['res'])
 
     def testForEach(self):
         '''Test for_each option of input'''
@@ -229,8 +282,9 @@ processed.append((_par, _res))
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['processed'], [
-                         ((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
+        self.assertEqual(env.sos_dict['processed'], [((1, 2), 'p1.txt'),
+                                                     ((1, 3), 'p2.txt'),
+                                                     ((2, 3), 'p3.txt')])
         #
         # test for each for pandas dataframe
         script = SoS_Script(r"""
@@ -243,8 +297,8 @@ output: f"{_data['A']}_{_data['B']}_{_data['C']}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['res'], [
-                         '1_2_Hello.txt', '2_4_World.txt'])
+        self.assertEqual(env.sos_dict['res'],
+                         ['1_2_Hello.txt', '2_4_World.txt'])
 
         # test dictionary format of for_each
         self.touch(['a.txt', 'b.txt', 'a.pdf'])
@@ -306,8 +360,9 @@ processed.append((par, res))
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['processed'], [
-                         ((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
+        self.assertEqual(env.sos_dict['processed'], [((1, 2), 'p1.txt'),
+                                                     ((1, 3), 'p2.txt'),
+                                                     ((2, 3), 'p3.txt')])
         #
         # test for each for pandas dataframe
         script = SoS_Script(r"""
@@ -318,8 +373,8 @@ output: f"{data['A']}_{data['B']}_{data['C']}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['res'], [
-                         '1_2_Hello.txt', '2_4_World.txt'])
+        self.assertEqual(env.sos_dict['res'],
+                         ['1_2_Hello.txt', '2_4_World.txt'])
         #
         # support for pands Series and Index types
         script = SoS_Script(r"""
@@ -416,8 +471,9 @@ processed.append((_input._par, _input._res))
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['processed'], [
-                         ((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
+        self.assertEqual(env.sos_dict['processed'], [((1, 2), 'p1.txt'),
+                                                     ((1, 3), 'p2.txt'),
+                                                     ((2, 3), 'p3.txt')])
         #
         # test for each for pandas dataframe
         script = SoS_Script(r"""
@@ -431,8 +487,8 @@ output: f"{_input._data['A']}_{_input._data['B']}_{_input._data['C']}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['res'], [
-                         '1_2_Hello.txt', '2_4_World.txt'])
+        self.assertEqual(env.sos_dict['res'],
+                         ['1_2_Hello.txt', '2_4_World.txt'])
 
         # test dictionary format of for_each
         self.touch(['a.txt', 'b.txt', 'a.pdf'])
@@ -494,8 +550,9 @@ processed.append((_input.par, _input.res))
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['processed'], [
-                         ((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
+        self.assertEqual(env.sos_dict['processed'], [((1, 2), 'p1.txt'),
+                                                     ((1, 3), 'p2.txt'),
+                                                     ((2, 3), 'p3.txt')])
         #
         # test for each for pandas dataframe
         script = SoS_Script(r"""
@@ -506,8 +563,8 @@ output: f"{_input.data['A']}_{_input.data['B']}_{_input.data['C']}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['res'], [
-                         '1_2_Hello.txt', '2_4_World.txt'])
+        self.assertEqual(env.sos_dict['res'],
+                         ['1_2_Hello.txt', '2_4_World.txt'])
         #
         # support for pands Series and Index types
         script = SoS_Script(r"""
@@ -629,7 +686,6 @@ run: expand=True
             self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).unlink()
 
-
     def testPairedWithAsTargetProperty(self):
         '''Test option paired_with with values accessed by individual target '''
         self.touch(['a.txt', 'b.txt'])
@@ -687,7 +743,6 @@ run: expand=True
             self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).unlink()
 
-
     def testGroupWith(self):
         '''Test option group_with '''
         self.touch(['a.txt', 'b.txt'])
@@ -744,7 +799,6 @@ run: expand=True
         for ofile in ['a.txt1']:
             self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).unlink()
-
 
     def testOutputGroupWith(self):
         '''Test option group_with in output statement'''
@@ -814,7 +868,6 @@ assert(var2 == 'a')
             self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).unlink()
 
-
     def testGroupWithAsTargetProperty(self):
         '''Test option group_with '''
         self.touch(['a.txt', 'b.txt'])
@@ -872,7 +925,6 @@ run: expand=True
             self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).unlink()
 
-
     def testInputPattern(self):
         '''Test option pattern of step input '''
         #env.verbosity = 4
@@ -890,8 +942,8 @@ output: ['{}-{}-{}.txt'.format(x,y,z) for x,y,z in zip(_base, _name, _par)]
         self.assertEqual(env.sos_dict['base'], ["a-20", 'b-10'])
         self.assertEqual(env.sos_dict['name'], ["a", 'b'])
         self.assertEqual(env.sos_dict['par'], ["20", '10'])
-        self.assertEqual(env.sos_dict['_output'], [
-                         "a-20-a-20.txt", 'b-10-b-10.txt'])
+        self.assertEqual(env.sos_dict['_output'],
+                         ["a-20-a-20.txt", 'b-10-b-10.txt'])
 
     def testInputPatternAsTargetProperty(self):
         '''Test option pattern of step input '''
@@ -907,8 +959,8 @@ output: [f'{x._base}-{x._name}-{x._par}.txt' for x in _input]
 """)
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['_output'], [
-                         "a-20-a-20.txt", 'b-10-b-10.txt'])
+        self.assertEqual(env.sos_dict['_output'],
+                         ["a-20-a-20.txt", 'b-10-b-10.txt'])
 
     def testOutputPattern(self):
         '''Test option pattern of step output'''
@@ -927,8 +979,8 @@ output: expand_pattern('{base}-{name}-{par}.txt'), expand_pattern('{par}.txt')
         self.assertEqual(env.sos_dict['base'], ["a-20", 'b-10'])
         self.assertEqual(env.sos_dict['name'], ["a", 'b'])
         self.assertEqual(env.sos_dict['par'], ["20", '10'])
-        self.assertEqual(env.sos_dict['_output'], ['a-20-a-20.txt',
-                                                   'b-10-b-10.txt', '20.txt', '10.txt'])
+        self.assertEqual(env.sos_dict['_output'],
+                         ['a-20-a-20.txt', 'b-10-b-10.txt', '20.txt', '10.txt'])
 
     def testOutputFromInput(self):
         '''Test deriving output files from input files'''
@@ -970,8 +1022,8 @@ counter += 1
         Base_Executor(wf, config={'sig_mode': 'force'}).run(mode='run')
         self.assertEqual(env.sos_dict['counter'], 2)
         self.assertEqual(env.sos_dict['step'], ['a.txt.bak', 'b.txt.bak'])
-        self.assertEqual(env.sos_dict['step'].groups, [['a.txt.bak'],
-            ['b.txt.bak']])
+        self.assertEqual(env.sos_dict['step'].groups,
+                         [['a.txt.bak'], ['b.txt.bak']])
 
     def testLocalNamespace(self):
         '''Test if steps are well separated.'''
@@ -1030,7 +1082,6 @@ e = d + 1
         self.assertEqual(env.sos_dict['shared'], 'c.txt')
         self.assertEqual(env.sos_dict['d'], 2)
 
-
     def testDynamicOutput(self):
         '''Testing dynamic output'''
         #
@@ -1050,8 +1101,8 @@ for i in range(4):
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['test'], [
-                         'temp/something{}.html'.format(x) for x in range(4)])
+        self.assertEqual(env.sos_dict['test'],
+                         ['temp/something{}.html'.format(x) for x in range(4)])
         #
         shutil.rmtree('temp')
 
@@ -1079,14 +1130,22 @@ touch {_input}.bak
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['test'], [os.path.join(
-            'temp', 'test_{}.txt.bak'.format(x)) for x in range(5)],
-            f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}")
+        self.assertEqual(
+            env.sos_dict['test'], [
+                os.path.join('temp', 'test_{}.txt.bak'.format(x))
+                for x in range(5)
+            ],
+            f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}"
+        )
         # this time we use th existing signature
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['test'], [os.path.join(
-            'temp', 'test_{}.txt.bak'.format(x)) for x in range(5)],
-            f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}")
+        self.assertEqual(
+            env.sos_dict['test'], [
+                os.path.join('temp', 'test_{}.txt.bak'.format(x))
+                for x in range(5)
+            ],
+            f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}"
+        )
         #
         shutil.rmtree('temp')
 
@@ -1316,11 +1375,11 @@ assert(len(step_input) == 5)
         Base_Executor(wf).run()
         for idx in range(10):
             if idx % 2 == 0:
-                self.assertFalse(file_target(
-                    "{}.txt".format(idx)).target_exists())
+                self.assertFalse(
+                    file_target("{}.txt".format(idx)).target_exists())
             else:
-                self.assertTrue(file_target(
-                    "{}.txt".format(idx)).target_exists())
+                self.assertTrue(
+                    file_target("{}.txt".format(idx)).target_exists())
                 file_target(f"{idx}.txt").unlink()
 
     def testAllowError(self):
@@ -1416,7 +1475,9 @@ depends: 'non-existent.txt'
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
 
-    @unittest.skipIf('TRAVIS' in os.environ, 'Skip test because travis fails on this test for unknown reason')
+    @unittest.skipIf(
+        'TRAVIS' in os.environ,
+        'Skip test because travis fails on this test for unknown reason')
     def testExecuteIPynb(self):
         '''Test extracting and executing workflow from .ipynb files'''
         script = SoS_Script(filename='sample_workflow.ipynb')
@@ -1450,7 +1511,8 @@ run: expand=True
         Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('report.html'))
 
-    @unittest.skipIf(sys.platform == 'win32', 'Graphviz not available under windows')
+    @unittest.skipIf(sys.platform == 'win32',
+                     'Graphviz not available under windows')
     def testOutputReportWithDAG(self):
         # test dag
         if os.path.isfile('report.html'):
@@ -1644,10 +1706,10 @@ print(_input)
         wf = script.workflow()
         Base_Executor(wf).run()
 
-
     def testMultiDepends(self):
         '''Test a step with multiple depdendend steps'''
-        for file in ('dbsnp.vcf', 'hg19.fa', 'f1.fastq', 'f2.fastq', 'f1.bam', 'f2.bam', 'f1.bam.idx', 'f2.bam.idx'):
+        for file in ('dbsnp.vcf', 'hg19.fa', 'f1.fastq', 'f2.fastq', 'f1.bam',
+                     'f2.bam', 'f1.bam.idx', 'f2.bam.idx'):
             if os.path.isfile(file):
                 os.remove(file)
         self.touch(['f1.fastq', 'f2.fastq'])
@@ -1679,9 +1741,9 @@ depends: 'dbsnp.vcf', 'hg19.fa'
 ''')
         wf = script.workflow('align+call')
         Base_Executor(wf).run()
-        for file in ('dbsnp.vcf', 'hg19.fa', 'f1.bam', 'f2.bam', 'f1.bam.idx', 'f2.bam.idx'):
+        for file in ('dbsnp.vcf', 'hg19.fa', 'f1.bam', 'f2.bam', 'f1.bam.idx',
+                     'f2.bam.idx'):
             self.assertTrue(os.path.isfile(file))
-
 
     def testRemovalOfOutputFromFailedStep(self):
         '''Test the removal of output files if a step fails #1055'''
@@ -1699,9 +1761,9 @@ depends: 'failed.csv'
 path('result.csv').touch()
 ''')
         wf = script.workflow()
-        self.assertRaises(Exception,  Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf).run)
         # rerun should still raise
-        self.assertRaises(Exception,  Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf).run)
 
         self.assertFalse(os.path.isfile('failed.csv'))
         self.assertFalse(os.path.isfile('result.csv'))
@@ -1949,7 +2011,6 @@ assert(step_input.groups[1] == ['b_2.txt', 'b_3.txt'])
             wf = script.workflow(wf)
             Base_Executor(wf).run()
 
-
     def testRemoveEmptyGroups(self):
         '''Test remove of empty groups'''
         # case 1, default output
@@ -2057,7 +2118,6 @@ assert(_input[0].tvar == _index)
         wf = script.workflow()
         Base_Executor(wf).run()
 
-
     def testAutoProvide(self):
         '''Testing steps to provide plain output'''
         script = SoS_Script('''\
@@ -2132,7 +2192,6 @@ depends: _input.with_suffix('.bam.bai')
         self.assertEqual(res['__completed__']['__step_completed__'], 2)
         self.assertEqual(res['__completed__']['__step_skipped__'], 1)
 
-
     def testTracedFunction(self):
         for file in ('a.bam', 'a.bam.bai'):
             if os.path.isfile(file):
@@ -2157,8 +2216,9 @@ depends: traced(_input.with_suffix('.bam.bai'))
         self.assertEqual(res['__completed__']['__step_completed__'], 2)
         self.assertEqual(res['__completed__']['__step_skipped__'], 1)
 
-
-    @unittest.skipIf('TRAVIS' in os.environ, 'Skip test because travis fails on this test for unknown reason')
+    @unittest.skipIf(
+        'TRAVIS' in os.environ,
+        'Skip test because travis fails on this test for unknown reason')
     def testKillWorker(self):
         '''Test if the workflow can error out after a worker is killed'''
         import psutil
@@ -2195,7 +2255,9 @@ time.sleep(4)
         ret.wait()
         #self.assertNotEqual(ret.returncode, 0)
 
-    @unittest.skipIf('TRAVIS' in os.environ, 'Skip test because travis fails on this test for unknown reason')
+    @unittest.skipIf(
+        'TRAVIS' in os.environ,
+        'Skip test because travis fails on this test for unknown reason')
     def testKillSubstepWorker(self):
         '''Test if the workflow can error out after a worker is killed'''
         import psutil
@@ -2234,7 +2296,6 @@ time.sleep(2)
         # the sos command might still succeed if the killed worker has not received any
         # job
         #self.assertNotEqual(ret.returncode, 0)
-
 
     def testKillTask(self):
         '''Test if the workflow can error out after a worker is killed'''
@@ -2349,19 +2410,55 @@ fail_if(True)
 """)
         st = time.time()
         wf = script.workflow()
-        self.assertRaises(Exception,
-                          Base_Executor(wf).run)
-        self.assertTrue(time.time() - st >= 8,
-                'Test test should fail only after step 10 is completed')
+        self.assertRaises(Exception, Base_Executor(wf).run)
+        self.assertTrue(
+            time.time() - st >= 8,
+            'Test test should fail only after step 10 is completed')
         self.assertFalse(os.path.isfile('11.txt'))
         #
         self.assertRaises(Exception,
                           Base_Executor(wf, config={
                               'keep_going': True
                           }).run)
-        self.assertTrue(time.time() - st >= 8,
-                'Test test should fail only after step 10 is completed')
+        self.assertTrue(
+            time.time() - st >= 8,
+            'Test test should fail only after step 10 is completed')
         self.assertTrue(os.path.isfile('11.txt'))
+
+    def testKeepGoingOfSubsteps(self):
+        for i in range(10):
+            if os.path.isfile(f'test_{i}.txt'):
+                os.remove(f'test_{i}.txt')
+        script = SoS_Script(r"""
+import time
+
+[10]
+input: for_each=dict(i=range(10)), concurrent=False
+output: f'test_{i}.txt'
+
+_output.touch()
+
+fail_if(_index == 5, 'fail at 5')
+        """)
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+        for i in range(5):
+            self.assertTrue(os.path.isfile(f'test_{i}.txt'))
+        for i in range(5, 10):
+            self.assertFalse(os.path.isfile(f'test_{i}.txt'))
+        #
+        for i in range(10):
+            if os.path.isfile(f'test_{i}.txt'):
+                os.remove(f'test_{i}.txt')
+        self.assertRaises(Exception,
+                          Base_Executor(wf, config={
+                              'keep_going': True
+                          }).run)
+        for i in range(6, 10):
+            if i == 5:
+                continue
+            self.assertTrue(os.path.isfile(f'test_{i}.txt'))
+
 
 if __name__ == '__main__':
     unittest.main()
