@@ -1010,9 +1010,6 @@ class Base_Step_Executor:
 
     def skip_substep(self):
         idx = env.sos_dict["_index"]
-        env.logger.info(
-            f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 1 else ""} is ``skipped`` with existing output.'
-        )
         # if concurrent substep, there might be later steps that needs to be rerun
         # and we need to mark some steps has been completed.
         if self.concurrent_substep:
@@ -1630,6 +1627,9 @@ class Base_Step_Executor:
                             and all(x.target_exists() for x in env.sos_dict['_output'].targets) \
                             and env.sos_dict['_output'].later_than(env.sos_dict['_input']):
                             self.skip_substep()
+                            env.logger.info(
+                                f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 1 else ""} is ``skipped`` with existing output.'
+                            )
                             skip_index = True
                             # do not execute the rest of the statement
                             break
