@@ -41,7 +41,6 @@ __all__ = []
 #     pass
 
 
-
 class dummy_node:
     # a dummy node object to store information of node passed
     # from nested workflow
@@ -1376,9 +1375,7 @@ class Base_Executor:
                         exec_error.append(runnable._node_id, res)
                         # stop raising exce_error immediately, which would terminates other substeps
                         # 1265
-                        env.logger.debug(
-                            f'Step {runnable} failed'
-                        )
+                        env.logger.debug(f'Step {runnable} failed')
                     elif '__step_name__' in res:
                         env.log_to_file(
                             'EXECUTOR',
@@ -1540,8 +1537,7 @@ class Base_Executor:
                 raise
         # close all processes
         except Exception as e:
-            if not isinstance(e, ExecuteError):
-                exec_error.append(self.workflow.name, e)
+            exec_error.append(self.workflow.name, e)
         finally:
             manager.terminate()
         #
@@ -1776,8 +1772,7 @@ class Base_Executor:
             else:
                 raise
         except Exception as e:
-            if not isinstance(e, ExecuteError):
-                exec_error.append(self.workflow.name, e)
+            exec_error.append(self.workflow.name, e)
             # manager.terminate()
 
         if exec_error.errors:

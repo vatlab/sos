@@ -812,22 +812,16 @@ class Base_Step_Executor:
                 elif isinstance(res['exception'], RemovedTarget):
                     pass
                 elif env.config['keep_going']:
+                    pass
+                else:
                     idx_msg = f'(id={env.sos_dict["step_id"]}, index={res["index"]})' if "index" in res and len(
                         self._substeps
                     ) > 1 else f'(id={env.sos_dict["step_id"]})'
-                    env.logger.warning(
-                        f'''Substep {self.step.step_name()} {idx_msg} returns an error.'''
-                    )
-                else:
-                    self.exec_error.append(f'index={res["index"]}',
-                                           res['exception'])
+                    self.exec_error.append(idx_msg, res['exception'])
                     # try to stop everything but wait till for submitted tasks to
                     # complete
                     self._completed_concurrent_substeps + 1
                     waiting = till - 1 - self._completed_concurrent_substeps
-                    idx_msg = f'(id={env.sos_dict["step_id"]}, index={res["index"]})' if "index" in res and len(
-                        self._substeps
-                    ) > 1 else f'(id={env.sos_dict["step_id"]})'
                     env.logger.warning(
                         f'Substep {self.step.step_name()} {idx_msg} returns an error.{f" Terminating step after completing {waiting} submitted substeps." if waiting else ""}'
                     )
@@ -1191,7 +1185,7 @@ class Base_Step_Executor:
                         self._substeps
                     ) > 1 else f'(id={env.sos_dict["step_id"]})'
                     env.logger.warning(
-                        f'Substep {self.step.step_name()} {idx_msg} returns an error.'
+                        f'xSubstep {self.step.step_name()} {idx_msg} returns an error.'
                     )
                     self.exec_error.append(idx_msg, excp)
             else:
@@ -1724,8 +1718,11 @@ class Base_Step_Executor:
                         except Exception as e:
                             clear_output()
                             if env.config['keep_going']:
+                                idx_msg = f'(id={env.sos_dict["step_id"]}, index={idx})' if len(
+                                    self._substeps
+                                ) > 1 else f'(id={env.sos_dict["step_id"]})'
                                 env.logger.error(
-                                    f'{self.step.step_name()} {f" (index={idx})" if len(self._substeps) > 1 else ""} failed.'
+                                    f'Substep {self.step.step_name()} {id_msg} returns an error.'
                                 )
                                 self.exec_error.append(str(idx), e)
                             else:
