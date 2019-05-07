@@ -3,9 +3,7 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
-import glob
 import os
-import sys
 import shutil
 import subprocess
 import unittest

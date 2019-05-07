@@ -15,7 +15,7 @@ import sys
 from collections import Iterable, Sequence
 from copy import deepcopy
 from itertools import combinations, tee
-from pathlib import Path
+from pathlib import Path, WindowsPath, PosixPath
 from shlex import quote
 from typing import Union, Dict, Any, List
 import fasteners

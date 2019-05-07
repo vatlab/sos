@@ -1715,7 +1715,7 @@ class Base_Step_Executor:
                                     self._substeps
                                 ) > 1 else f'(id={env.sos_dict["step_id"]})'
                                 env.logger.error(
-                                    f'Substep {self.step.step_name()} {id_msg} returns an error.'
+                                    f'Substep {self.step.step_name()} {idx_msg} returns an error.'
                                 )
                                 self.exec_error.append(str(idx), e)
                             else:

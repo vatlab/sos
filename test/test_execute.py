@@ -2340,8 +2340,6 @@ time.sleep(10)
 
     def testConcurrentRunningTasks(self):
         '''Test two sos instances running the same task'''
-        import psutil
-        import time
         with open('testRunTask.sos', 'w') as tk:
             tk.write('''
 

@@ -28,7 +28,7 @@ from .section_analyzer import analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock, UnknownTarget,
                       file_target, path, paths, sos_step, sos_targets,
                       sos_variable, textMD5, named_output)
-from .utils import env, get_traceback, pickleable, short_repr
+from .utils import env, pickleable, short_repr
 from .executor_utils import prepare_env, ExecuteError
 
 __all__ = []
