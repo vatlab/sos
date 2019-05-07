@@ -1681,7 +1681,7 @@ class Base_Executor:
                         dag.save(env.config['output_dag'])
                         exec_error.append(runnable._node_id, res)
                         env.logger.error(
-                            f'Step {runnable} in subworkflow {self.worfkow_id} failed'
+                            f'Step {runnable} in subworkflow {my_workflow_id} failed'
                         )
                         if not env.config['keep_going']:
                             manager.stop_dag(dag)
@@ -1755,8 +1755,8 @@ class Base_Executor:
 
                 if manager.all_done():
                     break
-                elif dag.degraded() and manager.all_pending():
-                    break
+                # elif dag.degraded() and manager.all_pending():
+                #     break
                 else:
                     time.sleep(0.01)
         except KeyboardInterrupt:
