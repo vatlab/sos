@@ -261,6 +261,7 @@ class LocalHost:
             return {
                 'ret_code':
                     1,
+                'task': task_id,
                 'exception':
                     ValueError(f'No result is received for task {task_id}')
             }

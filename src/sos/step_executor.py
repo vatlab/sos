@@ -1181,6 +1181,9 @@ class Base_Step_Executor:
                     self.output_groups[proc_result['index']] = sos_targets([])
                 elif isinstance(excp, RemovedTarget):
                     raise excp
+                elif 'task' in proc_result:
+                    # if the exception is from a task...
+                    self.exec_error.append(proc_result['task'], excp)
             else:
                 self.exec_error.append(
                     RuntimeError(
