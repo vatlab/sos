@@ -963,33 +963,12 @@ class Base_Step_Executor:
             except Exception as e:
                 raise ValueError(f'Missing shared variable {e}.')
 
-    def local_exec_with_signature(self, statement):
+    def local_exec_with_signature(self, statement, sig):
         idx = env.sos_dict["_index"]
-        sig = RuntimeInfo(
-            statementMD5([statement[1], self.step.task]),
-            env.sos_dict['_input'],
-            env.sos_dict['_output'],
-            env.sos_dict['_depends'],
-            env.sos_dict['__signature_vars__'],
-            shared_vars=self.vars_to_be_shared)
         env.log_to_file(
             'STEP',
             f'Execute substep {env.sos_dict["step_name"]} with signature {sig.sig_id}'
         )
-        # if singaure match, we skip the substep even  if
-        # there are tasks.
-        matched = validate_step_sig(sig)
-        skip_index = bool(matched)
-        if matched:
-            if env.sos_dict['step_output'].undetermined():
-                self.output_groups[env.sos_dict['_index']] = matched["output"]
-            if 'vars' in matched:
-                self.shared_vars[env.sos_dict['_index']].update(matched["vars"])
-            # complete case: local skip without task
-            send_message_to_controller(
-                ['progress', 'substep_ignored', env.sos_dict['step_id']])
-            return True
-
         sig.lock()
         try:
             if self.is_input_verified:
@@ -1028,9 +1007,25 @@ class Base_Step_Executor:
             else:
                 self.pending_signatures[idx] = sig
             sig.release()
-        return False
 
-    def concurrent_exec(self, statement):
+    def skip_substep(self):
+        idx = env.sos_dict["_index"]
+        env.logger.info(
+            f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 1 else ""} is ``skipped`` with existing output.'
+        )
+        # if concurrent substep, there might be later steps that needs to be rerun
+        # and we need to mark some steps has been completed.
+        if self.concurrent_substep:
+            self._completed_concurrent_substeps += 1
+            self.proc_results.append({
+                'index': idx,
+                'ret_code': 0,
+                'output': copy.deepcopy(env.sos_dict['_output'])
+            })
+        send_message_to_controller(
+            ['progress', 'substep_ignored', env.sos_dict['step_id']])
+
+    def concurrent_exec(self, statement, sig=None):
         idx = env.sos_dict["_index"]
         env.log_to_file(
             'STEP',
@@ -1042,7 +1037,7 @@ class Base_Step_Executor:
         # we should write the signatures after the tasks are completed
         if env.config['sig_mode'] != 'ignore' and not env.sos_dict['_output'].unspecified() \
             and self.step.task:
-            self.pending_signatures[idx] = RuntimeInfo(
+            self.pending_signatures[idx] = sig if sig else RuntimeInfo(
                 statementMD5([statement[1], self.step.task]),
                 env.sos_dict['_input'],
                 env.sos_dict['_output'],
@@ -1634,32 +1629,33 @@ class Base_Step_Executor:
                             and not env.sos_dict['_output'].unspecified() and len(env.sos_dict['_output']) > 0 \
                             and all(x.target_exists() for x in env.sos_dict['_output'].targets) \
                             and env.sos_dict['_output'].later_than(env.sos_dict['_input']):
-                            env.logger.info(
-                                f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 1 else ""} is ``skipped`` with existing output.'
-                            )
+                            self.skip_substep()
                             skip_index = True
-                            # if concurrent substep, there might be later steps that needs to be rerun
-                            # and we need to mark some steps has been completed.
-                            if self.concurrent_substep:
-                                self._completed_concurrent_substeps += 1
-                                self.proc_results.append({
-                                    'index':
-                                        idx,
-                                    'ret_code':
-                                        0,
-                                    'output':
-                                        copy.deepcopy(env.sos_dict['_output'])
-                                })
-                            send_message_to_controller([
-                                'progress', 'substep_ignored',
-                                env.sos_dict['step_id']
-                            ])
                             # do not execute the rest of the statement
                             break
-
+                        #
+                        # default mode, check if skipping substep
+                        sig = None
+                        if env.config['sig_mode'] != 'ignore':
+                            sig = RuntimeInfo(
+                                statementMD5([statement[1], self.step.task]),
+                                env.sos_dict['_input'],
+                                env.sos_dict['_output'],
+                                env.sos_dict['_depends'],
+                                env.sos_dict['__signature_vars__'],
+                                shared_vars=self.vars_to_be_shared)
+                            matched = validate_step_sig(sig)
+                            skip_index = bool(matched)
+                            if skip_index:
+                                self.skip_substep()
+                                if env.sos_dict['step_output'].undetermined():
+                                    self.output_groups[idx] = matched["output"]
+                                if 'vars' in matched:
+                                    self.shared_vars[idx].update(matched["vars"])
+                                break
                         try:
                             if self.concurrent_substep:
-                                self.concurrent_exec(statement)
+                                self.concurrent_exec(statement, sig)
                                 # we check if the previous task has been completed and process them
                                 # because further steps might need to be done
                                 try:
@@ -1676,10 +1672,9 @@ class Base_Step_Executor:
                                         '_output'].unspecified():
                                 self.local_exec_without_signature(statement)
                             else:
-                                skip_index = self.local_exec_with_signature(
-                                    statement)
-                                if skip_index:
-                                    break
+                                self.local_exec_with_signature(
+                                    statement, sig)
+
                         except StopInputGroup as e:
                             if not e.keep_output:
                                 clear_output()
