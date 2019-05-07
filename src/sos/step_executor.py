@@ -965,6 +965,26 @@ class Base_Step_Executor:
 
     def local_exec_with_signature(self, statement, sig):
         idx = env.sos_dict["_index"]
+        # signature might be built outside of the function
+        # not in a debug mode delayed to now
+        if sig is None:
+            sig = RuntimeInfo(
+                statementMD5([statement[1], self.step.task]),
+                env.sos_dict['_input'],
+                env.sos_dict['_output'],
+                env.sos_dict['_depends'],
+                env.sos_dict['__signature_vars__'],
+                shared_vars=self.vars_to_be_shared)
+            # if singaure match, we skip the substep even  if
+            # there are tasks.
+            matched = validate_step_sig(sig)
+            if matched:
+                if env.sos_dict['step_output'].undetermined():
+                    self.output_groups[idx] = matched["output"]
+                if 'vars' in matched:
+                    self.shared_vars[idx].update(matched["vars"])
+                return True
+
         env.log_to_file(
             'STEP',
             f'Execute substep {env.sos_dict["step_name"]} with signature {sig.sig_id}'
@@ -1007,6 +1027,7 @@ class Base_Step_Executor:
             else:
                 self.pending_signatures[idx] = sig
             sig.release()
+        return False
 
     def skip_substep(self):
         idx = env.sos_dict["_index"]
@@ -1636,7 +1657,9 @@ class Base_Step_Executor:
                         #
                         # default mode, check if skipping substep
                         sig = None
-                        if env.config['sig_mode'] != 'ignore' and not env.sos_dict['_output'].unspecified:
+                        if env.config[
+                                'sig_mode'] not in ('ignore', 'distributed') and not env.sos_dict[
+                                    '_output'].unspecified():
                             sig = RuntimeInfo(
                                 statementMD5([statement[1], self.step.task]),
                                 env.sos_dict['_input'],
@@ -1651,7 +1674,8 @@ class Base_Step_Executor:
                                 if env.sos_dict['step_output'].undetermined():
                                     self.output_groups[idx] = matched["output"]
                                 if 'vars' in matched:
-                                    self.shared_vars[idx].update(matched["vars"])
+                                    self.shared_vars[idx].update(
+                                        matched["vars"])
                                 break
                         try:
                             if self.concurrent_substep:
@@ -1672,8 +1696,11 @@ class Base_Step_Executor:
                                         '_output'].unspecified():
                                 self.local_exec_without_signature(statement)
                             else:
-                                self.local_exec_with_signature(
+                                skip_index = self.local_exec_with_signature(
                                     statement, sig)
+                                if skip_index:
+                                    self.skip_substep()
+                                    break
 
                         except StopInputGroup as e:
                             if not e.keep_output:

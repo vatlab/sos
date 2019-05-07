@@ -387,7 +387,7 @@ def reevaluate_output():
 
 
 def validate_step_sig(sig):
-    if env.config['sig_mode'] in ('default', 'skip'):
+    if env.config['sig_mode'] in ('default', 'skip', 'distributed'):
         # if users use sos_run, the "scope" of the step goes beyong names in this step
         # so we cannot save signatures for it.
         if 'sos_run' in env.sos_dict['__signature_vars__']:

@@ -177,7 +177,7 @@ def execute_task(task_id,
 
 def _validate_task_signature(sig, saved_sig, task_id, is_subtask):
     idx = env.sos_dict['_index']
-    if env.config['sig_mode'] in ('default', 'skip'):
+    if env.config['sig_mode'] in ('default', 'skip', 'distributed'):
         matched = sig.validate(saved_sig)
         if isinstance(matched, dict):
             # in this case, an Undetermined output can get real output files

@@ -141,25 +141,28 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
     idx = env.sos_dict['_index']
     try:
         if sig:
-            matched = validate_step_sig(sig)
-            if matched:
-                # avoid sig being released in the final statement
-                sig = None
-                # complete case: concurrent ignore without task
-                send_message_to_controller(
-                    ['progress', 'substep_ignored', env.sos_dict['step_id']])
-                res = {
-                    'index': idx,
-                    'ret_code': 0,
-                    'sig_skipped': 1,
-                    'output': matched['output'],
-                    'shared': matched['vars']
-                }
-                if task:
-                    # if there is task, let the master know that the task is
-                    # skipped
-                    res['task_id'] = None
-                return res
+            # if not in distributed mode, the signature must have been checked at
+            # the step level
+            if env.config['sig_mode'] == 'distributed':
+                matched = validate_step_sig(sig)
+                if matched:
+                    # avoid sig being released in the final statement
+                    sig = None
+                    # complete case: concurrent ignore without task
+                    send_message_to_controller(
+                        ['progress', 'substep_ignored', env.sos_dict['step_id']])
+                    res = {
+                        'index': idx,
+                        'ret_code': 0,
+                        'sig_skipped': 1,
+                        'output': matched['output'],
+                        'shared': matched['vars']
+                    }
+                    if task:
+                        # if there is task, let the master know that the task is
+                        # skipped
+                        res['task_id'] = None
+                    return res
             sig.lock()
 
         # check if input and depends targets actually exist
