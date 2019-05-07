@@ -812,7 +812,13 @@ class Base_Step_Executor:
                 elif isinstance(res['exception'], RemovedTarget):
                     pass
                 elif env.config['keep_going']:
-                    pass
+                    idx_msg = f'(id={env.sos_dict["step_id"]}, index={res["index"]})' if "index" in res and len(
+                        self._substeps
+                    ) > 1 else f'(id={env.sos_dict["step_id"]})'
+                    env.logger.warning(
+                        f'''Substep {self.step.step_name()} {idx_msg} returns an error.'''
+                    )
+                    self.exec_error.append(idx_msg, res['exception'])
                 else:
                     idx_msg = f'(id={env.sos_dict["step_id"]}, index={res["index"]})' if "index" in res and len(
                         self._substeps
@@ -1173,21 +1179,8 @@ class Base_Step_Executor:
                     if excp.message:
                         env.logger.info(excp.message)
                     self.output_groups[proc_result['index']] = sos_targets([])
-                #elif isinstance(e, RemovedTarget):
-                #
-                # in theory, we should be able to handled removed target from here
-                # by rerunning the substep, but we it is too much work for this
-                # corner case. Let us simply rerun the entire step.
                 elif isinstance(excp, RemovedTarget):
                     raise excp
-                else:
-                    idx_msg = f'(id={env.sos_dict["step_id"]}, index={proc_result["index"]})' if "index" in proc_result and len(
-                        self._substeps
-                    ) > 1 else f'(id={env.sos_dict["step_id"]})'
-                    env.logger.warning(
-                        f'xSubstep {self.step.step_name()} {idx_msg} returns an error.'
-                    )
-                    self.exec_error.append(idx_msg, excp)
             else:
                 self.exec_error.append(
                     RuntimeError(
