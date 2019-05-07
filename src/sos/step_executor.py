@@ -1800,11 +1800,6 @@ class Base_Step_Executor:
                 #
                 # endfor loop for each input group
                 #
-            # if error happened but we allow all substeps to be completed, we now
-            # raise exception
-            if self.exec_error.errors:
-                raise self.exec_error
-
             if self._subworkflow_results:
                 try:
                     runner = self.wait_for_subworkflows(
@@ -1835,6 +1830,11 @@ class Base_Step_Executor:
 
             # check results
             self.check_results()
+
+            # if error happened but we allow all substeps to be completed, we now
+            # raise exception
+            if self.exec_error.errors:
+                raise self.exec_error
 
             # if output is Undetermined, re-evalulate it
             # finalize output from output_groups because some output might be skipped
