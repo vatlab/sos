@@ -812,8 +812,11 @@ class Base_Step_Executor:
                 elif isinstance(res['exception'], RemovedTarget):
                     pass
                 elif env.config['keep_going']:
+                    idx_msg = f'(id={env.sos_dict["step_id"]}, index={res["index"]})' if "index" in res and len(
+                        self._substeps
+                    ) > 1 else f'(id={env.sos_dict["step_id"]})'
                     env.logger.warning(
-                        f'''{self.step.step_name()} {f'(index={res["index"]})' if len(self._substeps) > 1 else ""} returns an error.'''
+                        f'''Substep {self.step.step_name()} {idx_msg} returns an error.'''
                     )
                 else:
                     self.exec_error.append(f'index={res["index"]}',
@@ -822,8 +825,11 @@ class Base_Step_Executor:
                     # complete
                     self._completed_concurrent_substeps + 1
                     waiting = till - 1 - self._completed_concurrent_substeps
+                    idx_msg = f'(id={env.sos_dict["step_id"]}, index={res["index"]})' if "index" in res and len(
+                        self._substeps
+                    ) > 1 else f'(id={env.sos_dict["step_id"]})'
                     env.logger.warning(
-                        f'{self.step.step_name()} (index={res["index"]}) returns an error.{f" Terminating step after completing {waiting} submitted substeps." if waiting else ""}'
+                        f'Substep {self.step.step_name()} {idx_msg} returns an error.{f" Terminating step after completing {waiting} submitted substeps." if waiting else ""}'
                     )
                     for i in range(waiting):
                         yield self.result_pull_socket
@@ -1181,9 +1187,11 @@ class Base_Step_Executor:
                 elif isinstance(excp, RemovedTarget):
                     raise excp
                 else:
-                    idx_msg = f'index={proc_result["index"]}' if "index" in proc_result else ''
+                    idx_msg = f'(id={env.sos_dict["step_id"]}, index={proc_result["index"]})' if "index" in proc_result and len(
+                        self._substeps
+                    ) > 1 else f'(id={env.sos_dict["step_id"]})'
                     env.logger.warning(
-                        f'Substep {self.step.step_name()}{f" ({idx_msg})" if idx_msg else ""} returns an error.'
+                        f'Substep {self.step.step_name()} {idx_msg} returns an error.'
                     )
                     self.exec_error.append(idx_msg, excp)
             else:
