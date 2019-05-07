@@ -885,6 +885,49 @@ class Base_Step_Executor:
         ])
         return result
 
+``  def set_task_queue_and_concurrency_from_task_params(self):
+        if self.step.task_params:
+            try:
+                task_queue = get_value_of_param(
+                    'queue',
+                    self.step.task_params,
+                    extra_dict=env.sos_dict.dict())
+                if task_queue:
+                    env.sos_dict['_runtime']['queue'] = task_queue[0]
+            except Exception as e:
+                raise ValueError(
+                    f'Failed to determine value of parameter queue of {self.step.task_params}: {e}'
+                )
+            # check concurrent #1134
+            try:
+                task_concurrency = get_value_of_param(
+                    'concurrent',
+                    self.step.task_params,
+                    extra_dict=env.sos_dict.dict())
+                if task_concurrency:
+                    env.sos_dict['_runtime']['concurrent'] = task_concurrency[0]
+            except Exception as e:
+                raise ValueError(
+                    f'Failed to determine value of parameter queue of {self.step.task_params}: {e}'
+                )
+        if (env.config['default_queue'] in ('None', 'none', None) and
+            'queue' not in env.sos_dict['_runtime']) or \
+            ('queue' in env.sos_dict['_runtime'] and
+            env.sos_dict['_runtime']['queue'] in ('none', 'None', None)):
+            # remove task statement
+            if len(self.step.statements
+                  ) >= 1 and self.step.statements[-1][0] == '!':
+                self.step.statements[-1][1] += '\n' + self.step.task
+            else:
+                self.step.statements.append(['!', self.step.task])
+            self.step.task = None
+        elif 'queue' not in env.sos_dict[
+                '_runtime'] or not env.sos_dict['_runtime']['queue']:
+            if env.config['default_queue']:
+                env.sos_dict['_runtime']['queue'] = env.config['default_queue']
+            else:
+                env.sos_dict['_runtime']['queue'] = 'localhost'
+
     def run(self):
         '''Execute a single step and return results. The result for batch mode is the
         input, output etc returned as alias, and for interactive mode is the return value
@@ -958,47 +1001,7 @@ class Base_Step_Executor:
                 f'Executing step {env.sos_dict["step_name"]} with step_input {env.sos_dict["step_input"]} and step_output {env.sos_dict["step_output"]}'
             )
 
-        if self.step.task_params:
-            try:
-                task_queue = get_value_of_param(
-                    'queue',
-                    self.step.task_params,
-                    extra_dict=env.sos_dict.dict())
-                if task_queue:
-                    env.sos_dict['_runtime']['queue'] = task_queue[0]
-            except Exception as e:
-                raise ValueError(
-                    f'Failed to determine value of parameter queue of {self.step.task_params}: {e}'
-                )
-            # check concurrent #1134
-            try:
-                task_concurrency = get_value_of_param(
-                    'concurrent',
-                    self.step.task_params,
-                    extra_dict=env.sos_dict.dict())
-                if task_concurrency:
-                    env.sos_dict['_runtime']['concurrent'] = task_concurrency[0]
-            except Exception as e:
-                raise ValueError(
-                    f'Failed to determine value of parameter queue of {self.step.task_params}: {e}'
-                )
-        if (env.config['default_queue'] in ('None', 'none', None) and
-            'queue' not in env.sos_dict['_runtime']) or \
-            ('queue' in env.sos_dict['_runtime'] and
-            env.sos_dict['_runtime']['queue'] in ('none', 'None', None)):
-            # remove task statement
-            if len(self.step.statements
-                  ) >= 1 and self.step.statements[-1][0] == '!':
-                self.step.statements[-1][1] += '\n' + self.step.task
-            else:
-                self.step.statements.append(['!', self.step.task])
-            self.step.task = None
-        elif 'queue' not in env.sos_dict[
-                '_runtime'] or not env.sos_dict['_runtime']['queue']:
-            if env.config['default_queue']:
-                env.sos_dict['_runtime']['queue'] = env.config['default_queue']
-            else:
-                env.sos_dict['_runtime']['queue'] = 'localhost'
+        self.set_task_queue_and_concurrency_from_task_params(self)
 
         # look for input statement.
         input_statement_idx = [
