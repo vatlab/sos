@@ -781,7 +781,8 @@ class file_target(path, BaseTarget):
                     return sig_md5 == line.strip().rsplit('\t', 3)[-1]
             else:
                 return False
-        if sig_size != os.path.getsize(self):
+
+        if int(sig_size) != os.path.getsize(self):
             return False
         if sig_mtime == os.path.getmtime(self):
             return True
