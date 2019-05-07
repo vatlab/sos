@@ -38,15 +38,13 @@ class ExecuteError(Error):
     def append(self, line: str, error: Exception) -> None:
         lines = [x for x in line.split('\n') if x.strip()]
         if not lines:
-            short_line = '<empty>'
+            short_line = ''
         else:
-            short_line = lines[0][:40] if len(lines[0]) > 40 else lines[0]
-        if short_line in self.errors:
-            return
+            short_line = '[' + (lines[0][:40] if len(lines[0]) > 40 else lines[0]) + ']:'
         self.errors.append(short_line)
         self.traces.append(get_traceback())
         newline = '\n' if self.message else ''
-        self.message += f'{newline}[{short_line}]: {error}'
+        self.message += f'{newline}{short_line} {error}'
 
 
 def __null_func__(*args, **kwargs) -> Any:

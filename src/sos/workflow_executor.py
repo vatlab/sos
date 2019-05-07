@@ -1376,7 +1376,7 @@ class Base_Executor:
                         exec_error.append(runnable._node_id, res)
                         # stop raising exce_error immediately, which would terminates other substeps
                         # 1265
-                        env.logger.error(
+                        env.logger.debug(
                             f'Step {runnable} failed'
                         )
                     elif '__step_name__' in res:
@@ -1680,7 +1680,7 @@ class Base_Executor:
                         runnable._status = 'failed'
                         dag.save(env.config['output_dag'])
                         exec_error.append(runnable._node_id, res)
-                        env.logger.error(
+                        env.logger.debug(
                             f'Step {runnable} in subworkflow {my_workflow_id} failed'
                         )
                         if not env.config['keep_going']:

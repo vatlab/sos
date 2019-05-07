@@ -812,8 +812,8 @@ class Base_Step_Executor:
                 elif isinstance(res['exception'], RemovedTarget):
                     pass
                 elif env.config['keep_going']:
-                    env.logger.error(
-                        f'''{self.step.step_name()} {f'(index={res["index"]})' if len(self._substeps) > 1 else ""} failed.'''
+                    env.logger.warning(
+                        f'''{self.step.step_name()} {f'(index={res["index"]})' if len(self._substeps) > 1 else ""} returns an error.'''
                     )
                 else:
                     self.exec_error.append(f'index={res["index"]}',
@@ -822,8 +822,8 @@ class Base_Step_Executor:
                     # complete
                     self._completed_concurrent_substeps + 1
                     waiting = till - 1 - self._completed_concurrent_substeps
-                    env.logger.error(
-                        f'{self.step.step_name()} (index={res["index"]}) failed.{f" Terminating after completing {waiting} submitted substeps." if waiting else ""}'
+                    env.logger.warning(
+                        f'{self.step.step_name()} (index={res["index"]}) returns an error.{f" Terminating step after completing {waiting} submitted substeps." if waiting else ""}'
                     )
                     for i in range(waiting):
                         yield self.result_pull_socket
@@ -1181,8 +1181,11 @@ class Base_Step_Executor:
                 elif isinstance(excp, RemovedTarget):
                     raise excp
                 else:
-                    self.exec_error.append(f'index={proc_result["index"]}',
-                                           excp)
+                    idx_msg = f'index={proc_result["index"]}' if "index" in proc_result else ''
+                    env.logger.warning(
+                        f'Substep {self.step.step_name()}{f" ({idx_msg})" if idx_msg else ""} returns an error.'
+                    )
+                    self.exec_error.append(idx_msg, excp)
             else:
                 self.exec_error.append(
                     RuntimeError(
@@ -1657,9 +1660,9 @@ class Base_Step_Executor:
                         #
                         # default mode, check if skipping substep
                         sig = None
-                        if env.config[
-                                'sig_mode'] not in ('ignore', 'distributed', 'build') and not env.sos_dict[
-                                    '_output'].unspecified():
+                        if env.config['sig_mode'] not in (
+                                'ignore', 'distributed', 'build'
+                        ) and not env.sos_dict['_output'].unspecified():
                             sig = RuntimeInfo(
                                 statementMD5([statement[1], self.step.task]),
                                 env.sos_dict['_input'],
