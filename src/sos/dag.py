@@ -121,12 +121,20 @@ class SoS_DAG(nx.DiGraph):
         self._forward_workflow_id = 0
         # if dag has been changed
         self._dirty = True
+        # with error, stop probing
+        self._degraded = False
 
     def mark_dirty(self, dirty=True):
         self._dirty = dirty
 
     def dirty(self):
         return self._dirty
+
+    def mark_degraded(self, degraded=True):
+        self._degraded = degraded
+
+    def degraded(self):
+        return self._degraded
 
     def new_forward_workflow(self):
         self._forward_workflow_id += 1
