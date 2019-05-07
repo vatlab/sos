@@ -301,7 +301,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         sos dryrun for details of the dryrun mode.''')
     runmode.add_argument(
         '-s',
-        choices=['default', 'ignore', 'force', 'build', 'assert', 'skip'],
+        choices=['default', 'ignore', 'force', 'build', 'assert', 'skip', 'distributed'],
         default='default',
         metavar='SIGMODE',
         dest='__sig_mode__',
@@ -311,10 +311,12 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             "force" (ignore existing signature and overwrite them while
             executing the workflow), "build" (build new or overwrite
             existing signature from existing environment and output files),
-            "assert" for validating existing files against their signatures,
-            and "skip" for bypassing substep as long as step output exists
-            and later than input files. Please refer to online documentation
-            for details about the use of runtime signatures.''')
+            and "assert" for validating existing files against their signatures.
+            "skip" and "distributed" are two experimental modes with "skip" for
+            bypassing substep as long as step output exists and later than input
+            files and "distributed" for sending tasks to subworkers for signature
+            validation. Please refer to online documentation for details about
+            the use of runtime signatures.''')
     runmode.add_argument(
         '-T',
         action='store_true',

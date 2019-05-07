@@ -1658,7 +1658,7 @@ class Base_Step_Executor:
                         # default mode, check if skipping substep
                         sig = None
                         if env.config[
-                                'sig_mode'] not in ('ignore', 'distributed') and not env.sos_dict[
+                                'sig_mode'] not in ('ignore', 'distributed', 'build') and not env.sos_dict[
                                     '_output'].unspecified():
                             sig = RuntimeInfo(
                                 statementMD5([statement[1], self.step.task]),

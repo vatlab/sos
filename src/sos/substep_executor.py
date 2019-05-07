@@ -143,7 +143,7 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
         if sig:
             # if not in distributed mode, the signature must have been checked at
             # the step level
-            if env.config['sig_mode'] == 'distributed':
+            if env.config['sig_mode']in ('distributed', 'build'):
                 matched = validate_step_sig(sig)
                 if matched:
                     # avoid sig being released in the final statement
