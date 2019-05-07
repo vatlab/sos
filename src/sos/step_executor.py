@@ -809,7 +809,9 @@ class Base_Step_Executor:
             if 'exception' in res:
                 if isinstance(res['exception'], ProcessKilled):
                     raise res['exception']
-                if env.config['keep_going']:
+                elif isinstance(res['exception'], RemovedTarget):
+                    pass
+                elif env.config['keep_going']:
                     env.logger.error(
                         f'''{self.step.step_name()} {f'(index={res["index"]})' if len(self._substeps) > 1 else ""} failed.'''
                     )
@@ -1163,6 +1165,8 @@ class Base_Step_Executor:
                 # in theory, we should be able to handled removed target from here
                 # by rerunning the substep, but we it is too much work for this
                 # corner case. Let us simply rerun the entire step.
+                elif isinstance(excp, RemovedTarget):
+                    raise excp
                 else:
                     self.exec_error.append(f'index={proc_result["index"]}',
                                            excp)
@@ -1961,6 +1965,13 @@ class Step_Executor(Base_Step_Executor):
                 self.socket.send_pyobj(res)
             else:
                 return res
+        except RemovedTarget as e:
+            # removed target needs to be handled differently since the workflow manager
+            # use type information to get removed targets
+            if self.socket is not None and not self.socket.closed:
+                self.socket.send_pyobj(e)
+            else:
+                raise e
         except Exception as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
