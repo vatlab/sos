@@ -811,7 +811,7 @@ class Base_Step_Executor:
                     raise res['exception']
                 if env.config['keep_going']:
                     env.logger.error(
-                        f'{self.step.step_name()} (index={res["index"]}) failed.'
+                        f'''{self.step.step_name()} {f'(index={res["index"]})' if len(self._substeps) > 1 else ""} failed.'''
                     )
                 else:
                     self.exec_error.append(f'index={res["index"]}',
@@ -1366,7 +1366,7 @@ class Base_Step_Executor:
                             and all(x.target_exists() for x in env.sos_dict['_output'].targets) \
                             and env.sos_dict['_output'].later_than(env.sos_dict['_input']):
                             env.logger.info(
-                                f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 0 else ""} is ``skipped`` with existing output.'
+                                f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 1 else ""} is ``skipped`` with existing output.'
                             )
                             skip_index = True
                             # if concurrent substep, there might be later steps that needs to be rerun
@@ -1482,7 +1482,7 @@ class Base_Step_Executor:
                                         else:
                                             self.execute(statement[1])
                                         env.logger.info(
-                                            f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 0 else ""} is ``completed``{" (pending nested workflow)" if self._subworkflow_results else ""}.'
+                                            f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 1 else ""} is ``completed``{" (pending nested workflow)" if self._subworkflow_results else ""}.'
                                         )
                                     finally:
                                         if not self.step.task:
@@ -1556,7 +1556,7 @@ class Base_Step_Executor:
                                             else:
                                                 self.execute(statement[1])
                                             env.logger.info(
-                                                f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 0 else ""} is ``completed``{" (pending nested workflow)" if self._subworkflow_results else ""}.'
+                                                f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 1 else ""} is ``completed``{" (pending nested workflow)" if self._subworkflow_results else ""}.'
                                             )
                                             if 'shared' in self.step.options:
                                                 try:
@@ -1609,7 +1609,7 @@ class Base_Step_Executor:
                             clear_output()
                             if env.config['keep_going']:
                                 env.logger.error(
-                                    f'{self.step.step_name()} (index={idx}) failed.'
+                                    f'{self.step.step_name()} {f" (index={idx})" if len(self._substeps) > 1 else ""} failed.'
                                 )
                                 self.exec_error.append(str(idx), e)
                             else:
@@ -1996,7 +1996,9 @@ class Step_Executor(Base_Step_Executor):
                 sys.stderr.write(get_traceback())
             if isinstance(e, ProcessKilled):
                 raise
-            self.exec_error.append(self.step.step_name(), e)
+            # if not self.exec_error
+            if e != self.exec_error:
+                self.exec_error.append(self.step.step_name(), e)
         #
         if self.exec_error.errors:
             if self.socket is not None and not self.socket.closed:
