@@ -1644,7 +1644,7 @@ class Base_Step_Executor:
                                     f'Failed to process step {key} ({value.strip()}): {e}'
                                 )
                     elif is_last_runblock:
-                        if env.config['sig_mode'] == 'skip' and not self.vars_to_be_shared \
+                        if env.config['sig_mode'] == 'skip' and not self.vars_to_be_shared and not 'sos_run' in statement[1] \
                             and not env.sos_dict['_output'].unspecified() and len(env.sos_dict['_output']) > 0 \
                             and all(x.target_exists() for x in env.sos_dict['_output'].targets) \
                             and env.sos_dict['_output'].later_than(env.sos_dict['_input']):
