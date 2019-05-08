@@ -2157,6 +2157,12 @@ class RuntimeInfo(InMemorySignature):
                  shared_vars: list = []):
         '''Runtime information for specified output files
         '''
+        if 'sos_run' in signature_vars:
+            # if a step has nested workflow, we cannot save signature
+            # because we do not know the exact content of the nested workflow.
+            self.sig_id = ''
+            return
+
         if not sdict:
             sdict = env.sos_dict
         self.step_md5 = step_md5
@@ -2172,6 +2178,8 @@ class RuntimeInfo(InMemorySignature):
         )
 
     def __getstate__(self):
+        if not elf.sig_id:
+            return {}
         return {
             'step_md5': self.step_md5,
             'input_files': self.input_files,
@@ -2183,6 +2191,9 @@ class RuntimeInfo(InMemorySignature):
         }
 
     def __setstate__(self, sdict: Dict[str, Any]):
+        if not sdict:
+            self.sig_id = ''
+            return
         self.step_md5 = sdict['step_md5']
         self.input_files = sdict['input_files']
         self.output_files = sdict['output_files']
@@ -2192,6 +2203,8 @@ class RuntimeInfo(InMemorySignature):
         self.sig_id = sdict['sig_id']
 
     def lock(self):
+        if not self.sig_id:
+            return
         # we will need to lock on a file that we do not really write to
         # otherwise the lock will be broken when we write to it.
         self._lock = fasteners.InterProcessLock(
@@ -2208,6 +2221,8 @@ class RuntimeInfo(InMemorySignature):
             )
 
     def release(self, quiet=False):
+        if not self.sig_id:
+            return
         if not hasattr(self, '_lock') or self._lock is None:
             env.logger.warning(
                 f'Releasing an non-existent or released lock for {self.sig_id}.'
@@ -2229,6 +2244,8 @@ class RuntimeInfo(InMemorySignature):
                 self._lock = None
 
     def set_output(self, files: sos_targets):
+        if not self.sig_id:
+            return
         # add signature file if input and output files are dynamic
         if 'TARGET' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
                 'SOS_DEBUG']:
@@ -2240,6 +2257,8 @@ class RuntimeInfo(InMemorySignature):
         Because local input and output files can only be determined after the execution
         of workflow. They are not part of the construction.
         '''
+        if not self.sig_id:
+            return False
         if not self.output_files.valid():
             raise ValueError(
                 f'Cannot write signature with undetermined output {self.output_files}'
@@ -2280,6 +2299,8 @@ class RuntimeInfo(InMemorySignature):
 
     def validate(self):
         '''Check if ofiles and ifiles match signatures recorded in md5file'''
+        if not self.sig_id:
+            return f'no signature for steps with nested workflow'
         if 'TARGET' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
                 'SOS_DEBUG']:
             env.log_to_file('TARGET', f'Validating {self.sig_id}')

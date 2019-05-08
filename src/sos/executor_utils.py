@@ -388,8 +388,6 @@ def validate_step_sig(sig):
     if env.config['sig_mode'] in ('default', 'skip', 'distributed'):
         # if users use sos_run, the "scope" of the step goes beyong names in this step
         # so we cannot save signatures for it.
-        if 'sos_run' in env.sos_dict['__signature_vars__']:
-            return {}
         matched = sig.validate()
         if isinstance(matched, dict):
             env.logger.info(
@@ -409,9 +407,7 @@ def validate_step_sig(sig):
         return matched
     elif env.config['sig_mode'] == 'build':
         # build signature require existence of files
-        if 'sos_run' in env.sos_dict['__signature_vars__']:
-            return {}
-        elif sig.write():
+        if sig.write():
             env.logger.info(
                 f'Step ``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` with signature constructed'
             )
