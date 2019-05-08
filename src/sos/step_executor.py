@@ -355,6 +355,28 @@ class Base_Step_Executor:
     def __init__(self, step):
         self.step = step
         self.task_manager = None
+        self.exec_error = ExecuteError(self.step.step_name())
+
+    #
+    #  Functions that should be redefined in derived class
+    #
+
+    def submit_tasks(self, tasks):
+        raise RuntimeError('Undefined base function submit_tasks')
+
+    def wait_for_tasks(self, tasks, all_submitted):
+        # this will be redefined in subclasses
+        raise RuntimeError('Undefined base function wait_for_tasks')
+
+    def wait_for_subworkflows(self, workflow_results):
+        raise RuntimeError('Undefined base function wait_for_subworkflows')
+
+    def handle_unknown_target(self, e):
+        raise RuntimeError('Undefined base function handle_unknown_target')
+
+    #
+    # Common functions
+    #
 
     def verify_output(self):
         if env.sos_dict['step_output'] is None:
@@ -612,20 +634,6 @@ class Base_Step_Executor:
             self.submit_tasks(tasks)
         return task_id
 
-    def submit_tasks(self, tasks):
-        raise RuntimeError(
-            'Instance of Step_Executor should redefine submit_tasks')
-
-    def wait_for_tasks(self, tasks, all_submitted):
-        # this will be redefined in subclasses
-        yield None
-        return {}
-
-    def wait_for_subworkflows(self, workflow_results):
-        yield None
-        raise RuntimeError('Subworkflow is not supported in interactive mode')
-        return {}
-
     def wait_for_results(self, all_submitted):
         # this is a generator function because wait_for_tasks is a generator
         # function and needs to yield to the caller
@@ -773,11 +781,6 @@ class Base_Step_Executor:
                                                 'substep result collector')
         port = self.result_pull_socket.bind_to_random_port('tcp://127.0.0.1')
         env.config['sockets']['result_push_socket'] = port
-
-    def handle_unknown_target(self, e):
-        # wait for the clearnce of unknown target
-        yield None
-        raise e
 
     def submit_substep(self, param):
         send_message_to_controller(['substep', param])
@@ -950,9 +953,10 @@ class Base_Step_Executor:
                     self.execute(statement[1], return_result=True))
             else:
                 self.execute(statement[1])
-            env.logger.info(
-                f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 1 else ""} is ``completed``{" (pending nested workflow)" if self._subworkflow_results else ""}.'
-            )
+            if env.config['run_mode'] != 'interactive':
+                env.logger.info(
+                    f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 1 else ""} is ``completed``{" (pending nested workflow)" if self._subworkflow_results else ""}.'
+                )
         finally:
             if not self.step.task:
                 # if no task, this step is __completed
@@ -1005,9 +1009,10 @@ class Base_Step_Executor:
                     self.execute(statement[1], return_result=True))
             else:
                 self.execute(statement[1])
-            env.logger.info(
-                f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 1 else ""} is ``completed``{" (pending nested workflow)" if self._subworkflow_results else ""}.'
-            )
+            if env.config['run_mode'] != 'interactive':
+                env.logger.info(
+                    f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 1 else ""} is ``completed``{" (pending nested workflow)" if self._subworkflow_results else ""}.'
+                )
             if 'shared' in self.step.options:
                 try:
                     self.shared_vars[env.sos_dict['_index']].update({
@@ -1969,7 +1974,6 @@ class Step_Executor(Base_Step_Executor):
             raise RuntimeError(f'Failed to veryify dependent target {traced}')
 
     def run(self):
-        self.exec_error = ExecuteError(self.step.step_name())
         try:
             try:
                 # 1218

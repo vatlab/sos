@@ -143,14 +143,15 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
         if sig:
             # if not in distributed mode, the signature must have been checked at
             # the step level
-            if env.config['sig_mode']in ('distributed', 'build'):
+            if env.config['sig_mode'] in ('distributed', 'build'):
                 matched = validate_step_sig(sig)
                 if matched:
                     # avoid sig being released in the final statement
                     sig = None
                     # complete case: concurrent ignore without task
-                    send_message_to_controller(
-                        ['progress', 'substep_ignored', env.sos_dict['step_id']])
+                    send_message_to_controller([
+                        'progress', 'substep_ignored', env.sos_dict['step_id']
+                    ])
                     res = {
                         'index': idx,
                         'ret_code': 0,
@@ -182,9 +183,10 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
                     errmsg = err.getvalue()
             else:
                 SoS_exec(stmt, return_result=False)
-            env.logger.info(
-                f'``{env.sos_dict["step_name"]}`` (index={idx}) is ``completed``.'
-            )
+            if env.config['run_mode'] != 'interactive':
+                env.logger.info(
+                    f'``{env.sos_dict["step_name"]}`` (index={idx}) is ``completed``.'
+                )
         if task:
             task_id, taskdef, task_vars = create_task(global_def, global_vars,
                                                       task, task_params)
