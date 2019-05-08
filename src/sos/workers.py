@@ -14,7 +14,7 @@ import zmq
 from .controller import (close_socket, connect_controllers, create_socket,
                          disconnect_controllers)
 from .executor_utils import kill_all_subprocesses, prepare_env
-from .utils import env, ProcessKilled
+from .utils import env, ProcessKilled, short_repr
 
 
 def signal_handler(*args, **kwargs):
@@ -281,7 +281,7 @@ class SoS_Worker(mp.Process):
         env.verbosity = config.get('verbosity', 2)
         env.log_to_file(
             'WORKER',
-            f'Worker {self.name} working on a workflow {workflow_id} with args {args}'
+            f'Worker {self.name} working on a workflow {workflow_id} with args {short_repr(args)}'
         )
 
         executer = Base_Executor(wf, args=args, shared=shared, config=config)
@@ -309,7 +309,7 @@ class SoS_Worker(mp.Process):
 
         env.log_to_file(
             'WORKER',
-            f'Worker {self.name} working on {section.step_name()} with args {args}'
+            f'Worker {self.name} working on {section.step_name()} with args {short_repr(args)}'
         )
         env.config.update(config)
         env.verbosity = verbosity
