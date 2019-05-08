@@ -879,6 +879,7 @@ class RemoteHost:
                 f'Result for {task_id} is not received (no result)')
             return {
                 'ret_code': 1,
+                'task': task_id,
                 'exception': RuntimeError(f'Task {task_id} failed or aborted'),
                 'output': sos_targets()
             }
