@@ -220,7 +220,7 @@ class TaskFile(object):
     def save(self, params):
         if os.path.isfile(self.task_file):
             if self.status == 'running':
-                env.logger.debug('Running task {self.task_file} is not updated')
+                env.logger.debug(f'Task {self.task_id} is running and is not updated')
                 return
 
             # keep original stuff but update params, which could contain

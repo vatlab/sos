@@ -1046,7 +1046,7 @@ def cmd_preview(args, unknown_args):
     env.verbosity = args.verbosity
     if args.host:
         # remote host?
-        host = Host(args.host)
+        host = Host(args.host, start_engine=False)
         rargs = ['sos', 'preview'] + args.items + ['--html']
         if args.style:
             rargs += ['-s', args.style] + unknown_args
@@ -1354,7 +1354,7 @@ def cmd_status(args, workflow_args):
                 status=args.status)
         else:
             # remote host?
-            host = Host(args.queue)
+            host = Host(args.queue, start_engine=False)
             print(
                 host._task_engine.query_tasks(
                     tasks=args.tasks,
