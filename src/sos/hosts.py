@@ -1743,7 +1743,7 @@ def run_command_on_hosts(cfg, hosts, cmd, verbosity):
         # runing command on all hosts
         try:
             env.logger.info(f'Running ``{" ".join(cmd)}`` on ``{host}``')
-            h = Host(host)
+            h = Host(host, start_engine=False)
             print(h._host_agent.check_output(cmd, under_workdir=True))
         except Exception as e:
             from .utils import get_traceback
@@ -1764,7 +1764,7 @@ def push_to_hosts(cfg, hosts, items, verbosity):
         try:
             env.logger.info(f'Pushing ``{" ".join(items)}`` to ``{host}``')
 
-            h = Host(host)
+            h = Host(host, start_engine=False)
             #
             sent = h.send_to_host(items)
             #
@@ -1793,7 +1793,7 @@ def pull_from_host(cfg, hosts, items, verbosity):
     try:
         env.logger.info(f'Pulling ``{" ".join(items)}`` from ``{hosts[0]}``')
 
-        host = Host(hosts[0])
+        host = Host(hosts[0], start_engine=False)
         #
         received = host.receive_from_host(items)
         #
