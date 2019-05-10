@@ -60,6 +60,8 @@ class TaskEngine(threading.Thread):
         else:
             # default
             self.max_running_jobs = min(max(os.cpu_count() // 2, 4), 24)
+        env.log_to_file('TASK', f'Using {self.max_running_jobs} concurrent jobs for task engine {self.alias}')
+
         #
         # multiple thread job submission does not work because the threads share the
         # same namespace with variables such as sos_dict. Variables changed by
