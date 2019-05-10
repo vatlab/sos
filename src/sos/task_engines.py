@@ -641,12 +641,11 @@ class BackgroundProcess_TaskEngine(TaskEngine):
 
     def _submit_task(self, task_ids):
         # if no template, use a default command
-        for task_id in task_ids:
-            cmd = f"sos execute {task_id} -v {env.verbosity} -s {env.config['sig_mode']} {'--dryrun' if env.config['run_mode'] == 'dryrun' else ''}"
-            if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-                env.log_to_file('TASK',
-                                f'Execute "{cmd}" (waiting={self.wait_for_task})')
-            self.agent.run_command(cmd, wait_for_task=self.wait_for_task)
+        cmd = f"sos execute {' '.join(task_ids)} -v {env.verbosity} -s {env.config['sig_mode']} {'--dryrun' if env.config['run_mode'] == 'dryrun' else ''}"
+        if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+            env.log_to_file('TASK',
+                            f'Execute "{cmd}" (waiting={self.wait_for_task})')
+        self.agent.run_command(cmd, wait_for_task=self.wait_for_task)
         return True
 
     def _submit_task_with_template(self, task_ids):
