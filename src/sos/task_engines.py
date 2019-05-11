@@ -60,7 +60,10 @@ class TaskEngine(threading.Thread):
         else:
             # default
             self.max_running_jobs = min(max(os.cpu_count() // 2, 4), 24)
-        env.log_to_file('TASK', f'Using {self.max_running_jobs} concurrent jobs for task engine {self.alias}')
+        env.log_to_file(
+            'TASK',
+            f'Using {self.max_running_jobs} concurrent jobs for task engine {self.alias}'
+        )
 
         #
         # multiple thread job submission does not work because the threads share the
@@ -330,10 +333,9 @@ class TaskEngine(threading.Thread):
             else:
                 if time.time() - self.last_report > 60:
                     self.last_report = time.time()
-                    if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-                        env.log_to_file(
-                            'TASK',
-                            f'No running or pending task. Task engine is idle.')
+                    env.log_to_file(
+                        'TASK',
+                        f'No running or pending task. Task engine is idle.')
 
     def submit_task(self, task_id):
         # we wait for the engine to start
@@ -435,14 +437,36 @@ class TaskEngine(threading.Thread):
     def update_task_status(self, task_id, status):
         #
         if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-            env.log_to_file('TASK', f'STATUS {task_id}\t{status}\n')
+            engine_sts = ""
+            if task_id in self.running_tasks:
+                engine_sts += "in running list"
+            elif task_id in self.running_pending_tasks:
+                engine_sts += "in running pending list"
+            elif task_id in self.pending_tasks:
+                engine_sts += "in pending list"
+            elif task_id in self.submitting_tasks:
+                engine_sts += "in submitting list"
+            elif task_id in self.canceled_tasks:
+                engine_sts += "in canceled list"
+            else:
+                engine_sts += "not in any list"
+            env.log_to_file('TASK', f'STATUS {task_id}\t{status}\t{engine_sts}')
         #
         with threading.Lock():
             if task_id in self.canceled_tasks and status != 'aborted':
                 env.logger.debug(
                     f'Task {task_id} is still not killed (status {status})')
                 status = 'aborted'
-            if status != 'missing':
+            if status == 'missing':
+                # if a task has become missing.... there is no task file so they cannot be rerun
+                env.log_to_file('TASK', f'{task_id} becomes missing.')
+                if task_id in self.running_tasks:
+                    self.running_tasks.remove(task_id)
+                if task_id in self.pending_tasks:
+                    self.pending_tasks.remove(task_id)
+                if task_id in self.running_pending_tasks:
+                    self.running_pending_tasks.pop(task_id)
+            else:
                 if task_id not in self.task_info:
                     self.task_info[task_id]['date'] = [None, None, None]
                 if task_id in self.task_status and self.task_status[
@@ -471,6 +495,20 @@ class TaskEngine(threading.Thread):
                         'start_time': self.task_info[task_id]['date'][1],
                         'tags': self.task_info['tid'].get('tags', '')
                     })
+            if status == 'new':
+                if task_id not in self.pending_tasks:
+                    pass
+                elif task_id in self.running_tasks:
+                    # this should not happen
+                    env.logger.warning(
+                        f'Task in "new" status when it is supposed to be running. Resubmitting.'
+                    )
+                    self.submit_task(task_id)
+                if task_id in self.pending_tasks:
+                    self.pending_tasks.remove(task_id)
+                if task_id in self.running_pending_tasks:
+                    self.running_pending_tasks.pop(task_id)
+
             self.task_status[task_id] = status
             if status == 'pening' and task_id not in self.pending_tasks and task_id not in self.submitting_tasks:
                 self.pending_tasks.append(task_id)
@@ -630,8 +668,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
     def execute_tasks(self, task_ids):
         if not super(BackgroundProcess_TaskEngine,
                      self).execute_tasks(task_ids):
-            if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-                env.log_to_file('TASK', f'Failed to prepare task {task_ids}')
+            env.log_to_file('TASK', f'Failed to prepare task {task_ids}')
             return False
         if self.job_template:
             if not self._submit_task_with_template(task_ids):
@@ -644,9 +681,8 @@ class BackgroundProcess_TaskEngine(TaskEngine):
     def _submit_task(self, task_ids):
         # if no template, use a default command
         cmd = f"sos execute {' '.join(task_ids)} -v {env.verbosity} -s {env.config['sig_mode']} {'--dryrun' if env.config['run_mode'] == 'dryrun' else ''}"
-        if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-            env.log_to_file('TASK',
-                            f'Execute "{cmd}" (waiting={self.wait_for_task})')
+        env.log_to_file('TASK',
+                        f'Execute "{cmd}" (waiting={self.wait_for_task})')
         self.agent.run_command(cmd, wait_for_task=self.wait_for_task)
         return True
 
