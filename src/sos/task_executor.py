@@ -186,9 +186,14 @@ def _validate_task_signature(sig, saved_sig, task_id, is_subtask):
             env.sos_dict.set('_depends', sos_targets(matched['depends']))
             env.sos_dict.set('_output', sos_targets(matched['output']))
             env.sos_dict.update(matched['vars'])
-            (env.logger.debug if is_subtask else env.logger.info
-            )(f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` due to saved signature'
-             )
+            if is_subtask or env.config['run_mode'] != 'run':
+                env.logger.debug(
+                    f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` due to saved signature'
+                )
+            else:
+                env.logger.info(
+                    f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` due to saved signature'
+                )
             return True
     elif env.config['sig_mode'] == 'assert':
         matched = sig.validate(saved_sig)
@@ -198,17 +203,28 @@ def _validate_task_signature(sig, saved_sig, task_id, is_subtask):
         env.sos_dict.set('_depends', sos_targets(matched['depends']))
         env.sos_dict.set('_output', sos_targets(matched['output']))
         env.sos_dict.update(matched['vars'])
-        (env.logger.debug if is_subtask else env.logger.info
-        )(f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with matching signature'
-         )
+
+        if is_subtask or env.config['run_mode'] != 'run':
+            env.logger.debug(
+                f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with matching signature'
+            )
+        else:
+            env.logger.info(
+                f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with matching signature'
+            )
         sig.content = saved_sig
         return True
     elif env.config['sig_mode'] == 'build':
         # The signature will be write twice
         if sig.write():
-            (env.logger.debug if is_subtask else env.logger.info
-            )(f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with signature constructed'
-             )
+            if is_subtask or env.config['run_mode'] != 'run':
+                env.logger.debug(
+                    f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with signature constructed'
+                )
+            else:
+                env.logger.info(
+                    f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with signature constructed'
+                )
             return True
         return False
     elif env.config['sig_mode'] == 'force':
@@ -232,7 +248,10 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode,
         sos_dict=params.sos_dict)
     m.start()
 
-    env.logger.info(f'{task_id} ``started``')
+    if env.config['run_mode'] == 'run':
+        env.logger.info(f'{task_id} ``started``')
+    else:
+        env.logger.debug(f'{task_id} ``started``')
 
     master_out = os.path.join(
         os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out')
@@ -374,26 +393,39 @@ def _execute_sub_tasks(task_id, params, sig_content, verbosity, runmode,
 
     if all_res['ret_code'] != 0:
         if all_res['ret_code'] == len(results):
-            env.logger.info(f'All {len(results)} tasks in {task_id} ``failed``')
+            if env.config['run_mode'] == 'run':
+                env.logger.info(f'All {len(results)} tasks in {task_id} ``failed``')
+            else:
+                env.logger.debug(f'All {len(results)} tasks in {task_id} ``failed``')
         else:
-            env.logger.info(
-                f'{all_res["ret_code"]} of {len(results)} tasks in {task_id} ``failed``'
-            )
+            if env.config['run_mode'] == 'run':
+                env.logger.info(f'{all_res["ret_code"]} of {len(results)} tasks in {task_id} ``failed``')
+            else:
+                env.logger.debug(f'{all_res["ret_code"]} of {len(results)} tasks in {task_id} ``failed``')
+
         # if some failed, some skipped, not skipped
         if 'skipped' in all_res:
             all_res.pop('skipped')
     elif all_res['skipped']:
         if all_res['skipped'] == len(results):
-            env.logger.info(
-                f'All {len(results)} tasks in {task_id} ``ignored`` or skipped')
+            if env.config['run_mode'] == 'run':
+                env.logger.info(f'All {len(results)} tasks in {task_id} ``ignored`` or skipped')
+            else:
+                env.logger.debug(f'All {len(results)} tasks in {task_id} ``ignored`` or skipped')
+
         else:
             # if only partial skip, we still save signature and result etc
-            env.logger.info(
-                f'{all_res["skipped"]} of {len(results)} tasks in {task_id} ``ignored`` or skipped'
-            )
+            if env.config['run_mode'] == 'run':
+                env.logger.info(f'{all_res["skipped"]} of {len(results)} tasks in {task_id} ``ignored`` or skipped')
+            else:
+                env.logger.debug(f'{all_res["skipped"]} of {len(results)} tasks in {task_id} ``ignored`` or skipped')
+
             all_res.pop('skipped')
     else:
-        env.logger.info(f'All {len(results)} tasks in {task_id} ``completed``')
+        if env.config['run_mode'] == 'run':
+            env.logger.info(f'All {len(results)} tasks in {task_id} ``completed``')
+        else:
+            env.logger.debug(f'All {len(results)} tasks in {task_id} ``completed``')
     return all_res
 
 
@@ -477,7 +509,10 @@ def _execute_task(task_id,
     elif sigmode is not None:
         env.config['sig_mode'] = sigmode
     #
-    (env.logger.debug if subtask else env.logger.info)(f'{task_id} ``started``')
+    if subtask or env.config['run_mode'] != 'run':
+        env.logger.debug(f'{task_id} ``started``')
+    else:
+        env.logger.info(f'{task_id} ``started``')
 
     env.sos_dict.quick_update(sos_dict)
 
@@ -606,8 +641,10 @@ def _execute_task(task_id,
                 # step process
                 SoS_exec(task)
 
-        (env.logger.debug
-         if subtask else env.logger.info)(f'{task_id} ``completed``')
+        if subtask or env.config['run_mode'] != 'run':
+            env.logger.debug(f'{task_id} ``completed``')
+        else:
+            env.logger.info(f'{task_id} ``completed``')
 
     except StopInputGroup as e:
         # task ignored with stop_if exception
