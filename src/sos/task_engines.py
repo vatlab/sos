@@ -680,7 +680,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
 
     def _submit_task(self, task_ids):
         # if no template, use a default command
-        cmd = f"sos execute {' '.join(task_ids)} -v {env.verbosity} -s {env.config['sig_mode']} {'--dryrun' if env.config['run_mode'] == 'dryrun' else ''}"
+        cmd = f"sos execute {' '.join(task_ids)} -v {env.verbosity} -s {env.config['sig_mode']} -m {env.config['run_mode']}"
         env.log_to_file('TASK',
                         f'Execute "{cmd}" (waiting={self.wait_for_task})')
         self.agent.run_command(cmd, wait_for_task=self.wait_for_task)

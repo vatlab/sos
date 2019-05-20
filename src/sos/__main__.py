@@ -469,7 +469,8 @@ def cmd_run(args, workflow_args):
             'max_procs': args.__max_procs__,
             'max_running_jobs': args.__max_running_jobs__,
             'sig_mode': 'ignore' if args.dryrun else args.__sig_mode__,
-            'run_mode': 'dryrun' if args.dryrun else 'run',
+            # when being tapped by sos notebook, we suppose it is in interactive mode
+            'run_mode': 'dryrun' if args.dryrun else ('interactive' if args.exec_mode else 'run'),
             'verbosity': args.verbosity,
             # for infomration only
             'workdir': os.getcwd(),
@@ -512,7 +513,7 @@ def cmd_run(args, workflow_args):
 
         executor = Base_Executor(workflow, args=workflow_args, config=config)
         # start controller
-        executor.run(args.__targets__, mode='dryrun' if args.dryrun else 'run')
+        executor.run(args.__targets__, mode=config['run_mode'])
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
@@ -1135,8 +1136,13 @@ def get_execute_parser(desc_only=False):
         '--dryrun',
         action='store_true',
         dest='dryrun',
-        help='''Dryrun mode, which will cause actions to print scripts instead
-            of executing them.''')
+        help=argparse.SUPPRESS)
+    parser.add_argument(
+        '-m',
+        '--mode',
+        dest='run_mode',
+        help='''Run mode of the task, default to 'run', but can be 'dryrun' (the
+            same as --dryrun) or 'interactive", which suppress status update.''')
     parser.add_argument(
         '-q',
         '--queue',
@@ -1212,7 +1218,7 @@ def cmd_execute(args, workflow_args):
                 execute_task(
                     task,
                     verbosity=args.verbosity,
-                    runmode='dryrun' if args.dryrun else 'run',
+                    runmode='dryrun' if args.dryrun else (args.run_mode if args.run_mode else 'run'),
                     sigmode=args.__sig_mode__,
                     monitor_interval=monitor_interval,
                     resource_monitor_interval=resource_monitor_interval))
@@ -1226,7 +1232,7 @@ def cmd_execute(args, workflow_args):
     load_config_files(args.config)
     env.verbosity = args.verbosity
     env.config['sig_mode'] = args.__sig_mode__
-    env.config['run_mode'] = 'dryrun' if args.dryrun else 'run'
+    env.config['run_mode'] = 'dryrun' if args.dryrun else (args.run_mode if args.run_mode else 'run')
     host = Host(args.queue)
     for task in args.tasks:
         host.submit_task(task)
