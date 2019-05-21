@@ -2457,7 +2457,6 @@ fail_if(_index == 5, 'fail at 5')
                 continue
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
 
-
     def testKeepGoingOfConcurrentSubsteps(self):
         for i in range(200):
             if os.path.isfile(f'test_{i}.txt'):
@@ -2495,6 +2494,28 @@ fail_if(_index == 10, 'fail at 10')
             self.assertFalse(os.path.isfile(f'test_{i}.txt'))
         for i in range(190, 200):
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
+
+    def testStmtBeforeInput(self):
+        '''Bug #1270, if there is any statement before input, the step will be undetermined'''
+        if os.path.isfile('test_1270.txt'):
+            os.remove('test_1270.txt')
+        if os.path.isfile('test_1270.out'):
+            os.remove('test_1270.out')
+        script = SoS_Script(r'''\
+[10]
+with open('test_1270.txt', 'w') as t1:
+    t1.write('something')
+
+input: 'test_1270.txt'
+output: 'test_1270.out'
+with open(_input, 'r') as ifile, open(_output, 'w') as ofile:
+    ofile.write(ifile.read())
+''')
+        wf = script.workflow()
+        # this should run
+        Base_Executor(wf).run()
+        self.assertTrue(os.path.isfile('test_1270.txt'))
+        self.assertTrue(os.path.isfile('test_1270.out'))
 
 
 if __name__ == '__main__':
