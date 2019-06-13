@@ -183,7 +183,7 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
                     errmsg = err.getvalue()
             else:
                 SoS_exec(stmt, return_result=False)
-            if env.config['run_mode'] != 'interactive':
+            if not task and env.config['run_mode'] != 'interactive':
                 env.logger.info(
                     f'``{env.sos_dict["step_name"]}`` (index={idx}) is ``completed``.'
                 )
