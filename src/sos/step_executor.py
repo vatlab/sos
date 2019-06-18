@@ -953,7 +953,7 @@ class Base_Step_Executor:
                     self.execute(statement[1], return_result=True))
             else:
                 self.execute(statement[1])
-            if env.config['run_mode'] != 'interactive':
+            if not self.step.task and env.config['run_mode'] != 'interactive':
                 env.logger.info(
                     f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 1 else ""} is ``completed``{" (pending nested workflow)" if self._subworkflow_results else ""}.'
                 )
@@ -1009,7 +1009,7 @@ class Base_Step_Executor:
                     self.execute(statement[1], return_result=True))
             else:
                 self.execute(statement[1])
-            if env.config['run_mode'] != 'interactive':
+            if not self.step.task and env.config['run_mode'] != 'interactive':
                 env.logger.info(
                     f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 1 else ""} is ``completed``{" (pending nested workflow)" if self._subworkflow_results else ""}.'
                 )
