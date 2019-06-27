@@ -25,7 +25,7 @@ With Python 3.6 and above installed ([anaconda python](https://www.continuum.io/
 ```
 and also
 ```
-% pop install sos-pbs
+% pip install sos-pbs
 ```
 if you would like to use SoS with a remote batch system such as LSF or Slurm.
 
