@@ -14,7 +14,7 @@ Please refer to the [SoS homepage](http://vatlab.github.io/sos-docs) for more in
 
 We welcome and value community contributions: please [post issues](https://github.com/vatlab/SoS/issues)
 to provide us feedback or get our support; please [send pull requests](https://github.com/vatlab/SoS/pulls)
-if you have helped fixing bugs or making improvements to the source code.  
+if you have helped fixing bugs or making improvements to the source code. In addition, if you are interesting in extending SoS, for example adding a new target type or task engine, please have a look at our tutorial on extending SoS [here](https://vatlab.github.io/sos-docs/doc/user_guide/extending_sos.html).
 
 # Installing SoS Workflow
 
