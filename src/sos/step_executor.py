@@ -374,6 +374,41 @@ class Base_Step_Executor:
     def handle_unknown_target(self, e):
         raise RuntimeError('Undefined base function handle_unknown_target')
 
+    def init_input_output_vars(self):
+        # if there is __step_output__ from previous step, use it as default input
+        # otherwise, reset to empty
+        if '__step_output__' not in env.sos_dict or env.sos_dict[
+                '__step_output__'].unspecified():
+            env.sos_dict.set('step_input', sos_targets([]))
+        else:
+            env.sos_dict.set(
+                'step_input',
+                env.sos_dict['__step_output__']._remove_empty_groups())
+        # input can be Undetermined from undetermined output from last step
+        env.sos_dict.set('_input', copy.deepcopy(env.sos_dict['step_input']))
+
+        # if there is default output for auxiliary steps, use it as step_output and _output
+        # otherwise reset to unspecified.
+        if '__default_output__' in env.sos_dict:
+            # if step is triggered by sos_step, it should not be considered as
+            # output of the step. #981
+            env.sos_dict.set(
+                '__default_output__',
+                sos_targets([
+                    x for x in env.sos_dict['__default_output__']._targets
+                    if not isinstance(x, sos_step)
+                ]))
+            env.sos_dict.set('step_output',
+                             copy.deepcopy(env.sos_dict['__default_output__']))
+            env.sos_dict.set('_output',
+                             copy.deepcopy(env.sos_dict['__default_output__']))
+        else:
+            env.sos_dict.set('step_output', sos_targets([]))
+            # output is said to be unspecified until output: is used
+            env.sos_dict.set('_output', sos_targets(_undetermined=True))
+
+        env.sos_dict.set('step_depends', sos_targets([]))
+        env.sos_dict.set('_depends', sos_targets([]))
     #
     # Common functions
     #
@@ -394,8 +429,8 @@ class Base_Step_Executor:
                         # in dryrun mode, we just create these targets
                         file_target(target).create_placeholder()
                     else:
-                        # latency wait for 5 seconds because the file system might be slow
-                        time.sleep(5)
+                        # latency wait for 2 seconds because the file system might be slow
+                        time.sleep(2)
                         if not file_target(target).target_exists('any'):
                             raise RuntimeError(
                                 f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]} (curdir={os.getcwd()})'
@@ -1247,36 +1282,8 @@ class Base_Step_Executor:
         # * depends:    None at first, can be redefined by depends statement
         # * _depends:   None at first, can be redefined by depends statement
         #
-        if '__step_output__' not in env.sos_dict or env.sos_dict[
-                '__step_output__'].unspecified():
-            env.sos_dict.set('step_input', sos_targets([]))
-        else:
-            env.sos_dict.set(
-                'step_input',
-                env.sos_dict['__step_output__']._remove_empty_groups())
-        # input can be Undetermined from undetermined output from last step
-        env.sos_dict.set('_input', copy.deepcopy(env.sos_dict['step_input']))
+        self.init_input_output_vars()
 
-        if '__default_output__' in env.sos_dict:
-            # if step is triggered by sos_step, it should not be considered as
-            # output of the step. #981
-            env.sos_dict.set(
-                '__default_output__',
-                sos_targets([
-                    x for x in env.sos_dict['__default_output__']._targets
-                    if not isinstance(x, sos_step)
-                ]))
-            env.sos_dict.set('step_output',
-                             copy.deepcopy(env.sos_dict['__default_output__']))
-            env.sos_dict.set('_output',
-                             copy.deepcopy(env.sos_dict['__default_output__']))
-        else:
-            env.sos_dict.set('step_output', sos_targets([]))
-            # output is said to be unspecified until output: is used
-            env.sos_dict.set('_output', sos_targets(_undetermined=True))
-
-        env.sos_dict.set('step_depends', sos_targets([]))
-        env.sos_dict.set('_depends', sos_targets([]))
         # _index is needed for pre-input action's active option and for debug output of scripts
         env.sos_dict.set('_index', 0)
 
