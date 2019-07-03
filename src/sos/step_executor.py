@@ -430,7 +430,8 @@ class Base_Step_Executor:
                         file_target(target).create_placeholder()
                     else:
                         # latency wait for 2 seconds because the file system might be slow
-                        time.sleep(2)
+                        if env.config['run_mode'] == 'run':
+                            time.sleep(2)
                         if not file_target(target).target_exists('any'):
                             raise RuntimeError(
                                 f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]} (curdir={os.getcwd()})'
@@ -439,7 +440,8 @@ class Base_Step_Executor:
                 if env.config['run_mode'] == 'dryrun':
                     target.create_placeholder()
                 else:
-                    time.sleep(5)
+                    if env.config['run_mode'] == 'run':
+                        time.sleep(2)
                     if not target.target_exists('any'):
                         raise RuntimeError(
                             f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]}'
