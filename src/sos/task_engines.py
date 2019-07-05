@@ -734,6 +734,8 @@ class BackgroundProcess_TaskEngine(TaskEngine):
 
         try:
             cmd = f'bash ~/.sos/tasks/{filename}'
+            env.log_to_file('TASK',
+                f'Execute "{cmd}" with script {job_text}')
             self.agent.run_command(cmd, wait_for_task=self.wait_for_task)
         except Exception as e:
             raise RuntimeError(f'Failed to submit task {task_ids}: {e}')
