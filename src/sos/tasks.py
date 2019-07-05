@@ -1025,9 +1025,13 @@ def check_tasks(tasks, is_all: bool):
     #
     status_cache: Dict = {}
     if os.path.isfile(cache_file):
-        with fasteners.InterProcessLock(cache_file + '_'):
-            with open(cache_file, 'rb') as cache:
-                status_cache = pickle.load(cache)
+        try:
+            with fasteners.InterProcessLock(cache_file + '_'):
+                with open(cache_file, 'rb') as cache:
+                    status_cache = pickle.load(cache)
+        except:
+            # if the cache file is corrupted, remove it. #1275
+            os.remove(cache_file)
     # at most 20 threads
     from multiprocessing.pool import ThreadPool as Pool
     p = Pool(min(20, len(tasks)))
