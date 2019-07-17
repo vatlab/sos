@@ -553,6 +553,12 @@ class Controller(threading.Thread):
                         self.handle_tapping_controller_msg(
                             self.tapping_controller_socket.recv_pyobj())
 
+                if self.kernel and hasattr(self.kernel, 'kernel_idle_func'):
+                    try:
+                        self.kernel.kernel_idle_func()
+                    except Exception as e:
+                        env.logger.debug(f'Calling kernel idle function failed: {e}')
+
                 # if monitor_socket in socks:
                 #     evt = recv_monitor_message(monitor_socket)
                 #     if evt['event'] == zmq.EVENT_ACCEPTED:
