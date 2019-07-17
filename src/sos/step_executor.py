@@ -622,6 +622,8 @@ class Base_Step_Executor:
                         f'An integer value is expected for runtime option trunk, {env.sos_dict["_runtime"]["trunk_size"]} provided'
                     )
                 trunk_size = env.sos_dict['_runtime']['trunk_size']
+                if trunk_size <= 0:
+                    trunk_size = env.sos_dict["__num_groups__"]
             else:
                 trunk_size = 1
             if 'trunk_workers' in env.sos_dict['_runtime']:
