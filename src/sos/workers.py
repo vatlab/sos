@@ -481,7 +481,7 @@ class WorkerManager(object):
         elif request_blocking:
             self._worker_backend_socket.send_pyobj({})
             return ports[0]
-        elif num_pending == 0 and ports[
+        elif num_pending == 0 and self._num_workers > 1 and ports[
                 0] in self._last_pending_time and time.time(
                 ) - self._last_pending_time[ports[0]] > 5:
             # kill the worker
