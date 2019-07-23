@@ -1132,6 +1132,12 @@ def get_execute_parser(desc_only=False):
             of GENERAL, WORKER, CONTROLLER, STEP, VARIABLE, EXECUTOR, TARGET, ZERONQ, TASK,
             DAG, and ACTION, or ALL for all debug information''')
     parser.add_argument(
+        '-e',
+        '--executor',
+        help='''Executor used to execute the task, which should be an entry point under section
+        sos_taskexecutors that points to a class with at least a execute member function.'''
+    )
+    parser.add_argument(
         '-n',
         '--dryrun',
         action='store_true',
@@ -1171,12 +1177,31 @@ def get_execute_parser(desc_only=False):
 
 def cmd_execute(args, workflow_args):
     from .tasks import check_task, monitor_interval, resource_monitor_interval
-    from .task_executor import execute_task
     from .utils import env, load_config_files
     import glob
     if args.queue is None:
         # local machine ...
         exit_code = []
+        executor_args = dict(verbosity=args.verbosity,
+                    runmode='dryrun' if args.dryrun else (args.run_mode if args.run_mode else 'run'),
+                    sigmode=args.__sig_mode__,
+                    monitor_interval=monitor_interval,
+                    resource_monitor_interval=resource_monitor_interval)
+        if not args.executor:
+            from .task_executor import BaseTaskExecutor
+            executor = BaseTaskExecutor(**executor_args)
+        else:
+            for entrypoint in pkg_resources.iter_entry_points(group='sos_taskexecutors'):
+                name = entrypoint.name.strip()
+                found = False
+                if name == args.executor:
+                    try:
+                        executor = entrypoint.load()(**executor_args)
+                        found = True
+                    except Exception as e:
+                        raise RuntimeError(f'Failed to load task executor {name}: {e}')
+            if not found:
+                raise RuntimeError(f'Failed to identify task executor {name}.')
         for task in args.tasks:
             #
             matched = [
@@ -1205,23 +1230,7 @@ def cmd_execute(args, workflow_args):
                 print(f'{task} is already running')
                 exit_code.append(1)
                 continue
-            # if status == 'completed' and args.__sig_mode__ != 'force':
-            #     # if args.verbosity <= 1:
-            #     env.logger.info('{} ``already completed``'.format(task))
-            #     with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.err'), 'a') as err:
-            #         err.write('{} already completed'.format(task))
-            #     # else:
-            #     #    print(summarizeExecution(task, status=status))
-            #     exit_code.append(0)
-            #     continue
-            exit_code.append(
-                execute_task(
-                    task,
-                    verbosity=args.verbosity,
-                    runmode='dryrun' if args.dryrun else (args.run_mode if args.run_mode else 'run'),
-                    sigmode=args.__sig_mode__,
-                    monitor_interval=monitor_interval,
-                    resource_monitor_interval=resource_monitor_interval))
+            exit_code.append(executor.execute(task))
         sys.exit(sum(exit_code))
     # with queue definition
     from .hosts import Host
