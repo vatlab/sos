@@ -357,7 +357,7 @@ class BaseTaskExecutor(object):
         sig_content: master signature with signatures for all subtasks.
 
         '''
-        # used for self._collect_subtask_ids to determine master stdout and stderr
+        # used by self._collect_subtask_outputs
         self.master_stdout = os.path.join(
                 os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out')
         self.master_stderr = os.path.join(
@@ -368,7 +368,10 @@ class BaseTaskExecutor(object):
         if os.path.exists(self.master_stderr):
             open(self.master_stderr, 'w').close()
 
-        # if this is a master task, calling each sub task
+        # Use a process pool for multiprocessing if num_workers > 1
+        # otherwise run the commands sequentially. Note that we collect
+        # stdout and stderr of subtasks right after they are completed so
+        # that users can check the progress of master tasks more promoptly.
         if params.num_workers > 1:
             from multiprocessing.pool import Pool
             p = Pool(params.num_workers)
