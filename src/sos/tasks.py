@@ -51,7 +51,7 @@ class MasterTaskParams(TaskParams):
         self.global_def = ''
         self.task = ''
         self.sos_dict = {
-            '_runtime': {},
+            '_runtime': {'num_workers': num_workers},
             '_input': sos_targets(),
             '_output': sos_targets(),
             '_depends': sos_targets(),
@@ -61,7 +61,6 @@ class MasterTaskParams(TaskParams):
             'step_name': '',
             '_index': 0
         }
-        self.num_workers = num_workers
         self.tags = []
         # a collection of tasks that will be executed by the master task
         self.task_stack = []
@@ -96,7 +95,7 @@ class MasterTaskParams(TaskParams):
                     raise ValueError(
                         f'All tasks should have the same resource {key}')
 
-                n_workers = self.num_workers if self.num_workers >=1 else 1
+                n_workers = self.sos_dict['_runtime']['num_workers'] if self.sos_dict['_runtime']['num_workers'] >=1 else 1
                 n_batches = len(self.task_stack) // n_workers
                 if n_batches * n_workers < len(self.task_stack):
                     n_batches += 1
