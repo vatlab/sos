@@ -55,12 +55,23 @@ class BaseTaskExecutor(object):
             params, runtime = tf.get_params_and_runtime()
             sig_content = tf.signature
 
+            m = ProcessMonitor(
+                task_id,
+                monitor_interval=self.monitor_interval,
+                resource_monitor_interval=self.resource_monitor_interval,
+                max_walltime=params.sos_dict['_runtime'].get('max_walltime', None),
+                max_mem=params.sos_dict['_runtime'].get('max_mem', None),
+                max_procs=params.sos_dict['_runtime'].get('max_procs', None),
+                sos_dict=params.sos_dict)
+
+            m.start()
+
             if hasattr(params, 'task_stack'):
                 res = self.execute_master_task(task_id, params, runtime,
                                                sig_content)
             else:
                 res = self.execute_single_task(task_id, params, runtime,
-                                               sig_content, True)
+                                               sig_content)
         except KeyboardInterrupt:
             tf.status = 'aborted'
             raise
@@ -97,7 +108,7 @@ class BaseTaskExecutor(object):
                             params,
                             runtime,
                             sig_content,
-                            monitor_task=True):
+                            quiet):
         '''
         Execute a single task, with
 
@@ -105,6 +116,8 @@ class BaseTaskExecutor(object):
         params: task definitions, with global_def, task, and sos_dict as its members.
         runtime: can have key '_runtime' for task specific runtime, and task_id for task specific variables
         sig_content: existing signatures
+
+        All other task executors calls this function eventually.
         '''
         # this is task specific runtime information, used to update global _runtime
         if '_runtime' in runtime:
@@ -113,9 +126,9 @@ class BaseTaskExecutor(object):
         if task_id in runtime:
             params.sos_dict.update(runtime[task_id])
 
-        if not monitor_task and 'TASK' in env.config[
+        if quiet and 'TASK' in env.config[
                 'SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-            env.log_to_file('TASK', f'Executing subtask {task_id}')
+            env.log_to_file('TASK', f'Executing task {task_id}')
 
         global_def, task, sos_dict = params.global_def, params.task, params.sos_dict
 
@@ -144,25 +157,13 @@ class BaseTaskExecutor(object):
         if '_runtime' not in sos_dict:
             sos_dict['_runtime'] = {}
 
-        if monitor_task:
-            m = ProcessMonitor(
-                task_id,
-                monitor_interval=self.monitor_interval,
-                resource_monitor_interval=self.resource_monitor_interval,
-                max_walltime=sos_dict['_runtime'].get('max_walltime', None),
-                max_mem=sos_dict['_runtime'].get('max_mem', None),
-                max_procs=sos_dict['_runtime'].get('max_procs', None),
-                sos_dict=sos_dict)
-
-            m.start()
-
         env.config['run_mode'] = self.runmode
         if self.runmode == 'dryrun':
             env.config['sig_mode'] = 'ignore'
         elif self.sigmode is not None:
             env.config['sig_mode'] = self.sigmode
 
-        if not monitor_task or env.config['run_mode'] != 'run':
+        if quiet or env.config['run_mode'] != 'run':
             env.logger.debug(f'{task_id} ``started``')
         else:
             env.logger.info(f'{task_id} ``started``')
@@ -190,14 +191,14 @@ class BaseTaskExecutor(object):
                 'shared', None)))
 
         if sig and self._validate_task_signature(
-                sig, sig_content.get(task_id, {}), task_id, not monitor_task):
+                sig, sig_content.get(task_id, {}), task_id, quiet):
             #env.logger.info(f'{task_id} ``skipped``')
             return self._collect_task_result(
                 task_id, sos_dict, skipped=True, signature=sig)
 
         # if we are to really execute the task, touch the task file so that sos status shows correct
         # execution duration.
-        if monitor_task:
+        if not quiet:
             sos_dict['start_time'] = time.time()
 
         try:
@@ -296,7 +297,7 @@ class BaseTaskExecutor(object):
                     # step process
                     SoS_exec(task)
 
-            if not monitor_task or env.config['run_mode'] != 'run':
+            if quiet or env.config['run_mode'] != 'run':
                 env.logger.debug(f'{task_id} ``completed``')
             else:
                 env.logger.info(f'{task_id} ``completed``')
@@ -350,16 +351,16 @@ class BaseTaskExecutor(object):
 
 
     def execute_master_task(self, task_id, params, master_runtime, sig_content):
-        m = ProcessMonitor(
-            task_id,
-            monitor_interval=self.monitor_interval,
-            resource_monitor_interval=self.resource_monitor_interval,
-            max_walltime=params.sos_dict['_runtime'].get('max_walltime', None),
-            max_mem=params.sos_dict['_runtime'].get('max_mem', None),
-            max_procs=params.sos_dict['_runtime'].get('max_procs', None),
-            sos_dict=params.sos_dict)
-        m.start()
+        '''
+        Execute a master task with multiple subtasks.
 
+        task_id; id of master task.
+        params: master parameters, with params.task_stack having params and
+            runtime of subtasks
+        master_runtime: master runtime, with runtime supplemented by subtasks
+        sig_content: master signature with signatures for all subtasks.
+
+        '''
         if env.config['run_mode'] == 'run':
             env.logger.info(f'{task_id} ``started``')
         else:
@@ -424,7 +425,7 @@ class BaseTaskExecutor(object):
                                 for x in ('_runtime', tid)
                             }, {
                                 tid: sig_content.get(tid, {})
-                            }, False),
+                            }, True),
                             callback=copy_out_and_err))
                 for idx, r in enumerate(results):
                     results[idx] = r.get()
@@ -442,7 +443,7 @@ class BaseTaskExecutor(object):
                             x: master_runtime.get(x, {})
                             for x in ('_runtime', tid)
                         }, {tid: sig_content.get(tid, {})},
-                        monitor_task=False)
+                        True)
                     try:
                         copy_out_and_err(res)
                     except Exception as e:
