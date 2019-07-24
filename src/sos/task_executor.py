@@ -66,13 +66,17 @@ class BaseTaskExecutor(object):
 
             env.logger.info(f'{task_id} ``started``')
 
+            # the runtime consists of two parts, one is defined by the task (e.g.
+            # parameter walltime) and saved in params.sos_dict['_runtime'], another
+            # is defined by the task engine (e.g. max_walltime) saved in run_time.
+            # max_walltime, max_mem, max_procs can only be defined in task_engine
             m = ProcessMonitor(
                 task_id,
                 monitor_interval=self.monitor_interval,
                 resource_monitor_interval=self.resource_monitor_interval,
-                max_walltime=params.sos_dict['_runtime'].get('max_walltime', None),
-                max_mem=params.sos_dict['_runtime'].get('max_mem', None),
-                max_procs=params.sos_dict['_runtime'].get('max_procs', None),
+                max_walltime=runtime['_runtime'].get('max_walltime', None),
+                max_mem=runtime['_runtime'].get('max_mem', None),
+                max_procs=runtime['_runtime'].get('max_procs', None),
                 sos_dict=params.sos_dict)
 
             m.start()
