@@ -55,6 +55,17 @@ class BaseTaskExecutor(object):
             params, runtime = tf.get_params_and_runtime()
             sig_content = tf.signature
 
+            if self.verbosity is not None:
+                env.verbosity = self.verbosity
+
+            env.config['run_mode'] = self.runmode
+            if self.runmode == 'dryrun':
+                env.config['sig_mode'] = 'ignore'
+            elif self.sigmode is not None:
+                env.config['sig_mode'] = self.sigmode
+
+            env.logger.info(f'{task_id} ``started``')
+
             m = ProcessMonitor(
                 task_id,
                 monitor_interval=self.monitor_interval,
@@ -108,7 +119,7 @@ class BaseTaskExecutor(object):
                             params,
                             runtime,
                             sig_content,
-                            quiet):
+                            quiet=False):
         '''
         Execute a single task, with
 
@@ -134,39 +145,8 @@ class BaseTaskExecutor(object):
 
         prepare_env(global_def[0], global_def[1])
 
-        # task output
-        env.sos_dict.set(
-            '__std_out__',
-            os.path.join(
-                os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out'))
-        env.sos_dict.set(
-            '__std_err__',
-            os.path.join(
-                os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'))
-        env.logfile = os.path.join(
-            os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
-        # clear the content of existing .out and .err file if exists, but do not create one if it does not exist
-        if os.path.exists(env.sos_dict['__std_out__']):
-            open(env.sos_dict['__std_out__'], 'w').close()
-        if os.path.exists(env.sos_dict['__std_err__']):
-            open(env.sos_dict['__std_err__'], 'w').close()
-
-        if self.verbosity is not None:
-            env.verbosity = self.verbosity
-
         if '_runtime' not in sos_dict:
             sos_dict['_runtime'] = {}
-
-        env.config['run_mode'] = self.runmode
-        if self.runmode == 'dryrun':
-            env.config['sig_mode'] = 'ignore'
-        elif self.sigmode is not None:
-            env.config['sig_mode'] = self.sigmode
-
-        if quiet or env.config['run_mode'] != 'run':
-            env.logger.debug(f'{task_id} ``started``')
-        else:
-            env.logger.info(f'{task_id} ``started``')
 
         env.sos_dict.quick_update(sos_dict)
 
@@ -200,6 +180,23 @@ class BaseTaskExecutor(object):
         # execution duration.
         if not quiet:
             sos_dict['start_time'] = time.time()
+
+        # task output
+        env.sos_dict.set(
+            '__std_out__',
+            os.path.join(
+                os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out'))
+        env.sos_dict.set(
+            '__std_err__',
+            os.path.join(
+                os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'))
+        env.logfile = os.path.join(
+            os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
+        # clear the content of existing .out and .err file if exists, but do not create one if it does not exist
+        if os.path.exists(env.sos_dict['__std_out__']):
+            open(env.sos_dict['__std_out__'], 'w').close()
+        if os.path.exists(env.sos_dict['__std_err__']):
+            open(env.sos_dict['__std_err__'], 'w').close()
 
         try:
             # go to 'workdir'
@@ -349,7 +346,6 @@ class BaseTaskExecutor(object):
 
         return self._collect_task_result(task_id, sos_dict, signature=sig)
 
-
     def execute_master_task(self, task_id, params, master_runtime, sig_content):
         '''
         Execute a master task with multiple subtasks.
@@ -361,96 +357,95 @@ class BaseTaskExecutor(object):
         sig_content: master signature with signatures for all subtasks.
 
         '''
-        if env.config['run_mode'] == 'run':
-            env.logger.info(f'{task_id} ``started``')
-        else:
-            env.logger.debug(f'{task_id} ``started``')
+        # used for self._collect_subtask_ids to determine master stdout and stderr
+        self.master_stdout = os.path.join(
+                os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out')
+        self.master_stderr = os.path.join(
+                os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
 
-        master_out = os.path.join(
-            os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out')
-        master_err = os.path.join(
-            os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
+        if os.path.exists(self.master_stdout):
+            open(self.master_stdout, 'w').close()
+        if os.path.exists(self.master_stderr):
+            open(self.master_stderr, 'w').close()
+
         # if this is a master task, calling each sub task
-        with open(master_out, 'wb') as out, open(master_err, 'wb') as err:
-
-            def copy_out_and_err(result):
-                tid = result['task']
-                out.write(
-                    f'{tid}: {"completed" if result["ret_code"] == 0 else "failed"}\n'
-                    .encode())
-                if 'output' in result:
-                    out.write(f'output: {result["output"]}\n'.encode())
-                sub_out = os.path.join(
-                    os.path.expanduser('~'), '.sos', 'tasks', tid + '.out')
-                if os.path.isfile(sub_out):
-                    with open(sub_out, 'rb') as sout:
-                        out.write(sout.read())
-                    try:
-                        os.remove(sub_out)
-                    except Exception as e:
-                        env.logger.warning(f'Failed to remove {sub_out}: {e}')
-
-                sub_err = os.path.join(
-                    os.path.expanduser('~'), '.sos', 'tasks', tid + '.err')
-                if 'exception' in result:
-                    err.write(str(result['exception']).encode())
-                err.write(
-                    f'{tid}: {"completed" if result["ret_code"] == 0 else "failed"}\n'
-                    .encode())
-                if os.path.isfile(sub_err):
-                    with open(sub_err, 'rb') as serr:
-                        err.write(serr.read())
-                    try:
-                        os.remove(sub_err)
-                    except Exception as e:
-                        env.logger.warning(f'Failed to remove {sub_err}: {e}')
-
-                # remove other files as well
+        if params.num_workers > 1:
+            from multiprocessing.pool import Pool
+            p = Pool(params.num_workers)
+            results = []
+            for sub_id, sub_params in params.task_stack:
+                if hasattr(params, 'common_dict'):
+                    sub_params.sos_dict.update(params.common_dict)
+                sub_runtime = { x: master_runtime.get(x, {}) for x in ('_runtime', sub_id) }
+                sub_sig = { sub_id: sig_content.get(sub_id, {}) }
+                results.append(
+                    p.apply_async(
+                        self._execute_task, (sub_id, sub_params, sub_runtime, sub_sig, True),
+                        callback=self._append_subtask_outputs))
+            for idx, r in enumerate(results):
+                results[idx] = r.get()
+            p.close()
+            p.join()
+        else:
+            results = []
+            for sub_id, sub_params in params.task_stack:
+                if hasattr(params, 'common_dict'):
+                    sub_params.sos_dict.update(params.common_dict)
+                sub_runtime = { x: master_runtime.get(x, {}) for x in ('_runtime', sub_id) }
+                sub_sig = { sub_id: sig_content.get(sub_id, {}) }
+                res = self.execute_single_task(
+                    sub_id, sub_params, sub_runtime, sub_sig, True)
                 try:
-                    remove_task_files(tid, ['.out', '.err'])
+                    self._append_subtask_outputs(res)
                 except Exception as e:
-                    env.logger.debug(f'Failed to remove files {tid}: {e}')
+                    env.logger.warning(
+                        f'Failed to copy result of subtask {tid}: {e}')
+                results.append(res)
+        return self._combine_results(task_id, results)
 
-            if params.num_workers > 1:
-                from multiprocessing.pool import Pool
-                p = Pool(params.num_workers)
-                results = []
-                for tid, tdef in params.task_stack:
-                    if hasattr(params, 'common_dict'):
-                        tdef.sos_dict.update(params.common_dict)
-                    results.append(
-                        p.apply_async(
-                            self._execute_task, (tid, tdef, {
-                                x: master_runtime.get(x, {})
-                                for x in ('_runtime', tid)
-                            }, {
-                                tid: sig_content.get(tid, {})
-                            }, True),
-                            callback=copy_out_and_err))
-                for idx, r in enumerate(results):
-                    results[idx] = r.get()
-                p.close()
-                p.join()
-            else:
-                results = []
-                for tid, tdef in params.task_stack:
-                    if hasattr(params, 'common_dict'):
-                        tdef.sos_dict.update(params.common_dict)
+    def _append_subtask_outputs(self, result):
+        '''
+        Append result returned from subtask to stdout and stderr streams
+        '''
+        tid = result['task']
+        with open(self.master_stdout, 'ab') as out, open(self.master_stdout, 'ab') as err:
+            out.write(
+                f'{tid}: {"completed" if result["ret_code"] == 0 else "failed"}\n'
+                .encode())
+            if 'output' in result:
+                out.write(f'output: {result["output"]}\n'.encode())
+            sub_out = os.path.join(
+                os.path.expanduser('~'), '.sos', 'tasks', tid + '.out')
+            if os.path.isfile(sub_out):
+                with open(sub_out, 'rb') as sout:
+                    out.write(sout.read())
+                try:
+                    os.remove(sub_out)
+                except Exception as e:
+                    env.logger.warning(f'Failed to remove {sub_out}: {e}')
 
-                    res = self.execute_single_task(
-                        tid,
-                        tdef, {
-                            x: master_runtime.get(x, {})
-                            for x in ('_runtime', tid)
-                        }, {tid: sig_content.get(tid, {})},
-                        True)
-                    try:
-                        copy_out_and_err(res)
-                    except Exception as e:
-                        env.logger.warning(
-                            f'Failed to copy result of subtask {tid}: {e}')
-                    results.append(res)
-        #
+            sub_err = os.path.join(
+                os.path.expanduser('~'), '.sos', 'tasks', tid + '.err')
+            if 'exception' in result:
+                err.write(str(result['exception']).encode())
+            err.write(
+                f'{tid}: {"completed" if result["ret_code"] == 0 else "failed"}\n'
+                .encode())
+            if os.path.isfile(sub_err):
+                with open(sub_err, 'rb') as serr:
+                    err.write(serr.read())
+                try:
+                    os.remove(sub_err)
+                except Exception as e:
+                    env.logger.warning(f'Failed to remove {sub_err}: {e}')
+
+        # remove other files as well
+        try:
+            remove_task_files(tid, ['.out', '.err'])
+        except Exception as e:
+            env.logger.debug(f'Failed to remove files {tid}: {e}')
+
+    def _combine_results(self, task_id, results):
         # now we collect result
         all_res = {
             'ret_code': 0,
@@ -460,28 +455,29 @@ class BaseTaskExecutor(object):
             'skipped': 0,
             'signature': {}
         }
-        for tid, x in zip(params.task_stack, results):
-            all_res['subtasks'][tid[0]] = x
+        for res in results:
+            tid = res['task']
+            all_res['subtasks'][tid] = res
 
-            if 'exception' in x:
-                all_res['exception'] = x['exception']
+            if 'exception' in res:
+                all_res['exception'] = res['exception']
                 all_res['ret_code'] += 1
                 continue
-            all_res['ret_code'] += x['ret_code']
+            all_res['ret_code'] += res['ret_code']
             if all_res['output'] is None:
-                all_res['output'] = copy.deepcopy(x['output'])
+                all_res['output'] = copy.deepcopy(res['output'])
             else:
                 try:
-                    all_res['output'].extend(x['output'], keep_groups=True)
+                    all_res['output'].extend(res['output'], keep_groups=True)
                 except Exception as e:
                     env.logger.warning(
-                        f"Failed to extend output {all_res['output']} with {x['output']}"
+                        f"Failed to extend output {all_res['output']} with {res['output']}"
                     )
-            all_res['shared'].update(x['shared'])
+            all_res['shared'].update(res['shared'])
             # does not care if one or all subtasks are executed or skipped.
-            all_res['skipped'] += x.get('skipped', 0)
-            if 'signature' in x:
-                all_res['signature'].update(x['signature'])
+            all_res['skipped'] += res.get('skipped', 0)
+            if 'signature' in res:
+                all_res['signature'].update(res['signature'])
 
         if all_res['ret_code'] != 0:
             if all_res['ret_code'] == len(results):
@@ -514,7 +510,6 @@ class BaseTaskExecutor(object):
                     env.logger.debug(
                         f'All {len(results)} tasks in {task_id} ``ignored`` or skipped'
                     )
-
             else:
                 # if only partial skip, we still save signature and result etc
                 if env.config['run_mode'] == 'run':
