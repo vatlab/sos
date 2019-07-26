@@ -66,13 +66,24 @@ class BaseTaskExecutor(object):
 
             env.logger.info(f'{task_id} ``started``')
 
+            # the runtime consists of two parts, one is defined by the task (e.g.
+            # parameter walltime) and saved in params.sos_dict['_runtime'], another
+            # is defined by the task engine (e.g. max_walltime) saved in run_time.
+            # max_walltime, max_mem, max_procs can only be defined in task_engine
+
+            # let us make sure _runtime exists to avoid repeated check
+            if '_runtime' not in params.sos_dict:
+                params.sos_dict['_runtime'] = {}
+            if '_runtime' not in runtime:
+                runtime['_runtime'] = {}
+
             m = ProcessMonitor(
                 task_id,
                 monitor_interval=self.monitor_interval,
                 resource_monitor_interval=self.resource_monitor_interval,
-                max_walltime=params.sos_dict['_runtime'].get('max_walltime', None),
-                max_mem=params.sos_dict['_runtime'].get('max_mem', None),
-                max_procs=params.sos_dict['_runtime'].get('max_procs', None),
+                max_walltime=runtime['_runtime'].get('max_walltime', None),
+                max_mem=runtime['_runtime'].get('max_mem', None),
+                max_procs=runtime['_runtime'].get('max_procs', None),
                 sos_dict=params.sos_dict)
 
             m.start()
@@ -131,8 +142,7 @@ class BaseTaskExecutor(object):
         All other task executors calls this function eventually.
         '''
         # this is task specific runtime information, used to update global _runtime
-        if '_runtime' in runtime:
-            params.sos_dict['_runtime'].update(runtime['_runtime'])
+        params.sos_dict['_runtime'].update(runtime['_runtime'])
         # this is subtask dictionary
         if task_id in runtime:
             params.sos_dict.update(runtime[task_id])
@@ -144,9 +154,6 @@ class BaseTaskExecutor(object):
         global_def, task, sos_dict = params.global_def, params.task, params.sos_dict
 
         prepare_env(global_def[0], global_def[1])
-
-        if '_runtime' not in sos_dict:
-            sos_dict['_runtime'] = {}
 
         env.sos_dict.quick_update(sos_dict)
 
@@ -200,7 +207,7 @@ class BaseTaskExecutor(object):
 
         try:
             # go to 'workdir'
-            if '_runtime' in sos_dict and 'workdir' in sos_dict['_runtime']:
+            if 'workdir' in sos_dict['_runtime']:
                 if not os.path.isdir(
                         os.path.expanduser(sos_dict['_runtime']['workdir'])):
                     try:
@@ -248,7 +255,7 @@ class BaseTaskExecutor(object):
                         parent_dir.mkdir(parents=True, exist_ok=True)
 
                         # go to user specified workdir
-            if '_runtime' in sos_dict and 'workdir' in sos_dict['_runtime']:
+            if 'workdir' in sos_dict['_runtime']:
                 if not os.path.isdir(
                         os.path.expanduser(sos_dict['_runtime']['workdir'])):
                     try:
@@ -261,31 +268,30 @@ class BaseTaskExecutor(object):
                 os.chdir(os.path.expanduser(sos_dict['_runtime']['workdir']))
             # set environ ...
             # we join PATH because the task might be executed on a different machine
-            if '_runtime' in sos_dict:
-                if 'env' in sos_dict['_runtime']:
-                    for key, value in sos_dict['_runtime']['env'].items():
-                        if 'PATH' in key and key in os.environ:
-                            new_path = OrderedDict()
-                            for p in value.split(os.pathsep):
-                                new_path[p] = 1
-                            for p in value.split(os.environ[key]):
-                                new_path[p] = 1
-                            os.environ[key] = os.pathsep.join(new_path.keys())
-                        else:
-                            os.environ[key] = value
-                if 'prepend_path' in sos_dict['_runtime']:
-                    if isinstance(sos_dict['_runtime']['prepend_path'], str):
-                        os.environ['PATH'] = sos_dict['_runtime']['prepend_path'] + \
-                            os.pathsep + os.environ['PATH']
-                    elif isinstance(env.sos_dict['_runtime']['prepend_path'],
-                                    Sequence):
-                        os.environ['PATH'] = os.pathsep.join(
-                            sos_dict['_runtime']
-                            ['prepend_path']) + os.pathsep + os.environ['PATH']
+            if 'env' in sos_dict['_runtime']:
+                for key, value in sos_dict['_runtime']['env'].items():
+                    if 'PATH' in key and key in os.environ:
+                        new_path = OrderedDict()
+                        for p in value.split(os.pathsep):
+                            new_path[p] = 1
+                        for p in value.split(os.environ[key]):
+                            new_path[p] = 1
+                        os.environ[key] = os.pathsep.join(new_path.keys())
                     else:
-                        raise ValueError(
-                            f'Unacceptable input for option prepend_path: {sos_dict["_runtime"]["prepend_path"]}'
-                        )
+                        os.environ[key] = value
+            if 'prepend_path' in sos_dict['_runtime']:
+                if isinstance(sos_dict['_runtime']['prepend_path'], str):
+                    os.environ['PATH'] = sos_dict['_runtime']['prepend_path'] + \
+                        os.pathsep + os.environ['PATH']
+                elif isinstance(env.sos_dict['_runtime']['prepend_path'],
+                                Sequence):
+                    os.environ['PATH'] = os.pathsep.join(
+                        sos_dict['_runtime']
+                        ['prepend_path']) + os.pathsep + os.environ['PATH']
+                else:
+                    raise ValueError(
+                        f'Unacceptable input for option prepend_path: {sos_dict["_runtime"]["prepend_path"]}'
+                    )
 
             with open(env.sos_dict['__std_out__'],
                       'a') as my_stdout, open(env.sos_dict['__std_err__'],
@@ -368,13 +374,14 @@ class BaseTaskExecutor(object):
         if os.path.exists(self.master_stderr):
             open(self.master_stderr, 'w').close()
 
-        # Use a process pool for multiprocessing if num_workers > 1
-        # otherwise run the commands sequentially. Note that we collect
-        # stdout and stderr of subtasks right after they are completed so
-        # that users can check the progress of master tasks more promoptly.
-        if params.num_workers > 1:
+        # a previous version of master task file has params.num_workers
+        n_workers = params.num_workers if hasattr(params, 'num_workers') else params.sos_dict['_runtime'].get('num_workers', 1)
+
+        if not isinstance(n_workers, int):
+            raise RuntimeError(f'This task executor cannot handle tasks with trunk_workers={n_workers:r}. Please use an alternative task executor with option --executor/-e if possible.')
+        if n_workers > 1:
             from multiprocessing.pool import Pool
-            p = Pool(params.num_workers)
+            p = Pool(n_workers)
             results = []
             for sub_id, sub_params in params.task_stack:
                 if hasattr(params, 'common_dict'):
