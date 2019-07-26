@@ -409,6 +409,7 @@ class Base_Step_Executor:
 
         env.sos_dict.set('step_depends', sos_targets([]))
         env.sos_dict.set('_depends', sos_targets([]))
+
     #
     # Common functions
     #
@@ -632,6 +633,11 @@ class Base_Step_Executor:
                     raise ValueError(
                         f'An integer value is expected for runtime option trunk_workers, {env.sos_dict["_runtime"]["trunk_workers"]} provided'
                     )
+                if 'nodes' in env.sos_dict['_runtime']:
+                    raise ValueError(
+                        'Option "trunk_workers" that specifies number of nodes and processes for the execution '
+                        'of single-node jobs and option "nodes" that specifies number of nodes for single multi-node '
+                        'jobs cannot be used at the same time.')
                 trunk_workers = env.sos_dict['_runtime']['trunk_workers']
             else:
                 trunk_workers = 0
