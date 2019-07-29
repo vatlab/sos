@@ -224,13 +224,22 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             'workflow', metavar='WORKFLOW', nargs='?', help=workflow_spec)
     parser.add_argument(
         '-j',
-        type=int,
         metavar='JOBS',
+        nargs='*',
         dest='__max_procs__',
-        default=min(max(os.cpu_count() // 2, 1), 8),
-        help='''Maximum number of worker processes for the execution of steps in
-            a workflow and substeps in a step (with input option concurrent), default to half of
-            number of CPUs, or 8, whichever is smaller''')
+        default=min(max(os.cpu_count() // 2, 2), 8),
+        help='''Hosts and number of worker processes in each host for the execution of
+            workflow, default to local host with half the number of CPUs, or 8, whichever
+            is smaller. The complete format of this option is "-j host1:n1 host2:n2 host3:n3 ..."
+            which are name, ip or alias (defined in sos configurations) of local or
+            remote hosts, and number of processes on each host. If left unspecified, host will
+            be assumed to be the host on which the master SoS process is started, and n is half of
+            the number of CPUs on the host, or 8 if there are more than 16 CPUs. If there
+            are a large number of hosts, the parameters are usually speified through a hostfile
+            with values in each line, and be specified in the format of "-j @hostfile". 
+            On a supported cluster system where environmental variables such as "PBS_HOSTFILE"
+            are specified, SoS will ignore this parameter and read worker information from the
+            host file.''')
     parser.add_argument(
         '-J',
         type=int,
@@ -1142,6 +1151,13 @@ def get_execute_parser(desc_only=False):
         '--dryrun',
         action='store_true',
         dest='dryrun',
+        help=argparse.SUPPRESS)
+    parser.add_argument(
+        '-j',
+        metavar='JOBS',
+        nargs='*',
+        dest='__max_procs__',
+        default=min(max(os.cpu_count() // 2, 2), 8),
         help=argparse.SUPPRESS)
     parser.add_argument(
         '-m',
