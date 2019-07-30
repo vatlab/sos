@@ -453,6 +453,10 @@ def cmd_run(args, workflow_args):
             os.path.expanduser(x) for x in args.__bin_dirs__
         ]) + os.pathsep + os.environ['PATH']
 
+    if 'PROFILE' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+        import cProfile
+        pr = cProfile.Profile()
+        pr.enable()
     try:
         # workflow args has to be in the format of --arg, not positional, not -a
         if workflow_args and not workflow_args[0].startswith('--'):
@@ -514,6 +518,11 @@ def cmd_run(args, workflow_args):
         executor = Base_Executor(workflow, args=workflow_args, config=config)
         # start controller
         executor.run(args.__targets__, mode=config['run_mode'])
+
+        if 'PROFILE' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+            pr.disable()
+            pr.dump_stats(os.path.join(os.path.expanduser('~'), '.sos',
+                f'profile_master_{os.getpid()}.txt'))
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
