@@ -301,7 +301,10 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         sos dryrun for details of the dryrun mode.''')
     runmode.add_argument(
         '-s',
-        choices=['default', 'ignore', 'force', 'build', 'assert', 'skip', 'distributed'],
+        choices=[
+            'default', 'ignore', 'force', 'build', 'assert', 'skip',
+            'distributed'
+        ],
         default='default',
         metavar='SIGMODE',
         dest='__sig_mode__',
@@ -466,27 +469,46 @@ def cmd_run(args, workflow_args):
         workflow = script.workflow(
             args.workflow, use_default=not args.__targets__)
         config = {
-            'config_file': args.__config__,
-            'output_dag': args.__dag__,
-            'output_report': args.__report__,
-            'default_queue': args.__queue__,
-            'max_procs': args.__max_procs__,
-            'max_running_jobs': args.__max_running_jobs__,
-            'sig_mode': 'ignore' if args.dryrun else args.__sig_mode__,
+            'config_file':
+                args.__config__,
+            'output_dag':
+                args.__dag__,
+            'output_report':
+                args.__report__,
+            'default_queue':
+                args.__queue__,
+            'max_procs':
+                args.__max_procs__,
+            'max_running_jobs':
+                args.__max_running_jobs__,
+            'sig_mode':
+                'ignore' if args.dryrun else args.__sig_mode__,
             # when being tapped by sos notebook, we suppose it is in interactive mode
-            'run_mode': 'dryrun' if args.dryrun else ('interactive' if args.exec_mode else 'run'),
-            'verbosity': args.verbosity,
+            'run_mode':
+                'dryrun' if args.dryrun else
+                ('interactive' if args.exec_mode else 'run'),
+            'verbosity':
+                args.verbosity,
             # for infomration only
-            'workdir': os.getcwd(),
-            'script': args.script,
-            'workflow': args.workflow,
-            'targets': args.__targets__,
-            'bin_dirs': args.__bin_dirs__,
-            'workflow_args': workflow_args,
-            'trace_existing': args.trace_existing,
-            'keep_going': args.keep_going,
+            'workdir':
+                os.getcwd(),
+            'script':
+                args.script,
+            'workflow':
+                args.workflow,
+            'targets':
+                args.__targets__,
+            'bin_dirs':
+                args.__bin_dirs__,
+            'workflow_args':
+                workflow_args,
+            'trace_existing':
+                args.trace_existing,
+            'keep_going':
+                args.keep_going,
             # tapping etc
-            'exec_mode': args.exec_mode
+            'exec_mode':
+                args.exec_mode
         }
         if args.exec_mode:
             if args.exec_mode[0] != 'tapping' or len(args.exec_mode) == 1:
@@ -519,10 +541,14 @@ def cmd_run(args, workflow_args):
         # start controller
         executor.run(args.__targets__, mode=config['run_mode'])
 
-        if 'PROFILE' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+        if 'PROFILE' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                'SOS_DEBUG']:
             pr.disable()
-            pr.dump_stats(os.path.join(os.path.expanduser('~'), '.sos',
-                f'profile_master_{os.getpid()}.txt'))
+            pr_file = os.path.join(
+                os.path.expanduser('~'), '.sos',
+                f'profile_master_{os.getpid()}.txt')
+            pr.dump_stats(pr_file)
+            env.logger.debug(f'Profile of master process saved to {pr_file}')
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
@@ -1060,7 +1086,8 @@ def cmd_preview(args, unknown_args):
         rargs = ['sos', 'preview'] + args.items + ['--html']
         if args.style:
             rargs += ['-s', args.style] + unknown_args
-        if 'GENERAL' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+        if 'GENERAL' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                'SOS_DEBUG']:
             env.log_to_file('GENERAL', 'Running "{}"'.format(' '.join(rargs)))
         msgs = eval(host._host_agent.check_output(rargs, under_workdir=True))
     else:
@@ -1113,7 +1140,10 @@ def get_execute_parser(desc_only=False):
     parser.add_argument('tasks', nargs='+', help='''IDs of the task.''')
     parser.add_argument(
         '-s',
-        choices=['default', 'ignore', 'force', 'build', 'assert', 'skip', 'distributed'],
+        choices=[
+            'default', 'ignore', 'force', 'build', 'assert', 'skip',
+            'distributed'
+        ],
         default='default',
         metavar='SIGMODE',
         dest='__sig_mode__',
@@ -1151,7 +1181,8 @@ def get_execute_parser(desc_only=False):
         '--mode',
         dest='run_mode',
         help='''Run mode of the task, default to 'run', but can be 'dryrun' (the
-            same as --dryrun) or 'interactive", which suppress status update.''')
+            same as --dryrun) or 'interactive", which suppress status update.'''
+    )
     parser.add_argument(
         '-q',
         '--queue',
@@ -1227,7 +1258,8 @@ def cmd_execute(args, workflow_args):
                 execute_task(
                     task,
                     verbosity=args.verbosity,
-                    runmode='dryrun' if args.dryrun else (args.run_mode if args.run_mode else 'run'),
+                    runmode='dryrun' if args.dryrun else
+                    (args.run_mode if args.run_mode else 'run'),
                     sigmode=args.__sig_mode__,
                     monitor_interval=monitor_interval,
                     resource_monitor_interval=resource_monitor_interval))
@@ -1241,7 +1273,8 @@ def cmd_execute(args, workflow_args):
     load_config_files(args.config)
     env.verbosity = args.verbosity
     env.config['sig_mode'] = args.__sig_mode__
-    env.config['run_mode'] = 'dryrun' if args.dryrun else (args.run_mode if args.run_mode else 'run')
+    env.config['run_mode'] = 'dryrun' if args.dryrun else (
+        args.run_mode if args.run_mode else 'run')
     host = Host(args.queue)
     for task in args.tasks:
         host.submit_task(task)
@@ -1260,7 +1293,8 @@ def cmd_execute(args, workflow_args):
                         len([x for x in res if x == 'failed']),
                         len([x for x in res if x.startswith('aborted')])))
         if all(x == 'completed' for x in res):
-            if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+            if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                    'SOS_DEBUG']:
                 env.log_to_file('TASK', f'Put results for {args.tasks}')
             res = host.retrieve_results(args.tasks)
             return
@@ -1721,7 +1755,8 @@ def cmd_remove(args, unknown_args):
                 continue
             if p.size() == 0:
                 try:
-                    if 'GENERAL' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+                    if 'GENERAL' in env.config[
+                            'SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                         env.log_to_file('GENERAL',
                                         f'Remove placeholder file {ph}')
                     p.unlink()
