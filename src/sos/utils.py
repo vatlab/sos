@@ -433,7 +433,6 @@ class RuntimeEnvironments(object):
         # clear previous handler
         while self._logger.hasHandlers():
             self._logger.removeHandler(self._logger.handlers[0])
-        self._logger.setLevel(logging.DEBUG)
         levels = {
             0: logging.ERROR,
             1: logging.WARNING,
@@ -442,6 +441,8 @@ class RuntimeEnvironments(object):
             4: logging.DEBUG,
             None: logging.INFO
         }
+        # stop setting root logger always to DEBUG
+        self._logger.setLevel(logging.DEBUG if 'SOS_DEBUG' in os.environ and os.environ['SOS_DEBUG'] else levels[self._verbosity])
 
         if self._logging_socket:
             socket_handler = PUBHandler(self._logging_socket)
