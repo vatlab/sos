@@ -548,7 +548,7 @@ def cmd_run(args, workflow_args):
                 os.path.expanduser('~'), '.sos',
                 f'profile_master_{os.getpid()}.txt')
             pr.dump_stats(pr_file)
-            env.logger.debug(f'Profile of master process saved to {pr_file}')
+            print(f'Execution profile of master process {os.getpid()} is saved to {pr_file}')
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())

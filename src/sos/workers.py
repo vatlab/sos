@@ -269,7 +269,7 @@ class SoS_Worker(mp.Process):
                 os.path.expanduser('~'), '.sos',
                 f'profile_worker_{os.getpid()}.txt')
             pr.dump_stats(pr_file)
-            env.logger.debug(f'Profile of master process saved to {pr_file}')
+            print(f'Execution profile of worker process {os.getpid()} is saved to {pr_file}')
 
     def _type_of_work(self, work):
         if 'section' in work:
