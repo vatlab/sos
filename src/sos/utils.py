@@ -443,7 +443,8 @@ class RuntimeEnvironments(object):
         }
         # stop setting root logger always to DEBUG. If SOS_DEBUG is defined as PROFILE, we profile
         # in non-debug mode. Otherwise debugging leval will be set to DEBUG
-        self._logger.setLevel(logging.DEBUG if 'SOS_DEBUG' in os.environ and os.environ['SOS_DEBUG'] != 'PROFILE' else levels[self._verbosity])
+        debug_mode = 'SOS_DEBUG' in os.environ and os.environ['SOS_DEBUG'] and os.environ['SOS_DEBUG'] != 'PROFILE'
+        self._logger.setLevel(logging.DEBUG if debug_mode else levels[self._verbosity])
 
         if self._logging_socket:
             socket_handler = PUBHandler(self._logging_socket)
@@ -468,7 +469,7 @@ class RuntimeEnvironments(object):
                 ColoredFormatter('%(color_levelname)s: %(color_msg)s'))
             self._logger.addHandler(cout)
 
-        if 'SOS_DEBUG' in os.environ and os.environ['SOS_DEBUG'] != 'PROFILE':
+        if debug_mode:
             logfile_info = [
                 x for x in os.environ['SOS_DEBUG'].split(',')
                 if '.' in x or x == '-'
