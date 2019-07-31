@@ -1277,8 +1277,13 @@ class TimeoutInterProcessLock(fasteners.InterProcessLock):
                     )
                     msg = True
 
+config_cache : dict = {}
 
 def load_config_files(filename=None):
+    if filename in config_cache:
+        env.sos_dict.set('CONFIG', config_cache[filename])
+        return config_cache[filename]
+
     cfg = {}
     # site configuration file
     sos_config_file = os.path.join(
@@ -1408,6 +1413,7 @@ def load_config_files(filename=None):
                 res[k] = v
         else:
             res[k] = v
+    config_cache[filename] = res
     env.sos_dict.set('CONFIG', res)
     return res
 
