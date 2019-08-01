@@ -1281,9 +1281,19 @@ class TimeoutInterProcessLock(fasteners.InterProcessLock):
 config_cache : dict = {}
 
 def load_config_files(filename=None):
-    if filename in config_cache:
-        env.sos_dict.set('CONFIG', config_cache[filename])
-        return config_cache[filename]
+    # user-specified configuration file.
+    if filename is None and 'config_file' in env.config:
+        filename = env.config['config_file']
+
+    if filename is not None and not os.path.isfile(filename):
+        env.logger.warning(f'Ignoring missing configuration file {filename}')
+        filename = None
+
+    filemtime = None if filename is None else os.path.getmtime(filename)
+
+    if (filename, filemtime) in config_cache:
+        env.sos_dict.set('CONFIG', config_cache[(filename, filemtime)])
+        return config_cache[(filename, filemtime)]
 
     cfg = {}
     # site configuration file
@@ -1322,9 +1332,7 @@ def load_config_files(filename=None):
             env.logger.warning(
                 f'Failed to parse global sos config file {sos_config_file}: {e}'
             )
-    # user-specified configuration file.
-    if filename is None and 'config_file' in env.config:
-        filename = env.config['config_file']
+
     if filename is not None:
         if not os.path.isfile(os.path.expanduser(filename)):
             raise RuntimeError(f'Config file {filename} not found')
@@ -1414,7 +1422,7 @@ def load_config_files(filename=None):
                 res[k] = v
         else:
             res[k] = v
-    config_cache[filename] = res
+    config_cache[(filename, filemtime)] = res
     env.sos_dict.set('CONFIG', res)
     return res
 
