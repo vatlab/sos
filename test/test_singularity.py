@@ -38,7 +38,8 @@ class TestSingularityActions(unittest.TestCase):
         '''Test action bash in singularity environment'''
         script = SoS_Script(r'''
 [0]
-run:  container='shub://singularityhub/ubuntu'
+#run:  container='shub://singularityhub/ubuntu'
+run:  container='docker://ubuntu'
 echo 'Echo'
 ''')
         wf = script.workflow()
