@@ -166,7 +166,7 @@ class SoS_SingularityClient:
             for arg, value in kwargs.items():
                 # boolean args
                 if arg in ('sandbox', 'writable', 'notest', 'checks', 'low',
-                           'med', 'high'):
+                           'med', 'high', 'force'):
                     if value is True:
                         other_opts.append(f'--{arg.replace("_", "-")}')
                     else:
@@ -202,7 +202,7 @@ class SoS_SingularityClient:
                         os.path.join(tempdir, 'Singularityfile'),
                         debug_script_dir)
                 else:
-                    msg = f'To reproduce this error please run \n  {cmd}"\nfrom command line'
+                    msg = f'To reproduce this error please run \n  {cmd}\nfrom command line'
                 raise subprocess.CalledProcessError(
                     returncode=ret, cmd=cmd, stderr=msg)
 

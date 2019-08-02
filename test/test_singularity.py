@@ -70,7 +70,7 @@ From: ubuntu:16.04
     def testSingularityBuildFromShub(self):
         # needs authentication and cannot test on travis
         script = SoS_Script(r'''
-singularity_build(src='shub://GodloveD/lolcow', dest='lolcow_shub.simg', sudo=True, notest=True)
+singularity_build(src='shub://GodloveD/lolcow', dest='lolcow_shub.simg', sudo=True, notest=True, force=True)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -79,7 +79,7 @@ singularity_build(src='shub://GodloveD/lolcow', dest='lolcow_shub.simg', sudo=Tr
                      'Skip test because docker is not installed.')
     def testSingularityBuildFromDocker(self):
         script = SoS_Script(r'''
-singularity_build(src='docker://godlovedc/lolcow', dest='lolcow_docker.simg', sudo=True, notest=True)
+singularity_build(src='docker://godlovedc/lolcow', dest='lolcow_docker.simg', sudo=True, notest=True, force=True)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
