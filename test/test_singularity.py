@@ -64,13 +64,20 @@ From: ubuntu:16.04
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        #
+
+    @unittest.skipIf(not shutil.which('singularity') or sys.platform == 'win32' or 'TRAVIS' in os.environ,
+                     'Skip test because docker is not installed.')
+    def testSingularityBuildFromShub(self):
+        # needs authentication and cannot test on travis
         script = SoS_Script(r'''
 singularity_build(src='shub://GodloveD/lolcow', dest='lolcow_shub.simg', sudo=True, notest=True)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        #
+
+    @unittest.skipIf(not shutil.which('singularity') or sys.platform == 'win32',
+                     'Skip test because docker is not installed.')
+    def testSingularityBuildFromDocker(self):
         script = SoS_Script(r'''
 singularity_build(src='docker://godlovedc/lolcow', dest='lolcow_docker.simg', sudo=True, notest=True)
 ''')

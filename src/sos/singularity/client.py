@@ -202,7 +202,7 @@ class SoS_SingularityClient:
                         os.path.join(tempdir, 'Singularityfile'),
                         debug_script_dir)
                 else:
-                    msg = f'To reproduce this error please run {cmd}'
+                    msg = f'To reproduce this error please run \n  {cmd}"\nfrom command line'
                 raise subprocess.CalledProcessError(
                     returncode=ret, cmd=cmd, stderr=msg)
 
