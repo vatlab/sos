@@ -24,7 +24,8 @@ from zmq.log.handlers import PUBHandler
 
 import urllib.parse
 import urllib.request
-from collections import Sequence, Mapping, Set, defaultdict, KeysView
+from collections.abc import Sequence, Mapping, Set, KeysView,
+from collections import defaultdict
 from html.parser import HTMLParser
 from io import FileIO, StringIO, BytesIO
 from typing import Optional, List, Dict
@@ -433,7 +434,6 @@ class RuntimeEnvironments(object):
         # clear previous handler
         while self._logger.hasHandlers():
             self._logger.removeHandler(self._logger.handlers[0])
-        self._logger.setLevel(logging.DEBUG)
         levels = {
             0: logging.ERROR,
             1: logging.WARNING,
@@ -442,6 +442,10 @@ class RuntimeEnvironments(object):
             4: logging.DEBUG,
             None: logging.INFO
         }
+        # stop setting root logger always to DEBUG. If SOS_DEBUG is defined as PROFILE, we profile
+        # in non-debug mode. Otherwise debugging leval will be set to DEBUG
+        debug_mode = 'SOS_DEBUG' in os.environ and os.environ['SOS_DEBUG'] and os.environ['SOS_DEBUG'] != 'PROFILE'
+        self._logger.setLevel(logging.DEBUG if debug_mode else levels[self._verbosity])
 
         if self._logging_socket:
             socket_handler = PUBHandler(self._logging_socket)
@@ -466,7 +470,7 @@ class RuntimeEnvironments(object):
                 ColoredFormatter('%(color_levelname)s: %(color_msg)s'))
             self._logger.addHandler(cout)
 
-        if 'SOS_DEBUG' in os.environ and os.environ['SOS_DEBUG']:
+        if debug_mode:
             logfile_info = [
                 x for x in os.environ['SOS_DEBUG'].split(',')
                 if '.' in x or x == '-'
@@ -1275,8 +1279,23 @@ class TimeoutInterProcessLock(fasteners.InterProcessLock):
                     )
                     msg = True
 
+config_cache : dict = {}
 
 def load_config_files(filename=None):
+    # user-specified configuration file.
+    if filename is None and 'config_file' in env.config:
+        filename = env.config['config_file']
+
+    if filename is not None and not os.path.isfile(filename):
+        env.logger.warning(f'Ignoring missing configuration file {filename}')
+        filename = None
+
+    filemtime = None if filename is None else os.path.getmtime(filename)
+
+    if (filename, filemtime) in config_cache:
+        env.sos_dict.set('CONFIG', config_cache[(filename, filemtime)])
+        return config_cache[(filename, filemtime)]
+
     cfg = {}
     # site configuration file
     sos_config_file = os.path.join(
@@ -1314,9 +1333,7 @@ def load_config_files(filename=None):
             env.logger.warning(
                 f'Failed to parse global sos config file {sos_config_file}: {e}'
             )
-    # user-specified configuration file.
-    if filename is None and 'config_file' in env.config:
-        filename = env.config['config_file']
+
     if filename is not None:
         if not os.path.isfile(os.path.expanduser(filename)):
             raise RuntimeError(f'Config file {filename} not found')
@@ -1406,6 +1423,7 @@ def load_config_files(filename=None):
                 res[k] = v
         else:
             res[k] = v
+    config_cache[(filename, filemtime)] = res
     env.sos_dict.set('CONFIG', res)
     return res
 

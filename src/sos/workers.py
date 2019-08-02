@@ -136,7 +136,8 @@ class SoS_Worker(mp.Process):
             self._master_sockets.append(env.master_socket)
             self._master_ports.append(port)
             self._runners.append(True)
-            if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+            if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                    'SOS_DEBUG']:
                 env.log_to_file(
                     'WORKER',
                     f'WORKER {self.name} ({os.getpid()}) creates ports {self._master_ports}'
@@ -150,6 +151,13 @@ class SoS_Worker(mp.Process):
     def run(self):
         # env.logger.warning(f'Worker created {os.getpid()}')
         env.config.update(self.config)
+
+        if 'PROFILE' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                'SOS_DEBUG']:
+            import cProfile
+            pr = cProfile.Profile()
+            pr.enable()
+
         env.zmq_context = connect_controllers()
 
         # create controller socket
@@ -194,7 +202,8 @@ class SoS_Worker(mp.Process):
                         env.logger.error(
                             f'WORKER terminates with pending tasks. sos might not be termianting properly.'
                         )
-                    if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+                    if 'WORKER' in env.config[
+                            'SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                         env.log_to_file(
                             'WORKER',
                             f'WORKER {self.name} ({os.getpid()}) quits after receiving None.'
@@ -231,7 +240,8 @@ class SoS_Worker(mp.Process):
                     self.run_step(**reply)
                     if 'section' in reply else self.run_workflow(**reply),
                     name=self._name_of_work(reply)).run_until_waiting()
-                if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+                if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                        'SOS_DEBUG']:
                     env.log_to_file(
                         'WORKER',
                         'STATUS ' + self._name_of_work(reply) + str(self))
@@ -252,6 +262,14 @@ class SoS_Worker(mp.Process):
             close_socket(socket, 'worker master', now=True)
         close_socket(env.ctrl_socket, now=True)
         disconnect_controllers(env.zmq_context)
+        if 'PROFILE' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                'SOS_DEBUG']:
+            pr.disable()
+            pr_file = os.path.join(
+                os.path.expanduser('~'), '.sos',
+                f'profile_worker_{os.getpid()}.txt')
+            pr.dump_stats(pr_file)
+            print(f'Execution profile of worker process {os.getpid()} is saved to {pr_file}')
 
     def _type_of_work(self, work):
         if 'section' in work:
@@ -379,7 +397,8 @@ class WorkerManager(object):
         self.start()
 
     def report(self, msg):
-        if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+        if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                'SOS_DEBUG']:
             env.log_to_file(
                 'WORKER',
                 f'{msg.upper()}: {self._num_workers} workers (of which {len(self._blocking_ports)} is blocking), {self._n_requested} requested, {self._n_processed} processed'

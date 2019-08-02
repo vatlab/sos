@@ -181,7 +181,7 @@ class SoS_SingularityClient:
                     env.logger.warning(
                         f'Unrecognized option for singularity build {arg}')
 
-            cmd = subprocess.list2cmdline(sudo_opt + ['singularity', 'build'] +
+            cmd = subprocess.list2cmdline(sudo_opt + [shutil.which('singularity'), 'build'] +
                                           other_opts + file_opt)
 
             env.logger.debug(cmd)
