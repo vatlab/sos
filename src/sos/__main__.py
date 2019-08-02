@@ -225,7 +225,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
     parser.add_argument(
         '-j',
         metavar='JOBS',
-        nargs='*',
+        type=int,
         dest='__max_procs__',
         default=min(max(os.cpu_count() // 2, 1), 8),
         help='''Hosts and number of worker processes in each host for the execution of
@@ -1194,7 +1194,7 @@ def get_execute_parser(desc_only=False):
     parser.add_argument(
         '-j',
         metavar='JOBS',
-        nargs='*',
+        type=int,
         dest='__max_procs__',
         default=min(max(os.cpu_count() // 2, 1), 8),
         help=argparse.SUPPRESS)

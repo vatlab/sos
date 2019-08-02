@@ -1479,7 +1479,7 @@ class Base_Step_Executor:
             env.sos_dict.set('__concurrent_subworkflow__', True)
 
         if self.concurrent_substep:
-            if len(self._substeps) <= 1 or env.config['run_mode'] == 'dryrun':
+            if len(self._substeps) <= 1 or env.config['run_mode'] == 'dryrun' or env.config.get('max_procs', 2) <= 1:
                 self.concurrent_substep = False
             elif len([
                     x for x in self.step.statements[input_statement_idx:]
