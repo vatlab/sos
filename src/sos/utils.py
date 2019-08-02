@@ -24,7 +24,8 @@ from zmq.log.handlers import PUBHandler
 
 import urllib.parse
 import urllib.request
-from collections.abc import Sequence, Mapping, Set, defaultdict, KeysView
+from collections.abc import Sequence, Mapping, Set, KeysView,
+from collections import defaultdict
 from html.parser import HTMLParser
 from io import FileIO, StringIO, BytesIO
 from typing import Optional, List, Dict
