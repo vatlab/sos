@@ -12,7 +12,7 @@ import shlex
 import shutil
 import subprocess
 import sys
-from collections import Iterable, Sequence
+from collections.abc import Iterable, Sequence
 from copy import deepcopy
 from itertools import combinations, tee
 from pathlib import Path, WindowsPath, PosixPath
