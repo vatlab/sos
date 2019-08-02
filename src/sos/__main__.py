@@ -227,7 +227,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         metavar='JOBS',
         nargs='*',
         dest='__max_procs__',
-        default=min(max(os.cpu_count() // 2, 2), 8),
+        default=min(max(os.cpu_count() // 2, 1), 8),
         help='''Hosts and number of worker processes in each host for the execution of
             workflow, default to local host with half the number of CPUs, or 8, whichever
             is smaller. The complete format of this option is "-j host1:n1 host2:n2 host3:n3 ..."
@@ -236,7 +236,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             be assumed to be the host on which the master SoS process is started, and n is half of
             the number of CPUs on the host, or 8 if there are more than 16 CPUs. If there
             are a large number of hosts, the parameters are usually speified through a hostfile
-            with values in each line, and be specified in the format of "-j @hostfile". 
+            with values in each line, and be specified in the format of "-j @hostfile".
             On a supported cluster system where environmental variables such as "PBS_HOSTFILE"
             are specified, SoS will ignore this parameter and read worker information from the
             host file.''')
@@ -1196,7 +1196,7 @@ def get_execute_parser(desc_only=False):
         metavar='JOBS',
         nargs='*',
         dest='__max_procs__',
-        default=min(max(os.cpu_count() // 2, 2), 8),
+        default=min(max(os.cpu_count() // 2, 1), 8),
         help=argparse.SUPPRESS)
     parser.add_argument(
         '-m',
