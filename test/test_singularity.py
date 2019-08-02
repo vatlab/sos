@@ -45,10 +45,10 @@ echo 'Echo'
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    @unittest.skipIf(not shutil.which('singularity') or sys.platform == 'win32',
+    @unittest.skipIf(not shutil.which('singularity') or sys.platform == 'win32'  or 'TRAVIS' in os.environ,
                      'Skip test because docker is not installed.')
     def testSingularityBuildLinuxImage(self):
-        '''Test action singularity build'''
+        '''Test action singularity build, needs authentication so no travis test'''
         script = SoS_Script(r'''
 singularity_build: dest='lolcow.simg', sudo=True, notest=True
 Bootstrap: docker
