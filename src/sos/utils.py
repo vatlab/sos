@@ -1286,11 +1286,11 @@ def load_config_files(filename=None):
     if filename is None and 'config_file' in env.config:
         filename = env.config['config_file']
 
-    if filename is not None and not os.path.isfile(filename):
+    if filename is not None and not os.path.isfile(os.path.expanduser(filename)):
         env.logger.warning(f'Ignoring missing configuration file {filename}')
         filename = None
 
-    filemtime = None if filename is None else os.path.getmtime(filename)
+    filemtime = None if filename is None else os.path.getmtime(os.path.expanduser(filename))
 
     if (filename, filemtime) in config_cache:
         env.sos_dict.set('CONFIG', config_cache[(filename, filemtime)])

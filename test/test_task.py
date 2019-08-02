@@ -689,9 +689,9 @@ print('a')
         '''test list hosts using sos status -q'''
         for v in ['0', '1', '3', '4']:
             output = subprocess.check_output(
-                ['sos', 'remote', 'list', '-c', '~/docker.yml', '-q', '-v',
+                ['sos', 'remote', 'list', '-c', '~/docker.yml', '-v',
                  v]).decode()
-            self.assertTrue('local_limited' in output)
+            self.assertTrue('local_limited' in output, f'local_limited not in \n{output}\n for verbosity {v}')
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testMaxWalltime(self):
