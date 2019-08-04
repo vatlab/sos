@@ -1030,9 +1030,16 @@ class Host:
             return self._get_local_host()
         if not isinstance(alias, str):
             raise ValueError(f'A string is expected for host {alias}')
-        if 'hosts' not in env.sos_dict['CONFIG'] or alias not in env.sos_dict[
-                'CONFIG']['hosts']:
-            raise ValueError(f'Undefined remote host {alias}')
+        if 'hosts' not in env.sos_dict['CONFIG']:
+            env.sos_dict['CONFIG']['hosts'] = {}
+        if alias in env.sos_dict['CONFIG']['hosts']:
+            return alias
+        # assuming the host name is a name or IP address
+        env.logger.debug(f'Assuming {alias} to be a hostname or IP address not defined in hosts file')
+        env.sos_dict['CONFIG']['hosts'][alias] = {
+            'address': alias,
+            'alias': alias,
+        }
         return alias
 
     def _get_config(self, alias: Optional[str]) -> None:
