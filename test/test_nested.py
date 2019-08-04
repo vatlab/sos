@@ -655,7 +655,7 @@ sos_run('A', idx=i)
         st = time.time()
         wf = script.workflow()
         # this should be ok.
-        Base_Executor(wf, config={'max_procs': 8}).run()
+        Base_Executor(wf, config={'worker_procs': ['8']}).run()
         self.assertTrue(time.time() - st < 30)
 
     def testSoSMultiWorkflow(self):
@@ -678,7 +678,7 @@ sos_run(['A', 'B'], idx=i)
         st = time.time()
         wf = script.workflow()
         # this should be ok.
-        Base_Executor(wf, config={'max_procs': 8}).run()
+        Base_Executor(wf, config={'worker_procs': ['8']}).run()
         self.assertTrue(time.time() - st < 20)
 
     def testPassOfArgs(self):

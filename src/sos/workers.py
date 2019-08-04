@@ -432,8 +432,8 @@ class WorkerManager(object):
 
         if not blocking:
             # no available port, can we start a new worker?
-            if self._num_workers < self._workers_procs:
-                self.start()
+            # if self._num_workers < self._workers_procs:
+            #     self.start()
             return None
 
         # we start a worker right now.

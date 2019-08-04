@@ -161,7 +161,7 @@ fail_if(True)
         wf = script.workflow()
         self.assertRaises(Exception,
                           Base_Executor(wf, config={
-                              'max_procs': 3
+                              'worker_procs': ['3']
                           }).run)
         self.assertTrue(time.time() - st >= 8,
                 'Test test should fail only after step 10 is completed')
@@ -186,7 +186,7 @@ fail_if(True)
         wf = script.workflow()
         self.assertRaises(Exception,
                           Base_Executor(wf, config={
-                              'max_procs': 3
+                              'worker_procs': ['3']
                           }).run)
         self.assertTrue(time.time() - st >= 8,
                 'Test test should fail only after step 10 is completed')

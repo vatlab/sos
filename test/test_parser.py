@@ -1872,7 +1872,7 @@ with open(_input) as content:
         self.assertTrue(os.path.isfile('A_1.txt'))
         self.assertTrue(os.path.isfile('A_2.txt'))
 
-    def testExecyteGlobalSection(self):
+    def testExecuteGlobalSection(self):
         '''Global section should be executed only once #1219'''
         script = SoS_Script(r'''
 [global]
