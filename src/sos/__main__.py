@@ -224,10 +224,10 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             'workflow', metavar='WORKFLOW', nargs='?', help=workflow_spec)
     parser.add_argument(
         '-j',
-        metavar='JOBS',
-        type=int,
-        dest='__max_procs__',
-        default=min(max(os.cpu_count() // 2, 1), 8),
+        metavar='WORKERS',
+        nargs='*',
+        dest='__worker_procs__',
+        default=[str(min(max(os.cpu_count() // 2, 2), 8))],
         help='''Hosts and number of worker processes in each host for the execution of
             workflow, default to local host with half the number of CPUs, or 8, whichever
             is smaller. The complete format of this option is "-j host1:n1 host2:n2 host3:n3 ..."
@@ -486,8 +486,8 @@ def cmd_run(args, workflow_args):
                 args.__report__,
             'default_queue':
                 args.__queue__,
-            'max_procs':
-                args.__max_procs__,
+            'worker_procs':
+                args.__worker_procs__,
             'max_running_jobs':
                 args.__max_running_jobs__,
             'sig_mode':
@@ -662,7 +662,7 @@ def get_dryrun_parser(desc_only=False):
 
 def cmd_dryrun(args, workflow_args):
     args.__sig_mode__ = 'ignore'
-    args.__max_procs__ = 1
+    args.__worker_procs__ = ['1']
     args.__max_running_jobs__ = 1
     args.dryrun = True
     args.__bin_dirs__ = []
@@ -1193,10 +1193,10 @@ def get_execute_parser(desc_only=False):
         help=argparse.SUPPRESS)
     parser.add_argument(
         '-j',
-        metavar='JOBS',
-        type=int,
-        dest='__max_procs__',
-        default=min(max(os.cpu_count() // 2, 1), 8),
+        metavar='WORKERS',
+        nargs='*',
+        dest='__worker_procs__',
+        default=[str(min(max(os.cpu_count() // 2, 2), 8))],
         help=argparse.SUPPRESS)
     parser.add_argument(
         '-m',

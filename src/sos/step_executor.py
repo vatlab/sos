@@ -836,17 +836,16 @@ class Base_Step_Executor:
             if not wait:
                 # 1213
                 cur_index = env.sos_dict['_index']
-                num_workers = env.config.get('max_procs', 1)
                 pending_substeps = (
                     cur_index -
-                    self._completed_concurrent_substeps) // num_workers
-                if pending_substeps < 10:
-                    # if there are more than 10 pending substeps for each worker
-                    # we wait indefinitely for the results
+                    self._completed_concurrent_substeps)
+                if pending_substeps < 100:
                     if not self.result_pull_socket.poll(0):
                         return
                 elif 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
                         'SOS_DEBUG']:
+                    # if there are more than 100 pending substeps
+                    # we wait indefinitely for the results
                     env.log_to_file(
                         'STEP',
                         f'Wait for more substeps to be done before submitting. (index={cur_index}, processed={self._completed_concurrent_substeps})'
@@ -1480,7 +1479,7 @@ class Base_Step_Executor:
             env.sos_dict.set('__concurrent_subworkflow__', True)
 
         if self.concurrent_substep:
-            if len(self._substeps) <= 1 or env.config['run_mode'] == 'dryrun' or env.config.get('max_procs', 2) <= 1:
+            if len(self._substeps) <= 1 or env.config['run_mode'] == 'dryrun':
                 self.concurrent_substep = False
             elif len([
                     x for x in self.step.statements[input_statement_idx:]

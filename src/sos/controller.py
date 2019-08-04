@@ -488,7 +488,7 @@ class Controller(threading.Thread):
 
         # create a manager
         from .workers import WorkerManager
-        self.workers = WorkerManager(env.config['max_procs'],
+        self.workers = WorkerManager(env.config['worker_procs'],
                                      self.worker_backend_socket)
 
         # Process messages from receiver and controller

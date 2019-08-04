@@ -394,7 +394,7 @@ class RuntimeEnvironments(object):
             'output_report': None,
             'wait_for_task': None,
             'default_queue': '',
-            'max_procs': 4,
+            'worker_procs': ['2'],
             'max_running_jobs': None,
             'sig_mode': 'default',
             'run_mode': 'run',
