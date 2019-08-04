@@ -15,6 +15,7 @@ from typing import List
 import zmq
 
 from .controller import close_socket, create_socket, send_message_to_controller
+from .messages import encode_msg, decode_msg
 from .eval import SoS_eval, SoS_exec, accessed_vars
 from .executor_utils import (__named_output__, __null_func__, __output_from__,
                              __traced__, clear_output, create_task,
@@ -853,7 +854,7 @@ class Base_Step_Executor:
             elif self._completed_concurrent_substeps == till:
                 return
             yield self.result_pull_socket
-            res = self.result_pull_socket.recv_pyobj()
+            res = decode_msg(self.result_pull_socket.recv())
             if 'exception' in res:
                 if isinstance(res['exception'], ProcessKilled):
                     raise res['exception']
@@ -881,7 +882,7 @@ class Base_Step_Executor:
                     )
                     for i in range(waiting):
                         yield self.result_pull_socket
-                        res = self.result_pull_socket.recv_pyobj()
+                        res = decode_msg(self.result_pull_socket.recv())
                         if 'exception' in res:
                             self.exec_error.append(f'index={res["index"]}',
                                                    res['exception'])
@@ -1926,8 +1927,8 @@ class Step_Executor(Base_Step_Executor):
     def submit_tasks(self, tasks):
         if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file('TASK', f'Send {tasks}')
-        self.socket.send_pyobj(['tasks', env.sos_dict['_runtime']['queue']] +
-                               tasks)
+        self.socket.send(encode_msg(['tasks', env.sos_dict['_runtime']['queue']] +
+                               tasks))
 
     def wait_for_tasks(self, tasks, all_submitted):
         # wait for task is a generator function that yields the request
@@ -1943,7 +1944,7 @@ class Step_Executor(Base_Step_Executor):
         while True:
             # yield an indicator of what is requested, for debugging purpose
             yield self.socket
-            res = self.socket.recv_pyobj()
+            res = decode_msg(self.socket.recv())
             if res is None:
                 sys.exit(0)
             results.update(res)
@@ -1959,16 +1960,16 @@ class Step_Executor(Base_Step_Executor):
         for wf_id in wf_ids:
             # here we did not check if workflow ids match
             yield self.socket
-            res = self.socket.recv_pyobj()
+            res = decode_msg(self.socket.recv())
             if res is None:
                 sys.exit(0)
             elif isinstance(res, Exception):
                 raise res
 
     def handle_unknown_target(self, e):
-        self.socket.send_pyobj(['missing_target', e.target])
+        self.socket.send(encode_msg(['missing_target', e.target]))
         yield self.socket
-        res = self.socket.recv_pyobj()
+        res = decode_msg(self.socket.recv())
         if not res:
             raise e
 
@@ -1984,9 +1985,9 @@ class Step_Executor(Base_Step_Executor):
         if not traced:
             return
 
-        self.socket.send_pyobj(['dependent_target'] + traced)
+        self.socket.send(encode_msg(['dependent_target'] + traced))
         yield self.socket
-        res = self.socket.recv_pyobj()
+        res = decode_msg(self.socket.recv())
         if res != 'target_resolved':
             raise RuntimeError(f'Failed to veryify dependent target {traced}')
 
@@ -2009,14 +2010,14 @@ class Step_Executor(Base_Step_Executor):
                         'STEP',
                         f'Step {self.step.step_name()} sends result {short_repr(res)}'
                     )
-                self.socket.send_pyobj(res)
+                self.socket.send(encode_msg(res))
             else:
                 return res
         except RemovedTarget as e:
             # removed target needs to be handled differently since the workflow manager
             # use type information to get removed targets
             if self.socket is not None and not self.socket.closed:
-                self.socket.send_pyobj(e)
+                self.socket.send(encode_msg(e))
             else:
                 raise e
         except Exception as e:
@@ -2034,6 +2035,6 @@ class Step_Executor(Base_Step_Executor):
                     'STEP',
                     f'Step {self.step.step_name()} sends exception {self.exec_error}'
                 )
-                self.socket.send_pyobj(self.exec_error)
+                self.socket.send(encode_msg(self.exec_error))
             else:
                 raise self.exec_error

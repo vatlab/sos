@@ -2178,7 +2178,7 @@ class RuntimeInfo(InMemorySignature):
         )
 
     def __getstate__(self):
-        if not elf.sig_id:
+        if not self.sig_id:
             return {}
         return {
             'step_md5': self.step_md5,

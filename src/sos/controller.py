@@ -10,6 +10,7 @@ import threading
 from collections import defaultdict
 from .utils import env, ProcessKilled
 from .signatures import StepSignatures, WorkflowSignatures
+from .messages import encode_msg, decode_msg
 
 EVENT_MAP = {}
 for name in ('PUSH', 'PULL', 'PAIR', 'REQ', 'REP'):
@@ -60,7 +61,7 @@ def send_message_to_controller(msg):
                                                'master push')
         env.master_push_socket.connect(
             f'tcp://127.0.0.1:{env.config["sockets"]["master_push"]}')
-    env.master_push_socket.send_pyobj(msg)
+    env.master_push_socket.send(encode_msg(msg))
 
 
 def request_answer_from_controller(msg):
@@ -69,9 +70,8 @@ def request_answer_from_controller(msg):
                                                   'master request')
         env.master_request_socket.connect(
             f'tcp://127.0.0.1:{env.config["sockets"]["master_request"]}')
-    env.master_request_socket.send_pyobj(msg)
-    return env.master_request_socket.recv_pyobj()
-
+    env.master_request_socket.send(encode_msg(msg))
+    return decode_msg(env.master_request_socket.recv())
 
 def connect_controllers(context=None):
     if not context:
@@ -297,38 +297,38 @@ class Controller(threading.Thread):
             while True:
                 if self.master_push_socket.poll(0):
                     self.handle_master_push_msg(
-                        self.master_push_socket.recv_pyobj())
+                        decode_msg(self.master_push_socket.recv()))
                 else:
                     break
             if msg[0] == 'workflow_sig':
                 if msg[1] == 'clear':
                     self.workflow_signatures.clear()
-                    self.master_request_socket.send_pyobj('ok')
+                    self.master_request_socket.send(encode_msg('ok'))
                 elif msg[1] == 'placeholders':
-                    self.master_request_socket.send_pyobj(
-                        self.workflow_signatures.placeholders(msg[2]))
+                    self.master_request_socket.send(encode_msg(
+                        self.workflow_signatures.placeholders(msg[2])))
                 elif msg[1] == 'records':
-                    self.master_request_socket.send_pyobj(
-                        self.workflow_signatures.records(msg[2]))
+                    self.master_request_socket.send(encode_msg(
+                        self.workflow_signatures.records(msg[2])))
                 else:
                     env.logger.warning(f'Unknown signature request {msg}')
             elif msg[0] == 'step_sig':
                 if msg[1] == 'get':
-                    self.master_request_socket.send_pyobj(
-                        self.step_signatures.get(*msg[2:]))
+                    self.master_request_socket.send(encode_msg(
+                        self.step_signatures.get(*msg[2:])))
                 else:
                     env.logger.warning(f'Unknown signature request {msg}')
             elif msg[0] == 'nprocs':
-                self.master_request_socket.send_pyobj(self._nprocs)
+                self.master_request_socket.send(encode_msg(self._nprocs))
             elif msg[0] == 'sos_step':
-                self.master_request_socket.send_pyobj(
+                self.master_request_socket.send(encode_msg(
                     msg[1] in self._completed_steps or msg[1] in
-                    [x.rsplit('_', 1)[0] for x in self._completed_steps.keys()])
+                    [x.rsplit('_', 1)[0] for x in self._completed_steps.keys()]))
             elif msg[0] == 'step_output':
                 step_name = msg[1]
                 if step_name in self._completed_steps:
-                    self.master_request_socket.send_pyobj(
-                        self._completed_steps[step_name])
+                    self.master_request_socket.send(encode_msg(
+                        self._completed_steps[step_name]))
                 else:
                     # now, step_name might actually be a workflow name, in which
                     # case we need to return the last step of the workflow
@@ -336,27 +336,27 @@ class Controller(threading.Thread):
                         x for x in self._completed_steps.keys()
                         if x.rsplit('_', 1)[0] == step_name
                     ])
-                    self.master_request_socket.send_pyobj(
-                        self._completed_steps[steps[-1]] if steps else None)
+                    self.master_request_socket.send(encode_msg(
+                        self._completed_steps[steps[-1]] if steps else None))
             elif msg[0] == 'named_output':
                 name = msg[1]
                 found = False
                 for step_output in self._completed_steps.values():
                     if name in step_output.labels:
                         found = True
-                        self.master_request_socket.send_pyobj(step_output[name])
+                        self.master_request_socket.send(encode_msg(step_output[name]))
                         break
                 if not found:
-                    self.master_request_socket.send_pyobj(None)
+                    self.master_request_socket.send(encode_msg(None))
             elif msg[0] == 'worker_available':
-                self.master_request_socket.send_pyobj(
-                    self.workers.worker_available(msg[1], msg[2:]))
+                self.master_request_socket.send(encode_msg(
+                    self.workers.worker_available(msg[1], msg[2:])))
             elif msg[0] == 'done':
                 # handle all ctl_push_msgs #1062
                 while True:
                     if self.master_push_socket.poll(0):
                         self.handle_master_push_msg(
-                            self.master_push_socket.recv_pyobj())
+                            decode_msg(self.master_push_socket.recv()))
                     else:
                         break
 
@@ -384,7 +384,7 @@ class Controller(threading.Thread):
                         f'{succ}{steps_text} ({completed_text}{", " if num_completed and num_ignored else ""}{ignored_text})'
                     )
 
-                self.master_request_socket.send_pyobj('bye')
+                self.master_request_socket.send(encode_msg('bye'))
 
                 return False
             else:
@@ -392,7 +392,7 @@ class Controller(threading.Thread):
             return True
         except Exception as e:
             env.logger.warning(f'Failed to respond controller {msg}: {e}')
-            self.master_request_socket.send_pyobj(None)
+            self.master_request_socket.send(encode_msg(None))
 
     def handle_worker_backend_msg(self, msg):
         # msg should be a port number from the worker
@@ -523,20 +523,20 @@ class Controller(threading.Thread):
                     while True:
                         if self.master_push_socket.poll(0):
                             self.handle_master_push_msg(
-                                self.master_push_socket.recv_pyobj())
+                                decode_msg(self.master_push_socket.recv()))
                         else:
                             break
 
                 if self.master_request_socket in socks:
                     if not self.handle_master_request_msg(
-                            self.master_request_socket.recv_pyobj()):
+                            decode_msg(self.master_request_socket.recv())):
                         break
 
                 if self.worker_backend_socket in socks:
                     while True:
                         if self.worker_backend_socket.poll(0):
                             self.handle_worker_backend_msg(
-                                self.worker_backend_socket.recv_pyobj())
+                                decode_msg(self.worker_backend_socket.recv()))
                         else:
                             break
 
@@ -546,12 +546,12 @@ class Controller(threading.Thread):
                             self.tapping_logging_socket.recv_multipart())
                     if self.tapping_listener_socket in socks:
                         self.handle_tapping_listener_msg(
-                            self.tapping_listener_socket.recv_pyobj())
+                            decode_msg(self.tapping_listener_socket.recv()))
 
                 if env.config['exec_mode'] == 'slave':
                     if self.tapping_controller_socket in socks:
                         self.handle_tapping_controller_msg(
-                            self.tapping_controller_socket.recv_pyobj())
+                            decode_msg(self.tapping_controller_socket.recv()))
 
                 # if monitor_socket in socks:
                 #     evt = recv_monitor_message(monitor_socket)

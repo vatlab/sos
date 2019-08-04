@@ -33,6 +33,7 @@ from .targets import (executable, file_target, fileMD5, path, paths,
 from .utils import (StopInputGroup, TerminateExecution, TimeoutInterProcessLock,
                     env, get_traceback, short_repr, transcribe)
 from .controller import send_message_to_controller
+from .messages import encode_msg, decode_msg
 
 from typing import Any, Callable, Dict, List, Tuple, Union
 __all__ = [
@@ -630,15 +631,15 @@ def sos_run(workflow=None,
         wf_ids = [str(uuid.uuid4()) for wf in wfs]
 
         blocking = not env.sos_dict.get('__concurrent_subworkflow__', False)
-        env.__socket__.send_pyobj([
+        env.__socket__.send(encode_msg([
             'workflow', wf_ids, wfs, targets, args, shared, env.config, blocking
-        ])
+        ]))
 
         if not blocking:
             return {'pending_workflows': wf_ids}
         res = {}
         for wf in wfs:
-            wf_res = env.__socket__.recv_pyobj()
+            wf_res = decode_msg(env.__socket__.recv())
             res.update(wf_res)
             if wf_res is None:
                 sys.exit(0)

@@ -30,6 +30,7 @@ from .targets import (BaseTarget, RemovedTarget, UnavailableLock, UnknownTarget,
                       sos_variable, textMD5, named_output)
 from .utils import env, pickleable, short_repr
 from .executor_utils import prepare_env, ExecuteError
+from .messages import encode_msg, decode_msg
 
 __all__ = []
 
@@ -305,7 +306,7 @@ class Base_Executor:
             ['workflow_sig', 'workflow', self.md5,
              repr(workflow_info)])
         if env.config['exec_mode'] == 'slave':
-            env.tapping_listener_socket.send_pyobj({
+            env.tapping_listener_socket.send(encode_msg({
                 'msg_type': 'workflow_status',
                 'data': {
                     'cell_id': env.config['slave_id'],
@@ -314,7 +315,7 @@ class Base_Executor:
                     'start_time': time.time(),
                     'status': 'running'
                 }
-            })
+            }))
 
     def run(self, targets: Optional[List[str]] = None,
             mode=None) -> Dict[str, Any]:
@@ -913,7 +914,7 @@ class Base_Executor:
                         for x in node._pending_targets):
                     # in a master node, this _socket points to the step
                     # in a nested node, this _socket points to the parent socket
-                    node._socket.send_pyobj('target_resolved')
+                    node._socket.send(encode_msg('target_resolved'))
                     node._status = 'running'
         dag.update_step(
             runnable,
@@ -1153,7 +1154,7 @@ class Base_Executor:
                         continue
 
                     # receieve something from the worker
-                    res = proc.socket.recv_pyobj()
+                    res = decode_msg(proc.socket.recv())
                     runnable = proc.step
                     # if this is NOT a result, rather some request for task, step, workflow etc
                     if isinstance(res, list):
@@ -1179,14 +1180,14 @@ class Base_Executor:
                                 env.log_to_file('EXECUTOR',
                                                 'Step becomes task_pending')
                             except Exception as e:
-                                proc.socket.send_pyobj({
+                                proc.socket.send(encode_msg({
                                     x: {
                                         'ret_code': 1,
                                         'task': x,
                                         'output': {},
                                         'exception': e
                                     } for x in new_tasks
-                                })
+                                }))
                                 env.logger.error(e)
                                 proc.set_status('failed')
                                 if not env.config['keep_going']:
@@ -1197,8 +1198,8 @@ class Base_Executor:
                             if hasattr(runnable, '_from_nested'):
                                 # if the step is from a subworkflow, then the missing target
                                 # should be resolved by the nested workflow
-                                runnable._child_socket.send_pyobj(res)
-                                reply = runnable._child_socket.recv_pyobj()
+                                runnable._child_socket.send(encode_msg(res))
+                                reply = decode_msg(runnable._child_socket.recv())
                                 if reply:  # if the target is resolvable in nested workflow
                                     runnable._status = 'target_pending'
                                     runnable._pending_targets = [missed]
@@ -1206,7 +1207,7 @@ class Base_Executor:
                                     runnable._socket = proc.socket
                                 else:
                                     # otherwise say the target cannot be resolved
-                                    proc.socket.send_pyobj('')
+                                    proc.socket.send(encode_msg(''))
                                     proc.set_status('failed')
                                     if not env.config['keep_going']:
                                         manager.stop_dag(dag)
@@ -1220,7 +1221,7 @@ class Base_Executor:
                                     runnable._socket = proc.socket
                                 except Exception as e:
                                     env.logger.error(e)
-                                    proc.socket.send_pyobj('')
+                                    proc.socket.send(encode_msg(''))
                                     proc.set_status('failed')
                                     if not env.config['keep_going']:
                                         manager.stop_dag(dag)
@@ -1232,8 +1233,8 @@ class Base_Executor:
                             if hasattr(runnable, '_from_nested'):
                                 # if the step is from a subworkflow, then the missing target
                                 # should be resolved by the nested workflow
-                                runnable._child_socket.send_pyobj(res)
-                                reply = runnable._child_socket.recv_pyobj()
+                                runnable._child_socket.send(encode_msg(res))
+                                reply = decode_msg(runnable._child_socket.recv())
                                 if reply:
                                     # if there are dependent steps, the current step
                                     # has to wait
@@ -1244,7 +1245,7 @@ class Base_Executor:
                                 else:
                                     # otherwise there is no target to verify
                                     # and we just continue
-                                    proc.socket.send_pyobj('target_resolved')
+                                    proc.socket.send(encode_msg('target_resolved'))
                             else:
                                 # if the missing target is from master, resolve from here
                                 reply = self.handle_dependent_target(
@@ -1254,7 +1255,7 @@ class Base_Executor:
                                     runnable._pending_targets = res[1:]
                                     runnable._socket = proc.socket
                                 else:
-                                    proc.socket.send_pyobj('target_resolved')
+                                    proc.socket.send(encode_msg('target_resolved'))
                         elif res[0] == 'step':
                             # step sent from nested workflow
                             step_id = res[1]
@@ -1342,7 +1343,7 @@ class Base_Executor:
                                         f'Master send res to nested')
                         runnable._status = 'completed'
                         dag.save(env.config['output_dag'])
-                        runnable._child_socket.send_pyobj(res)
+                        runnable._child_socket.send(encode_msg(res))
                         # this is a onetime use socket that passes results from
                         # nested workflow to master
                         #runnable._child_socket.LINGER = 0
@@ -1407,7 +1408,7 @@ class Base_Executor:
                                     res['__workflow_id__'])
                                 if not proc.step._pending_workflows:
                                     proc.set_status('running')
-                                proc.socket.send_pyobj(res)
+                                proc.socket.send(encode_msg(res))
                                 break
                         dag.save(env.config['output_dag'])
                     else:
@@ -1433,7 +1434,7 @@ class Base_Executor:
                             )
                             res = proc.step._host.retrieve_results(
                                 proc.step._pending_tasks)
-                            proc.socket.send_pyobj(res)
+                            proc.socket.send(encode_msg(res))
                             proc.step._pending_tasks = []
                             proc.set_status('running')
                             #proc.set_status('failed')
@@ -1453,10 +1454,10 @@ class Base_Executor:
                             proc.step,
                             '_from_nested') and proc.step._child_socket.poll(0):
                         # see if the child node has sent something
-                        res = proc.step._child_socket.recv_pyobj()
+                        res = decode_msg(proc.step._child_socket.recv())
                         if res == 'target_resolved':
                             # this _socket is the socket to the step
-                            proc.step._socket.send_pyobj(res)
+                            proc.step._socket.send(encode_msg(res))
                             proc.step._status = 'running'
                         else:
                             raise RuntimeError(
@@ -1617,7 +1618,7 @@ class Base_Executor:
                         continue
 
                     # receieve something from the pipe
-                    res = proc.socket.recv_pyobj()
+                    res = decode_msg(proc.socket.recv())
                     runnable = proc.step
 
                     if isinstance(res, list):
@@ -1628,7 +1629,7 @@ class Base_Executor:
                                 self.handle_unknown_target(
                                     missed, dag, runnable)
                                 # tell the master that the nested can resolve the target
-                                proc.socket.send_pyobj(True)
+                                proc.socket.send(encode_msg(True))
                                 runnable._status = 'target_pending'
                                 runnable._pending_targets = [missed]
                                 # when the target is resolved, tell the parent that
@@ -1638,12 +1639,12 @@ class Base_Executor:
                                 env.logger.error(e)
                                 # tell the master that nested cannot resolve the
                                 # target so the workflow should stop
-                                proc.socket.send_pyobj(False)
+                                proc.socket.send(encode_msg(False))
                             continue
                         elif res[0] == 'dependent_target':
                             reply = self.handle_dependent_target(
                                 dag, sos_targets(res[1:]), runnable)
-                            proc.socket.send_pyobj(reply)
+                            proc.socket.send(encode_msg(reply))
                             if reply:
                                 # tell the master that the nested can resolve the target
                                 runnable._status = 'target_pending'
@@ -1742,10 +1743,10 @@ class Base_Executor:
                         f'- SUBRUN - SEND STEP S{env.config["workflow_vars"].get("idx", "?")}'
                     )
 
-                    parent_socket.send_pyobj([
+                    parent_socket.send(encode_msg([
                         'step', step_id, section, runnable._context, shared,
                         self.args, env.config, env.verbosity, port
-                    ])
+                    ]))
                     # the nested workflow also needs a step to receive result
                     manager.add_placeholder_worker(runnable, socket)
 
@@ -1792,7 +1793,7 @@ class Base_Executor:
                     RuntimeError(
                         f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'
                     ))
-            parent_socket.send_pyobj(exec_error)
+            parent_socket.send(encode_msg(exec_error))
         else:
             wf_result['shared'] = {
                 x: env.sos_dict[x]
@@ -1800,4 +1801,4 @@ class Base_Executor:
                 if x in env.sos_dict
             }
             wf_result['__completed__'] = self.completed
-            parent_socket.send_pyobj(wf_result)
+            parent_socket.send(encode_msg(wf_result))

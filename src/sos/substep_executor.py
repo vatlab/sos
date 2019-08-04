@@ -11,6 +11,7 @@ from io import StringIO
 import zmq
 
 from .controller import close_socket, create_socket, send_message_to_controller
+from .messages import encode_msg
 from .eval import SoS_exec
 from .executor_utils import (clear_output, create_task, get_traceback_msg,
                              kill_all_subprocesses, prepare_env,
@@ -113,7 +114,7 @@ def execute_substep(stmt,
         proc_vars=proc_vars,
         shared_vars=shared_vars,
         config=config)
-    env.result_socket.send_pyobj(res)
+    env.result_socket.send(encode_msg(res))
 
 
 def _execute_substep(stmt, global_def, global_vars, task, task_params,

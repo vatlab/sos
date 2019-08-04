@@ -14,7 +14,7 @@ from collections import OrderedDict, defaultdict
 from .eval import cfg_interpolate
 from .utils import env, expand_time
 from .tasks import TaskFile
-
+from .messages import encode_msg
 
 class TaskEngine(threading.Thread):
 
@@ -94,10 +94,10 @@ class TaskEngine(threading.Thread):
             # set cell_id to slave_id so that the frontend knows which
             # cell this task belong to
             msg['cell_id'] = env.config.get('slave_id', '')
-            env.tapping_listener_socket.send_pyobj({
+            env.tapping_listener_socket.send(encode_msg({
                 'msg_type': 'task_status',
                 'data': msg
-            })
+            }))
 
     def monitor_tasks(self, tasks=None, status=None, age=None):
         '''Start monitoring specified or all tasks'''

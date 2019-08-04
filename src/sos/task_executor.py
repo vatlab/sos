@@ -409,7 +409,7 @@ class BaseTaskExecutor(object):
                     self._append_subtask_outputs(res)
                 except Exception as e:
                     env.logger.warning(
-                        f'Failed to copy result of subtask {tid}: {e}')
+                        f'Failed to copy result of subtask {sub_id}: {e}')
                 results.append(res)
         return self._combine_results(task_id, results)
 
