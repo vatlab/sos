@@ -558,7 +558,7 @@ class WorkerManager(object):
                 try:
                     from .hosts import Host
                     host = Host(wh, start_engine=False)
-                    host._host_agent.start_workers(env.config, mw)
+                    host._host_agent.run_command(['python', '-m', 'sos.workers'])
                 except Exception as e:
                     raise RuntimeError(f'Failed to start workers on host {wh}')
                 self._num_workers[idx] = self._max_workers[idx]

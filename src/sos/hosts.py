@@ -136,7 +136,7 @@ class LocalHost(SoS_Host):
     '''For local host, no path map, send and receive ...'''
 
     def __init__(self, config: Dict[str, Union[str, int, List[str]]]) -> None:
-        super(LocakHost, self).__init__()
+        super(LocalHost, self).__init__()
 
         # even if the config has an alias, we use localhost to make it clear that the host is localhost
         self.alias = config.get('alias', 'localhost')
