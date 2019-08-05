@@ -14,7 +14,7 @@ import zmq
 from .controller import (close_socket, connect_controllers, create_socket,
                          disconnect_controllers)
 from .executor_utils import kill_all_subprocesses, prepare_env
-from .utils import env, ProcessKilled, short_repr
+from .utils import env, ProcessKilled, short_repr, get_localhost_ip
 from .messages import encode_msg, decode_msg
 
 def signal_handler(*args, **kwargs):
@@ -163,8 +163,9 @@ class SoS_Worker(mp.Process):
         # create controller socket
         env.ctrl_socket = create_socket(env.zmq_context, zmq.REQ,
                                         'worker backend')
-        env.ctrl_socket.connect(
-            f'tcp://127.0.0.1:{self.config["sockets"]["worker_backend"]}')
+        # worker_backend, or the router, might be on another machine
+        env.log_to_file('WORKER', f'Connecting to router {self.config["sockets"]["worker_backend"]} from {get_localhost_ip()}')
+        env.ctrl_socket.connect(self.config["sockets"]["worker_backend"])
 
         signal.signal(signal.SIGTERM, signal_handler)
         # result socket used by substeps

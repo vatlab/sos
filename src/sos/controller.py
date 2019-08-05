@@ -8,7 +8,7 @@ import zmq
 import time
 import threading
 from collections import defaultdict
-from .utils import env, ProcessKilled
+from .utils import env, ProcessKilled, get_localhost_ip
 from .signatures import StepSignatures, WorkflowSignatures
 from .messages import encode_msg, decode_msg
 
@@ -453,9 +453,12 @@ class Controller(threading.Thread):
         # broker to handle the execution of substeps
         self.worker_backend_socket = create_socket(
             self.context, zmq.REP, 'controller backend rep')  # ROUTER
-        env.config['sockets'][
-            'worker_backend'] = self.worker_backend_socket.bind_to_random_port(
-                'tcp://127.0.0.1')
+        # we assume the router is always on local host, but we will use a non-localhost
+        # IP so that others can connect to it.
+        local_ip = get_localhost_ip()
+        worker_port = self.worker_backend_socket.bind_to_random_port(
+                f'tcp://{local_ip}')
+        env.config['sockets']['worker_backend'] = f'tcp://{local_ip}:{worker_port}'
 
         # tapping
         if env.config['exec_mode'] == 'master':
