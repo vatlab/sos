@@ -374,13 +374,13 @@ class WorkerManager(object):
         self._worker_procs = worker_procs
         self._max_workers = int(self._worker_procs[0])
 
-        self._workers = []
-        self._num_workers = 0
+        self._local_workers = []
+        self._num_local_workers = 0
         self._n_requested = 0
         self._n_processed = 0
 
-        self._worker_alive_time = time.time()
-        # self._last_pending_time = {}
+        self._local_worker_alive_time = time.time()
+        self._last_pending_time = {}
 
         self._substep_requests = []
         self._step_requests = {}
@@ -397,14 +397,14 @@ class WorkerManager(object):
 
         # start a worker, note that we do not start all workers for performance
         # considerations
-        self.start()
+        self.start_local_worker()
 
     def report(self, msg):
         if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
                 'SOS_DEBUG']:
             env.log_to_file(
                 'WORKER',
-                f'{msg.upper()}: {self._num_workers} workers (of which {len(self._blocking_ports)} is blocking), {self._n_requested} requested, {self._n_processed} processed'
+                f'{msg.upper()}: {self._num_local_workers} workers (of which {len(self._blocking_ports)} is blocking), {self._n_requested} requested, {self._n_processed} processed'
             )
 
     def add_request(self, msg_type, msg):
@@ -419,8 +419,8 @@ class WorkerManager(object):
 
         # start a worker is necessary (max_procs could be incorrectly set to be 0 or less)
         # if we are just starting, so do not start two workers
-        if self._n_processed > 0 and not self._available_ports and self._num_workers < self._max_workers:
-            self.start()
+        if self._n_processed > 0 and not self._available_ports and self._num_local_workers < self._max_workers:
+            self.start_local_worker()
 
     def worker_available(self, blocking, excluded):
         if self._available_ports:
@@ -433,12 +433,12 @@ class WorkerManager(object):
 
         if not blocking:
             # no available port, can we start a new worker?
-            if self._num_workers < self._max_workers:
-                self.start()
+            if self._num_local_workers < self._max_workers:
+                self.start_local_worker()
             return None
 
         # we start a worker right now.
-        self.start()
+        self.start_local_worker()
         while True:
             if not self._worker_backend_socket.poll(5000):
                 raise RuntimeError('No worker is started after 5 seconds')
@@ -486,7 +486,7 @@ class WorkerManager(object):
                 if port in self._available_ports:
                     self._available_ports.remove(port)
             self._worker_backend_socket.send(encode_msg(None))
-            self._num_workers -= 1
+            self._num_local_workers -= 1
             self.report(f'Blocking worker {ports} killed')
         elif self._substep_requests:
             # port is not claimed, free to use for substep worker
@@ -503,7 +503,7 @@ class WorkerManager(object):
         elif request_blocking:
             self._worker_backend_socket.send(encode_msg({}))
             return ports[0]
-        # elif num_pending == 0 and self._num_workers > 1 and ports[
+        # elif num_pending == 0 and self._num_local_workers > 1 and ports[
         #         0] in self._last_pending_time and time.time(
         #         ) - self._last_pending_time[ports[0]] > 5:
         #     # kill the worker
@@ -511,7 +511,7 @@ class WorkerManager(object):
         #         if port in self._available_ports:
         #             self._available_ports.remove(port)
         #     self._worker_backend_socket.send(encode_msg(None))
-        #     self._num_workers -= 1
+        #     self._num_local_workers -= 1
         #     self.report(f'Kill standing {ports}')
         #     self._last_pending_time.pop(ports[0])
         else:
@@ -526,34 +526,34 @@ class WorkerManager(object):
                     f'pending with port {ports} at num_pending {num_pending}')
                 self._last_pending_msg[(ports, num_pending)] = time.time()
 
-    def start(self):
+    def start_local_worker(self):
         worker = SoS_Worker(env.config)
         worker.start()
-        self._worker_alive_time = time.time()
-        self._workers.append(worker)
-        self._num_workers += 1
+        self._local_worker_alive_time = time.time()
+        self._local_workers.append(worker)
+        self._num_local_workers += 1
         self.report('start worker')
 
     def check_workers(self):
         '''Kill workers that have been pending for a while and check if all workers
         are alive. '''
-        if time.time() - self._worker_alive_time > 5:
-            self._worker_alive_time = time.time()
+        if time.time() - self._local_worker_alive_time > 5:
+            self._local_worker_alive_time = time.time()
             # join processes if they are now gone, it should not do anything bad
             # if the process is still running
-            [worker.join() for worker in self._workers if not worker.is_alive()]
-            self._workers = [
-                worker for worker in self._workers if worker.is_alive()
+            [worker.join() for worker in self._local_workers if not worker.is_alive()]
+            self._local_workers = [
+                worker for worker in self._local_workers if worker.is_alive()
             ]
-            if len(self._workers) < self._num_workers:
-                raise ProcessKilled('One of the workers has been killed.')
+            if len(self._local_workers) < self._num_local_workers:
+                raise ProcessKilled('One of the local workers has been killed.')
 
     def kill_all(self):
         '''Kill all workers'''
-        while self._num_workers > 0 and self._worker_backend_socket.poll(1000):
+        while self._num_local_workers > 0 and self._worker_backend_socket.poll(1000):
             msg = decode_msg(self._worker_backend_socket.recv())
             self._worker_backend_socket.send(encode_msg(None))
-            self._num_workers -= 1
+            self._num_local_workers -= 1
             self.report(f'Kill {msg[1:]}')
         # join all processes
-        [worker.join() for worker in self._workers]
+        [worker.join() for worker in self._local_workers]
