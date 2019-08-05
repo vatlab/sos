@@ -380,7 +380,7 @@ class WorkerManager(object):
         self._n_processed = 0
 
         self._worker_alive_time = time.time()
-        self._last_pending_time = {}
+        # self._last_pending_time = {}
 
         self._substep_requests = []
         self._step_requests = {}
@@ -395,7 +395,8 @@ class WorkerManager(object):
 
         self._last_pending_msg = {}
 
-        # start a worker
+        # start a worker, note that we do not start all workers for performance
+        # considerations
         self.start()
 
     def report(self, msg):
@@ -467,8 +468,8 @@ class WorkerManager(object):
             self.report(f'Step {port} processed')
             # port should be in claimed ports
             self._claimed_ports.remove(port)
-            if ports[0] in self._last_pending_time:
-                self._last_pending_time.pop(ports[0])
+            # if ports[0] in self._last_pending_time:
+            #     self._last_pending_time.pop(ports[0])
         elif any(port in self._claimed_ports for port in ports):
             # the port is claimed, but the real message is not yet available
             self._worker_backend_socket.send(encode_msg({}))
@@ -497,25 +498,25 @@ class WorkerManager(object):
             for port in ports:
                 if port in self._available_ports:
                     self._available_ports.remove(port)
-                if port in self._last_pending_time:
-                    self._last_pending_time.pop(port)
+                # if port in self._last_pending_time:
+                #     self._last_pending_time.pop(port)
         elif request_blocking:
             self._worker_backend_socket.send(encode_msg({}))
             return ports[0]
-        elif num_pending == 0 and self._num_workers > 1 and ports[
-                0] in self._last_pending_time and time.time(
-                ) - self._last_pending_time[ports[0]] > 5:
-            # kill the worker
-            for port in ports:
-                if port in self._available_ports:
-                    self._available_ports.remove(port)
-            self._worker_backend_socket.send(encode_msg(None))
-            self._num_workers -= 1
-            self.report(f'Kill standing {ports}')
-            self._last_pending_time.pop(ports[0])
+        # elif num_pending == 0 and self._num_workers > 1 and ports[
+        #         0] in self._last_pending_time and time.time(
+        #         ) - self._last_pending_time[ports[0]] > 5:
+        #     # kill the worker
+        #     for port in ports:
+        #         if port in self._available_ports:
+        #             self._available_ports.remove(port)
+        #     self._worker_backend_socket.send(encode_msg(None))
+        #     self._num_workers -= 1
+        #     self.report(f'Kill standing {ports}')
+        #     self._last_pending_time.pop(ports[0])
         else:
-            if num_pending == 0 and ports[0] not in self._last_pending_time:
-                self._last_pending_time[ports[0]] = time.time()
+            # if num_pending == 0 and ports[0] not in self._last_pending_time:
+            #     self._last_pending_time[ports[0]] = time.time()
             self._available_ports.add(ports[0])
             self._worker_backend_socket.send(encode_msg({}))
             ports = tuple(ports)
