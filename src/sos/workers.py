@@ -380,6 +380,7 @@ class WorkerManager(object):
         # the first item in self._worker_procs is always considered to be the localhost, which is where
         # the router lives. The rest of the hosts will be considered as remote workers.
         try:
+            self._worker_hosts = [x.rsplit(':', 1)[0] if ':' in x else get_localhost_ip() for x in self._worker_procs]
             self._max_workers = [int(x.rsplit(':', 1)[-1]) for x in self._worker_procs]
             self._num_workers = [0 for x in self._worker_procs]
         except:
@@ -451,6 +452,7 @@ class WorkerManager(object):
             return None
 
         # we start a worker right now.
+        self._max_workers[0] += 1
         self.start_worker()
         while True:
             if not self._worker_backend_socket.poll(5000):
@@ -460,7 +462,6 @@ class WorkerManager(object):
             if port is None or port in excluded:
                 continue
             self._claimed_ports.add(port)
-            self._max_workers[0] += 1
             self._blocking_ports.add(port)
             env.logger.debug(
                 f'Increasing maximum number of local workers to {self._max_workers[0]} to accommodate a blocking subworkflow.'
@@ -540,12 +541,30 @@ class WorkerManager(object):
                 self._last_pending_msg[(ports, num_pending)] = time.time()
 
     def start_worker(self):
-        worker = SoS_Worker(env.config)
-        worker.start()
-        self._local_worker_alive_time = time.time()
-        self._local_workers.append(worker)
-        self._num_workers[0] += 1
-        self.report('start worker')
+        env.logger.error(f'start worker {self._worker_hosts}, {self._num_workers}, {self._max_workers}')
+        for idx, (wh, nw, mw) in enumerate(zip(self._worker_hosts, self._num_workers, self._max_workers)):
+            if nw == mw:
+                continue
+            # local host
+            if idx == 0:
+                worker = SoS_Worker(env.config)
+                worker.start()
+                self._local_worker_alive_time = time.time()
+                self._local_workers.append(worker)
+                self._num_workers[0] += 1
+                self.report('start a local worker')
+            else:
+                # start all remote workers on a host
+                try:
+                    from .hosts import Host
+                    host = Host(wh, start_engine=False)
+                    host._host_agent.start_workers(env.config, mw)
+                except Exception as e:
+                    raise RuntimeError(f'Failed to start workers on host {wh}')
+                self._num_workers[idx] = self._max_workers[idx]
+                self.report('start {nw} remote workers on {wh}')
+            break
+
 
     def check_workers(self):
         '''Kill workers that have been pending for a while and check if all workers

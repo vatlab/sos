@@ -126,10 +126,18 @@ def _show_err_and_out(task_id, res) -> None:
             sys.stderr.write('\n')
 
 
-class LocalHost:
+class SoS_Host(object):
+    # base class for SoS Hosts
+    def __init__(self):
+        pass
+
+
+class LocalHost(SoS_Host):
     '''For local host, no path map, send and receive ...'''
 
     def __init__(self, config: Dict[str, Union[str, int, List[str]]]) -> None:
+        super(LocakHost, self).__init__()
+
         # even if the config has an alias, we use localhost to make it clear that the host is localhost
         self.alias = config.get('alias', 'localhost')
         self.address = 'localhost'
@@ -275,10 +283,11 @@ class LocalHost:
         return res
 
 
-class RemoteHost:
+class RemoteHost(SoS_Host):
     '''A remote host class that manages how to communicate with remote host'''
 
     def __init__(self, config: Dict[str, Union[str, int, List[str]]]) -> None:
+        super(RemoteHost, self).__init__()
         self.config = config
         self.cm_opts = self._get_control_master_options()
         self.alias = self.config['alias']
