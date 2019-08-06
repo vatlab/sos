@@ -126,13 +126,7 @@ def _show_err_and_out(task_id, res) -> None:
             sys.stderr.write('\n')
 
 
-class SoS_Host(object):
-    # base class for SoS Hosts
-    def __init__(self):
-        pass
-
-
-class LocalHost(SoS_Host):
+class LocalHost(object):
     '''For local host, no path map, send and receive ...'''
 
     def __init__(self, config: Dict[str, Union[str, int, List[str]]]) -> None:
@@ -241,13 +235,13 @@ class LocalHost(SoS_Host):
             env.logger.warning(f'Check output of {cmd} failed: {e}')
             raise
 
-    def run_command(self, cmd, wait_for_task, realtime=False, **kwargs):
+    def run_command(self, cmd, wait_for_task, realtime=False, shell=True, **kwargs):
         # run command but does not wait for result.
         if realtime:
             from .utils import pexpect_run
             return pexpect_run(cmd)
         elif wait_for_task or sys.platform == 'win32':
-            return subprocess.Popen(cmd, shell=True, **kwargs)
+            return subprocess.Popen(cmd, shell=shell, **kwargs)
         else:
             p = DaemonizedProcess(cmd, **kwargs)
             p.start()
@@ -283,11 +277,10 @@ class LocalHost(SoS_Host):
         return res
 
 
-class RemoteHost(SoS_Host):
+class RemoteHost(object):
     '''A remote host class that manages how to communicate with remote host'''
 
     def __init__(self, config: Dict[str, Union[str, int, List[str]]]) -> None:
-        super(RemoteHost, self).__init__()
         self.config = config
         self.cm_opts = self._get_control_master_options()
         self.alias = self.config['alias']
@@ -817,7 +810,7 @@ class RemoteHost(SoS_Host):
             env.logger.debug(f'Check output of {cmd} failed: {e}')
             raise
 
-    def run_command(self, cmd, wait_for_task, realtime=False, **kwargs):
+    def run_command(self, cmd, wait_for_task, realtime=False, shell=True, **kwargs):
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
@@ -837,7 +830,7 @@ class RemoteHost(SoS_Host):
             return pexpect_run(cmd)
         elif wait_for_task or sys.platform == 'win32':
             # keep proc persistent to avoid a subprocess is still running warning.
-            return subprocess.Popen(cmd, shell=True, **kwargs)
+            return subprocess.Popen(cmd, shell=shell, **kwargs)
         else:
             p = DaemonizedProcess(cmd, **kwargs)
             p.start()

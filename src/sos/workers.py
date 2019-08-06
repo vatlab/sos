@@ -380,13 +380,31 @@ class WorkerManager(object):
         # the first item in self._worker_procs is always considered to be the localhost, which is where
         # the router lives. The rest of the hosts will be considered as remote workers.
         try:
-            self._worker_hosts = [x.rsplit(':', 1)[0] if ':' in x else get_localhost_ip() for x in self._worker_procs]
-            self._max_workers = [int(x.rsplit(':', 1)[-1]) for x in self._worker_procs]
+
+            self._worker_hosts = []
+            self._max_workers = []
+            for worker_proc in self._worker_procs:
+                if ':' in worker_proc:
+                    worker_host, max_workers = worker_proc.rsplit(':', 1)
+                    if not max_workers.isdigit():
+                        raise ValueError(f'Invalid worker specification {worker_proc}: number of process expected after ":"')
+                    self._worker_hosts.append(worker_host)
+                    self._max_workers.append(int(max_workers))
+                elif worker_proc.isdigit():
+                    self._worker_hosts.append(get_localhost_ip())
+                    self._max_workers.append(int(worker_proc))
+                else:
+                    self._worker_hosts.append(worker_proc)
+                    # here we assume that all nodes have the same number of cores so that we use
+                    # the default value for master node for all computing nodes
+                    self._max_workers.append(min(max(os.cpu_count() // 2, 2), 8))
+
             self._num_workers = [0 for x in self._worker_procs]
         except:
             raise RuntimeError(f'Incorrect format for option -j ({self._worker_procs}), which should be one or more [host:]nproc')
 
         self._local_workers = []
+        self._remote_connections = []
 
         self._num_remote_workers = {}
 
@@ -541,9 +559,8 @@ class WorkerManager(object):
                 self._last_pending_msg[(ports, num_pending)] = time.time()
 
     def start_worker(self):
-        env.logger.error(f'start worker {self._worker_hosts}, {self._num_workers}, {self._max_workers}')
-        for idx, (wh, nw, mw) in enumerate(zip(self._worker_hosts, self._num_workers, self._max_workers)):
-            if nw == mw:
+        for idx, (worker_host, num_worker, max_worker) in enumerate(zip(self._worker_hosts, self._num_workers, self._max_workers)):
+            if num_worker == max_worker:
                 continue
             # local host
             if idx == 0:
@@ -557,12 +574,20 @@ class WorkerManager(object):
                 # start all remote workers on a host
                 try:
                     from .hosts import Host
-                    host = Host(wh, start_engine=False)
-                    host._host_agent.run_command(['python', '-m', 'sos.workers'])
+                    import sys
+                    host = Host(worker_host, start_engine=False)
+                    cmd = ['sos', 'worker', '--router', env.config["sockets"]["worker_backend"],
+                        '--sig_mode', env.config['sig_mode'], '--run_mode', env.config['run_mode'],
+                        '--workdir', os.getcwd(), '-v', str(env.config['verbosity'])]
+                    if max_worker is not None:
+                        cmd += ['-j', str(max_worker)]
+                    p = host._host_agent.run_command(cmd, wait_for_task=True, shell=False)
+                    self._remote_connections.append(p)
                 except Exception as e:
-                    raise RuntimeError(f'Failed to start workers on host {wh}')
+                    env.logger.error(f'Failed to start workers on host {worker_host}: {e}')
+                    raise RuntimeError(f'Failed to start workers on host {worker_host}: {e}')
                 self._num_workers[idx] = self._max_workers[idx]
-                self.report('start {nw} remote workers on {wh}')
+                self.report(f'start {max_worker} remote workers on {worker_host}')
             break
 
 
