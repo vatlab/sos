@@ -230,6 +230,14 @@ class SoS_Worker(mp.Process):
                     )
                     self._runners[new_idx] = True
                     continue
+                elif 'task_id' in reply:
+                    self.run_task(reply)
+                    env.log_to_file(
+                        'WORKER',
+                        f'WORKER {self.name} ({os.getpid()}) completes task {self._name_of_work(reply)}'
+                    )
+                    self._runners[new_idx] = True
+                    continue
 
                 master_port = reply['config']['sockets']['master_port']
                 if master_port != self._master_ports[new_idx]:
@@ -277,6 +285,8 @@ class SoS_Worker(mp.Process):
             return 'step'
         elif 'wf' in work:
             return 'workflow'
+        elif 'task_id' in work:
+            return 'task'
         else:
             return 'substep'
 
@@ -285,6 +295,8 @@ class SoS_Worker(mp.Process):
             return work['section'].step_name()
         elif 'wf' in work:
             return work['workflow_id']
+        elif 'task_id' in work:
+            return work['task_id']
         else:
             return 'substep'
 
@@ -366,6 +378,14 @@ class SoS_Worker(mp.Process):
         from .substep_executor import execute_substep
         execute_substep(**work)
 
+    def run_task(self, work):
+        from .task_executor import BaseTaskExecutor
+        executor = BaseTaskExecutor(verbosity=work['verbosity'],
+            runmode=work['runmode'], sigmode=work['sigmode'], monitor_interval=work['monitor_interval'],
+            resource_monitor_interval=work['resource_monitor_interval'])
+        executor.execute_single_task(task_id=work['task_id'], params=work['params'], runtime=work['runtime'],
+            sig_content=work['sig_content'], quiet=work['quiet'])
+
 
 class WorkerManager(object):
     # manager worker processes
@@ -415,6 +435,7 @@ class WorkerManager(object):
         # self._last_pending_time = {}
 
         self._substep_requests = []
+        self._task_requests = []
         self._step_requests = {}
 
         self._worker_backend_socket = backend_socket
@@ -444,6 +465,9 @@ class WorkerManager(object):
         if msg_type == 'substep':
             self._substep_requests.insert(0, msg)
             self.report(f'Substep requested')
+        elif msg_type == 'task':
+            self._task_requests.insert(0, msg)
+            self.report(f'Task requested')
         else:
             port = msg['config']['sockets']['master_port']
             self._step_requests[port] = msg
@@ -520,6 +544,18 @@ class WorkerManager(object):
         #     self._worker_backend_socket.send(encode_msg(None))
         #     self._num_local_workers -= 1
         #     self.report(f'Blocking worker {ports} killed')
+        elif self._task_requests:
+            # port is not claimed, free to use for substep worker
+            msg = self._task_requests.pop()
+            self._worker_backend_socket.send(encode_msg(msg))
+            self._n_processed += 1
+            self.report(f'Task processed with {ports[0]}')
+            # port can however be in available ports
+            for port in ports:
+                if port in self._available_ports:
+                    self._available_ports.remove(port)
+                # if port in self._last_pending_time:
+                #     self._last_pending_time.pop(port)
         elif self._substep_requests:
             # port is not claimed, free to use for substep worker
             msg = self._substep_requests.pop()

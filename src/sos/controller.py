@@ -258,7 +258,7 @@ class Controller(threading.Thread):
 
     def handle_master_push_msg(self, msg):
         try:
-            if msg[0] in ('substep', 'step', 'workflow'):
+            if msg[0] in ('substep', 'step', 'workflow', 'task'):
                 # cache the request, route to first available worker
                 self.workers.add_request(msg[0], msg[1])
             elif msg[0] == 'nprocs':
