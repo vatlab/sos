@@ -574,7 +574,6 @@ class WorkerManager(object):
                 # start all remote workers on a host
                 try:
                     from .hosts import Host
-                    import sys
                     host = Host(worker_host, start_engine=False)
                     cmd = ['sos', 'worker', '--router', env.config["sockets"]["worker_backend"],
                         '--sig_mode', env.config['sig_mode'], '--run_mode', env.config['run_mode'],

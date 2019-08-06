@@ -832,19 +832,19 @@ def cmd_remote(args, workflow_args):
     cfg = load_config_files(args.config)
     try:
         if args.action == 'list':
-            from .hosts import list_queues
+            from .remote import list_queues
             list_queues(cfg, args.hosts, args.verbosity)
         elif args.action == 'status':
-            from .hosts import status_of_queues
+            from .remote import status_of_queues
             status_of_queues(cfg, args.hosts, args.verbosity)
         elif args.action == 'setup':
-            from .hosts import setup_remote_access
+            from .remote import setup_remote_access
             setup_remote_access(cfg, args.hosts, args.password, args.verbosity)
         elif args.action == 'test':
-            from .hosts import test_queues
+            from .remote import test_queues
             test_queues(cfg, args.hosts, args.verbosity)
         elif args.action == 'login':
-            from .hosts import login_host
+            from .remote import login_host
             if not args.hosts:
                 raise ValueError('Please specify a host to login')
             if len(args.hosts) > 1:
@@ -856,21 +856,21 @@ def cmd_remote(args, workflow_args):
             if not args.cmd:
                 raise ValueError(
                     'Please specify a command to execute with option --cmd')
-            from .hosts import run_command_on_hosts
+            from .remote import run_command_on_hosts
             run_command_on_hosts(cfg, args.hosts, args.cmd, args.verbosity)
         elif args.action == 'push':
             if not args.files:
                 raise ValueError(
                     'Please specify files to push to remote host with option --files'
                 )
-            from .hosts import push_to_hosts
+            from .remote import push_to_hosts
             push_to_hosts(cfg, args.hosts, args.files, args.verbosity)
         elif args.action == 'pull':
             if not args.files:
                 raise ValueError(
                     'Please specify files to pull from remote host with option --files'
                 )
-            from .hosts import pull_from_host
+            from .remote import pull_from_host
             pull_from_host(cfg, args.hosts, args.files, args.verbosity)
         else:
             raise ValueError(
