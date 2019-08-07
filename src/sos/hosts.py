@@ -234,13 +234,15 @@ class LocalHost(object):
             env.logger.warning(f'Check output of {cmd} failed: {e}')
             raise
 
-    def run_command(self, cmd, wait_for_task, realtime=False, shell=True, **kwargs):
+    def run_command(self, cmd, wait_for_task, realtime=False, **kwargs):
         # run command but does not wait for result.
         if realtime:
             from .utils import pexpect_run
             return pexpect_run(cmd)
-        elif wait_for_task or sys.platform == 'win32':
-            return subprocess.Popen(cmd, shell=shell, **kwargs)
+        if isinstance(cmd, list):
+            cmd = subprocess.list2cmdline(cmd)
+        if wait_for_task or sys.platform == 'win32':
+            return subprocess.Popen(cmd, shell=True, **kwargs)
         else:
             p = DaemonizedProcess(cmd, **kwargs)
             p.start()
@@ -809,7 +811,7 @@ class RemoteHost(object):
             env.logger.debug(f'Check output of {cmd} failed: {e}')
             raise
 
-    def run_command(self, cmd, wait_for_task, realtime=False, shell=True, **kwargs):
+    def run_command(self, cmd, wait_for_task, realtime=False, **kwargs):
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
@@ -829,7 +831,7 @@ class RemoteHost(object):
             return pexpect_run(cmd)
         elif wait_for_task or sys.platform == 'win32':
             # keep proc persistent to avoid a subprocess is still running warning.
-            return subprocess.Popen(cmd, shell=shell, **kwargs)
+            return subprocess.Popen(cmd, shell=True, **kwargs)
         else:
             p = DaemonizedProcess(cmd, **kwargs)
             p.start()
