@@ -14,6 +14,7 @@ import os
 import pickle
 import re
 import sys
+import socket
 import tempfile
 import threading
 import time
@@ -1866,3 +1867,54 @@ def separate_options(options: str) -> List[str]:
                 pieces[idx] += '\n' + pieces[idx + 1]
                 pieces.pop(idx + 1)
     return pieces
+
+
+def get_localhost_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # doesn't even have to be reachable
+        s.connect(('10.255.255.255', 1))
+        IP = s.getsockname()[0]
+    except:
+        IP = '127.0.0.1'
+    finally:
+        s.close()
+    return IP
+
+
+#
+# Handling -j option on cluster
+#
+
+def get_nodelist(args=[]):
+    """Return a list of hosts depending on the environment"""
+    # if -j is specified, using the options follows it
+    if args:
+        return args
+    # If on a cluster, return some SoS acceptable format of node:nproc.
+    if "SLURM_NODELIST" in os.environ:
+        # Use scontrol utility to get the hosts list
+        import subprocess
+        hostsstr = subprocess.check_output(["scontrol", "show", "hostnames", os.environ['SLURM_NODELIST']]).decode()
+        # Split using endline
+        args = [f'{x}:1' for x in hostsstr.split(os.linesep) if x.strip()]
+        env.log_to_file('WORKER', f'Using "-j {args}" on a SLURM cluster.')
+        return args
+    elif "PBS_ENVIRONMENT" in os.environ:
+        with open(os.environ["PBS_NODEFILE"], 'r') as hosts:
+            hostlist = hosts.read().split()
+            from collections import Counter, OrderedDict
+            counts = Counter(hostlist)
+            args = [f'{x}:{counts[x]}' for x in list(OrderedDict.fromkeys(hostlist))]
+        env.log_to_file('WORKER', f'Using "-j {args}" on a PBS cluster.')
+        return args
+    elif "PE_HOSTFILE" in os.environ:
+        with open(os.environ["PE_HOSTFILE"], 'r') as hosts:
+            args = [':'.join(host.split()) for host in hosts]
+        env.log_to_file('WORKER', f'Using "-j {args}" on a SGE cluster.')
+        return args
+    else:
+        # local host, using half of its node
+        args = [str(min(max(os.cpu_count() // 2, 2), 8))]
+        env.log_to_file('WORKER', f'Using default option "-j {args}".')
+        return args

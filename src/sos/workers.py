@@ -14,7 +14,7 @@ import zmq
 from .controller import (close_socket, connect_controllers, create_socket,
                          disconnect_controllers)
 from .executor_utils import kill_all_subprocesses, prepare_env
-from .utils import env, ProcessKilled, short_repr
+from .utils import env, ProcessKilled, short_repr, get_localhost_ip
 from .messages import encode_msg, decode_msg
 
 def signal_handler(*args, **kwargs):
@@ -163,8 +163,9 @@ class SoS_Worker(mp.Process):
         # create controller socket
         env.ctrl_socket = create_socket(env.zmq_context, zmq.REQ,
                                         'worker backend')
-        env.ctrl_socket.connect(
-            f'tcp://127.0.0.1:{self.config["sockets"]["worker_backend"]}')
+        # worker_backend, or the router, might be on another machine
+        env.log_to_file('WORKER', f'Connecting to router {self.config["sockets"]["worker_backend"]} from {get_localhost_ip()}')
+        env.ctrl_socket.connect(self.config["sockets"]["worker_backend"])
 
         signal.signal(signal.SIGTERM, signal_handler)
         # result socket used by substeps
@@ -229,6 +230,14 @@ class SoS_Worker(mp.Process):
                     )
                     self._runners[new_idx] = True
                     continue
+                elif 'task_id' in reply:
+                    self.run_task(reply)
+                    env.log_to_file(
+                        'WORKER',
+                        f'WORKER {self.name} ({os.getpid()}) completes task {self._name_of_work(reply)}'
+                    )
+                    self._runners[new_idx] = True
+                    continue
 
                 master_port = reply['config']['sockets']['master_port']
                 if master_port != self._master_ports[new_idx]:
@@ -276,6 +285,8 @@ class SoS_Worker(mp.Process):
             return 'step'
         elif 'wf' in work:
             return 'workflow'
+        elif 'task_id' in work:
+            return 'task'
         else:
             return 'substep'
 
@@ -284,6 +295,8 @@ class SoS_Worker(mp.Process):
             return work['section'].step_name()
         elif 'wf' in work:
             return work['workflow_id']
+        elif 'task_id' in work:
+            return work['task_id']
         else:
             return 'substep'
 
@@ -365,23 +378,61 @@ class SoS_Worker(mp.Process):
         from .substep_executor import execute_substep
         execute_substep(**work)
 
+    def run_task(self, work):
+        from .task_executor import BaseTaskExecutor
+        executor = BaseTaskExecutor(**work['executor_params'])
+        executor.execute_single_task(**work['task_params'])
+
 
 class WorkerManager(object):
     # manager worker processes
 
     def __init__(self, worker_procs, backend_socket):
-        self._worker_procs = worker_procs
-        self._max_workers = int(self._worker_procs[0])
+        if isinstance(worker_procs, (int, str)):
+            self._worker_procs = [str(worker_procs)]
+        else:
+            # should be a sequence
+            self._worker_procs = worker_procs
 
-        self._workers = []
-        self._num_workers = 0
+        # the first item in self._worker_procs is always considered to be the localhost, which is where
+        # the router lives. The rest of the hosts will be considered as remote workers.
+        try:
+
+            self._worker_hosts = []
+            self._max_workers = []
+            for worker_proc in self._worker_procs:
+                if ':' in worker_proc:
+                    worker_host, max_workers = worker_proc.rsplit(':', 1)
+                    if not max_workers.isdigit():
+                        raise ValueError(f'Invalid worker specification {worker_proc}: number of process expected after ":"')
+                    self._worker_hosts.append(worker_host)
+                    self._max_workers.append(int(max_workers))
+                elif worker_proc.isdigit():
+                    self._worker_hosts.append(get_localhost_ip())
+                    self._max_workers.append(int(worker_proc))
+                else:
+                    self._worker_hosts.append(worker_proc)
+                    # here we assume that all nodes have the same number of cores so that we use
+                    # the default value for master node for all computing nodes
+                    self._max_workers.append(min(max(os.cpu_count() // 2, 2), 8))
+
+            self._num_workers = [0 for x in self._worker_procs]
+        except:
+            raise RuntimeError(f'Incorrect format for option -j ({self._worker_procs}), which should be one or more [host:]nproc')
+
+        self._local_workers = []
+        self._remote_connections = []
+
+        self._num_remote_workers = {}
+
         self._n_requested = 0
         self._n_processed = 0
 
-        self._worker_alive_time = time.time()
-        self._last_pending_time = {}
+        self._local_worker_alive_time = time.time()
+        # self._last_pending_time = {}
 
         self._substep_requests = []
+        self._task_requests = []
         self._step_requests = {}
 
         self._worker_backend_socket = backend_socket
@@ -394,8 +445,9 @@ class WorkerManager(object):
 
         self._last_pending_msg = {}
 
-        # start a worker
-        self.start()
+        # start a worker, note that we do not start all workers for performance
+        # considerations
+        self.start_worker()
 
     def report(self, msg):
         if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
@@ -410,6 +462,9 @@ class WorkerManager(object):
         if msg_type == 'substep':
             self._substep_requests.insert(0, msg)
             self.report(f'Substep requested')
+        elif msg_type == 'task':
+            self._task_requests.insert(0, msg)
+            self.report(f'Task requested')
         else:
             port = msg['config']['sockets']['master_port']
             self._step_requests[port] = msg
@@ -417,8 +472,8 @@ class WorkerManager(object):
 
         # start a worker is necessary (max_procs could be incorrectly set to be 0 or less)
         # if we are just starting, so do not start two workers
-        if self._n_processed > 0 and not self._available_ports and self._num_workers < self._max_workers:
-            self.start()
+        if self._n_processed > 0 and not self._available_ports and sum(self._num_workers) < sum(self._max_workers):
+            self.start_worker()
 
     def worker_available(self, blocking, excluded):
         if self._available_ports:
@@ -431,12 +486,13 @@ class WorkerManager(object):
 
         if not blocking:
             # no available port, can we start a new worker?
-            if self._num_workers < self._max_workers:
-                self.start()
+            if sum(self._num_workers) < sum(self._max_workers):
+                self.start_worker()
             return None
 
         # we start a worker right now.
-        self.start()
+        self._max_workers[0] += 1
+        self.start_worker()
         while True:
             if not self._worker_backend_socket.poll(5000):
                 raise RuntimeError('No worker is started after 5 seconds')
@@ -445,10 +501,9 @@ class WorkerManager(object):
             if port is None or port in excluded:
                 continue
             self._claimed_ports.add(port)
-            self._max_workers += 1
             self._blocking_ports.add(port)
             env.logger.debug(
-                f'Increasing maximum number of workers to {self._max_workers} to accommodate a blocking subworkflow.'
+                f'Increasing maximum number of local workers to {self._max_workers[0]} to accommodate a blocking subworkflow.'
             )
             return port
 
@@ -466,26 +521,38 @@ class WorkerManager(object):
             self.report(f'Step {port} processed')
             # port should be in claimed ports
             self._claimed_ports.remove(port)
-            if ports[0] in self._last_pending_time:
-                self._last_pending_time.pop(ports[0])
+            # if ports[0] in self._last_pending_time:
+            #     self._last_pending_time.pop(ports[0])
         elif any(port in self._claimed_ports for port in ports):
             # the port is claimed, but the real message is not yet available
             self._worker_backend_socket.send(encode_msg({}))
             self.report(f'pending with claimed {ports}')
-        elif any(port in self._blocking_ports for port in ports):
-            # in block list but appear to be idle, kill it
-            self._max_workers -= 1
-            env.logger.debug(
-                f'Reduce maximum number of workers to {self._max_workers} after completion of a blocking subworkflow.'
-            )
+        # elif any(port in self._blocking_ports for port in ports):
+        #     # in block list but appear to be idle, kill it
+        #     self._max_workers -= 1
+        #     env.logger.debug(
+        #         f'Reduce maximum number of workers to {self._max_workers} after completion of a blocking subworkflow.'
+        #     )
+        #     for port in ports:
+        #         if port in self._blocking_ports:
+        #             self._blocking_ports.remove(port)
+        #         if port in self._available_ports:
+        #             self._available_ports.remove(port)
+        #     self._worker_backend_socket.send(encode_msg(None))
+        #     self._num_local_workers -= 1
+        #     self.report(f'Blocking worker {ports} killed')
+        elif self._task_requests:
+            # port is not claimed, free to use for substep worker
+            msg = self._task_requests.pop()
+            self._worker_backend_socket.send(encode_msg(msg))
+            self._n_processed += 1
+            self.report(f'Task processed with {ports[0]}')
+            # port can however be in available ports
             for port in ports:
-                if port in self._blocking_ports:
-                    self._blocking_ports.remove(port)
                 if port in self._available_ports:
                     self._available_ports.remove(port)
-            self._worker_backend_socket.send(encode_msg(None))
-            self._num_workers -= 1
-            self.report(f'Blocking worker {ports} killed')
+                # if port in self._last_pending_time:
+                #     self._last_pending_time.pop(port)
         elif self._substep_requests:
             # port is not claimed, free to use for substep worker
             msg = self._substep_requests.pop()
@@ -496,25 +563,25 @@ class WorkerManager(object):
             for port in ports:
                 if port in self._available_ports:
                     self._available_ports.remove(port)
-                if port in self._last_pending_time:
-                    self._last_pending_time.pop(port)
+                # if port in self._last_pending_time:
+                #     self._last_pending_time.pop(port)
         elif request_blocking:
             self._worker_backend_socket.send(encode_msg({}))
             return ports[0]
-        elif num_pending == 0 and self._num_workers > 1 and ports[
-                0] in self._last_pending_time and time.time(
-                ) - self._last_pending_time[ports[0]] > 5:
-            # kill the worker
-            for port in ports:
-                if port in self._available_ports:
-                    self._available_ports.remove(port)
-            self._worker_backend_socket.send(encode_msg(None))
-            self._num_workers -= 1
-            self.report(f'Kill standing {ports}')
-            self._last_pending_time.pop(ports[0])
+        # elif num_pending == 0 and self._num_local_workers > 1 and ports[
+        #         0] in self._last_pending_time and time.time(
+        #         ) - self._last_pending_time[ports[0]] > 5:
+        #     # kill the worker
+        #     for port in ports:
+        #         if port in self._available_ports:
+        #             self._available_ports.remove(port)
+        #     self._worker_backend_socket.send(encode_msg(None))
+        #     self._num_local_workers -= 1
+        #     self.report(f'Kill standing {ports}')
+        #     self._last_pending_time.pop(ports[0])
         else:
-            if num_pending == 0 and ports[0] not in self._last_pending_time:
-                self._last_pending_time[ports[0]] = time.time()
+            # if num_pending == 0 and ports[0] not in self._last_pending_time:
+            #     self._last_pending_time[ports[0]] = time.time()
             self._available_ports.add(ports[0])
             self._worker_backend_socket.send(encode_msg({}))
             ports = tuple(ports)
@@ -524,34 +591,59 @@ class WorkerManager(object):
                     f'pending with port {ports} at num_pending {num_pending}')
                 self._last_pending_msg[(ports, num_pending)] = time.time()
 
-    def start(self):
-        worker = SoS_Worker(env.config)
-        worker.start()
-        self._worker_alive_time = time.time()
-        self._workers.append(worker)
-        self._num_workers += 1
-        self.report('start worker')
+    def start_worker(self):
+        for idx, (worker_host, num_worker, max_worker) in enumerate(zip(self._worker_hosts, self._num_workers, self._max_workers)):
+            if num_worker == max_worker:
+                continue
+            # local host
+            if idx == 0:
+                worker = SoS_Worker(env.config)
+                worker.start()
+                self._local_worker_alive_time = time.time()
+                self._local_workers.append(worker)
+                self._num_workers[0] += 1
+                self.report('start a local worker')
+            else:
+                # start all remote workers on a host
+                try:
+                    from .hosts import Host
+                    host = Host(worker_host, start_engine=False)
+                    cmd = ['sos', 'worker', '--router', env.config["sockets"]["worker_backend"],
+                        '--sig_mode', env.config['sig_mode'], '--run_mode', env.config['run_mode'],
+                        '--workdir', os.getcwd(), '-v', str(env.config['verbosity'])]
+                    if max_worker is not None:
+                        cmd += ['-j', str(max_worker)]
+                    p = host._host_agent.run_command(cmd, wait_for_task=True, shell=False)
+                    self._remote_connections.append(p)
+                except Exception as e:
+                    env.logger.error(f'Failed to start workers on host {worker_host}: {e}')
+                    raise RuntimeError(f'Failed to start workers on host {worker_host}: {e}')
+                self._num_workers[idx] = self._max_workers[idx]
+                self.report(f'start {max_worker} remote workers on {worker_host}')
+            break
+
 
     def check_workers(self):
         '''Kill workers that have been pending for a while and check if all workers
         are alive. '''
-        if time.time() - self._worker_alive_time > 5:
-            self._worker_alive_time = time.time()
+        if time.time() - self._local_worker_alive_time > 5:
+            self._local_worker_alive_time = time.time()
             # join processes if they are now gone, it should not do anything bad
             # if the process is still running
-            [worker.join() for worker in self._workers if not worker.is_alive()]
-            self._workers = [
-                worker for worker in self._workers if worker.is_alive()
+            [worker.join() for worker in self._local_workers if not worker.is_alive()]
+            self._local_workers = [
+                worker for worker in self._local_workers if worker.is_alive()
             ]
-            if len(self._workers) < self._num_workers:
-                raise ProcessKilled('One of the workers has been killed.')
+            if len(self._local_workers) < self._num_workers[0]:
+                raise ProcessKilled('One of the local workers has been killed.')
 
     def kill_all(self):
         '''Kill all workers'''
-        while self._num_workers > 0 and self._worker_backend_socket.poll(1000):
+        total_num_workers = sum(self._num_workers)
+        while total_num_workers > 0 and self._worker_backend_socket.poll(1000):
             msg = decode_msg(self._worker_backend_socket.recv())
             self._worker_backend_socket.send(encode_msg(None))
-            self._num_workers -= 1
+            total_num_workers -= 1
             self.report(f'Kill {msg[1:]}')
-        # join all processes
-        [worker.join() for worker in self._workers]
+        # join all local processes
+        [worker.join() for worker in self._local_workers]
