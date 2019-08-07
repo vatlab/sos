@@ -141,44 +141,7 @@ def status_of_queues(cfg, hosts=[], verbosity=1):
 
 
 def test_ssh(host):
-    if host.address == 'localhost':
-        return 'OK'
-    address, port = host.address, host.port
-    try:
-        cmd = cfg_interpolate('ssh -q {host} -p {port} true', {
-            'host': address,
-            'port': port
-        })
-        env.logger.info(cmd)
-        p = pexpect.spawn(cmd)
-        # could be prompted for Password or password, so use assword
-        i = p.expect([
-            "(?i)are you sure you want to continue connecting", "[pP]assword:",
-            pexpect.EOF
-        ],
-                     timeout=5)
-        if i == 0:
-            p.sendline('yes')
-            p.expect([
-                "(?i)are you sure you want to continue connecting",
-                "[pP]assword:", pexpect.EOF
-            ],
-                     timeout=5)
-        if i == 1:
-            p.close(force=True)
-            stty_sane()
-            return f'ssh connection to {address} was prompted for password. Please set up public key authentication to the remote host before continue.'
-        if i == 2:
-            if not p.before:
-                return "OK"
-            p.close(force=True)
-            return p.before.decode()
-    except pexpect.TIMEOUT:
-        return f'ssh connection to {address} time out with prompt: {str(p.before)}'
-    except Exception as e:
-        return f'Failed to check remote connection {address}:{port}: {e}'
-    return "OK"
-
+    return  host.test_connection()
 
 def test_scp(host):
     if host.address == 'localhost':
