@@ -380,11 +380,8 @@ class SoS_Worker(mp.Process):
 
     def run_task(self, work):
         from .task_executor import BaseTaskExecutor
-        executor = BaseTaskExecutor(verbosity=work['verbosity'],
-            runmode=work['runmode'], sigmode=work['sigmode'], monitor_interval=work['monitor_interval'],
-            resource_monitor_interval=work['resource_monitor_interval'])
-        executor.execute_single_task(task_id=work['task_id'], params=work['params'], runtime=work['runtime'],
-            sig_content=work['sig_content'], quiet=work['quiet'])
+        executor = BaseTaskExecutor(**work['executor_params'])
+        executor.execute_single_task(**work['task_params'])
 
 
 class WorkerManager(object):
