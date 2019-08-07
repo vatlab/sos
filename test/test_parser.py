@@ -2005,6 +2005,21 @@ report:
         Base_Executor(wf).run()
 
 
+    def testTaskParamVar(self):
+        '''Test global parameter passed to task parameters #1281'''
+        script = SoS_Script(r'''
+[global]
+parameter: job_size = 60
+
+[1]
+task: trunk_size = job_size
+bash:
+        echo 1
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
+
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
     # unittest.TextTestRunner(, suite).run()

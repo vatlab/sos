@@ -179,6 +179,9 @@ def get_environ_vars(section):
                 raise SyntaxError(
                     'sos_variable does not accept keyword argument')
             environ_vars.add(arg[0])
+    if section.task:
+        # 1281
+        environ_vars |= accessed_vars(section.task_params)
     return environ_vars
 
 

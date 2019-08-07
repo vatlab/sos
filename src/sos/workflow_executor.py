@@ -306,16 +306,17 @@ class Base_Executor:
             ['workflow_sig', 'workflow', self.md5,
              repr(workflow_info)])
         if env.config['exec_mode'] == 'slave':
-            env.tapping_listener_socket.send(encode_msg({
-                'msg_type': 'workflow_status',
-                'data': {
-                    'cell_id': env.config['slave_id'],
-                    'workflow_id': self.md5,
-                    'workflow_name': self.workflow.name,
-                    'start_time': time.time(),
-                    'status': 'running'
-                }
-            }))
+            env.tapping_listener_socket.send(
+                encode_msg({
+                    'msg_type': 'workflow_status',
+                    'data': {
+                        'cell_id': env.config['slave_id'],
+                        'workflow_id': self.md5,
+                        'workflow_name': self.workflow.name,
+                        'start_time': time.time(),
+                        'status': 'running'
+                    }
+                }))
 
     def run(self, targets: Optional[List[str]] = None,
             mode=None) -> Dict[str, Any]:
@@ -707,7 +708,7 @@ class Base_Executor:
                 section.options.set(
                     'provides', section.options['provides'] +
                     [sos_variable(var) for var in changed_vars])
-
+            env.logger.error(env.sos_dict.keys())
             context = {
                 '__signature_vars__': signature_vars,
                 '__environ_vars__': environ_vars,
@@ -715,6 +716,10 @@ class Base_Executor:
                 '__dynamic_depends__': res['dynamic_depends'],
                 '__dynamic_input__': res['dynamic_input']
             }
+            # add variables to context if they exist (e.g. global parameter #1281)
+            context.update(
+                env.sos_dict.clone_selected_vars(context['__signature_vars__']
+                                                 | context['__environ_vars__']))
 
             # for nested workflow, the input is specified by sos_run, not None.
             if idx == 0:
@@ -1180,14 +1185,15 @@ class Base_Executor:
                                 env.log_to_file('EXECUTOR',
                                                 'Step becomes task_pending')
                             except Exception as e:
-                                proc.socket.send(encode_msg({
-                                    x: {
-                                        'ret_code': 1,
-                                        'task': x,
-                                        'output': {},
-                                        'exception': e
-                                    } for x in new_tasks
-                                }))
+                                proc.socket.send(
+                                    encode_msg({
+                                        x: {
+                                            'ret_code': 1,
+                                            'task': x,
+                                            'output': {},
+                                            'exception': e
+                                        } for x in new_tasks
+                                    }))
                                 env.logger.error(e)
                                 proc.set_status('failed')
                                 if not env.config['keep_going']:
@@ -1199,7 +1205,8 @@ class Base_Executor:
                                 # if the step is from a subworkflow, then the missing target
                                 # should be resolved by the nested workflow
                                 runnable._child_socket.send(encode_msg(res))
-                                reply = decode_msg(runnable._child_socket.recv())
+                                reply = decode_msg(
+                                    runnable._child_socket.recv())
                                 if reply:  # if the target is resolvable in nested workflow
                                     runnable._status = 'target_pending'
                                     runnable._pending_targets = [missed]
@@ -1234,7 +1241,8 @@ class Base_Executor:
                                 # if the step is from a subworkflow, then the missing target
                                 # should be resolved by the nested workflow
                                 runnable._child_socket.send(encode_msg(res))
-                                reply = decode_msg(runnable._child_socket.recv())
+                                reply = decode_msg(
+                                    runnable._child_socket.recv())
                                 if reply:
                                     # if there are dependent steps, the current step
                                     # has to wait
@@ -1245,7 +1253,8 @@ class Base_Executor:
                                 else:
                                     # otherwise there is no target to verify
                                     # and we just continue
-                                    proc.socket.send(encode_msg('target_resolved'))
+                                    proc.socket.send(
+                                        encode_msg('target_resolved'))
                             else:
                                 # if the missing target is from master, resolve from here
                                 reply = self.handle_dependent_target(
@@ -1255,7 +1264,8 @@ class Base_Executor:
                                     runnable._pending_targets = res[1:]
                                     runnable._socket = proc.socket
                                 else:
-                                    proc.socket.send(encode_msg('target_resolved'))
+                                    proc.socket.send(
+                                        encode_msg('target_resolved'))
                         elif res[0] == 'step':
                             # step sent from nested workflow
                             step_id = res[1]
@@ -1743,10 +1753,11 @@ class Base_Executor:
                         f'- SUBRUN - SEND STEP S{env.config["workflow_vars"].get("idx", "?")}'
                     )
 
-                    parent_socket.send(encode_msg([
-                        'step', step_id, section, runnable._context, shared,
-                        self.args, env.config, env.verbosity, port
-                    ]))
+                    parent_socket.send(
+                        encode_msg([
+                            'step', step_id, section, runnable._context, shared,
+                            self.args, env.config, env.verbosity, port
+                        ]))
                     # the nested workflow also needs a step to receive result
                     manager.add_placeholder_worker(runnable, socket)
 
