@@ -1897,16 +1897,24 @@ def get_nodelist(args=[]):
         import subprocess
         hostsstr = subprocess.check_output(["scontrol", "show", "hostnames", os.environ['SLURM_NODELIST']]).decode()
         # Split using endline
-        return [f'{x}:1' for x in hostsstr.split(os.linesep) if x.strip()]
-    elif "PBS_ENVIRONMENT" in os.environ::
+        args = [f'{x}:1' for x in hostsstr.split(os.linesep) if x.strip()]
+        env.log_to_file('WORKER', f'Using "-j {args}" on a SLURM cluster.')
+        return args
+    elif "PBS_ENVIRONMENT" in os.environ:
         with open(os.environ["PBS_NODEFILE"], 'r') as hosts:
             hostlist = hosts.read().split()
             from collections import Counter, OrderedDict
             counts = Counter(hostlist)
-            return [f'{x}:{counts[x]}' for x in list(OrderedDict.fromkeys(hostlist)))]
+            args = [f'{x}:{counts[x]}' for x in list(OrderedDict.fromkeys(hostlist))]
+        env.log_to_file('WORKER', f'Using "-j {args}" on a PBS cluster.')
+        return args
     elif "PE_HOSTFILE" in os.environ:
         with open(os.environ["PE_HOSTFILE"], 'r') as hosts:
-            return [':'.join(host.split()) for host in hosts]
+            args = [':'.join(host.split()) for host in hosts]
+        env.log_to_file('WORKER', f'Using "-j {args}" on a SGE cluster.')
+        return args
     else:
         # local host, using half of its node
-        return [str(min(max(os.cpu_count() // 2, 2), 8))]
+        args = [str(min(max(os.cpu_count() // 2, 2), 8))]
+        env.log_to_file('WORKER', f'Using default option "-j {args}".')
+        return args
