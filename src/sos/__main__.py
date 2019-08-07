@@ -227,7 +227,6 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         metavar='WORKERS',
         nargs='*',
         dest='__worker_procs__',
-        default=[str(min(max(os.cpu_count() // 2, 2), 8))],
         help='''Hosts and number of worker processes in each host for the execution of
             workflow, default to local host with half the number of CPUs, or 8, whichever
             is smaller. The complete format of this option is "-j host1:n1 host2:n2 host3:n3 ..."
@@ -394,7 +393,7 @@ def cmd_run(args, workflow_args):
     # if sys.platform != 'win32':
     #    mp.set_start_method('forkserver')
 
-    from .utils import env, get_traceback, load_config_files
+    from .utils import env, get_traceback, load_config_files, get_nodelist
     from .parser import SoS_Script
 
     if args.__remote__ is not None:
@@ -487,7 +486,7 @@ def cmd_run(args, workflow_args):
             'default_queue':
                 args.__queue__,
             'worker_procs':
-                args.__worker_procs__,
+                get_nodelist(args.__worker_procs__),
             'max_running_jobs':
                 args.__max_running_jobs__,
             'sig_mode':
@@ -1155,7 +1154,6 @@ def get_execute_parser(desc_only=False):
         metavar='WORKERS',
         nargs='*',
         dest='__worker_procs__',
-        default=[str(min(max(os.cpu_count() // 2, 2), 8))],
         help=argparse.SUPPRESS)
     parser.add_argument(
         '-m',

@@ -1880,3 +1880,33 @@ def get_localhost_ip():
     finally:
         s.close()
     return IP
+
+
+#
+# Handling -j option on cluster
+#
+
+def get_nodelist(args=[]):
+    """Return a list of hosts depending on the environment"""
+    # if -j is specified, using the options follows it
+    if args:
+        return args
+    # If on a cluster, return some SoS acceptable format of node:nproc.
+    if "SLURM_NODELIST" in os.environ:
+        # Use scontrol utility to get the hosts list
+        import subprocess
+        hostsstr = subprocess.check_output(["scontrol", "show", "hostnames", os.environ['SLURM_NODELIST']]).decode()
+        # Split using endline
+        return [f'{x}:1' for x in hostsstr.split(os.linesep) if x.strip()]
+    elif "PBS_ENVIRONMENT" in os.environ::
+        with open(os.environ["PBS_NODEFILE"], 'r') as hosts:
+            hostlist = hosts.read().split()
+            from collections import Counter, OrderedDict
+            counts = Counter(hostlist)
+            return [f'{x}:{counts[x]}' for x in list(OrderedDict.fromkeys(hostlist)))]
+    elif "PE_HOSTFILE" in os.environ:
+        with open(os.environ["PE_HOSTFILE"], 'r') as hosts:
+            return [':'.join(host.split()) for host in hosts]
+    else:
+        # local host, using half of its node
+        return [str(min(max(os.cpu_count() // 2, 2), 8))]
