@@ -103,7 +103,8 @@ def execute_substep(stmt,
     if env.result_socket is None:
         env.result_socket = create_socket(env.zmq_context, zmq.PUSH)
         env.result_socket_port = config["sockets"]["result_push_socket"]
-        env.result_socket.connect(f'tcp://127.0.0.1:{env.result_socket_port}')
+        # the result_socket_port contains IP of the worker that request the substep
+        env.result_socket.connect(env.result_socket_port)
 
     res = _execute_substep(
         stmt=stmt,

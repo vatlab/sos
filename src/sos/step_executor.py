@@ -28,7 +28,7 @@ from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
                       sos_targets, textMD5)
 from .tasks import MasterTaskParams, TaskFile
 from .utils import (ArgumentError, StopInputGroup, TerminateExecution, env,
-                    get_traceback, short_repr, ProcessKilled)
+                    get_traceback, short_repr, ProcessKilled, get_localhost_ip)
 
 __all__: List = []
 
@@ -825,8 +825,9 @@ class Base_Step_Executor:
         # socket to collect result
         self.result_pull_socket = create_socket(env.zmq_context, zmq.PULL,
                                                 'substep result collector')
-        port = self.result_pull_socket.bind_to_random_port('tcp://127.0.0.1')
-        env.config['sockets']['result_push_socket'] = port
+        local_ip = get_localhost_ip()
+        port = self.result_pull_socket.bind_to_random_port(f'tcp://{local_ip}')
+        env.config['sockets']['result_push_socket'] = f'tcp://{local_ip}:{port}'
 
     def submit_substep(self, param):
         send_message_to_controller(['substep', param])
