@@ -1007,7 +1007,9 @@ class Host:
     @classmethod
     def reset(cls) -> None:
         for host in cls.host_instances.values():
-            del host._task_engine
+            # perhaps the engine failed to start
+            if hasattr(host, '_task_engine'):
+                del host._task_engine
         cls.host_instances = {}
 
     def _get_local_host(self) -> str:
@@ -1214,7 +1216,7 @@ class Host:
 
                 if task_engine is None:
                     raise RuntimeError(
-                        f'Failed to locate task engine type {self._task_engine_type}. Available engine types are {", ".join(available_engines)}'
+                        f'This system currently supports task engine{"s" if len(available_engines) > 1 else ""} {", ".join(available_engines)}, not {self._task_engine_type} as specified in the template. Did you install a relevant module such as sos-{self._task_engine_type}?'
                     )
 
             self.host_instances[self.alias]._task_engine = task_engine
@@ -1224,7 +1226,8 @@ class Host:
 
         self._host_agent = self.host_instances[self.alias]
         # for convenience
-        self._task_engine = self._host_agent._task_engine
+        if hasattr(self._host_agent, '_task_engine')
+            self._task_engine = self._host_agent._task_engine
 
     # public interface
     #
