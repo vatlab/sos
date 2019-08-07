@@ -1226,7 +1226,7 @@ class Host:
 
         self._host_agent = self.host_instances[self.alias]
         # for convenience
-        if hasattr(self._host_agent, '_task_engine')
+        if hasattr(self._host_agent, '_task_engine'):
             self._task_engine = self._host_agent._task_engine
 
     # public interface
