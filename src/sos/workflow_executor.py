@@ -708,7 +708,6 @@ class Base_Executor:
                 section.options.set(
                     'provides', section.options['provides'] +
                     [sos_variable(var) for var in changed_vars])
-            env.logger.error(env.sos_dict.keys())
             context = {
                 '__signature_vars__': signature_vars,
                 '__environ_vars__': environ_vars,
