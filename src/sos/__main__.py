@@ -1190,7 +1190,7 @@ def get_execute_parser(desc_only=False):
 
 def cmd_execute(args, workflow_args):
     from .tasks import check_task, monitor_interval, resource_monitor_interval
-    from .utils import env, load_config_files
+    from .utils import env, load_config_files, get_nodelist
     import glob
     if args.queue is None:
         # local machine ...
@@ -1198,6 +1198,7 @@ def cmd_execute(args, workflow_args):
         executor_args = dict(verbosity=args.verbosity,
                     runmode='dryrun' if args.dryrun else (args.run_mode if args.run_mode else 'run'),
                     sigmode=args.__sig_mode__,
+                    worker_procs=get_nodelist(args.__worker_procs__),
                     monitor_interval=monitor_interval,
                     resource_monitor_interval=resource_monitor_interval)
         if not args.executor:

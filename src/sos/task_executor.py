@@ -34,11 +34,13 @@ class BaseTaskExecutor(object):
                  verbosity=None,
                  runmode='run',
                  sigmode=None,
+                 worker_procs=None,
                  monitor_interval=5,
                  resource_monitor_interval=60):
         self.verbosity = verbosity
         self.runmode = runmode
         self.sigmode = sigmode
+        self.worker_procs = worker_procs
         self.monitor_interval = monitor_interval
         self.resource_monitor_interval = resource_monitor_interval
 

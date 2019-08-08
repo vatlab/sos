@@ -67,24 +67,25 @@ class MasterTaskParams(TaskParams):
         # a collection of tasks that will be executed by the master task
         self.task_stack = []
 
-    def _get_num_workers(self, num_workers):
+    def _parse_num_workers(self, num_workers):
+        # return number of nodes and workers
         if isinstance(num_workers, Sequence) and len(num_workers) >= 1:
             val = num_workers[0]
             if ':' in val:
                 val = val.rsplit(':', 1)[-1]
-        elif isinstance(num_workers, (str, int)) or num_workers is None:
-            val = num_workers
+            n_workers = int(val.rsplit(':', 1)[-1])
+            return len(num_workers), None if n_workers <= 0 else n_workers
+        elif isinstance(num_workers, str):
+            if ':' in num_workers:
+                num_workers = num_workers.rsplit(':', 1)[-1]
+            n_workers = int(num_workers.rsplit(':', 1)[-1])
+            return 1, None if n_workers <= 0 else n_workers
+        elif isinstance(num_workers, int) and num_workers >= 1:
+            return 1, num_workers
+        elif num_workers is None:
+            return None, None
         else:
             raise RuntimeError(f"Unacceptable value for parameter trunk_workers {num_workers}")
-
-        if isinstance(val, str):
-            try:
-                n_workers = int(val.rsplit(':', 1)[-1])
-                return None if n_workers <= 0 else n_workers
-            except Exception as e:
-                raise RuntimeError(f"Unacceptable value for parameter trunk_workers {num_workers}")
-        else: # int or None
-            return None if val == 0 else val
 
     def num_tasks(self):
         return len(self.task_stack)
@@ -98,10 +99,10 @@ class MasterTaskParams(TaskParams):
         #
         # walltime etc
 
-        n_workers = self._get_num_workers(self.sos_dict['_runtime']['num_workers'])
+        n_nodes, n_workers = self._parse_num_workers(self.sos_dict['_runtime']['num_workers'])
 
         if not self.task_stack:
-            for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem',
+            for key in ('walltime', 'max_walltime', 'cores', 'nodes', 'max_cores', 'mem',
                         'max_mem', 'map_vars', 'name', 'workdir', 'verbosity',
                         'sig_mode', 'run_mode'):
                 if key in params.sos_dict['_runtime'] and params.sos_dict[
@@ -188,6 +189,12 @@ class MasterTaskParams(TaskParams):
             params.sos_dict = {
                 k: v for k, v in params.sos_dict.items() if k not in common_keys
             }
+        #
+        n_nodes = self._parse_num_workers(self.sos_dict['_runtime']['num_workers'])[0]
+        # trunk_workers and cores cannot be specified together, so if n_nodes > 1,
+        # nodes should not have been specified.
+        if n_nodes > 1:
+            self.sos_dict['_runtime']['nodes'] = n_nodes
         return self
 
 
