@@ -74,7 +74,7 @@ class MasterTaskParams(TaskParams):
             if ':' in val:
                 val = val.rsplit(':', 1)[-1]
             n_workers = int(val.rsplit(':', 1)[-1])
-            return len(num_workers), None if n_workers <= 0 else n_workers
+            return len(num_workers), (None if n_workers <= 0 else n_workers)
         elif isinstance(num_workers, str):
             if ':' in num_workers:
                 num_workers = num_workers.rsplit(':', 1)[-1]
@@ -98,7 +98,6 @@ class MasterTaskParams(TaskParams):
         # update input, output, and depends
         #
         # walltime etc
-
         n_nodes, n_workers = self._parse_num_workers(self.sos_dict['_runtime']['num_workers'])
 
         if not self.task_stack:
@@ -165,6 +164,7 @@ class MasterTaskParams(TaskParams):
         self.ID = f'M{len(self.task_stack)}_{self.task_stack[0][0]}'
         self.name = self.ID
 
+
     def finalize(self):
         if not self.task_stack:
             return
@@ -193,8 +193,9 @@ class MasterTaskParams(TaskParams):
         n_nodes = self._parse_num_workers(self.sos_dict['_runtime']['num_workers'])[0]
         # trunk_workers and cores cannot be specified together, so if n_nodes > 1,
         # nodes should not have been specified.
-        if n_nodes > 1:
+        if n_nodes is not None and n_nodes > 1:
             self.sos_dict['_runtime']['nodes'] = n_nodes
+
         return self
 
 
