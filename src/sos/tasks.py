@@ -10,6 +10,7 @@ import lzma
 import struct
 from enum import Enum
 from collections import namedtuple
+from collections.abc import Sequence
 from datetime import datetime
 
 from typing import Union, Dict, List
@@ -45,11 +46,12 @@ class TaskParams(object):
 
 class MasterTaskParams(TaskParams):
 
-    def __init__(self, num_workers=0):
+    def __init__(self, num_workers=None):
         self.ID = 'M_0'
         self.name = self.ID
         self.global_def = ''
         self.task = ''
+
         self.sos_dict = {
             '_runtime': {'num_workers': num_workers},
             '_input': sos_targets(),
@@ -65,6 +67,25 @@ class MasterTaskParams(TaskParams):
         # a collection of tasks that will be executed by the master task
         self.task_stack = []
 
+    def _get_num_workers(self, num_workers):
+        if isinstance(num_workers, Sequence) and len(num_workers) >= 1:
+            val = num_workers[0]
+            if ':' in val:
+                val = val.rsplit(':', 1)[-1]
+        elif isinstance(num_workers, (str, int)) or num_workers is None:
+            val = num_workers
+        else:
+            raise RuntimeError(f"Unacceptable value for parameter trunk_workers {num_workers}")
+
+        if isinstance(val, str):
+            try:
+                n_workers = int(val.rsplit(':', 1)[-1])
+                return None if n_workers <= 0 else n_workers
+            except Exception as e:
+                raise RuntimeError(f"Unacceptable value for parameter trunk_workers {num_workers}")
+        else: # int or None
+            return None if val == 0 else val
+
     def num_tasks(self):
         return len(self.task_stack)
 
@@ -75,7 +96,10 @@ class MasterTaskParams(TaskParams):
         #
         # update input, output, and depends
         #
-        # walltime
+        # walltime etc
+
+        num_workers = self._get_num_workers(self.sos_dict['_runtime']['num_workers'])
+
         if not self.task_stack:
             for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem',
                         'max_mem', 'map_vars', 'name', 'workdir', 'verbosity',
@@ -95,25 +119,34 @@ class MasterTaskParams(TaskParams):
                     raise ValueError(
                         f'All tasks should have the same resource {key}')
 
-                n_workers = self.sos_dict['_runtime']['num_workers'] if self.sos_dict['_runtime']['num_workers'] >=1 else 1
-                n_batches = len(self.task_stack) // n_workers
-                if n_batches * n_workers < len(self.task_stack):
-                    n_batches += 1
-
                 if val0 is None:
                     continue
-                elif key == 'walltime':
-                    # if define walltime
-                    self.sos_dict['_runtime']['walltime'] = format_HHMMSS(
-                        n_batches * expand_time(val0))
-                elif key == 'mem':
-                    # number of columns * mem for each + 100M for master
-                    self.sos_dict['_runtime']['mem'] = n_workers * expand_size(val0)
-                elif key == 'cores':
-                    self.sos_dict['_runtime']['cores'] = n_workers * val0
-                elif key == 'name':
-                    self.sos_dict['_runtime'][
-                        'name'] = f'{val0}_{len(self.task_stack) + 1}'
+
+                if n_workers is None:
+                    # if n_worker is not specified, but we have walltime etc, we should warn user
+                    if any(key == x for x in ('walltime', 'mem', 'cores'))):
+                        env.logger.debug(f"{key}={self.sos_dict['_runtime'][key]} is not adjusted and might be wrong due to unspecified number of workers ({self.sos_dict['_runtime']['num_workers']})")
+                    if key == 'name':
+                        self.sos_dict['_runtime'][
+                            'name'] = f'{val0}_{len(self.task_stack) + 1}'
+                else:
+                    n_batches = len(self.task_stack) // n_workers
+                    if n_batches * n_workers < len(self.task_stack):
+                        n_batches += 1
+
+                    elif key == 'walltime':
+                        # if define walltime
+                        self.sos_dict['_runtime']['walltime'] = format_HHMMSS(
+                            n_batches * expand_time(val0))
+                    elif key == 'mem':
+                        # number of columns * mem for each + 100M for master
+                        self.sos_dict['_runtime']['mem'] = n_workers * expand_size(val0)
+                    elif key == 'cores':
+                        self.sos_dict['_runtime']['cores'] = n_workers * val0
+                    elif key == 'name':
+                        self.sos_dict['_runtime'][
+                            'name'] = f'{val0}_{len(self.task_stack) + 1}'
+
             self.tags.extend(params.tags)
         #
         # input, output, preserved vars etc

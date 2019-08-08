@@ -9,7 +9,8 @@ import os
 import subprocess
 import sys
 import time
-from collections import Iterable, Mapping, Sequence, defaultdict
+from collections import defaultdict
+from collections.abc import Iterable, Mapping, Sequence
 from typing import List
 
 import zmq
@@ -629,11 +630,6 @@ class Base_Step_Executor:
             else:
                 trunk_size = 1
             if 'trunk_workers' in env.sos_dict['_runtime']:
-                if not isinstance(env.sos_dict['_runtime']['trunk_workers'],
-                                  int):
-                    raise ValueError(
-                        f'An integer value is expected for runtime option trunk_workers, {env.sos_dict["_runtime"]["trunk_workers"]} provided'
-                    )
                 if 'nodes' in env.sos_dict['_runtime']:
                     raise ValueError(
                         'Option "trunk_workers" that specifies number of nodes and processes for the execution '
@@ -641,7 +637,7 @@ class Base_Step_Executor:
                         'jobs cannot be used at the same time.')
                 trunk_workers = env.sos_dict['_runtime']['trunk_workers']
             else:
-                trunk_workers = 0
+                trunk_workers = None
 
             # if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
             #    host = env.sos_dict['_runtime']['queue']
