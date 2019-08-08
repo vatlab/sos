@@ -1127,7 +1127,7 @@ class Base_Step_Executor:
         # executor does not support nested workflow
 
         proc_vars = env.sos_dict['__signature_vars__'] \
-            | {'_input', '_output', '_depends', '_index',
+            | env.sos_dict['__environ_vars__'] | {'_input', '_output', '_depends', '_index',
              'step_output', 'step_name',
               '_runtime', 'step_id', 'workflow_id', '__num_groups__',
               '__signature_vars__'}

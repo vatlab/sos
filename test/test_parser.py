@@ -2019,6 +2019,21 @@ bash:
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    def testTaskParamVarToSubstep(self):
+        '''Test global parameter passed to task parameters in substep #1281'''
+        script = SoS_Script(r'''
+[global]
+parameter: job_size = 60
+
+[1]
+input: for_each=dict(i=range(3))
+
+task: trunk_size = job_size
+bash: expand=True
+        echo {i}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
