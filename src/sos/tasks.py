@@ -98,7 +98,7 @@ class MasterTaskParams(TaskParams):
         #
         # walltime etc
 
-        num_workers = self._get_num_workers(self.sos_dict['_runtime']['num_workers'])
+        n_workers = self._get_num_workers(self.sos_dict['_runtime']['num_workers'])
 
         if not self.task_stack:
             for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem',

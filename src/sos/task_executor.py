@@ -376,9 +376,11 @@ class BaseTaskExecutor(object):
 
         # a previous version of master task file has params.num_workers
         n_workers = params.num_workers if hasattr(params, 'num_workers') else params.sos_dict['_runtime'].get('num_workers', 1)
+        if n_workers is None:
+            n_workers = 1
 
         if not isinstance(n_workers, int):
-            raise RuntimeError(f'This task executor cannot handle tasks with trunk_workers={n_workers:r}. Please use an alternative task executor with option --executor/-e if possible.')
+            raise RuntimeError(f'This task executor cannot handle tasks with trunk_workers={n_workers}. Please use an alternative task executor with option --executor/-e if possible.')
         if n_workers > 1:
             from multiprocessing.pool import Pool
             p = Pool(n_workers)
