@@ -390,6 +390,9 @@ class WorkerManager(object):
     def __init__(self, worker_procs, backend_socket):
         if isinstance(worker_procs, (int, str)):
             self._worker_procs = [str(worker_procs)]
+        elif worker_procs is None:
+            # from sos notebook with no value specified
+            self._worker_procs = [str(min(max(os.cpu_count() // 2, 2), 8))]
         else:
             # should be a sequence
             self._worker_procs = worker_procs
