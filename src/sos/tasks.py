@@ -124,7 +124,7 @@ class MasterTaskParams(TaskParams):
 
                 if n_workers is None:
                     # if n_worker is not specified, but we have walltime etc, we should warn user
-                    if any(key == x for x in ('walltime', 'mem', 'cores'))):
+                    if any(key == x for x in ('walltime', 'mem', 'cores')):
                         env.logger.debug(f"{key}={self.sos_dict['_runtime'][key]} is not adjusted and might be wrong due to unspecified number of workers ({self.sos_dict['_runtime']['num_workers']})")
                     if key == 'name':
                         self.sos_dict['_runtime'][
