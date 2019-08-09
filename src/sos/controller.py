@@ -59,8 +59,7 @@ def send_message_to_controller(msg):
     if env.master_push_socket is None:
         env.master_push_socket = create_socket(env.zmq_context, zmq.PUSH,
                                                'master push')
-        env.master_push_socket.connect(
-            f'tcp://127.0.0.1:{env.config["sockets"]["master_push"]}')
+        env.master_push_socket.connect(env.config["sockets"]["master_push"])
     env.master_push_socket.send(encode_msg(msg))
 
 
@@ -68,8 +67,7 @@ def request_answer_from_controller(msg):
     if env.master_request_socket is None:
         env.master_request_socket = create_socket(env.zmq_context, zmq.REQ,
                                                   'master request')
-        env.master_request_socket.connect(
-            f'tcp://127.0.0.1:{env.config["sockets"]["master_request"]}')
+        env.master_request_socket.connect(env.config["sockets"]["master_request"])
     env.master_request_socket.send(encode_msg(msg))
     return decode_msg(env.master_request_socket.recv())
 
@@ -89,16 +87,14 @@ def connect_controllers(context=None):
     #
     if env.config['exec_mode'] == 'slave':
         env.tapping_logging_socket = create_socket(context, zmq.PUSH)
-        env.tapping_logging_socket.connect(
-            f'tcp://127.0.0.1:{env.config["sockets"]["tapping_logging"]}')
+        env.tapping_logging_socket.connect(env.config["sockets"]["tapping_logging"])
         # change logging to socket
         env.set_socket_logger(env.tapping_logging_socket)
 
     # master also need to update task status from interactive runner.
     if env.config['exec_mode'] in ('master', 'slave'):
         env.tapping_listener_socket = create_socket(context, zmq.PUSH)
-        env.tapping_listener_socket.connect(
-            f'tcp://127.0.0.1:{env.config["sockets"]["tapping_listener"]}')
+        env.tapping_listener_socket.connect(env.config["sockets"]["tapping_listener"])
 
     return context
 
@@ -432,6 +428,7 @@ class Controller(threading.Thread):
         # there are two sockets
         #
         self.context = zmq.Context.instance()
+        local_ip = get_localhost_ip()
 
         if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file('CONTROLLER', f'controller started {os.getpid()}')
@@ -441,21 +438,21 @@ class Controller(threading.Thread):
 
         self.master_push_socket = create_socket(self.context, zmq.PULL,
                                                 'controller master_pull')
-        env.config['sockets'][
-            'master_push'] = self.master_push_socket.bind_to_random_port(
-                'tcp://127.0.0.1')
+        master_push_port = self.master_push_socket.bind_to_random_port(
+                                                    f'tcp://{local_ip}')
+        env.config['sockets']['master_push'] = f'tcp://{local_ip}:{master_push_port}'
+
         self.master_request_socket = create_socket(self.context, zmq.REP,
                                                    'controller master_request')
-        env.config['sockets'][
-            'master_request'] = self.master_request_socket.bind_to_random_port(
-                'tcp://127.0.0.1')
+        master_request_port = self.master_request_socket.bind_to_random_port(
+            f'tcp://{local_ip}')
+        env.config['sockets']['master_request'] = f'tcp://{local_ip}:{master_request_port}'
 
         # broker to handle the execution of substeps
         self.worker_backend_socket = create_socket(
             self.context, zmq.REP, 'controller backend rep')  # ROUTER
         # we assume the router is always on local host, but we will use a non-localhost
         # IP so that others can connect to it.
-        local_ip = get_localhost_ip()
         worker_port = self.worker_backend_socket.bind_to_random_port(
                 f'tcp://{local_ip}')
         env.config['sockets']['worker_backend'] = f'tcp://{local_ip}:{worker_port}'
@@ -463,27 +460,25 @@ class Controller(threading.Thread):
         # tapping
         if env.config['exec_mode'] == 'master':
             self.tapping_logging_socket = create_socket(self.context, zmq.PULL)
-            env.config['sockets'][
-                'tapping_logging'] = self.tapping_logging_socket.bind_to_random_port(
-                    'tcp://127.0.0.1')
+            tapping_logging_port = self.tapping_logging_socket.bind_to_random_port(
+                f'tcp://{local_ip}')
+            env.config['sockets']['tapping_logging'] = f'tcp://{local_ip}:{tapping_logging_port}'
 
             self.tapping_listener_socket = create_socket(self.context, zmq.PULL)
-            env.config['sockets'][
-                'tapping_listener'] = self.tapping_listener_socket.bind_to_random_port(
-                    'tcp://127.0.0.1')
+            tapping_listener_port = self.tapping_listener_socket.bind_to_random_port(
+                f'tcp://{local_ip}')
+            env.config['sockets']['tapping_listener'] = f'tcp://{local_ip}:{tapping_listner_port}'
 
             self.tapping_controller_socket = create_socket(
                 self.context, zmq.PUSH)
-            env.config['sockets'][
-                'tapping_controller'] = self.tapping_controller_socket.bind_to_random_port(
-                    'tcp://127.0.0.1')
+            tapping_controller_port = self.tapping_controller_socket.bind_to_random_port(
+                f'tcp://{local_ip}')
+            env.config['sockets']['tapping_controller'] = f'tcp://{local_ip}:{tapping_controller_port}'
 
         if env.config['exec_mode'] == 'slave':
             self.tapping_controller_socket = create_socket(
                 self.context, zmq.PULL)
-            self.tapping_controller_socket.connect(
-                f'tcp://127.0.0.1:{env.config["sockets"]["tapping_controller"]}'
-            )
+            self.tapping_controller_socket.connect(env.config["sockets"]["tapping_controller"])
 
         #monitor_socket = self.master_request_socket.get_monitor_socket()
         # tell others that the sockets are ready

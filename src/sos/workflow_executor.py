@@ -28,7 +28,7 @@ from .section_analyzer import analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock, UnknownTarget,
                       file_target, path, paths, sos_step, sos_targets,
                       sos_variable, textMD5, named_output)
-from .utils import env, pickleable, short_repr
+from .utils import env, pickleable, short_repr, get_localhost_ip
 from .executor_utils import prepare_env, ExecuteError
 from .messages import encode_msg, decode_msg
 
@@ -182,7 +182,7 @@ class ExecutionManager(object):
         else:
             master_socket = create_socket(env.zmq_context, zmq.PAIR,
                                           'pair socket for step worker')
-            master_socket.connect(f'tcp://127.0.0.1:{master_port}')
+            master_socket.connect(master_port)
             # we need to create a ProcInfo to keep track of the step
             self.procs.append(
                 ProcInfo(socket=master_socket, port=master_port, step=runnable))
@@ -232,6 +232,7 @@ class Base_Executor:
                  shared: None = None,
                  config: Optional[Dict[str, Any]] = {}) -> None:
         self.workflow = workflow
+        self.local_ip = get_localhost_ip()
 
         # args serves as two purposes
         # in the master workflow, args is the command line argument and there is no workflow variables
@@ -1283,8 +1284,7 @@ class Base_Executor:
                             runnable._child_socket = create_socket(
                                 env.zmq_context, zmq.PAIR,
                                 'child socket for dummy')
-                            runnable._child_socket.connect(
-                                f'tcp://127.0.0.1:{port}')
+                            runnable._child_socket.connect(port)
 
                             manager.push_to_queue(
                                 runnable,
@@ -1746,7 +1746,7 @@ class Base_Executor:
 
                     socket = create_socket(env.zmq_context, zmq.PAIR,
                                            'worker pair socket')
-                    port = socket.bind_to_random_port('tcp://127.0.0.1')
+                    port = socket.bind_to_random_port(f'tcp://{self.local_ip}')
                     env.log_to_file(
                         'WORKER',
                         f'- SUBRUN - SEND STEP S{env.config["workflow_vars"].get("idx", "?")}'
@@ -1755,7 +1755,7 @@ class Base_Executor:
                     parent_socket.send(
                         encode_msg([
                             'step', step_id, section, runnable._context, shared,
-                            self.args, env.config, env.verbosity, port
+                            self.args, env.config, env.verbosity, f'tcp://{local_ip}:{port}''
                         ]))
                     # the nested workflow also needs a step to receive result
                     manager.add_placeholder_worker(runnable, socket)

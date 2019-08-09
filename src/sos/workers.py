@@ -49,10 +49,14 @@ class Runner(object):
                 self._poller = next(self._runner)
 
             while True:
+                # if poller is None, meaning we can send None
+                # and let the runner continue
                 if self._poller is None:
                     self._poller = self._runner.send(None)
                     continue
 
+                # if there is a regular poll, let us wait
+                # 0.2 second and see if we can continue
                 if self._poller.poll(200):
                     self._poller = self._runner.send(None)
                     continue
@@ -63,12 +67,34 @@ class Runner(object):
             return True
 
     def can_proceed(self):
+        # if there is anything waiting to be continued, proceed.
         return self._poller.poll(0)
 
 
 class SoS_Worker(mp.Process):
     '''
-    Worker process to process SoS step or workflow in separate process.
+    Worker process to process SoS step or workflow in separate process. This most
+    distinguished feature of this worker is that it allows multiple steps or
+    workflows to run, and the worker will yield to other jobs when it needs to
+    wait other job to continue. Because all steps and workflows use global varialbes
+    in env (e.g. enc.config, enc.sos_dict), we have a stack to store these global
+    variables and a mechanism to switch between these contexts.
+
+    The "step" and "subworkflow" are presented as "generators" and are executed by
+    so called "runners" that yields if it waits for a socker. 
+    
+    Each runner is associated with a master socket, which is a PAIR socket. When the
+    worker communicates with the worker manager, it sends a list of available "sockets"
+    and the worker manager will "claim" the socket when it sends the job to the worker.
+    Note that this socket is created by the worker and the other side is supposed to
+    connect to it before sending.
+
+    A worker also connects to the master controller, which has two main ports, one for
+    push (e.g. signature) to controller, and one for request information from controller.
+    These ports are fixed so they are the same for all channels.
+
+
+
     '''
 
     def __init__(self, config: Optional[Dict[str, Any]] = None,
@@ -90,6 +116,7 @@ class SoS_Worker(mp.Process):
         super(SoS_Worker, self).__init__(**kwargs)
         #
         self.config = config
+        self.local_ip = get_localhost_ip()
 
         # there can be multiple jobs for this worker, each using their own port and socket
         self._master_sockets = []
@@ -112,8 +139,10 @@ class SoS_Worker(mp.Process):
         ]
 
     def available_ports(self):
+        # when a runner is completed, its port becomes available and can
+        # be used to accept more jobs.
         return [
-            port for port, runner in zip(self._master_ports, self._runners)
+            f'tcp://{self.local_ip}:{port}' for port, runner in zip(self._master_ports, self._runners)
             if runner is True
         ]
 
@@ -130,7 +159,7 @@ class SoS_Worker(mp.Process):
             assert idx == len(self._master_ports)
             # a new socket is needed
             env.master_socket = create_socket(env.zmq_context, zmq.PAIR)
-            port = env.master_socket.bind_to_random_port('tcp://127.0.0.1')
+            port = env.master_socket.bind_to_random_port(f'tcp://{self.local_ip}')
             # switch to a new env_idx and returns new_idx, old_idx
             self._env_idx.append(env.request_new()[0])
             self._master_sockets.append(env.master_socket)
