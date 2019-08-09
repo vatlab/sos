@@ -1113,7 +1113,7 @@ def get_execute_parser(desc_only=False):
         ],
         default='default',
         metavar='SIGMODE',
-        dest='__sig_mode__',
+        dest='sig_mode',
         help='''How runtime signature would be handled, which can be "default"
             (save and use signature, default mode in batch mode), "ignore"
             (ignore runtime signature, default mode in interactive mode),
@@ -1195,27 +1195,32 @@ def cmd_execute(args, workflow_args):
     if args.queue is None:
         # local machine ...
         exit_code = []
-        executor_args = dict(verbosity=args.verbosity,
-                    runmode='dryrun' if args.dryrun else (args.run_mode if args.run_mode else 'run'),
-                    sigmode=args.__sig_mode__,
-                    worker_procs=get_nodelist(args.__worker_procs__),
-                    monitor_interval=monitor_interval,
-                    resource_monitor_interval=resource_monitor_interval)
+
+        env.config.update({
+            'config_file': args.config,
+            'sig_mode': 'default' if args.sig_mode is None else args.sig_mode,
+            'run_mode': 'dryrun' if args.dryrun else (args.run_mode if args.run_mode else 'run'),
+            'sockets': {
+            },
+            'exec_mode': None,
+            'verbosity': args.verbosity,
+            'worker_procs': get_nodelist(args.__worker_procs__),
+        })
         if not args.executor:
             from .task_executor import BaseTaskExecutor
-            executor = BaseTaskExecutor(**executor_args)
+            executor = BaseTaskExecutor()
         else:
+            found = False
             for entrypoint in pkg_resources.iter_entry_points(group='sos_taskexecutors'):
                 name = entrypoint.name.strip()
-                found = False
                 if name == args.executor:
                     try:
-                        executor = entrypoint.load()(**executor_args)
+                        executor = entrypoint.load()()
                         found = True
                     except Exception as e:
                         raise RuntimeError(f'Failed to load task executor {name}: {e}')
             if not found:
-                raise RuntimeError(f'Failed to identify task executor {name}.')
+                raise RuntimeError(f'Failed to identify task executor {args.executor}.')
         for task in args.tasks:
             #
             matched = [

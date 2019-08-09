@@ -380,8 +380,16 @@ class SoS_Worker(mp.Process):
 
     def run_task(self, work):
         from .task_executor import BaseTaskExecutor
-        executor = BaseTaskExecutor(**work['executor_params'])
-        executor.execute_single_task(**work['task_params'])
+        executor = BaseTaskExecutor(**work)
+        if env.result_socket is None:
+            env.result_socket = create_socket(env.zmq_context, zmq.PUSH)
+            env.result_socket_port = config["sockets"]["result_push_socket"]
+            # the result_socket_port contains IP of the worker that request the substep
+            env.result_socket.connect(env.result_socket_port)
+
+        res = executor.execute_single_task(**work)
+
+        env.result_socket.send(encode_msg(res))
 
 
 class WorkerManager(object):

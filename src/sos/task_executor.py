@@ -16,10 +16,9 @@ from .monitor import ProcessMonitor
 from .targets import (InMemorySignature, file_target, sos_step, dynamic,
                       sos_targets)
 from .utils import StopInputGroup, env, pickleable, ProcessKilled
-from .tasks import TaskFile, remove_task_files
+from .tasks import TaskFile, remove_task_files, monitor_interval, resource_monitor_interval
 from .step_executor import parse_shared_vars
 from .executor_utils import __null_func__, get_traceback_msg, prepare_env, clear_output
-
 
 def signal_handler(*args, **kwargs):
     raise ProcessKilled()
@@ -30,19 +29,8 @@ class BaseTaskExecutor(object):
     should derive from this class.
     '''
 
-    def __init__(self,
-                 verbosity=None,
-                 runmode='run',
-                 sigmode=None,
-                 worker_procs=None,
-                 monitor_interval=5,
-                 resource_monitor_interval=60):
-        self.verbosity = verbosity
-        self.runmode = runmode
-        self.sigmode = sigmode
-        self.worker_procs = worker_procs
-        self.monitor_interval = monitor_interval
-        self.resource_monitor_interval = resource_monitor_interval
+    def __init__(self):
+        pass
 
     def execute(self, task_id):
         '''Execute single or master task, return a dictionary'''
@@ -57,14 +45,11 @@ class BaseTaskExecutor(object):
             params, runtime = tf.get_params_and_runtime()
             sig_content = tf.signature
 
-            if self.verbosity is not None:
-                env.verbosity = self.verbosity
+            if env.config['verbosity'] is not None:
+                env.verbosity = env.config['verbosity']
 
-            env.config['run_mode'] = self.runmode
-            if self.runmode == 'dryrun':
+            if env.config['run_mode'] == 'dryrun':
                 env.config['sig_mode'] = 'ignore'
-            elif self.sigmode is not None:
-                env.config['sig_mode'] = self.sigmode
 
             env.logger.info(f'{task_id} ``started``')
 
@@ -81,8 +66,8 @@ class BaseTaskExecutor(object):
 
             m = ProcessMonitor(
                 task_id,
-                monitor_interval=self.monitor_interval,
-                resource_monitor_interval=self.resource_monitor_interval,
+                monitor_interval=monitor_interval,
+                resource_monitor_interval=resource_monitor_interval,
                 max_walltime=runtime['_runtime'].get('max_walltime', None),
                 max_mem=runtime['_runtime'].get('max_mem', None),
                 max_procs=runtime['_runtime'].get('max_procs', None),
