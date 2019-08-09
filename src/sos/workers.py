@@ -81,8 +81,8 @@ class SoS_Worker(mp.Process):
     variables and a mechanism to switch between these contexts.
 
     The "step" and "subworkflow" are presented as "generators" and are executed by
-    so called "runners" that yields if it waits for a socker. 
-    
+    so called "runners" that yields if it waits for a socker.
+
     Each runner is associated with a master socket, which is a PAIR socket. When the
     worker communicates with the worker manager, it sends a list of available "sockets"
     and the worker manager will "claim" the socket when it sends the job to the worker.
@@ -142,7 +142,7 @@ class SoS_Worker(mp.Process):
         # when a runner is completed, its port becomes available and can
         # be used to accept more jobs.
         return [
-            f'tcp://{self.local_ip}:{port}' for port, runner in zip(self._master_ports, self._runners)
+            port for port, runner in zip(self._master_ports, self._runners)
             if runner is True
         ]
 
@@ -163,7 +163,7 @@ class SoS_Worker(mp.Process):
             # switch to a new env_idx and returns new_idx, old_idx
             self._env_idx.append(env.request_new()[0])
             self._master_sockets.append(env.master_socket)
-            self._master_ports.append(port)
+            self._master_ports.append(f'tcp://{self.local_ip}:{port}')
             self._runners.append(True)
             if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
                     'SOS_DEBUG']:
