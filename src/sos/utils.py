@@ -1917,4 +1917,4 @@ def get_nodelist(args=[]):
         # local host, using half of its node
         args = [str(min(max(os.cpu_count() // 2, 2), 8))]
         env.log_to_file('WORKER', f'Using default option "-j {args}".')
-        return args w
+        return args
