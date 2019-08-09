@@ -2035,6 +2035,16 @@ bash: expand=True
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    def testEmptyParameter(self):
+        # parameter: without content #1283
+        script = SoS_Script(r'''
+parameter:
+
+print(1)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
     # unittest.TextTestRunner(, suite).run()

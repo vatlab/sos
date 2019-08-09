@@ -1044,7 +1044,7 @@ class SoS_Script:
                     #        something
                     #    whatever: <- this line
                     if cursect.category() == 'script':
-                        if cursect.indented_script() > re.search('\S',
+                        if cursect.indented_script() > re.search(r'\S',
                                                                  line).start():
                             try:
                                 cursect.wrap_script()
@@ -1066,7 +1066,7 @@ class SoS_Script:
                     # newline should be kept in case of multi-line directive
                     action_value = mo.group('action_value') + '\n'
                     cursect.add_script(action_name, action_value, lineno)
-                elif cursect.indented_script() > re.search('\S', line).start():
+                elif cursect.indented_script() > re.search(r'\S', line).start():
                     # case of wrapping previous script with NO indented action
                     #
                     # if True:
@@ -1263,6 +1263,9 @@ class SoS_Script:
                                           lineno)
                 else:
                     if directive_name == 'parameter':
+                        if not directive_value.strip():
+                            # ignore lines with only an empty parameter directive #1282
+                            continue
                         if comment_block == 2:
                             self.description = ''
                         cursect.add_directive(
