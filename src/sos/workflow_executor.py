@@ -1755,7 +1755,7 @@ class Base_Executor:
                     parent_socket.send(
                         encode_msg([
                             'step', step_id, section, runnable._context, shared,
-                            self.args, env.config, env.verbosity, f'tcp://{local_ip}:{port}'
+                            self.args, env.config, env.verbosity, f'tcp://{self.local_ip}:{port}'
                         ]))
                     # the nested workflow also needs a step to receive result
                     manager.add_placeholder_worker(runnable, socket)
