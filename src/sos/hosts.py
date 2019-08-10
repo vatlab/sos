@@ -1223,6 +1223,9 @@ class Host:
             # the task engine is a thread and will run continously
             if start_engine:
                 self.host_instances[self.alias]._task_engine.start()
+                self._engine_started = True
+            else:
+                self._engine_started = False
 
         self._host_agent = self.host_instances[self.alias]
         # for convenience
@@ -1231,7 +1234,7 @@ class Host:
 
         # it is possible that Host() is initialized before with start_engine=False
         # and called again to start engine
-        if start_engine and not self._task_engine.engine_ready.set():
+        if start_engine and not self._engine_started:
             self._task_engine.start()
 
     # public interface

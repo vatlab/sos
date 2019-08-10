@@ -212,6 +212,41 @@ sh:
         self.assertTrue(os.path.isfile('llp'))
         os.remove('llp')
 
+    def testWorkerProcs(self):
+        # test -j option
+        script = SoS_Script('''
+[1]
+input: for_each=dict(i=range(10))
+
+bash: expand=True
+    echo {i}
+''')
+        wf = script.workflow()
+        Base_Executor(
+            wf,
+            config={
+                'sig_mode': 'force',
+                'worker_proces': ['1', 'localhost:2']
+            }).run()
+
+    def testWorkerProcsWithTask(self):
+        # test -j option
+        script = SoS_Script('''
+[1]
+input: for_each=dict(i=range(10))
+
+task: trunk_size = 0
+
+bash: expand=True
+    echo {i}
+''')
+        wf = script.workflow()
+        Base_Executor(
+            wf,
+            config={
+                'sig_mode': 'force',
+                'worker_proces': ['1', 'localhost:2'],
+            }).run()
 
 if __name__ == '__main__':
     unittest.main()
