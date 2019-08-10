@@ -409,7 +409,13 @@ class SoS_Worker(mp.Process):
 
     def run_task(self, work):
         from .task_executor import BaseTaskExecutor
-        executor = BaseTaskExecutor(**work)
+        executor = BaseTaskExecutor()
+
+        if env.result_socket_port is not None and env.result_socket_port != config[
+            "sockets"]["result_push_socket"]:
+            close_socket(env.result_socket)
+            env.result_socket = None
+
         if env.result_socket is None:
             env.result_socket = create_socket(env.zmq_context, zmq.PUSH)
             env.result_socket_port = config["sockets"]["result_push_socket"]
@@ -417,7 +423,6 @@ class SoS_Worker(mp.Process):
             env.result_socket.connect(env.result_socket_port)
 
         res = executor.execute_single_task(**work)
-
         env.result_socket.send(encode_msg(res))
 
 
