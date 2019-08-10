@@ -1229,6 +1229,11 @@ class Host:
         if hasattr(self._host_agent, '_task_engine'):
             self._task_engine = self._host_agent._task_engine
 
+        # it is possible that Host() is initialized before with start_engine=False
+        # and called again to start engine
+        if start_engine and not self._task_engine.engine_ready.set():
+            self._task_engine.start()
+
     # public interface
     #
     # based on Host definition
