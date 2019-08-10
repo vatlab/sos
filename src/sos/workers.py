@@ -411,14 +411,15 @@ class SoS_Worker(mp.Process):
         from .task_executor import BaseTaskExecutor
         executor = BaseTaskExecutor()
 
-        if env.result_socket_port is not None and env.result_socket_port != config[
-            "sockets"]["result_push_socket"]:
+        result_socket = work['config']['sockets']['result_push_socket']
+
+        if env.result_socket_port is not None and env.result_socket_port != result_socket:
             close_socket(env.result_socket)
             env.result_socket = None
 
         if env.result_socket is None:
             env.result_socket = create_socket(env.zmq_context, zmq.PUSH)
-            env.result_socket_port = config["sockets"]["result_push_socket"]
+            env.result_socket_port = result_socket
             # the result_socket_port contains IP of the worker that request the substep
             env.result_socket.connect(env.result_socket_port)
 

@@ -117,7 +117,8 @@ class BaseTaskExecutor(object):
                             params,
                             runtime,
                             sig_content,
-                            quiet=False):
+                            quiet=False,
+                            **kwargs):
         '''
         Execute a single task, with
 
