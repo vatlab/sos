@@ -896,7 +896,7 @@ class RemoteHost(object):
                     os.path.expanduser('~'), '.sos', 'tasks', task_id + '.*')):
             if not os.access(lfile, os.W_OK):
                 os.chmod(lfile, stat.S_IREAD | stat.S_IWRITE)
-            os.remove(lfile)
+            #os.remove(lfile)
         if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file('TASK', receive_cmd)
         ret = subprocess.call(
