@@ -454,7 +454,7 @@ input: for_each={'I': range(10)}
 task: trunk_size=5, cores=1, mem='1M', walltime='10m'
 run: expand=True
     echo {I} > {I}.txt
-    sleep 2
+    sleep 0.1
 ''')
         wf = SoS_Script(filename='test_trunksize.sos').workflow()
         for i in range(10):
@@ -472,13 +472,44 @@ run: expand=True
                 'output_report': None,
                 'targets': [],
                 'worker_procs': ['4'],
-                'default_queue': None,
+                #'default_queue': None,
                 'workflow': 'default',
                 'workdir': '.',
             }).run()
 
         for i in range(10):
             self.assertTrue(os.path.isfile(f'{i}.txt'))
+            os.remove(f'{i}.txt')
+        # trunk size is None or 0, -1, intepreted as all tasks
+        with open('test_trunksize.sos', 'w') as tt:
+            tt.write('''
+[10]
+input: for_each={'I': range(10)}
+task: trunk_size=None, cores=1, mem='1M', walltime='10m'
+run: expand=True
+    echo {I} > {I}.txt
+    sleep 0.1
+''')
+        wf = SoS_Script(filename='test_trunksize.sos').workflow()
+        Base_Executor(
+            wf,
+            config={
+                'sig_mode': 'force',
+                'script': 'test_trunksize.sos',
+                'max_running_jobs': 10,
+                'bin_dirs': [],
+                'workflow_args': [],
+                'output_dag': '',
+                'output_report': None,
+                'targets': [],
+                'worker_procs': ['4'],
+                #'default_queue': None,
+                'workflow': 'default',
+                'workdir': '.',
+            }).run()
+        for i in range(10):
+            self.assertTrue(os.path.isfile(f'{i}.txt'))
+
 
     def testTrunkWorkersOption(self):
         '''Test option trunk_workers'''
