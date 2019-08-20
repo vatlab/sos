@@ -70,7 +70,7 @@ class MasterTaskParams(TaskParams):
     def _parse_num_workers(self, num_workers):
         # return number of nodes and workers
         if isinstance(num_workers, Sequence) and len(num_workers) >= 1:
-            val = num_workers[0]
+            val = str(num_workers[0])
             if ':' in val:
                 val = val.rsplit(':', 1)[-1]
             n_workers = int(val.rsplit(':', 1)[-1])

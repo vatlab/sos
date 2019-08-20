@@ -6,19 +6,28 @@ import copy
 import os
 import subprocess
 import time
+import zmq
 import signal
 
-from collections import OrderedDict, Mapping, Sequence
+from collections import OrderedDict
+from collections.abc import Mapping, Sequence
 from contextlib import redirect_stdout, redirect_stderr
+from threading import Event
 
 from .eval import SoS_eval, SoS_exec
 from .monitor import ProcessMonitor
 from .targets import (InMemorySignature, file_target, sos_step, dynamic,
                       sos_targets)
-from .utils import StopInputGroup, env, pickleable, ProcessKilled
+from .utils import StopInputGroup, env, pickleable, ProcessKilled, get_localhost_ip
 from .tasks import TaskFile, remove_task_files, monitor_interval, resource_monitor_interval
 from .step_executor import parse_shared_vars
+from .messages import decode_msg
 from .executor_utils import __null_func__, get_traceback_msg, prepare_env, clear_output
+from .controller import (Controller, connect_controllers,
+                         disconnect_controllers, create_socket, close_socket,
+                         request_answer_from_controller,
+                         send_message_to_controller)
+
 
 def signal_handler(*args, **kwargs):
     raise ProcessKilled()
@@ -135,8 +144,8 @@ class BaseTaskExecutor(object):
         if task_id in runtime:
             params.sos_dict.update(runtime[task_id])
 
-        if quiet and 'TASK' in env.config[
-                'SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+        if quiet and 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                'SOS_DEBUG']:
             env.log_to_file('TASK', f'Executing task {task_id}')
 
         global_def, task, sos_dict = params.global_def, params.task, params.sos_dict
@@ -353,62 +362,186 @@ class BaseTaskExecutor(object):
         '''
         # used by self._collect_subtask_outputs
         self.master_stdout = os.path.join(
-                os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out')
+            os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out')
         self.master_stderr = os.path.join(
-                os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
+            os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
 
         if os.path.exists(self.master_stdout):
             open(self.master_stdout, 'w').close()
         if os.path.exists(self.master_stderr):
             open(self.master_stderr, 'w').close()
 
-        # a previous version of master task file has params.num_workers
-        n_workers = params.num_workers if hasattr(params, 'num_workers') else params.sos_dict['_runtime'].get('num_workers', 1)
-        if n_workers is None:
-            n_workers = 1
+        # options specified from command line, most likely from cluster system
+        n_nodes, n_procs = self._parse_num_workers(env.config['worker_procs'])
 
-        if not isinstance(n_workers, int):
-            raise RuntimeError(f'This task executor cannot handle tasks with trunk_workers={n_workers}. Please use an alternative task executor with option --executor/-e if possible.')
-        if n_workers > 1:
-            from multiprocessing.pool import Pool
-            p = Pool(n_workers)
-            results = []
-            for sub_id, sub_params in params.task_stack:
-                if hasattr(params, 'common_dict'):
-                    sub_params.sos_dict.update(params.common_dict)
-                sub_runtime = { x: master_runtime.get(x, {}) for x in ('_runtime', sub_id) }
-                sub_sig = { sub_id: sig_content.get(sub_id, {}) }
-                results.append(
-                    p.apply_async(
-                        self._execute_task, (sub_id, sub_params, sub_runtime, sub_sig, True),
-                        callback=self._append_subtask_outputs))
-            for idx, r in enumerate(results):
-                results[idx] = r.get()
-            p.close()
-            p.join()
+        # regular trunk_workers = ?? (0 was used as default)
+        # a previous version of master task file has params.num_workers
+        n_workers = params.num_workers if hasattr(
+            params, 'num_workers') else params.sos_dict['_runtime'].get(
+                'num_workers', 1)
+
+        if isinstance(n_workers, int) and n_workers > 1:
+            results = self.execute_master_task_in_parallel(
+                params, master_runtime, sig_content, n_workers)
+        elif n_nodes == 1:
+            results = self.execute_master_task_sequentially(
+                params, master_runtime, sig_content)
         else:
+            if not n_workers:
+                n_workers = env.config['worker_procs']
+            elif len(n_workers) != n_nodes:
+                env.logger.warning(
+                    f'task options trunk_workers={n_workers} is inconsistent with command line option -j {env.config["worker_procs"]}'
+                )
+            results = self.execute_master_task_distributedly(
+                paarms, master_runtime, sig_content, n_workers)
+
+        return self._combine_results(task_id, results)
+
+    def execute_master_task_in_parallel(self, params, master_runtime,
+                                        sig_content, n_workers):
+        # multiple workers, concurrent execution using a pool
+        from multiprocessing.pool import Pool
+        p = Pool(n_workers)
+        results = []
+        for sub_id, sub_params in params.task_stack:
+            if hasattr(params, 'common_dict'):
+                sub_params.sos_dict.update(params.common_dict)
+            sub_runtime = {
+                x: master_runtime.get(x, {}) for x in ('_runtime', sub_id)
+            }
+            sub_sig = {sub_id: sig_content.get(sub_id, {})}
+            results.append(
+                p.apply_async(
+                    self.execute_single_task,
+                    (sub_id, sub_params, sub_runtime, sub_sig, True),
+                    callback=self._append_subtask_outputs))
+        for idx, r in enumerate(results):
+            results[idx] = r.get()
+        p.close()
+        p.join()
+        return results
+
+    def execute_master_task_sequentially(self, params, master_runtime,
+                                         sig_content):
+        # single worker, execute sequentially, n_workers is not a positive number
+        results = []
+        for sub_id, sub_params in params.task_stack:
+            if hasattr(params, 'common_dict'):
+                sub_params.sos_dict.update(params.common_dict)
+            sub_runtime = {
+                x: master_runtime.get(x, {}) for x in ('_runtime', sub_id)
+            }
+            sub_sig = {sub_id: sig_content.get(sub_id, {})}
+            res = self.execute_single_task(sub_id, sub_params, sub_runtime,
+                                           sub_sig, True)
+            try:
+                self._append_subtask_outputs(res)
+            except Exception as e:
+                env.logger.warning(
+                    f'Failed to copy result of subtask {sub_id}: {e}')
+            results.append(res)
+        return results
+
+    def execute_master_task_distributedly(self, params, master_runtime,
+                                          sig_content, n_workers):
+        # multiple workers, start workers from remote hosts
+        env.zmq_context = zmq.Context()
+
+        # control panel in a separate thread, connected by zmq socket
+        ready = Event()
+        self.controller = Controller(ready)
+        self.controller.start()
+        # wait for the thread to start with a signature_req saved to env.config
+        ready.wait()
+
+        connect_controllers(env.zmq_context)
+
+        try:
+
+            # start a result receving socket
+            self.result_pull_socket = create_socket(env.zmq_context, zmq.PULL,
+                                                    'substep result collector')
+            local_ip = get_localhost_ip()
+            port = self.result_pull_socket.bind_to_random_port(
+                f'tcp://{local_ip}')
+            env.config['sockets'][
+                'result_push_socket'] = f'tcp://{local_ip}:{port}'
+
+            # send tasks to the controller
             results = []
             for sub_id, sub_params in params.task_stack:
                 if hasattr(params, 'common_dict'):
                     sub_params.sos_dict.update(params.common_dict)
-                sub_runtime = { x: master_runtime.get(x, {}) for x in ('_runtime', sub_id) }
-                sub_sig = { sub_id: sig_content.get(sub_id, {}) }
-                res = self.execute_single_task(
-                    sub_id, sub_params, sub_runtime, sub_sig, True)
+                sub_runtime = {
+                    x: master_runtime.get(x, {}) for x in ('_runtime', sub_id)
+                }
+                sub_sig = {sub_id: sig_content.get(sub_id, {})}
+
+                # submit tasks
+                send_message_to_controller([
+                    'task',
+                    dict(
+                        task_id=sub_id,
+                        params=sub_params,
+                        runtime=sub_runtime,
+                        sig_content=sub_sig,
+                        config=env.config,
+                        quiet=True)
+                ])
+
+            for idx in range(len(params.task_stack)):
+                res = decode_msg(self.result_pull_socket.recv())
                 try:
                     self._append_subtask_outputs(res)
                 except Exception as e:
-                    env.logger.warning(
-                        f'Failed to copy result of subtask {sub_id}: {e}')
+                    env.logger.warning(f'Failed to copy result of subtask: {e}')
                 results.append(res)
-        return self._combine_results(task_id, results)
+            succ = True
+        except Exception as e:
+            env.logger.error(f'Failed to execute master task {task_id}: {e}')
+            succ = False
+        finally:
+            # end progress bar when the master workflow stops
+            close_socket(self.result_pull_socket)
+            env.log_to_file('EXECUTOR', f'Stop controller from {os.getpid()}')
+            request_answer_from_controller(['done', succ])
+            env.log_to_file('EXECUTOR', 'disconntecting master')
+            self.controller.join()
+            disconnect_controllers(env.zmq_context if succ else None)
+        return results
+
+    def _parse_num_workers(self, num_workers):
+        # return number of nodes and workers
+        if isinstance(num_workers, Sequence):
+            if len(num_workers) >= 1:
+                val = num_workers[0]
+                if ':' in val:
+                    val = val.rsplit(':', 1)[-1]
+                n_workers = int(val.rsplit(':', 1)[-1])
+                return len(num_workers), None if n_workers <= 0 else n_workers
+            else:
+                return None, None
+        elif isinstance(num_workers, str):
+            if ':' in num_workers:
+                num_workers = num_workers.rsplit(':', 1)[-1]
+            n_workers = int(num_workers.rsplit(':', 1)[-1])
+            return 1, None if n_workers <= 0 else n_workers
+        elif isinstance(num_workers, int) and num_workers >= 1:
+            return 1, num_workers
+        elif num_workers is None:
+            return None, None
+        else:
+            raise RuntimeError(
+                f"Unacceptable value for parameter trunk_workers {num_workers}")
 
     def _append_subtask_outputs(self, result):
         '''
         Append result returned from subtask to stdout and stderr streams
         '''
         tid = result['task']
-        with open(self.master_stdout, 'ab') as out, open(self.master_stdout, 'ab') as err:
+        with open(self.master_stdout,
+                  'ab') as out, open(self.master_stdout, 'ab') as err:
             out.write(
                 f'{tid}: {"completed" if result["ret_code"] == 0 else "failed"}\n'
                 .encode())
@@ -532,10 +665,10 @@ class BaseTaskExecutor(object):
         return all_res
 
     def _collect_task_result(self,
-                            task_id,
-                            sos_dict,
-                            skipped=False,
-                            signature=None):
+                             task_id,
+                             sos_dict,
+                             skipped=False,
+                             signature=None):
         shared = {}
         if 'shared' in env.sos_dict['_runtime']:
             svars = env.sos_dict['_runtime']['shared']
