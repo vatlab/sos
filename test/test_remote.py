@@ -73,7 +73,7 @@ run:
 ''')
         self.assertEqual(
             subprocess.call(
-                'sos run test_remote.sos -c ~/docker.yml -r docker -s force',
+                'sos run test_remote.sos -c ~/docker.yml -r docker -s force -q localhost',
                 shell=True), 0)
         self.assertFalse(file_target('result_remote.txt').target_exists())
         #self.assertEqual(subprocess.call('sos preview result_remote.txt -c ~/docker.yml -r docker', shell=True), 0)
@@ -245,6 +245,7 @@ bash: expand=True
             wf,
             config={
                 'sig_mode': 'force',
+                'default_queue': 'localhost',
                 'worker_proces': ['1', 'localhost:2'],
             }).run()
 

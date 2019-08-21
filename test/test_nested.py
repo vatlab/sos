@@ -597,7 +597,7 @@ sos_run('step', workdir='tmp')
 ''')
         wf = script.workflow()
         # this should be ok.
-        Base_Executor(wf).run()
+        Base_Executor(wf, config={'default_queue': 'localhost'}).run()
         os.path.isfile('tmp/tmp/a.txt')
         shutil.rmtree('tmp')
 

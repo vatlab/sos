@@ -2310,7 +2310,7 @@ task:
 import time
 time.sleep(10)
 ''')
-        ret = subprocess.Popen(['sos', 'run', 'testKillTask', '-s', 'force'])
+        ret = subprocess.Popen(['sos', 'run', 'testKillTask', '-s', 'force', '-q', 'localhost'])
         proc = psutil.Process(ret.pid)
         while True:
             children = proc.children(recursive=True)
@@ -2325,7 +2325,7 @@ time.sleep(10)
         ret.wait()
         self.assertNotEqual(ret.returncode, 0)
         #
-        ret = subprocess.Popen(['sos', 'run', 'testKillTask'])
+        ret = subprocess.Popen(['sos', 'run', 'testKillTask', '-q', 'localhost'])
         proc = psutil.Process(ret.pid)
         while True:
             children = proc.children(recursive=True)
@@ -2348,8 +2348,8 @@ task:
 import time
 time.sleep(5)
 ''')
-        ret1 = subprocess.Popen(['sos', 'run', 'testRunTask', '-s', 'force'])
-        ret2 = subprocess.Popen(['sos', 'run', 'testRunTask', '-s', 'force'])
+        ret1 = subprocess.Popen(['sos', 'run', 'testRunTask', '-s', 'force', '-q', 'localhost'])
+        ret2 = subprocess.Popen(['sos', 'run', 'testRunTask', '-s', 'force', '-q', 'localhost'])
         ret1.wait()
         ret2.wait()
         self.assertEqual(ret1.returncode, 0)
@@ -2369,7 +2369,7 @@ task:
 import time
 time.sleep(12)
 ''')
-        ret = subprocess.Popen(['sos', 'run', 'testOrphan', '-s', 'force'])
+        ret = subprocess.Popen(['sos', 'run', 'testOrphan', '-s', 'force', '-q', 'localhost'])
         proc = psutil.Process(ret.pid)
         while True:
             children = proc.children(recursive=True)
@@ -2383,7 +2383,7 @@ time.sleep(12)
             time.sleep(0.1)
         proc.kill()
         #
-        ret = subprocess.Popen(['sos', 'run', 'testOrphan'])
+        ret = subprocess.Popen(['sos', 'run', 'testOrphan', '-q', 'localhost'])
         ret.wait()
         self.assertEqual(ret.returncode, 0)
 

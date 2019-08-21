@@ -170,7 +170,7 @@ cp {_input} {_dest[0]}
         # only the first step
         wf = script.workflow(':0')
         env.config['sig_mode'] = 'force'
-        res = Base_Executor(wf).run()
+        res = Base_Executor(wf, config={'default_queue': 'localhost'}).run()
         self.assertTrue(os.path.isfile('temp/a.txt'))
         self.assertTrue(os.path.isfile('temp/b.txt'))
         self.assertTrue(res['__completed__']['__step_completed__'], steps)
@@ -179,16 +179,16 @@ cp {_input} {_dest[0]}
         with open('temp/b.txt') as tb:
             self.assertTrue(tb.read(), 'b.txt')
         env.config['sig_mode'] = 'assert'
-        res = Base_Executor(wf).run()
+        res = Base_Executor(wf, config={'default_queue': 'localhost'}).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 0)
         # all of them
         wf = script.workflow()
         env.config['sig_mode'] = 'default'
         # generate files (default step 0 and 1)
-        Base_Executor(wf).run()
+        Base_Executor(wf, config={'default_queue': 'localhost'}).run()
         # now, rerun in build mode
         env.config['sig_mode'] = 'build'
-        res = Base_Executor(wf).run()
+        res = Base_Executor(wf, config={'default_queue': 'localhost'}).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 0)
         #
         self.assertTrue(os.path.isfile('temp/c.txt'))
@@ -202,12 +202,12 @@ cp {_input} {_dest[0]}
         #
         # now in assert mode, the signature should be there
         env.config['sig_mode'] = 'assert'
-        res = Base_Executor(wf).run()
+        res = Base_Executor(wf, config={'default_queue': 'localhost'}).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 0)
 
         #
         env.config['sig_mode'] = 'default'
-        res = Base_Executor(wf).run()
+        res = Base_Executor(wf, config={'default_queue': 'localhost'}).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 0)
 
         #
@@ -215,7 +215,7 @@ cp {_input} {_dest[0]}
         script = SoS_Script('# comment\n' + text)
         wf = script.workflow()
         env.config['sig_mode'] = 'assert'
-        res = Base_Executor(wf).run()
+        res = Base_Executor(wf, config={'default_queue': 'localhost'}).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 0)
 
         # add some other variable?
@@ -597,7 +597,7 @@ sh:
   echo aa > aa
 ''')
         wf = script.workflow()
-        res = Base_Executor(wf).run()
+        res = Base_Executor(wf, config={'default_queue': 'localhost'}).run()
         self.assertEqual(res['__completed__']['__step_completed__'], 0)
 
     def testSignatureWithDynamicOutput(self):

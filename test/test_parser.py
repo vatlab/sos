@@ -2017,7 +2017,7 @@ bash:
         echo 1
 ''')
         wf = script.workflow()
-        Base_Executor(wf).run()
+        Base_Executor(wf, config={'default_queue': 'localhost'}).run()
 
     def testTaskParamVarToSubstep(self):
         '''Test global parameter passed to task parameters in substep #1281'''
@@ -2033,7 +2033,7 @@ bash: expand=True
         echo {i}
 ''')
         wf = script.workflow()
-        Base_Executor(wf).run()
+        Base_Executor(wf, config={'default_queue': 'localhost'}).run()
 
     def testEmptyParameter(self):
         # parameter: without content #1283
