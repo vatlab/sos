@@ -978,7 +978,7 @@ class Base_Step_Executor:
             self.step.task = None
         # is queue is unspecified, it take value from command line
         # in this case -q should have been specified
-        elif ('queue' not in env.sos_dict['_runtime']:
+        elif 'queue' not in env.sos_dict['_runtime']:
             env.sos_dict['_runtime']['queue'] = env.config['default_queue']
 
     def local_exec_without_signature(self, statement):
