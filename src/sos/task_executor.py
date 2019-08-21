@@ -394,7 +394,7 @@ class BaseTaskExecutor(object):
                     f'task options trunk_workers={n_workers} is inconsistent with command line option -j {env.config["worker_procs"]}'
                 )
             results = self.execute_master_task_distributedly(
-                paarms, master_runtime, sig_content, n_workers)
+                params, master_runtime, sig_content, n_workers)
 
         return self._combine_results(task_id, results)
 
