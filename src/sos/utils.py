@@ -1913,6 +1913,13 @@ def get_nodelist(args=[]):
             args = [':'.join(host.split()) for host in hosts]
         env.log_to_file('WORKER', f'Using "-j {args}" on a SGE cluster.')
         return args
+    elif "LSB_MCPU_HOSTS" in os.environ:
+        # IBM LSF https://www.ibm.com/support/knowledgecenter/en/SSETD4_9.1.3/lsf_config_ref/lsf_envars_ref.html
+        # LSB_MCPU_HOSTS="hostA 3 hostB 3"
+        hostlist = os.environ["LSB_MCPU_HOSTS"].strip().split()
+        args = [f'{hostlist[2*i]}:{hostlist[2*i+1]}' for i in range(len(hostlist)//2)]
+        env.log_to_file('WORKER', f'Using "-j {args}" on a IBM LSF cluster.')
+        return args
     else:
         # local host, using half of its node
         args = [str(min(max(os.cpu_count() // 2, 2), 8))]
