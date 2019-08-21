@@ -275,14 +275,13 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
     parser.add_argument(
         '-q',
         dest='__queue__',
-        default="",
         metavar='QUEUE',
         help='''host (server) or job queues to execute all tasks in the
-            workflow. The queue can be defined in global or local sos
-            configuration file, or a file specified by option  --config. A host is
-            assumed to be a remote machine with process type if no configuration
-            is found. If a value "None" is specified, tasks are executed as part of
-            regular step processes unless task-specific queues are specified.'''
+            workflow. The queue can be name, IP, or an alias defined in SoS
+            configuration files. A host is assumed to be a remote host with process
+            type unless other queue types and related information are defined in the
+            host file. If left unspecified, tasks are executed as part of the regular
+            step processes unless task-specific queues are specified.'''
     )
     parser.add_argument(
         '-r',
@@ -476,6 +475,9 @@ def cmd_run(args, workflow_args):
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(
             args.workflow, use_default=not args.__targets__)
+        if args.__queue__ in ("none", "None"):
+            env.logger.warning(f"Use of -q {args.__queue__} is deprecated and will not be supported in the next release of SoS.")
+            args.__queue__ = None
         config = {
             'config_file':
                 args.__config__,
@@ -484,7 +486,7 @@ def cmd_run(args, workflow_args):
             'output_report':
                 args.__report__,
             'default_queue':
-                'none' if under_cluster() else args.__queue__,
+                args.__queue__,
             'worker_procs':
                 get_nodelist() if under_cluster() else args.__worker_procs__,
             'max_running_jobs':

@@ -963,10 +963,12 @@ class Base_Step_Executor:
                 raise ValueError(
                     f'Failed to determine value of parameter queue of {self.step.task_params}: {e}'
                 )
-        if (env.config['default_queue'] in ('None', 'none', None) and
+        # if -q is unspecified and option queue is unspecified,
+        # or queue=None is specified, disregard the task keyword
+        if (env.config['default_queue'] is None and
             'queue' not in env.sos_dict['_runtime']) or \
             ('queue' in env.sos_dict['_runtime'] and
-            env.sos_dict['_runtime']['queue'] in ('none', 'None', None)):
+            env.sos_dict['_runtime']['queue'] is None):
             # remove task statement
             if len(self.step.statements
                   ) >= 1 and self.step.statements[-1][0] == '!':
@@ -974,12 +976,10 @@ class Base_Step_Executor:
             else:
                 self.step.statements.append(['!', self.step.task])
             self.step.task = None
-        elif 'queue' not in env.sos_dict[
-                '_runtime'] or not env.sos_dict['_runtime']['queue']:
-            if env.config['default_queue']:
-                env.sos_dict['_runtime']['queue'] = env.config['default_queue']
-            else:
-                env.sos_dict['_runtime']['queue'] = 'localhost'
+        # is queue is unspecified, it take value from command line
+        # in this case -q should have been specified
+        elif ('queue' not in env.sos_dict['_runtime']:
+            env.sos_dict['_runtime']['queue'] = env.config['default_queue']
 
     def local_exec_without_signature(self, statement):
         idx = env.sos_dict["_index"]
