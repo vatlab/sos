@@ -217,7 +217,7 @@ class LocalHost(object):
         if task_file != dest_task_file:
             shutil.copyfile(task_file, dest_task_file)
 
-    def check_output(self, cmd, under_workdir=False):
+    def check_output(self, cmd, under_workdir=False, pass_env=False):
         # get the output of command
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
@@ -229,7 +229,7 @@ class LocalHost(object):
             env.logger.warning(f'Check output of {cmd} failed: {e}')
             raise
 
-    def check_call(self, cmd, under_workdir=False, **kwargs):
+    def check_call(self, cmd, under_workdir=False, pass_env=False, **kwargs):
         # get the output of command
         try:
             return subprocess.check_call(
@@ -238,7 +238,7 @@ class LocalHost(object):
             env.logger.warning(f'Check output of {cmd} failed: {e}')
             raise
 
-    def run_command(self, cmd, wait_for_task, realtime=False, **kwargs):
+    def run_command(self, cmd, wait_for_task, realtime=False, pass_env=False, **kwargs):
         # run command but does not wait for result.
         if realtime:
             from .utils import pexpect_run
@@ -359,10 +359,11 @@ class RemoteHost(object):
                 '''mv "{dest:adep}/{source:b}" "{dest:aep}"'''
         return '''rsync -a --no-g -e 'ssh ''' + self.cm_opts + ''' -p {port}' {host}:{source:e} "{dest:adep}"'''
 
-    def _get_execute_cmd(self, under_workdir=True) -> str:
+    def _get_execute_cmd(self, under_workdir=True, pass_env=False) -> str:
         return self.config.get(
             'execute_cmd', 'ssh ' + self.cm_opts +
             """ -q {host} -p {port} "bash --login -c '""" +
+            ('set -e $(env);' if pass_env else '') +
             ('[ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && '
              if under_workdir else '') + ''' {cmd}'" ''')
 
@@ -479,7 +480,7 @@ class RemoteHost(object):
             if i == 1:
                 p.close(force=True)
                 stty_sane()
-                return f'ssh connection to {address} was prompted for password. Please set up public key authentication to the remote host before continue.'
+                return f'ssh connection to {self.address} was prompted for password. Please set up public key authentication to the remote host before continue.'
             if i == 2:
                 if not p.before:
                     return "OK"
@@ -807,12 +808,12 @@ class RemoteHost(object):
                 f'Failed to copy job {task_file} to {self.alias} using command {send_cmd}: {e}'
             )
 
-    def check_output(self, cmd: object, under_workdir=False) -> object:
+    def check_output(self, cmd: object, under_workdir=False, pass_env=False) -> object:
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
             cmd = cfg_interpolate(
-                self._get_execute_cmd(under_workdir=under_workdir), {
+                self._get_execute_cmd(under_workdir=under_workdir, pass_env=pass_env), {
                     'host': self.address,
                     'port': self.port,
                     'cmd': cmd,
@@ -829,12 +830,12 @@ class RemoteHost(object):
             env.logger.debug(f'Check output of {cmd} failed: {e}')
             raise
 
-    def check_call(self, cmd, under_workdir=False, **kwargs):
+    def check_call(self, cmd, under_workdir=False, pass_env=False, **kwargs):
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
             cmd = cfg_interpolate(
-                self._get_execute_cmd(under_workdir=under_workdir), {
+                self._get_execute_cmd(under_workdir=under_workdir, pass_env=pass_env), {
                     'host': self.address,
                     'port': self.port,
                     'cmd': cmd,
@@ -850,12 +851,12 @@ class RemoteHost(object):
             env.logger.debug(f'Check output of {cmd} failed: {e}')
             raise
 
-    def run_command(self, cmd, wait_for_task, realtime=False, **kwargs):
+    def run_command(self, cmd, wait_for_task, realtime=False, pass_env=False, **kwargs):
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
             cmd = cfg_interpolate(
-                self._get_execute_cmd(under_workdir=False), {
+                self._get_execute_cmd(under_workdir=False, pass_env=pass_env), {
                     'host': self.address,
                     'port': self.port,
                     'cmd': cmd,

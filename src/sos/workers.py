@@ -662,7 +662,7 @@ class WorkerManager(object):
                         '--workdir', os.getcwd(), '-v', str(env.config['verbosity'])]
                     if max_worker is not None:
                         cmd += ['-j', str(max_worker)]
-                    p = host._host_agent.run_command(cmd, wait_for_task=True)
+                    p = host._host_agent.run_command(cmd, wait_for_task=True, pass_env=True)
                     self._remote_connections.append(p)
                 except Exception as e:
                     env.logger.error(f'Failed to start workers on host {worker_host}: {e}')
