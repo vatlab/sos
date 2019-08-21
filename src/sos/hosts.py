@@ -486,9 +486,9 @@ class RemoteHost(object):
                 p.close(force=True)
                 return p.before.decode()
         except pexpect.TIMEOUT:
-            return f'ssh connection to {address} time out with prompt: {str(p.before)}'
+            return f'ssh connection to {self.address} time out with prompt: {str(p.before)}'
         except Exception as e:
-            return f'Failed to check remote connection {address}:{port}: {e}'
+            return f'Failed to check remote connection {self.address}:{self.port}: {e}'
         return "OK"
 
     def _reverse_map_var(self, dest):
