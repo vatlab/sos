@@ -445,8 +445,10 @@ class RuntimeEnvironments(object):
         }
         # stop setting root logger always to DEBUG. If SOS_DEBUG is defined as PROFILE, we profile
         # in non-debug mode. Otherwise debugging leval will be set to DEBUG
-        debug_mode = 'SOS_DEBUG' in os.environ and os.environ['SOS_DEBUG'] and os.environ['SOS_DEBUG'] != 'PROFILE'
-        self._logger.setLevel(logging.DEBUG if debug_mode else levels[self._verbosity])
+        debug_mode = 'SOS_DEBUG' in os.environ and os.environ[
+            'SOS_DEBUG'] and os.environ['SOS_DEBUG'] != 'PROFILE'
+        self._logger.setLevel(
+            logging.DEBUG if debug_mode else levels[self._verbosity])
 
         if self._logging_socket:
             socket_handler = PUBHandler(self._logging_socket)
@@ -1280,18 +1282,22 @@ class TimeoutInterProcessLock(fasteners.InterProcessLock):
                     )
                     msg = True
 
-config_cache : dict = {}
+
+config_cache: dict = {}
+
 
 def load_config_files(filename=None):
     # user-specified configuration file.
     if filename is None and 'config_file' in env.config:
         filename = env.config['config_file']
 
-    if filename is not None and not os.path.isfile(os.path.expanduser(filename)):
+    if filename is not None and not os.path.isfile(
+            os.path.expanduser(filename)):
         env.logger.warning(f'Ignoring missing configuration file {filename}')
         filename = None
 
-    filemtime = None if filename is None else os.path.getmtime(os.path.expanduser(filename))
+    filemtime = None if filename is None else os.path.getmtime(
+        os.path.expanduser(filename))
 
     if (filename, filemtime) in config_cache:
         env.sos_dict.set('CONFIG', config_cache[(filename, filemtime)])
@@ -1320,8 +1326,7 @@ def load_config_files(filename=None):
         except Exception as e:
             print(get_traceback())
             env.logger.warning(
-                f'Failed to parse global sos hosts file {sos_config_file}: {e}'
-            )
+                f'Failed to parse global sos hosts file {sos_config_file}: {e}')
     # global config file
     sos_config_file = os.path.join(
         os.path.expanduser('~'), '.sos', 'config.yml')
@@ -1343,9 +1348,7 @@ def load_config_files(filename=None):
                 gd = yaml.safe_load(config)
             dict_merge(cfg, gd)
         except Exception as e:
-            env.logger.warning(
-                f'Failed to parse config file {filename}: {e}'
-            )
+            env.logger.warning(f'Failed to parse config file {filename}: {e}')
 
     if 'user_name' not in cfg:
         cfg['user_name'] = getpass.getuser().lower()
@@ -1886,16 +1889,16 @@ def get_localhost_ip():
 # Handling -j option on cluster
 #
 
-def get_nodelist(args=[]):
+
+def get_nodelist():
     """Return a list of hosts depending on the environment"""
-    # if -j is specified, using the options follows it
-    if args:
-        return args
     # If on a cluster, return some SoS acceptable format of node:nproc.
     if "SLURM_NODELIST" in os.environ:
         # Use scontrol utility to get the hosts list
         import subprocess
-        hostsstr = subprocess.check_output(["scontrol", "show", "hostnames", os.environ['SLURM_NODELIST']]).decode()
+        hostsstr = subprocess.check_output(
+            ["scontrol", "show", "hostnames",
+             os.environ['SLURM_NODELIST']]).decode()
         # Split using endline
         args = [f'{x}:1' for x in hostsstr.split(os.linesep) if x.strip()]
         env.log_to_file('WORKER', f'Using "-j {args}" on a SLURM cluster.')
@@ -1905,7 +1908,10 @@ def get_nodelist(args=[]):
             hostlist = hosts.read().split()
             from collections import Counter, OrderedDict
             counts = Counter(hostlist)
-            args = [f'{x}:{counts[x]}' for x in list(OrderedDict.fromkeys(hostlist))]
+            args = [
+                f'{x}:{counts[x]}'
+                for x in list(OrderedDict.fromkeys(hostlist))
+            ]
         env.log_to_file('WORKER', f'Using "-j {args}" on a PBS cluster.')
         return args
     elif "PE_HOSTFILE" in os.environ:
@@ -1917,11 +1923,15 @@ def get_nodelist(args=[]):
         # IBM LSF https://www.ibm.com/support/knowledgecenter/en/SSETD4_9.1.3/lsf_config_ref/lsf_envars_ref.html
         # LSB_MCPU_HOSTS="hostA 3 hostB 3"
         hostlist = os.environ["LSB_MCPU_HOSTS"].strip().split()
-        args = [f'{hostlist[2*i]}:{hostlist[2*i+1]}' for i in range(len(hostlist)//2)]
+        args = [
+            f'{hostlist[2*i]}:{hostlist[2*i+1]}'
+            for i in range(len(hostlist) // 2)
+        ]
         env.log_to_file('WORKER', f'Using "-j {args}" on a IBM LSF cluster.')
         return args
-    else:
-        # local host, using half of its node
-        args = [str(min(max(os.cpu_count() // 2, 2), 8))]
-        env.log_to_file('WORKER', f'Using default option "-j {args}".')
-        return args
+
+
+def under_cluster():
+    return any(
+        x in os.environ for x in ("SLURM_NODELIST", "PBS_ENVIRONMENT",
+                                  "PE_HOSTFILE", "LSB_MCPU_HOSTS"))

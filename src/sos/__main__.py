@@ -393,7 +393,7 @@ def cmd_run(args, workflow_args):
     # if sys.platform != 'win32':
     #    mp.set_start_method('forkserver')
 
-    from .utils import env, get_traceback, load_config_files, get_nodelist
+    from .utils import env, get_traceback, load_config_files, get_nodelist, under_cluster
     from .parser import SoS_Script
 
     if args.__remote__ is not None:
@@ -484,9 +484,9 @@ def cmd_run(args, workflow_args):
             'output_report':
                 args.__report__,
             'default_queue':
-                args.__queue__,
+                'none' if under_cluster() else args.__queue__,
             'worker_procs':
-                get_nodelist(args.__worker_procs__),
+                get_nodelist() if under_cluster() else args.__worker_procs__,
             'max_running_jobs':
                 args.__max_running_jobs__,
             'sig_mode':
@@ -556,7 +556,9 @@ def cmd_run(args, workflow_args):
                 os.path.expanduser('~'), '.sos',
                 f'profile_master_{os.getpid()}.txt')
             pr.dump_stats(pr_file)
-            print(f'Execution profile of master process {os.getpid()} is saved to {pr_file}')
+            print(
+                f'Execution profile of master process {os.getpid()} is saved to {pr_file}'
+            )
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
@@ -678,15 +680,10 @@ def cmd_dryrun(args, workflow_args):
 
 def get_worker_parser(desc_only=False):
     parser = argparse.ArgumentParser(
-        'worker',
-        description='''Start one or more worker processes''')
+        'worker', description='''Start one or more worker processes''')
     if desc_only:
         return parser
-    parser.add_argument(
-        '-r',
-        '--router',
-        help='''Port of the router'''
-    )
+    parser.add_argument('-r', '--router', help='''Port of the router''')
     parser.add_argument(
         '-j',
         type=int,
@@ -700,18 +697,9 @@ def get_worker_parser(desc_only=False):
         help='''A configuration file with host
         definitions, in case the definitions are not defined in global sos config.yml files.'''
     )
-    parser.add_argument(
-        '--sig_mode',
-        help='signature mode'
-    )
-    parser.add_argument(
-        '--run_mode',
-        help='run mode'
-    )
-    parser.add_argument(
-        '--workdir',
-        help='work directory'
-    )
+    parser.add_argument('--sig_mode', help='signature mode')
+    parser.add_argument('--run_mode', help='run mode')
+    parser.add_argument('--workdir', help='work directory')
     parser.add_argument(
         '-v',
         '--verbosity',
@@ -743,7 +731,8 @@ def cmd_worker(args, workflow_args):
     try:
         os.chdir(args.workdir)
     except:
-        env.logger.warning(f'Failed to change directory to workdir {args.workdir}')
+        env.logger.warning(
+            f'Failed to change directory to workdir {args.workdir}')
     load_config_files(args.config)
     try:
         from .workers import SoS_Worker
@@ -751,7 +740,8 @@ def cmd_worker(args, workflow_args):
         import time
         procs = [SoS_Worker(env.config) for i in range(args.workers)]
         [p.start() for p in procs]
-        env.logger.info(f'{args.workers} workers started on {get_localhost_ip()}')
+        env.logger.info(
+            f'{args.workers} workers started on {get_localhost_ip()}')
         while True:
             if all(not p.is_alive() for p in procs):
                 break
@@ -1190,37 +1180,46 @@ def get_execute_parser(desc_only=False):
 
 def cmd_execute(args, workflow_args):
     from .tasks import check_task, monitor_interval, resource_monitor_interval
-    from .utils import env, load_config_files, get_nodelist
+    from .utils import env, load_config_files, get_nodelist, under_cluster
     import glob
     if args.queue is None:
         # local machine ...
         exit_code = []
 
         env.config.update({
-            'config_file': args.config,
-            'sig_mode': 'default' if args.sig_mode is None else args.sig_mode,
-            'run_mode': 'dryrun' if args.dryrun else (args.run_mode if args.run_mode else 'run'),
-            'sockets': {
-            },
-            'exec_mode': None,
-            'verbosity': args.verbosity,
-            'worker_procs': get_nodelist(args.__worker_procs__),
+            'config_file':
+                args.config,
+            'sig_mode':
+                'default' if args.sig_mode is None else args.sig_mode,
+            'run_mode':
+                'dryrun' if args.dryrun else
+                (args.run_mode if args.run_mode else 'run'),
+            'sockets': {},
+            'exec_mode':
+                None,
+            'verbosity':
+                args.verbosity,
+            'worker_procs':
+                get_nodelist() if under_cluster() else args.__worker_procs__,
         })
         if not args.executor:
             from .task_executor import BaseTaskExecutor
             executor = BaseTaskExecutor()
         else:
             found = False
-            for entrypoint in pkg_resources.iter_entry_points(group='sos_taskexecutors'):
+            for entrypoint in pkg_resources.iter_entry_points(
+                    group='sos_taskexecutors'):
                 name = entrypoint.name.strip()
                 if name == args.executor:
                     try:
                         executor = entrypoint.load()()
                         found = True
                     except Exception as e:
-                        raise RuntimeError(f'Failed to load task executor {name}: {e}')
+                        raise RuntimeError(
+                            f'Failed to load task executor {name}: {e}')
             if not found:
-                raise RuntimeError(f'Failed to identify task executor {args.executor}.')
+                raise RuntimeError(
+                    f'Failed to identify task executor {args.executor}.')
         for task in args.tasks:
             #
             matched = [
@@ -2312,7 +2311,8 @@ def main():
                        get_status_parser(desc_only='status' != subcommand))
         #
         # command push, replaced by sos remote push
-        add_sub_parser( subparsers,
+        add_sub_parser(
+            subparsers,
             get_worker_parser(desc_only='worker' != subcommand),
             hidden=True)
         #
