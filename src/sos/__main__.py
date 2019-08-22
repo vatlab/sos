@@ -536,9 +536,9 @@ def cmd_run(args, workflow_args):
             try:
                 config['slave_id'] = args.exec_mode[2]
                 config['sockets'] = {
-                    'tapping_logging': int(args.exec_mode[3]),
-                    'tapping_listener': int(args.exec_mode[4]),
-                    'tapping_controller': int(args.exec_mode[5]),
+                    'tapping_logging': args.exec_mode[3],
+                    'tapping_listener': args.exec_mode[4],
+                    'tapping_controller': args.exec_mode[5],
                 }
             except Exception as e:
                 raise ValueError(
