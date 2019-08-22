@@ -882,7 +882,7 @@ sleep 2
             self.assertEqual(tf.status, 'completed')
             tf.tags_created_start_and_duration()
             #
-            subprocess.call('sos run test', shell=True)
+            subprocess.call('sos run test -q localhost', shell=True)
             self.assertLess(tf.tags_created_start_and_duration()[3], 1)
 
     def testWrongHost(self):
