@@ -467,7 +467,7 @@ class Controller(threading.Thread):
             self.tapping_listener_socket = create_socket(self.context, zmq.PULL)
             tapping_listener_port = self.tapping_listener_socket.bind_to_random_port(
                 f'tcp://{local_ip}')
-            env.config['sockets']['tapping_listener'] = f'tcp://{local_ip}:{tapping_listner_port}'
+            env.config['sockets']['tapping_listener'] = f'tcp://{local_ip}:{tapping_listener_port}'
 
             self.tapping_controller_socket = create_socket(
                 self.context, zmq.PUSH)
