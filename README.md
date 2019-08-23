@@ -46,6 +46,12 @@ Different modules might be needed to assist data exchange among kernels. Please 
 
 ### Change Log of SoS Workflow and SoS Notebook
 
+SoS 0.19.15
+* [sos#1273](https://github.com/vatlab/SoS/issues/1273): Allow workflows to be executed on cluster systems.
+* [sos#1277](https://github.com/vatlab/SoS/issues/1277): Allow master tasks to be executed on cluster systems with extended runtime option `trunk_workers`.
+* [sos#1279](https://github.com/vatlab/SoS/issues/1279): Extend option `-j` of commands `sos run` and `sos execute` to use remote workers.
+* [sos#1288](https://github.com/vatlab/SoS/issues/1288): Change the default value of option `-q` from `localhost` to `None` (no task).
+
 SoS 0.19.0
 * [sos#1056](https://github.com/vatlab/SoS/issues/1056), [sos#1218](https://github.com/vatlab/SoS/issues/1218): Use a new shared execution model to enforce optio `-j`.
 * [sos#1219](https://github.com/vatlab/SoS/issues/1219): Make sure global sections are executed only once
