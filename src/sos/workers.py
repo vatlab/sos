@@ -654,7 +654,6 @@ class WorkerManager(object):
                 try:
                     from .hosts import Host
                     host = Host(worker_host, start_engine=False)
-                    res = host._host_agent.test_connection()
                     if res != 'OK':
                         raise RuntimeError(f'Failed to connect to {worker_host}: {res}')
                     cmd = ['sos', 'worker', '--router', env.config["sockets"]["worker_backend"],
