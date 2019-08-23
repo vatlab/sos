@@ -295,8 +295,9 @@ class RemoteHost(object):
         self.shared_dirs = self._get_shared_dirs()
         self.path_map = self._get_path_map()
         # we already test connect of remote hosts
-        if self.test_connection() != 'OK':
-            raise RuntimeError(f'Failed to connect to {self.alias}: {res}')
+        test_res = self.test_connection()
+        if test_res != 'OK':
+            raise RuntimeError(f'Failed to connect to {self.alias}: {test_res}')
 
     def _get_shared_dirs(self) -> List[Any]:
         value = self.config.get('shared', [])
