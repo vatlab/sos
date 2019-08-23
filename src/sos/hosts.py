@@ -470,7 +470,8 @@ class RemoteHost(object):
             p = pexpect.spawn(cmd)
             # could be prompted for Password or password, so use assword
             i = p.expect([
-                "(?i)are you sure you want to continue connecting", "[pP]assword:",
+                "(?i)are you sure you want to continue connecting",
+                "[pP]assword:",
                 pexpect.EOF
             ],
                         timeout=5)
@@ -481,15 +482,14 @@ class RemoteHost(object):
                     "[pP]assword:", pexpect.EOF
                 ],
                         timeout=5)
-            if i == 1:
+            elif i == 1:
                 p.close(force=True)
                 stty_sane()
                 return f'ssh connection to {self.address} was prompted for password. Please set up public key authentication to the remote host before continue.'
-            if i == 2:
-                if not p.before:
-                    return "OK"
-                p.close(force=True)
-                return p.before.decode()
+            elif i == 2:
+                if p.before:
+                    env.logger.warning(f'ssh connection to {self.address} returns "{p.before.decode()}"')
+                return "OK"
         except pexpect.TIMEOUT:
             return f'ssh connection to {self.address} time out with prompt: {str(p.before)}'
         except Exception as e:
