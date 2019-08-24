@@ -463,7 +463,7 @@ class RemoteHost(object):
 
     def test_connection(self):
         try:
-            cmd = cfg_interpolate('ssh -q {host} -p {port} true', {
+            cmd = cfg_interpolate('ssh {host} -p {port} true', {
                 'host': self.address,
                 'port': self.port
             })
@@ -487,9 +487,13 @@ class RemoteHost(object):
                 stty_sane()
                 return f'ssh connection to {self.address} was prompted for password. Please set up public key authentication to the remote host before continue.'
             elif i == 2:
-                if p.before:
-                    env.logger.warning(f'ssh connection to {self.address} returns "{p.before.decode()}"')
-                return "OK"
+                p.close()
+                if p.exitstatus == 0:
+                    return 'OK'
+                elif p.before:
+                    return p.before.decode()
+                else:
+                    return f'Command "{cmd}" exits with code {p.exitstatus}'
         except pexpect.TIMEOUT:
             return f'ssh connection to {self.address} time out with prompt: {str(p.before)}'
         except Exception as e:
