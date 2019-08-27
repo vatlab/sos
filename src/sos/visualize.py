@@ -10,6 +10,8 @@ from itertools import tee
 
 import numpy
 import pandas
+import string
+import random
 
 
 def is_sorted(iterable, compare=operator.le):
@@ -42,16 +44,8 @@ class Visualizer:
             raise ValueError(f'Unknown style {self.style}')
 
     def get_tid(self, vis_type):
-        if not self.kernel:
-            import random
-            return random.randint(0, 1000000)
-        if not hasattr(self.kernel, '_tid'):
-            self.kernel._tid = {vis_type: 1}
-        elif vis_type not in self.kernel._tid:
-            self.kernel._tid[vis_type] = 1
-        else:
-            self.kernel._tid[vis_type] += 1
-        return self.kernel._tid[vis_type]
+        alphabet = string.ascii_lowercase + string.digits
+        return ''.join(random.choices(alphabet, k=8))
 
     #
     # TABLE
@@ -108,7 +102,7 @@ class Visualizer:
             for x in df.dtypes
         ]
         code = ''.join(
-            '''{} &nbsp; <i class="fa fa-sort" style="color:lightgray" onclick="sortDataFrame('{}', {}, '{}')"></th>'''
+            '''{} &nbsp; <i class="fas fa-sort" style="color:lightgray" onclick="sortDataFrame('{}', {}, '{}')"></th>'''
             .format(x, tid, idx, index_type if idx ==
                     0 else col_type[idx - 1]) if '<th' in x else x
             for idx, x in enumerate(hr.split('</th>'))) + '</tr>' + rest
