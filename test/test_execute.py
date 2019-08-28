@@ -2217,8 +2217,8 @@ depends: traced(_input.with_suffix('.bam.bai'))
         self.assertEqual(res['__completed__']['__step_skipped__'], 1)
 
     @unittest.skipIf(
-        'TRAVIS' in os.environ,
-        'Skip test because travis fails on this test for unknown reason')
+        'TRAVIS' in os.environ or sys.platform == 'win32',
+        'Skip test because travis fails on this test for unknown reason, also due to a bug in psutil under windows')
     def testKillWorker(self):
         '''Test if the workflow can error out after a worker is killed'''
         import psutil
@@ -2297,6 +2297,8 @@ time.sleep(2)
         # job
         #self.assertNotEqual(ret.returncode, 0)
 
+    @unittest.skipIf(sys.platform == 'win32',
+                     'Cannot test due to a bug (ampaolo/psutil#875) with psutils under windows')
     def testKillTask(self):
         '''Test if the workflow can error out after a worker is killed'''
         subprocess.call(['sos', 'purge', '--all'])
