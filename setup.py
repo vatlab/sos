@@ -113,6 +113,8 @@ setup(
         'pydot',
         'pydotplus',
         'pexpect',
+        # required by windows
+        'ptyprocess',
         # for report regeneration
         'jinja2',
         # to execute workflow embedded in .ipynb files
