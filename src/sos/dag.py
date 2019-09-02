@@ -251,12 +251,8 @@ class SoS_DAG(nx.DiGraph):
             return []
 
     def steps_depending_on(self, target: BaseTarget, workflow):
-        if target in self._all_depends_files:
-            return ' requested by ' + ', '.join(
-                set([
-                    workflow.section_by_id(x._step_uuid).step_name()
-                    for x in self._all_depends_files[target]
-                ]))
+        if target in self._all_depends_files and self._all_depends_files[target]:
+            return f", needed by '{workflow.section_by_id(self._all_depends_files[target][0]._step_uuid).step_name()}'"
         return ''
 
     def pending(self):

@@ -532,26 +532,16 @@ class Base_Executor:
                                 not x._output_targets.valid()
                             ]
                             indexed.sort(key=lambda x: x._node_index)
-                            if not indexed:
-                                raise RuntimeError(
-                                    f'No step to generate target {target}{dag.steps_depending_on(target, self.workflow)}'
-                                )
-                            if isinstance(target, sos_step) and not any(
-                                    self.workflow.section_by_id(x._step_uuid)
-                                    .match(target.target_name())
-                                    for x in indexed):
-                                raise RuntimeError(
-                                    f'No step to generate target {target}{dag.steps_depending_on(target, self.workflow)}'
-                                )
-                            # now, if it is not a sos_step, but its previous steps have already been executed and still
-                            # could not satisfy the requirement..., we should generate an error
-                            if not any(
-                                    x._status is None or
-                                    x._status.endswith('pending')
-                                    for x in indexed):
+                            if (not indexed) or (isinstance(target, sos_step) and not any(
+                                self.workflow.section_by_id(x._step_uuid)
+                                .match(target.target_name())
+                                for x in indexed)) or (not any(
+                                x._status is None or
+                                x._status.endswith('pending')
+                                for x in indexed)):
                                 # all previous status has been failed or completed...
                                 raise RuntimeError(
-                                    f'Previous step{" has" if len(indexed) == 1 else "s have"} not generated target {target}{dag.steps_depending_on(target, self.workflow)}'
+                                    f"No rule to generate target '{target}'{dag.steps_depending_on(target, self.workflow)}. Stop."
                                 )
                             if node._input_targets.valid():
                                 node._input_targets = sos_targets([])

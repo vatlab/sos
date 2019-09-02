@@ -166,11 +166,11 @@ class R_library(BaseTarget):
             for line in tmp:
                 lib, cur_version, status = line.split(' ', 2)
                 if status.strip() == "MISSING":
-                    env.logger.warning(
+                    env.logger.error(
                         f'R library {lib} is not available and cannot be installed.'
                     )
                 elif status.strip() == "UNAVAILABLE":
-                    env.logger.warning(f'R library {lib} is not available.')
+                    env.logger.error(f'R library {lib} is not available.')
                 elif status.strip() == 'AVAILABLE':
                     env.logger.debug(
                         f'R library {lib} ({cur_version}) is available')
@@ -180,7 +180,7 @@ class R_library(BaseTarget):
                         f'R library {lib} ({cur_version}) has been installed')
                     ret_val = True
                 elif status.strip() == 'VERSION_MISMATCH':
-                    env.logger.warning(
+                    env.logger.error(
                         f'R library {lib} ({cur_version}) does not satisfy version requirement ({"/".join(version)})!'
                     )
                 else:
