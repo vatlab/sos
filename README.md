@@ -16,7 +16,7 @@ We welcome and value community contributions: please [post issues](https://githu
 to provide us feedback or get our support; please [send pull requests](https://github.com/vatlab/SoS/pulls)
 if you have helped fixing bugs or making improvements to the source code. In addition, if you are interesting in extending SoS, for example adding a new target type or task engine, please have a look at our tutorial on extending SoS [here](https://vatlab.github.io/sos-docs/doc/user_guide/extending_sos.html).
 
-# Installing SoS Workflow
+# Installing SoS Workflow and Notebook
 
 * If you are using conda, you can install sos using command
 
@@ -28,9 +28,10 @@ if you have helped fixing bugs or making improvements to the source code. In add
   conda install sos sos-pbs sos-notebook jupyterlab-sos sos-bash sos-python sos-r -c conda-forge
   ```
   This will install SoS Workflow, SoS Notebook and its JupyterLab extension, language modules for
-  `Bash`, `Python2`, `Python3`, `R`, and `R` itself (`r-base` and `r-irkernel` etc) if needed.
+  `Bash`, `Python2`, `Python3`, `R`, `R` itself (`r-base` and `r-irkernel` etc) and needed
+  libraries (e.g. `feather`) if needed.  
 
-* If you are not using conda, you can install SoS to a working Python 3.6 installation with command
+* If you are not using conda, you will have to install all the pieces one by one, but you will also have the freedom to use non-conda installation of `R`, `Julia` etc. With a working Python 3.6 installation, you can install SoS Workflow with command
   
   ```bash
   pip install sos
