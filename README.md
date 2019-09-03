@@ -18,31 +18,42 @@ if you have helped fixing bugs or making improvements to the source code. In add
 
 # Installing SoS Workflow
 
-With Python 3.6 and above installed ([anaconda python](https://www.continuum.io/downloads) is recommended), you can install the SoS Workflow with command
+* If you are using conda, you can install sos using command
 
-```
-% pip install sos
-```
-and also
-```
-% pip install sos-pbs
-```
-if you would like to use SoS with a remote batch system such as LSF or Slurm.
+  ```bash
+  conda install sos -c conda-forge
+  ```
+  You can also install a majority of the SoS suite of tools using commands such as
+  ```bash
+  conda install sos sos-pbs sos-notebook jupyterlab-sos sos-bash sos-python sos-r -c conda-forge
+  ```
+  This will install SoS Workflow, SoS Notebook and its JupyterLab extension, language modules for
+  `Bash`, `Python2`, `Python3`, `R`, and `R` itself (`r-base` and `r-irkernel` etc) if needed.
 
-You can install SoS Notebook, and register the sos kernel with Jupyter using the following commands
+* If you are not using conda, you can install SoS to a working Python 3.6 installation with command
+  
+  ```bash
+  pip install sos
+  ```
+  and also
+  ```bash
+  pip install sos-pbs
+  ```
+  if you would like to use SoS with a remote batch system such as LSF or Slurm.
 
-```
-% pip install sos-notebook
-% python -m sos_notebook.install
-```
+  You can install SoS Notebook, and register the sos kernel with Jupyter using the following commands
 
-To exchange data between live kernels in SoS Notebook, you will need to install individual kernels (e.g. `irkernel` for `R`),
-make sure they work under Jupyter, and install SoS language modules using commands such as
+  ```bash
+  pip install sos-notebook
+  python -m sos_notebook.install
+  ```
 
-```
-% pip install sos-r sos-matlab sos-python sos-bash
-```
-Different modules might be needed to assist data exchange among kernels. Please refer to [the installation page of sos website](https://vatlab.github.io/sos-docs/#runningsos) for details.
+  To exchange data between live kernels in SoS Notebook, you will need to install individual kernels (e.g. `irkernel` for `R`), make sure they work under Jupyter, and install SoS language modules using commands such as
+
+  ```bash
+  pip install sos-r sos-matlab sos-python sos-bash
+  ```
+  Different modules might be needed to assist data exchange among kernels. Please refer to [the installation page of sos website](https://vatlab.github.io/sos-docs/#runningsos) for details.
 
 ### Change Log of SoS Workflow and SoS Notebook
 
