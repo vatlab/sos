@@ -1,4 +1,5 @@
-[![Anaconda-Server Badge](https://anaconda.org/conda-forge/sos/badges/version.svg)](https://anaconda.org/conda-forge/sos)[![PyPI version](https://badge.fury.io/py/sos.svg)](https://badge.fury.io/py/sos)
+[![Anaconda-Server Badge](https://anaconda.org/conda-forge/sos/badges/version.svg)](https://anaconda.org/conda-forge/sos)
+[![PyPI version](https://badge.fury.io/py/sos.svg)](https://badge.fury.io/py/sos)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1291524.svg)](https://doi.org/10.5281/zenodo.1291524)
 [![Join the chat at https://gitter.im/vatlab/SoS](https://badges.gitter.im/vatlab/SoS.svg)](https://gitter.im/vatlab/SoS?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build Status](https://travis-ci.org/vatlab/SoS.svg?branch=master)](https://travis-ci.org/vatlab/SoS)
