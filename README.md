@@ -1,11 +1,10 @@
-[![PyPI version](https://badge.fury.io/py/sos.svg)](https://badge.fury.io/py/sos)
+[![Anaconda-Server Badge](https://anaconda.org/conda-forge/sos/badges/version.svg)](https://anaconda.org/conda-forge/sos)[![PyPI version](https://badge.fury.io/py/sos.svg)](https://badge.fury.io/py/sos)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1291524.svg)](https://doi.org/10.5281/zenodo.1291524)
 [![Join the chat at https://gitter.im/vatlab/SoS](https://badges.gitter.im/vatlab/SoS.svg)](https://gitter.im/vatlab/SoS?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build Status](https://travis-ci.org/vatlab/SoS.svg?branch=master)](https://travis-ci.org/vatlab/SoS)
 [![Build Status](https://ci.appveyor.com/api/projects/status/x092eusa0tta3msw?svg=true
 )](https://ci.appveyor.com/project/BoPeng/sos)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/67b766a827fb491fa473032b4f70ebb7)](https://www.codacy.com/app/BoPeng/SoS?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=vatlab/SOS&amp;utm_campaign=Badge_Grade)
-[![Coverage Status](https://coveralls.io/repos/github/vatlab/SOS/badge.svg)](https://coveralls.io/github/vatlab/SOS)
+
 
 **Script of Scripts (SoS)** consists of **`SoS Notebook`**, a Jupyter-based polyglot notebook that allows the use of multiple Jupyter kernels in one notebook, and
 a **`SoS Workflow`**, a workflow system for the execution of workflows in both process- and outcome-oriented styles. It is designed for data scientists and bioinformatics who routinely work with scripts in different languages such as bash, Python, R, and SAS. This repository contains the `SoS Workflow` workflow engine.
