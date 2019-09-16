@@ -278,7 +278,7 @@ class TaskEngine(threading.Thread):
                         self.submitting_tasks.pop(k)
 
             if self.pending_tasks:
-                num_active_tasks = len(self.submitting_tasks) + len(
+                num_active_tasks = sum(len(x) for x in self.submitting_tasks.keys()) + len(
                     self.running_tasks)
                 if num_active_tasks >= self.max_running_jobs:
                     if time.time() - self.last_report > 60:
@@ -289,38 +289,46 @@ class TaskEngine(threading.Thread):
                     continue
 
                 self.last_report = time.time()
-                # assign tasks to self.max_running_jobs workers
-                slots = [[] for i in range(self.max_running_jobs)]
-                sample_slots = list(range(self.max_running_jobs))
-                random.shuffle(sample_slots)
-                for i, tid in enumerate(
-                        self.pending_tasks[:self.batch_size *
-                                           self.max_running_jobs]):
+                # submit at most self.max_running_jobs - num_active_tasks tasks
+                n_submitted = 0
+                slot = []
+                for idx, tid in enumerate(self.pending_tasks):
                     if self.task_status[tid] == 'running':
                         env.logger.info(f'{tid} ``runnng``')
+                        with threading.Lock():
+                            self.pending_tasks.remove(tid)
+                        continue
                     elif tid in self.canceled_tasks:
                         # the job is canceled while being prepared to run
-                        env.logger.info(f'{tid} ``canceled``')
-                    else:
-                        # randomly spread to tasks, but at most one.
-                        slots[sample_slots[i %
-                                           self.max_running_jobs]].append(tid)
-                for slot in slots:
-                    if not slot:
-                        continue
-                    for tid in slot:
-                        env.log_to_file(
-                            'TASK',
-                            f'Start submitting {tid} (status: {self.task_status.get(tid, "unknown")})'
-                        )
-                    self.submitting_tasks[tuple(
-                        slot)] = self._thread_workers.submit(
-                            self.execute_tasks, slot)
-                #
-                with threading.Lock():
-                    for slot in slots:
-                        for tid in slot:
+                        with threading.Lock():
                             self.pending_tasks.remove(tid)
+                        env.logger.info(f'{tid} ``canceled``')
+                        continue
+                    else:
+                        slot.append(tid)
+                        n_submitted += 1
+
+                    if len(slot) == self.batch_size or idx == len(self.pending_tasks) - 1 \
+                        or n_submitted >= self.max_running_jobs - num_active_tasks:
+                        # if slot full or is the last pending, submit
+                        for s_tid in slot:
+                            env.log_to_file(
+                                'TASK',
+                                f'Start submitting {s_tid} (status: {self.task_status.get(s_tid, "unknown")})'
+                            )
+                        with threading.Lock():
+                            for s_tid in slot:
+                                self.pending_tasks.remove(s_tid)
+
+                        self.submitting_tasks[tuple(
+                            slot)] = self._thread_workers.submit(
+                                self.execute_tasks, slot)
+
+                        slot = []
+
+                    if n_submitted >= self.max_running_jobs - num_active_tasks:
+                        break
+
             elif self.running_tasks or self.running_pending_tasks:
                 if time.time() - self.last_report > 60:
                     # if there is no  pending tasks
