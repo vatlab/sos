@@ -7,6 +7,7 @@ import fasteners
 import pickle
 import time
 import lzma
+import math
 import struct
 from enum import Enum
 from collections import namedtuple
@@ -130,12 +131,13 @@ class MasterTaskParams(TaskParams):
                         self.sos_dict['_runtime'][
                             'name'] = f'{val0}_{len(self.task_stack) + 1}'
                 else:
-                    n_batches = len(self.task_stack) // n_workers
-                    if n_batches * n_workers < len(self.task_stack):
-                        n_batches += 1
+                    # If there are multiple nodes and multiple workers, there are
+                    # n_workers * n_nodes workers at the same time, so the jobs
+                    # will be completed in n_batches
+                    n_batches = math.ceil(len(self.task_stack) / (n_workers * n_nodes))
 
-                    elif key == 'walltime':
-                        # if define walltime
+                    if key == 'walltime':
+                        # the real walltime would be the total time on one node
                         self.sos_dict['_runtime']['walltime'] = format_HHMMSS(
                             n_batches * expand_time(val0))
                     elif key == 'mem':
