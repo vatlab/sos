@@ -16,6 +16,7 @@ from .utils import env, expand_time
 from .tasks import TaskFile
 from .messages import encode_msg
 
+
 class TaskEngine(threading.Thread):
 
     def __init__(self, agent):
@@ -94,10 +95,11 @@ class TaskEngine(threading.Thread):
             # set cell_id to slave_id so that the frontend knows which
             # cell this task belong to
             msg['cell_id'] = env.config.get('slave_id', '')
-            env.tapping_listener_socket.send(encode_msg({
-                'msg_type': 'task_status',
-                'data': msg
-            }))
+            env.tapping_listener_socket.send(
+                encode_msg({
+                    'msg_type': 'task_status',
+                    'data': msg
+                }))
 
     def monitor_tasks(self, tasks=None, status=None, age=None):
         '''Start monitoring specified or all tasks'''
@@ -278,8 +280,9 @@ class TaskEngine(threading.Thread):
                         self.submitting_tasks.pop(k)
 
             if self.pending_tasks:
-                num_active_tasks = sum(len(x) for x in self.submitting_tasks.keys()) + len(
-                    self.running_tasks)
+                num_active_tasks = sum(
+                    len(x) for x in self.submitting_tasks.keys()) + len(
+                        self.running_tasks)
                 if num_active_tasks >= self.max_running_jobs:
                     if time.time() - self.last_report > 60:
                         self.last_report = time.time()
@@ -292,44 +295,48 @@ class TaskEngine(threading.Thread):
                 # submit at most self.max_running_jobs - num_active_tasks tasks
                 n_submitted = 0
                 slot = []
+                slots = []
                 removed_from_pending = {}
-                for idx, tid in enumerate(self.pending_tasks):
-                    if self.task_status[tid] == 'running':
-                        env.logger.info(f'{tid} ``runnng``')
-                        removed_from_pending.add(tid)
-                        continue
-                    elif tid in self.canceled_tasks:
-                        # the job is canceled while being prepared to run
-                        removed_from_pending.add(tid)
-                        env.logger.info(f'{tid} ``canceled``')
-                        continue
-                    else:
-                        slot.append(tid)
-                        n_submitted += 1
+                with threading.Lock():
+                    for idx, tid in enumerate(self.pending_tasks):
+                        if self.task_status[tid] == 'running':
+                            # env.logger.info(f'{tid} ``runnng``')
+                            removed_from_pending.add(tid)
+                            continue
+                        elif tid in self.canceled_tasks:
+                            # the job is canceled while being prepared to run
+                            removed_from_pending.add(tid)
+                            # env.logger.info(f'{tid} ``canceled``')
+                            continue
+                        else:
+                            slot.append(tid)
+                            n_submitted += 1
 
-                    if len(slot) == self.batch_size or idx == len(self.pending_tasks) - 1 \
-                        or n_submitted >= self.max_running_jobs - num_active_tasks:
-                        # if slot full or is the last pending, submit
-                        for s_tid in slot:
-                            env.log_to_file(
-                                'TASK',
-                                f'Start submitting {s_tid} (status: {self.task_status.get(s_tid, "unknown")})'
-                            )
-                        removed_from_pending.update(slot)
+                        if len(slot) == self.batch_size or idx == len(self.pending_tasks) - 1 \
+                            or n_submitted >= self.max_running_jobs - num_active_tasks:
+                            removed_from_pending.update(slot)
+                            slots.append(slot)
+                            slot = []
 
-                        self.submitting_tasks[tuple(
-                            slot)] = self._thread_workers.submit(
-                                self.execute_tasks, slot)
+                        if n_submitted >= self.max_running_jobs - num_active_tasks:
+                            break
 
-                        slot = []
+                    if removed_from_pending:
+                        self.pending_tasks = [
+                            x for x in self.pending_tasks
+                            if x not in removed_from_pending
+                        ]
 
-                    if n_submitted >= self.max_running_jobs - num_active_tasks:
-                        break
-
-                if removed_from_pending:
-                    with threading.Lock():
-                        self.pending_tasks = [x for x in self.pending_tasks if x not in removed_from_pending]
-
+                for slot in slots:
+                    # if slot full or is the last pending, submit
+                    for s_tid in slot:
+                        env.log_to_file(
+                            'TASK',
+                            f'Start submitting {s_tid} (status: {self.task_status.get(s_tid, "unknown")})'
+                        )
+                    self.submitting_tasks[tuple(
+                        slot)] = self._thread_workers.submit(
+                            self.execute_tasks, slot)
 
             elif self.running_tasks or self.running_pending_tasks:
                 if time.time() - self.last_report > 60:
@@ -744,8 +751,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
 
         try:
             cmd = f'bash ~/.sos/tasks/{filename}'
-            env.log_to_file('TASK',
-                f'Execute "{cmd}" with script {job_text}')
+            env.log_to_file('TASK', f'Execute "{cmd}" with script {job_text}')
             self.agent.run_command(cmd, wait_for_task=self.wait_for_task)
         except Exception as e:
             raise RuntimeError(f'Failed to submit task {task_ids}: {e}')
