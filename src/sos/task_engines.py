@@ -326,7 +326,7 @@ class TaskEngine(threading.Thread):
                     if n_submitted >= self.max_running_jobs - num_active_tasks:
                         break
 
-                 if removed_from_pending:
+                if removed_from_pending:
                     with threading.Lock():
                         self.pending_tasks = [x for x in self.pending_tasks if x not in removed_from_pending]
 
