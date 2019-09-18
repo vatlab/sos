@@ -296,7 +296,7 @@ class TaskEngine(threading.Thread):
                 n_submitted = 0
                 slot = []
                 slots = []
-                removed_from_pending = {}
+                removed_from_pending = set()
                 with threading.Lock():
                     for idx, tid in enumerate(self.pending_tasks):
                         if self.task_status[tid] == 'running':
