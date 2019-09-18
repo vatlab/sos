@@ -292,16 +292,15 @@ class TaskEngine(threading.Thread):
                 # submit at most self.max_running_jobs - num_active_tasks tasks
                 n_submitted = 0
                 slot = []
+                removed_from_pending = {}
                 for idx, tid in enumerate(self.pending_tasks):
                     if self.task_status[tid] == 'running':
                         env.logger.info(f'{tid} ``runnng``')
-                        with threading.Lock():
-                            self.pending_tasks.remove(tid)
+                        removed_from_pending.add(tid)
                         continue
                     elif tid in self.canceled_tasks:
                         # the job is canceled while being prepared to run
-                        with threading.Lock():
-                            self.pending_tasks.remove(tid)
+                        removed_from_pending.add(tid)
                         env.logger.info(f'{tid} ``canceled``')
                         continue
                     else:
@@ -316,9 +315,7 @@ class TaskEngine(threading.Thread):
                                 'TASK',
                                 f'Start submitting {s_tid} (status: {self.task_status.get(s_tid, "unknown")})'
                             )
-                        with threading.Lock():
-                            for s_tid in slot:
-                                self.pending_tasks.remove(s_tid)
+                        removed_from_pending.update(slot)
 
                         self.submitting_tasks[tuple(
                             slot)] = self._thread_workers.submit(
@@ -328,6 +325,11 @@ class TaskEngine(threading.Thread):
 
                     if n_submitted >= self.max_running_jobs - num_active_tasks:
                         break
+
+                 if removed_from_pending:
+                    with threading.Lock():
+                        self.pending_tasks = [x for x in self.pending_tasks if x not in removed_from_pending]
+
 
             elif self.running_tasks or self.running_pending_tasks:
                 if time.time() - self.last_report > 60:
