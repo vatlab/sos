@@ -14,11 +14,9 @@ from pygments.token import Keyword, Name
 from pygments.util import shebang_matches
 
 from ._version import __version__
-from .actions import get_actions
 from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS,
                      SOS_RUNTIME_OPTIONS, SOS_SECTION_HEADER,
                      SOS_SECTION_OPTIONS)
-from .utils import env
 
 
 class SoS_Lexer(PythonLexer):
@@ -35,6 +33,7 @@ class SoS_Lexer(PythonLexer):
     mimetypes = ['text/x-sos', 'application/x-sos']
 
     PythonLexer.tokens['root'].insert(0, (r'(^\w+)\s*:', Keyword.Namespace))
+    from .actions import get_actions
 
     EXTRA_KEYWORDS = set(SOS_INPUT_OPTIONS + SOS_OUTPUT_OPTIONS +
                          SOS_DEPENDS_OPTIONS + SOS_RUNTIME_OPTIONS +
@@ -152,11 +151,13 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
     else:
         with open(html_file, 'w') as out:
             out.write(html_content)
+        from .utils import env
         env.logger.info(f'SoS script saved to {html_file}')
         #
     if args and args.view:
         import webbrowser
         url = f'file://{os.path.abspath(html_file)}'
+        from .utils import env
         env.logger.info(f'Viewing {url} in a browser')
         webbrowser.open(url, new=2)
         # in case the html file is temporary, give the browser sometime to load it
