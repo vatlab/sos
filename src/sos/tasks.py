@@ -137,7 +137,7 @@ class MasterTaskParams(TaskParams):
                     # If there are multiple nodes and multiple workers, there are
                     # n_workers * n_nodes workers at the same time, so the jobs
                     # will be completed in n_batches
-                    n_batches = math.ceil(len((self.task_stack) + 1) / (n_workers * n_nodes))
+                    n_batches = math.ceil((len(self.task_stack) + 1) / (n_workers * n_nodes))
 
                     if key == 'walltime':
                         # the real walltime would be the total time on one node
