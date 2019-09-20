@@ -95,6 +95,9 @@ class ProcessMonitor(threading.Thread):
                     # the job should be killed
                     p = psutil.Process(self.pid)
                     p.kill()
+                    if sts != 'aborted':
+                        # mark the task file
+                        tf.status = 'aborted'
                 # most of the time we only update
                 if counter % self.resource_monitor_interval:
                     os.utime(self.pulse_file, None)

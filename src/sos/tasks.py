@@ -998,14 +998,14 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         # and the status is still showing as running, something is wrong.
         # if there is no pulse file .
         tf.status = 'aborted'
-        with open(
-                os.path.join(
-                    os.path.expanduser('~'), '.sos', 'tasks', task + '.err'),
-                'a') as err:
-            err.write(
-                f'Task {task} considered as aborted due to missing pulse file.')
-        env.logger.warning(
-            f'Task {task} considered as aborted due to missing pulse file.')
+        # with open(
+        #         os.path.join(
+        #             os.path.expanduser('~'), '.sos', 'tasks', task + '.err'),
+        #         'a') as err:
+        #     err.write(
+        #         f'Task {task} considered as aborted due to missing pulse file.')
+        # env.logger.warning(
+        #     f'Task {task} considered as aborted due to missing pulse file.')
         tf.add_outputs()
         return dict(
             status='aborted',
@@ -1584,6 +1584,7 @@ def kill_task(task):
         err.write(f'Task {task} killed by sos kill command or task engine.')
     tf.add_outputs()
     TaskFile(task).status = 'aborted'
+    remove_task_files(task, ['.out', '.err', '.pulse', '.sh', '.job_id'])
     return 'aborted'
 
 
