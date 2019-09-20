@@ -928,7 +928,10 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
 
     tf = TaskFile(task)
     status = tf.status
-    if status in ['failed', 'completed', 'aborted']:
+
+    pulse_file = os.path.join(
+        os.path.expanduser('~'), '.sos', 'tasks', task + '.pulse')
+    if status in ['failed', 'completed'] or (status == 'aborted' and not os.path.isfile(pulse_file)):
         # thse are terminal states. We simply return them
         # only change of the task file will trigger recheck of status
         stdout_file = os.path.join(
@@ -947,9 +950,6 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         }
         return dict(status=status, files=status_files)
 
-    pulse_file = os.path.join(
-        os.path.expanduser('~'), '.sos', 'tasks', task + '.pulse')
-
     # check the existence and validity of .pulse file
     if os.path.isfile(pulse_file):
         try:
@@ -967,27 +967,34 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             elapsed = time.time() - status_files[pulse_file]
             if elapsed < 60:
                 return dict(status='running', files=status_files)
-
-            # assume aborted
-            tf.status = 'aborted'
-            with open(
+            elif elapsed > 600:
+                tf.status = 'aborted'
+                tf.add_outputs()
+                remove_task_files(task, ['.out', '.err', '.pulse', '.sh', '.job_id'])
+                return dict(
+                    status='aborted',
+                    files={
+                        task_file: os.stat(task_file).st_mtime,
+                        pulse_file: 0
+                    })
+            else:
+                with open(
                     os.path.join(
                         os.path.expanduser('~'), '.sos', 'tasks',
                         task + '.err'), 'a') as err:
-                err.write(
-                    f'Task {task} considered as aborted due to inactivity for more than {int(elapsed)} seconds.'
+                    err.write(
+                        f'Task {task} is considered aborted due to inactivity for more than {int(elapsed)} seconds.'
+                    )
+                env.logger.warning(
+                    f'Task {task} is considered aborted due to inactivity for more than {int(elapsed)} seconds.'
                 )
-            env.logger.warning(
-                f'Task {task} considered as aborted due to inactivity for more than {int(elapsed)} seconds.'
-            )
 
-            tf.add_outputs()
-            return dict(
-                status='aborted',
-                files={
-                    task_file: os.stat(task_file).st_mtime,
-                    pulse_file: 0
-                })
+                return dict(
+                    status='aborted',
+                    files={
+                        task_file: os.stat(task_file).st_mtime,
+                        pulse_file: os.stat(pulse_file).st_mtime
+                    })
         except:
             # the pulse file could disappear when the job is completed.
             if task_changed():
