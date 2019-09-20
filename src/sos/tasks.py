@@ -109,9 +109,6 @@ class MasterTaskParams(TaskParams):
                         '_runtime'][key] is not None:
                     self.sos_dict['_runtime'][key] = params.sos_dict[
                         '_runtime'][key]
-                elif key == 'cores' and n_workers > 1:
-                    params.sos_dict['_runtime'][key] = 1
-                    self.sos_dict['_runtime'][key] = 1
             self.sos_dict['step_name'] = params.sos_dict['step_name']
             self.tags = params.tags
         else:
@@ -153,6 +150,10 @@ class MasterTaskParams(TaskParams):
                             'name'] = f'{val0}_{len(self.task_stack) + 1}'
 
             self.tags.extend(params.tags)
+
+        # if cores is unspecified but there are more than one workers
+        if 'cores' not in self.sos_dict['_runtime'] and n_workers > 1:
+            self.sos_dict['_runtime']['cores'] = n_workers
         #
         # input, output, preserved vars etc
         for key in ['_input', '_output', '_depends']:
