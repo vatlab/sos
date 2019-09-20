@@ -384,8 +384,13 @@ class BaseTaskExecutor(object):
             results = self.execute_master_task_in_parallel(
                 params, master_runtime, sig_content, n_workers)
         elif n_nodes == 1:
-            results = self.execute_master_task_sequentially(
-                params, master_runtime, sig_content)
+            n_workers = n_workers if isinstance(n_workers, int) else n_workers[0]
+            if n_workers == 1:
+                results = self.execute_master_task_sequentially(
+                    params, master_runtime, sig_content)
+            else:
+                results = self.execute_master_task_in_parallel(
+                    params, master_runtime, sig_content, n_workers)
         else:
             if not n_workers:
                 n_workers = env.config['worker_procs']
