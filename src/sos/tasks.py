@@ -152,7 +152,7 @@ class MasterTaskParams(TaskParams):
             self.tags.extend(params.tags)
 
         # if cores is unspecified but there are more than one workers
-        if 'cores' not in self.sos_dict['_runtime'] and n_workers > 1:
+        if 'cores' not in self.sos_dict['_runtime'] and n_workers is not None and n_workers > 1:
             self.sos_dict['_runtime']['cores'] = n_workers
         #
         # input, output, preserved vars etc
