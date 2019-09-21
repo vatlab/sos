@@ -384,7 +384,14 @@ class BaseTaskExecutor(object):
             results = self.execute_master_task_in_parallel(
                 params, master_runtime, sig_content, n_workers)
         elif n_nodes == 1:
-            n_workers = n_workers if isinstance(n_workers, int) else n_workers[0]
+            if n_workers is None:
+                n_workers = 1
+            elif isinstance(n_workers, Sequence):
+                # single node, so n_workers can have at most 1 element
+                n_workers = n_workers[0]
+            elif not isinstance(n_workers, int):
+                raise ValueError(f'Illegal number of workers {n_workers}')
+
             if n_workers == 1:
                 results = self.execute_master_task_sequentially(
                     params, master_runtime, sig_content)
