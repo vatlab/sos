@@ -555,7 +555,7 @@ class BaseTaskExecutor(object):
         with open(self.master_stdout,
                   'ab') as out, open(self.master_stdout, 'ab') as err:
             out.write(
-                f'{tid}: {"completed" if result["ret_code"] == 0 else "failed"}\n'
+                f'\n--------------------------------\n{tid}: {"completed" if result["ret_code"] == 0 else "failed"}\n'
                 .encode())
             if 'output' in result:
                 out.write(f'output: {result["output"]}\n'.encode())
@@ -573,9 +573,9 @@ class BaseTaskExecutor(object):
                 os.path.expanduser('~'), '.sos', 'tasks', tid + '.soserr')
             if 'exception' in result:
                 err.write(str(result['exception']).encode())
-            err.write(
-                f'{tid}: {"completed" if result["ret_code"] == 0 else "failed"}\n'
-                .encode())
+            # err.write(
+            #     f'{tid}: {"completed" if result["ret_code"] == 0 else "failed"}\n'
+            #     .encode())
             if os.path.isfile(sub_err):
                 with open(sub_err, 'rb') as serr:
                     err.write(serr.read())
