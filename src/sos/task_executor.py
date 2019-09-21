@@ -103,7 +103,7 @@ class BaseTaskExecutor(object):
             with open(
                     os.path.join(
                         os.path.expanduser('~'), '.sos', 'tasks',
-                        task_id + '.err'), 'a') as err:
+                        task_id + '.soserr'), 'a') as err:
                 err.write(f'Task {task_id} exits with code {res["ret_code"]}')
 
         if res.get('skipped', False):
@@ -189,13 +189,13 @@ class BaseTaskExecutor(object):
         env.sos_dict.set(
             '__std_out__',
             os.path.join(
-                os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out'))
+                os.path.expanduser('~'), '.sos', 'tasks', task_id + '.sosout'))
         env.sos_dict.set(
             '__std_err__',
             os.path.join(
-                os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'))
+                os.path.expanduser('~'), '.sos', 'tasks', task_id + '.soserr'))
         env.logfile = os.path.join(
-            os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
+            os.path.expanduser('~'), '.sos', 'tasks', task_id + '.soserr')
         # clear the content of existing .out and .err file if exists, but do not create one if it does not exist
         if os.path.exists(env.sos_dict['__std_out__']):
             open(env.sos_dict['__std_out__'], 'w').close()
@@ -336,7 +336,7 @@ class BaseTaskExecutor(object):
             with open(
                     os.path.join(
                         os.path.expanduser('~'), '.sos', 'tasks',
-                        task_id + '.err'), 'a') as err:
+                        task_id + '.soserr'), 'a') as err:
                 err.write(msg + '\n')
             return {
                 'ret_code': 1,
@@ -362,9 +362,9 @@ class BaseTaskExecutor(object):
         '''
         # used by self._collect_subtask_outputs
         self.master_stdout = os.path.join(
-            os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out')
+            os.path.expanduser('~'), '.sos', 'tasks', task_id + '.sosout')
         self.master_stderr = os.path.join(
-            os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
+            os.path.expanduser('~'), '.sos', 'tasks', task_id + '.soserr')
 
         if os.path.exists(self.master_stdout):
             open(self.master_stdout, 'w').close()
@@ -560,7 +560,7 @@ class BaseTaskExecutor(object):
             if 'output' in result:
                 out.write(f'output: {result["output"]}\n'.encode())
             sub_out = os.path.join(
-                os.path.expanduser('~'), '.sos', 'tasks', tid + '.out')
+                os.path.expanduser('~'), '.sos', 'tasks', tid + '.sosout')
             if os.path.isfile(sub_out):
                 with open(sub_out, 'rb') as sout:
                     out.write(sout.read())
@@ -570,7 +570,7 @@ class BaseTaskExecutor(object):
                     env.logger.warning(f'Failed to remove {sub_out}: {e}')
 
             sub_err = os.path.join(
-                os.path.expanduser('~'), '.sos', 'tasks', tid + '.err')
+                os.path.expanduser('~'), '.sos', 'tasks', tid + '.soserr')
             if 'exception' in result:
                 err.write(str(result['exception']).encode())
             err.write(
@@ -586,7 +586,7 @@ class BaseTaskExecutor(object):
 
         # remove other files as well
         try:
-            remove_task_files(tid, ['.out', '.err'])
+            remove_task_files(tid, ['.sosout', '.soserr', '.out', '.err'])
         except Exception as e:
             env.logger.debug(f'Failed to remove files {tid}: {e}')
 

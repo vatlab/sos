@@ -377,20 +377,26 @@ class TaskFile(object):
         fh.seek(0, 0)
         fh.write(struct.pack(self.header_fmt, *header))
 
-    def _get_content(self, ext: str):
-        filename = self.task_file[:-5] + ext
-        if not os.path.isfile(filename):
+    def _get_content(self, exts):
+        if isinstance(exts, str):
+            exts = [exts]
+        content = b''
+        for ext in exts:
+            filename = self.task_file[:-5] + ext
+            if not os.path.isfile(filename):
+                continue
+            with open(filename, 'rb') as fh:
+                content += fh.read()
+        if not content:
             return b''
-        with open(filename, 'rb') as fh:
-            content = fh.read()
         return lzma.compress(content)
 
     def add_outputs(self, keep_result=False):
         # get header
         shell = self._get_content('.sh')
         pulse = self._get_content('.pulse')
-        stdout = self._get_content('.out')
-        stderr = self._get_content('.err')
+        stdout = self._get_content(['.out', '.sosout'])
+        stderr = self._get_content(['.err', '.soserr'])
         with fasteners.InterProcessLock(
                 os.path.join(env.temp_dir, self.task_id + '.lck')):
             with open(self.task_file, 'r+b') as fh:
@@ -728,7 +734,7 @@ class TaskFile(object):
                 # terminal status
                 remove_task_files(
                     self.task_id,
-                    ['.sh', '.job_id', '.out', '.err', '.pulse'])
+                    ['.sh', '.job_id', '.sosout', '.soserr', '.out', '.err', '.pulse'])
 
     status = property(_get_status, _set_status)
 
@@ -932,13 +938,13 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         # thse are terminal states. We simply return them
         # only change of the task file will trigger recheck of status
         stdout_file = os.path.join(
-            os.path.expanduser('~'), '.sos', 'tasks', task + '.out')
+            os.path.expanduser('~'), '.sos', 'tasks', task + '.sosout')
         stderr_file = os.path.join(
-            os.path.expanduser('~'), '.sos', 'tasks', task + '.err')
+            os.path.expanduser('~'), '.sos', 'tasks', task + '.soserr')
         # 1242
         if os.path.isfile(stdout_file) or os.path.isfile(stderr_file):
             tf.add_outputs(keep_result=True)
-        remove_task_files(task, ['.out', '.err'])
+        remove_task_files(task, ['.sosout', '.soserr', '.out', '.err'])
         # stdout and stderr files should not exist
         status_files = {
             task_file: os.stat(task_file).st_mtime,
@@ -973,7 +979,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             with open(
                     os.path.join(
                         os.path.expanduser('~'), '.sos', 'tasks',
-                        task + '.err'), 'a') as err:
+                        task + '.soserr'), 'a') as err:
                 err.write(
                     f'Task {task} considered as aborted due to inactivity for more than {int(elapsed)} seconds.'
                 )
@@ -1000,7 +1006,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         tf.status = 'aborted'
         with open(
                 os.path.join(
-                    os.path.expanduser('~'), '.sos', 'tasks', task + '.err'),
+                    os.path.expanduser('~'), '.sos', 'tasks', task + '.soserr'),
                 'a') as err:
             err.write(
                 f'Task {task} considered as aborted due to missing pulse file.')
@@ -1309,6 +1315,10 @@ def print_task_status(tasks,
                         rhead = 'stderr'
                     elif rhead == '.out':
                         rhead = 'stdout'
+                    elif rhead == '.soserr':
+                        rhead = 'sos error'
+                    elif rhead == '.sosout':
+                        rhead = 'sos output'
                     row(
                         rhead, '(empty)' if numLines == 0 else
                         f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}'
@@ -1504,19 +1514,22 @@ showResourceFigure_''' + t + '''()
                         print(summarizeExecution(t, pulse.read(), status=s))
 
             # if there are other files such as job file, print them.
-            def show_file(task, ext):
-                f = os.path.join(
-                    os.path.expanduser('~'), '.sos', 'tasks', task + ext)
-                if not os.path.isfile(f):
-                    return
-                print(
-                    f'{os.path.basename(f)}:\n{"="*(len(os.path.basename(f))+1)}'
-                )
-                try:
-                    with open(f) as fc:
-                        print(fc.read())
-                except Exception:
-                    print('Binary file')
+            def show_file(task, exts):
+                if isinstance(exts, str):
+                    exts = [exts]
+                for ext in exts:
+                    f = os.path.join(
+                        os.path.expanduser('~'), '.sos', 'tasks', task + ext)
+                    if not os.path.isfile(f):
+                        return
+                    print(
+                        f'{os.path.basename(f)}:\n{"="*(len(os.path.basename(f))+1)}'
+                    )
+                    try:
+                        with open(f) as fc:
+                            print(fc.read())
+                    except Exception:
+                        print('Binary file')
 
             if tf.has_shell():
                 print('execution script:\n================\n' + tf.shell)
@@ -1525,11 +1538,11 @@ showResourceFigure_''' + t + '''()
             if tf.has_stdout():
                 print('standout output:\n================\n' + tf.stdout)
             else:
-                show_file(t, '.out')
+                show_file(t, ['.sosout', '.out'])
             if tf.has_stderr():
                 print('standout error:\n================\n' + tf.stderr)
             else:
-                show_file(t, '.err')
+                show_file(t, ['.soserr', '.err'])
 
     # remove jobs that are older than 1 month
     if to_be_removed:
@@ -1579,12 +1592,12 @@ def kill_task(task):
         return 'completed'
     with open(
             os.path.join(
-                os.path.expanduser('~'), '.sos', 'tasks', task + '.err'),
+                os.path.expanduser('~'), '.sos', 'tasks', task + '.soserr'),
             'a') as err:
         err.write(f'Task {task} killed by sos kill command or task engine.')
     tf.add_outputs()
     TaskFile(task).status = 'aborted'
-    remove_task_files(task, ['.out', '.err', '.pulse', '.sh', '.job_id'])
+    remove_task_files(task, ['.sosout', '.soserr', '.out', '.err', '.pulse', '.sh', '.job_id'])
     return 'aborted'
 
 
