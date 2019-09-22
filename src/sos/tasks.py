@@ -1536,11 +1536,11 @@ showResourceFigure_''' + t + '''()
             else:
                 show_file(t, '.sh')
             if tf.has_stdout():
-                print('standout output:\n================\n' + tf.stdout)
+                print('standard output:\n================\n' + tf.stdout)
             else:
                 show_file(t, ['.sosout', '.out'])
             if tf.has_stderr():
-                print('standout error:\n================\n' + tf.stderr)
+                print('standard error:\n================\n' + tf.stderr)
             else:
                 show_file(t, ['.soserr', '.err'])
 

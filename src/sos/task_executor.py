@@ -178,7 +178,7 @@ class BaseTaskExecutor(object):
                 sig, sig_content.get(task_id, {}), task_id, quiet):
             #env.logger.info(f'{task_id} ``skipped``')
             return self._collect_task_result(
-                task_id, sos_dict, skipped=True, signature=sig)
+                task_id, sos_dict, params.tags, skipped=True, signature=sig)
 
         # if we are to really execute the task, touch the task file so that sos status shows correct
         # execution duration.
@@ -312,6 +312,7 @@ class BaseTaskExecutor(object):
             return {
                 'ret_code': 0,
                 'task': task_id,
+                'tags': params.tags,
                 'input': sos_targets([]),
                 'output': env.sos_dict['_output'],
                 'depends': sos_targets([]),
@@ -324,6 +325,7 @@ class BaseTaskExecutor(object):
             return {
                 'ret_code': e.returncode,
                 'task': task_id,
+                'tags': params.tags,
                 'shared': {},
                 'exception': RuntimeError(e.stderr)
             }
@@ -342,12 +344,13 @@ class BaseTaskExecutor(object):
                 'ret_code': 1,
                 'exception': RuntimeError(msg),
                 'task': task_id,
+                'tags': params.tags,
                 'shared': {}
             }
         finally:
             os.chdir(orig_dir)
 
-        return self._collect_task_result(task_id, sos_dict, signature=sig)
+        return self._collect_task_result(task_id, sos_dict, params.tags, signature=sig)
 
     def execute_master_task(self, task_id, params, master_runtime, sig_content):
         '''
@@ -552,18 +555,22 @@ class BaseTaskExecutor(object):
         Append result returned from subtask to stdout and stderr streams
         '''
         tid = result['task']
+        tags = ' '.join(result.get('tags', []))
         with open(self.master_stdout,
                   'ab') as out, open(self.master_stdout, 'ab') as err:
             out.write(
-                f'\n--------------------------------\n{tid}: {"completed" if result["ret_code"] == 0 else "failed"}\n'
+                f'\n> {tid}\t{tags}\t{"completed" if result["ret_code"] == 0 else "failed"}\n'
                 .encode())
-            if 'output' in result:
-                out.write(f'output: {result["output"]}\n'.encode())
+            if 'output' in result and result['output']:
+                out.write(f'output files:\n{result["output"]}\n'.encode())
             sub_out = os.path.join(
                 os.path.expanduser('~'), '.sos', 'tasks', tid + '.sosout')
             if os.path.isfile(sub_out):
                 with open(sub_out, 'rb') as sout:
-                    out.write(sout.read())
+                    out_content = sout.read()
+                    if out_content:
+                        out.write(b"stdout:\n")
+                        out.write(out_content)
                 try:
                     os.remove(sub_out)
                 except Exception as e:
@@ -578,7 +585,10 @@ class BaseTaskExecutor(object):
             #     .encode())
             if os.path.isfile(sub_err):
                 with open(sub_err, 'rb') as serr:
-                    err.write(serr.read())
+                    err_content = serr.read()
+                    if err_content:
+                        out.write(b"stderr:\n")
+                        err.write(err_content)
                 try:
                     os.remove(sub_err)
                 except Exception as e:
@@ -679,6 +689,7 @@ class BaseTaskExecutor(object):
     def _collect_task_result(self,
                              task_id,
                              sos_dict,
+                             tags,
                              skipped=False,
                              signature=None):
         shared = {}
@@ -768,6 +779,7 @@ class BaseTaskExecutor(object):
         return {
             'ret_code': 0,
             'task': task_id,
+            'tags': tags,
             'input': sos_dict['_input'],
             'output': sos_dict['_output'],
             'depends': sos_dict['_depends'],
