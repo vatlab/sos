@@ -568,20 +568,19 @@ class BaseTaskExecutor(object):
         tid = result['task']
         tags = ' '.join(result.get('tags', []))
         with open(self.master_stdout,
-                  'ab') as out, open(self.master_stdout, 'ab') as err:
-            out.write(
-                f'\n> {tid}\t{tags}\t{"completed" if result["ret_code"] == 0 else "failed"}\n'
-                .encode())
+                  'ab') as out, open(self.master_stderr, 'ab') as err:
+            dest = out if result["ret_code"] == 0 else err
+            dest.write(f'> {tid}\t{tags}\t{"completed" if result["ret_code"] == 0 else "failed"}\n'.encode())
             if 'output' in result and result['output']:
-                out.write(f'output files:\n{result["output"]}\n'.encode())
+                dest.write(f'output files:\n{result["output"]}\n'.encode())
             sub_out = os.path.join(
                 os.path.expanduser('~'), '.sos', 'tasks', tid + '.sosout')
             if os.path.isfile(sub_out):
                 with open(sub_out, 'rb') as sout:
                     out_content = sout.read()
                     if out_content:
-                        out.write(b"stdout:\n")
-                        out.write(out_content)
+                        dest.write(b"stdout:\n")
+                        dest.write(out_content)
                 try:
                     os.remove(sub_out)
                 except Exception as e:
@@ -590,7 +589,7 @@ class BaseTaskExecutor(object):
             sub_err = os.path.join(
                 os.path.expanduser('~'), '.sos', 'tasks', tid + '.soserr')
             if 'exception' in result:
-                err.write(str(result['exception']).encode())
+                dest.write(str(result['exception']).encode())
             # err.write(
             #     f'{tid}: {"completed" if result["ret_code"] == 0 else "failed"}\n'
             #     .encode())
@@ -598,13 +597,13 @@ class BaseTaskExecutor(object):
                 with open(sub_err, 'rb') as serr:
                     err_content = serr.read()
                     if err_content:
-                        out.write(b"stderr:\n")
-                        err.write(err_content)
+                        dest.write(b"stderr:\n")
+                        dest.write(err_content)
                 try:
                     os.remove(sub_err)
                 except Exception as e:
                     env.logger.warning(f'Failed to remove {sub_err}: {e}')
-
+            dest.write(b'\n')
         # remove other files as well
         try:
             remove_task_files(tid, ['.sosout', '.soserr', '.out', '.err'])
