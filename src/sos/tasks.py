@@ -276,9 +276,8 @@ class TaskFile(object):
         # updating job_file will not change timestamp because it will be Only
         # the update of runtime info
         now = time.time()
+        # we keep in both places because params.tags is the only place to have it for subtasks
         tags = params.tags
-        # tags is not saved in params
-        del params.tags
         params_block = lzma.compress(pickle.dumps(params))
         #env.logger.error(f'saving {self.task_id} params of size {len(params_block)}')
         header = self.TaskHeader(
