@@ -70,23 +70,31 @@ class MasterTaskParams(TaskParams):
 
     def _parse_num_workers(self, num_workers):
         # return number of nodes and workers
+
         if isinstance(num_workers, Sequence) and len(num_workers) >= 1:
             val = str(num_workers[0])
-            if ':' in val:
-                val = val.rsplit(':', 1)[-1]
-            n_workers = int(val.rsplit(':', 1)[-1])
-            return len(num_workers), (None if n_workers <= 0 else n_workers)
+            n_workers = val.rsplit(':', 1)[-1] if ':' in val else val
+            n_nodes = len(num_workers)
         elif isinstance(num_workers, str):
-            if ':' in num_workers:
-                num_workers = num_workers.rsplit(':', 1)[-1]
-            n_workers = int(num_workers.rsplit(':', 1)[-1])
-            return 1, None if n_workers <= 0 else n_workers
-        elif isinstance(num_workers, int) and num_workers >= 1:
-            return 1, num_workers
+            n_workers = num_workers.rsplit(':', 1)[-1] if ':' in num_workers else num_workers
+            n_nodes = 1
+        elif isinstance(num_workers, int):
+            n_workers = num_workers
+            n_nodes = 1
         elif num_workers is None:
-            return None, None
+            n_workers = 1
+            n_nodes = 1
         else:
             raise RuntimeError(f"Unacceptable value for parameter trunk_workers {num_workers}")
+
+        try:
+            n_workers = int(n_workers)
+        except:
+            raise ValueError(f'Unacceptable value for option trunk_workers {num_workers}')
+        if n_workers <= 0:
+            raise ValueError(f'Unacceptable value for option trunk_workers {num_workers}')
+
+        return n_nodes, n_workers
 
     def num_tasks(self):
         return len(self.task_stack)
@@ -123,31 +131,23 @@ class MasterTaskParams(TaskParams):
                 if val0 is None:
                     continue
 
-                if n_workers is None:
-                    # if n_worker is not specified, but we have walltime etc, we should warn user
-                    if any(key == x for x in ('walltime', 'mem', 'cores')):
-                        env.logger.debug(f"{key}={self.sos_dict['_runtime'][key]} is not adjusted and might be wrong due to unspecified number of workers ({self.sos_dict['_runtime']['num_workers']})")
-                    if key == 'name':
-                        self.sos_dict['_runtime'][
-                            'name'] = f'{val0}_{len(self.task_stack) + 1}'
-                else:
-                    # If there are multiple nodes and multiple workers, there are
-                    # n_workers * n_nodes workers at the same time, so the jobs
-                    # will be completed in n_batches
-                    n_batches = math.ceil((len(self.task_stack) + 1) / (n_workers * n_nodes))
+                # If there are multiple nodes and multiple workers, there are
+                # n_workers * n_nodes workers at the same time, so the jobs
+                # will be completed in n_batches
+                n_batches = math.ceil((len(self.task_stack) + 1) / (n_workers * n_nodes))
 
-                    if key == 'walltime':
-                        # the real walltime would be the total time on one node
-                        self.sos_dict['_runtime']['walltime'] = format_HHMMSS(
-                            n_batches * expand_time(val0))
-                    elif key == 'mem':
-                        # number of columns * mem for each + 100M for master
-                        self.sos_dict['_runtime']['mem'] = n_workers * expand_size(val0)
-                    elif key == 'cores':
-                        self.sos_dict['_runtime']['cores'] = n_workers * val0
-                    elif key == 'name':
-                        self.sos_dict['_runtime'][
-                            'name'] = f'{val0}_{len(self.task_stack) + 1}'
+                if key == 'walltime':
+                    # the real walltime would be the total time on one node
+                    self.sos_dict['_runtime']['walltime'] = format_HHMMSS(
+                        n_batches * expand_time(val0))
+                elif key == 'mem':
+                    # number of columns * mem for each + 100M for master
+                    self.sos_dict['_runtime']['mem'] = n_workers * expand_size(val0)
+                elif key == 'cores':
+                    self.sos_dict['_runtime']['cores'] = n_workers * val0
+                elif key == 'name':
+                    self.sos_dict['_runtime'][
+                        'name'] = f'{val0}_{len(self.task_stack) + 1}'
 
             self.tags.extend(params.tags)
 
