@@ -297,6 +297,17 @@ class BaseTaskExecutor(object):
                     # step process
                     SoS_exec(task)
 
+                if 'logfile' in params.sos_dict['_runtime']:
+                    logfile = params.sos_dict['_runtime']['logfile']
+                    if not os.path.isfile(logfile):
+                        raise ValueError(f'logfile {logfile} does not exist after the completion of task')
+                    try:
+                        with open(logfile, 'r') as log:
+                            my_stdout.write(f'logfile: {logfile}\n')
+                            my_stdout.write(log.read())
+                    except Exception as e:
+                        raise ValueError(f'Failed to collect logfile {logfile} after the completion of task: {e}')
+
             if quiet or env.config['run_mode'] != 'run':
                 env.logger.debug(f'{task_id} ``completed``')
             else:

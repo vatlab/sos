@@ -18,7 +18,7 @@ SOS_DEPENDS_OPTIONS: List = []
 SOS_RUNTIME_OPTIONS = [
     'workdir', 'concurrent', 'active', 'walltime', 'nodes', 'cores', 'mem',
     'shared', 'env', 'prepend_path', 'queue', 'to_host', 'from_host',
-    'map_vars', 'name', 'trunk_size', 'trunk_workers', 'tags'
+    'map_vars', 'name', 'trunk_size', 'trunk_workers', 'tags', 'logfile'
 ]
 SOS_ACTION_OPTIONS = [
     'workdir', 'container', 'engine', 'docker_image', 'docker_file', 'active',
