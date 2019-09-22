@@ -980,10 +980,10 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                         os.path.expanduser('~'), '.sos', 'tasks',
                         task + '.soserr'), 'a') as err:
                 err.write(
-                    f'Task {task} considered as aborted due to inactivity for more than {int(elapsed)} seconds.'
+                    f'Task {task} inactive for more than {int(elapsed)} seconds, might have been killed.'
                 )
             env.logger.warning(
-                f'Task {task} considered as aborted due to inactivity for more than {int(elapsed)} seconds.'
+                f'Task {task} inactive for more than {int(elapsed)} seconds, might have been killed.'
             )
 
             tf.add_outputs()
