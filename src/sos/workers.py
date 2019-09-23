@@ -516,9 +516,7 @@ class WorkerManager(object):
             self._step_requests[port] = msg
             self.report(f'Step {port} requested')
 
-        # start a worker is necessary (max_procs could be incorrectly set to be 0 or less)
-        # if we are just starting, so do not start two workers
-        if self._n_processed > 0 and not self._available_ports and sum(self._num_workers) < sum(self._max_workers):
+        if sum(self._num_workers) < sum(self._max_workers):
             self.start_worker()
 
     def worker_available(self, blocking, excluded):
