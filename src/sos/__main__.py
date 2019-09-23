@@ -1107,8 +1107,7 @@ def get_execute_parser(desc_only=False):
         metavar='SIGMODE',
         dest='sig_mode',
         help='''How runtime signature would be handled, which can be "default"
-            (save and use signature, default mode in batch mode), "ignore"
-            (ignore runtime signature, default mode in interactive mode),
+            (save and use signature, default mode in batch mode),
             "force" (ignore existing signature and overwrite them while
             executing the workflow), "build" (build new or overwrite
             existing signature from existing environment and output files),
@@ -1116,7 +1115,9 @@ def get_execute_parser(desc_only=False):
             "skip" and "distributed" are two experimental modes with "skip" for
             bypassing substep as long as step output exists and later than input
             files and "distributed" for sending tasks to subworkers for signature
-            validation. Please refer to online documentation for details about
+            validation. Tasks will always save sigatures. For compatibility
+            reasons, "ignore" mode is accepted but is treated the same as
+            "default". Please refer to online documentation for details about
             the use of runtime signatures.''')
     parser.add_argument(
         '-v',
@@ -1192,7 +1193,7 @@ def cmd_execute(args, workflow_args):
             'config_file':
                 args.config,
             'sig_mode':
-                'default' if args.sig_mode is None else args.sig_mode,
+                'default' if args.sig_mode in (None, "ignore") else args.sig_mode,
             'run_mode':
                 'dryrun' if args.dryrun else
                 (args.run_mode if args.run_mode else 'run'),
