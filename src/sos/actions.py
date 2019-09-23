@@ -263,7 +263,7 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                         f'workdir option should be a path of type str or path, {kwargs["workdir"]} provided'
                     )
                 if not os.path.isdir(os.path.expanduser(kwargs['workdir'])):
-                    os.makedirs(os.path.expanduser(kwargs['workdir']))
+                    os.makedirs(os.path.expanduser(kwargs['workdir']), exist_ok=True)
                 try:
                     olddir = os.getcwd()
                     os.chdir(os.path.expanduser(kwargs['workdir']))
@@ -716,7 +716,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
     dest_dir, filename = os.path.split(dest)
     #
     if not os.path.isdir(dest_dir):
-        os.makedirs(dest_dir)
+        os.makedirs(dest_dir, exist_ok=True)
     if not os.path.isdir(dest_dir):
         raise RuntimeError(
             f'Failed to create destination directory to download {URL}')
