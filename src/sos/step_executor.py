@@ -833,10 +833,8 @@ class Base_Step_Executor:
             if not wait:
                 # 1213
                 cur_index = env.sos_dict['_index']
-                pending_substeps = (
-                    cur_index -
-                    self._completed_concurrent_substeps)
-                if pending_substeps < 100:
+                pending_substeps = cur_index - self._completed_concurrent_substeps + 1
+                if pending_substeps < (100 if isinstance(self.concurrent_substep, bool) else self.concurrent_substep):
                     if not self.result_pull_socket.poll(0):
                         return
                 elif 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
@@ -1410,8 +1408,9 @@ class Base_Step_Executor:
                     except StopIteration as e:
                         self._substeps = e.value
                     #
-                    if 'concurrent' in kwargs and kwargs['concurrent'] is False:
-                        self.concurrent_substep = False
+                    if 'concurrent' in kwargs and self.concurrent_substep:
+                        # concurrent can be True/False or an integer
+                        self.concurrent_substep = kwargs['concurrent']
                 except (UnknownTarget, RemovedTarget) as e:
                     runner = self.handle_unknown_target(e)
                     try:
