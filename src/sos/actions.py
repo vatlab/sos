@@ -922,10 +922,10 @@ def downloadURL(URL, dest, decompress=False, index=None):
 
 @SoS_Action(
     acceptable_args=['URLs', 'workdir', 'dest_dir', 'dest_file', 'decompress', 'max_jobs'])
-def download(URLs, workdir='.', dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
+def download(URLs, dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
     '''Download files from specified URL, which should be space, tab or
     newline separated URLs. The files will be downloaded to specified destination.
-    Options "workdir" and "dest_dir" (deprecated) specify the destination directory,
+    Option "dest_dir" specify the destination directory,
     and "dest_file" specify the output filename, which will otherwise be the same
     specified in the URL. If `filename.md5` files are downloaded, they are used to
     validate downloaded `filename`. If "decompress=True", compressed
@@ -949,9 +949,6 @@ def download(URLs, workdir='.', dest_dir='.', dest_file=None, decompress=False, 
     if dest_file is not None and len(urls) != 1:
         raise RuntimeError(
             'Only one URL is allowed if a destination file is specified.')
-    # workdir has is the new option for dest_dir
-    if workdir != '.':
-        dest_dir = workdir
     #
     if dest_file is None:
         filenames = []
