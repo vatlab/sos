@@ -762,6 +762,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                 else:
                     prog.set_description(message +
                                          ':\033[91m Signature mismatch\033[0m')
+                    target.write_sig()
                     prog.update()
         #
         prog = ProgressBar(
@@ -920,12 +921,14 @@ def downloadURL(URL, dest, decompress=False, index=None):
 
 
 @SoS_Action(
-    acceptable_args=['URLs', 'dest_dir', 'dest_file', 'decompress', 'max_jobs'])
-def download(URLs, dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
+    acceptable_args=['URLs', 'workdir', 'dest_dir', 'dest_file', 'decompress', 'max_jobs'])
+def download(URLs, workdir='.', dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
     '''Download files from specified URL, which should be space, tab or
-    newline separated URLs. The files will be downloaded to specified
-    destination. If `filename.md5` files are downloaded, they are used to
-    validate downloaded `filename`. Unless otherwise specified, compressed
+    newline separated URLs. The files will be downloaded to specified destination.
+    Options "workdir" and "dest_dir" (deprecated) specify the destination directory,
+    and "dest_file" specify the output filename, which will otherwise be the same
+    specified in the URL. If `filename.md5` files are downloaded, they are used to
+    validate downloaded `filename`. If "decompress=True", compressed
     files are decompressed. If `max_jobs` is given, a maximum of `max_jobs`
     concurrent download jobs will be used for each domain. This restriction
     applies to domain names and will be applied to multiple download
@@ -946,6 +949,9 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
     if dest_file is not None and len(urls) != 1:
         raise RuntimeError(
             'Only one URL is allowed if a destination file is specified.')
+    # workdir has is the new option for dest_dir
+    if workdir != '.':
+        dest_dir = workdir
     #
     if dest_file is None:
         filenames = []
