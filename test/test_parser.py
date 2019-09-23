@@ -2045,6 +2045,31 @@ print(1)
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    def testSequentialSubsteps(self):
+        '''Test sequential execution of substeps'''
+        script = SoS_Script(r'''
+[10: shared='sum']
+sum = 0
+input: for_each=dict(i=range(4)), concurrent=False
+sum += i
+print(f'sum is {sum} at index {_index}')
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertEqual(env.sos_dict['sum'], 6)
+
+
+    def testLimitedConcurrency(self):
+        '''Set concurrent=INT'''
+
+        script = SoS_Script(r'''
+[10]
+input: for_each=dict(i=range(6)), concurrent=2
+print(i)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
     # unittest.TextTestRunner(, suite).run()
