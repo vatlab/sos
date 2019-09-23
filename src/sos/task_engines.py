@@ -240,7 +240,7 @@ class TaskEngine(threading.Thread):
                                             'update_only':
                                                 True,
                                             'tags':
-                                                self.task_info['tid'].get(
+                                                self.task_info[tid].get(
                                                     'tags', '')
                                         })
                                     else:
@@ -255,7 +255,7 @@ class TaskEngine(threading.Thread):
                                             'update_only':
                                                 True,
                                             'tags':
-                                                self.task_info['tid'].get(
+                                                self.task_info[tid].get(
                                                     'tags', '')
                                         })
                             else:
@@ -270,7 +270,7 @@ class TaskEngine(threading.Thread):
                                         'update_only':
                                             True,
                                         'tags':
-                                            self.task_info['tid'].get(
+                                            self.task_info[tid].get(
                                                 'tags', '')
                                     })
                                     self.task_status[tid] = 'failed'
@@ -386,7 +386,7 @@ class TaskEngine(threading.Thread):
                         'task_id': task_id,
                         'status': 'pending',
                         'update_only': False,
-                        'tags': self.task_info['tid'].get('tags', '')
+                        'tags': self.task_info[task_id].get('tags', '')
                     })
                     return 'running'
                 # there is a case when the job is already completed (complete-old), but
@@ -423,7 +423,7 @@ class TaskEngine(threading.Thread):
                 self.canceled_tasks.remove(task_id)
             self.task_status[task_id] = 'pending'
             try:
-                self.task_info['tid']['tags'] = TaskFile(task_id).tags
+                self.task_info[task_id]['tags'] = TaskFile(task_id).tags
             except:
                 # if task file does not exist, it is ok
                 pass
@@ -432,7 +432,7 @@ class TaskEngine(threading.Thread):
                 'task_id': task_id,
                 'status': 'pending',
                 'update_only': False,
-                'tags': self.task_info['tid'].get('tags', '')
+                'tags': self.task_info[task_id].get('tags', '')
             })
             return 'pending'
 
@@ -494,7 +494,7 @@ class TaskEngine(threading.Thread):
                         'status': status,
                         'update_only': True,
                         'start_time': self.task_info[task_id]['date'][1],
-                        'tags': self.task_info['tid'].get('tags', '')
+                        'tags': self.task_info[task_id].get('tags', '')
                     })
                 else:
                     if status == 'running':
@@ -510,7 +510,7 @@ class TaskEngine(threading.Thread):
                         'status': status,
                         'update_only': True,
                         'start_time': self.task_info[task_id]['date'][1],
-                        'tags': self.task_info['tid'].get('tags', '')
+                        'tags': self.task_info[task_id].get('tags', '')
                     })
             if status == 'new':
                 if task_id not in self.pending_tasks:
