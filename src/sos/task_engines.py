@@ -226,7 +226,14 @@ class TaskEngine(threading.Thread):
                     for k in self.submitting_tasks:
                         if not self.submitting_tasks[k].running():
                             submitted.append(k)
-                            if self.submitting_tasks[k].result():
+                            try:
+                                task_submitted = self.submitting_tasks[k].result()
+                            except Exception as e:
+                                from .utils import get_traceback
+                                env.log_to_file('TASK', f'failed to submit task {e}')
+                                env.logger.error(f'Failed to submit task {k}: {e}')
+                                task_submitted = False
+                            if task_submitted:
                                 for tid in k:
                                     if tid in self.canceled_tasks:
                                         # task is canceled while being prepared
