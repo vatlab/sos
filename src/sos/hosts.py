@@ -217,14 +217,14 @@ class LocalHost(object):
         if task_file != dest_task_file:
             shutil.copyfile(task_file, dest_task_file)
 
-    def check_output(self, cmd, under_workdir=False, pass_env=False):
+    def check_output(self, cmd, under_workdir=False, pass_env=False, **kwargs):
         # get the output of command
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
             cmd = cfg_interpolate(cmd)
             return subprocess.check_output(
-                cmd, shell=isinstance(cmd, str)).decode()
+                cmd, shell=isinstance(cmd, str), **kwargs).decode()
         except Exception as e:
             env.logger.warning(f'Check output of {cmd} failed: {e}')
             raise
@@ -816,7 +816,7 @@ class RemoteHost(object):
                 f'Failed to copy job {task_file} to {self.alias} using command {send_cmd}: {e}'
             )
 
-    def check_output(self, cmd: object, under_workdir=False, pass_env=False) -> object:
+    def check_output(self, cmd: object, under_workdir=False, pass_env=False, **kwargs) -> object:
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
@@ -833,7 +833,7 @@ class RemoteHost(object):
         if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file('TASK', f'Executing command ``{cmd}``')
         try:
-            return subprocess.check_output(cmd, shell=True).decode()
+            return subprocess.check_output(cmd, shell=True, **kwargs).decode()
         except Exception as e:
             env.logger.debug(f'Check output of {cmd} failed: {e}')
             raise
