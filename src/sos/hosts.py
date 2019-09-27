@@ -364,12 +364,17 @@ class RemoteHost(object):
         return '''rsync -a --no-g -e 'ssh ''' + self.cm_opts + ''' -p {port}' {host}:{source:e} "{dest:adep}"'''
 
     def _get_execute_cmd(self, under_workdir=True, pass_env=False) -> str:
+        # #1300
+        # due to the limitations of command line arguments of ssh, we cannot pass variables
+        # with values containing space and qutation marks, perhaps also other special characters.
+        # The following is not a robust solution to #1300 but I cannot think of a better method.
+        env_vars = ' '.join( [f'{x}={os.environ[x]}' for x in os.environ.keys() if not any(y in os.environ[x] for y in (' ', '"', "'" ))])
         return self.config.get(
             'execute_cmd', 'ssh ' + self.cm_opts +
             """ -q {host} -p {port} "bash --login -c '""" +
-            ('set -e $(env);' if pass_env else '') +
-            ('[ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && '
-             if under_workdir else '') + ''' {cmd}'" ''')
+            (env_vars if pass_env else '') +
+            (' [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && '
+             if under_workdir else ' ') + ''' {cmd}'" ''')
 
     def _get_query_cmd(self):
         return self.config.get(
