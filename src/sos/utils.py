@@ -1900,7 +1900,9 @@ def get_nodelist():
             ["scontrol", "show", "hostnames",
              os.environ['SLURM_NODELIST']]).decode()
         # Split using endline
-        args = [f'{x}:1' for x in hostsstr.split(os.linesep) if x.strip()]
+        # Split using endlinea, numer of cpus can be in the format of 4(x2)
+        nprocs = os.environ["SLURM_JOB_CPUS_PER_NODE"].split('(')[0]
+        args = [f'{x}:{nprocs}' for x in hostsstr.split(os.linesep) if x.strip()]
         env.log_to_file('WORKER', f'Using "-j {args}" on a SLURM cluster.')
         return args
     elif "PBS_ENVIRONMENT" in os.environ:
