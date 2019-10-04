@@ -725,12 +725,11 @@ input: 'filename',
     'filename1'
 
 ''')
-        # An abusive case with multi-line OK, from first column ok, blank line ok
+        # An abusive case with multi-line OK, from first column ok
         SoS_Script('''
 [0]
 input: 'filename',
 'filename1',
-
 filename4,
 opt1=value
 output:
