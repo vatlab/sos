@@ -230,7 +230,7 @@ class TaskEngine(threading.Thread):
                                 task_submitted = self.submitting_tasks[k].result()
                             except Exception as e:
                                 from .utils import get_traceback
-                                env.log_to_file('TASK', f'failed to submit task {e}')
+                                env.log_to_file('TASK', f'failed to submit task {e}: {get_traceback()}')
                                 env.logger.error(f'Failed to submit task {k}: {e}')
                                 task_submitted = False
                             if task_submitted:
