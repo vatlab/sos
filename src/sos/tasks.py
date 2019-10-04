@@ -1239,19 +1239,40 @@ def print_task_status(tasks,
                             f'<pre style="text-align:left">{pprint.pformat(v)}</pre>'
                         )
             pulse_content = ''
+
             if tf.has_result():
-                res = tf.result
-                if 'pulse' in res:
-                    pulse_content = res['pulse']
-                    summary = summarizeExecution(t, res['pulse'], status=s)
-                    # row('Execution')
-                    for line in summary.split('\n'):
-                        fields = line.split(None, 1)
-                        if fields[0] == 'task':
-                            continue
-                        row(fields[0], '' if fields[1] is None else fields[1])
-                # this is a placeholder for the frontend to draw figure
-                row(td=f'<div id="res_{t}"></div>')
+                if s not in ('pending', 'submitted', 'running'):
+                    res = tf.result
+                    if 'pulse' in res:
+                        pulse_content = res['pulse']
+                        summary = summarizeExecution(t, res['pulse'], status=s)
+                        # row('Execution')
+                        for line in summary.split('\n'):
+                            fields = line.split(None, 1)
+                            if fields[0] == 'task':
+                                continue
+                            row(fields[0], '' if fields[1] is None else fields[1])
+                    # this is a placeholder for the frontend to draw figure
+                    row(td=f'<div id="res_{t}"></div>')
+            elif s == 'running':
+                pulse_file = os.path.join(
+                    os.path.expanduser('~'), '.sos', 'tasks', t + '.pulse')
+                if os.path.isfile(pulse_file):
+                    with open(pulse_file) as pulse:
+                        pulse_content = pulse.read()
+                        summary = summarizeExecution(t, pulse_content, status=s)
+                        if summary:
+                            # row('Execution')
+                            for line in summary.split('\n'):
+                                fields = line.split(None, 1)
+                                if fields[0] == 'task':
+                                    continue
+                                row(fields[0],
+                                    '' if fields[1] is None else fields[1])
+                            # this is a placeholder for the frontend to draw figure
+                            row(td=f'<div id="res_{t}"></div>')
+
+            if s not in ('pending', 'submitted', 'running'):
                 #
                 if tf.has_shell():
                     shell = tf.shell
@@ -1281,24 +1302,7 @@ def print_task_status(tasks,
                         stderr = "\n".join(stderr.splitlines()[-200:])
                     row(td=f'<small><pre style="text-align:left">{stderr}</pre></small>'
                        )
-            else:
-                pulse_file = os.path.join(
-                    os.path.expanduser('~'), '.sos', 'tasks', t + '.pulse')
-                if os.path.isfile(pulse_file):
-                    with open(pulse_file) as pulse:
-                        pulse_content = pulse.read()
-                        summary = summarizeExecution(t, pulse_content, status=s)
-                        if summary:
-                            # row('Execution')
-                            for line in summary.split('\n'):
-                                fields = line.split(None, 1)
-                                if fields[0] == 'task':
-                                    continue
-                                row(fields[0],
-                                    '' if fields[1] is None else fields[1])
-                            # this is a placeholder for the frontend to draw figure
-                            row(td=f'<div id="res_{t}"></div>')
-                #
+            elif s == 'running':
                 files = glob.glob(
                     os.path.join(
                         os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
@@ -1499,11 +1503,12 @@ showResourceFigure_''' + t + '''()
             print()
 
             if tf.has_result():
-                res = tf.result
-                if 'pulse' in res:
-                    print('EXECUTION STATS:\n================')
-                    print(summarizeExecution(t, res['pulse'], status=s))
-            else:
+                if s not in ('pending', 'submitted', 'running'):
+                    res = tf.result
+                    if 'pulse' in res:
+                        print('EXECUTION STATS:\n================')
+                        print(summarizeExecution(t, res['pulse'], status=s))
+            elif s == 'running':
                 # we have separate pulse, out and err files
                 pulse_file = os.path.join(
                     os.path.expanduser('~'), '.sos', 'tasks', t + '.pulse')
@@ -1530,18 +1535,19 @@ showResourceFigure_''' + t + '''()
                     except Exception:
                         print('Binary file')
 
-            if tf.has_shell():
-                print('execution script:\n================\n' + tf.shell)
-            else:
-                show_file(t, '.sh')
-            if tf.has_stdout():
-                print('standard output:\n================\n' + tf.stdout)
-            else:
-                show_file(t, ['.sosout', '.out'])
-            if tf.has_stderr():
-                print('standard error:\n================\n' + tf.stderr)
-            else:
-                show_file(t, ['.soserr', '.err'])
+            if s not in ('pending', 'submitted', 'running'):
+                if tf.has_shell():
+                    print('execution script:\n================\n' + tf.shell)
+                else:
+                    show_file(t, '.sh')
+                if tf.has_stdout():
+                    print('standard output:\n================\n' + tf.stdout)
+                else:
+                    show_file(t, ['.sosout', '.out'])
+                if tf.has_stderr():
+                    print('standard error:\n================\n' + tf.stderr)
+                else:
+                    show_file(t, ['.soserr', '.err'])
 
     # remove jobs that are older than 1 month
     if to_be_removed:
