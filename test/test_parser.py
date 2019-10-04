@@ -165,6 +165,10 @@ class TestParser(unittest.TestCase):
         # global section
         self.assertRaises(ParsingError, SoS_Script, '''[global, step_10]''')
 
+    def testParameters(self):
+        '''Test ending parameters with new line #1311'''
+        self.assertRaises(ParsingError, SoS_Script, '''input: ['a.txt'\n\n'b.txt']\n''')
+
     def testGlobalVariables(self):
         '''Test definition of variables'''
         # allow definition

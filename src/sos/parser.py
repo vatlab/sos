@@ -1013,8 +1013,12 @@ class SoS_Script:
                 if cursect is None:
                     comment_block += 1
                 else:
-                    if cursect.category() in ('statements', 'script'):
+                    category = cursect.category()
+                    if category in ('statements', 'script'):
                         cursect.extend(line)
+                    elif category == 'directive' and not cursect.isValid():
+                        # 1311
+                        parsing_errors.append(lineno, line, f'Ending incomplete options ({"".join(cursect.values).strip()}) with an empty line')
                 continue
 
             #
