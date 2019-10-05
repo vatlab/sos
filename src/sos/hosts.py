@@ -238,7 +238,12 @@ class LocalHost(object):
             env.logger.warning(f'Check output of {cmd} failed: {e}')
             raise
 
-    def run_command(self, cmd, wait_for_task, realtime=False, pass_env=False, **kwargs):
+    def run_command(self,
+                    cmd,
+                    wait_for_task,
+                    realtime=False,
+                    pass_env=False,
+                    **kwargs):
         # run command but does not wait for result.
         if realtime:
             from .utils import pexpect_run
@@ -268,7 +273,8 @@ class LocalHost(object):
             return {
                 'ret_code':
                     1,
-                'task': task_id,
+                'task':
+                    task_id,
                 'exception':
                     ValueError(f'No result is received for task {task_id}')
             }
@@ -368,7 +374,10 @@ class RemoteHost(object):
         # due to the limitations of command line arguments of ssh, we cannot pass variables
         # with values containing space and qutation marks, perhaps also other special characters.
         # The following is not a robust solution to #1300 but I cannot think of a better method.
-        env_vars = ' '.join( [f'{x}={os.environ[x]}' for x in os.environ.keys() if not any(y in os.environ[x] for y in (' ', '"', "'" ))])
+        env_vars = ' '.join([
+            f'{x}={os.environ[x]}' for x in os.environ.keys()
+            if not any(y in os.environ[x] for y in (' ', '"', "'"))
+        ])
         return self.config.get(
             'execute_cmd', 'ssh ' + self.cm_opts +
             """ -q {host} -p {port} "bash --login -c '""" +
@@ -476,17 +485,16 @@ class RemoteHost(object):
             # could be prompted for Password or password, so use assword
             i = p.expect([
                 "(?i)are you sure you want to continue connecting",
-                "[pP]assword:",
-                pexpect.EOF
+                "[pP]assword:", pexpect.EOF
             ],
-                        timeout=5)
+                         timeout=5)
             if i == 0:
                 p.sendline('yes')
                 p.expect([
                     "(?i)are you sure you want to continue connecting",
                     "[pP]assword:", pexpect.EOF
                 ],
-                        timeout=5)
+                         timeout=5)
             elif i == 1:
                 p.close(force=True)
                 from .remote import stty_sane
@@ -574,11 +582,13 @@ class RemoteHost(object):
         for source in sorted(sending.keys()):
             dest = self._remote_abs(sending[source])
             if self.is_shared(source):
-                if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+                if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                        'SOS_DEBUG']:
                     env.log_to_file(
                         'TASK', f'Skip sending {source} on shared file system')
             else:
-                if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+                if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                        'SOS_DEBUG']:
                     env.log_to_file(
                         'TASK', f'Sending ``{source}`` to {self.alias}:{dest}')
                 cmd = cfg_interpolate(
@@ -590,7 +600,8 @@ class RemoteHost(object):
                                 'host': self.address,
                                 'port': self.port
                             })
-                if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+                if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                        'SOS_DEBUG']:
                     env.log_to_file('TASK', cmd)
                 ret = subprocess.call(
                     cmd,
@@ -642,7 +653,8 @@ class RemoteHost(object):
                                 'host': self.address,
                                 'port': self.port
                             })
-                if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+                if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                        'SOS_DEBUG']:
                     env.log_to_file('TASK', cmd)
                 try:
                     ret = subprocess.call(
@@ -822,17 +834,22 @@ class RemoteHost(object):
                 f'Failed to copy job {task_file} to {self.alias} using command {send_cmd}: {e}'
             )
 
-    def check_output(self, cmd: object, under_workdir=False, pass_env=False, **kwargs) -> object:
+    def check_output(self,
+                     cmd: object,
+                     under_workdir=False,
+                     pass_env=False,
+                     **kwargs) -> object:
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
             cmd = cfg_interpolate(
-                self._get_execute_cmd(under_workdir=under_workdir, pass_env=pass_env), {
-                    'host': self.address,
-                    'port': self.port,
-                    'cmd': cmd,
-                    'workdir': self._map_var(os.getcwd())
-                })
+                self._get_execute_cmd(
+                    under_workdir=under_workdir, pass_env=pass_env), {
+                        'host': self.address,
+                        'port': self.port,
+                        'cmd': cmd,
+                        'workdir': self._map_var(os.getcwd())
+                    })
         except Exception as e:
             raise ValueError(
                 f'Failed to run command {cmd}: {e} ({env.sos_dict["CONFIG"]})')
@@ -849,12 +866,13 @@ class RemoteHost(object):
             cmd = subprocess.list2cmdline(cmd)
         try:
             cmd = cfg_interpolate(
-                self._get_execute_cmd(under_workdir=under_workdir, pass_env=pass_env), {
-                    'host': self.address,
-                    'port': self.port,
-                    'cmd': cmd,
-                    'workdir': self._map_var(os.getcwd())
-                })
+                self._get_execute_cmd(
+                    under_workdir=under_workdir, pass_env=pass_env), {
+                        'host': self.address,
+                        'port': self.port,
+                        'cmd': cmd,
+                        'workdir': self._map_var(os.getcwd())
+                    })
         except Exception as e:
             raise ValueError(f'Failed to run command {cmd}: {e}')
         if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
@@ -865,7 +883,12 @@ class RemoteHost(object):
             env.logger.debug(f'Check output of {cmd} failed: {e}')
             raise
 
-    def run_command(self, cmd, wait_for_task, realtime=False, pass_env=False, **kwargs):
+    def run_command(self,
+                    cmd,
+                    wait_for_task,
+                    realtime=False,
+                    pass_env=False,
+                    **kwargs):
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
@@ -1033,6 +1056,12 @@ class Host:
             load_config_files()
         # look for an entry with gethost
         if 'hosts' not in env.sos_dict['CONFIG']:
+            env.sos_dict['CONFIG']['hosts'] = {
+                'localhost': {
+                    'address': 'localhost',
+                    'alias': 'localhost'
+                }
+            }
             return 'localhost'
         # try host name
         hostname = socket.gethostname().lower()
@@ -1094,7 +1123,9 @@ class Host:
         if alias in env.sos_dict['CONFIG']['hosts']:
             return alias
         # assuming the host name is a name or IP address
-        env.logger.debug(f'Assuming {alias} to be a hostname or IP address not defined in hosts file')
+        env.logger.debug(
+            f'Assuming {alias} to be a hostname or IP address not defined in hosts file'
+        )
         env.sos_dict['CONFIG']['hosts'][alias] = {
             'address': alias,
             'alias': alias,
@@ -1114,10 +1145,9 @@ class Host:
             }
         elif 'hosts' in env.sos_dict['CONFIG']:
             if LOCAL not in env.sos_dict['CONFIG']['hosts']:
-                raise ValueError(f'No hosts definition for local host {LOCAL}')
+                raise ValueError(f'Undefined local host {LOCAL}')
             if REMOTE not in env.sos_dict['CONFIG']['hosts']:
-                raise ValueError(
-                    f'No hosts definition for remote host {REMOTE}')
+                raise ValueError(f'Undefined remote host {REMOTE}')
 
             # now we have definition for local and remote hosts
             cfg = env.sos_dict['CONFIG']['hosts']
@@ -1275,4 +1305,3 @@ class Host:
                                             Dict[int, Dict[Any, Any]], float]],
             Dict[str, Union[int, str, Dict[int, Dict[str, int]], float]]]]:
         return {task: self._host_agent.receive_result(task) for task in tasks}
-
