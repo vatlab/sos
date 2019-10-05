@@ -1105,9 +1105,9 @@ class Host:
                     f"Undefined localhost {env.sos_dict['CONFIG']['localhost']}"
                 )
             return env.sos_dict['CONFIG']['localhost']
-        raise ValueError(
-            "No localhost could be identified from hostname, ip address, or a localhost key in config file"
-        )
+        else:
+            env.sos_dict['CONFIG']['localhost'] = 'localhost'
+            return 'localhost'
 
     def _get_remote_host(self, alias: Optional[str]) -> str:
         # get a remote host specified by Alias
