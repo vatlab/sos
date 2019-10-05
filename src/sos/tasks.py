@@ -1216,7 +1216,10 @@ def print_task_status(tasks,
 
             params = tf.params
             row('Task')
-            row(td=f'<pre style="text-align:left">{params.task}</pre>')
+            if hasattr(params, 'task_stack'):
+                row(td=f'<pre style="text-align:left">{params.task_stack[0][1].task}</pre>')
+            else:
+                row(td=f'<pre style="text-align:left">{params.task}</pre>')
             row('Tags')
             row(td=f'<pre style="text-align:left">{tf.tags}</pre>')
             if params.global_def:
@@ -1485,7 +1488,12 @@ showResourceFigure_''' + t + '''()
                 print(f'{dr}')
             params = tf.params
             print('TASK:\n=====')
-            print(params.task)
+            if hasattr(params, 'task_stack'):
+                # show task of subtask
+                print(f'#1 of {len(params.task_stack)} subtasks:')
+                print(params.task_stack[0][1].task)
+            else:
+                print(params.task)
             print('TAGS:\n=====')
             print(tf.tags)
             print()
