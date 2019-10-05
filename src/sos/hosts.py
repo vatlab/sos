@@ -489,6 +489,7 @@ class RemoteHost(object):
                         timeout=5)
             elif i == 1:
                 p.close(force=True)
+                from .remote import stty_sane
                 stty_sane()
                 return f'ssh connection to {self.address} was prompted for password. Please set up public key authentication to the remote host before continue.'
             elif i == 2:
