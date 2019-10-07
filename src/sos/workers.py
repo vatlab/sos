@@ -7,6 +7,7 @@ import multiprocessing as mp
 import os
 import signal
 import time
+import pickle
 from typing import Any, Dict, Optional
 
 import zmq
@@ -652,12 +653,17 @@ class WorkerManager(object):
                 try:
                     from .hosts import Host
                     host = Host(worker_host, start_engine=False)
+                    env_file = os.path.join(os.path.expanduser('~'), '.sos', f'worker_envs.{os.getpid()}')
+                    if not os.path.isfile(env_file):
+                        with open(env_file, 'wb') as envfile:
+                            pickle.dump(os.environ, envfile)
+                    # NOTE: we assume file systems are shared so we do not copy env_file to remote host
                     cmd = ['sos', 'worker', '--router', env.config["sockets"]["worker_backend"],
                         '--sig_mode', env.config['sig_mode'], '--run_mode', env.config['run_mode'],
-                        '--workdir', os.getcwd(), '-v', str(env.config['verbosity'])]
+                        '--env', env_file, '--workdir', os.getcwd(), '-v', str(env.config['verbosity'])]
                     if max_worker is not None:
                         cmd += ['-j', str(max_worker)]
-                    p = host._host_agent.run_command(cmd, wait_for_task=True, pass_env=True)
+                    p = host._host_agent.run_command(cmd, wait_for_task=True)
                     self._remote_connections.append(p)
                 except Exception as e:
                     env.logger.error(f'Failed to start workers on host {worker_host}: {e}')

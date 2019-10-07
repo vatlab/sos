@@ -217,7 +217,7 @@ class LocalHost(object):
         if task_file != dest_task_file:
             shutil.copyfile(task_file, dest_task_file)
 
-    def check_output(self, cmd, under_workdir=False, pass_env=False, **kwargs):
+    def check_output(self, cmd, under_workdir=False, **kwargs):
         # get the output of command
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
@@ -229,7 +229,7 @@ class LocalHost(object):
             env.logger.warning(f'Check output of {cmd} failed: {e}')
             raise
 
-    def check_call(self, cmd, under_workdir=False, pass_env=False, **kwargs):
+    def check_call(self, cmd, under_workdir=False, **kwargs):
         # get the output of command
         try:
             return subprocess.check_call(
@@ -242,7 +242,6 @@ class LocalHost(object):
                     cmd,
                     wait_for_task,
                     realtime=False,
-                    pass_env=False,
                     **kwargs):
         # run command but does not wait for result.
         if realtime:
@@ -369,19 +368,10 @@ class RemoteHost(object):
                 '''mv "{dest:adep}/{source:b}" "{dest:aep}"'''
         return '''rsync -a --no-g -e 'ssh ''' + self.cm_opts + ''' -p {port}' {host}:{source:e} "{dest:adep}"'''
 
-    def _get_execute_cmd(self, under_workdir=True, pass_env=False) -> str:
-        # #1300
-        # due to the limitations of command line arguments of ssh, we cannot pass variables
-        # with values containing space and qutation marks, perhaps also other special characters.
-        # The following is not a robust solution to #1300 but I cannot think of a better method.
-        env_vars = ' '.join([
-            f'{x}={os.environ[x]}' for x in os.environ.keys()
-            if not any(y in os.environ[x] for y in (' ', '"', "'", '(', ')', '&', '|'))
-        ])
+    def _get_execute_cmd(self, under_workdir=True) -> str:
         return self.config.get(
             'execute_cmd', 'ssh ' + self.cm_opts +
             """ -q {host} -p {port} "bash --login -c '""" +
-            (env_vars if pass_env else '') +
             (' [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && '
              if under_workdir else ' ') + ''' {cmd}'" ''')
 
@@ -837,14 +827,13 @@ class RemoteHost(object):
     def check_output(self,
                      cmd: object,
                      under_workdir=False,
-                     pass_env=False,
                      **kwargs) -> object:
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
             cmd = cfg_interpolate(
                 self._get_execute_cmd(
-                    under_workdir=under_workdir, pass_env=pass_env), {
+                    under_workdir=under_workdir), {
                         'host': self.address,
                         'port': self.port,
                         'cmd': cmd,
@@ -861,13 +850,13 @@ class RemoteHost(object):
             env.logger.debug(f'Check output of {cmd} failed: {e}')
             raise
 
-    def check_call(self, cmd, under_workdir=False, pass_env=False, **kwargs):
+    def check_call(self, cmd, under_workdir=False, **kwargs):
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
             cmd = cfg_interpolate(
                 self._get_execute_cmd(
-                    under_workdir=under_workdir, pass_env=pass_env), {
+                    under_workdir=under_workdir), {
                         'host': self.address,
                         'port': self.port,
                         'cmd': cmd,
@@ -887,13 +876,12 @@ class RemoteHost(object):
                     cmd,
                     wait_for_task,
                     realtime=False,
-                    pass_env=False,
                     **kwargs):
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
             cmd = cfg_interpolate(
-                self._get_execute_cmd(under_workdir=False, pass_env=pass_env), {
+                self._get_execute_cmd(under_workdir=False), {
                     'host': self.address,
                     'port': self.port,
                     'cmd': cmd,

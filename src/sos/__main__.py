@@ -699,6 +699,7 @@ def get_worker_parser(desc_only=False):
         help='''A configuration file with host
         definitions, in case the definitions are not defined in global sos config.yml files.'''
     )
+    parser.add_argument('--env', help='pickled file with environment variables')
     parser.add_argument('--sig_mode', help='signature mode')
     parser.add_argument('--run_mode', help='run mode')
     parser.add_argument('--workdir', help='work directory')
@@ -719,6 +720,7 @@ def get_worker_parser(desc_only=False):
 
 def cmd_worker(args, workflow_args):
     from .utils import env, load_config_files
+    import pickle
     env.verbosity = args.verbosity
     env.config = {
         'config_file': args.config,
@@ -730,6 +732,13 @@ def cmd_worker(args, workflow_args):
         'SOS_DEBUG': [],
         'exec_mode': None
     }
+    if args.env:
+        try:
+            with open(args.env, 'rb') as envfile:
+                os.environ.update(pickle.load(envfile))
+        except Exception as e:
+            env.logger.warning(f'Failed to load environment variables: {e}')
+
     try:
         os.chdir(args.workdir)
     except:
