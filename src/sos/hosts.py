@@ -376,7 +376,7 @@ class RemoteHost(object):
         # The following is not a robust solution to #1300 but I cannot think of a better method.
         env_vars = ' '.join([
             f'{x}={os.environ[x]}' for x in os.environ.keys()
-            if not any(y in os.environ[x] for y in (' ', '"', "'"))
+            if not any(y in os.environ[x] for y in (' ', '"', "'", '(', ')', '&', '|'))
         ])
         return self.config.get(
             'execute_cmd', 'ssh ' + self.cm_opts +
