@@ -656,7 +656,7 @@ class WorkerManager(object):
                     env_file = os.path.join(os.path.expanduser('~'), '.sos', f'worker_envs.{os.getpid()}')
                     if not os.path.isfile(env_file):
                         with open(env_file, 'wb') as envfile:
-                            pickle.dump(os.environ, envfile)
+                            pickle.dump({x:y for x,y in os.environ.items() if isinstance(y, str)}, envfile)
                     # NOTE: we assume file systems are shared so we do not copy env_file to remote host
                     cmd = ['sos', 'worker', '--router', env.config["sockets"]["worker_backend"],
                         '--sig_mode', env.config['sig_mode'], '--run_mode', env.config['run_mode'],
