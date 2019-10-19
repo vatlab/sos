@@ -290,7 +290,8 @@ class SoS_Worker(mp.Process):
                 # process, which will then trigger terminate() and send a None here.
                 break
             except KeyboardInterrupt:
-                break
+                # ignore SIGINT because workers are supposed to be killed through messages
+                env.log_to_file('PROCESS', f'KeyboardInterrupt received by {os.getpid()}. Ignoring.')
         # Finished
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
         kill_all_subprocesses(os.getpid())
