@@ -814,6 +814,8 @@ class Base_Step_Executor:
             raise
         except ProcessKilled:
             raise
+        except KeyboardInterrupt as e:
+            raise RuntimeError(get_traceback_msg(e))
         except Exception as e:
             raise RuntimeError(get_traceback_msg(e))
 
