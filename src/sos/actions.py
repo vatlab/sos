@@ -541,7 +541,11 @@ class SoS_ExecuteScript:
                             if '__std_err__' in env.sos_dict else '', out, err,
                             '-' * 75))
             finally:
-                os.remove(script_file)
+                try:
+                    os.remove(script_file)
+                except:
+                    # 1315: ignore in case the temp script file no longer exists
+                    pass
 
 
 @SoS_Action()
