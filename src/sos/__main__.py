@@ -155,14 +155,14 @@ def get_converter_formats(argv):
     parser.add_argument('-t', '--to', dest='__to_format__')
     args, _ = parser.parse_known_args(argv)
     from_format = args.from_file[1:] if args.from_file.startswith('.') and args.from_file.count('.') == 1 \
-        else os.path.splitext(args.from_file)[-1][1:]
+        else os.path.splitext(args.from_file)[-1][1:].lower()
     if not from_format:
         from_format = 'sos'
     if args.__to_format__:
         to_format = args.__to_format__
     elif args.to_file:
         to_format = args.to_file[1:] if args.to_file.startswith('.') and args.to_file.count('.') == 1 \
-            else os.path.splitext(args.to_file)[-1][1:]
+            else os.path.splitext(args.to_file)[-1][1:].lower()
     else:
         return None, None
     return from_format, to_format
