@@ -19,7 +19,7 @@ import urllib.parse
 import urllib.request
 import uuid
 import zipfile
-from collections import Sequence
+from collections.abc import Sequence
 from functools import wraps
 
 from tqdm import tqdm as ProgressBar
