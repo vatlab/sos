@@ -1363,12 +1363,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 for x, src, sig in zip(self._targets, self._labels, sig))
 
     def target_exists(self, mode='any'):
-        if len(self._targets) == 1:
-            return self._targets[0].target_exists(mode)
-        else:
-            raise ValueError(
-                f'Cannot test existense for group of {len(self)} targets {self!r}'
-            )
+        return all(x.target_exists(mode) for x in self._targets)
 
     def __getattr__(self, name):
         try:
