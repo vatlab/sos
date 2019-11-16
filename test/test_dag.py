@@ -524,13 +524,13 @@ A_1 -> A_2;
         #                    C3
         #
         script = SoS_Script('''
-[A_1]
+[A1]
 input: 'B1.txt'
 output: 'A1.txt'
 run:
     touch A1.txt
 
-[A_2]
+[A2]
 depends:  'B2.txt'
 run:
     touch A2.txt
@@ -570,7 +570,7 @@ run:
 
         ''')
         # the workflow should call step K for step C_2, but not C_3
-        wf = script.workflow()
+        wf = script.workflow(use_default=False)
         #
         # test 1, we only need to generate target 'B1.txt'
         dag = Base_Executor(wf).initialize_dag(targets=['B1.txt'])
