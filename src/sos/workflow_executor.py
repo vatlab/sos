@@ -1122,6 +1122,11 @@ class Base_Executor:
                 f'Failed to remove existing DAG file {env.config["output_dag"]}: {e}'
             )
 
+        if targets and sos_targets(targets).target_exists() and not env.config['trace_existing']:
+            env.logger.info(f'Target{"s" if len(targets) > 1 else ""} {sos_targets(targets)} already exists. Remove or use option "-T" if you would like to regenerate {"them" if len(targets) > 1 else "it"}.')
+            wf_result['__completed__'] = 0
+            return wf_result
+
         # process step of the pipelinp
         try:
             dag = self.initialize_dag(targets=targets)
