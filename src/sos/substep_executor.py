@@ -120,6 +120,9 @@ def execute_substep(stmt,
 
 def _execute_substep(stmt, global_def, global_vars, task, task_params,
                      proc_vars, shared_vars, config):
+    # vatlab/sos-notebook#272
+    # if config contains exec_mode, we remove it to avoid it manifest the worker exec_mode
+    config.pop('exec_mode', None)
     # passing configuration and port numbers to the subprocess
     env.config.update(config)
     # prepare a working environment with sos symbols and functions
