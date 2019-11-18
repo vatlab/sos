@@ -129,7 +129,7 @@ def _show_err_and_out(task_id, res) -> None:
 class LocalHost(object):
     '''For local host, no path map, send and receive ...'''
 
-    def __init__(self, config: Dict[str, Union[str, int, List[str]]]) -> None:
+    def __init__(self, config: Dict[str, Union[str, int, List[str]]], test_connection: bool = True) -> None:
         super(LocalHost, self).__init__()
 
         # even if the config has an alias, we use localhost to make it clear that the host is localhost
@@ -290,7 +290,7 @@ class LocalHost(object):
 class RemoteHost(object):
     '''A remote host class that manages how to communicate with remote host'''
 
-    def __init__(self, config: Dict[str, Union[str, int, List[str]]]) -> None:
+    def __init__(self, config: Dict[str, Union[str, int, List[str]]], test_connection: bool = True) -> None:
         self.config = config
         self.cm_opts = self._get_control_master_options()
         self.alias = self.config['alias']
@@ -300,9 +300,10 @@ class RemoteHost(object):
         self.shared_dirs = self._get_shared_dirs()
         self.path_map = self._get_path_map()
         # we already test connect of remote hosts
-        test_res = self.test_connection()
-        if test_res != 'OK':
-            raise RuntimeError(f'Failed to connect to {self.alias}: {test_res}')
+        if test_connection:
+            test_res = self.test_connection()
+            if test_res != 'OK':
+                raise RuntimeError(f'Failed to connect to {self.alias}: {test_res}')
 
     def _get_shared_dirs(self) -> List[Any]:
         value = self.config.get('shared', [])
@@ -1023,11 +1024,12 @@ class Host:
     host_instances: Dict = {}
 
     def __init__(self, alias: Optional[str] = '',
-                 start_engine: bool = True) -> None:
+                 start_engine: bool = True,
+                 test_connection: bool = True) -> None:
         # a host started from Jupyter notebook might not have proper stdout
         # (a StringIO) and cannot be used for DaemonizedFork).
         self._get_config(alias)
-        self._get_host_agent(start_engine)
+        self._get_host_agent(start_engine, test_connection)
 
     # for test purpose
     @classmethod
@@ -1216,16 +1218,16 @@ class Host:
         if 'max_mem' in self.config:
             self.config['max_mem'] = expand_size(self.config['max_mem'])
 
-    def _get_host_agent(self, start_engine: bool) -> None:
+    def _get_host_agent(self, start_engine: bool, test_connection: bool) -> None:
         if 'queue_type' not in self.config:
             self._task_engine_type = 'process'
         else:
             self._task_engine_type = self.config['queue_type'].strip()
         if self.alias not in self.host_instances:
             if self.config['address'] == 'localhost':
-                self.host_instances[self.alias] = LocalHost(self.config)
+                self.host_instances[self.alias] = LocalHost(self.config, test_connection=test_connection)
             else:
-                self.host_instances[self.alias] = RemoteHost(self.config)
+                self.host_instances[self.alias] = RemoteHost(self.config, test_connection=test_connection)
 
             if self._task_engine_type == 'process':
                 task_engine = BackgroundProcess_TaskEngine(

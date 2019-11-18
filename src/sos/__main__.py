@@ -844,7 +844,7 @@ def get_remote_parser(desc_only=False):
         help='''files or directories to be push or pulled for action "push" or "pull"'''
     )
     parser.add_argument(
-        '--cmd', nargs='*', help='''commands to be executed by action "run"''')
+        '--cmd', nargs=argparse.REMAINDER, help='''commands to be executed by action "run" or tested by action "test"''')
     parser.add_argument(
         '-v',
         '--verbosity',
@@ -875,7 +875,7 @@ def cmd_remote(args, workflow_args):
             setup_remote_access(cfg, args.hosts, args.password, args.verbosity)
         elif args.action == 'test':
             from .remote import test_queues
-            test_queues(cfg, args.hosts, args.verbosity)
+            test_queues(cfg, args.hosts, args.cmd, args.verbosity)
         elif args.action == 'login':
             from .remote import login_host
             if not args.hosts:

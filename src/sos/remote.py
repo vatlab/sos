@@ -29,7 +29,7 @@ def list_queues(cfg, hosts=[], verbosity=1):
     for host in sorted([x for x in hosts
                         if x in all_hosts] if hosts else all_hosts):
         try:
-            h = Host(host, start_engine=False)
+            h = Host(host, start_engine=False, test_connection=False)
         except Exception as e:
             if verbosity == 0:
                 print(f'{host} ({e})')
@@ -167,18 +167,17 @@ def test_scp(host):
     return 'OK'
 
 
-def test_sos(host):
+def test_cmd(host, cmd):
     # test the execution of sos commands
     try:
         ret = host.check_call(
-            'sos -h', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if ret == 0:
             return 'OK'
         else:
             return 'sos not installed or not accessible on host.'
     except Exception as e:
         return str(e)
-
 
 def test_paths(host):
     if host.address == 'localhost':
@@ -284,7 +283,7 @@ def stty_sane():
         pass
 
 
-def test_queue(host):
+def test_queue(host, cmd=None):
     try:
         h = Host(host, start_engine=False)
     except Exception:
@@ -293,13 +292,13 @@ def test_queue(host):
     return [
         h.alias, h._host_agent.address, h._task_engine_type, ssh_res,
         test_scp(h._host_agent) if ssh_res.startswith('OK') else '-',
-        test_sos(h._host_agent) if ssh_res.startswith('OK') else '-',
+        test_cmd(h._host_agent, ["sos", "-h"]) if ssh_res.startswith('OK') else '-',
         test_paths(h._host_agent) if ssh_res.startswith('OK') else '-',
         test_shared(h._host_agent) if ssh_res.startswith('OK') else '-'
-    ]
+    ] + ([] if cmd is None else [test_cmd(h._host_agent, cmd)])
 
 
-def test_queues(cfg, hosts=[], verbosity=1):
+def test_queues(cfg, hosts=[], cmd=None, verbosity=1):
     env.verbosity = 1
     all_hosts = cfg.get('hosts', [])
     if not all_hosts:
@@ -308,9 +307,9 @@ def test_queues(cfg, hosts=[], verbosity=1):
         return
     host_description = [[
         'Alias', 'Address', 'Queue Type', 'ssh', 'scp', 'sos', 'paths', 'shared'
-    ], [
+    ] + ([] if cmd is None else [" ".join(cmd)]), [
         '-----', '-------', '----------', '---', '---', '---', '-----', '------'
-    ]]
+    ] + ([] if cmd is None else ['-' * len(" ".join(cmd))])]
     for host in hosts:
         if host not in all_hosts:
             env.logger.warning(f'Undefined host {host}')
@@ -319,7 +318,7 @@ def test_queues(cfg, hosts=[], verbosity=1):
         return
     from multiprocessing import Pool
     pool = Pool(min(len(hosts), 10))
-    host_description.extend(pool.map(test_queue, hosts))
+    host_description.extend(pool.starmap(test_queue, [(x, cmd) for x in hosts]))
     if verbosity == 0:
         # just print succ or self
         for hd in host_description:
@@ -350,6 +349,8 @@ def test_queues(cfg, hosts=[], verbosity=1):
             print(f'sos:         {row[5]}')
             print(f'paths:       {row[6]}')
             print(f'shared:      {row[7]}')
+            if cmd:
+                print(f'{" ".join(cmd)}:{" "*(max(1, 12 - len(" ".join(cmd))))}{row[8]}')
             print()
 
 
