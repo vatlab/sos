@@ -864,6 +864,11 @@ def cmd_remote(args, workflow_args):
     from .utils import env, load_config_files
     cfg = load_config_files(args.config)
     try:
+        if args.cmd and len(args.cmd) == 1:
+            # if user uses quote to specify cmd (e.g. --cmd "ls -l")
+            # we spread it to ["ls", "-l"]
+            import shlex
+            args.cmd = shlex.split(args.cmd[0])
         if args.action == 'list':
             from .remote import list_queues
             list_queues(cfg, args.hosts, args.verbosity)
