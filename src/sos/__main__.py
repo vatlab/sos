@@ -450,7 +450,13 @@ def cmd_run(args, workflow_args):
         elif os.path.basename(argv[0]) == 'sos-runner':
             argv[0] = 'sos-runner'
         # execute the command on remote host
-        sys.exit(host._host_agent.check_call(argv, under_workdir=True))
+        try:
+            return host.submit_workflow(argv, **vars(args))
+        except Exception as e:
+            if args.verbosity and args.verbosity > 2:
+                sys.stderr.write(get_traceback())
+            env.logger.error(e)
+            sys.exit(1)
 
     # '' means no -d
     dt = datetime.datetime.now().strftime('%m%d%y_%H%M')

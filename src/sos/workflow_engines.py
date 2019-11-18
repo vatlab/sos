@@ -2,29 +2,26 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
-import concurrent.futures
-import copy
 import os
-import random
-import subprocess
-import threading
-import time
-from collections import OrderedDict, defaultdict
 
 from .eval import cfg_interpolate
-from .utils import env, expand_time
-from .workflows import TaskFile
+from .utils import env
 from .messages import encode_msg
 
 
 class WorkflowEngine:
-    def __init__(self):
+
+    def __init__(self, agent):
+        self.agent = agent
+        self.config = agent.config
+        self.alias = self.config['alias']
+
+    def submit_workflow(self, cmd, **kwargs):
         pass
 
-    def submit_workflow(self, workflow_id):
-        pass
 
 class BackgroundProcess_WorkflowEngine(WorkflowEngine):
+
     def __init__(self, agent):
         super(BackgroundProcess_WorkflowEngine, self).__init__(agent)
         if 'job_template' in self.config:
@@ -32,45 +29,31 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
                 '\r\n', '\n')
         else:
             self.job_template = None
-        #
-        if 'batch_size' in self.config:
-            self.batch_size = self.config['batch_size']
-        else:
-            # default allow stacking of up to 1000 jobs
-            self.batch_size = 1000
 
-    def execute_workflow(self, workflow_ids):
+    def submit_workflow(self, cmd, **kwargs):
         if not super(BackgroundProcess_WorkflowEngine,
-                     self).execute_workflows(workflow_ids):
-            env.log_to_file('TASK', f'Failed to prepare workflow {workflow_ids}')
+                     self).submit_workflow(cmd, **kwargs):
+            env.log_to_file('WORKFLOW',
+                            f'Failed to prepare workflow with command "{cmd}"')
             return False
         if self.job_template:
-            if not self._submit_workflow_with_template(workflow_ids):
+            if not self._submit_workflow_with_template(cmd, **kwargs):
                 return False
         else:
-            if not self._submit_workflow(workflow_ids):
+            if not self._submit_workflow(cmd, **kwargs):
                 return False
         return True
 
-    def _submit_workflow(self, workflow_ids):
+    def _submit_workflow(self, cmd, **kwargs):
         # if no template, use a default command
-        cmd = f"sos execute {' '.join(workflow_ids)} -v {env.verbosity} -s {env.config['sig_mode']} -m {env.config['run_mode']}"
-        env.log_to_file('TASK',
-                        f'Execute "{cmd}" (waiting={self.wait_for_workflow})')
-        self.agent.run_command(cmd, wait_for_workflow=self.wait_for_workflow)
+        env.log_to_file('WORKDLOW', f'Execute "{cmd}"')
+        self.agent.run_command(cmd)
         return True
 
-    def _submit_workflow_with_template(self, workflow_ids):
+    def _submit_workflow_with_template(self, cmd, **kwargs):
         '''Submit workflows by interpolating a shell script defined in job_template'''
         runtime = self.config
-        runtime.update({
-            'workdir': os.getcwd(),
-            'cur_dir': os.getcwd(),  # for backward compatibility
-            'verbosity': env.verbosity,
-            'sig_mode': env.config.get('sig_mode', 'default'),
-            'run_mode': env.config.get('run_mode', 'run'),
-            'home_dir': os.path.expanduser('~')
-        })
+        runtime.update({'workdir': os.getcwd(), 'cmd': cmd})
         if '_runtime' in env.sos_dict:
             runtime.update({
                 x: env.sos_dict['_runtime'][x]
@@ -84,17 +67,17 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
 
         # let us first prepare a workflow file
         job_text = ''
-        for workflow_id in workflow_ids:
+        for workflow_id in cmd:
             runtime['workflow'] = workflow_id
             try:
                 job_text += cfg_interpolate(self.job_template, runtime)
                 job_text += '\n'
             except Exception as e:
                 raise ValueError(
-                    f'Failed to generate job file for workflow {workflow_id}: {e}')
+                    f'Failed to generate job file for workflow {workflow_id}: {e}'
+                )
 
-        filename = workflow_ids[0] + ('.sh' if len(workflow_ids) == 1 else
-                                  f'-{workflow_ids[-1]}.sh')
+        filename = cmd[0] + ('.sh' if len(cmd) == 1 else f'-{cmd[-1]}.sh')
         # now we need to write a job file
         job_file = os.path.join(
             os.path.expanduser('~'), '.sos', 'workflows', filename)
@@ -109,7 +92,7 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
         try:
             cmd = f'bash ~/.sos/workflows/{filename}'
             env.log_to_file('TASK', f'Execute "{cmd}" with script {job_text}')
-            self.agent.run_command(cmd, wait_for_workflow=self.wait_for_workflow)
+            self.agent.run_command(cmd)
         except Exception as e:
-            raise RuntimeError(f'Failed to submit workflow {workflow_ids}: {e}')
+            raise RuntimeError(f'Failed to submit workflow {cmd}: {e}')
         return True

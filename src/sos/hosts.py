@@ -19,6 +19,7 @@ from .eval import Undetermined, cfg_interpolate
 from .syntax import SOS_LOGLINE
 from .targets import path, sos_targets
 from .task_engines import BackgroundProcess_TaskEngine
+from .workflow_engines import BackgroundProcess_WorkflowEngine
 from .tasks import TaskFile
 from .utils import (env, expand_size, expand_time, format_HHMMSS, short_repr)
 
@@ -1220,41 +1221,60 @@ class Host:
 
     def _get_host_agent(self, start_engine: bool, test_connection: bool) -> None:
         if 'queue_type' not in self.config:
-            self._task_engine_type = 'process'
+            self._engine_type = 'process'
         else:
-            self._task_engine_type = self.config['queue_type'].strip()
+            self._engine_type = self.config['queue_type'].strip()
         if self.alias not in self.host_instances:
             if self.config['address'] == 'localhost':
                 self.host_instances[self.alias] = LocalHost(self.config, test_connection=test_connection)
             else:
                 self.host_instances[self.alias] = RemoteHost(self.config, test_connection=test_connection)
 
-            if self._task_engine_type == 'process':
+            if self._engine_type == 'process':
                 task_engine = BackgroundProcess_TaskEngine(
+                    self.host_instances[self.alias])
+                workflow_engine = BackgroundProcess_WorkflowEngine(
                     self.host_instances[self.alias])
             else:
                 task_engine = None
+                workflow_engine = None
 
                 available_engines = []
                 for entrypoint in pkg_resources.iter_entry_points(
                         group='sos_taskengines'):
                     try:
-                        if entrypoint.name == self._task_engine_type:
+                        if entrypoint.name == self._engine_type:
                             task_engine = entrypoint.load()(
                                 self.host_instances[self.alias])
                             break
                         available_engines.append(entrypoint.name)
                     except Exception as e:
                         raise RuntimeError(
-                            f'Failed to load task engine {self._task_engine_type}: {e}'
+                            f'Failed to load task engine {self._engine_type}: {e}'
+                        )
+
+                available_engines = []
+                for entrypoint in pkg_resources.iter_entry_points(
+                        group='sos_workflowengines'):
+                    try:
+                        if entrypoint.name == self._engine_type:
+                            workflow_engine = entrypoint.load()(
+                                self.host_instances[self.alias])
+                            break
+                        available_engines.append(entrypoint.name)
+                    except Exception as e:
+                        raise RuntimeError(
+                            f'Failed to load workflow engine {self._engine_type}: {e}'
                         )
 
                 if task_engine is None:
                     raise RuntimeError(
-                        f'This system currently supports task engine{"s" if len(available_engines) > 1 else ""} {", ".join(available_engines)}, not {self._task_engine_type} as specified in the template. Did you install a relevant module such as sos-{self._task_engine_type}?'
+                        f'This system currently supports task engine{"s" if len(available_engines) > 1 else ""} {", ".join(available_engines)}, not {self._engine_type} as specified in the template. Did you install a relevant module such as sos-{self._engine_type}?'
                     )
 
             self.host_instances[self.alias]._task_engine = task_engine
+            self.host_instances[self.alias]._workflow_engine = workflow_engine
+            
             # the task engine is a thread and will run continously
             if start_engine:
                 self.host_instances[self.alias]._task_engine.start()
@@ -1263,7 +1283,8 @@ class Host:
         # for convenience
         if hasattr(self._host_agent, '_task_engine'):
             self._task_engine = self._host_agent._task_engine
-
+        if hasattr(self._host_agent, '_workflow_engine'):
+            self._workflow_engine = self._host_agent._workflow_engine
         # it is possible that Host() is initialized before with start_engine=False
         # and called again to start engine
         if start_engine and not self._task_engine.is_alive():
@@ -1295,3 +1316,6 @@ class Host:
                                             Dict[int, Dict[Any, Any]], float]],
             Dict[str, Union[int, str, Dict[int, Dict[str, int]], float]]]]:
         return {task: self._host_agent.receive_result(task) for task in tasks}
+
+    def submit_workflow(self, cmd, **kwargs):
+        return self._workflow_engine.submit_workflow(cmd, **kwargs)
