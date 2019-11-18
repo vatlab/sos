@@ -116,7 +116,11 @@ def get_convert_parser(desc_only=False):
         try:
             name = entrypoint.name
             if name.endswith('.parser'):
-                converter_parser = entrypoint.load()()
+                try:
+                    converter_parser = entrypoint.load()()
+                except:
+                    # this might be old entry that is now deprecated
+                    continue
             elif name.endswith('.func'):
                 continue
             else:
@@ -186,7 +190,11 @@ def print_converter_help():
         try:
             name = entrypoint.name
             if name.endswith('.parser'):
-                converter_parser = entrypoint.load()()
+                try:
+                    converter_parser = entrypoint.load()()
+                except:
+                    # this might be old entry that is now deprecated
+                    continue
             elif name.endswith('.func'):
                 continue
             else:
