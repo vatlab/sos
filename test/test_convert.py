@@ -9,7 +9,7 @@ import subprocess
 import unittest
 from argparse import Namespace
 
-from sos.converter import (extract_workflow, script_to_html)
+from sos.converter import extract_workflow
 from sos.utils import env
 
 
@@ -48,12 +48,14 @@ report('this is action report')
     def testScriptToHtml(self):
         '''Test sos show script --html'''
         for script_file in self.scripts:
-            script_to_html(script_file, script_file + '.html')
-            args = Namespace()
-            args.linenos = True
-            args.raw = None
-            args.view = False
-            script_to_html(script_file, script_file + '.html', args=args)
+            self.assertEqual(
+                subprocess.call(
+                    f'sos convert {script_file} {script_file}.html',
+                    shell=True), 0)
+            self.assertEqual(
+                subprocess.call(
+                    f'sos convert {script_file} {script_file}.html --linenos',
+                    shell=True), 0)
             #
             self.assertEqual(
                 subprocess.call(['sos', 'convert', script_file, '--to',
