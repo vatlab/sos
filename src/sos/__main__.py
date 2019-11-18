@@ -115,12 +115,21 @@ def get_convert_parser(desc_only=False):
     for entrypoint in pkg_resources.iter_entry_points(group='sos_converters'):
         try:
             name = entrypoint.name
-            if not name.endswith('.parser'):
+            if name.endswith('.parser'):
+                converter_parser = entrypoint.load()()
+            elif name.endswith('.func'):
                 continue
+            else:
+                converter = entrypoint.load()()
+                if not hasattr(converter, 'get_parser'):
+                    env.logger.warning(f'Invalid sos converter {name}: missing get_parser function')
+                if not hasattr(converter, 'convert'):
+                    env.logger.warning(f'Invalid sos converter {name}: missing convert function')
+                converter_parser = converter.get_parser()
             f_format, t_format = name.rsplit('.', 1)[0].split('-')
             subparser = add_sub_parser(
                 subparsers,
-                entrypoint.load()(),
+                converter_parser,
                 name='{}-{}'.format(f_format, t_format))
             subparser.add_argument(
                 'from_file',
@@ -176,13 +185,22 @@ def print_converter_help():
     for entrypoint in pkg_resources.iter_entry_points(group='sos_converters'):
         try:
             name = entrypoint.name
-            if not name.endswith('.parser'):
+            if name.endswith('.parser'):
+                converter_parser = entrypoint.load()()
+            elif name.endswith('.func'):
                 continue
+            else:
+                converter = entrypoint.load()()
+                if not hasattr(converter, 'get_parser'):
+                    env.logger.warning(f'Invalid sos converter {name}: missing get_parser function')
+                if not hasattr(converter, 'convert'):
+                    env.logger.warning(f'Invalid sos converter {name}: missing convert function')
+                converter_parser = converter.get_parser()
+
             f_format, t_format = name.rsplit('.', 1)[0].split('-')
             if from_format != f_format or to_format != t_format:
                 continue
-            parser = entrypoint.load()()
-            sys.exit(parser.print_help())
+            sys.exit(converter_parser.print_help())
         except Exception as e:
             sys.exit('Failed to load converter {}: {}'.format(
                 entrypoint.name, e))
@@ -192,9 +210,14 @@ def cmd_convert(args, unknown_args):
     from .utils import env, get_traceback
     for entrypoint in pkg_resources.iter_entry_points(group='sos_converters'):
         try:
-            if entrypoint.name == args.converter_name + '.func':
+            if entrypoint.name == args.converter_name:
+                converter = entrypoint.load()()
+                converter.convert(args.from_file, args.to_file, args, unknown_args)
+                return
+            elif entrypoint.name == args.converter_name + '.func':
                 func = entrypoint.load()
                 func(args.from_file, args.to_file, args, unknown_args)
+                return
         except Exception as e:
             # if no other parameter, with option list all
             if args.verbosity and args.verbosity > 2:
@@ -202,6 +225,8 @@ def cmd_convert(args, unknown_args):
             env.logger.error('Failed to execute converter {}: {}'.format(
                 entrypoint.name.rsplit('.', 1)[0], e))
             sys.exit(1)
+    env.logger.error(f'No converter is found for {args.converter_name}')
+    sys.exit(1)
 
 
 #
@@ -2370,13 +2395,19 @@ def main():
         ]:
             for entrypoint in pkg_resources.iter_entry_points(
                     group='sos_addons'):
-                if entrypoint.name.strip().endswith('.parser'):
-                    name = entrypoint.name.rsplit('.', 1)[0]
-                    func = entrypoint.load()
-                    parser = add_sub_parser(subparsers, func(), name=name)
-                    parser.add_argument(
-                        '--addon-name', help=argparse.SUPPRESS, default=name)
-                    parser.set_defaults(func=handle_addon)
+                name = entrypoint.name
+                addon = entrypoint.load()()
+                if not hasattr(addon, 'get_parser'):
+                    env.logger.warning(f'Missing get_parser() for addon {name}')
+                    continue
+                if not hasattr(addon, 'execute'):
+                    env.logger.warning(f'Missing execute for addon {name}')
+                    continue
+
+                parser = add_sub_parser(subparsers, addon.get_parser(), name=name)
+                parser.add_argument(
+                    '--addon-name', help=argparse.SUPPRESS, default=name)
+                parser.set_defaults(func=addon.execute)
         #
         if len(sys.argv) == 1 or sys.argv[1] == '-h':
             master_parser.print_help()

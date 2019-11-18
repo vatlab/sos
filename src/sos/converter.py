@@ -70,98 +70,100 @@ codemirror_themes = [
     'xq-light', 'yeti', 'zenburn'
 ]
 
+class ScriptToHTMLConverter(object):
+    def __init__(self, *args, **kwargs):
+        pass
 
-def get_script_to_html_parser():
-    parser = argparse.ArgumentParser(
-        'sos convert FILE.sos FILE.html (or --to html)',
-        description='''Convert sos file to html format with syntax highlighting,
-        and save the output either to a HTML file or view it in a broaser.''')
-    parser.add_argument(
-        '--url',
-        help='''URL to the raw sos file, which will be linked
-        to filenames in the HTML output''')
-    parser.add_argument('--raw', help=argparse.SUPPRESS)
-    parser.add_argument(
-        '--style',
-        choices=codemirror_themes,
-        help="Code mirror themes for the output",
-        default='default')
-    parser.add_argument(
-        '--linenos', action='store_true', help=argparse.SUPPRESS)
-    parser.add_argument(
-        '--template',
-        help='''Name or path to an alternative template for
-            converting sos script to HTML.  The template can use variables
-            "filename" for full name of the script as provided, "basename"
-            as the name part of the filename, "script" for the content of
-            the script, "sov_version" for version of sos, "linenos" as a
-            flag to whether or not line numbers should be displayed, "url"
-            as an optional URL for the script, and "theme" as provided by
-            option --style.''')
-    parser.add_argument(
-        '--view',
-        action='store_true',
-        help='''Open the output file in a broswer. In case
-        no html file is specified, this option will display the HTML file in
-        a browser, instead of writing its content to standard output.''')
-    return parser
+    def get_parser(self):
+        parser = argparse.ArgumentParser(
+            'sos convert FILE.sos FILE.html (or --to html)',
+            description='''Convert sos file to html format with syntax highlighting,
+            and save the output either to a HTML file or view it in a broaser.''')
+        parser.add_argument(
+            '--url',
+            help='''URL to the raw sos file, which will be linked
+            to filenames in the HTML output''')
+        parser.add_argument('--raw', help=argparse.SUPPRESS)
+        parser.add_argument(
+            '--style',
+            choices=codemirror_themes,
+            help="Code mirror themes for the output",
+            default='default')
+        parser.add_argument(
+            '--linenos', action='store_true', help=argparse.SUPPRESS)
+        parser.add_argument(
+            '--template',
+            help='''Name or path to an alternative template for
+                converting sos script to HTML.  The template can use variables
+                "filename" for full name of the script as provided, "basename"
+                as the name part of the filename, "script" for the content of
+                the script, "sov_version" for version of sos, "linenos" as a
+                flag to whether or not line numbers should be displayed, "url"
+                as an optional URL for the script, and "theme" as provided by
+                option --style.''')
+        parser.add_argument(
+            '--view',
+            action='store_true',
+            help='''Open the output file in a broswer. In case
+            no html file is specified, this option will display the HTML file in
+            a browser, instead of writing its content to standard output.''')
+        return parser
 
+    def convert(self, script_file, html_file, args=None, unknown_args=None):
+        '''
+        Convert sos file to html format with syntax highlighting, and
+        either save the output either to a HTML file or view it in a broaser.
+        This converter accepts additional parameters --style or pygments
+        styles, --linenos for displaying linenumbers, and a parameter --raw
+        to embed a URL to the raw sos file.
+        '''
+        from jinja2 import Environment, PackageLoader, select_autoescape
+        environment = Environment(
+            loader=PackageLoader('sos', 'templates'),
+            autoescape=select_autoescape(['html', 'xml']))
+        template = environment.get_template(
+            args.template if args and hasattr(args, 'template') and args.template
+            else 'sos_script.tpl')
 
-def script_to_html(script_file, html_file, args=None, unknown_args=None):
-    '''
-    Convert sos file to html format with syntax highlighting, and
-    either save the output either to a HTML file or view it in a broaser.
-    This converter accepts additional parameters --style or pygments
-    styles, --linenos for displaying linenumbers, and a parameter --raw
-    to embed a URL to the raw sos file.
-    '''
-    from jinja2 import Environment, PackageLoader, select_autoescape
-    environment = Environment(
-        loader=PackageLoader('sos', 'templates'),
-        autoescape=select_autoescape(['html', 'xml']))
-    template = environment.get_template(
-        args.template if args and hasattr(args, 'template') and args.template
-        else 'sos_script.tpl')
-
-    with open(script_file) as script:
-        content = script.read()
-    # for backward compatibility
-    if args and hasattr(args, 'raw'):
-        args.url = args.raw
-    context = {
-        'filename': script_file,
-        'basename': os.path.basename(script_file),
-        'script': content,
-        'sos_version': __version__,
-        'linenos': args.linenos if args and hasattr(args, 'linenos') else True,
-        'url': args.url if args and hasattr(args, 'url') else '',
-        'theme': args.style if args and hasattr(args, 'style') else 'default',
-    }
-    html_content = template.render(context)
-    if html_file is None:
-        if args and args.view:
-            # write to a temp file
-            import tempfile
-            html_file = tempfile.NamedTemporaryFile(
-                delete=False, suffix='.html').name
+        with open(script_file) as script:
+            content = script.read()
+        # for backward compatibility
+        if args and hasattr(args, 'raw'):
+            args.url = args.raw
+        context = {
+            'filename': script_file,
+            'basename': os.path.basename(script_file),
+            'script': content,
+            'sos_version': __version__,
+            'linenos': args.linenos if args and hasattr(args, 'linenos') else True,
+            'url': args.url if args and hasattr(args, 'url') else '',
+            'theme': args.style if args and hasattr(args, 'style') else 'default',
+        }
+        html_content = template.render(context)
+        if html_file is None:
+            if args and args.view:
+                # write to a temp file
+                import tempfile
+                html_file = tempfile.NamedTemporaryFile(
+                    delete=False, suffix='.html').name
+                with open(html_file, 'w') as out:
+                    out.write(html_content)
+            else:
+                sys.stdout.write(html_content)
+        else:
             with open(html_file, 'w') as out:
                 out.write(html_content)
-        else:
-            sys.stdout.write(html_content)
-    else:
-        with open(html_file, 'w') as out:
-            out.write(html_content)
-        from .utils import env
-        env.logger.info(f'SoS script saved to {html_file}')
-        #
-    if args and args.view:
-        import webbrowser
-        url = f'file://{os.path.abspath(html_file)}'
-        from .utils import env
-        env.logger.info(f'Viewing {url} in a browser')
-        webbrowser.open(url, new=2)
-        # in case the html file is temporary, give the browser sometime to load it
-        time.sleep(2)
+            from .utils import env
+            env.logger.info(f'SoS script saved to {html_file}')
+            #
+        if args and args.view:
+            import webbrowser
+            url = f'file://{os.path.abspath(html_file)}'
+            from .utils import env
+            env.logger.info(f'Viewing {url} in a browser')
+            webbrowser.open(url, new=2)
+            # in case the html file is temporary, give the browser sometime to load it
+            time.sleep(2)
 
 
 def extract_workflow(notebook):

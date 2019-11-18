@@ -187,8 +187,7 @@ tarfile:is_tarfile,1 = sos.preview:preview_tar
 *,0 = sos.preview:preview_txt
 
 [sos_converters]
-sos-html.parser = sos.converter:get_script_to_html_parser
-sos-html.func = sos.converter:script_to_html
+sos-html = sos.converter:ScriptToHTMLConverter
 
 ''',
     # [sos_installers]
