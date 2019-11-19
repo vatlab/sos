@@ -320,14 +320,17 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         '-r',
         dest='__remote__',
         metavar='HOST',
-        nargs='?',
-        const='',
-        help='''Execute the workflow in specified remote host, which should
+        nargs='+',
+        help='''Execute the workflow in specified remote (or local) host, which should
             be defined under key host of sos configuration files (preferrably
             in ~/.sos/hosts.yml). This option basically copy the workflow
-            to remote host and invoke sos command there. No path translation
-            and input/output file synchronization will be performed before or
-            after the execution of the workflow.''')
+            to remote host and invoke sos command there. If a key "workflow_template" is 
+            defined for the host definition, the template woould be expanded with
+            "script" being the path of script, "cmd" as the command line, and "KEY"
+            as "VALUE" for "KEY=VALUE" pairs defined after the "host" specification.
+            For example, "-r cluster cores=4 ncpus=5" would expand variables "core" and
+            "ncpus" in the template with values "4" and "5".
+            ''')
     # parser.add_argument('-t', dest='__transcript__', nargs='?',
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(
@@ -432,26 +435,17 @@ def cmd_run(args, workflow_args):
         # if executing on a remote host...
         from .hosts import Host
         load_config_files(args.__config__)
-        host = Host(args.__remote__)
-        from .utils import remove_arg
-        #
-        # copy script to remote host...
-        host.send_to_host(args.script)
+        host = Host(args.__remote__[0])
 
-        argv = remove_arg(sys.argv, '-r')
-        # -c only point to local config file.
-        argv = remove_arg(argv, '-c')
-        # remove --slave mode because the master cannot reach remote slave
-        argv = remove_arg(argv, '-m')
-        # replace absolute path with relative one because remote sos might have
-        # a different path.
-        if os.path.basename(argv[0]) == 'sos':
-            argv[0] = 'sos'
-        elif os.path.basename(argv[0]) == 'sos-runner':
-            argv[0] = 'sos-runner'
+        template_args = {}
+        for item in args.__remote__[1:]:
+            if '=' not in item:
+                raise ValueError(f"KEY=VALUE pairs are required for definitions after host name.")
+            template_args[item.split('=', 0)] = item.split('=', 1)[1]
+
         # execute the command on remote host
         try:
-            return host.submit_workflow(argv, **vars(args))
+            return host.execute_workflow(args.script, sys.argv, **template_args)
         except Exception as e:
             if args.verbosity and args.verbosity > 2:
                 sys.stderr.write(get_traceback())

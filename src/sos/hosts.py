@@ -1317,5 +1317,5 @@ class Host:
             Dict[str, Union[int, str, Dict[int, Dict[str, int]], float]]]]:
         return {task: self._host_agent.receive_result(task) for task in tasks}
 
-    def submit_workflow(self, cmd, **kwargs):
-        return self._workflow_engine.submit_workflow(cmd, **kwargs)
+    def execute_workflow(self, script, cmd, **kwargs):
+        return self._workflow_engine.execute_workflow(script, cmd, **kwargs)

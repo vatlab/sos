@@ -16,66 +16,98 @@ class WorkflowEngine:
         self.config = agent.config
         self.alias = self.config['alias']
 
-    def submit_workflow(self, cmd, **kwargs):
-        pass
+    def remove_arg(self, argv, arg):
+        r_idx = [idx for idx, x in enumerate(argv) if x.startswith(arg)]
+        if not r_idx:
+            return argv
+        else:
+            r_idx = r_idx[0]
+        # find next option
+        r_next = [
+            idx for idx, x in enumerate(argv[r_idx + 1:]) if x.startswith('-')
+        ]
+        if r_next:
+            argv = argv[:r_idx] + argv[r_idx + 1 + r_next[0]:]
+        else:
+            argv = argv[:r_idx]
+        return argv
+
+
+    def execute_workflow(self, script, cmd, **kwargs):
+        # there is no need to prepare workflow (e.g. copy over)
+        if os.path.isfile(script):
+            dest = self.agent.send_to_host(script)
+        elif os.path.isfile(script + '.sos'):
+            dest = self.agent.send_to_host(script + '.sos')
+        elif os.path.isfile(script + '.ipynb'):
+            dest = self.agent.send_to_host(script + '.ipynb')
+        else:
+            raise RuntimeError(f'Failed to locate script {script}')
+
+        # perhaps a different filename is presented
+        self.script = dest.values()[0]
+                
+        self.cmd = self.remove_arg(cmd, '-r')
+        # -c only point to local config file.
+        self.cmd = self.remove_arg(self.cmd, '-c')
+        # remove --slave mode because the master cannot reach remote slave
+        self.cmd = self.remove_arg(self.cmd, '-m')
+        # replace absolute path with relative one because remote sos might have
+        # a different path.
+        if os.path.basename(argv[0]) == 'sos':
+            self.cmd[0] = 'sos'
+            self.cmd[2] = self.script
+        elif os.path.basename(argv[0]) == 'sos-runner':
+            self.cmd[0] = 'sos-runner'
+            self.cmd[1] = self.script
+
+        return True
 
 
 class BackgroundProcess_WorkflowEngine(WorkflowEngine):
 
     def __init__(self, agent):
         super(BackgroundProcess_WorkflowEngine, self).__init__(agent)
-        if 'job_template' in self.config:
-            self.job_template = self.config['job_template'].replace(
+        if 'workflow_template' in self.config:
+            self.workflow_template = self.config['workflow_template'].replace(
                 '\r\n', '\n')
         else:
-            self.job_template = None
+            self.workflow_template = None
 
-    def submit_workflow(self, cmd, **kwargs):
+    def execute_workflow(self, script, cmd, **kwargs):
         if not super(BackgroundProcess_WorkflowEngine,
-                     self).submit_workflow(cmd, **kwargs):
+                     self).execute_workflow(script, cmd, **kwargs):
             env.log_to_file('WORKFLOW',
                             f'Failed to prepare workflow with command "{cmd}"')
             return False
-        if self.job_template:
-            if not self._submit_workflow_with_template(cmd, **kwargs):
+            
+        if self.workflow_template:
+            if not self._execute_workflow_with_template(self.script, self.cmd, **kwargs):
                 return False
         else:
-            if not self._submit_workflow(cmd, **kwargs):
+            if not self._execute_workflow(self.script, self.cmd, **kwargs):
                 return False
         return True
 
-    def _submit_workflow(self, cmd, **kwargs):
+    def _execute_workflow(self, script, cmd, **kwargs):
         # if no template, use a default command
         env.log_to_file('WORKDLOW', f'Execute "{cmd}"')
         self.agent.run_command(cmd)
         return True
 
-    def _submit_workflow_with_template(self, cmd, **kwargs):
-        '''Submit workflows by interpolating a shell script defined in job_template'''
-        runtime = self.config
-        runtime.update({'workdir': os.getcwd(), 'cmd': cmd})
-        if '_runtime' in env.sos_dict:
-            runtime.update({
-                x: env.sos_dict['_runtime'][x]
-                for x in ('nodes', 'cores', 'workdir', 'mem', 'walltime')
-                if x in env.sos_dict['_runtime']
-            })
-        if 'nodes' not in runtime:
-            runtime['nodes'] = 1
-        if 'cores' not in runtime:
-            runtime['cores'] = 1
+    def _execute_workflow_with_template(self, script, cmd, **kwargs):
+        '''Submit workflows by interpolating a shell script defined in workflow_template'''
+        template_args = kwargs
+        template_args['script'] = script
+        template_args['cmd'] = cmd
 
-        # let us first prepare a workflow file
-        job_text = ''
-        for workflow_id in cmd:
-            runtime['workflow'] = workflow_id
-            try:
-                job_text += cfg_interpolate(self.job_template, runtime)
-                job_text += '\n'
-            except Exception as e:
-                raise ValueError(
-                    f'Failed to generate job file for workflow {workflow_id}: {e}'
-                )
+        try:
+            job_text += cfg_interpolate(self.workflow_template, template_args)
+            job_text += '\n'
+        except Exception as e:
+            raise ValueError(
+                f'Failed to generate job file for the execution of workflow {script}: {e}'
+            )
 
         filename = cmd[0] + ('.sh' if len(cmd) == 1 else f'-{cmd[-1]}.sh')
         # now we need to write a job file

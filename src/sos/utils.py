@@ -1620,23 +1620,6 @@ def convertAnsi2html(txt):
 # log to file for debugging purpose only
 
 
-def remove_arg(argv, arg):
-    r_idx = [idx for idx, x in enumerate(argv) if x.startswith(arg)]
-    if not r_idx:
-        return argv
-    else:
-        r_idx = r_idx[0]
-    # find next option
-    r_next = [
-        idx for idx, x in enumerate(argv[r_idx + 1:]) if x.startswith('-')
-    ]
-    if r_next:
-        argv = argv[:r_idx] + argv[r_idx + 1 + r_next[0]:]
-    else:
-        argv = argv[:r_idx]
-    return argv
-
-
 def pexpect_run(cmd, shell=False, win_width=None, stdout_socket=None):
 
     def send_output(output):
