@@ -899,7 +899,8 @@ class RemoteHost(object):
             return pexpect_run(cmd)
         elif wait_for_task or sys.platform == 'win32':
             # keep proc persistent to avoid a subprocess is still running warning.
-            return subprocess.Popen(cmd, shell=True, **kwargs)
+            p = subprocess.Popen(cmd, shell=True, **kwargs)
+            p.wait()
         else:
             p = DaemonizedProcess(cmd, **kwargs)
             p.start()
