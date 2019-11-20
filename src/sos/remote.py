@@ -50,13 +50,13 @@ def list_queues(cfg, hosts=[], verbosity=1):
             print(h.alias)
         elif verbosity in (1, 2):
             host_description.append([
-                h.alias, h._host_agent.address, h._task_engine_type,
+                h.alias, h._host_agent.address, h._engine_type,
                 h.description
             ])
         else:
             print(f'Queue:       {h.alias}')
             print(f'Address:     {h._host_agent.address}')
-            print(f'Queue Type:  {h._task_engine_type}')
+            print(f'Queue Type:  {h._engine_type}')
             print(f'Description: {h.description}')
             print('Configuration:')
             keys = sorted(h.config.keys())
@@ -116,13 +116,13 @@ def status_of_queues(cfg, hosts=[], verbosity=1):
             print(f'{h.alias} {running} {pending} {completed}')
         elif verbosity in (1, 2):
             host_description.append([
-                h.alias, h._host_agent.address, h._task_engine_type, running,
+                h.alias, h._host_agent.address, h._engine_type, running,
                 pending, completed
             ])
         else:
             print(f'Queue:       {h.alias}')
             print(f'Address:     {h._host_agent.address}')
-            print(f'Queue Type:  {h._task_engine_type}')
+            print(f'Queue Type:  {h._engine_type}')
             print(f'Description: {h.description}')
             for k in set(status):
                 if k not in ('running', 'pending', 'completed'):
@@ -290,7 +290,7 @@ def test_queue(host, cmd=None):
         return [host, '?', '?', '-', '-', '-', '-', '-']
     ssh_res = test_ssh(h._host_agent)
     return [
-        h.alias, h._host_agent.address, h._task_engine_type, ssh_res,
+        h.alias, h._host_agent.address, h._engine_type, ssh_res,
         test_scp(h._host_agent) if ssh_res.startswith('OK') else '-',
         test_cmd(h._host_agent, ["sos", "-h"]) if ssh_res.startswith('OK') else '-',
         test_paths(h._host_agent) if ssh_res.startswith('OK') else '-',
