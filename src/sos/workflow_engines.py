@@ -134,7 +134,7 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
     def _execute_workflow(self):
         # if no template, use a default command
         env.log_to_file('WORKDLOW', f'Execute "{self.command}"')
-        self.agent.run_command(self.command)
+        self.agent.run_command(self.command, wait_for_task=True)
         return True
 
     def _execute_workflow_with_template(self):
