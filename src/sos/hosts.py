@@ -215,7 +215,7 @@ class LocalHost(object):
         dest_job_file = os.path.join(
             os.path.expanduser('~'), '.sos', dir,
             os.path.basename(job_file))
-        if task_file != dest_task_file:
+        if job_file != dest_job_file:
             shutil.copyfile(job_file, dest_job_file)
 
     def check_output(self, cmd, under_workdir=False, **kwargs):
@@ -251,7 +251,8 @@ class LocalHost(object):
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         if wait_for_task or sys.platform == 'win32':
-            return subprocess.Popen(cmd, shell=True, **kwargs)
+            p = subprocess.Popen(cmd, shell=True, **kwargs)
+            p.wait()
         else:
             p = DaemonizedProcess(cmd, **kwargs)
             p.start()
@@ -1318,4 +1319,4 @@ class Host:
         return {task: self._host_agent.receive_result(task) for task in tasks}
 
     def execute_workflow(self, script, cmd, **template_args):
-        return self._workflow_engine.execute_workflow(script, cmd, **template_wargs)
+        return self._workflow_engine.execute_workflow(script, cmd, **template_args)

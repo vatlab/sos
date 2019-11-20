@@ -3,6 +3,8 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 import os
+import tempfile
+import subprocess
 
 from .eval import cfg_interpolate
 from .utils import env
@@ -35,13 +37,13 @@ class WorkflowEngine:
     def execute_workflow(self, filename, command, **template_args):
         # there is no need to prepare workflow (e.g. copy over)
         if os.path.isfile(filename):
-            dest = self.agent.send_to_host(filename)
+            dest = self.agent.send_to_host([filename])
             self.filename = filename
         elif os.path.isfile(filename + '.sos'):
-            dest = self.agent.send_to_host(filename + '.sos')
+            dest = self.agent.send_to_host([filename + '.sos'])
             self.filename = filename + '.sos'
         elif os.path.isfile(filename + '.ipynb'):
-            dest = self.agent.send_to_host(filename + '.ipynb')
+            dest = self.agent.send_to_host([filename + '.ipynb'])
             self.filename = filename + '.ipynb'
         else:
             raise RuntimeError(f'Failed to locate script {script}')
@@ -55,11 +57,12 @@ class WorkflowEngine:
         # a different path.
         if os.path.basename(command[0]) == 'sos':
             self.command[0] = 'sos'
-            self.command[2] = dest.values()[0]
+            self.command[2] = list(dest.values())[0]
         elif os.path.basename(command[0]) == 'sos-runner':
             self.command[0] = 'sos-runner'
-            self.command[1] = dest.values()[0]
+            self.command[1] = list(dest.values())[0]
 
+        self.command = subprocess.list2cmdline(self.command)
         self.template_args = template_args
         return True
 
@@ -112,11 +115,9 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
 
             self.template_args['filename'] = self.filename
             self.template_args['script'] = script
-            self.template_args['cmd'] = self.command
+            self.template_args['command'] = self.command
             job_text = cfg_interpolate(self.workflow_template,
                                        self.template_args) + '\n'
-
-            filename = cmd[0] + ('.sh' if len(cmd) == 1 else f'-{cmd[-1]}.sh')
 
         except Exception as e:
             raise ValueError(
@@ -128,7 +129,7 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
             if not os.path.isdir(wf_dir):
                 os.makedirs(wf_dir)
 
-            job_file = tempfile.TemporaryDirectory(
+            job_file = tempfile.NamedTemporaryFile(
                 dir=wf_dir, prefix='tmp_wf', suffix='.sh', delete=False).name
             # do not translate newline under windows because the script will be executed
             # under linux/mac
@@ -138,15 +139,15 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
             # then copy the job file to remote host if necessary
             self.agent.send_job_file(job_file, dir='workflows')
 
-            cmd = f'bash ~/.sos/workflows/{filename}'
-            env.log_to_file('TASK', f'Execute "{cmd}" with script {job_text}')
-            self.agent.run_command(cmd)
+            cmd = f'bash ~/.sos/workflows/{os.path.basename(job_file)}'
+            env.log_to_file('WORKFLOW', f'Execute "{cmd}" with script {job_text}')
+            self.agent.run_command(cmd, wait_for_task=True)
         except Exception as e:
-            raise RuntimeError(f'Failed to submit workflow {cmd}: {e}')
+            raise RuntimeError(f'Failed to submit workflow {self.command} with script \n{job_text}\n: {e}')
         finally:
             try:
                 os.remove(job_file)
             except Exception as e:
                 env.logger.debug(
-                    f'Failed to remove temporary workflow {job_file}')
+                    f'Failed to remove temporary workflow file')
         return True
