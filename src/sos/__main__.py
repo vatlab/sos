@@ -323,14 +323,15 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         nargs='+',
         help='''Execute the workflow in specified remote (or local) host, which should
             be defined under key host of sos configuration files (preferrably
-            in ~/.sos/hosts.yml). This option basically copy the workflow
-            to remote host and invoke sos command there. If a key "workflow_template" is 
-            defined for the host definition, the template woould be expanded with
-            "script" being the path of script, "cmd" as the command line, and "KEY"
+            in ~/.sos/hosts.yml). This option basically copies the script to specified
+            remote host and executed with the "workflow_engine" of the host. If an entry
+            "workflow_template" is defined for the host definition, the template woould
+            be expanded with "filename" being the path of script, "script" being the
+            content of the script (extracted from notebook if "filename" is a notebook),
+            "command" as the command line to execute the script, and "KEY"
             as "VALUE" for "KEY=VALUE" pairs defined after the "host" specification.
-            For example, "-r cluster cores=4 ncpus=5" would expand variables "core" and
-            "ncpus" in the template with values "4" and "5".
-            ''')
+            For example, "-r cluster cores=4 ncpus=5" would expand variables "cores" and
+            "ncpus" in the template with values "4" and "5".''')
     # parser.add_argument('-t', dest='__transcript__', nargs='?',
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(

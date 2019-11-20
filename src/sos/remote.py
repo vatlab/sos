@@ -155,7 +155,7 @@ def test_scp(host):
         test_task.write('test task')
     # test scp
     try:
-        host.send_task_file(task_filename)
+        host.send_job_file(task_filename)
     except Exception as e:
         return str(e)
     # test remove file using ssh

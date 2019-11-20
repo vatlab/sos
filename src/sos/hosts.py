@@ -207,16 +207,16 @@ class LocalHost(object):
             for l, r in task_vars['_runtime']['to_host'].items():
                 if l != r:
                     shutil.copy(l, r)
-        self.send_task_file(task_file)
+        self.send_job_file(task_file)
         return True
 
-    def send_task_file(self, task_file):
+    def send_job_file(self, job_file, dir='tasks'):
         # on the same file system, no action is needed.
-        dest_task_file = os.path.join(
-            os.path.expanduser('~'), '.sos', 'tasks',
-            os.path.basename(task_file))
+        dest_job_file = os.path.join(
+            os.path.expanduser('~'), '.sos', dir,
+            os.path.basename(job_file))
         if task_file != dest_task_file:
-            shutil.copyfile(task_file, dest_task_file)
+            shutil.copyfile(job_file, dest_job_file)
 
     def check_output(self, cmd, under_workdir=False, **kwargs):
         # get the output of command
@@ -806,15 +806,15 @@ class RemoteHost(object):
             tf.runtime = runtime
 
         tf.status = 'pending'
-        self.send_task_file(task_file)
+        self.send_job_file(task_file)
 
-    def send_task_file(self, task_file):
+    def send_job_file(self, job_file, dir='tasks'):
         send_cmd = cfg_interpolate(
-            'ssh ' + self.cm_opts +
-            ' -q {address} -p {port} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks" && '
-            + 'rsync --ignore-existing -a --no-g -e "ssh ' + self.cm_opts +
-            ' -q -p {port}" {job_file:ap} {address}:.sos/tasks/', {
-                'job_file': sos_targets(task_file),
+            f'ssh {self.cm_opts}'
+            f' -q {{address}} -p {{port}} "[ -d ~/.sos/{dir} ] || mkdir -p ~/.sos/{dir}" && '
+            f' rsync --ignore-existing -a --no-g -e "ssh {self.cm_opts}'
+            f' -q -p {{port}}" {{job_file:ap}} {{address}}:.sos/{dir}/', {
+                'job_file': sos_targets(job_file),
                 'address': self.address,
                 'port': self.port
             })
@@ -1274,7 +1274,7 @@ class Host:
 
             self.host_instances[self.alias]._task_engine = task_engine
             self.host_instances[self.alias]._workflow_engine = workflow_engine
-            
+
             # the task engine is a thread and will run continously
             if start_engine:
                 self.host_instances[self.alias]._task_engine.start()
@@ -1317,5 +1317,5 @@ class Host:
             Dict[str, Union[int, str, Dict[int, Dict[str, int]], float]]]]:
         return {task: self._host_agent.receive_result(task) for task in tasks}
 
-    def execute_workflow(self, script, cmd, **kwargs):
-        return self._workflow_engine.execute_workflow(script, cmd, **kwargs)
+    def execute_workflow(self, script, cmd, **template_args):
+        return self._workflow_engine.execute_workflow(script, cmd, **template_wargs)

@@ -754,7 +754,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
             job.write(job_text)
 
         # then copy the job file to remote host if necessary
-        self.agent.send_task_file(job_file)
+        self.agent.send_job_file(job_file)
 
         try:
             cmd = f'bash ~/.sos/tasks/{filename}'
