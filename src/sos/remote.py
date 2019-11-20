@@ -516,7 +516,6 @@ def run_command_on_hosts(cfg, hosts, cmd, verbosity):
         # runing command on all hosts
         try:
             env.logger.info(f'Running ``{" ".join(cmd)}`` on ``{host}``')
-            env.logger.error(cfg['hosts'].keys())
             h = Host(host, start_engine=False)
             print(h._host_agent.check_output(cmd, under_workdir=True))
         except Exception as e:
