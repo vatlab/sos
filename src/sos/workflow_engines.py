@@ -8,7 +8,7 @@ import subprocess
 
 from .eval import cfg_interpolate
 from .utils import env
-from .messages import encode_msg
+from .targets import textMD5
 
 
 class WorkflowEngine:
@@ -33,6 +33,40 @@ class WorkflowEngine:
         else:
             argv = argv[:r_idx]
         return argv
+
+    def expand_template(self):
+        try:
+            if self.filename.lower().endswith('.ipynb'):
+                from .converter import extract_workflow
+                script = extract_workflow(self.filename)
+            else:
+                with open(self.filename) as script_file:
+                    script = script_file.read()
+
+            self.template_args['filename'] = self.filename
+            self.template_args['script'] = script
+            self.template_args['command'] = self.command
+            self.job_text = cfg_interpolate(self.workflow_template,
+                                       self.template_args) + '\n'
+            self.workflow_id = textMD5(self.job_text)
+        except Exception as e:
+            raise ValueError(
+                f'Failed to generate job file for the execution of workflow {script}: {e}'
+            )
+        try:
+            wf_dir = os.path.join(os.path.expanduser('~'), '.sos', 'workflows')
+            if not os.path.isdir(wf_dir):
+                os.makedirs(wf_dir)
+
+            self.job_file = os.path.join(wf_dir, self.workflow_id + '.sh')
+
+            # do not translate newline under windows because the script will be executed
+            # under linux/mac
+            with open(self.job_file, 'w', newline='') as job:
+                job.write(self.job_text)
+        except Exception as e:
+            raise RuntimeError(f'Failed to submit workflow {self.command} with script \n{self.job_text}\n: {e}')
+        return True
 
     def execute_workflow(self, filename, command, **template_args):
         # there is no need to prepare workflow (e.g. copy over)
@@ -96,6 +130,7 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
                 return False
         return True
 
+
     def _execute_workflow(self):
         # if no template, use a default command
         env.log_to_file('WORKDLOW', f'Execute "{self.command}"')
@@ -104,49 +139,20 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
 
     def _execute_workflow_with_template(self):
         '''Submit workflows by interpolating a shell script defined in workflow_template'''
+        self.expand_template()
 
         try:
-            if self.filename.lower().endswith('.ipynb'):
-                from .converter import extract_workflow
-                script = extract_workflow(self.filename)
-            else:
-                with open(self.filename) as script_file:
-                    script = script_file.read()
-
-            self.template_args['filename'] = self.filename
-            self.template_args['script'] = script
-            self.template_args['command'] = self.command
-            job_text = cfg_interpolate(self.workflow_template,
-                                       self.template_args) + '\n'
-
-        except Exception as e:
-            raise ValueError(
-                f'Failed to generate job file for the execution of workflow {script}: {e}'
-            )
-
-        try:
-            wf_dir = os.path.join(os.path.expanduser('~'), '.sos', 'workflows')
-            if not os.path.isdir(wf_dir):
-                os.makedirs(wf_dir)
-
-            job_file = tempfile.NamedTemporaryFile(
-                dir=wf_dir, prefix='tmp_wf', suffix='.sh', delete=False).name
-            # do not translate newline under windows because the script will be executed
-            # under linux/mac
-            with open(job_file, 'w', newline='') as job:
-                job.write(job_text)
-
             # then copy the job file to remote host if necessary
-            self.agent.send_job_file(job_file, dir='workflows')
+            self.agent.send_job_file(self.job_file, dir='workflows')
 
-            cmd = f'bash ~/.sos/workflows/{os.path.basename(job_file)}'
-            env.log_to_file('WORKFLOW', f'Execute "{cmd}" with script {job_text}')
+            cmd = f'bash ~/.sos/workflows/{os.path.basename(self.job_file)}'
+            env.log_to_file('WORKFLOW', f'Execute "{self.command}" with script {self.job_text}')
             self.agent.run_command(cmd, wait_for_task=True)
         except Exception as e:
-            raise RuntimeError(f'Failed to submit workflow {self.command} with script \n{job_text}\n: {e}')
+            raise RuntimeError(f'Failed to submit workflow {self.command} with script \n{self.job_text}\n: {e}')
         finally:
             try:
-                os.remove(job_file)
+                os.remove(self.job_file)
             except Exception as e:
                 env.logger.debug(
                     f'Failed to remove temporary workflow file')
