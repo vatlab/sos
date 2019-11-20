@@ -91,7 +91,7 @@ run:
         # test sos remote run
         self.assertEqual(
             subprocess.call(
-                'sos remote run docker --cmd cp result_remote.txt result_remote1.txt -c  ~/docker.yml',
+                'sos remote run docker -c  ~/docker.yml --cmd cp result_remote.txt result_remote1.txt ',
                 shell=True), 0)
         self.assertEqual(
             subprocess.call(

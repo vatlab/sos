@@ -894,6 +894,7 @@ class RemoteHost(object):
             raise ValueError(f'Failed to run command {cmd}: {e}')
         if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file('TASK', f'Executing command ``{cmd}``')
+        env.logger.error(cmd)
         if realtime:
             from .utils import pexpect_run
             return pexpect_run(cmd)

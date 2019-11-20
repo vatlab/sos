@@ -91,10 +91,10 @@ class WorkflowEngine:
         # a different path.
         if os.path.basename(command[0]) == 'sos':
             self.command[0] = 'sos'
-            self.command[2] = list(dest.values())[0]
+            #self.command[2] = list(dest.values())[0]
         elif os.path.basename(command[0]) == 'sos-runner':
             self.command[0] = 'sos-runner'
-            self.command[1] = list(dest.values())[0]
+            #self.command[1] = list(dest.values())[0]
 
         self.command = subprocess.list2cmdline(self.command)
         self.template_args = template_args
@@ -134,7 +134,10 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
     def _execute_workflow(self):
         # if no template, use a default command
         env.log_to_file('WORKDLOW', f'Execute "{self.command}"')
-        self.agent.run_command(self.command, wait_for_task=True)
+        try:            
+            self.agent.check_call(self.command, under_workdir=True)
+        except Exception as e:
+            raise RuntimeError(f'Failed to submit workflow {self.command}: {e}')
         return True
 
     def _execute_workflow_with_template(self):
@@ -147,7 +150,7 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
 
             cmd = f'bash ~/.sos/workflows/{os.path.basename(self.job_file)}'
             env.log_to_file('WORKFLOW', f'Execute "{self.command}" with script {self.job_text}')
-            self.agent.run_command(cmd, wait_for_task=True)
+            self.agent.check_call(cmd, under_workdir=True)
         except Exception as e:
             raise RuntimeError(f'Failed to submit workflow {self.command} with script \n{self.job_text}\n: {e}')
         finally:

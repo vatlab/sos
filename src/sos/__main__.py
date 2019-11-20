@@ -437,7 +437,7 @@ def cmd_run(args, workflow_args):
         from .hosts import Host
         load_config_files(args.__config__)
         host = Host(args.__remote__[0])
-
+        host.send_to_host(args.script)
         template_args = {}
         for item in args.__remote__[1:]:
             if '=' not in item:
@@ -845,7 +845,9 @@ def get_remote_parser(desc_only=False):
         help='''files or directories to be push or pulled for action "push" or "pull"'''
     )
     parser.add_argument(
-        '--cmd', nargs=argparse.REMAINDER, help='''commands to be executed by action "run" or tested by action "test"''')
+        '--cmd', nargs=argparse.REMAINDER,
+        help='''commands to be executed by action "run" or tested by action "test". This option takes all remaining options
+            of part of command and must be the last option of the sos remote command.''')
     parser.add_argument(
         '-v',
         '--verbosity',
