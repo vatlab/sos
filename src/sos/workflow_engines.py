@@ -42,13 +42,14 @@ class WorkflowEngine:
             else:
                 with open(self.filename) as script_file:
                     script = script_file.read()
-
+            self.workflow_id = textMD5(script)
+            env.logger.warning(env.sos_dict['CONFIG']['hosts']['htc'].keys())
             self.template_args['filename'] = self.filename
             self.template_args['script'] = script
             self.template_args['command'] = self.command
+            self.template_args['workflow_id'] = self.workflow_id
             self.job_text = cfg_interpolate(self.workflow_template,
                                        self.template_args) + '\n'
-            self.workflow_id = textMD5(self.job_text)
         except Exception as e:
             raise ValueError(
                 f'Failed to generate job file for the execution of workflow {script}: {e}'
@@ -134,7 +135,7 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
     def _execute_workflow(self):
         # if no template, use a default command
         env.log_to_file('WORKDLOW', f'Execute "{self.command}"')
-        try:            
+        try:
             self.agent.check_call(self.command, under_workdir=True)
         except Exception as e:
             raise RuntimeError(f'Failed to submit workflow {self.command}: {e}')

@@ -1320,4 +1320,6 @@ class Host:
         return {task: self._host_agent.receive_result(task) for task in tasks}
 
     def execute_workflow(self, script, cmd, **template_args):
+        if not self._workflow_engine:
+            raise RuntimeError(f'No workflow engine is defined for host {self.alias}')
         return self._workflow_engine.execute_workflow(script, cmd, **template_args)
