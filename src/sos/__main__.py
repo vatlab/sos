@@ -36,11 +36,6 @@ transcript_help = '''Name of a file that records the execution transcript of
     might differ in content because of dynamic input and output of scripts.
     If the option is specified wiht no value, the transcript will be written
     to standard error output.'''
-bindir_help = '''Extra directories in which SoS will look for executables before
-    standard $PATH. This option essentially prefix $PATH with these directories.
-    Note that the default value '~/.sos/bin' is by convention a default
-    directory for commands that are installed by SoS. You can use option '-b'
-    without value to disallow commands under ~/.sos/bin.'''
 
 #
 # subcommand install
@@ -304,7 +299,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         nargs='*',
         metavar='BIN_DIR',
         default=['~/.sos/bin'],
-        help=bindir_help)
+        help=argparse.SUPPRESS)
     parser.add_argument(
         '-q',
         dest='__queue__',
@@ -487,15 +482,8 @@ def cmd_run(args, workflow_args):
 
     from .workflow_executor import Base_Executor
 
-    if args.__bin_dirs__:
-        for d in args.__bin_dirs__:
-            if d == '~/.sos/bin' and not os.path.isdir(os.path.expanduser(d)):
-                os.makedirs(os.path.expanduser(d), exist_ok=True)
-            elif not os.path.isdir(os.path.expanduser(d)):
-                raise ValueError('directory does not exist: {}'.format(d))
-        os.environ['PATH'] = os.pathsep.join([
-            os.path.expanduser(x) for x in args.__bin_dirs__
-        ]) + os.pathsep + os.environ['PATH']
+    if hasattr(args, '__bin_dirs__') and args.__bin_dirs__:
+        env.logger.warning('Option -b is deprecated. Please use option "-r host" with workflow_template instead (#1322).')
 
     if 'PROFILE' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
         import cProfile
@@ -542,8 +530,6 @@ def cmd_run(args, workflow_args):
                 args.workflow,
             'targets':
                 args.__targets__,
-            'bin_dirs':
-                args.__bin_dirs__,
             'workflow_args':
                 workflow_args,
             'trace_existing':
@@ -702,7 +688,6 @@ def cmd_dryrun(args, workflow_args):
     args.__worker_procs__ = ['1']
     args.__max_running_jobs__ = 1
     args.dryrun = True
-    args.__bin_dirs__ = []
     args.__remote__ = None
     args.exec_mode = None
     args.keep_going = False
