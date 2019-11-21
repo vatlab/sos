@@ -1410,6 +1410,14 @@ def load_config_files(filename=None):
                 except:
                     # if there is something cannot be resolved, it is ok because
                     # it might require some other variables such as walltime.
+                    for kk, vv in item.items():
+                        if not isinstance(vv, (str, bytes, int, float, bool)):
+                            continue
+                        v = re.sub(r"{\s*" + kk + r"\s*}", str(vv), v)
+                    for kk, vv in cfg.items():
+                        if not isinstance(vv, (str, bytes, int, float, bool)):
+                            continue
+                        v = re.sub(r"{\s*" + kk + r"\s*}", str(vv), v)
                     res[k] = v
             else:
                 res[k] = v
