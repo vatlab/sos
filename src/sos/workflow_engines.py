@@ -43,7 +43,6 @@ class WorkflowEngine:
                 with open(self.filename) as script_file:
                     script = script_file.read()
             self.workflow_id = textMD5(script)
-            env.logger.warning(env.sos_dict['CONFIG']['hosts']['htc'].keys())
             self.template_args['filename'] = self.filename
             self.template_args['script'] = script
             self.template_args['command'] = self.command

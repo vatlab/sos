@@ -432,13 +432,21 @@ def cmd_run(args, workflow_args):
         from .hosts import Host
         load_config_files(args.__config__)
         host = Host(args.__remote__[0])
+
+        if not os.path.isfile(args.script):
+            if os.path.isfile(args.script + '.sos'):
+                args.script = args.script + '.sos'
+            elif os.path.isfile(args.script + '.ipynb'):
+                args.script = args.script + '.ipynb'
+            else:
+                raise ValueError(f'File not found {args.script} (tried {args.script}, {args.script}.sos, and {args.script}.ipynb)')
+
         host.send_to_host(args.script)
         template_args = {}
         for item in args.__remote__[1:]:
             if '=' not in item:
                 raise ValueError(f"KEY=VALUE pairs are required for definitions after host name.")
-            template_args[item.split('=', 0)] = item.split('=', 1)[1]
-
+            template_args[item.split('=')[0]] = item.split('=', 1)[1]
         # execute the command on remote host
         try:
             return host.execute_workflow(args.script, sys.argv, **template_args)
