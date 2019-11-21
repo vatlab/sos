@@ -677,11 +677,15 @@ class BackgroundProcess_TaskEngine(TaskEngine):
 
     def __init__(self, agent):
         super(BackgroundProcess_TaskEngine, self).__init__(agent)
-        if 'job_template' in self.config:
-            self.job_template = self.config['job_template'].replace(
+        if 'task_template' in self.config:
+            self.task_template = self.config['task_template'].replace(
+                '\r\n', '\n')
+        elif 'job_template' in self.config:
+            env.logger.warning('job_template for host configuration is deprecated. Please use task_template instead.')
+            self.task_template = self.config['job_template'].replace(
                 '\r\n', '\n')
         else:
-            self.job_template = None
+            self.task_template = None
         #
         if 'batch_size' in self.config:
             self.batch_size = self.config['batch_size']
@@ -694,7 +698,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
                      self).execute_tasks(task_ids):
             env.log_to_file('TASK', f'Failed to prepare task {task_ids}')
             return False
-        if self.job_template:
+        if self.task_template:
             if not self._submit_task_with_template(task_ids):
                 return False
         else:
@@ -711,7 +715,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
         return True
 
     def _submit_task_with_template(self, task_ids):
-        '''Submit tasks by interpolating a shell script defined in job_template'''
+        '''Submit tasks by interpolating a shell script defined in task_template'''
         runtime = self.config
         runtime.update({
             'workdir': os.getcwd(),
@@ -737,7 +741,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
         for task_id in task_ids:
             runtime['task'] = task_id
             try:
-                job_text += cfg_interpolate(self.job_template, runtime)
+                job_text += cfg_interpolate(self.task_template, runtime)
                 job_text += '\n'
             except Exception as e:
                 raise ValueError(

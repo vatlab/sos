@@ -120,7 +120,7 @@ HERE
 cat >> ~/docker.yml << 'HERE'
         queue_type: pbs
         status_check_interval: 5
-        job_template: |
+        task_template: |
             #!/bin/bash
             cd {cur_dir}
             sos execute {task} -v {verbosity} -s {sig_mode} {'--dryrun' if run_mode == 'dryrun' else ''}
