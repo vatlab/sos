@@ -317,16 +317,18 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         metavar='HOST',
         nargs='+',
         help='''Execute the workflow in specified remote (or local) host, which should
-            be defined under key host of sos configuration files (preferrably
-            in ~/.sos/hosts.yml). This option basically copies the script to specified
-            remote host and executed with the "workflow_engine" of the host. If an entry
-            "workflow_template" is defined for the host definition, the template woould
-            be expanded with "filename" being the path of script, "script" being the
+            be defined under key "hosts" of sos configurations (preferrably in
+            ~/.sos/hosts.yml). This option basically copies the script to specified
+            host and executes it with the "workflow_engine" of the host, which is by
+            default a "process" engine that execute the workflow with an opotional
+            "workflow_template" defined for the host. The "workflow_template" is
+            expanded with "filename" being the path of script, "script" being the
             content of the script (extracted from notebook if "filename" is a notebook),
-            "command" as the command line to execute the script, and "KEY"
-            as "VALUE" for "KEY=VALUE" pairs defined after the "host" specification.
-            For example, "-r cluster cores=4 ncpus=5" would expand variables "cores" and
-            "ncpus" in the template with values "4" and "5".''')
+            "command" being the command line to execute the script, as specified from
+            the command line but with options "-r", and "-c" removed, "KEY" being
+            "VALUE" from "KEY=VALUE" pairs defined after the "host" name. For example,
+            "-r cluster cores=4 mem=5G" would expand variables "cores" and "mem" in the
+            template with values "4" and "5G".''')
     # parser.add_argument('-t', dest='__transcript__', nargs='?',
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(

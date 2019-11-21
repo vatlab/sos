@@ -168,7 +168,10 @@ docker_build = sos.docker.actions:docker_build
 singularity_build = sos.singularity.actions:singularity_build
 
 [sos_taskengines]
-process = sos.tasks:BackgroundProcess_TaskEngine
+process = sos.task_engines:BackgroundProcess_TaskEngine
+
+[sos_workflowengines]
+process = sos.workflow_engines:BackgroundProcess_WorkflowEngine
 
 [sos_previewers]
 *.pdf,1 = sos.preview:preview_pdf
