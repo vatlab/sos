@@ -58,6 +58,10 @@ if you have helped fixing bugs or making improvements to the source code. In add
 
 ### Change Log of SoS Workflow and SoS Notebook
 
+SoS 0.20.9
+* [sos#1319](https://github.com/vatlab/SoS/issues/1319): Extend option `-r host` to allow workflow to be executed with templates and on PBS
+* [sos#1322](https://github.com/vatlab/SoS/issues/1322): Deprecate option `-b BIN_DIR` due to [sos#1319](https://github.com/vatlab/SoS/issues/1319)
+
 SoS 0.19.15
 * [sos#1273](https://github.com/vatlab/SoS/issues/1273): Allow workflows to be executed on cluster systems.
 * [sos#1277](https://github.com/vatlab/SoS/issues/1277): Allow master tasks to be executed on cluster systems with extended runtime option `trunk_workers`.
