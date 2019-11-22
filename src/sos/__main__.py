@@ -297,8 +297,6 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         '-b',
         dest='__bin_dirs__',
         nargs='*',
-        metavar='BIN_DIR',
-        default=['~/.sos/bin'],
         help=argparse.SUPPRESS)
     parser.add_argument(
         '-q',
