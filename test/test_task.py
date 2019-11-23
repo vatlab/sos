@@ -17,7 +17,7 @@ from sos.parser import SoS_Script
 from sos.targets import file_target
 from sos.utils import env
 from sos.tasks import TaskParams, TaskFile
-
+from sos import execute_workflow
 from sos.workflow_executor import Base_Executor
 
 has_docker = sys.platform != 'win32'
@@ -178,8 +178,9 @@ with open(os.path.join({1!r}, 'result.txt'), 'w') as res:
     def testSequential(self):
         '''Test concurrency option for runtime environment'''
         env.max_jobs = 5
-        env.config['sig_mode'] = 'force'
-        script = SoS_Script(r"""
+        start = time.time()
+        execute_workflow(
+            script=r"""
 import time
 [0]
 
@@ -191,17 +192,17 @@ task: concurrent=False
 print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
 time.sleep(_repeat + 1)
 print('I am {}, done'.format(_index))
-""")
-        wf = script.workflow()
-        start = time.time()
-        Base_Executor(wf, config={'default_queue': 'localhost'}).run()
+""",
+            config={
+                'default_queue': 'localhost',
+                'sig_mode': 'force'
+            })
         self.assertGreater(time.time() - start, 11)
 
     def testConcurrency(self):
         '''Test concurrency option for runtime environment'''
-        env.max_jobs = 5
-        env.config['sig_mode'] = 'force'
-        script = SoS_Script(r"""
+        execute_workflow(
+            r"""
 [0]
 
 repeat = range(4)
@@ -213,9 +214,11 @@ import time
 print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
 time.sleep(_repeat + 1)
 print('I am {}, done'.format(_index))
-""")
-        wf = script.workflow()
-        Base_Executor(wf, config={'default_queue': 'localhost'}).run()
+""",
+            config={
+                'default_queue': 'localhost',
+                'sig_mode': 'force'
+            })
 
     def testPrependPath(self):
         '''Test prepend path'''
@@ -245,26 +248,28 @@ run:
         # for some reason it uses the same task file
         #
         # use option env
-        script = SoS_Script(r"""
+        execute_workflow(
+            script=r"""
 import os
 [1]
 task: env={'PATH': 'temp' + os.pathsep + os.environ['PATH']}
 run:
     temp_cmd
-""")
-        wf = script.workflow()
-        env.config['sig_mode'] = 'force'
-        Base_Executor(wf, config={'default_queue': 'localhost'}).run()
+""",
+            config={
+                'default_queue': 'localhost',
+                'sig_mode': 'force'
+            })
         #
         #
-        script = SoS_Script(r"""
+        execute_workflow(
+            script=r"""
 [1]
 task: prepend_path='temp'
 run:
     temp_cmd
-""")
-        wf = script.workflow()
-        Base_Executor(wf, config={'default_queue': 'localhost'}).run()
+""",
+            config={'default_queue': 'localhost'})
 
     def testNoTask(self):
         env.config['sig_mode'] = 'force'

@@ -1123,7 +1123,7 @@ class Base_Executor:
             )
 
         if targets and sos_targets(targets).target_exists() and not env.config['trace_existing']:
-            env.logger.info(f'Target{"s" if len(targets) > 1 else ""} {sos_targets(targets)} already exists. Remove or use option "-T" if you would like to regenerate {"them" if len(targets) > 1 else "it"}.')
+            env.logger.info(f'Target{"s" if len(sos_targets(targets)) > 1 else ""} {sos_targets(targets)} already exists. Remove or use option "-T" if you would like to regenerate {"them" if len(targets) > 1 else "it"}.')
             wf_result['__completed__'] = 0
             return wf_result
 
