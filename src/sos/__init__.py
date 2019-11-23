@@ -23,19 +23,20 @@ def execute_workflow(script: str,
     script:
         A (multi-line) string that defines one or more workflows.
 
-    workflow (optional):
+    workflow (string, optional):
         Name of workflow to execute. This option can be ignored if
         ignored if the script defines a default workflow (with no name
         or with name `default`) or defines only a single workflow, or
         if the workflow is triggered by option "targets".
 
     targets (string or list, or sos_targets, optional):
+        One (string) or more (list) of filenames as targets to be generated
+        by the workflow, equivalent to option "-t" from command line.
 
     args (list or dict, optional):
-        Command line arguments (a list in the format of "[`--name', 'value']")
-        for workflow parameters defined in "parameter" statements. A dictionary
-        (e.g. {"name", "value"}) is also acceptable and is equivalent to setting
-        `config["workflow_vars"]'.
+        Command line arguments as a list in the format of "[`--cutoff', '0.5']"
+        or a dictionary in the format of {"cutoff}: 0.5} for workflow parameters 
+        defined in "parameter" statements.
 
     config (dict, optional):
         Dictionary with the following configuration options. Please
@@ -57,6 +58,8 @@ def execute_workflow(script: str,
         # show script with error
         raise ValueError(f'Failed to parse script {script}: {e}')
     #
+    if workflow and targets:
+        raise ValueError("Only one of parameters workflow and targets should be specified.")
     wf = script.workflow(workflow, use_default=not targets)
     run_config = {
         'config_file': None,
