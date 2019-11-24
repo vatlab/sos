@@ -193,7 +193,7 @@ print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
 time.sleep(_repeat + 1)
 print('I am {}, done'.format(_index))
 """,
-            config={
+            options={
                 'default_queue': 'localhost',
                 'sig_mode': 'force'
             })
@@ -215,7 +215,7 @@ print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
 time.sleep(_repeat + 1)
 print('I am {}, done'.format(_index))
 """,
-            config={
+            options={
                 'default_queue': 'localhost',
                 'sig_mode': 'force'
             })
@@ -256,7 +256,7 @@ task: env={'PATH': 'temp' + os.pathsep + os.environ['PATH']}
 run:
     temp_cmd
 """,
-            config={
+            options={
                 'default_queue': 'localhost',
                 'sig_mode': 'force'
             })
@@ -269,7 +269,7 @@ task: prepend_path='temp'
 run:
     temp_cmd
 """,
-            config={'default_queue': 'localhost'})
+            options={'default_queue': 'localhost'})
 
     def testNoTask(self):
         env.config['sig_mode'] = 'force'

@@ -1352,6 +1352,10 @@ def load_config_files(filename=None):
 
     if 'user_name' not in cfg:
         cfg['user_name'] = getpass.getuser().lower()
+
+    if 'extra_config' in env.config and isinstance(env.config['extra_config'], str):
+        cfg.update(env.config['extra_config'])
+
     # handle keyword "based_on", which should fill the dictionary with others.
     def process_based_on(cfg, item):
         if 'based_on' in item:

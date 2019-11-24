@@ -16,6 +16,7 @@ def execute_workflow(script: str,
                      workflow=None,
                      targets=None,
                      args=[],
+                     options={},
                      config={}):
     '''
     Execute a SoS workflow with the following parameters:
@@ -38,10 +39,11 @@ def execute_workflow(script: str,
         or a dictionary in the format of {"cutoff": 0.5} for workflow parameters
         defined in "parameter" statements.
 
-    config (dict, optional):
+    options (dict, optional):
         Dictionary with the following configuration options. Please
         refer to output of "sos run -h" for details about each option.
-            config_file: configuration file ("-c")
+            config_file: configuration file ("-c"). The content of the config
+                file can also be specified with option config.
             output_dag: option "-d"
             output_report: option "-p"
             default_queue: option "-q"
@@ -51,6 +53,9 @@ def execute_workflow(script: str,
             run_mode: "run" or "dryrun"
             verbosity: option "-v"
             trace_existing: option "-T"
+
+    config (dict, optional):
+        config as if loaded from "options['config_file']"
 
     Note: executing on specified host (option "-r") is not supported by this function.
     '''
@@ -63,8 +68,12 @@ def execute_workflow(script: str,
     if workflow and targets:
         raise ValueError("Only one of parameters workflow and targets should be specified.")
     wf = script.workflow(workflow, use_default=not targets)
-    run_config = {
+
+    if not isinstance(config, dict):
+        raise ValueError(f'Option config should be a dictionary.')
+    run_options = {
         'config_file': None,
+        'extra_config': config,
         'output_dag': None,
         'output_report': None,
         'default_queue': None,
@@ -84,13 +93,14 @@ def execute_workflow(script: str,
     }
     # a convenience feature
     if isinstance(args, dict):
-        run_config['workflow_vars'] = args
+        run_options['workflow_vars'] = args
         args = []
-    run_config.update(config)
+    run_options.update(options)
 
-    env.verbosity = run_config['verbosity']
+    from .utils import env
+    env.verbosity = run_options['verbosity']
 
-    executor = Base_Executor(wf, args=args, config=run_config)
+    executor = Base_Executor(wf, args=args, config=run_options)
     if isinstance(targets, str):
         targets = [targets]
     return executor.run(targets=targets)
