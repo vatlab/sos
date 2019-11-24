@@ -35,7 +35,7 @@ def execute_workflow(script: str,
 
     args (list or dict, optional):
         Command line arguments as a list in the format of "[`--cutoff', '0.5']"
-        or a dictionary in the format of {"cutoff}: 0.5} for workflow parameters 
+        or a dictionary in the format of {"cutoff": 0.5} for workflow parameters
         defined in "parameter" statements.
 
     config (dict, optional):
@@ -51,6 +51,8 @@ def execute_workflow(script: str,
             run_mode: "run" or "dryrun"
             verbosity: option "-v"
             trace_existing: option "-T"
+
+    Note: executing on specified host (option "-r") is not supported by this function.
     '''
     try:
         script = SoS_Script(script)
@@ -85,6 +87,9 @@ def execute_workflow(script: str,
         run_config['workflow_vars'] = args
         args = []
     run_config.update(config)
+
+    env.verbosity = run_config['verbosity']
+
     executor = Base_Executor(wf, args=args, config=run_config)
     if isinstance(targets, str):
         targets = [targets]
