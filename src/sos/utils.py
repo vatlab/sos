@@ -1299,9 +1299,12 @@ def load_config_files(filename=None):
     filemtime = None if filename is None else os.path.getmtime(
         os.path.expanduser(filename))
 
-    if (filename, filemtime) in config_cache:
-        env.sos_dict.set('CONFIG', config_cache[(filename, filemtime)])
-        return config_cache[(filename, filemtime)]
+    from .targets import textMD5
+    extra_cfg = None if 'extra_config' not in env.config else textMD5(str(env.config['extra_config']))
+
+    if (filename, filemtime, extra_cfg) in config_cache:
+        env.sos_dict.set('CONFIG', config_cache[(filename, filemtime, extra_cfg)])
+        return config_cache[(filename, filemtime, extra_cfg)]
 
     cfg = {}
     # site configuration file
@@ -1353,7 +1356,7 @@ def load_config_files(filename=None):
     if 'user_name' not in cfg:
         cfg['user_name'] = getpass.getuser().lower()
 
-    if 'extra_config' in env.config and isinstance(env.config['extra_config'], str):
+    if 'extra_config' in env.config and isinstance(env.config['extra_config'], dict):
         cfg.update(env.config['extra_config'])
 
     # handle keyword "based_on", which should fill the dictionary with others.
@@ -1439,7 +1442,7 @@ def load_config_files(filename=None):
                 res[k] = v
         else:
             res[k] = v
-    config_cache[(filename, filemtime)] = res
+    config_cache[(filename, filemtime, extra_cfg)] = res
     env.sos_dict.set('CONFIG', res)
     return res
 
