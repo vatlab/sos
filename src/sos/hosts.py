@@ -1241,7 +1241,6 @@ class Host:
                 task_engine = None
                 workflow_engine = None
 
-                available_engines = []
                 for entrypoint in pkg_resources.iter_entry_points(
                         group='sos_taskengines'):
                     try:
@@ -1249,13 +1248,11 @@ class Host:
                             task_engine = entrypoint.load()(
                                 self.host_instances[self.alias])
                             break
-                        available_engines.append(entrypoint.name)
                     except Exception as e:
-                        raise RuntimeError(
+                        env.logger.debug(
                             f'Failed to load task engine {self._engine_type}: {e}'
                         )
 
-                available_engines = []
                 for entrypoint in pkg_resources.iter_entry_points(
                         group='sos_workflowengines'):
                     try:
@@ -1263,16 +1260,10 @@ class Host:
                             workflow_engine = entrypoint.load()(
                                 self.host_instances[self.alias])
                             break
-                        available_engines.append(entrypoint.name)
                     except Exception as e:
-                        raise RuntimeError(
+                        env.logger.debug(
                             f'Failed to load workflow engine {self._engine_type}: {e}'
                         )
-
-                if task_engine is None:
-                    raise RuntimeError(
-                        f'This system currently supports task engine{"s" if len(available_engines) > 1 else ""} {", ".join(available_engines)}, not {self._engine_type} as specified in the template. Did you install a relevant module such as sos-{self._engine_type}?'
-                    )
 
             self.host_instances[self.alias]._task_engine = task_engine
             self.host_instances[self.alias]._workflow_engine = workflow_engine
@@ -1306,6 +1297,8 @@ class Host:
         return self._host_agent._map_var(rvars)
 
     def submit_task(self, task_id: str) -> str:
+        if not self._task_engine:
+            raise RuntimeError(f'No task engine or invalid engine definition defined for host {self.alias}')
         return self._task_engine.submit_task(task_id)
 
     def check_status(self, tasks: List[str]) -> List[str]:
@@ -1321,5 +1314,5 @@ class Host:
 
     def execute_workflow(self, script, cmd, **template_args):
         if not self._workflow_engine:
-            raise RuntimeError(f'No workflow engine is defined for host {self.alias}')
+            raise RuntimeError(f'No workflow engine or invalid engine definition defined for host {self.alias}')
         return self._workflow_engine.execute_workflow(script, cmd, **template_args)
