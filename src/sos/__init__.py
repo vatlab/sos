@@ -88,7 +88,7 @@ def execute_workflow(script: str,
         'targets': targets,
         'workflow_args': args,
         'trace_existing': False,
-        'keep_going': False,
+        'error_mode': 'default',
         'exec_mode': None
     }
     # a convenience feature

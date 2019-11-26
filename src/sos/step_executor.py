@@ -856,7 +856,7 @@ class Base_Step_Executor:
                     raise res['exception']
                 elif isinstance(res['exception'], RemovedTarget):
                     pass
-                elif env.config['keep_going']:
+                elif env.config['error_mode'] == 'keep_going':
                     idx_msg = f'(id={env.sos_dict["step_id"]}, index={res["index"]})' if "index" in res and len(
                         self._substeps
                     ) > 1 else f'(id={env.sos_dict["step_id"]})'
@@ -1733,7 +1733,7 @@ class Base_Step_Executor:
                             break
                         except Exception as e:
                             clear_output()
-                            if env.config['keep_going']:
+                            if env.config['error_mode'] == 'keep_going':
                                 idx_msg = f'(id={env.sos_dict["step_id"]}, index={idx})' if len(
                                     self._substeps
                                 ) > 1 else f'(id={env.sos_dict["step_id"]})'

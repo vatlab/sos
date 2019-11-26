@@ -369,11 +369,23 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         '-k',
         action='store_true',
         dest='keep_going',
-        help='''Keep completing the DAG even after some step has failed. By
+        help=argparse.SUPPRESS)
+    runmode.add_argument(
+        '-e',
+        choices=[
+            'default', 'keep-going', 'ignore', 'abort'
+        ],
+        default='default',
+        metavar='ERRORMODE',
+        dest='__error_mode__',
+        help='''How to handle failures from steps and substeps. By
             default, SoS will stop executing the DAG (but wait until all
-            running jobs are completed) when an error happens. With this
-            option, SoS will mark a branch of DAG as failed but still tries
-            to complete other parts of the DAG.''')
+            running jobs are completed) when an error happens. 
+            With error mode "keep-going", sos keeps completing the
+            DAG even after some step has failed. With mode "ignore",
+            sos will assume the error is expected and continue to
+            execute the workflow. With mode "abort", sos will terminate
+            existing running processes.''')
     # run in tapping mode etc
     runmode.add_argument(
         '-m', nargs='+', dest='exec_mode', help=argparse.SUPPRESS)
@@ -469,6 +481,10 @@ def cmd_run(args, workflow_args):
         args.__report__ = None
     env.verbosity = args.verbosity
 
+    if args.keep_going:
+        env.logger.warning(f'Option -k is deprecated. use -e keep-going instead.')
+        args.__error_mode__ = 'keep-going'
+
     if args.__report__ and args.__dag__:
         try:
             import graphviz
@@ -542,8 +558,8 @@ def cmd_run(args, workflow_args):
                 workflow_args,
             'trace_existing':
                 args.trace_existing,
-            'keep_going':
-                args.keep_going,
+            'error_mode':
+                args.__error_mode__,
             # tapping etc
             'exec_mode':
                 args.exec_mode
@@ -698,7 +714,7 @@ def cmd_dryrun(args, workflow_args):
     args.dryrun = True
     args.__remote__ = None
     args.exec_mode = None
-    args.keep_going = False
+    args.__error_mode__ = 'default'
     cmd_run(args, workflow_args)
 
 
