@@ -1269,8 +1269,8 @@ class Host:
             self.host_instances[self.alias]._workflow_engine = workflow_engine
 
             # the task engine is a thread and will run continously
-            if start_engine:
-                self.host_instances[self.alias]._task_engine.start()
+            if start_engine and task_engine is not None:
+                task_engine.start()
 
         self._host_agent = self.host_instances[self.alias]
         # for convenience
@@ -1280,7 +1280,7 @@ class Host:
             self._workflow_engine = self._host_agent._workflow_engine
         # it is possible that Host() is initialized before with start_engine=False
         # and called again to start engine
-        if start_engine and not self._task_engine.is_alive():
+        if start_engine and self._task_engine is not None and not self._task_engine.is_alive():
             self._task_engine.start()
 
     # public interface
