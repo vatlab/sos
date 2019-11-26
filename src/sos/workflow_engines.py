@@ -42,11 +42,11 @@ class WorkflowEngine:
             else:
                 with open(self.filename) as script_file:
                     script = script_file.read()
-            self.workflow_id = textMD5(script)
+            self.job_name = textMD5(script)
             self.template_args['filename'] = self.filename
             self.template_args['script'] = script
             self.template_args['command'] = self.command
-            self.template_args['workflow_id'] = self.workflow_id
+            self.template_args['job_name'] = self.job_name
             self.job_text = cfg_interpolate(self.workflow_template,
                                        self.template_args) + '\n'
         except Exception as e:
@@ -58,7 +58,7 @@ class WorkflowEngine:
             if not os.path.isdir(wf_dir):
                 os.makedirs(wf_dir)
 
-            self.job_file = os.path.join(wf_dir, self.workflow_id + '.sh')
+            self.job_file = os.path.join(wf_dir, self.job_name + '.sh')
 
             # do not translate newline under windows because the script will be executed
             # under linux/mac
