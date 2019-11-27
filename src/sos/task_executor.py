@@ -401,9 +401,14 @@ class BaseTaskExecutor(object):
             params, 'num_workers') else params.sos_dict['_runtime'].get(
                 'num_workers', 1)
 
-        if isinstance(n_workers, int) and n_workers > 1:
-            results = self.execute_master_task_in_parallel(
-                params, master_runtime, sig_content, n_workers)
+        if isinstance(n_workers, int):
+            if n_workers > 1:
+                results = self.execute_master_task_in_parallel(
+                    params, master_runtime, sig_content, n_workers)
+            else:
+                # n_workers = 1
+                results = self.execute_master_task_sequentially(
+                    params, master_runtime, sig_content)
         elif n_nodes == 1:
             if n_workers is None:
                 n_workers = 1
@@ -420,6 +425,7 @@ class BaseTaskExecutor(object):
                 results = self.execute_master_task_in_parallel(
                     params, master_runtime, sig_content, n_workers)
         else:
+            # n_workers should be a sequence
             if not n_workers:
                 n_workers = env.config['worker_procs']
             elif len(n_workers) != n_nodes:
