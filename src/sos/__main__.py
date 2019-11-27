@@ -481,7 +481,7 @@ def cmd_run(args, workflow_args):
         args.__report__ = None
     env.verbosity = args.verbosity
 
-    if args.keep_going:
+    if hasattr(args, 'keep_going') and args.keep_going:
         env.logger.warning(f'Option -k is deprecated. use -e keep-going instead.')
         args.__error_mode__ = 'keep-going'
 
