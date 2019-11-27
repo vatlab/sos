@@ -856,7 +856,7 @@ class Base_Step_Executor:
                     raise res['exception']
                 elif isinstance(res['exception'], RemovedTarget):
                     pass
-                elif env.config['error_mode'] == 'keep_going':
+                elif env.config['error_mode'] in ('keep-going', 'ignore'):
                     idx_msg = f'(id={env.sos_dict["step_id"]}, index={res["index"]})' if "index" in res and len(
                         self._substeps
                     ) > 1 else f'(id={env.sos_dict["step_id"]})'
@@ -864,7 +864,7 @@ class Base_Step_Executor:
                         f'''Substep {self.step.step_name()} {idx_msg} returns an error.'''
                     )
                     self.exec_error.append(idx_msg, res['exception'])
-                else:
+                elif env.config['error_mode'] in ('abort', 'default'):
                     idx_msg = f'(id={env.sos_dict["step_id"]}, index={res["index"]})' if "index" in res and len(
                         self._substeps
                     ) > 1 else f'(id={env.sos_dict["step_id"]})'
@@ -883,6 +883,8 @@ class Base_Step_Executor:
                             self.exec_error.append(f'index={res["index"]}',
                                                    res['exception'])
                     raise self.exec_error
+                else:
+                    raise RuntimeError(f'This line should not be reached.')
             #
             if "index" not in res:
                 raise RuntimeError(
@@ -1733,7 +1735,7 @@ class Base_Step_Executor:
                             break
                         except Exception as e:
                             clear_output()
-                            if env.config['error_mode'] == 'keep_going':
+                            if env.config['error_mode'] == 'keep-going':
                                 idx_msg = f'(id={env.sos_dict["step_id"]}, index={idx})' if len(
                                     self._substeps
                                 ) > 1 else f'(id={env.sos_dict["step_id"]})'

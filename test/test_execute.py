@@ -2418,7 +2418,7 @@ fail_if(True)
         #
         self.assertRaises(Exception,
                           Base_Executor(wf, config={
-                              'error_mode': 'keep_going'
+                              'error_mode': 'keep-going'
                           }).run)
         self.assertTrue(
             time.time() - st >= 8,
@@ -2452,7 +2452,7 @@ fail_if(_index == 5, 'fail at 5')
                 os.remove(f'test_{i}.txt')
         self.assertRaises(Exception,
                           Base_Executor(wf, config={
-                              'error_mode': 'keep_going'
+                              'error_mode': 'keep-going'
                           }).run)
         for i in range(6, 10):
             if i == 5:
@@ -2490,7 +2490,7 @@ fail_if(_index == 10, 'fail at 10')
                 os.remove(f'test_{i}.txt')
         self.assertRaises(Exception,
                           Base_Executor(wf, config={
-                              'error_mode': 'keep_going'
+                              'error_mode': 'keep-going'
                           }).run)
         for i in (5, 10):
             self.assertFalse(os.path.isfile(f'test_{i}.txt'))
