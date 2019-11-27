@@ -2459,6 +2459,39 @@ fail_if(_index == 5, 'fail at 5')
                 continue
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
 
+    def testIgnoreErrorOfSubsteps(self):
+        for i in range(10):
+            if os.path.isfile(f'test_{i}.txt'):
+                os.remove(f'test_{i}.txt')
+        script = SoS_Script(r"""
+import time
+
+[10]
+input: for_each=dict(i=range(10)), concurrent=False
+output: f'test_{i}.txt'
+
+_output.touch()
+
+fail_if(_index == 5, 'fail at 5')
+        """)
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+        for i in range(5):
+            self.assertTrue(os.path.isfile(f'test_{i}.txt'))
+        for i in range(5, 10):
+            self.assertFalse(os.path.isfile(f'test_{i}.txt'))
+        #
+        for i in range(10):
+            if os.path.isfile(f'test_{i}.txt'):
+                os.remove(f'test_{i}.txt')
+        Base_Executor(wf, config={
+                              'error_mode': 'ignore'
+                          }).run()
+        for i in range(6, 10):
+            if i == 5:
+                continue
+            self.assertTrue(os.path.isfile(f'test_{i}.txt'))
+
     def testKeepGoingOfConcurrentSubsteps(self):
         for i in range(200):
             if os.path.isfile(f'test_{i}.txt'):

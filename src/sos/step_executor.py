@@ -1743,6 +1743,15 @@ class Base_Step_Executor:
                                     f'Substep {self.step.step_name()} {idx_msg} returns an error.'
                                 )
                                 self.exec_error.append(str(idx), e)
+                            elif env.config['error_mode'] == 'ignore':
+                                idx_msg = f'(id={env.sos_dict["step_id"]}, index={idx})' if len(
+                                    self._substeps
+                                ) > 1 else f'(id={env.sos_dict["step_id"]})'
+                                env.logger.info(
+                                    f'Substep {self.step.step_name()} {idx_msg} is ignored due to error: {e}'
+                                )
+                                self.output_groups[idx] = sos_targets([])
+                                skip_index = True
                             else:
                                 raise
                     else:
