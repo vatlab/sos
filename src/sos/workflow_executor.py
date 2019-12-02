@@ -541,7 +541,7 @@ class Base_Executor:
                                 for x in indexed)):
                                 # all previous status has been failed or completed...
                                 raise RuntimeError(
-                                    f"No rule to generate target '{target}'{dag.steps_depending_on(target, self.workflow)}. Stop."
+                                    f"No rule to generate target '{target}'{dag.steps_depending_on(target, self.workflow)}."
                                 )
                             if node._input_targets.valid():
                                 node._input_targets = sos_targets([])
@@ -1222,11 +1222,15 @@ class Base_Executor:
                                     runnable._pending_targets = [missed]
                                     runnable._socket = proc.socket
                                 except Exception as e:
-                                    env.logger.error(e)
-                                    proc.socket.send(encode_msg(''))
-                                    proc.set_status('failed')
-                                    if env.config['error_mode'] != 'keep-going':
-                                        manager.stop_dag(dag)
+                                    if env.config['error_mode'] == 'ignore':
+                                        env.logger.info(e)
+                                        proc.socket.send(encode_msg(''))
+                                    else:
+                                        env.logger.error(e)
+                                        proc.socket.send(encode_msg(''))
+                                        proc.set_status('failed')
+                                        if env.config['error_mode'] != 'keep-going':
+                                            manager.stop_dag(dag)
                         elif res[0] == 'dependent_target':
                             # The target might be dependent on other steps and we
                             # are trying to extend the DAG to verify the target

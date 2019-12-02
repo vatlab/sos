@@ -2389,7 +2389,7 @@ time.sleep(12)
         ret.wait()
         self.assertEqual(ret.returncode, 0)
 
-    def testKeepGoingOfStep(self):
+    def testErrorHandlingOfStep(self):
         # test fail_if of killing another running substep
         if os.path.isfile('11.txt'):
             os.remove('11.txt')
@@ -2424,33 +2424,6 @@ fail_if(True)
             time.time() - st >= 8,
             'Test test should fail only after step 10 is completed')
         self.assertTrue(os.path.isfile('11.txt'))
-
-    def testIgnoreErrorOfStep(self):
-        # test fail_if of killing another running substep
-        if os.path.isfile('11.txt'):
-            os.remove('11.txt')
-        script = SoS_Script(r"""
-import time
-
-[10]
-time.sleep(8)
-
-[11]
-output: '11.txt'
-_output.touch()
-
-[20]
-input: None
-time.sleep(2)
-fail_if(True)
-""")
-        st = time.time()
-        wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf).run)
-        self.assertTrue(
-            time.time() - st >= 8,
-            'Test test should fail only after step 10 is completed')
-        self.assertFalse(os.path.isfile('11.txt'))
         #
         Base_Executor(wf, config={
                               'error_mode': 'ignore'
@@ -2460,7 +2433,7 @@ fail_if(True)
             'Test test should fail only after step 10 is completed')
         self.assertTrue(os.path.isfile('11.txt'))
 
-    def testKeepGoingOfSubsteps(self):
+    def testErrorHandlingOfSubsteps(self):
         for i in range(10):
             if os.path.isfile(f'test_{i}.txt'):
                 os.remove(f'test_{i}.txt')
@@ -2493,29 +2466,7 @@ fail_if(_index == 5, 'fail at 5')
             if i == 5:
                 continue
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
-
-    def testIgnoreErrorOfSubsteps(self):
-        for i in range(10):
-            if os.path.isfile(f'test_{i}.txt'):
-                os.remove(f'test_{i}.txt')
-        script = SoS_Script(r"""
-import time
-
-[10]
-input: for_each=dict(i=range(10)), concurrent=False
-output: f'test_{i}.txt'
-
-_output.touch()
-
-fail_if(_index == 5, 'fail at 5')
-        """)
-        wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf).run)
-        for i in range(5):
-            self.assertTrue(os.path.isfile(f'test_{i}.txt'))
-        for i in range(5, 10):
-            self.assertFalse(os.path.isfile(f'test_{i}.txt'))
-        #
+        # clean up
         for i in range(10):
             if os.path.isfile(f'test_{i}.txt'):
                 os.remove(f'test_{i}.txt')
@@ -2527,7 +2478,7 @@ fail_if(_index == 5, 'fail at 5')
                 continue
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
 
-    def testKeepGoingOfConcurrentSubsteps(self):
+    def testErrorHandlingOfConcurrentSubsteps(self):
         for i in range(200):
             if os.path.isfile(f'test_{i}.txt'):
                 os.remove(f'test_{i}.txt')
@@ -2564,6 +2515,62 @@ fail_if(_index == 10, 'fail at 10')
             self.assertFalse(os.path.isfile(f'test_{i}.txt'))
         for i in range(190, 200):
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
+
+    def testErrorHandlingMissingInput(self):
+        # finishing another step if currently missing
+        if os.path.isfile('11.txt'):
+            os.remove('11.txt')
+        if os.path.isfile('22.txt'):
+            os.remove('22.txt')
+        script = SoS_Script(r"""
+import time
+
+[10]
+time.sleep(8)
+
+[11]
+output: '11.txt'
+_output.touch()
+
+[20]
+input: None
+time.sleep(2)
+
+[21]
+input: 'no_existent.txt'
+
+[22]
+output: '22.txt'
+_output.touch()
+""")
+        st = time.time()
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+        self.assertTrue(
+            time.time() - st >= 8,
+            'Test test should fail only after step 10 is completed')
+        self.assertFalse(os.path.isfile('11.txt'))
+        #
+        # keep-going
+        self.assertRaises(Exception,
+                          Base_Executor(wf, config={
+                              'error_mode': 'keep-going'
+                          }).run)
+        self.assertTrue(
+            time.time() - st >= 8,
+            'Test test should fail only after step 10 is completed')
+        self.assertTrue(os.path.isfile('11.txt'))
+        #
+        # ignore, step 22 should be executed
+        self.assertRaises(Exception,
+                          Base_Executor(wf, config={
+                              'error_mode': 'ignore'
+                          }).run)
+        self.assertTrue(
+            time.time() - st >= 8,
+            'Test test should fail only after step 10 is completed')
+        self.assertTrue(os.path.isfile('22.txt'))
+
 
     def testStmtBeforeInput(self):
         '''Bug #1270, if there is any statement before input, the step will be undetermined'''
