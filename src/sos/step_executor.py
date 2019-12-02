@@ -1231,6 +1231,8 @@ class Base_Step_Executor:
                 elif isinstance(excp, RemovedTarget):
                     raise excp
                 elif 'task' in proc_result:
+                    if env.config['error-mode'] == 'ignore':
+                        env.logger.warning(f"Ignore failed task {proc_result['task']}.")
                     # if the exception is from a task...
                     self.exec_error.append(proc_result['task'], excp)
             else:
@@ -1532,7 +1534,7 @@ class Base_Step_Executor:
                 env.sos_dict.set('_index', idx)
 
                 if env.config['error_mode'] == 'ignore' and any(isinstance(x, invalid_target) for x in g.targets):
-                    env.logger.info(f'Substep {idx} ignored due to invalid input caused by previous failed steps')
+                    env.logger.warning(f'Substep {idx} ignored due to invalid input caused by previous failed steps')
                     env.sos_dict.set('_output', sos_targets(invalid_target()))
                     self.skip_substep()
                     continue
@@ -1753,7 +1755,7 @@ class Base_Step_Executor:
                                 idx_msg = f'(id={env.sos_dict["step_id"]}, index={idx})' if len(
                                     self._substeps
                                 ) > 1 else f'(id={env.sos_dict["step_id"]})'
-                                env.logger.info(
+                                env.logger.warning(
                                     f'Substep {self.step.step_name()} {idx_msg} returns no output due to error: {e}'
                                 )
                                 self.output_groups[idx] = sos_targets(invalid_target())

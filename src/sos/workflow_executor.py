@@ -1228,7 +1228,7 @@ class Base_Executor:
                                     runnable._socket = proc.socket
                                 except Exception as e:
                                     if env.config['error_mode'] == 'ignore':
-                                        env.logger.info(e)
+                                        env.logger.warning(e)
                                         proc.socket.send(encode_msg(''))
                                     else:
                                         env.logger.error(e)
@@ -1391,7 +1391,7 @@ class Base_Executor:
                                 },
                             }
                             self.step_completed(res, dag, runnable)
-                            env.logger.debug(
+                            env.logger.warning(
                                 f'Error from step {runnable} is ignored')
                         else:
                             # env.logger.error(res)

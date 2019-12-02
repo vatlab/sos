@@ -2525,6 +2525,76 @@ fail_if(_index == 10, 'fail at 10')
         for i in range(190, 200):
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
 
+    def testErrorHandlingOfTasks(self):
+        for i in (0, 1, 2, 30, 31):
+            if os.path.isfile(f'test_{i}.txt'):
+                os.remove(f'test_{i}.txt')
+            if os.path.isfile(f'test_{i}.bak'):
+                os.remove(f'test_{i}.bak')
+        script = SoS_Script(r"""
+import time
+
+[10]
+input: for_each=dict(i=range(3)), concurrent=False
+output: f'test_{i}.txt'
+
+task: queue='localhost'
+fail_if(i == 1, 'fail at 1')
+_output.touch()
+
+[20]
+output: _input.with_suffix('.bak')
+_output.touch()
+
+[30]
+input: None
+output: 'test_30.txt'
+time.sleep(18)
+_output.touch()
+
+[31]
+output: 'test_31.txt'
+_output.touch()
+        """)
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+        for i in (0, 2):
+            self.assertTrue(os.path.isfile(f'test_{i}.txt'))
+            self.assertFalse(os.path.isfile(f'test_{i}.bak'))
+        # 30 is allowed to finish
+        self.assertTrue(os.path.isfile(f'test_30.txt'))
+        # 31 is not started
+        self.assertFalse(os.path.isfile(f'test_31.txt'))
+        #
+        for i in (0, 1, 2, 30, 31):
+            if os.path.isfile(f'test_{i}.txt'):
+                os.remove(f'test_{i}.txt')
+            if os.path.isfile(f'test_{i}.bak'):
+                os.remove(f'test_{i}.bak')
+
+        self.assertRaises(Exception,
+                          Base_Executor(wf, config={
+                              'error_mode': 'keep-going'
+                          }).run)
+        for i in (0, 2, 30, 31):
+            self.assertTrue(os.path.isfile(f'test_{i}.txt'))
+            self.assertFalse(os.path.isfile(f'test_{i}.bak'))
+        self.assertFalse(os.path.isfile(f'test_1.txt'))
+        # ignore
+        for i in (0, 1, 2, 30, 31):
+            if os.path.isfile(f'test_{i}.txt'):
+                os.remove(f'test_{i}.txt')
+            if os.path.isfile(f'test_{i}.bak'):
+                os.remove(f'test_{i}.bak')
+        Base_Executor(wf, config={
+                              'error_mode': 'ignore'
+                          }).run()
+        for i in (0, 2, 30, 31):
+            self.assertTrue(os.path.isfile(f'test_{i}.txt'))
+        for i in (0, 2):
+            self.assertFalse(os.path.isfile(f'test_{i}.bak'))
+        self.assertFalse(os.path.isfile(f'test_1.txt'))
+
     def testErrorHandlingOfMissingInput(self):
         # finishing another step if currently missing
         if os.path.isfile('11.txt'):
