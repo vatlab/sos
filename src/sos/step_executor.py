@@ -856,7 +856,7 @@ class Base_Step_Executor:
                     raise res['exception']
                 elif isinstance(res['exception'], RemovedTarget):
                     pass
-                elif env.config['error_mode'] in ('keep-going', 'ignore'):
+                elif env.config['error_mode'] == 'keep-going':
                     idx_msg = f'(id={env.sos_dict["step_id"]}, index={res["index"]})' if "index" in res and len(
                         self._substeps
                     ) > 1 else f'(id={env.sos_dict["step_id"]})'
@@ -864,6 +864,14 @@ class Base_Step_Executor:
                         f'''Substep {self.step.step_name()} {idx_msg} returns an error.'''
                     )
                     self.exec_error.append(idx_msg, res['exception'])
+                elif env.config['error_mode'] == 'ignore':
+                    idx_msg = f'(id={env.sos_dict["step_id"]}, index={res["index"]})' if "index" in res and len(
+                        self._substeps
+                    ) > 1 else f'(id={env.sos_dict["step_id"]})'
+                    env.logger.warning(
+                        f'''Ignoring error from substep {self.step.step_name()} {idx_msg}: {res["exception"]}.'''
+                    )
+                    res['output'] = sos_targets(invalid_target())
                 elif env.config['error_mode'] in ('abort', 'default'):
                     idx_msg = f'(id={env.sos_dict["step_id"]}, index={res["index"]})' if "index" in res and len(
                         self._substeps
@@ -1534,7 +1542,7 @@ class Base_Step_Executor:
                 env.sos_dict.set('_index', idx)
 
                 if env.config['error_mode'] == 'ignore' and any(isinstance(x, invalid_target) for x in g.targets):
-                    env.logger.warning(f'Substep {idx} ignored due to invalid input caused by previous failed steps')
+                    env.logger.warning(f'Substep {idx} ignored due to invalid input caused by a previous failed substep')
                     env.sos_dict.set('_output', sos_targets(invalid_target()))
                     self.skip_substep()
                     continue
