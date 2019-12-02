@@ -294,9 +294,14 @@ class SoS_DAG(nx.DiGraph):
             for node in self._all_output_files[target]:
                 if node._status == 'completed':
                     if isinstance(target, sos_step):
-                        raise RuntimeError(
-                            f'Completed target {target} is being re-executed. Please report this bug to SoS developers.'
-                        )
+                        if env.config['error_mode'] == 'ignore':
+                            raise RuntimeError(
+                                f'Target {target} that was failed to generate is needed to continue.'
+                            )
+                        else:
+                            raise RuntimeError(
+                                f'Completed target {target} is being re-executed. Please report this bug to SoS developers.'
+                            )
                     else:
                         env.logger.info(
                             f'Re-running {node._node_id} to generate {target}')

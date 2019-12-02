@@ -1373,6 +1373,8 @@ class Base_Executor:
                         if env.config['error_mode'] == 'ignore':
                             # if we choose to ignore all errors
                             dag.save(env.config['output_dag'])
+                            env.logger.warning(
+                                f'Error from step {runnable} is ignored: {res}')
                             res = {
                                 '__step_input__':
                                     sos_targets(),
@@ -1391,8 +1393,6 @@ class Base_Executor:
                                 },
                             }
                             self.step_completed(res, dag, runnable)
-                            env.logger.warning(
-                                f'Error from step {runnable} is ignored')
                         elif env.config['error_mode'] == 'abort':
                             runnable._status = 'failed'
                             raise res

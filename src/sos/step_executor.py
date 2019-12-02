@@ -436,9 +436,14 @@ class Base_Step_Executor:
                         if env.config['run_mode'] == 'run':
                             time.sleep(2)
                         if not file_target(target).target_exists('any'):
-                            raise RuntimeError(
-                                f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]} (curdir={os.getcwd()})'
-                            )
+                            if env.config['error-mode'] == 'ignore':
+                                env.logger.warning(
+                                    f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]} (curdir={os.getcwd()})'
+                                )
+                            else:
+                                raise RuntimeError(
+                                    f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]} (curdir={os.getcwd()})'
+                                )
             elif not target.target_exists('any'):
                 if env.config['run_mode'] == 'dryrun':
                     target.create_placeholder()
@@ -446,9 +451,14 @@ class Base_Step_Executor:
                     if env.config['run_mode'] == 'run':
                         time.sleep(2)
                     if not target.target_exists('any'):
-                        raise RuntimeError(
-                            f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]}'
-                        )
+                        if env.config['error-mode'] == 'ignore':
+                            env.logger.warning(
+                                f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]}'
+                            )
+                        else:
+                            raise RuntimeError(
+                                f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]}'
+                            )
 
     # directive input
     def process_input_args(self, ifiles: sos_targets, **kwargs):
@@ -796,7 +806,7 @@ class Base_Step_Executor:
             if env.sos_dict['step_output'] is not None and len(
                     env.sos_dict['step_output']) > 0:
                 env.logger.info(
-                    f'output:   ``{short_repr(env.sos_dict["step_output"])}``')
+                    f'{self.step.step_name()} output:   ``{short_repr(env.sos_dict["step_output"])}``')
 
     def execute(self, stmt, return_result=False):
         try:
