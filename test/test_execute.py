@@ -2022,11 +2022,11 @@ _output.touch()
 skip_if(i==2)
 
 [20]
-assert len(step_input.groups) == 3
+assert len(step_input.groups) == 4
     ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        # case 2, use default remove_empty_groups=True
+        # case 2, use default remove_empty_groups=False
         script = SoS_Script('''\
 [A]
 input: for_each=dict(i=range(4))
@@ -2036,11 +2036,11 @@ skip_if(i==2)
 
 [default]
 input: output_from('A')
-assert len(step_input.groups) == 3
+assert len(step_input.groups) == 4
     ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        # case 3, use remove_empty_groups=False
+        # case 3, use remove_empty_groups=True
         script = SoS_Script('''\
 [A]
 input: for_each=dict(i=range(4))
@@ -2049,8 +2049,8 @@ _output.touch()
 skip_if(i==2)
 
 [default]
-input: output_from('A', remove_empty_groups=False)
-assert len(step_input.groups) == 4
+input: output_from('A', remove_empty_groups=True)
+assert len(step_input.groups) == 3
     ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -2064,7 +2064,7 @@ skip_if(i==2)
 
 [default]
 input: named_output('A')
-assert len(step_input.groups) == 3
+assert len(step_input.groups) == 4
     ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -2077,8 +2077,8 @@ _output.touch()
 skip_if(i==2)
 
 [default]
-input: named_output('A', remove_empty_groups=False)
-assert len(step_input.groups) == 4
+input: named_output('A', remove_empty_groups=True)
+assert len(step_input.groups) == 3
     ''')
         wf = script.workflow()
         Base_Executor(wf).run()

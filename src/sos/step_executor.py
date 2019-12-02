@@ -385,7 +385,7 @@ class Base_Step_Executor:
         else:
             env.sos_dict.set(
                 'step_input',
-                env.sos_dict['__step_output__']._remove_empty_groups())
+                env.sos_dict['__step_output__'])
         # input can be Undetermined from undetermined output from last step
         env.sos_dict.set('_input', copy.deepcopy(env.sos_dict['step_input']))
 

@@ -10,6 +10,7 @@ import subprocess
 import sys
 import unittest
 
+from sos import execute_workflow
 from sos.eval import interpolate
 from sos.parser import SoS_Script
 from sos.targets import file_target, path, paths, sos_targets, sos_step
@@ -164,6 +165,17 @@ class TestTarget(unittest.TestCase):
         self.assertRaises(Exception,
                           sos_targets('e.txt', 'f.ext', group_by=1).group_with,
                           'name', ['e', 'f', 'g'])
+
+    def testGroupWithWithNoOutput(self):
+        execute_workflow(r'''
+[10]
+input: for_each=dict(i=range(3))
+output: group_with=dict(var=['A', 'B', 'C'])
+print(i)
+
+[20]
+print(f'Input is {_input} {var}')
+''')
 
     def testMergingOfSoSTargets(self):
         '''Test merging of multiple sos targets'''

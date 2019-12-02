@@ -72,7 +72,7 @@ def __output_from__(steps,
                     pattern=None,
                     group_with=None,
                     for_each=None,
-                    remove_empty_groups=True):
+                    remove_empty_groups=False):
     targets = sos_targets()
     if isinstance(steps, (int, str)):
         steps = [steps]
@@ -123,7 +123,7 @@ def __named_output__(name,
                      pattern=None,
                      group_with=None,
                      for_each=None,
-                     remove_empty_groups=True):
+                     remove_empty_groups=False):
     targets = request_answer_from_controller(['named_output', name])
     if targets is None:
         env.logger.warning(f'named_output("{name}") is not found')
