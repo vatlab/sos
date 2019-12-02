@@ -1231,7 +1231,7 @@ class Base_Step_Executor:
                 elif isinstance(excp, RemovedTarget):
                     raise excp
                 elif 'task' in proc_result:
-                    if env.config['error-mode'] == 'ignore':
+                    if env.config['error_mode'] == 'ignore':
                         env.logger.warning(f"Ignore failed task {proc_result['task']}.")
                     # if the exception is from a task...
                     self.exec_error.append(proc_result['task'], excp)

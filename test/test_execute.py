@@ -2218,7 +2218,8 @@ depends: traced(_input.with_suffix('.bam.bai'))
 
     @unittest.skipIf(
         'TRAVIS' in os.environ or sys.platform == 'win32',
-        'Skip test because travis fails on this test for unknown reason, also due to a bug in psutil under windows')
+        'Skip test because travis fails on this test for unknown reason, also due to a bug in psutil under windows'
+    )
     def testKillWorker(self):
         '''Test if the workflow can error out after a worker is killed'''
         import psutil
@@ -2297,8 +2298,10 @@ time.sleep(2)
         # job
         #self.assertNotEqual(ret.returncode, 0)
 
-    @unittest.skipIf(sys.platform == 'win32',
-                     'Cannot test due to a bug (ampaolo/psutil#875) with psutils under windows')
+    @unittest.skipIf(
+        sys.platform == 'win32',
+        'Cannot test due to a bug (ampaolo/psutil#875) with psutils under windows'
+    )
     def testKillTask(self):
         '''Test if the workflow can error out after a worker is killed'''
         subprocess.call(['sos', 'purge', '--all'])
@@ -2312,7 +2315,8 @@ task:
 import time
 time.sleep(10)
 ''')
-        ret = subprocess.Popen(['sos', 'run', 'testKillTask', '-s', 'force', '-q', 'localhost'])
+        ret = subprocess.Popen(
+            ['sos', 'run', 'testKillTask', '-s', 'force', '-q', 'localhost'])
         proc = psutil.Process(ret.pid)
         while True:
             children = proc.children(recursive=True)
@@ -2327,7 +2331,8 @@ time.sleep(10)
         ret.wait()
         self.assertNotEqual(ret.returncode, 0)
         #
-        ret = subprocess.Popen(['sos', 'run', 'testKillTask', '-q', 'localhost'])
+        ret = subprocess.Popen(
+            ['sos', 'run', 'testKillTask', '-q', 'localhost'])
         proc = psutil.Process(ret.pid)
         while True:
             children = proc.children(recursive=True)
@@ -2350,8 +2355,10 @@ task:
 import time
 time.sleep(5)
 ''')
-        ret1 = subprocess.Popen(['sos', 'run', 'testRunTask', '-s', 'force', '-q', 'localhost'])
-        ret2 = subprocess.Popen(['sos', 'run', 'testRunTask', '-s', 'force', '-q', 'localhost'])
+        ret1 = subprocess.Popen(
+            ['sos', 'run', 'testRunTask', '-s', 'force', '-q', 'localhost'])
+        ret2 = subprocess.Popen(
+            ['sos', 'run', 'testRunTask', '-s', 'force', '-q', 'localhost'])
         ret1.wait()
         ret2.wait()
         self.assertEqual(ret1.returncode, 0)
@@ -2371,7 +2378,8 @@ task:
 import time
 time.sleep(12)
 ''')
-        ret = subprocess.Popen(['sos', 'run', 'testOrphan', '-s', 'force', '-q', 'localhost'])
+        ret = subprocess.Popen(
+            ['sos', 'run', 'testOrphan', '-s', 'force', '-q', 'localhost'])
         proc = psutil.Process(ret.pid)
         while True:
             children = proc.children(recursive=True)
@@ -2391,13 +2399,18 @@ time.sleep(12)
 
     def testErrorHandlingOfStep(self):
         # test fail_if of killing another running substep
-        if os.path.isfile('11.txt'):
-            os.remove('11.txt')
+        def cleanup():
+            for step in (10, 11):
+                if os.path.isfile(f'{step}.txt'):
+                    os.remove(f'{step}.txt')
+
         script = SoS_Script(r"""
 import time
 
 [10]
+output: '10.txt'
 time.sleep(8)
+_output.touch()
 
 [11]
 output: '11.txt'
@@ -2408,37 +2421,64 @@ input: None
 time.sleep(2)
 fail_if(True)
 """)
+        #
+        # default mode
+        #
+        cleanup()
         st = time.time()
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
         self.assertTrue(
             time.time() - st >= 8,
             'Test test should fail only after step 10 is completed')
+        self.assertTrue(os.path.isfile('10.txt'))
         self.assertFalse(os.path.isfile('11.txt'))
+        #
+        # keep-going
+        #
+        cleanup()
+        self.assertRaises(
+            Exception,
+            Base_Executor(wf, config={
+                'error_mode': 'keep-going'
+            }).run)
+        self.assertTrue(
+            time.time() - st >= 8,
+            'Test test should fail only after step 10 is completed')
+        self.assertTrue(os.path.isfile('10.txt'))
+        self.assertTrue(os.path.isfile('11.txt'))
+        #
+        # ignore mode
+        cleanup()
+        #
+        Base_Executor(wf, config={'error_mode': 'ignore'}).run()
+        self.assertTrue(
+            time.time() - st >= 8,
+            'Test test should fail only after step 10 is completed')
+        self.assertTrue(os.path.isfile('10.txt'))
+        self.assertTrue(os.path.isfile('11.txt'))
+        #
+        # abort mode
+        cleanup()
         #
         self.assertRaises(Exception,
                           Base_Executor(wf, config={
-                              'error_mode': 'keep-going'
+                              'error_mode': 'abort'
                           }).run)
-        self.assertTrue(
-            time.time() - st >= 8,
-            'Test test should fail only after step 10 is completed')
-        self.assertTrue(os.path.isfile('11.txt'))
-        #
-        Base_Executor(wf, config={
-                              'error_mode': 'ignore'
-                          }).run()
-        self.assertTrue(
-            time.time() - st >= 8,
-            'Test test should fail only after step 10 is completed')
-        self.assertTrue(os.path.isfile('11.txt'))
+        self.assertFalse(os.path.isfile('10.txt'))
+        self.assertFalse(os.path.isfile('11.txt'))
 
     def testErrorHandlingOfSubsteps(self):
-        for i in range(10):
-            if os.path.isfile(f'test_{i}.txt'):
-                os.remove(f'test_{i}.txt')
-            if os.path.isfile(f'test_{i}.bak'):
-                os.remove(f'test_{i}.bak')
+
+        def cleanup():
+            for i in range(10):
+                if os.path.isfile(f'test_{i}.txt'):
+                    os.remove(f'test_{i}.txt')
+                if os.path.isfile(f'test_{i}.bak'):
+                    os.remove(f'test_{i}.bak')
+            if os.path.isfile(f'test_30.txt'):
+                os.remove(f'test_30.txt')
+
         script = SoS_Script(r"""
 import time
 
@@ -2453,44 +2493,85 @@ fail_if(_index == 5, 'fail at 5')
 [20]
 output: _input.with_suffix('.bak')
 _output.touch()
-        """)
+
+[30]
+input: None
+output: 'test_30.txt'
+time.sleep(2)
+_output.touch()
+""")
+
+        #
+        # default mode
+        #
+        cleanup()
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
         for i in range(5):
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
+            self.assertFalse(os.path.isfile(f'test_{i}.bak'))
         for i in range(5, 10):
             self.assertFalse(os.path.isfile(f'test_{i}.txt'))
+            self.assertFalse(os.path.isfile(f'test_{i}.bak'))
+        self.assertTrue(os.path.isfile(f'test_30.txt'))
         #
+        # keep-going mode
+        #
+        cleanup()
+        self.assertRaises(
+            Exception,
+            Base_Executor(wf, config={
+                'error_mode': 'keep-going'
+            }).run)
         for i in range(10):
-            if os.path.isfile(f'test_{i}.txt'):
-                os.remove(f'test_{i}.txt')
-            if os.path.isfile(f'test_{i}.bak'):
-                os.remove(f'test_{i}.bak')
+            if i == 5:
+                self.assertFalse(os.path.isfile(f'test_{i}.txt'))
+                self.assertFalse(os.path.isfile(f'test_{i}.bak'))
+            else:
+                self.assertTrue(os.path.isfile(f'test_{i}.txt'))
+                # the following step is not executed
+                self.assertFalse(os.path.isfile(f'test_{i}.bak'))
+        # but the another branch continues
+        self.assertTrue(os.path.isfile(f'test_30.txt'))
+        #
+        # ignore mode
+        #
+        cleanup()
+
+        Base_Executor(wf, config={'error_mode': 'ignore'}).run()
+        for i in range(6, 10):
+            if i == 5:
+                self.assertFalse(os.path.isfile(f'test_{i}.txt'))
+                self.assertFalse(os.path.isfile(f'test_{i}.bak'))
+            else:
+                self.assertTrue(os.path.isfile(f'test_{i}.txt'))
+                self.assertTrue(os.path.isfile(f'test_{i}.bak'))
+        self.assertTrue(os.path.isfile(f'test_30.txt'))
+        #
+        # abort mode
+        #
+        cleanup()
+
         self.assertRaises(Exception,
                           Base_Executor(wf, config={
-                              'error_mode': 'keep-going'
+                              'error_mode': 'abort'
                           }).run)
-        for i in range(6, 10):
-            if i == 5:
-                continue
-            self.assertTrue(os.path.isfile(f'test_{i}.txt'))
-        # clean up
         for i in range(10):
-            if os.path.isfile(f'test_{i}.txt'):
-                os.remove(f'test_{i}.txt')
-        Base_Executor(wf, config={
-                              'error_mode': 'ignore'
-                          }).run()
-        for i in range(6, 10):
-            if i == 5:
-                continue
-            self.assertTrue(os.path.isfile(f'test_{i}.txt'))
-            self.assertTrue(os.path.isfile(f'test_{i}.bak'))
+            if i < 5:
+                self.assertTrue(os.path.isfile(f'test_{i}.txt'))
+                self.assertFalse(os.path.isfile(f'test_{i}.bak'))
+            else:
+                self.assertFalse(os.path.isfile(f'test_{i}.txt'))
+                self.assertFalse(os.path.isfile(f'test_{i}.bak'))
+        self.assertFalse(os.path.isfile(f'test_30.txt'))
 
     def testErrorHandlingOfConcurrentSubsteps(self):
-        for i in range(200):
-            if os.path.isfile(f'test_{i}.txt'):
-                os.remove(f'test_{i}.txt')
+
+        def cleanup():
+            for i in range(200):
+                if os.path.isfile(f'test_{i}.txt'):
+                    os.remove(f'test_{i}.txt')
+
         script = SoS_Script(r"""
 import time
 
@@ -2504,6 +2585,10 @@ fail_if(_index == 5, 'fail at 5')
 fail_if(_index == 10, 'fail at 10')
         """)
         wf = script.workflow()
+        #
+        # default mode
+        #
+        cleanup()
         self.assertRaises(Exception, Base_Executor(wf).run)
         for i in range(5):
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
@@ -2512,25 +2597,29 @@ fail_if(_index == 10, 'fail at 10')
         # without -k , some late substeps will not be submitted
         for i in range(190, 200):
             self.assertFalse(os.path.isfile(f'test_{i}.txt'))
-        # with -k, all substeps will be attepted
-        for i in range(200):
-            if os.path.isfile(f'test_{i}.txt'):
-                os.remove(f'test_{i}.txt')
-        self.assertRaises(Exception,
-                          Base_Executor(wf, config={
-                              'error_mode': 'keep-going'
-                          }).run)
+        #
+        # keep-going mode
+        #
+        cleanup()
+        self.assertRaises(
+            Exception,
+            Base_Executor(wf, config={
+                'error_mode': 'keep-going'
+            }).run)
         for i in (5, 10):
             self.assertFalse(os.path.isfile(f'test_{i}.txt'))
         for i in range(190, 200):
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
 
     def testErrorHandlingOfTasks(self):
-        for i in (0, 1, 2, 30, 31):
-            if os.path.isfile(f'test_{i}.txt'):
-                os.remove(f'test_{i}.txt')
-            if os.path.isfile(f'test_{i}.bak'):
-                os.remove(f'test_{i}.bak')
+
+        def cleanup():
+            for i in (0, 1, 2, 30, 31):
+                if os.path.isfile(f'test_{i}.txt'):
+                    os.remove(f'test_{i}.txt')
+                if os.path.isfile(f'test_{i}.bak'):
+                    os.remove(f'test_{i}.bak')
+
         script = SoS_Script(r"""
 import time
 
@@ -2556,6 +2645,10 @@ _output.touch()
 output: 'test_31.txt'
 _output.touch()
         """)
+        #
+        # default mode
+        #
+        cleanup()
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
         for i in (0, 2):
@@ -2566,41 +2659,55 @@ _output.touch()
         # 31 is not started
         self.assertFalse(os.path.isfile(f'test_31.txt'))
         #
-        for i in (0, 1, 2, 30, 31):
-            if os.path.isfile(f'test_{i}.txt'):
-                os.remove(f'test_{i}.txt')
-            if os.path.isfile(f'test_{i}.bak'):
-                os.remove(f'test_{i}.bak')
+        # keep-going mode
+        #
+        cleanup()
 
-        self.assertRaises(Exception,
-                          Base_Executor(wf, config={
-                              'error_mode': 'keep-going'
-                          }).run)
+        self.assertRaises(
+            Exception,
+            Base_Executor(wf, config={
+                'error_mode': 'keep-going'
+            }).run)
         for i in (0, 2, 30, 31):
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
             self.assertFalse(os.path.isfile(f'test_{i}.bak'))
         self.assertFalse(os.path.isfile(f'test_1.txt'))
-        # ignore
-        for i in (0, 1, 2, 30, 31):
-            if os.path.isfile(f'test_{i}.txt'):
-                os.remove(f'test_{i}.txt')
-            if os.path.isfile(f'test_{i}.bak'):
-                os.remove(f'test_{i}.bak')
-        Base_Executor(wf, config={
-                              'error_mode': 'ignore'
-                          }).run()
+        #
+        #  ignore mode
+        #
+        cleanup()
+
+        Base_Executor(wf, config={'error_mode': 'ignore'}).run()
         for i in (0, 2, 30, 31):
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
+        for i in (0, 2):
+            self.assertFalse(os.path.isfile(f'test_{i}.bak'))
+        self.assertFalse(os.path.isfile(f'test_1.txt'))
+        #
+        # abort mode
+        #
+        cleanup()
+
+        self.assertRaises(Exception,
+                          Base_Executor(wf, config={
+                              'error_mode': 'abort'
+                          }).run)
+        for i in (0, 2):
+            self.assertTrue(os.path.isfile(f'test_{i}.txt'))
+        for i in (30, 31):
+            self.assertFalse(os.path.isfile(f'test_{i}.txt'))
         for i in (0, 2):
             self.assertFalse(os.path.isfile(f'test_{i}.bak'))
         self.assertFalse(os.path.isfile(f'test_1.txt'))
 
     def testErrorHandlingOfMissingInput(self):
         # finishing another step if currently missing
-        if os.path.isfile('11.txt'):
-            os.remove('11.txt')
-        if os.path.isfile('22.txt'):
-            os.remove('22.txt')
+        def cleanup():
+            if os.path.isfile('11.txt'):
+                os.remove('11.txt')
+            if os.path.isfile('22.txt'):
+                os.remove('22.txt')
+
         script = SoS_Script(r"""
 import time
 
@@ -2622,6 +2729,10 @@ input: 'no_existent.txt'
 output: '22.txt'
 _output.touch()
 """)
+        #
+        # default mode
+        #
+        cleanup()
         st = time.time()
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
@@ -2630,25 +2741,29 @@ _output.touch()
             'Test test should fail only after step 10 is completed')
         self.assertFalse(os.path.isfile('11.txt'))
         #
-        # keep-going
-        self.assertRaises(Exception,
-                          Base_Executor(wf, config={
-                              'error_mode': 'keep-going'
-                          }).run)
+        # keep-going mode
+        #
+        cleanup()
+
+        self.assertRaises(
+            Exception,
+            Base_Executor(wf, config={
+                'error_mode': 'keep-going'
+            }).run)
         self.assertTrue(
             time.time() - st >= 8,
             'Test test should fail only after step 10 is completed')
         self.assertTrue(os.path.isfile('11.txt'))
         #
-        # ignore, step 22 should be executed but immediately stopped due to error
-        Base_Executor(wf, config={
-                              'error_mode': 'ignore'
-                          }).run()
+        # ignore mode,
+        # step 22 should be executed but immediately stopped due to error
+        #
+        cleanup()
+        Base_Executor(wf, config={'error_mode': 'ignore'}).run()
         self.assertTrue(
             time.time() - st >= 8,
             'Test test should fail only after step 10 is completed')
         self.assertFalse(os.path.isfile('22.txt'))
-
 
     def testStmtBeforeInput(self):
         '''Bug #1270, if there is any statement before input, the step will be undetermined'''

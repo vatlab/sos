@@ -1393,6 +1393,9 @@ class Base_Executor:
                             self.step_completed(res, dag, runnable)
                             env.logger.warning(
                                 f'Error from step {runnable} is ignored')
+                        elif env.config['error_mode'] == 'abort':
+                            runnable._status = 'failed'
+                            raise res
                         else:
                             # env.logger.error(res)
                             if runnable._status == 'workflow_running_pending':
@@ -1583,21 +1586,30 @@ class Base_Executor:
         #
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
-            # if failed_steps:
-            # sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in failed_steps]
-            # exec_error.append(self.workflow.name,
-            #    RuntimeError('{} failed step{}: {}'.format(len(sections),
-            #        's' if len(sections) > 1 else '', ', '.join(sections))))
-            if pending_steps:
-                sections = [
-                    self.workflow.section_by_id(x._step_uuid).step_name()
-                    for x in pending_steps
-                ]
+            running_steps = dag.running()
+
+            pending_sections = [
+                self.workflow.section_by_id(x._step_uuid).step_name()
+                for x in pending_steps
+            ]
+            running_sections = [
+                self.workflow.section_by_id(x._step_uuid).step_name()
+                for x in running_steps
+            ]
+            msg = []
+            if pending_sections:
+                msg.append(
+                    f'{len(pending_sections)} pending step{"s" if len(pending_sections) > 1 else ""} ({", ".join(pending_sections)})'
+                )
+            if running_sections:
+                msg.append(
+                    f'{len(running_sections)} running step{"s" if len(running_sections) > 1 else ""} ({", ".join(running_sections)})'
+                )
+
+            if msg:
                 exec_error.append(
                     self.workflow.name,
-                    RuntimeError(
-                        f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'
-                    ))
+                    RuntimeError('Exits with ' + ' and '.join(msg)))
             raise exec_error
         elif 'pending_tasks' not in wf_result or not wf_result['pending_tasks']:
             self.finalize_and_report()
@@ -1721,7 +1733,6 @@ class Base_Executor:
                         )
                         if env.config['error_mode'] != 'keep-going':
                             manager.stop_dag(dag)
-                        #raise exec_error
                     elif '__step_name__' in res:
                         env.log_to_file(
                             'EXECUTOR',

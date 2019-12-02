@@ -259,6 +259,9 @@ class SoS_DAG(nx.DiGraph):
         return [x for x in self.nodes() if x._status == 'failed'
                ], [x for x in self.nodes() if x._status is None]
 
+    def running(self):
+        return [x for x in self.nodes() if x._status == 'running']
+
     def dangling(self, targets: sos_targets):
         '''returns
         1. missing targets, which are missing from the DAG or from the provided targets
