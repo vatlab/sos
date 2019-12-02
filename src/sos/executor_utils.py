@@ -12,7 +12,7 @@ import psutil
 import traceback
 
 from typing import Any
-from collections import Sequence
+from collections.abc import Sequence
 from io import StringIO
 from tokenize import generate_tokens
 

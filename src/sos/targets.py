@@ -61,7 +61,10 @@ class UnknownTarget(Error):
 class RemovedTarget(Error):
 
     def __init__(self, target: 'BaseTarget'):
-        Error.__init__(self, 'Target removed: %s' % target)
+        if isinstance(target, invalid_target):
+            Error.__init__(self, 'Invalid target from errored steps')
+        else:
+            Error.__init__(self, 'Target removed: %s' % target)
         self.target = target
 
 
@@ -284,6 +287,22 @@ class env_variable(BaseTarget):
             return self._var.__format__(format_spec[1:])
         else:
             return str(self).__format__(format_spec)
+
+
+class invalid_target(BaseTarget):
+    '''A target for an environmental variable.'''
+
+    def __init__(self):
+        super(invalid_target, self).__init__()
+
+    def target_exists(self, mode='any'):
+        return False
+
+    def target_name(self):
+        return 'invalid'
+
+    def target_signature(self, mode='any'):
+        return ''
 
 
 class system_resource(BaseTarget):

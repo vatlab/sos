@@ -26,7 +26,7 @@ from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS,
                      SOS_TARGETS_OPTIONS)
 from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
                       UnknownTarget, dynamic, file_target, sos_step,
-                      sos_targets, textMD5)
+                      sos_targets, invalid_target, textMD5)
 from .tasks import MasterTaskParams, TaskFile
 from .utils import (ArgumentError, StopInputGroup, TerminateExecution, env,
                     get_traceback, short_repr, ProcessKilled, get_localhost_ip)
@@ -424,7 +424,7 @@ class Base_Step_Executor:
                 'Output of a completed step cannot be undetermined or unspecified.'
             )
         for target in env.sos_dict['step_output']:
-            if isinstance(target, sos_step):
+            if isinstance(target, (sos_step, invalid_target)):
                 continue
             if isinstance(target, str):
                 if not file_target(target).target_exists('any'):
@@ -1531,6 +1531,12 @@ class Base_Step_Executor:
                 self.log('_input')
                 env.sos_dict.set('_index', idx)
 
+                if env.config['error_mode'] == 'ignore' and any(isinstance(x, invalid_target) for x in g.targets):
+                    env.logger.info(f'Substep {idx} ignored due to invalid input caused by previous failed steps')
+                    env.sos_dict.set('_output', sos_targets(invalid_target()))
+                    self.skip_substep()
+                    continue
+
                 # in interactive mode, because sos_dict are always shared
                 # execution of a substep, especially when it calls a nested
                 # workflow, would change step_name, __step_context__ etc, and
@@ -1750,7 +1756,7 @@ class Base_Step_Executor:
                                 env.logger.info(
                                     f'Substep {self.step.step_name()} {idx_msg} returns no output due to error: {e}'
                                 )
-                                self.output_groups[idx] = sos_targets([])
+                                self.output_groups[idx] = sos_targets(invalid_target())
                                 skip_index = True
                             else:
                                 raise

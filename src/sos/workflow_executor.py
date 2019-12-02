@@ -12,7 +12,8 @@ import time
 import uuid
 import zmq
 
-from collections import defaultdict, Sequence
+from collections import defaultdict
+from collections.abc import Sequence
 from io import StringIO
 from typing import Any, Dict, List, Optional, Union
 from threading import Event
@@ -27,7 +28,7 @@ from .controller import Controller, connect_controllers, disconnect_controllers,
 from .section_analyzer import analyze_section
 from .targets import (BaseTarget, RemovedTarget, UnavailableLock, UnknownTarget,
                       file_target, path, paths, sos_step, sos_targets,
-                      sos_variable, textMD5, named_output)
+                      invalid_target, sos_variable, textMD5, named_output)
 from .utils import env, pickleable, short_repr, get_localhost_ip
 from .executor_utils import prepare_env, ExecuteError
 from .messages import encode_msg, decode_msg
@@ -532,13 +533,14 @@ class Base_Executor:
                                 not x._output_targets.valid()
                             ]
                             indexed.sort(key=lambda x: x._node_index)
-                            if (not indexed) or (isinstance(target, sos_step) and not any(
-                                self.workflow.section_by_id(x._step_uuid)
-                                .match(target.target_name())
-                                for x in indexed)) or (not any(
-                                x._status is None or
-                                x._status.endswith('pending')
-                                for x in indexed)):
+                            if (not indexed
+                               ) or (isinstance(target, sos_step) and not any(
+                                   self.workflow.section_by_id(
+                                       x._step_uuid).match(target.target_name())
+                                   for x in indexed)) or (not any(
+                                       x._status is None or
+                                       x._status.endswith('pending')
+                                       for x in indexed)):
                                 # all previous status has been failed or completed...
                                 raise RuntimeError(
                                     f"No rule to generate target '{target}'{dag.steps_depending_on(target, self.workflow)}."
@@ -1122,8 +1124,11 @@ class Base_Executor:
                 f'Failed to remove existing DAG file {env.config["output_dag"]}: {e}'
             )
 
-        if targets and sos_targets(targets).target_exists() and not env.config['trace_existing']:
-            env.logger.info(f'Target{"s" if len(sos_targets(targets)) > 1 else ""} {sos_targets(targets)} already exists. Remove or use option "-T" if you would like to regenerate {"them" if len(targets) > 1 else "it"}.')
+        if targets and sos_targets(
+                targets).target_exists() and not env.config['trace_existing']:
+            env.logger.info(
+                f'Target{"s" if len(sos_targets(targets)) > 1 else ""} {sos_targets(targets)} already exists. Remove or use option "-T" if you would like to regenerate {"them" if len(targets) > 1 else "it"}.'
+            )
             wf_result['__completed__'] = 0
             return wf_result
 
@@ -1229,7 +1234,8 @@ class Base_Executor:
                                         env.logger.error(e)
                                         proc.socket.send(encode_msg(''))
                                         proc.set_status('failed')
-                                        if env.config['error_mode'] != 'keep-going':
+                                        if env.config[
+                                                'error_mode'] != 'keep-going':
                                             manager.stop_dag(dag)
                         elif res[0] == 'dependent_target':
                             # The target might be dependent on other steps and we
@@ -1364,27 +1370,52 @@ class Base_Executor:
                     elif isinstance(res, Exception):
                         env.log_to_file('EXECUTOR',
                                         f'Master received an exception')
-                        # env.logger.error(res)
-                        if runnable._status == 'workflow_running_pending':
-                            for pwf in runnable._pending_workflows:
-                                for midx, proc in enumerate(manager.procs):
-                                    if proc is None:
-                                        continue
-                                    if proc.in_status(
-                                            'workflow_pending'
-                                    ) and pwf in proc.step._pending_workflows:
-                                        proc.step._pending_workflows.remove(pwf)
-                                        if not proc.step._pending_workflows:
-                                            proc.set_status('failed')
-                                            manager.mark_idle(midx)
-                        runnable._status = 'failed'
-                        if env.config['error_mode'] != 'keep-going':
-                            manager.stop_dag(dag)
-                        dag.save(env.config['output_dag'])
-                        exec_error.append(runnable._node_id, res)
-                        # stop raising exce_error immediately, which would terminates other substeps
-                        # 1265
-                        env.logger.debug(f'Step {runnable} failed')
+                        if env.config['error_mode'] == 'ignore':
+                            # if we choose to ignore all errors
+                            dag.save(env.config['output_dag'])
+                            res = {
+                                '__step_input__':
+                                    sos_targets(),
+                                '__step_output__':
+                                    sos_targets(invalid_target()),
+                                '__step_depends__':
+                                    sos_targets(),
+                                '__shared__': {},
+                                '__step_name__':
+                                    '',
+                                '__completed__': {
+                                    '__substep_completed__': 0,
+                                    '__substep_skipped__': 0,
+                                    '__step_completed__': 0,
+                                    '__step_skipped__': 0
+                                },
+                            }
+                            self.step_completed(res, dag, runnable)
+                            env.logger.debug(
+                                f'Error from step {runnable} is ignored')
+                        else:
+                            # env.logger.error(res)
+                            if runnable._status == 'workflow_running_pending':
+                                for pwf in runnable._pending_workflows:
+                                    for midx, proc in enumerate(manager.procs):
+                                        if proc is None:
+                                            continue
+                                        if proc.in_status(
+                                                'workflow_pending'
+                                        ) and pwf in proc.step._pending_workflows:
+                                            proc.step._pending_workflows.remove(
+                                                pwf)
+                                            if not proc.step._pending_workflows:
+                                                proc.set_status('failed')
+                                                manager.mark_idle(midx)
+                            runnable._status = 'failed'
+                            if env.config['error_mode'] != 'keep-going':
+                                manager.stop_dag(dag)
+                            dag.save(env.config['output_dag'])
+                            exec_error.append(runnable._node_id, res)
+                            # stop raising exce_error immediately, which would terminates other substeps
+                            # 1265
+                            env.logger.debug(f'Step {runnable} failed')
                     elif '__step_name__' in res:
                         env.log_to_file(
                             'EXECUTOR',
@@ -1754,7 +1785,8 @@ class Base_Executor:
                     parent_socket.send(
                         encode_msg([
                             'step', step_id, section, runnable._context, shared,
-                            self.args, env.config, env.verbosity, f'tcp://{self.local_ip}:{port}'
+                            self.args, env.config, env.verbosity,
+                            f'tcp://{self.local_ip}:{port}'
                         ]))
                     # the nested workflow also needs a step to receive result
                     manager.add_placeholder_worker(runnable, socket)

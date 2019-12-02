@@ -11,7 +11,7 @@ import stat
 import subprocess
 import sys
 import pexpect
-from collections import Sequence
+from collections.abc import Sequence
 
 import pkg_resources
 

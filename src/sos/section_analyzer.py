@@ -5,7 +5,7 @@
 
 import ast
 
-from collections import Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any, Dict, Optional
 
 from .eval import SoS_eval, accessed_vars, used_in_func
