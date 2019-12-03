@@ -1586,7 +1586,7 @@ class Base_Executor:
                 failed_steps, pending_steps = dag.pending()
                 if pending_steps:
                     sections = [
-                        self.workflow.section_by_id(x._step_uuid).step_name()
+                        self.workflow.section_by_id(x._step_uuid).step_name(True)
                         for x in pending_steps
                     ]
                     exec_error.append(
@@ -1610,11 +1610,11 @@ class Base_Executor:
             running_steps = dag.running()
 
             pending_sections = [
-                self.workflow.section_by_id(x._step_uuid).step_name()
+                self.workflow.section_by_id(x._step_uuid).step_name(True)
                 for x in pending_steps
             ]
             running_sections = [
-                self.workflow.section_by_id(x._step_uuid).step_name()
+                self.workflow.section_by_id(x._step_uuid).step_name(True)
                 for x in running_steps
             ]
             msg = []
@@ -1837,7 +1837,7 @@ class Base_Executor:
                 failed_steps, pending_steps = dag.pending()
                 if pending_steps:
                     sections = [
-                        self.workflow.section_by_id(x._step_uuid).step_name()
+                        self.workflow.section_by_id(x._step_uuid).step_name(True)
                         for x in pending_steps
                     ]
                     exec_error.append(
@@ -1862,7 +1862,7 @@ class Base_Executor:
             #        's' if len(sections) > 1 else '', ', '.join(sections))))
             if pending_steps:
                 sections = [
-                    self.workflow.section_by_id(x._step_uuid).step_name()
+                    self.workflow.section_by_id(x._step_uuid).step_name(True)
                     for x in pending_steps
                 ]
                 exec_error.append(
