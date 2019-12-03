@@ -420,6 +420,7 @@ class Base_Step_Executor:
     #
 
     def verify_output(self):
+        missing = sos_targets([])
         if env.sos_dict['step_output'] is None:
             return
         if not env.sos_dict['step_output'].valid():
@@ -440,9 +441,7 @@ class Base_Step_Executor:
                             time.sleep(2)
                         if not file_target(target).target_exists('any'):
                             if env.config['error_mode'] == 'ignore':
-                                env.logger.warning(
-                                    f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]} (curdir={os.getcwd()})'
-                                )
+                                missing.extend(target)
                             else:
                                 raise RuntimeError(
                                     f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]} (curdir={os.getcwd()})'
@@ -455,13 +454,12 @@ class Base_Step_Executor:
                         time.sleep(2)
                     if not target.target_exists('any'):
                         if env.config['error_mode'] == 'ignore':
-                            env.logger.warning(
-                                f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]}'
-                            )
+                            missing.extend(target)
                         else:
                             raise RuntimeError(
                                 f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]}'
                             )
+        return missing
 
     # directive input
     def process_input_args(self, ifiles: sos_targets, **kwargs):
@@ -783,7 +781,7 @@ class Base_Step_Executor:
             if 'shared' in res:
                 self.shared_vars[idx].update(res['shared'])
 
-    def log(self, stage=None, msg=None):
+    def log(self, stage=None, msg=''):
         if stage == 'start':
             env.logger.info(
                 f'{"Checking" if env.config["run_mode"] == "dryrun" else "Running"} ``{self.step.step_name(True)}``: {self.step.comment.strip()}'
@@ -796,20 +794,20 @@ class Base_Step_Executor:
             if env.sos_dict['_input'] is not None and len(
                     env.sos_dict['_input']) > 0:
                 env.logger.debug(
-                    f'_input: ``{short_repr(env.sos_dict["_input"])}``')
+                    f'_input: ``{short_repr(env.sos_dict["_input"])}``{msg}')
         elif stage == '_depends':
             if env.sos_dict['_depends'] is not None:
                 env.logger.debug(
-                    f'_depends: ``{short_repr(env.sos_dict["_depends"])}``')
+                    f'_depends: ``{short_repr(env.sos_dict["_depends"])}``{msg}')
         elif stage == 'input':
             if env.sos_dict['step_input'] is not None:
                 env.logger.info(
-                    f'input:   ``{short_repr(env.sos_dict["step_input"])}``')
+                    f'input:   ``{short_repr(env.sos_dict["step_input"])}``{msg}')
         elif stage == 'output':
             if env.sos_dict['step_output'] is not None and len(
                     env.sos_dict['step_output']) > 0:
                 env.logger.info(
-                    f'{self.step.step_name()} output:   ``{short_repr(env.sos_dict["step_output"])}``')
+                    f'{self.step.step_name()} output:   ``{short_repr(env.sos_dict["step_output"])}``{msg}')
 
     def execute(self, stmt, return_result=False):
         try:
@@ -1923,8 +1921,8 @@ class Base_Step_Executor:
                 self.shared_vars = evaluate_shared(self.shared_vars,
                                                    self.step.options['shared'])
                 env.sos_dict.quick_update(self.shared_vars)
-            self.log('output')
-            self.verify_output()
+            missing = self.verify_output()
+            self.log('output', msg=f' (\033[95mmissing {str(missing)}\033[0m)' if len(missing) > 0 else '')
             self.calculate_completed()
 
             def file_only(targets):
