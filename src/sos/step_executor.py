@@ -872,7 +872,7 @@ class Base_Step_Executor:
                         self._substeps
                     ) > 1 else f'(id={env.sos_dict["step_id"]})'
                     env.logger.warning(
-                        f'''Ignoring error from {self.step.step_name(True)} {idx_msg}: {res["exception"]}.'''
+                        f'''Ignoring error from ``{self.step.step_name(True)}`` {idx_msg}: {res["exception"]}.'''
                     )
                     res['output'] = sos_targets(invalid_target())
                 elif env.config['error_mode'] == 'abort':
@@ -885,7 +885,7 @@ class Base_Step_Executor:
                     self._completed_concurrent_substeps + 1
                     waiting = till - 1 - self._completed_concurrent_substeps
                     env.logger.warning(
-                        f'{self.step.step_name(True)} {idx_msg} returns an error.{f" Terminating step after completing {waiting} submitted substeps." if waiting else " Terminating now."}'
+                        f'``{self.step.step_name(True)}`` {idx_msg} returns an error.{f" Terminating step after completing {waiting} submitted substeps." if waiting else " Terminating now."}'
                     )
                     for i in range(waiting):
                         yield self.result_pull_socket
