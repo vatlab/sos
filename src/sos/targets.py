@@ -416,7 +416,12 @@ class dynamic(BaseTarget):
         return self._target
 
     def resolve(self):
-        return self._target
+        if isinstance(self._target, str):
+            return [x for x in glob.glob(self._target) if os.path.isfile(x)]
+        elif isinstance(self._target, Sequence) and all(isinstance(x, str) for x in self._target):
+            return sum([[x for x in glob.glob(t) if os.path.isfile(x)] for t in self._target], [])
+        else:
+            return self._target
 
     def __format__(self, format_spec):
         # handling special !q conversion flag
