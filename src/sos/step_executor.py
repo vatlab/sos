@@ -807,7 +807,7 @@ class Base_Step_Executor:
             if env.sos_dict['step_output'] is not None and len(
                     env.sos_dict['step_output']) > 0:
                 env.logger.info(
-                    f'{self.step.step_name()} output:   ``{short_repr(env.sos_dict["step_output"])}``{msg}')
+                    f'``{self.step.step_name(True)}`` output:   ``{short_repr(env.sos_dict["step_output"])}``{msg}')
 
     def execute(self, stmt, return_result=False):
         try:
@@ -872,7 +872,7 @@ class Base_Step_Executor:
                         self._substeps
                     ) > 1 else f'(id={env.sos_dict["step_id"]})'
                     env.logger.warning(
-                        f'''Ignoring error from substep {self.step.step_name()} {idx_msg}: {res["exception"]}.'''
+                        f'''Ignoring error from {self.step.step_name(True)} {idx_msg}: {res["exception"]}.'''
                     )
                     res['output'] = sos_targets(invalid_target())
                 elif env.config['error_mode'] == 'abort':
@@ -885,7 +885,7 @@ class Base_Step_Executor:
                     self._completed_concurrent_substeps + 1
                     waiting = till - 1 - self._completed_concurrent_substeps
                     env.logger.warning(
-                        f'Substep {self.step.step_name()} {idx_msg} returns an error.{f" Terminating step after completing {waiting} submitted substeps." if waiting else ""}'
+                        f'{self.step.step_name(True)} {idx_msg} returns an error.{f" Terminating step after completing {waiting} submitted substeps." if waiting else " Terminating now."}'
                     )
                     for i in range(waiting):
                         yield self.result_pull_socket
@@ -899,9 +899,6 @@ class Base_Step_Executor:
                     idx_msg = f'(id={env.sos_dict["step_id"]}, index={res["index"]})' if "index" in res and len(
                         self._substeps
                     ) > 1 else f'(id={env.sos_dict["step_id"]})'
-                    env.logger.warning(
-                        f'''Substep {self.step.step_name()} {idx_msg} returns an error.'''
-                    )
                     self.exec_error.append(idx_msg, res['exception'])                    
             #
             if "index" not in res:
@@ -1335,7 +1332,7 @@ class Base_Step_Executor:
             input_statement_idx = input_statement_idx[0]
         else:
             raise ValueError(
-                f'More than one step input are specified in step {self.step.step_name()}'
+                f'More than one step input are specified in step {self.step.step_name(True)}'
             )
 
         # if shared is true, we have to disable concurrent because we
@@ -1556,11 +1553,11 @@ class Base_Step_Executor:
                     if missed:
                         if any(isinstance(x, invalid_target) for x in missed):
                             env.logger.warning(
-                                f'Substep {idx} of {self.step.step_name()} ignored due to invalid input caused by previous failed substep.'
+                                f'{self.step.step_name(True)} (index={idx}) ignored due to invalid input caused by previous failed substep.'
                             )
                         else:
                             env.logger.warning(
-                                f'Substep {idx} of {self.step.step_name()} ignored due to mssing input {sos_targets(missed)}'
+                                f'{self.step.step_name(True)} (index={idx}) ignored due to mssing input {sos_targets(missed)}'
                             )
                         env.sos_dict.set('_output', sos_targets(invalid_target()))
                         self.skip_substep()
@@ -1777,7 +1774,7 @@ class Base_Step_Executor:
                                     self._substeps
                                 ) > 1 else f'(id={env.sos_dict["step_id"]})'
                                 env.logger.warning(
-                                    f'Substep {self.step.step_name()} {idx_msg} returns no output due to error: {e}'
+                                    f'{self.step.step_name(True)} {idx_msg} returns no output due to error: {e}'
                                 )
                                 self.output_groups[idx] = sos_targets(invalid_target())
                                 skip_index = True
@@ -1787,7 +1784,7 @@ class Base_Step_Executor:
                                     self._substeps
                                 ) > 1 else f'(id={env.sos_dict["step_id"]})'
                                 env.logger.error(
-                                    f'Substep {self.step.step_name()} {idx_msg} returns an error.'
+                                    f'{self.step.step_name(True)} {idx_msg} returns an error.'
                                 )
                                 self.exec_error.append(str(idx), e)
                     else:
@@ -1922,7 +1919,7 @@ class Base_Step_Executor:
                                                    self.step.options['shared'])
                 env.sos_dict.quick_update(self.shared_vars)
             missing = self.verify_output()
-            self.log('output', msg=f' (\033[95mmissing {str(missing)}\033[0m)' if len(missing) > 0 else '')
+            self.log('output', msg=f'\033[95m missing: {short_repr(missing)} ({len(missing)} item{"s" if len(missing)>1 else ""})\033[0m' if len(missing) > 0 else '')
             self.calculate_completed()
 
             def file_only(targets):
