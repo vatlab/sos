@@ -198,12 +198,15 @@ def expand_input_files(*args, **kwargs):
         return env.sos_dict['step_input']
     # if only group_by ...
     elif not args and all(x in SOS_TARGETS_OPTIONS for x in kwargs.keys()):
-        return sos_targets(env.sos_dict['step_input'], **kwargs)
+        return sos_targets(
+            env.sos_dict['step_input'],
+            _verify_existence=env.config['error_mode'] != 'ignore',
+            **kwargs)
     else:
         return sos_targets(
             *args,
             **kwargs,
-            _verify_existence=True,
+            _verify_existence=env.config['error_mode'] != 'ignore',
             _undetermined=False,
             _source=env.sos_dict['step_name'])
 
@@ -1551,11 +1554,20 @@ class Base_Step_Executor:
                 self.log('_input')
                 env.sos_dict.set('_index', idx)
 
-                if env.config['error_mode'] == 'ignore' and any(isinstance(x, invalid_target) for x in g.targets):
-                    env.logger.warning(f'Substep {idx} ignored due to invalid input caused by a previous failed substep')
-                    env.sos_dict.set('_output', sos_targets(invalid_target()))
-                    self.skip_substep()
-                    continue
+                if env.config['error_mode'] == 'ignore':
+                    missed = [x for x in g.targets if not x.target_exists()]
+                    if missed:
+                        if any(isinstance(x, invalid_target) for x in missed):
+                            env.logger.warning(
+                                f'Substep {idx} of {self.step.step_name()} ignored due to invalid input caused by previous failed substep.'
+                            )
+                        else:
+                            env.logger.warning(
+                                f'Substep {idx} of {self.step.step_name()} ignored due to mssing input {sos_targets(missed)}'
+                            )
+                        env.sos_dict.set('_output', sos_targets(invalid_target()))
+                        self.skip_substep()
+                        continue
 
                 # in interactive mode, because sos_dict are always shared
                 # execution of a substep, especially when it calls a nested
