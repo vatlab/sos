@@ -1444,6 +1444,10 @@ class Base_Step_Executor:
                             yreq = runner.send(yres)
                     except StopIteration as e:
                         pass
+                    except Exception as e:
+                        if env.config['error_mode'] == 'ignore':
+                            env.logger.warning(f'Stopping {self.step.step_name()} due to missing target {e.target}')
+                        raise e
                     continue
                 except UnavailableLock:
                     raise

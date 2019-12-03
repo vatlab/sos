@@ -1687,7 +1687,10 @@ class Base_Executor:
                                 # the target is resolved and the step can continue
                                 runnable._socket = proc.socket
                             except Exception as e:
-                                env.logger.error(e)
+                                if env.config['error_mode'] == 'ignore':
+                                    env.logger.warning(e)
+                                else:
+                                    env.logger.error(e)
                                 # tell the master that nested cannot resolve the
                                 # target so the workflow should stop
                                 proc.socket.send(encode_msg(False))
