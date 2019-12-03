@@ -436,7 +436,7 @@ class Base_Step_Executor:
                         if env.config['run_mode'] == 'run':
                             time.sleep(2)
                         if not file_target(target).target_exists('any'):
-                            if env.config['error-mode'] == 'ignore':
+                            if env.config['error_mode'] == 'ignore':
                                 env.logger.warning(
                                     f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]} (curdir={os.getcwd()})'
                                 )
@@ -451,7 +451,7 @@ class Base_Step_Executor:
                     if env.config['run_mode'] == 'run':
                         time.sleep(2)
                     if not target.target_exists('any'):
-                        if env.config['error-mode'] == 'ignore':
+                        if env.config['error_mode'] == 'ignore':
                             env.logger.warning(
                                 f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]}'
                             )
