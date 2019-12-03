@@ -2421,27 +2421,15 @@ input: None
 time.sleep(2)
 fail_if(True)
 """)
+        wf = script.workflow()
         #
         # default mode
         #
         cleanup()
         st = time.time()
-        wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf).run)
-        self.assertTrue(
-            time.time() - st >= 8,
-            'Test test should fail only after step 10 is completed')
-        self.assertTrue(os.path.isfile('10.txt'))
-        self.assertFalse(os.path.isfile('11.txt'))
-        #
-        # keep-going
-        #
-        cleanup()
         self.assertRaises(
             Exception,
-            Base_Executor(wf, config={
-                'error_mode': 'keep-going'
-            }).run)
+            Base_Executor(wf).run)
         self.assertTrue(
             time.time() - st >= 8,
             'Test test should fail only after step 10 is completed')
@@ -2449,8 +2437,10 @@ fail_if(True)
         self.assertTrue(os.path.isfile('11.txt'))
         #
         # ignore mode
+        #
         cleanup()
         #
+        st = time.time()
         Base_Executor(wf, config={'error_mode': 'ignore'}).run()
         self.assertTrue(
             time.time() - st >= 8,
@@ -2459,6 +2449,7 @@ fail_if(True)
         self.assertTrue(os.path.isfile('11.txt'))
         #
         # abort mode
+        #
         cleanup()
         #
         self.assertRaises(Exception,
@@ -2500,29 +2491,14 @@ output: 'test_30.txt'
 time.sleep(2)
 _output.touch()
 """)
-
+        wf = script.workflow()
         #
         # default mode
         #
         cleanup()
-        wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf).run)
-        for i in range(5):
-            self.assertTrue(os.path.isfile(f'test_{i}.txt'))
-            self.assertFalse(os.path.isfile(f'test_{i}.bak'))
-        for i in range(5, 10):
-            self.assertFalse(os.path.isfile(f'test_{i}.txt'))
-            self.assertFalse(os.path.isfile(f'test_{i}.bak'))
-        self.assertTrue(os.path.isfile(f'test_30.txt'))
-        #
-        # keep-going mode
-        #
-        cleanup()
         self.assertRaises(
             Exception,
-            Base_Executor(wf, config={
-                'error_mode': 'keep-going'
-            }).run)
+            Base_Executor(wf).run)
         for i in range(10):
             if i == 5:
                 self.assertFalse(os.path.isfile(f'test_{i}.txt'))
@@ -2589,23 +2565,9 @@ fail_if(_index == 10, 'fail at 10')
         # default mode
         #
         cleanup()
-        self.assertRaises(Exception, Base_Executor(wf).run)
-        for i in range(5):
-            self.assertTrue(os.path.isfile(f'test_{i}.txt'))
-        for i in (5, 10):
-            self.assertFalse(os.path.isfile(f'test_{i}.txt'))
-        # without -k , some late substeps will not be submitted
-        for i in range(190, 200):
-            self.assertFalse(os.path.isfile(f'test_{i}.txt'))
-        #
-        # keep-going mode
-        #
-        cleanup()
         self.assertRaises(
             Exception,
-            Base_Executor(wf, config={
-                'error_mode': 'keep-going'
-            }).run)
+            Base_Executor(wf).run)
         for i in (5, 10):
             self.assertFalse(os.path.isfile(f'test_{i}.txt'))
         for i in range(190, 200):
@@ -2645,29 +2607,15 @@ _output.touch()
 output: 'test_31.txt'
 _output.touch()
         """)
+        wf = script.workflow()
         #
         # default mode
-        #
-        cleanup()
-        wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf).run)
-        for i in (0, 2):
-            self.assertTrue(os.path.isfile(f'test_{i}.txt'))
-            self.assertFalse(os.path.isfile(f'test_{i}.bak'))
-        # 30 is allowed to finish
-        self.assertTrue(os.path.isfile(f'test_30.txt'))
-        # 31 is not started
-        self.assertFalse(os.path.isfile(f'test_31.txt'))
-        #
-        # keep-going mode
         #
         cleanup()
 
         self.assertRaises(
             Exception,
-            Base_Executor(wf, config={
-                'error_mode': 'keep-going'
-            }).run)
+            Base_Executor(wf).run)
         for i in (0, 2, 30, 31):
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
             self.assertFalse(os.path.isfile(f'test_{i}.bak'))
@@ -2733,23 +2681,10 @@ _output.touch()
         # default mode
         #
         cleanup()
-        st = time.time()
-        wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf).run)
-        self.assertTrue(
-            time.time() - st >= 8,
-            'Test test should fail only after step 10 is completed')
-        self.assertFalse(os.path.isfile('11.txt'))
-        #
-        # keep-going mode
-        #
-        cleanup()
 
         self.assertRaises(
             Exception,
-            Base_Executor(wf, config={
-                'error_mode': 'keep-going'
-            }).run)
+            Base_Executor(wf).run)
         self.assertTrue(
             time.time() - st >= 8,
             'Test test should fail only after step 10 is completed')

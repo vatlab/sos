@@ -869,14 +869,6 @@ class Base_Step_Executor:
                     raise res['exception']
                 elif isinstance(res['exception'], RemovedTarget):
                     pass
-                elif env.config['error_mode'] == 'keep-going':
-                    idx_msg = f'(id={env.sos_dict["step_id"]}, index={res["index"]})' if "index" in res and len(
-                        self._substeps
-                    ) > 1 else f'(id={env.sos_dict["step_id"]})'
-                    env.logger.warning(
-                        f'''Substep {self.step.step_name()} {idx_msg} returns an error.'''
-                    )
-                    self.exec_error.append(idx_msg, res['exception'])
                 elif env.config['error_mode'] == 'ignore':
                     idx_msg = f'(id={env.sos_dict["step_id"]}, index={res["index"]})' if "index" in res and len(
                         self._substeps
@@ -885,7 +877,7 @@ class Base_Step_Executor:
                         f'''Ignoring error from substep {self.step.step_name()} {idx_msg}: {res["exception"]}.'''
                     )
                     res['output'] = sos_targets(invalid_target())
-                elif env.config['error_mode'] in ('abort', 'default'):
+                elif env.config['error_mode'] == 'abort':
                     idx_msg = f'(id={env.sos_dict["step_id"]}, index={res["index"]})' if "index" in res and len(
                         self._substeps
                     ) > 1 else f'(id={env.sos_dict["step_id"]})'
@@ -905,7 +897,14 @@ class Base_Step_Executor:
                                                    res['exception'])
                     raise self.exec_error
                 else:
-                    raise RuntimeError(f'This line should not be reached.')
+                    # default or unspecified
+                    idx_msg = f'(id={env.sos_dict["step_id"]}, index={res["index"]})' if "index" in res and len(
+                        self._substeps
+                    ) > 1 else f'(id={env.sos_dict["step_id"]})'
+                    env.logger.warning(
+                        f'''Substep {self.step.step_name()} {idx_msg} returns an error.'''
+                    )
+                    self.exec_error.append(idx_msg, res['exception'])                    
             #
             if "index" not in res:
                 raise RuntimeError(
@@ -1773,14 +1772,8 @@ class Base_Step_Executor:
                             break
                         except Exception as e:
                             clear_output()
-                            if env.config['error_mode'] == 'keep-going':
-                                idx_msg = f'(id={env.sos_dict["step_id"]}, index={idx})' if len(
-                                    self._substeps
-                                ) > 1 else f'(id={env.sos_dict["step_id"]})'
-                                env.logger.error(
-                                    f'Substep {self.step.step_name()} {idx_msg} returns an error.'
-                                )
-                                self.exec_error.append(str(idx), e)
+                            if env.config['error_mode'] == 'abort':
+                                raise
                             elif env.config['error_mode'] == 'ignore':
                                 idx_msg = f'(id={env.sos_dict["step_id"]}, index={idx})' if len(
                                     self._substeps
@@ -1791,7 +1784,14 @@ class Base_Step_Executor:
                                 self.output_groups[idx] = sos_targets(invalid_target())
                                 skip_index = True
                             else:
-                                raise
+                                # default mode
+                                idx_msg = f'(id={env.sos_dict["step_id"]}, index={idx})' if len(
+                                    self._substeps
+                                ) > 1 else f'(id={env.sos_dict["step_id"]})'
+                                env.logger.error(
+                                    f'Substep {self.step.step_name()} {idx_msg} returns an error.'
+                                )
+                                self.exec_error.append(str(idx), e)
                     else:
                         # if it is not the last statement group (e.g. statements before :output)
                         # we execute locally without anything like signature

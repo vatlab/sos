@@ -1196,7 +1196,7 @@ class Base_Executor:
                                     }))
                                 env.logger.error(e)
                                 proc.set_status('failed')
-                                if env.config['error_mode'] != 'keep-going':
+                                if env.config['error_mode'] == 'abort':
                                     manager.stop_dag(dag)
                         elif res[0] == 'missing_target':
                             # the target that is missing from the running step
@@ -1216,7 +1216,7 @@ class Base_Executor:
                                     # otherwise say the target cannot be resolved
                                     proc.socket.send(encode_msg(''))
                                     proc.set_status('failed')
-                                    if env.config['error_mode'] not in ('keep-going', 'ignore'):
+                                    if env.config['error_mode'] == 'abort':
                                         manager.stop_dag(dag)
                             else:
                                 # if the missing target is from master, resolve from here
@@ -1234,7 +1234,7 @@ class Base_Executor:
                                         env.logger.error(e)
                                         proc.socket.send(encode_msg(''))
                                         proc.set_status('failed')
-                                        if env.config['error_mode'] != 'keep-going':
+                                        if env.config['error_mode'] == 'abort':
                                             manager.stop_dag(dag)
                         elif res[0] == 'dependent_target':
                             # The target might be dependent on other steps and we
@@ -1432,8 +1432,6 @@ class Base_Executor:
                         else:
                             # env.logger.error(res)
                             runnable._status = 'failed'
-                            if env.config['error_mode'] != 'keep-going':
-                                manager.stop_dag(dag)
                             dag.save(env.config['output_dag'])
                             exec_error.append(runnable._node_id, res)
                             # stop raising exce_error immediately, which would terminates other substeps
@@ -1757,7 +1755,7 @@ class Base_Executor:
                         env.logger.debug(
                             f'Step {runnable} in subworkflow {my_workflow_id} failed'
                         )
-                        if env.config['error_mode'] not in ('keep-going', 'ignore'):
+                        if env.config['error_mode'] == 'abort':
                             manager.stop_dag(dag)
                     elif '__step_name__' in res:
                         env.log_to_file(

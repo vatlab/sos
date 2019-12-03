@@ -373,19 +373,17 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
     runmode.add_argument(
         '-e',
         choices=[
-            'default', 'keep-going', 'ignore', 'abort'
+             'abort', 'default', 'ignore'
         ],
         default='default',
         metavar='ERRORMODE',
         dest='__error_mode__',
-        help='''How to handle failures from steps and substeps. By
-            default, SoS will stop executing the DAG (but wait until all
-            running jobs are completed) when an error happens. 
-            With error mode "keep-going", sos keeps completing the
-            DAG even after some step has failed. With mode "ignore",
-            sos will assume the error is expected and continue to
-            execute the workflow. With mode "abort", sos will terminate
-            existing running processes.''')
+        help='''How to handle failures from steps and substeps. By default,
+            after an error happens and stops the execution of a step, SoS will
+            exit after it executes the rest of the DAG until all unaffected steps
+            are executede. You can specify "-e abort" if you would like SoS to
+            stop as soon as any error is detected, or "-e ignore" to ignore the
+            error and continue to execute the workflow as best as it can.''')
     # run in tapping mode etc
     runmode.add_argument(
         '-m', nargs='+', dest='exec_mode', help=argparse.SUPPRESS)
@@ -482,8 +480,8 @@ def cmd_run(args, workflow_args):
     env.verbosity = args.verbosity
 
     if hasattr(args, 'keep_going') and args.keep_going:
-        env.logger.warning(f'Option -k is deprecated. use -e keep-going instead.')
-        args.__error_mode__ = 'keep-going'
+        env.logger.warning(f'Option -k is deprecated and is now the default mode.')
+        args.__error_mode__ = 'default'
 
     if args.__report__ and args.__dag__:
         try:
