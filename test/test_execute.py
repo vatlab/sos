@@ -13,7 +13,7 @@ import unittest
 
 from sos._version import __version__
 from sos.parser import SoS_Script
-from sos.targets import file_target
+from sos.targets import file_target, sos_targets
 from sos.utils import env
 # if the test is imported under sos/test, test interacive executor
 from sos.workflow_executor import Base_Executor
@@ -1131,19 +1131,19 @@ touch {_input}.bak
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertEqual(
-            env.sos_dict['test'], [
+            env.sos_dict['test'], sos_targets([
                 os.path.join('temp', 'test_{}.txt.bak'.format(x))
                 for x in range(5)
-            ],
+            ]),
             f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}"
         )
         # this time we use th existing signature
         Base_Executor(wf).run()
         self.assertEqual(
-            env.sos_dict['test'], [
+            env.sos_dict['test'], sos_targets([
                 os.path.join('temp', 'test_{}.txt.bak'.format(x))
                 for x in range(5)
-            ],
+            ]),
             f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}"
         )
         #
