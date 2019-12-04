@@ -1549,7 +1549,15 @@ showResourceFigure_''' + t + '''()
                     except Exception:
                         print('Binary file')
 
-            if s not in ('pending', 'submitted', 'running'):
+            if s == 'running':
+                show_file(t, '.sh')
+                show_file(t, '.job_id')
+                show_file(t, ['.sosout', '.out'])
+                show_file(t, ['.soserr', '.err'])
+            elif s == 'submitted':
+                show_file(t, '.sh')
+                show_file(t, '.job_id')
+            elif s != 'pending':
                 if tf.has_shell():
                     print('\nexecution script:\n================\n' + tf.shell)
                 else:
@@ -1562,11 +1570,7 @@ showResourceFigure_''' + t + '''()
                     print('\nstandard error:\n================\n' + tf.stderr)
                 else:
                     show_file(t, ['.soserr', '.err'])
-            elif s == 'running':
-                show_file(t, '.sh')
-                show_file(t, '.job_id')
-                show_file(t, ['.sosout', '.out'])
-                show_file(t, ['.soserr', '.err'])
+
 
     # remove jobs that are older than 1 month
     if to_be_removed:
