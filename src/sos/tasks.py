@@ -1551,15 +1551,15 @@ showResourceFigure_''' + t + '''()
 
             if s not in ('pending', 'submitted', 'running'):
                 if tf.has_shell():
-                    print('execution script:\n================\n' + tf.shell)
+                    print('\nexecution script:\n================\n' + tf.shell)
                 else:
                     show_file(t, '.sh')
                 if tf.has_stdout():
-                    print('standard output:\n================\n' + tf.stdout)
+                    print('\nstandard output:\n================\n' + tf.stdout)
                 else:
                     show_file(t, ['.sosout', '.out'])
                 if tf.has_stderr():
-                    print('standard error:\n================\n' + tf.stderr)
+                    print('\nstandard error:\n================\n' + tf.stderr)
                 else:
                     show_file(t, ['.soserr', '.err'])
             elif s == 'running':
