@@ -899,7 +899,7 @@ class Base_Step_Executor:
                     idx_msg = f'(id={env.sos_dict["step_id"]}, index={res["index"]})' if "index" in res and len(
                         self._substeps
                     ) > 1 else f'(id={env.sos_dict["step_id"]})'
-                    self.exec_error.append(idx_msg, res['exception'])                    
+                    self.exec_error.append(idx_msg, res['exception'])
             #
             if "index" not in res:
                 raise RuntimeError(
@@ -1553,12 +1553,13 @@ class Base_Step_Executor:
                     if missed:
                         if any(isinstance(x, invalid_target) for x in missed):
                             env.logger.warning(
-                                f'{self.step.step_name(True)} (index={idx}) ignored due to invalid input caused by previous failed substep.'
+                                f'{self.step.step_name(True)}{f" (index={idx})" if len(self._substeps) > 1 else ""} ignored due to invalid input caused by previous failed substep.'
                             )
                         else:
                             env.logger.warning(
-                                f'{self.step.step_name(True)} (index={idx}) ignored due to mssing input {sos_targets(missed)}'
+                                f'{self.step.step_name(True)}{f" (index={idx})" if len(self._substeps) > 1 else ""} ignored due to mssing input {sos_targets(missed)}'
                             )
+                        self.output_groups[idx] = sos_targets(invalid_target())
                         env.sos_dict.set('_output', sos_targets(invalid_target()))
                         self.skip_substep()
                         continue

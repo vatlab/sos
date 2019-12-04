@@ -2700,7 +2700,7 @@ _output.touch()
         self.assertTrue(
             time.time() - st >= 8,
             'Test test should fail only after step 10 is completed')
-        self.assertTrue(os.path.isfile('22.txt'))
+        self.assertFalse(os.path.isfile('22.txt'))
 
     def testStmtBeforeInput(self):
         '''Bug #1270, if there is any statement before input, the step will be undetermined'''
