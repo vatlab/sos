@@ -973,20 +973,24 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             if elapsed < 60:
                 return dict(status='running', files=status_files)
 
-            # assume aborted
-            tf.status = 'aborted'
-            with open(
-                    os.path.join(
-                        os.path.expanduser('~'), '.sos', 'tasks',
-                        task + '.soserr'), 'a') as err:
-                err.write(
-                    f'Task {task} inactive for more than {int(elapsed)} seconds, might have been killed.'
-                )
+            syserr_file = os.path.join(
+                os.path.expanduser('~'), '.sos', 'tasks', task + '.err')
+
+            # if the system does not return any error message, write sos-specific one
+            if not os.path.isfile(syserr_file) or os.path.getsize(syserr_file) == 0:
+                soserr_file = os.path.join(
+                    os.path.expanduser('~'), '.sos', 'tasks', task + '.soserr')
+                with open(soserr_file, 'a') as err:
+                    err.write(
+                        f'Task {task} inactive for more than {int(elapsed)} seconds, might have been killed.'
+                    )
             env.logger.warning(
                 f'Task {task} inactive for more than {int(elapsed)} seconds, might have been killed.'
             )
 
             tf.add_outputs()
+            # assume aborted
+            tf.status = 'aborted'
             return dict(
                 status='aborted',
                 files={
@@ -1317,6 +1321,8 @@ def print_task_status(tasks,
                     rhead = os.path.splitext(f)[-1]
                     if rhead == '.sh':
                         rhead = 'shell'
+                    elif rhead == '.job_id':
+                        rhead = 'job ID'
                     elif rhead == '.err':
                         rhead = 'stderr'
                     elif rhead == '.out':
@@ -1532,10 +1538,10 @@ showResourceFigure_''' + t + '''()
                 for ext in exts:
                     f = os.path.join(
                         os.path.expanduser('~'), '.sos', 'tasks', task + ext)
-                    if not os.path.isfile(f):
+                    if not os.path.isfile(f) or os.path.getsize(f) == 0:
                         return
                     print(
-                        f'{os.path.basename(f)}:\n{"="*(len(os.path.basename(f))+1)}'
+                        f'\n{os.path.basename(f)}:\n{"="*(len(os.path.basename(f))+1)}'
                     )
                     try:
                         with open(f) as fc:
@@ -1556,6 +1562,11 @@ showResourceFigure_''' + t + '''()
                     print('standard error:\n================\n' + tf.stderr)
                 else:
                     show_file(t, ['.soserr', '.err'])
+            elif s == 'running':
+                show_file(t, '.sh')
+                show_file(t, '.job_id')
+                show_file(t, ['.sosout', '.out'])
+                show_file(t, ['.soserr', '.err'])
 
     # remove jobs that are older than 1 month
     if to_be_removed:
