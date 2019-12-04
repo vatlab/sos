@@ -977,16 +977,22 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                 os.path.expanduser('~'), '.sos', 'tasks', task + '.err')
 
             # if the system does not return any error message, write sos-specific one
-            if not os.path.isfile(syserr_file) or os.path.getsize(syserr_file) == 0:
+            if os.path.isfile(syserr_file) and os.path.getsize(syserr_file) > 0:
+                try:
+                    with open(syserr_file) as syserr:
+                        env.logger.warning(''.join(syserr.readlines()[-5:]))
+                except Exception as e:
+                    env.logger.warning(f'{task} is suspected to be killed but {syserr_file} cannot be read: {e}')
+            else:
                 soserr_file = os.path.join(
                     os.path.expanduser('~'), '.sos', 'tasks', task + '.soserr')
                 with open(soserr_file, 'a') as err:
                     err.write(
                         f'Task {task} inactive for more than {int(elapsed)} seconds, might have been killed.'
                     )
-            env.logger.warning(
-                f'Task {task} inactive for more than {int(elapsed)} seconds, might have been killed.'
-            )
+                env.logger.warning(
+                    f'Task {task} inactive for more than {int(elapsed)} seconds, might have been killed.'
+                )
 
             tf.add_outputs()
             # assume aborted
