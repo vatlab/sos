@@ -417,9 +417,9 @@ class dynamic(BaseTarget):
 
     def resolve(self):
         if isinstance(self._target, str):
-            return [x for x in glob.glob(self._target) if os.path.isfile(x)]
+            return sorted([x for x in glob.glob(self._target) if os.path.isfile(x)])
         elif isinstance(self._target, Sequence) and all(isinstance(x, str) for x in self._target):
-            return sum([[x for x in glob.glob(t) if os.path.isfile(x)] for t in self._target], [])
+            return sorted(sum([[x for x in glob.glob(t) if os.path.isfile(x)] for t in self._target], []))
         else:
             return self._target
 
