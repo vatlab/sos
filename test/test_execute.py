@@ -2680,6 +2680,7 @@ _output.touch()
         #
         # default mode
         #
+        wf = script.workflow()
         cleanup()
 
         self.assertRaises(
