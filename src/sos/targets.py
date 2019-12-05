@@ -105,7 +105,7 @@ def objectMD5(obj):
         return obj.target_name()
     try:
         return textMD5(pickle.dumps(obj))
-    except:
+    except Exception:
         return ''
 
 
@@ -192,7 +192,7 @@ class BaseTarget(object):
     def __getattr__(self, name):
         try:
             return self._dict[name]
-        except:
+        except Exception:
             # if name in self._dict:
             # return self._dict.get(name)
             raise AttributeError(
@@ -417,9 +417,15 @@ class dynamic(BaseTarget):
 
     def resolve(self):
         if isinstance(self._target, str):
-            return sorted([x for x in glob.glob(self._target) if os.path.isfile(x)])
-        elif isinstance(self._target, Sequence) and all(isinstance(x, str) for x in self._target):
-            return sorted(sum([[x for x in glob.glob(t) if os.path.isfile(x)] for t in self._target], []))
+            return sorted(
+                [x for x in glob.glob(self._target) if os.path.isfile(x)])
+        elif isinstance(self._target, Sequence) and all(
+                isinstance(x, str) for x in self._target):
+            return sorted(
+                sum([[x
+                      for x in glob.glob(t)
+                      if os.path.isfile(x)]
+                     for t in self._target], []))
         else:
             return self._target
 
@@ -606,7 +612,7 @@ class path(type(Path())):
                         env.sos_dict['CONFIG']['hosts'][
                             env.sos_dict['__host__']]['paths'][kwargs['name']]
                     ]).expanduser()
-            except:
+            except Exception:
                 if '__host__' not in env.sos_dict:
                     raise RuntimeError(
                         'Incomplete sos environment: missing __host__ definition.'
@@ -756,7 +762,7 @@ class file_target(path, BaseTarget):
     def size(self):
         try:
             return os.path.getsize(self)
-        except:
+        except Exception:
             if (self + '.zapped').is_file():
                 with open(self + '.zapped') as sig:
                     line = sig.readline()
@@ -796,7 +802,7 @@ class file_target(path, BaseTarget):
             try:
                 with open(self.sig_file()) as sig:
                     sig_mtime, sig_size, sig_md5 = sig.read().strip().split()
-            except:
+            except Exception:
                 return False
         if not self.exists():
             if (self + '.zapped').is_file():
@@ -1155,8 +1161,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
     targets = property(lambda self: self._targets)
 
-    groups = property(lambda self:
-                      [x.idx_to_targets(self) for x in self._groups])
+    groups = property(
+        lambda self: [x.idx_to_targets(self) for x in self._groups])
 
     def _get_group(self, index):
         return self._groups[index].idx_to_targets(self)
@@ -1392,11 +1398,11 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def __getattr__(self, name):
         try:
             return self._dict[name]
-        except:
+        except Exception:
             if len(self._targets) == 1:
                 try:
                     return getattr(self._targets[0], name)
-                except:
+                except Exception:
                     raise AttributeError(
                         f'{self.__class__.__name__} object or its first child has no attribute {name}'
                     )
@@ -1565,7 +1571,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             else:
                 try:
                     grp_size = int(by[10:])
-                except:
+                except Exception:
                     raise ValueError(f'Invalid pairsource option {by}')
             src_sizes = {s: self.labels.count(s) for s in labels}
             if max(src_sizes.values()) % grp_size != 0:
@@ -1605,7 +1611,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             else:
                 try:
                     grp_size = int(by[5:])
-                except:
+                except Exception:
                     raise ValueError(f'Invalid pairs option {by}')
             if grp_size == 1:
                 self._groups = [
@@ -1633,7 +1639,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             else:
                 try:
                     grp_size = int(by[8:])
-                except:
+                except Exception:
                     raise ValueError(f'Invalid pairs option {by}')
             if grp_size == 1:
                 f1, f2 = tee(range(len(self)))
@@ -1658,7 +1664,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             else:
                 try:
                     grp_size = int(by[12:])
-                except:
+                except Exception:
                     raise ValueError(f'Invalid pairs option {by}')
             self._groups = [
                 _sos_group(x, parent=self)
@@ -1689,7 +1695,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 idx = by(self)
                 try:
                     idx = list(idx)
-                except:
+                except Exception:
                     raise ValueError(
                         f'Customized grouping method should return a list. {idx} of type {idx.__class__.__name__} is returned.'
                     )
@@ -1706,7 +1712,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                         for x in sos_targets(grp):
                             try:
                                 index.append(self._targets.index(x))
-                            except:
+                            except Exception:
                                 raise ValueError(
                                     f'Returned target is not one of the targets. {x}'
                                 )
@@ -1914,7 +1920,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             return self._targets == (
                 other._targets if isinstance(other, sos_targets) else
                 sos_targets(other)._targets)
-        except:
+        except Exception:
             return False
 
     def __add__(self, part):
@@ -2230,9 +2236,9 @@ class RuntimeInfo(InMemorySignature):
             os.path.join(env.temp_dir, self.sig_id + '.lock'))
         if not self._lock.acquire(blocking=False):
             self._lock = None
-            raise UnavailableLock(
-                (self.input_files, self.output_files,
-                os.path.join(env.temp_dir, self.sig_id + '.lock')))
+            raise UnavailableLock((self.input_files, self.output_files,
+                                   os.path.join(env.temp_dir,
+                                                self.sig_id + '.lock')))
         else:
             env.log_to_file(
                 'TARGET',

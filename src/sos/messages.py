@@ -5,6 +5,7 @@
 
 import pickle
 
+
 def encode_msg(msg):
     return pickle.dumps(msg)
 

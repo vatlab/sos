@@ -64,7 +64,7 @@ def accessed_vars(statement: str, mode: str = 'exec') -> Set[str]:
                 ast.parse('__NULL__(' + statement + ')', '<string>', 'eval'))
             res.remove('__NULL__')
             return res
-    except:
+    except Exception:
         raise RuntimeError(
             f'Failed to parse statement: {statement} in {mode} mode')
 
@@ -276,8 +276,7 @@ def analyze_global_statements(global_stmt):
     except ArgumentError:
         raise
     except Exception as e:
-        raise RuntimeError(
-            f'Failed to execute global statement: {e}')
+        raise RuntimeError(f'Failed to execute global statement: {e}')
     #
     global_vars = {
         k: env.sos_dict[k] for k in (set(env.sos_dict.keys()) - defined_keys)
@@ -286,7 +285,7 @@ def analyze_global_statements(global_stmt):
     # test if global vars can be pickled
     try:
         pickle.dumps(global_vars)
-    except:
+    except Exception:
         for key in set(env.sos_dict.keys()) - defined_keys:
             if not pickleable(env.sos_dict[key], key):
                 raise ValueError(

@@ -24,6 +24,7 @@ from .tasks import TaskParams
 from .syntax import SOS_TAG, SOS_RUNTIME_OPTIONS
 from .controller import request_answer_from_controller
 
+
 class ExecuteError(Error):
     """An exception to collect exceptions raised during run time so that
     other branches of the DAG would continue if some nodes fail to execute."""
@@ -40,7 +41,8 @@ class ExecuteError(Error):
         if not lines:
             short_line = ''
         else:
-            short_line = '[' + (lines[0][:40] if len(lines[0]) > 40 else lines[0]) + ']:'
+            short_line = '[' + (lines[0][:40]
+                                if len(lines[0]) > 40 else lines[0]) + ']:'
         self.errors.append(short_line)
         self.traces.append(get_traceback())
         newline = '\n' if self.message else ''
@@ -349,7 +351,7 @@ def kill_all_subprocesses(pid=None, include_self=False):
     # kill all subprocesses that could have been spawn from the current process
     try:
         proc = psutil.Process(pid)
-    except:
+    except Exception:
         # if no such process
         return
     procs = proc.children(recursive=True) + ([proc] if include_self else [])

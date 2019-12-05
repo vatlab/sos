@@ -22,7 +22,8 @@ g_sockets = set()
 def create_socket(context, socket_type, desc=''):
     socket = context.socket(socket_type)
     g_sockets.add(socket.fd)
-    if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+    if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+            'SOS_DEBUG']:
         env.log_to_file(
             'CONTROLLER',
             f'{os.getpid()} {desc}: new socket of type {EVENT_MAP.get(socket_type, "UNKNOWN")} with handler {socket.fd} ({len(g_sockets)} total)'
@@ -34,7 +35,8 @@ def close_socket(socket, desc='', now=False):
     if socket is None:
         return
     g_sockets.remove(socket.fd)
-    if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+    if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+            'SOS_DEBUG']:
         env.log_to_file(
             'CONTROLLER',
             f'{os.getpid()} {desc}: closes socket with handler {socket.fd} ({len(g_sockets)} left)'
@@ -67,17 +69,21 @@ def request_answer_from_controller(msg):
     if env.master_request_socket is None:
         env.master_request_socket = create_socket(env.zmq_context, zmq.REQ,
                                                   'master request')
-        env.master_request_socket.connect(env.config["sockets"]["master_request"])
+        env.master_request_socket.connect(
+            env.config["sockets"]["master_request"])
     env.master_request_socket.send(encode_msg(msg))
     return decode_msg(env.master_request_socket.recv())
 
+
 def connect_controllers(context=None):
     if not context:
-        if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+        if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                'SOS_DEBUG']:
             env.log_to_file('CONTROLLER', f'create context at {os.getpid()}')
         context = zmq.Context()
 
-    if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+    if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+            'SOS_DEBUG']:
         env.log_to_file('CONTROLLER', f'Connecting sockets from {os.getpid()}')
 
     env.master_push_socket = None
@@ -87,14 +93,16 @@ def connect_controllers(context=None):
     #
     if env.config['exec_mode'] == 'slave':
         env.tapping_logging_socket = create_socket(context, zmq.PUSH)
-        env.tapping_logging_socket.connect(env.config["sockets"]["tapping_logging"])
+        env.tapping_logging_socket.connect(
+            env.config["sockets"]["tapping_logging"])
         # change logging to socket
         env.set_socket_logger(env.tapping_logging_socket)
 
     # master also need to update task status from interactive runner.
     if env.config['exec_mode'] in ('master', 'slave'):
         env.tapping_listener_socket = create_socket(context, zmq.PUSH)
-        env.tapping_listener_socket.connect(env.config["sockets"]["tapping_listener"])
+        env.tapping_listener_socket.connect(
+            env.config["sockets"]["tapping_listener"])
 
     return context
 
@@ -110,12 +118,14 @@ def disconnect_controllers(context=None):
     if env.config['exec_mode'] in ('master', 'slave'):
         close_socket(env.tapping_listener_socket, now=True)
 
-    if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+    if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+            'SOS_DEBUG']:
         env.log_to_file('CONTROLLER',
                         f'Disconnecting sockets from {os.getpid()}')
 
     if context:
-        if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+        if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                'SOS_DEBUG']:
             env.log_to_file('CONTROLLER', f'terminate context at {os.getpid()}')
         zmq_term(context)
 
@@ -258,7 +268,8 @@ class Controller(threading.Thread):
                 # cache the request, route to first available worker
                 self.workers.add_request(msg[0], msg[1])
             elif msg[0] == 'nprocs':
-                if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+                if 'CONTROLLER' in env.config[
+                        'SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                     env.log_to_file('CONTROLLER',
                                     f'Active running process set to {msg[1]}')
                 self._nprocs = msg[1]
@@ -301,30 +312,33 @@ class Controller(threading.Thread):
                     self.workflow_signatures.clear()
                     self.master_request_socket.send(encode_msg('ok'))
                 elif msg[1] == 'placeholders':
-                    self.master_request_socket.send(encode_msg(
-                        self.workflow_signatures.placeholders(msg[2])))
+                    self.master_request_socket.send(
+                        encode_msg(
+                            self.workflow_signatures.placeholders(msg[2])))
                 elif msg[1] == 'records':
-                    self.master_request_socket.send(encode_msg(
-                        self.workflow_signatures.records(msg[2])))
+                    self.master_request_socket.send(
+                        encode_msg(self.workflow_signatures.records(msg[2])))
                 else:
                     env.logger.warning(f'Unknown signature request {msg}')
             elif msg[0] == 'step_sig':
                 if msg[1] == 'get':
-                    self.master_request_socket.send(encode_msg(
-                        self.step_signatures.get(*msg[2:])))
+                    self.master_request_socket.send(
+                        encode_msg(self.step_signatures.get(*msg[2:])))
                 else:
                     env.logger.warning(f'Unknown signature request {msg}')
             elif msg[0] == 'nprocs':
                 self.master_request_socket.send(encode_msg(self._nprocs))
             elif msg[0] == 'sos_step':
-                self.master_request_socket.send(encode_msg(
-                    msg[1] in self._completed_steps or msg[1] in
-                    [x.rsplit('_', 1)[0] for x in self._completed_steps.keys()]))
+                self.master_request_socket.send(
+                    encode_msg(msg[1] in self._completed_steps or msg[1] in [
+                        x.rsplit('_', 1)[0]
+                        for x in self._completed_steps.keys()
+                    ]))
             elif msg[0] == 'step_output':
                 step_name = msg[1]
                 if step_name in self._completed_steps:
-                    self.master_request_socket.send(encode_msg(
-                        self._completed_steps[step_name]))
+                    self.master_request_socket.send(
+                        encode_msg(self._completed_steps[step_name]))
                 else:
                     # now, step_name might actually be a workflow name, in which
                     # case we need to return the last step of the workflow
@@ -332,21 +346,23 @@ class Controller(threading.Thread):
                         x for x in self._completed_steps.keys()
                         if x.rsplit('_', 1)[0] == step_name
                     ])
-                    self.master_request_socket.send(encode_msg(
-                        self._completed_steps[steps[-1]] if steps else None))
+                    self.master_request_socket.send(
+                        encode_msg(self._completed_steps[steps[-1]]
+                                   if steps else None))
             elif msg[0] == 'named_output':
                 name = msg[1]
                 found = False
                 for step_output in self._completed_steps.values():
                     if name in step_output.labels:
                         found = True
-                        self.master_request_socket.send(encode_msg(step_output[name]))
+                        self.master_request_socket.send(
+                            encode_msg(step_output[name]))
                         break
                 if not found:
                     self.master_request_socket.send(encode_msg(None))
             elif msg[0] == 'worker_available':
-                self.master_request_socket.send(encode_msg(
-                    self.workers.worker_available(msg[1], msg[2:])))
+                self.master_request_socket.send(
+                    encode_msg(self.workers.worker_available(msg[1], msg[2:])))
             elif msg[0] == 'done':
                 # handle all ctl_push_msgs #1062
                 while True:
@@ -406,7 +422,8 @@ class Controller(threading.Thread):
         elif msg[0] == b'DEBUG':
             env.logger.debug(msg[1].decode())
         elif msg[0] == b'TRACE':
-            if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+            if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                    'SOS_DEBUG']:
                 env.log_to_file('CONTROLLER', msg[1].decode())
         elif msg[0] == b'PRINT':
             env.logger.print(*[x.decode() for x in msg[1:]])
@@ -430,7 +447,8 @@ class Controller(threading.Thread):
         self.context = zmq.Context.instance()
         local_ip = get_localhost_ip()
 
-        if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+        if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                'SOS_DEBUG']:
             env.log_to_file('CONTROLLER', f'controller started {os.getpid()}')
 
         if 'sockets' not in env.config:
@@ -439,14 +457,16 @@ class Controller(threading.Thread):
         self.master_push_socket = create_socket(self.context, zmq.PULL,
                                                 'controller master_pull')
         master_push_port = self.master_push_socket.bind_to_random_port(
-                                                    f'tcp://{local_ip}')
-        env.config['sockets']['master_push'] = f'tcp://{local_ip}:{master_push_port}'
+            f'tcp://{local_ip}')
+        env.config['sockets'][
+            'master_push'] = f'tcp://{local_ip}:{master_push_port}'
 
         self.master_request_socket = create_socket(self.context, zmq.REP,
                                                    'controller master_request')
         master_request_port = self.master_request_socket.bind_to_random_port(
             f'tcp://{local_ip}')
-        env.config['sockets']['master_request'] = f'tcp://{local_ip}:{master_request_port}'
+        env.config['sockets'][
+            'master_request'] = f'tcp://{local_ip}:{master_request_port}'
 
         # broker to handle the execution of substeps
         self.worker_backend_socket = create_socket(
@@ -454,31 +474,36 @@ class Controller(threading.Thread):
         # we assume the router is always on local host, but we will use a non-localhost
         # IP so that others can connect to it.
         worker_port = self.worker_backend_socket.bind_to_random_port(
-                f'tcp://{local_ip}')
-        env.config['sockets']['worker_backend'] = f'tcp://{local_ip}:{worker_port}'
+            f'tcp://{local_ip}')
+        env.config['sockets'][
+            'worker_backend'] = f'tcp://{local_ip}:{worker_port}'
 
         # tapping
         if env.config['exec_mode'] == 'master':
             self.tapping_logging_socket = create_socket(self.context, zmq.PULL)
             tapping_logging_port = self.tapping_logging_socket.bind_to_random_port(
                 f'tcp://{local_ip}')
-            env.config['sockets']['tapping_logging'] = f'tcp://{local_ip}:{tapping_logging_port}'
+            env.config['sockets'][
+                'tapping_logging'] = f'tcp://{local_ip}:{tapping_logging_port}'
 
             self.tapping_listener_socket = create_socket(self.context, zmq.PULL)
             tapping_listener_port = self.tapping_listener_socket.bind_to_random_port(
                 f'tcp://{local_ip}')
-            env.config['sockets']['tapping_listener'] = f'tcp://{local_ip}:{tapping_listener_port}'
+            env.config['sockets'][
+                'tapping_listener'] = f'tcp://{local_ip}:{tapping_listener_port}'
 
             self.tapping_controller_socket = create_socket(
                 self.context, zmq.PUSH)
             tapping_controller_port = self.tapping_controller_socket.bind_to_random_port(
                 f'tcp://{local_ip}')
-            env.config['sockets']['tapping_controller'] = f'tcp://{local_ip}:{tapping_controller_port}'
+            env.config['sockets'][
+                'tapping_controller'] = f'tcp://{local_ip}:{tapping_controller_port}'
 
         if env.config['exec_mode'] == 'slave':
             self.tapping_controller_socket = create_socket(
                 self.context, zmq.PULL)
-            self.tapping_controller_socket.connect(env.config["sockets"]["tapping_controller"])
+            self.tapping_controller_socket.connect(
+                env.config["sockets"]["tapping_controller"])
 
         #monitor_socket = self.master_request_socket.get_monitor_socket()
         # tell others that the sockets are ready
@@ -591,6 +616,7 @@ class Controller(threading.Thread):
             if env.config['exec_mode'] in ('master', 'slave'):
                 close_socket(self.tapping_controller_socket, now=True)
 
-            if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+            if 'CONTROLLER' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                    'SOS_DEBUG']:
                 env.log_to_file('CONTROLLER',
                                 f'controller stopped {os.getpid()}')

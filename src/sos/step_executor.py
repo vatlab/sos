@@ -386,9 +386,7 @@ class Base_Step_Executor:
                 '__step_output__'].unspecified():
             env.sos_dict.set('step_input', sos_targets([]))
         else:
-            env.sos_dict.set(
-                'step_input',
-                env.sos_dict['__step_output__'])
+            env.sos_dict.set('step_input', env.sos_dict['__step_output__'])
         # input can be Undetermined from undetermined output from last step
         env.sos_dict.set('_input', copy.deepcopy(env.sos_dict['step_input']))
 
@@ -798,16 +796,19 @@ class Base_Step_Executor:
         elif stage == '_depends':
             if env.sos_dict['_depends'] is not None:
                 env.logger.debug(
-                    f'_depends: ``{short_repr(env.sos_dict["_depends"])}``{msg}')
+                    f'_depends: ``{short_repr(env.sos_dict["_depends"])}``{msg}'
+                )
         elif stage == 'input':
             if env.sos_dict['step_input'] is not None:
                 env.logger.info(
-                    f'input:   ``{short_repr(env.sos_dict["step_input"])}``{msg}')
+                    f'input:   ``{short_repr(env.sos_dict["step_input"])}``{msg}'
+                )
         elif stage == 'output':
             if env.sos_dict['step_output'] is not None and len(
                     env.sos_dict['step_output']) > 0:
                 env.logger.info(
-                    f'``{self.step.step_name(True)}`` output:   ``{short_repr(env.sos_dict["step_output"])}``{msg}')
+                    f'``{self.step.step_name(True)}`` output:   ``{short_repr(env.sos_dict["step_output"])}``{msg}'
+                )
 
     def execute(self, stmt, return_result=False):
         try:
@@ -847,7 +848,9 @@ class Base_Step_Executor:
                 # 1213
                 cur_index = env.sos_dict['_index']
                 pending_substeps = cur_index - self._completed_concurrent_substeps + 1
-                if pending_substeps < (100 if isinstance(self.concurrent_substep, bool) else self.concurrent_substep):
+                if pending_substeps < (100 if isinstance(
+                        self.concurrent_substep, bool) else
+                                       self.concurrent_substep):
                     if not self.result_pull_socket.poll(0):
                         return
                 elif 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
@@ -1247,7 +1250,8 @@ class Base_Step_Executor:
                     raise excp
                 elif 'task' in proc_result:
                     if env.config['error_mode'] == 'ignore':
-                        env.logger.warning(f"Ignore failed task {proc_result['task']}.")
+                        env.logger.warning(
+                            f"Ignore failed task {proc_result['task']}.")
                     # if the exception is from a task...
                     self.exec_error.append(proc_result['task'], excp)
             else:
@@ -1560,7 +1564,8 @@ class Base_Step_Executor:
                                 f'{self.step.step_name(True)}{f" (index={idx})" if len(self._substeps) > 1 else ""} ignored due to mssing input {sos_targets(missed)}'
                             )
                         self.output_groups[idx] = sos_targets(invalid_target())
-                        env.sos_dict.set('_output', sos_targets(invalid_target()))
+                        env.sos_dict.set('_output',
+                                         sos_targets(invalid_target()))
                         self.skip_substep()
                         continue
 
@@ -1777,7 +1782,8 @@ class Base_Step_Executor:
                                 env.logger.warning(
                                     f'{self.step.step_name(True)} {idx_msg} returns no output due to error: {e}'
                                 )
-                                self.output_groups[idx] = sos_targets(invalid_target())
+                                self.output_groups[idx] = sos_targets(
+                                    invalid_target())
                                 skip_index = True
                             else:
                                 # default mode
@@ -1920,7 +1926,10 @@ class Base_Step_Executor:
                                                    self.step.options['shared'])
                 env.sos_dict.quick_update(self.shared_vars)
             missing = self.verify_output()
-            self.log('output', msg=f'\033[95m missing: {short_repr(missing)} ({len(missing)} item{"s" if len(missing)>1 else ""})\033[0m' if len(missing) > 0 else '')
+            self.log(
+                'output',
+                msg=f'\033[95m missing: {short_repr(missing)} ({len(missing)} item{"s" if len(missing)>1 else ""})\033[0m'
+                if len(missing) > 0 else '')
             self.calculate_completed()
 
             def file_only(targets):
@@ -1969,8 +1978,8 @@ class Step_Executor(Base_Step_Executor):
     def submit_tasks(self, tasks):
         if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
             env.log_to_file('TASK', f'Send {tasks}')
-        self.socket.send(encode_msg(['tasks', env.sos_dict['_runtime']['queue']] +
-                               tasks))
+        self.socket.send(
+            encode_msg(['tasks', env.sos_dict['_runtime']['queue']] + tasks))
 
     def wait_for_tasks(self, tasks, all_submitted):
         # wait for task is a generator function that yields the request

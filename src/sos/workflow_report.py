@@ -81,7 +81,7 @@ class WorkflowSig(object):
                 if 'peak_mem' in val:
                     val['peak_mem_str'] = f'{val["peak_mem"] / 1024 / 1024 :.1f}Mb'
             return tasks
-        except:
+        except Exception:
             return {}
 
     def steps(self):
@@ -107,7 +107,7 @@ class WorkflowSig(object):
     def placeholders(self):
         try:
             return self.data['placeholder']['file_target']
-        except:
+        except Exception:
             return []
 
 

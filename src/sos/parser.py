@@ -150,7 +150,7 @@ def extract_option_from_arg_list(options: str, optname: str,
                         if not x.strip().startswith(optname)
                     ])
                     return value, new_options.strip()
-                except:
+                except Exception:
                     raise ValueError(
                         f"A constant value is expected for option {optname}: {options} provided."
                     )
@@ -353,7 +353,7 @@ class SoS_Step:
                         'func(' + ''.join(self.values) + ')',
                         filename='<string>',
                         mode='eval')
-                except:
+                except Exception:
                     compile(
                         'def func(' + ''.join(self.values) + '):\n  pass',
                         filename='<string>',
@@ -1018,7 +1018,10 @@ class SoS_Script:
                         cursect.extend(line)
                     elif category == 'directive' and not cursect.isValid():
                         # 1311
-                        parsing_errors.append(lineno, line, f'Ending incomplete options ({"".join(cursect.values).strip()}) with an empty line')
+                        parsing_errors.append(
+                            lineno, line,
+                            f'Ending incomplete options ({"".join(cursect.values).strip()}) with an empty line'
+                        )
                 continue
 
             #
@@ -1173,7 +1176,8 @@ class SoS_Script:
                                                       'Invalid section option')
                     except Exception as e:
                         parsing_errors.append(lineno, line, str(e))
-                    if 'EXECUTOR' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+                    if 'EXECUTOR' in env.config[
+                            'SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                         env.log_to_file(
                             'EXECUTOR',
                             'Header parsed with names {} and options {}'.format(

@@ -455,16 +455,16 @@ class RuntimeEnvironments(object):
             # debug informaiton and time is always written to the log file
             socket_handler.setLevel(levels[self._verbosity])
 
-            #ch.setFormatter(logging.Formatter(
+            # ch.setFormatter(logging.Formatter(
             #    '%(asctime)s: %(levelname)s: %(message)s'))
             self._logger.addHandler(socket_handler)
             # also log to file for debugging purposes
-            #ch = logging.FileHandler(os.path.join(os.path.expanduser('~'), 'sos_debug.log'), mode='a')
+            # ch = logging.FileHandler(os.path.join(os.path.expanduser('~'), 'sos_debug.log'), mode='a')
             # debug informaiton and time is always written to the log file
-            #ch.setLevel(logging.TRACE)
-            #ch.setFormatter(logging.Formatter(
+            # ch.setLevel(logging.TRACE)
+            # ch.setFormatter(logging.Formatter(
             #    '%(asctime)s: %(levelname)s: %(message)s'))
-            #self._logger.addHandler(ch)
+            # self._logger.addHandler(ch)
         else:
             # output to standard output
             cout = logging.StreamHandler()
@@ -846,7 +846,7 @@ def valid_expr_till(text):
                 return pos
             else:
                 return 0
-        except:
+        except Exception:
             pos -= 1
     return 0
 
@@ -1274,7 +1274,7 @@ class TimeoutInterProcessLock(fasteners.InterProcessLock):
                 if os.path.exists(self.path):
                     try:
                         os.remove(self.path)
-                    except:
+                    except Exception:
                         pass
                 if not msg:
                     env.logger.warning(
@@ -1300,10 +1300,12 @@ def load_config_files(filename=None):
         os.path.expanduser(filename))
 
     from .targets import textMD5
-    extra_cfg = None if 'extra_config' not in env.config else textMD5(str(env.config['extra_config']))
+    extra_cfg = None if 'extra_config' not in env.config else textMD5(
+        str(env.config['extra_config']))
 
     if (filename, filemtime, extra_cfg) in config_cache:
-        env.sos_dict.set('CONFIG', config_cache[(filename, filemtime, extra_cfg)])
+        env.sos_dict.set('CONFIG',
+                         config_cache[(filename, filemtime, extra_cfg)])
         return config_cache[(filename, filemtime, extra_cfg)]
 
     cfg = {}
@@ -1356,7 +1358,8 @@ def load_config_files(filename=None):
     if 'user_name' not in cfg:
         cfg['user_name'] = getpass.getuser().lower()
 
-    if 'extra_config' in env.config and isinstance(env.config['extra_config'], dict):
+    if 'extra_config' in env.config and isinstance(env.config['extra_config'],
+                                                   dict):
         cfg.update(env.config['extra_config'])
 
     # handle keyword "based_on", which should fill the dictionary with others.
@@ -1414,7 +1417,7 @@ def load_config_files(filename=None):
                 try:
                     res[k] = eval(
                         as_fstring(v), copy.copy(item), copy.copy(cfg))
-                except:
+                except Exception:
                     # if there is something cannot be resolved, it is ok because
                     # it might require some other variables such as walltime.
                     for kk, vv in item.items():
@@ -1438,7 +1441,7 @@ def load_config_files(filename=None):
         elif isinstance(v, str) and '{' in v and '}' in v:
             try:
                 res[k] = eval(as_fstring(v), copy.copy(cfg))
-            except:
+            except Exception:
                 res[k] = v
         else:
             res[k] = v
@@ -1572,7 +1575,7 @@ def save_var(name, var):
     try:
         # for more complex type, we use pickle + base64
         return f'{name}:={base64.b64encode(pickle.dumps(var))}\n'
-    except:
+    except Exception:
         return ''
 
 
@@ -1585,7 +1588,7 @@ def load_var(line):
     else:
         try:
             return key, eval(value.strip())
-        except:
+        except Exception:
             # use SoS_eval instead of eval because vars can contain sos objects such as R_library
             from .eval import SoS_eval
             return key, SoS_eval(value.strip())
@@ -1721,7 +1724,7 @@ def format_par(name, par):
                 return f'--{name} {val if val.isalnum() else repr(val)}'
             else:
                 return f'--{name} {val} (as {val.__class__.__name__})'
-    except:
+    except Exception:
         return f'--{name} {par}'
 
 
@@ -1783,10 +1786,10 @@ def dot_to_gif(filename: str, warn=None):
         newImages = {}
         try:
             font = ImageFont.truetype('/Library/Fonts/Arial.ttf', 8)
-        except:
+        except Exception:
             try:
                 font = ImageFont.truetype('arial.ttf', 8)
-            except:
+            except Exception:
                 font = None
 
         for subworkflow, pngFile in zip(subworkflows, pngFiles):
@@ -1876,7 +1879,7 @@ def get_localhost_ip():
         # doesn't even have to be reachable
         s.connect(('10.255.255.255', 1))
         IP = s.getsockname()[0]
-    except:
+    except Exception:
         IP = '127.0.0.1'
     finally:
         s.close()
@@ -1900,7 +1903,9 @@ def get_nodelist():
         # Split using endline
         # Split using endlinea, numer of cpus can be in the format of 4(x2)
         nprocs = os.environ["SLURM_JOB_CPUS_PER_NODE"].split('(')[0]
-        args = [f'{x}:{nprocs}' for x in hostsstr.split(os.linesep) if x.strip()]
+        args = [
+            f'{x}:{nprocs}' for x in hostsstr.split(os.linesep) if x.strip()
+        ]
         env.log_to_file('WORKER', f'Using "-j {args}" on a SLURM cluster.')
         return args
     elif "PBS_ENVIRONMENT" in os.environ:

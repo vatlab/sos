@@ -130,7 +130,9 @@ def _show_err_and_out(task_id, res) -> None:
 class LocalHost(object):
     '''For local host, no path map, send and receive ...'''
 
-    def __init__(self, config: Dict[str, Union[str, int, List[str]]], test_connection: bool = True) -> None:
+    def __init__(self,
+                 config: Dict[str, Union[str, int, List[str]]],
+                 test_connection: bool = True) -> None:
         super(LocalHost, self).__init__()
 
         # even if the config has an alias, we use localhost to make it clear that the host is localhost
@@ -213,8 +215,7 @@ class LocalHost(object):
     def send_job_file(self, job_file, dir='tasks'):
         # on the same file system, no action is needed.
         dest_job_file = os.path.join(
-            os.path.expanduser('~'), '.sos', dir,
-            os.path.basename(job_file))
+            os.path.expanduser('~'), '.sos', dir, os.path.basename(job_file))
         if job_file != dest_job_file:
             shutil.copyfile(job_file, dest_job_file)
 
@@ -239,11 +240,7 @@ class LocalHost(object):
             env.logger.warning(f'Check output of {cmd} failed: {e}')
             raise
 
-    def run_command(self,
-                    cmd,
-                    wait_for_task,
-                    realtime=False,
-                    **kwargs):
+    def run_command(self, cmd, wait_for_task, realtime=False, **kwargs):
         # run command but does not wait for result.
         if realtime:
             from .utils import pexpect_run
@@ -292,7 +289,9 @@ class LocalHost(object):
 class RemoteHost(object):
     '''A remote host class that manages how to communicate with remote host'''
 
-    def __init__(self, config: Dict[str, Union[str, int, List[str]]], test_connection: bool = True) -> None:
+    def __init__(self,
+                 config: Dict[str, Union[str, int, List[str]]],
+                 test_connection: bool = True) -> None:
         self.config = config
         self.cm_opts = self._get_control_master_options()
         self.alias = self.config['alias']
@@ -305,7 +304,8 @@ class RemoteHost(object):
         if test_connection:
             test_res = self.test_connection()
             if test_res != 'OK':
-                raise RuntimeError(f'Failed to connect to {self.alias}: {test_res}')
+                raise RuntimeError(
+                    f'Failed to connect to {self.alias}: {test_res}')
 
     def _get_shared_dirs(self) -> List[Any]:
         value = self.config.get('shared', [])
@@ -827,21 +827,18 @@ class RemoteHost(object):
                 f'Failed to copy job {job_file} to {self.alias} using command {send_cmd}: {e}'
             )
 
-    def check_output(self,
-                     cmd: object,
-                     under_workdir=False,
+    def check_output(self, cmd: object, under_workdir=False,
                      **kwargs) -> object:
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
             cmd = cfg_interpolate(
-                self._get_execute_cmd(
-                    under_workdir=under_workdir), {
-                        'host': self.address,
-                        'port': self.port,
-                        'cmd': cmd,
-                        'workdir': self._map_var(os.getcwd())
-                    })
+                self._get_execute_cmd(under_workdir=under_workdir), {
+                    'host': self.address,
+                    'port': self.port,
+                    'cmd': cmd,
+                    'workdir': self._map_var(os.getcwd())
+                })
         except Exception as e:
             raise ValueError(
                 f'Failed to run command {cmd}: {e} ({env.sos_dict["CONFIG"]})')
@@ -858,13 +855,12 @@ class RemoteHost(object):
             cmd = subprocess.list2cmdline(cmd)
         try:
             cmd = cfg_interpolate(
-                self._get_execute_cmd(
-                    under_workdir=under_workdir), {
-                        'host': self.address,
-                        'port': self.port,
-                        'cmd': cmd,
-                        'workdir': self._map_var(os.getcwd())
-                    })
+                self._get_execute_cmd(under_workdir=under_workdir), {
+                    'host': self.address,
+                    'port': self.port,
+                    'cmd': cmd,
+                    'workdir': self._map_var(os.getcwd())
+                })
         except Exception as e:
             raise ValueError(f'Failed to run command {cmd}: {e}')
         if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
@@ -875,11 +871,7 @@ class RemoteHost(object):
             env.logger.debug(f'Check output of {cmd} failed: {e}')
             raise
 
-    def run_command(self,
-                    cmd,
-                    wait_for_task,
-                    realtime=False,
-                    **kwargs):
+    def run_command(self, cmd, wait_for_task, realtime=False, **kwargs):
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
@@ -1026,7 +1018,8 @@ class RemoteHost(object):
 class Host:
     host_instances: Dict = {}
 
-    def __init__(self, alias: Optional[str] = '',
+    def __init__(self,
+                 alias: Optional[str] = '',
                  start_engine: bool = True,
                  test_connection: bool = True) -> None:
         # a host started from Jupyter notebook might not have proper stdout
@@ -1221,16 +1214,19 @@ class Host:
         if 'max_mem' in self.config:
             self.config['max_mem'] = expand_size(self.config['max_mem'])
 
-    def _get_host_agent(self, start_engine: bool, test_connection: bool) -> None:
+    def _get_host_agent(self, start_engine: bool,
+                        test_connection: bool) -> None:
         if 'queue_type' not in self.config:
             self._engine_type = 'process'
         else:
             self._engine_type = self.config['queue_type'].strip()
         if self.alias not in self.host_instances:
             if self.config['address'] == 'localhost':
-                self.host_instances[self.alias] = LocalHost(self.config, test_connection=test_connection)
+                self.host_instances[self.alias] = LocalHost(
+                    self.config, test_connection=test_connection)
             else:
-                self.host_instances[self.alias] = RemoteHost(self.config, test_connection=test_connection)
+                self.host_instances[self.alias] = RemoteHost(
+                    self.config, test_connection=test_connection)
 
             if self._engine_type == 'process':
                 task_engine = BackgroundProcess_TaskEngine(
@@ -1280,7 +1276,8 @@ class Host:
             self._workflow_engine = self._host_agent._workflow_engine
         # it is possible that Host() is initialized before with start_engine=False
         # and called again to start engine
-        if start_engine and self._task_engine is not None and not self._task_engine.is_alive():
+        if start_engine and self._task_engine is not None and not self._task_engine.is_alive(
+        ):
             self._task_engine.start()
 
     # public interface
@@ -1298,7 +1295,9 @@ class Host:
 
     def submit_task(self, task_id: str) -> str:
         if not self._task_engine:
-            raise RuntimeError(f'No task engine or invalid engine definition defined for host {self.alias}')
+            raise RuntimeError(
+                f'No task engine or invalid engine definition defined for host {self.alias}'
+            )
         return self._task_engine.submit_task(task_id)
 
     def check_status(self, tasks: List[str]) -> List[str]:
@@ -1314,5 +1313,8 @@ class Host:
 
     def execute_workflow(self, script, cmd, **template_args):
         if not self._workflow_engine:
-            raise RuntimeError(f'No workflow engine or invalid engine definition defined for host {self.alias}')
-        return self._workflow_engine.execute_workflow(script, cmd, **template_args)
+            raise RuntimeError(
+                f'No workflow engine or invalid engine definition defined for host {self.alias}'
+            )
+        return self._workflow_engine.execute_workflow(script, cmd,
+                                                      **template_args)

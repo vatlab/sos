@@ -300,13 +300,17 @@ class BaseTaskExecutor(object):
                 if 'logfile' in params.sos_dict['_runtime']:
                     logfile = params.sos_dict['_runtime']['logfile']
                     if not os.path.isfile(logfile):
-                        raise ValueError(f'logfile {logfile} does not exist after the completion of task')
+                        raise ValueError(
+                            f'logfile {logfile} does not exist after the completion of task'
+                        )
                     try:
                         with open(logfile, 'r') as log:
                             my_stdout.write(f'logfile: {logfile}\n')
                             my_stdout.write(log.read())
                     except Exception as e:
-                        raise ValueError(f'Failed to collect logfile {logfile} after the completion of task: {e}')
+                        raise ValueError(
+                            f'Failed to collect logfile {logfile} after the completion of task: {e}'
+                        )
 
             if quiet or env.config['run_mode'] != 'run':
                 env.logger.debug(f'{task_id} ``completed``')
@@ -361,7 +365,8 @@ class BaseTaskExecutor(object):
         finally:
             os.chdir(orig_dir)
 
-        return self._collect_task_result(task_id, sos_dict, params.tags, signature=sig)
+        return self._collect_task_result(
+            task_id, sos_dict, params.tags, signature=sig)
 
     def execute_master_task(self, task_id, params, master_runtime, sig_content):
         '''
@@ -583,7 +588,9 @@ class BaseTaskExecutor(object):
         with open(self.master_stdout,
                   'ab') as out, open(self.master_stderr, 'ab') as err:
             dest = out if result["ret_code"] == 0 else err
-            dest.write(f'> {tid}\t{tags}\t{"completed" if result["ret_code"] == 0 else "failed"}\n'.encode())
+            dest.write(
+                f'> {tid}\t{tags}\t{"completed" if result["ret_code"] == 0 else "failed"}\n'
+                .encode())
             if 'output' in result and result['output']:
                 dest.write(f'output files:\n{result["output"]}\n'.encode())
             sub_out = os.path.join(

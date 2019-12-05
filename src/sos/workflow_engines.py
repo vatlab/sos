@@ -47,7 +47,7 @@ class WorkflowEngine:
             self.template_args['command'] = self.command
             self.template_args['job_name'] = self.job_name
             self.job_text = cfg_interpolate(self.workflow_template,
-                                       self.template_args) + '\n'
+                                            self.template_args) + '\n'
         except Exception as e:
             raise ValueError(
                 f'Failed to generate job file for the execution of workflow {script}: {e}'
@@ -64,7 +64,9 @@ class WorkflowEngine:
             with open(self.job_file, 'w', newline='') as job:
                 job.write(self.job_text)
         except Exception as e:
-            raise RuntimeError(f'Failed to submit workflow {self.command} with script \n{self.job_text}\n: {e}')
+            raise RuntimeError(
+                f'Failed to submit workflow {self.command} with script \n{self.job_text}\n: {e}'
+            )
         return True
 
     def execute_workflow(self, filename, command, **template_args):
@@ -127,7 +129,6 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
                 return False
         return True
 
-
     def _execute_workflow(self):
         # if no template, use a default command
         env.log_to_file('WORKDLOW', f'Execute "{self.command}"')
@@ -146,10 +147,14 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
             self.agent.send_job_file(self.job_file, dir='workflows')
 
             cmd = f'bash ~/.sos/workflows/{os.path.basename(self.job_file)}'
-            env.log_to_file('WORKFLOW', f'Execute "{self.command}" with script {self.job_text}')
+            env.log_to_file(
+                'WORKFLOW',
+                f'Execute "{self.command}" with script {self.job_text}')
             self.agent.check_call(cmd, under_workdir=True)
         except Exception as e:
-            raise RuntimeError(f'Failed to submit workflow {self.command} with script \n{self.job_text}\n: {e}')
+            raise RuntimeError(
+                f'Failed to submit workflow {self.command} with script \n{self.job_text}\n: {e}'
+            )
         finally:
             try:
                 os.remove(self.job_file)

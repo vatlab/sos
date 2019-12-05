@@ -54,7 +54,9 @@ class MasterTaskParams(TaskParams):
         self.task = ''
 
         self.sos_dict = {
-            '_runtime': {'num_workers': num_workers},
+            '_runtime': {
+                'num_workers': num_workers
+            },
             '_input': sos_targets(),
             '_output': sos_targets(),
             '_depends': sos_targets(),
@@ -76,7 +78,8 @@ class MasterTaskParams(TaskParams):
             n_workers = val.rsplit(':', 1)[-1] if ':' in val else val
             n_nodes = len(num_workers)
         elif isinstance(num_workers, str):
-            n_workers = num_workers.rsplit(':', 1)[-1] if ':' in num_workers else num_workers
+            n_workers = num_workers.rsplit(
+                ':', 1)[-1] if ':' in num_workers else num_workers
             n_nodes = 1
         elif isinstance(num_workers, int):
             n_workers = num_workers
@@ -85,14 +88,17 @@ class MasterTaskParams(TaskParams):
             n_workers = 1
             n_nodes = 1
         else:
-            raise RuntimeError(f"Unacceptable value for parameter trunk_workers {num_workers}")
+            raise RuntimeError(
+                f"Unacceptable value for parameter trunk_workers {num_workers}")
 
         try:
             n_workers = int(n_workers)
-        except:
-            raise ValueError(f'Unacceptable value for option trunk_workers {num_workers}')
+        except Exception:
+            raise ValueError(
+                f'Unacceptable value for option trunk_workers {num_workers}')
         if n_workers <= 0:
-            raise ValueError(f'Unacceptable value for option trunk_workers {num_workers}')
+            raise ValueError(
+                f'Unacceptable value for option trunk_workers {num_workers}')
 
         return n_nodes, n_workers
 
@@ -107,12 +113,13 @@ class MasterTaskParams(TaskParams):
         # update input, output, and depends
         #
         # walltime etc
-        n_nodes, n_workers = self._parse_num_workers(self.sos_dict['_runtime']['num_workers'])
+        n_nodes, n_workers = self._parse_num_workers(
+            self.sos_dict['_runtime']['num_workers'])
 
         if not self.task_stack:
-            for key in ('walltime', 'max_walltime', 'cores', 'nodes', 'max_cores', 'mem',
-                        'max_mem', 'map_vars', 'name', 'workdir', 'verbosity',
-                        'sig_mode', 'run_mode'):
+            for key in ('walltime', 'max_walltime', 'cores', 'nodes',
+                        'max_cores', 'mem', 'max_mem', 'map_vars', 'name',
+                        'workdir', 'verbosity', 'sig_mode', 'run_mode'):
                 if key in params.sos_dict['_runtime'] and params.sos_dict[
                         '_runtime'][key] is not None:
                     self.sos_dict['_runtime'][key] = params.sos_dict[
@@ -134,7 +141,8 @@ class MasterTaskParams(TaskParams):
                 # If there are multiple nodes and multiple workers, there are
                 # n_workers * n_nodes workers at the same time, so the jobs
                 # will be completed in n_batches
-                n_batches = math.ceil((len(self.task_stack) + 1) / (n_workers * n_nodes))
+                n_batches = math.ceil(
+                    (len(self.task_stack) + 1) / (n_workers * n_nodes))
 
                 if key == 'walltime':
                     # the real walltime would be the total time on one node
@@ -142,7 +150,8 @@ class MasterTaskParams(TaskParams):
                         n_batches * expand_time(val0))
                 elif key == 'mem':
                     # number of columns * mem for each + 100M for master
-                    self.sos_dict['_runtime']['mem'] = n_workers * expand_size(val0)
+                    self.sos_dict['_runtime']['mem'] = n_workers * expand_size(
+                        val0)
                 elif key == 'cores':
                     self.sos_dict['_runtime']['cores'] = n_workers * val0
                 elif key == 'name':
@@ -152,7 +161,8 @@ class MasterTaskParams(TaskParams):
             self.tags.extend(params.tags)
 
         # if cores is unspecified but there are more than one workers
-        if 'cores' not in self.sos_dict['_runtime'] and n_workers is not None and n_workers > 1:
+        if 'cores' not in self.sos_dict[
+                '_runtime'] and n_workers is not None and n_workers > 1:
             self.sos_dict['_runtime']['cores'] = n_workers
         #
         # input, output, preserved vars etc
@@ -169,7 +179,6 @@ class MasterTaskParams(TaskParams):
         #
         self.ID = f'M{len(self.task_stack)}_{self.task_stack[0][0]}'
         self.name = self.ID
-
 
     def finalize(self):
         if not self.task_stack:
@@ -196,7 +205,8 @@ class MasterTaskParams(TaskParams):
                 k: v for k, v in params.sos_dict.items() if k not in common_keys
             }
         #
-        n_nodes = self._parse_num_workers(self.sos_dict['_runtime']['num_workers'])[0]
+        n_nodes = self._parse_num_workers(
+            self.sos_dict['_runtime']['num_workers'])[0]
         # trunk_workers and cores cannot be specified together, so if n_nodes > 1,
         # nodes should not have been specified.
         if n_nodes is not None and n_nodes > 1:
@@ -266,7 +276,8 @@ class TaskFile(object):
     def save(self, params):
         if os.path.isfile(self.task_file):
             if self.status == 'running':
-                env.logger.debug(f'Task {self.task_id} is running and is not updated')
+                env.logger.debug(
+                    f'Task {self.task_id} is running and is not updated')
                 return
 
             # keep original stuff but update params, which could contain
@@ -731,9 +742,10 @@ class TaskFile(object):
             # are removed or finishing tasks.
             if status in ('aborted', 'completed', 'failed', 'pending'):
                 # terminal status
-                remove_task_files(
-                    self.task_id,
-                    ['.sh', '.job_id', '.sosout', '.soserr', '.out', '.err', '.pulse'])
+                remove_task_files(self.task_id, [
+                    '.sh', '.job_id', '.sosout', '.soserr', '.out', '.err',
+                    '.pulse'
+                ])
 
     status = property(_get_status, _set_status)
 
@@ -864,7 +876,7 @@ class TaskFile(object):
                 header = self._read_header(fh)
             try:
                 tags = header.tags.decode().strip()
-            except:
+            except Exception:
                 raise ValueError(
                     f'{self.task_file} is in a format that is no longer supported.'
                 )
@@ -884,7 +896,7 @@ class TaskFile(object):
             return tags, 'Created ' + format_duration(time.time() - ct, True) + ' ago', \
                 'Started ' + format_duration(time.time() - st) + ' ago', \
                 ('Ran for ' + format_duration(int(dr))) if dr > 0 else 'Signature checked'
-        except:
+        except Exception:
             # missing tag file or something went wrong
             return '', '', '', ''
 
@@ -908,7 +920,7 @@ def remove_task_files(task: str, exts: list):
                 # wait for the thread though
                 try:
                     DelayedAction(os.remove, filename)
-                except:
+                except Exception:
                     pass
 
 
@@ -982,7 +994,9 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                     with open(syserr_file) as syserr:
                         env.logger.warning(''.join(syserr.readlines()[-5:]))
                 except Exception as e:
-                    env.logger.warning(f'{task} is suspected to be killed but {syserr_file} cannot be read: {e}')
+                    env.logger.warning(
+                        f'{task} is suspected to be killed but {syserr_file} cannot be read: {e}'
+                    )
             else:
                 soserr_file = os.path.join(
                     os.path.expanduser('~'), '.sos', 'tasks', task + '.soserr')
@@ -1003,7 +1017,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                     task_file: os.stat(task_file).st_mtime,
                     pulse_file: 0
                 })
-        except:
+        except Exception:
             # the pulse file could disappear when the job is completed.
             if task_changed():
                 return check_task(task)
@@ -1050,7 +1064,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                     job_file: os.stat(job_file).st_mtime,
                     pulse_file: 0
                 })
-        except:
+        except Exception:
             # the pulse file could disappear when the job is completed.
             if task_changed():
                 return check_task(task)
@@ -1070,7 +1084,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                         task_file: os.stat(task_file).st_mtime,
                         job_file: 0
                     })
-        except:
+        except Exception:
             # the pulse file could disappear when the job is completed.
             if task_changed():
                 return check_task(task)
@@ -1090,7 +1104,7 @@ def check_tasks(tasks, is_all: bool):
             with fasteners.InterProcessLock(cache_file + '_'):
                 with open(cache_file, 'rb') as cache:
                     status_cache = pickle.load(cache)
-        except:
+        except Exception:
             # if the cache file is corrupted, remove it. #1275
             os.remove(cache_file)
     # at most 20 threads
@@ -1227,7 +1241,8 @@ def print_task_status(tasks,
             params = tf.params
             row('Task')
             if hasattr(params, 'task_stack'):
-                row(td=f'<pre style="text-align:left">{params.task_stack[0][1].task}</pre>')
+                row(td=f'<pre style="text-align:left">{params.task_stack[0][1].task}</pre>'
+                   )
             else:
                 row(td=f'<pre style="text-align:left">{params.task}</pre>')
             row('Tags')
@@ -1264,7 +1279,8 @@ def print_task_status(tasks,
                             fields = line.split(None, 1)
                             if fields[0] == 'task':
                                 continue
-                            row(fields[0], '' if fields[1] is None else fields[1])
+                            row(fields[0],
+                                '' if fields[1] is None else fields[1])
                     # this is a placeholder for the frontend to draw figure
                     row(td=f'<div id="res_{t}"></div>')
             elif s == 'running':
@@ -1577,7 +1593,6 @@ showResourceFigure_''' + t + '''()
                 else:
                     show_file(t, ['.soserr', '.err'])
 
-
     # remove jobs that are older than 1 month
     if to_be_removed:
         purge_tasks(to_be_removed, verbosity=0)
@@ -1631,7 +1646,9 @@ def kill_task(task):
         err.write(f'Task {task} killed by sos kill command or task engine.')
     tf.add_outputs()
     TaskFile(task).status = 'aborted'
-    remove_task_files(task, ['.sosout', '.soserr', '.out', '.err', '.pulse', '.sh', '.job_id'])
+    remove_task_files(
+        task,
+        ['.sosout', '.soserr', '.out', '.err', '.pulse', '.sh', '.job_id'])
     return 'aborted'
 
 
@@ -1724,7 +1741,8 @@ def purge_tasks(tasks,
             for f in to_be_removed[task]:
                 try:
                     if verbosity > 3:
-                        if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+                        if 'TASK' in env.config[
+                                'SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                             env.log_to_file('TASK', f'Remove {f}')
                     os.remove(f)
                 except Exception as e:
