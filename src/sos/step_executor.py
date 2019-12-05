@@ -488,7 +488,7 @@ class Base_Step_Executor:
                 while True:
                     yres = yield yreq
                     yreq = runner.send(yres)
-            except StopIteration as e:
+            except StopIteration:
                 pass
 
         # input file is the filtered files
@@ -519,7 +519,7 @@ class Base_Step_Executor:
                 while True:
                     yres = yield yreq
                     yreq = runner.send(yres)
-            except StopIteration as e:
+            except StopIteration:
                 pass
 
         env.sos_dict.set('_depends', dfiles)
@@ -697,7 +697,7 @@ class Base_Step_Executor:
                 while True:
                     yres = yield yreq
                     yreq = runner.send(yres)
-            except StopIteration as e:
+            except StopIteration:
                 pass
 
         if self.task_manager is None:
@@ -1227,7 +1227,7 @@ class Base_Step_Executor:
         # now that output is settled, we can write remaining signatures
         for idx, res in enumerate(self.proc_results):
             if self.pending_signatures[idx] is not None and res[
-                    'ret_code'] == 0 and not 'sig_skipped' in res:
+                    'ret_code'] == 0 and 'sig_skipped' not in res:
                 self.pending_signatures[idx].write()
             if res['ret_code'] != 0 and 'output' in res:
                 clear_output(output=res['output'])
@@ -1366,7 +1366,7 @@ class Base_Step_Executor:
                                 while True:
                                     yres = yield yreq
                                     yreq = runner.send(yres)
-                            except StopIteration as e:
+                            except StopIteration:
                                 pass
                         except (UnknownTarget, RemovedTarget) as e:
                             runner = self.handle_unknown_target(e)
@@ -1375,7 +1375,7 @@ class Base_Step_Executor:
                                 while True:
                                     yres = yield yreq
                                     yreq = runner.send(yres)
-                            except StopIteration as e:
+                            except StopIteration:
                                 pass
                             continue
                         except UnavailableLock:
@@ -1439,7 +1439,7 @@ class Base_Step_Executor:
                         while True:
                             yres = yield yreq
                             yreq = runner.send(yres)
-                    except StopIteration as e:
+                    except StopIteration:
                         pass
                     continue
                 except UnavailableLock:
@@ -1664,12 +1664,12 @@ class Base_Step_Executor:
                                             while True:
                                                 yres = yield yreq
                                                 yreq = runner.send(yres)
-                                        except StopIteration as e:
+                                        except StopIteration:
                                             pass
                                         self.depends_groups[idx] = env.sos_dict[
                                             '_depends']
                                         self.log('_depends')
-                                    except Exception as e:
+                                    except Exception:
                                         #env.logger.info(e)
                                         raise
                                 else:
@@ -1684,7 +1684,7 @@ class Base_Step_Executor:
                                     while True:
                                         yres = yield yreq
                                         yreq = runner.send(yres)
-                                except StopIteration as e:
+                                except StopIteration:
                                     pass
                                 continue
                             except UnavailableLock:
@@ -1699,7 +1699,7 @@ class Base_Step_Executor:
                                     f'Failed to process step {key} ({value.strip()}): {e}'
                                 )
                     elif is_last_runblock:
-                        if env.config['sig_mode'] == 'skip' and not self.vars_to_be_shared and not 'sos_run' in statement[1] \
+                        if env.config['sig_mode'] == 'skip' and not self.vars_to_be_shared and 'sos_run' not in statement[1] \
                             and not env.sos_dict['_output'].unspecified() and len(env.sos_dict['_output']) > 0 \
                             and all(x.target_exists() for x in env.sos_dict['_output'].targets) \
                             and env.sos_dict['_output'].later_than(env.sos_dict['_input']):
@@ -1804,7 +1804,7 @@ class Base_Step_Executor:
                                 env.logger.info(e.message)
                             skip_index = True
                             break
-                        except Exception as e:
+                        except Exception:
                             clear_output()
                             raise
                 # if there is no statement , but there are tasks, we should

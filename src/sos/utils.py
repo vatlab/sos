@@ -173,7 +173,7 @@ def short_repr(obj, noneAsNA=False):
             return short_repr(next(iter(obj)))
         else:
             return f'{short_repr(next(iter(obj)))}, ... ({len(obj)} items)'
-    #elif hasattr(obj, 'target_name'):
+    # elif hasattr(obj, 'target_name'):
     #    return obj.target_name()
     else:
         ret = str(obj)

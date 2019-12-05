@@ -121,8 +121,10 @@ def get_convert_parser(desc_only=False):
             else:
                 converter = entrypoint.load()()
                 if not hasattr(converter, 'get_parser'):
+                    from .utils import env
                     env.logger.warning(f'Invalid sos converter {name}: missing get_parser function')
                 if not hasattr(converter, 'convert'):
+                    from .utils import env
                     env.logger.warning(f'Invalid sos converter {name}: missing convert function')
                 converter_parser = converter.get_parser()
             f_format, t_format = name.rsplit('.', 1)[0].split('-')
@@ -187,7 +189,7 @@ def print_converter_help():
             if name.endswith('.parser'):
                 try:
                     converter_parser = entrypoint.load()()
-                except:
+                except Exception:
                     # this might be old entry that is now deprecated
                     continue
             elif name.endswith('.func'):
@@ -195,8 +197,10 @@ def print_converter_help():
             else:
                 converter = entrypoint.load()()
                 if not hasattr(converter, 'get_parser'):
+                    from .utils import env
                     env.logger.warning(f'Invalid sos converter {name}: missing get_parser function')
                 if not hasattr(converter, 'convert'):
+                    from .utils import env
                     env.logger.warning(f'Invalid sos converter {name}: missing convert function')
                 converter_parser = converter.get_parser()
 
@@ -1239,7 +1243,7 @@ def get_execute_parser(desc_only=False):
 
 
 def cmd_execute(args, workflow_args):
-    from .tasks import check_task, monitor_interval, resource_monitor_interval
+    from .tasks import check_task
     from .utils import env, load_config_files, get_nodelist, under_cluster
     import glob
     if args.queue is None:
@@ -2421,9 +2425,11 @@ def main():
                 name = entrypoint.name
                 addon = entrypoint.load()()
                 if not hasattr(addon, 'get_parser'):
+                    from .utils import env
                     env.logger.warning(f'Missing get_parser() for addon {name}')
                     continue
                 if not hasattr(addon, 'execute'):
+                    from .utils import env
                     env.logger.warning(f'Missing execute for addon {name}')
                     continue
 

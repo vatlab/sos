@@ -9,7 +9,6 @@ import sys
 
 import pexpect
 
-from .eval import cfg_interpolate
 from .utils import env
 from .targets import path
 from .hosts import Host

@@ -32,7 +32,7 @@ def get_param_of_function(name, param_list, extra_dict={}):
                 if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                     env.log_to_file(
                         'STEP',
-                        'Failed to evaluate parameter of function {name} from {param_list}: {e}'
+                        f'Failed to evaluate parameter of function {name} from {param_list}: {e}'
                     )
                 try:
                     params.append([
@@ -46,7 +46,7 @@ def get_param_of_function(name, param_list, extra_dict={}):
                     if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                         env.log_to_file(
                             'STEP',
-                            'Failed to evaluate parameter of function {name} from {param_list}: {e}'
+                            f'Failed to evaluate parameter of function {name} from {param_list}: {e}'
                         )
         for kwarg in func.keywords:
             try:
@@ -55,7 +55,7 @@ def get_param_of_function(name, param_list, extra_dict={}):
                 if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                     env.log_to_file(
                         'STEP',
-                        'Failed to evaluate parameter of function {name} from {param_list}: {e}'
+                        f'Failed to evaluate parameter of function {name} from {param_list}: {e}'
                     )
                 try:
                     params.append([
@@ -70,7 +70,7 @@ def get_param_of_function(name, param_list, extra_dict={}):
                     if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
                         env.log_to_file(
                             'STEP',
-                            'Failed to evaluate parameter of function {name} from {param_list}: {e}'
+                            f'Failed to evaluate parameter of function {name} from {param_list}: {e}'
                         )
     return params
 
@@ -330,7 +330,7 @@ def get_step_depends(section):
             else:
                 step_depends.extend(sos_targets(*args, **kwargs))
                 dynamic_depends = False
-        except SyntaxError as e:
+        except SyntaxError:
             raise
         except Exception as e:
             if 'STEP' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:

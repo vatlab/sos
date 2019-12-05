@@ -538,7 +538,7 @@ class BaseTaskExecutor(object):
                 results.append(res)
             succ = True
         except Exception as e:
-            env.logger.error(f'Failed to execute master task {task_id}: {e}')
+            env.logger.error(f'Failed to execute task {params.ID}: {e}')
             succ = False
         finally:
             # end progress bar when the master workflow stops
@@ -647,7 +647,7 @@ class BaseTaskExecutor(object):
             else:
                 try:
                     all_res['output'].extend(res['output'], keep_groups=True)
-                except Exception as e:
+                except Exception:
                     env.logger.warning(
                         f"Failed to extend output {all_res['output']} with {res['output']}"
                     )

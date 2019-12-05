@@ -824,7 +824,7 @@ class RemoteHost(object):
             subprocess.check_call(send_cmd, shell=True)
         except subprocess.CalledProcessError as e:
             raise RuntimeError(
-                f'Failed to copy job {task_file} to {self.alias} using command {send_cmd}: {e}'
+                f'Failed to copy job {job_file} to {self.alias} using command {send_cmd}: {e}'
             )
 
     def check_output(self,

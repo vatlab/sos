@@ -876,7 +876,7 @@ class SoS_Script:
         # workflows in this script, from sections that are not skipped.
         all_section_steps = sum([x.names for x in self.sections], [])
         forward_section_steps = sum(
-            [x.names for x in self.sections if not 'provides' in x.options], [])
+            [x.names for x in self.sections if 'provides' not in x.options], [])
         # (name, None) is auxiliary steps
         self.workflows = list(
             dict.fromkeys([x[0] for x in all_section_steps if '*' not in x[0]]))

@@ -66,7 +66,7 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
             # if container in args, a large number of docker-specific
             # args would be allowed.
             for k in default_args:
-                if k in default_args and not k in kwargs:
+                if k in default_args and k not in kwargs:
                     kwargs[k] = default_args[k]
             if '*' not in acceptable_args and 'docker_image' not in kwargs and 'container' not in kwargs:
                 for key in kwargs.keys():
@@ -205,7 +205,7 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                     tfiles = sos_targets(kwargs['tracked'])
                 except Exception as e:
                     raise ValueError(
-                        'Parameter tracked of actions can be None, True/False, or one or more filenames: {tfiles} provided.'
+                        f'Parameter tracked of actions can be None, True/False, or one or more filenames: {tfiles} provided: {e}'
                     )
 
                 # append input and output
@@ -332,7 +332,7 @@ class SoS_ExecuteScript:
                     with open(ifile) as iscript:
                         content += iscript.read()
                 except Exception as e:
-                    raise RuntimeError(f'Failed to read from {ifile}')
+                    raise RuntimeError(f'Failed to read from {ifile}: {e}')
             self.script = content + self.script
 
         if 'engine' in kwargs and kwargs['engine'] == 'docker':

@@ -3,7 +3,6 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 import os
-import tempfile
 import subprocess
 
 from .eval import cfg_interpolate
@@ -71,16 +70,16 @@ class WorkflowEngine:
     def execute_workflow(self, filename, command, **template_args):
         # there is no need to prepare workflow (e.g. copy over)
         if os.path.isfile(filename):
-            dest = self.agent.send_to_host([filename])
+            self.agent.send_to_host([filename])
             self.filename = filename
         elif os.path.isfile(filename + '.sos'):
-            dest = self.agent.send_to_host([filename + '.sos'])
+            self.agent.send_to_host([filename + '.sos'])
             self.filename = filename + '.sos'
         elif os.path.isfile(filename + '.ipynb'):
-            dest = self.agent.send_to_host([filename + '.ipynb'])
+            self.agent.send_to_host([filename + '.ipynb'])
             self.filename = filename + '.ipynb'
         else:
-            raise RuntimeError(f'Failed to locate script {script}')
+            raise RuntimeError(f'Failed to locate script {filename}')
 
         self.command = self.remove_arg(command, '-r')
         # -c only point to local config file.
@@ -91,10 +90,8 @@ class WorkflowEngine:
         # a different path.
         if os.path.basename(command[0]) == 'sos':
             self.command[0] = 'sos'
-            #self.command[2] = list(dest.values())[0]
         elif os.path.basename(command[0]) == 'sos-runner':
             self.command[0] = 'sos-runner'
-            #self.command[1] = list(dest.values())[0]
 
         self.command = subprocess.list2cmdline(self.command)
         self.template_args = template_args
@@ -158,5 +155,5 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
                 os.remove(self.job_file)
             except Exception as e:
                 env.logger.debug(
-                    f'Failed to remove temporary workflow file')
+                    f'Failed to remove temporary workflow file: {e}')
         return True

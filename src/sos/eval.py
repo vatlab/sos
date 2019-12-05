@@ -273,7 +273,7 @@ def analyze_global_statements(global_stmt):
     # execute the entire statement
     try:
         SoS_exec(global_stmt)
-    except ArgumentError as e:
+    except ArgumentError:
         raise
     except Exception as e:
         raise RuntimeError(

@@ -1135,12 +1135,12 @@ class Base_Executor:
         # process step of the pipelinp
         try:
             dag = self.initialize_dag(targets=targets)
-        except UnknownTarget as e:
+        except UnknownTarget:
             # if the names cannot be found, try to see if they are named_output
             try:
                 named_targets = [named_output(x) for x in targets]
                 dag = self.initialize_dag(targets=named_targets)
-            except UnknownTarget as e:
+            except UnknownTarget:
                 raise RuntimeError(f'No step to generate target {targets}')
 
         # manager of processes
