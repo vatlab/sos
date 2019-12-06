@@ -430,14 +430,14 @@ class SoS_ExecuteScript:
                             bufsize=0)
                         out, err = child.communicate()
                         if 'stdout' in kwargs:
-                            if kwargs['stdout'] is not False:
+                            if kwargs['stdout'] is not False and len(out):
                                 with open(kwargs['stdout'], 'ab') as so:
                                     so.write(out)
                         else:
                             sys.stdout.write(out.decode())
 
                         if 'stderr' in kwargs:
-                            if kwargs['stderr'] is not False:
+                            if kwargs['stderr'] is not False and len(err):
                                 with open(kwargs['stderr'], 'ab') as se:
                                     se.write(err)
                         else:
@@ -520,6 +520,13 @@ class SoS_ExecuteScript:
                         so.close()
                     if se is not None and se != subprocess.DEVNULL:
                         se.close()
+                # clean up empty stdstream files
+                for item in ['stdout', 'stderr']:
+                    if item in kwargs and os.path.isfile(kwargs[item]) and os.path.getsize(kwargs[item]) == 0:
+                        try:
+                            os.remove(kwargs[item])
+                        except Exception:
+                            pass
                 if ret != 0:
                     with open(debug_script_file, 'w') as sfile:
                         sfile.write(self.script)
