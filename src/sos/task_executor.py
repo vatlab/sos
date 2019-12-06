@@ -5,6 +5,7 @@
 import copy
 import os
 import subprocess
+import pickle
 import time
 import zmq
 import signal
@@ -559,10 +560,9 @@ class BaseTaskExecutor(object):
             disconnect_controllers(env.zmq_context if succ else None)
         return results
 
-    def _cache_subresult(self, master_ID, sub_result):
-        cache_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', tid + '.cache')
-        with open(cache_file, 'wb') as cache:
-            pickle.dump(sub_result, cache)
+    def _cache_subresult(self, master_id, sub_result):
+        cache_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', master_id + '.cache')
+        with open(cache_file, 'ab') as cache:
 
     def _parse_num_workers(self, num_workers):
         # return number of nodes and workers
