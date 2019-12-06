@@ -112,11 +112,8 @@ class BaseTaskExecutor(object):
             tf.status = 'skipped'
         else:
             tf.add_outputs()
-            sig = res.get('signature', {})
-            res.pop('signature', None)
             tf.add_result(res)
-            if sig:
-                tf.add_signature(sig)
+
             # this will remove pulse and other files
             tf.status = 'completed' if res['ret_code'] == 0 else 'failed'
 

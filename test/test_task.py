@@ -136,12 +136,6 @@ class TestTask(unittest.TestCase):
         self.assertTrue(a.has_pulse())
         self.assertTrue(a.has_shell())
         #
-        self.assertFalse(a.has_signature())
-        a.add_signature({'file': 'md5'})
-        self.assertTrue(a.has_signature())
-        self.assertEqual(a.signature['file'], 'md5')
-        #
-        #self.assertRaises(Exception, a.add_outputs)
         #
         a.reset()
         self.assertEqual(a.status, 'new')

@@ -65,7 +65,7 @@ class ProcessMonitor(threading.Thread):
 
     def _exceed_resource(self, msg):
         err_file = os.path.join(
-            os.path.expanduser('~'), '.sos', 'tasks', self.task_id + '.err')
+            os.path.expanduser('~'), '.sos', 'tasks', self.task_id + '.soserr')
         with open(err_file, 'a') as err:
             err.write(msg + '\n')
         tf = TaskFile(self.task_id)

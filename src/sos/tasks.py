@@ -579,7 +579,10 @@ class TaskFile(object):
             else:
                 # single task, no result, do not save
                 return
-
+        # add signature if exists
+        signature = result.get('signature', {})
+        result.pop('signature', None)
+        #
         result_block = lzma.compress(pickle.dumps(result))
         with fasteners.InterProcessLock(
                 os.path.join(env.temp_dir, self.task_id + '.lck')):
@@ -595,9 +598,9 @@ class TaskFile(object):
                         header.pulse_size + header.stdout_size +
                         header.stderr_size)
                 fh.write(result_block)
-
-
-    def add_signature(self, signature: dict):
+        #
+        if not signature:
+            return
         signature_block = lzma.compress(pickle.dumps(signature))
         with fasteners.InterProcessLock(
                 os.path.join(env.temp_dir, self.task_id + '.lck')):
