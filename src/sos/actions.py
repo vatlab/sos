@@ -66,7 +66,7 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
             # if container in args, a large number of docker-specific
             # args would be allowed.
             for k in default_args:
-                if k in default_args and not k in kwargs:
+                if k in default_args and k not in kwargs:
                     kwargs[k] = default_args[k]
             if '*' not in acceptable_args and 'docker_image' not in kwargs and 'container' not in kwargs:
                 for key in kwargs.keys():
@@ -205,7 +205,7 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                     tfiles = sos_targets(kwargs['tracked'])
                 except Exception as e:
                     raise ValueError(
-                        'Parameter tracked of actions can be None, True/False, or one or more filenames: {tfiles} provided.'
+                        f'Parameter tracked of actions can be None, True/False, or one or more filenames: {tfiles} provided: {e}'
                     )
 
                 # append input and output
@@ -263,7 +263,8 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                         f'workdir option should be a path of type str or path, {kwargs["workdir"]} provided'
                     )
                 if not os.path.isdir(os.path.expanduser(kwargs['workdir'])):
-                    os.makedirs(os.path.expanduser(kwargs['workdir']), exist_ok=True)
+                    os.makedirs(
+                        os.path.expanduser(kwargs['workdir']), exist_ok=True)
                 try:
                     olddir = os.getcwd()
                     os.chdir(os.path.expanduser(kwargs['workdir']))
@@ -332,7 +333,7 @@ class SoS_ExecuteScript:
                     with open(ifile) as iscript:
                         content += iscript.read()
                 except Exception as e:
-                    raise RuntimeError(f'Failed to read from {ifile}')
+                    raise RuntimeError(f'Failed to read from {ifile}: {e}')
             self.script = content + self.script
 
         if 'engine' in kwargs and kwargs['engine'] == 'docker':
@@ -550,7 +551,7 @@ class SoS_ExecuteScript:
             finally:
                 try:
                     os.remove(script_file)
-                except:
+                except Exception:
                     # 1315: ignore in case the temp script file no longer exists
                     pass
 
@@ -622,7 +623,8 @@ def sos_run(workflow=None,
         my_name = env.sos_dict['step_name']
         args_output = ', '.join(f'{x}={short_repr(y)}' for x, y in args.items()
                                 if not x.startswith('__'))
-        if 'ACTION' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+        if 'ACTION' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                'SOS_DEBUG']:
             env.log_to_file(
                 'ACTION',
                 'Executing workflow ``{}`` with input ``{}`` and {}'.format(
@@ -642,9 +644,11 @@ def sos_run(workflow=None,
         wf_ids = [str(uuid.uuid4()) for wf in wfs]
 
         blocking = not env.sos_dict.get('__concurrent_subworkflow__', False)
-        env.__socket__.send(encode_msg([
-            'workflow', wf_ids, wfs, targets, args, shared, env.config, blocking
-        ]))
+        env.__socket__.send(
+            encode_msg([
+                'workflow', wf_ids, wfs, targets, args, shared, env.config,
+                blocking
+            ]))
 
         if not blocking:
             return {'pending_workflows': wf_ids}
@@ -931,8 +935,9 @@ def downloadURL(URL, dest, decompress=False, index=None):
     return os.path.isfile(dest)
 
 
-@SoS_Action(
-    acceptable_args=['URLs', 'workdir', 'dest_dir', 'dest_file', 'decompress', 'max_jobs'])
+@SoS_Action(acceptable_args=[
+    'URLs', 'workdir', 'dest_dir', 'dest_file', 'decompress', 'max_jobs'
+])
 def download(URLs, dest_dir='.', dest_file=None, decompress=False, max_jobs=5):
     '''Download files from specified URL, which should be space, tab or
     newline separated URLs. The files will be downloaded to specified destination.
@@ -1125,7 +1130,8 @@ def report(script=None, input=None, output=None, **kwargs):
             writer(script.rstrip() + '\n\n')
         if input is not None:
             if isinstance(input, (str, file_target)):
-                if 'ACTION' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+                if 'ACTION' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                        'SOS_DEBUG']:
                     env.log_to_file('ACTION', f'Loading report from {input}')
                 with open(input) as ifile:
                     writer(ifile.read().rstrip() + '\n\n')
@@ -1217,7 +1223,8 @@ def pandoc(script=None,
     try:
         p = None
         cmd = interpolate(f'pandoc {args}', {'input': input, 'output': output})
-        if 'ACTION' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+        if 'ACTION' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                'SOS_DEBUG']:
             env.log_to_file('ACTION', f'Running command "{cmd}"')
         if env.config['run_mode'] == 'interactive':
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook

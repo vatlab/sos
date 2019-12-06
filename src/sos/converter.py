@@ -70,7 +70,9 @@ codemirror_themes = [
     'xq-light', 'yeti', 'zenburn'
 ]
 
+
 class ScriptToHTMLConverter(object):
+
     def __init__(self, *args, **kwargs):
         pass
 
@@ -78,7 +80,8 @@ class ScriptToHTMLConverter(object):
         parser = argparse.ArgumentParser(
             'sos convert FILE.sos FILE.html (or --to html)',
             description='''Convert sos file to html format with syntax highlighting,
-            and save the output either to a HTML file or view it in a broaser.''')
+            and save the output either to a HTML file or view it in a broaser.'''
+        )
         parser.add_argument(
             '--url',
             help='''URL to the raw sos file, which will be linked
@@ -122,8 +125,8 @@ class ScriptToHTMLConverter(object):
             loader=PackageLoader('sos', 'templates'),
             autoescape=select_autoescape(['html', 'xml']))
         template = environment.get_template(
-            args.template if args and hasattr(args, 'template') and args.template
-            else 'sos_script.tpl')
+            args.template if args and hasattr(args, 'template') and
+            args.template else 'sos_script.tpl')
 
         with open(script_file) as script:
             content = script.read()
@@ -131,13 +134,20 @@ class ScriptToHTMLConverter(object):
         if args and hasattr(args, 'raw'):
             args.url = args.raw
         context = {
-            'filename': script_file,
-            'basename': os.path.basename(script_file),
-            'script': content,
-            'sos_version': __version__,
-            'linenos': args.linenos if args and hasattr(args, 'linenos') else True,
-            'url': args.url if args and hasattr(args, 'url') else '',
-            'theme': args.style if args and hasattr(args, 'style') else 'default',
+            'filename':
+                script_file,
+            'basename':
+                os.path.basename(script_file),
+            'script':
+                content,
+            'sos_version':
+                __version__,
+            'linenos':
+                args.linenos if args and hasattr(args, 'linenos') else True,
+            'url':
+                args.url if args and hasattr(args, 'url') else '',
+            'theme':
+                args.style if args and hasattr(args, 'style') else 'default',
         }
         html_content = template.render(context)
         if html_file is None:

@@ -90,7 +90,8 @@ def Rmarkdown(script=None,
             'input': input,
             'output': output
         })
-        if 'ACTION' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+        if 'ACTION' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
+                'SOS_DEBUG']:
             env.log_to_file('ACTION', f'Running command "{cmd}"')
         if env.config['run_mode'] == 'interactive':
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook

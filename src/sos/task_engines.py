@@ -5,7 +5,6 @@
 import concurrent.futures
 import copy
 import os
-import random
 import subprocess
 import threading
 import time
@@ -227,11 +226,16 @@ class TaskEngine(threading.Thread):
                         if not self.submitting_tasks[k].running():
                             submitted.append(k)
                             try:
-                                task_submitted = self.submitting_tasks[k].result()
+                                task_submitted = self.submitting_tasks[
+                                    k].result()
                             except Exception as e:
                                 from .utils import get_traceback
-                                env.log_to_file('TASK', f'failed to submit task {e}: {get_traceback()}')
-                                env.logger.error(f'Failed to submit task {k}: {e}')
+                                env.log_to_file(
+                                    'TASK',
+                                    f'failed to submit task {e}: {get_traceback()}'
+                                )
+                                env.logger.error(
+                                    f'Failed to submit task {k}: {e}')
                                 task_submitted = False
                             if task_submitted:
                                 for tid in k:
@@ -277,8 +281,7 @@ class TaskEngine(threading.Thread):
                                         'update_only':
                                             True,
                                         'tags':
-                                            self.task_info[tid].get(
-                                                'tags', '')
+                                            self.task_info[tid].get('tags', '')
                                     })
                                     self.task_status[tid] = 'failed'
                         # else:
@@ -431,7 +434,7 @@ class TaskEngine(threading.Thread):
             self.task_status[task_id] = 'pending'
             try:
                 self.task_info[task_id]['tags'] = TaskFile(task_id).tags
-            except:
+            except Exception:
                 # if task file does not exist, it is ok
                 pass
             self.notify_controller({
@@ -681,7 +684,9 @@ class BackgroundProcess_TaskEngine(TaskEngine):
             self.task_template = self.config['task_template'].replace(
                 '\r\n', '\n')
         elif 'job_template' in self.config:
-            env.logger.warning('job_template for host configuration is deprecated. Please use task_template instead.')
+            env.logger.warning(
+                'job_template for host configuration is deprecated. Please use task_template instead.'
+            )
             self.task_template = self.config['job_template'].replace(
                 '\r\n', '\n')
         else:

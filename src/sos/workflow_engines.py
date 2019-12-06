@@ -3,7 +3,6 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 import os
-import tempfile
 import subprocess
 
 from .eval import cfg_interpolate
@@ -48,7 +47,7 @@ class WorkflowEngine:
             self.template_args['command'] = self.command
             self.template_args['job_name'] = self.job_name
             self.job_text = cfg_interpolate(self.workflow_template,
-                                       self.template_args) + '\n'
+                                            self.template_args) + '\n'
         except Exception as e:
             raise ValueError(
                 f'Failed to generate job file for the execution of workflow {script}: {e}'
@@ -65,22 +64,24 @@ class WorkflowEngine:
             with open(self.job_file, 'w', newline='') as job:
                 job.write(self.job_text)
         except Exception as e:
-            raise RuntimeError(f'Failed to submit workflow {self.command} with script \n{self.job_text}\n: {e}')
+            raise RuntimeError(
+                f'Failed to submit workflow {self.command} with script \n{self.job_text}\n: {e}'
+            )
         return True
 
     def execute_workflow(self, filename, command, **template_args):
         # there is no need to prepare workflow (e.g. copy over)
         if os.path.isfile(filename):
-            dest = self.agent.send_to_host([filename])
+            self.agent.send_to_host([filename])
             self.filename = filename
         elif os.path.isfile(filename + '.sos'):
-            dest = self.agent.send_to_host([filename + '.sos'])
+            self.agent.send_to_host([filename + '.sos'])
             self.filename = filename + '.sos'
         elif os.path.isfile(filename + '.ipynb'):
-            dest = self.agent.send_to_host([filename + '.ipynb'])
+            self.agent.send_to_host([filename + '.ipynb'])
             self.filename = filename + '.ipynb'
         else:
-            raise RuntimeError(f'Failed to locate script {script}')
+            raise RuntimeError(f'Failed to locate script {filename}')
 
         self.command = self.remove_arg(command, '-r')
         # -c only point to local config file.
@@ -91,10 +92,8 @@ class WorkflowEngine:
         # a different path.
         if os.path.basename(command[0]) == 'sos':
             self.command[0] = 'sos'
-            #self.command[2] = list(dest.values())[0]
         elif os.path.basename(command[0]) == 'sos-runner':
             self.command[0] = 'sos-runner'
-            #self.command[1] = list(dest.values())[0]
 
         self.command = subprocess.list2cmdline(self.command)
         self.template_args = template_args
@@ -130,7 +129,6 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
                 return False
         return True
 
-
     def _execute_workflow(self):
         # if no template, use a default command
         env.log_to_file('WORKDLOW', f'Execute "{self.command}"')
@@ -149,14 +147,18 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
             self.agent.send_job_file(self.job_file, dir='workflows')
 
             cmd = f'bash ~/.sos/workflows/{os.path.basename(self.job_file)}'
-            env.log_to_file('WORKFLOW', f'Execute "{self.command}" with script {self.job_text}')
+            env.log_to_file(
+                'WORKFLOW',
+                f'Execute "{self.command}" with script {self.job_text}')
             self.agent.check_call(cmd, under_workdir=True)
         except Exception as e:
-            raise RuntimeError(f'Failed to submit workflow {self.command} with script \n{self.job_text}\n: {e}')
+            raise RuntimeError(
+                f'Failed to submit workflow {self.command} with script \n{self.job_text}\n: {e}'
+            )
         finally:
             try:
                 os.remove(self.job_file)
             except Exception as e:
                 env.logger.debug(
-                    f'Failed to remove temporary workflow file')
+                    f'Failed to remove temporary workflow file: {e}')
         return True

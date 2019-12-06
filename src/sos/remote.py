@@ -9,10 +9,10 @@ import sys
 
 import pexpect
 
-from .eval import cfg_interpolate
 from .utils import env
 from .targets import path
 from .hosts import Host
+
 
 def list_queues(cfg, hosts=[], verbosity=1):
     env.verbosity = 1
@@ -49,10 +49,8 @@ def list_queues(cfg, hosts=[], verbosity=1):
         if verbosity == 0:
             print(h.alias)
         elif verbosity in (1, 2):
-            host_description.append([
-                h.alias, h._host_agent.address, h._engine_type,
-                h.description
-            ])
+            host_description.append(
+                [h.alias, h._host_agent.address, h._engine_type, h.description])
         else:
             print(f'Queue:       {h.alias}')
             print(f'Address:     {h._host_agent.address}')
@@ -141,7 +139,8 @@ def status_of_queues(cfg, hosts=[], verbosity=1):
 
 
 def test_ssh(host):
-    return  host.test_connection()
+    return host.test_connection()
+
 
 def test_scp(host):
     if host.address == 'localhost':
@@ -179,6 +178,7 @@ def test_cmd(host, cmd):
     except Exception as e:
         return str(e)
 
+
 def test_paths(host):
     if host.address == 'localhost':
         return 'OK'
@@ -198,7 +198,7 @@ def test_paths(host):
         # remote?
         try:
             host.check_output(f'ls -a {path(remote):q}')
-        except:
+        except Exception:
             return f'Failed to access shared directory {remote} on remote host.'
 
         # test if local directory is writable
@@ -206,7 +206,7 @@ def test_paths(host):
             with open(os.path.join(local, f".sos_test_{tID}.txt"),
                       'w') as tFile:
                 tFile.write(f'{tID}')
-        except:
+        except Exception:
             return f'Failed to write to mapped directory {local}'
         # test if file can be sent
         try:
@@ -264,7 +264,7 @@ def test_shared(host):
         remote = host.path_map[local]
         try:
             remote_files = host.check_output(f'ls -a {path(remote):q}')
-        except:
+        except Exception:
             return f'Failed to access shared directory {remote} on remote host.'
         remote_files = [
             x for x in remote_files.splitlines() if x not in ('.', '..')
@@ -279,7 +279,7 @@ def test_shared(host):
 def stty_sane():
     try:
         subprocess.check_call('stty sane', shell=True)
-    except:
+    except Exception:
         pass
 
 
@@ -292,7 +292,8 @@ def test_queue(host, cmd=None):
     return [
         h.alias, h._host_agent.address, h._engine_type, ssh_res,
         test_scp(h._host_agent) if ssh_res.startswith('OK') else '-',
-        test_cmd(h._host_agent, ["sos", "-h"]) if ssh_res.startswith('OK') else '-',
+        test_cmd(h._host_agent, ["sos", "-h"])
+        if ssh_res.startswith('OK') else '-',
         test_paths(h._host_agent) if ssh_res.startswith('OK') else '-',
         test_shared(h._host_agent) if ssh_res.startswith('OK') else '-'
     ] + ([] if cmd is None else [test_cmd(h._host_agent, cmd)])
@@ -307,9 +308,11 @@ def test_queues(cfg, hosts=[], cmd=None, verbosity=1):
         return
     host_description = [[
         'Alias', 'Address', 'Queue Type', 'ssh', 'scp', 'sos', 'paths', 'shared'
-    ] + ([] if cmd is None else [" ".join(cmd)]), [
-        '-----', '-------', '----------', '---', '---', '---', '-----', '------'
-    ] + ([] if cmd is None else ['-' * len(" ".join(cmd))])]
+    ] + ([] if cmd is None else [" ".join(cmd)]),
+                        [
+                            '-----', '-------', '----------', '---', '---',
+                            '---', '-----', '------'
+                        ] + ([] if cmd is None else ['-' * len(" ".join(cmd))])]
     for host in hosts:
         if host not in all_hosts:
             env.logger.warning(f'Undefined host {host}')
@@ -350,7 +353,9 @@ def test_queues(cfg, hosts=[], cmd=None, verbosity=1):
             print(f'paths:       {row[6]}')
             print(f'shared:      {row[7]}')
             if cmd:
-                print(f'{" ".join(cmd)}:{" "*(max(1, 12 - len(" ".join(cmd))))}{row[8]}')
+                print(
+                    f'{" ".join(cmd)}:{" "*(max(1, 12 - len(" ".join(cmd))))}{row[8]}'
+                )
             print()
 
 

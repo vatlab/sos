@@ -2680,8 +2680,10 @@ _output.touch()
         #
         # default mode
         #
+        wf = script.workflow()
         cleanup()
 
+        st = time.time()
         self.assertRaises(
             Exception,
             Base_Executor(wf).run)

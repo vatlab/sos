@@ -6,10 +6,10 @@
 import os
 from ._version import __version__
 
-assert __version__
-
 from .workflow_executor import Base_Executor
 from sos.parser import SoS_Script
+
+assert __version__
 
 
 def execute_workflow(script: str,
@@ -66,7 +66,8 @@ def execute_workflow(script: str,
         raise ValueError(f'Failed to parse script {script}: {e}')
     #
     if workflow and targets:
-        raise ValueError("Only one of parameters workflow and targets should be specified.")
+        raise ValueError(
+            "Only one of parameters workflow and targets should be specified.")
     wf = script.workflow(workflow, use_default=not targets)
 
     if not isinstance(config, dict):

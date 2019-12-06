@@ -113,7 +113,7 @@ def get_convert_parser(desc_only=False):
             if name.endswith('.parser'):
                 try:
                     converter_parser = entrypoint.load()()
-                except:
+                except Exception:
                     # this might be old entry that is now deprecated
                     continue
             elif name.endswith('.func'):
@@ -121,9 +121,15 @@ def get_convert_parser(desc_only=False):
             else:
                 converter = entrypoint.load()()
                 if not hasattr(converter, 'get_parser'):
-                    env.logger.warning(f'Invalid sos converter {name}: missing get_parser function')
+                    from .utils import env
+                    env.logger.warning(
+                        f'Invalid sos converter {name}: missing get_parser function'
+                    )
                 if not hasattr(converter, 'convert'):
-                    env.logger.warning(f'Invalid sos converter {name}: missing convert function')
+                    from .utils import env
+                    env.logger.warning(
+                        f'Invalid sos converter {name}: missing convert function'
+                    )
                 converter_parser = converter.get_parser()
             f_format, t_format = name.rsplit('.', 1)[0].split('-')
             subparser = add_sub_parser(
@@ -187,7 +193,7 @@ def print_converter_help():
             if name.endswith('.parser'):
                 try:
                     converter_parser = entrypoint.load()()
-                except:
+                except Exception:
                     # this might be old entry that is now deprecated
                     continue
             elif name.endswith('.func'):
@@ -195,9 +201,15 @@ def print_converter_help():
             else:
                 converter = entrypoint.load()()
                 if not hasattr(converter, 'get_parser'):
-                    env.logger.warning(f'Invalid sos converter {name}: missing get_parser function')
+                    from .utils import env
+                    env.logger.warning(
+                        f'Invalid sos converter {name}: missing get_parser function'
+                    )
                 if not hasattr(converter, 'convert'):
-                    env.logger.warning(f'Invalid sos converter {name}: missing convert function')
+                    from .utils import env
+                    env.logger.warning(
+                        f'Invalid sos converter {name}: missing convert function'
+                    )
                 converter_parser = converter.get_parser()
 
             f_format, t_format = name.rsplit('.', 1)[0].split('-')
@@ -215,7 +227,8 @@ def cmd_convert(args, unknown_args):
         try:
             if entrypoint.name == args.converter_name:
                 converter = entrypoint.load()()
-                converter.convert(args.from_file, args.to_file, args, unknown_args)
+                converter.convert(args.from_file, args.to_file, args,
+                                  unknown_args)
                 return
             elif entrypoint.name == args.converter_name + '.func':
                 func = entrypoint.load()
@@ -294,10 +307,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             only part of a workflow or multiple workflows or auxiliary steps
             to generate specified targets.''')
     parser.add_argument(
-        '-b',
-        dest='__bin_dirs__',
-        nargs='*',
-        help=argparse.SUPPRESS)
+        '-b', dest='__bin_dirs__', nargs='*', help=argparse.SUPPRESS)
     parser.add_argument(
         '-q',
         dest='__queue__',
@@ -307,8 +317,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             configuration files. A host is assumed to be a remote host with process
             type unless other queue types and related information are defined in the
             host file. If left unspecified, tasks are executed as part of the regular
-            step processes unless task-specific queues are specified.'''
-    )
+            step processes unless task-specific queues are specified.''')
     parser.add_argument(
         '-r',
         dest='__remote__',
@@ -366,15 +375,10 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         help='''Trace existing targets and re-execute the steps that generate
             them to make sure that the targets are current.''')
     runmode.add_argument(
-        '-k',
-        action='store_true',
-        dest='keep_going',
-        help=argparse.SUPPRESS)
+        '-k', action='store_true', dest='keep_going', help=argparse.SUPPRESS)
     runmode.add_argument(
         '-e',
-        choices=[
-             'abort', 'default', 'ignore'
-        ],
+        choices=['abort', 'default', 'ignore'],
         default='default',
         metavar='ERRORMODE',
         dest='__error_mode__',
@@ -449,13 +453,17 @@ def cmd_run(args, workflow_args):
             elif os.path.isfile(args.script + '.ipynb'):
                 args.script = args.script + '.ipynb'
             else:
-                raise ValueError(f'File not found {args.script} (tried {args.script}, {args.script}.sos, and {args.script}.ipynb)')
+                raise ValueError(
+                    f'File not found {args.script} (tried {args.script}, {args.script}.sos, and {args.script}.ipynb)'
+                )
 
         host.send_to_host(args.script)
         template_args = {}
         for item in args.__remote__[1:]:
             if '=' not in item:
-                raise ValueError(f"KEY=VALUE pairs are required for definitions after host name.")
+                raise ValueError(
+                    f"KEY=VALUE pairs are required for definitions after host name."
+                )
             template_args[item.split('=')[0]] = item.split('=', 1)[1]
         # execute the command on remote host
         try:
@@ -480,7 +488,8 @@ def cmd_run(args, workflow_args):
     env.verbosity = args.verbosity
 
     if hasattr(args, 'keep_going') and args.keep_going:
-        env.logger.warning(f'Option -k is deprecated and is now the default mode.')
+        env.logger.warning(
+            f'Option -k is deprecated and is now the default mode.')
         args.__error_mode__ = 'default'
 
     if args.__report__ and args.__dag__:
@@ -505,7 +514,9 @@ def cmd_run(args, workflow_args):
     from .workflow_executor import Base_Executor
 
     if hasattr(args, '__bin_dirs__') and args.__bin_dirs__:
-        env.logger.warning('Option -b is deprecated. Please use option "-r host" with workflow_template instead (#1322).')
+        env.logger.warning(
+            'Option -b is deprecated. Please use option "-r host" with workflow_template instead (#1322).'
+        )
 
     if 'PROFILE' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
         import cProfile
@@ -520,7 +531,9 @@ def cmd_run(args, workflow_args):
         workflow = script.workflow(
             args.workflow, use_default=not args.__targets__)
         if args.__queue__ in ("none", "None"):
-            env.logger.warning(f"Use of -q {args.__queue__} is deprecated and will not be supported in the next release of SoS.")
+            env.logger.warning(
+                f"Use of -q {args.__queue__} is deprecated and will not be supported in the next release of SoS."
+            )
             args.__queue__ = None
         config = {
             'config_file':
@@ -782,7 +795,7 @@ def cmd_worker(args, workflow_args):
 
     try:
         os.chdir(args.workdir)
-    except:
+    except Exception:
         env.logger.warning(
             f'Failed to change directory to workdir {args.workdir}')
     load_config_files(args.config)
@@ -852,9 +865,11 @@ def get_remote_parser(desc_only=False):
         help='''files or directories to be push or pulled for action "push" or "pull"'''
     )
     parser.add_argument(
-        '--cmd', nargs=argparse.REMAINDER,
+        '--cmd',
+        nargs=argparse.REMAINDER,
         help='''commands to be executed by action "run" or tested by action "test". This option takes all remaining options
-            of part of command and must be the last option of the sos remote command.''')
+            of part of command and must be the last option of the sos remote command.'''
+    )
     parser.add_argument(
         '-v',
         '--verbosity',
@@ -1239,7 +1254,7 @@ def get_execute_parser(desc_only=False):
 
 
 def cmd_execute(args, workflow_args):
-    from .tasks import check_task, monitor_interval, resource_monitor_interval
+    from .tasks import check_task
     from .utils import env, load_config_files, get_nodelist, under_cluster
     import glob
     if args.queue is None:
@@ -1250,7 +1265,8 @@ def cmd_execute(args, workflow_args):
             'config_file':
                 args.config,
             'sig_mode':
-                'default' if args.sig_mode in (None, "ignore") else args.sig_mode,
+                'default' if args.sig_mode in (None,
+                                               "ignore") else args.sig_mode,
             'run_mode':
                 'dryrun' if args.dryrun else
                 (args.run_mode if args.run_mode else 'run'),
@@ -2421,13 +2437,16 @@ def main():
                 name = entrypoint.name
                 addon = entrypoint.load()()
                 if not hasattr(addon, 'get_parser'):
+                    from .utils import env
                     env.logger.warning(f'Missing get_parser() for addon {name}')
                     continue
                 if not hasattr(addon, 'execute'):
+                    from .utils import env
                     env.logger.warning(f'Missing execute for addon {name}')
                     continue
 
-                parser = add_sub_parser(subparsers, addon.get_parser(), name=name)
+                parser = add_sub_parser(
+                    subparsers, addon.get_parser(), name=name)
                 parser.add_argument(
                     '--addon-name', help=argparse.SUPPRESS, default=name)
                 parser.set_defaults(func=addon.execute)

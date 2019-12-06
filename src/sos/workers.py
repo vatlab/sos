@@ -18,6 +18,7 @@ from .executor_utils import kill_all_subprocesses, prepare_env
 from .utils import env, ProcessKilled, short_repr, get_localhost_ip
 from .messages import encode_msg, decode_msg
 
+
 def signal_handler(*args, **kwargs):
     raise ProcessKilled()
 
@@ -160,7 +161,8 @@ class SoS_Worker(mp.Process):
             assert idx == len(self._master_ports)
             # a new socket is needed
             env.master_socket = create_socket(env.zmq_context, zmq.PAIR)
-            port = env.master_socket.bind_to_random_port(f'tcp://{self.local_ip}')
+            port = env.master_socket.bind_to_random_port(
+                f'tcp://{self.local_ip}')
             # switch to a new env_idx and returns new_idx, old_idx
             self._env_idx.append(env.request_new()[0])
             self._master_sockets.append(env.master_socket)
@@ -194,7 +196,10 @@ class SoS_Worker(mp.Process):
         env.ctrl_socket = create_socket(env.zmq_context, zmq.REQ,
                                         'worker backend')
         # worker_backend, or the router, might be on another machine
-        env.log_to_file('WORKER', f'Connecting to router {self.config["sockets"]["worker_backend"]} from {get_localhost_ip()}')
+        env.log_to_file(
+            'WORKER',
+            f'Connecting to router {self.config["sockets"]["worker_backend"]} from {get_localhost_ip()}'
+        )
         env.ctrl_socket.connect(self.config["sockets"]["worker_backend"])
 
         signal.signal(signal.SIGTERM, signal_handler)
@@ -224,8 +229,8 @@ class SoS_Worker(mp.Process):
                 # avilable ports to the controller. We also need to send a flag to let the
                 # controller know if we have any pending job, and the controller might decide
                 # to kill this worker.
-                env.ctrl_socket.send(encode_msg([self.num_pending()] +
-                                           self.available_ports()))
+                env.ctrl_socket.send(
+                    encode_msg([self.num_pending()] + self.available_ports()))
                 reply = decode_msg(env.ctrl_socket.recv())
 
                 if reply is None:
@@ -291,7 +296,9 @@ class SoS_Worker(mp.Process):
                 break
             except KeyboardInterrupt:
                 # ignore SIGINT because workers are supposed to be killed through messages
-                env.log_to_file('PROCESS', f'KeyboardInterrupt received by {os.getpid()}. Ignoring.')
+                env.log_to_file(
+                    'PROCESS',
+                    f'KeyboardInterrupt received by {os.getpid()}. Ignoring.')
         # Finished
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
         kill_all_subprocesses(os.getpid())
@@ -309,7 +316,9 @@ class SoS_Worker(mp.Process):
                 os.path.expanduser('~'), '.sos',
                 f'profile_worker_{os.getpid()}.txt')
             pr.dump_stats(pr_file)
-            print(f'Execution profile of worker process {os.getpid()} is saved to {pr_file}')
+            print(
+                f'Execution profile of worker process {os.getpid()} is saved to {pr_file}'
+            )
 
     def _type_of_work(self, work):
         if 'section' in work:
@@ -452,7 +461,9 @@ class WorkerManager(object):
                 if ':' in worker_proc:
                     worker_host, max_workers = worker_proc.rsplit(':', 1)
                     if not max_workers.isdigit():
-                        raise ValueError(f'Invalid worker specification {worker_proc}: number of process expected after ":"')
+                        raise ValueError(
+                            f'Invalid worker specification {worker_proc}: number of process expected after ":"'
+                        )
                     self._worker_hosts.append(worker_host)
                     self._max_workers.append(int(max_workers))
                 elif worker_proc.isdigit():
@@ -462,11 +473,14 @@ class WorkerManager(object):
                     self._worker_hosts.append(worker_proc)
                     # here we assume that all nodes have the same number of cores so that we use
                     # the default value for master node for all computing nodes
-                    self._max_workers.append(min(max(os.cpu_count() // 2, 2), 8))
+                    self._max_workers.append(
+                        min(max(os.cpu_count() // 2, 2), 8))
 
             self._num_workers = [0 for x in self._worker_procs]
-        except:
-            raise RuntimeError(f'Incorrect format for option -j ({self._worker_procs}), which should be one or more [host:]nproc')
+        except Exception:
+            raise RuntimeError(
+                f'Incorrect format for option -j ({self._worker_procs}), which should be one or more [host:]nproc'
+            )
 
         self._local_workers = []
         self._remote_connections = []
@@ -561,8 +575,8 @@ class WorkerManager(object):
         if any(port in self._step_requests for port in ports):
             # if the port is available
             port = [x for x in ports if x in self._step_requests][0]
-            self._worker_backend_socket.send(encode_msg(
-                self._step_requests.pop(port)))
+            self._worker_backend_socket.send(
+                encode_msg(self._step_requests.pop(port)))
             self._n_processed += 1
             self.report(f'Step {port} processed')
             # port should be in claimed ports
@@ -638,7 +652,8 @@ class WorkerManager(object):
                 self._last_pending_msg[(ports, num_pending)] = time.time()
 
     def start_worker(self):
-        for idx, (worker_host, num_worker, max_worker) in enumerate(zip(self._worker_hosts, self._num_workers, self._max_workers)):
+        for idx, (worker_host, num_worker, max_worker) in enumerate(
+                zip(self._worker_hosts, self._num_workers, self._max_workers)):
             if num_worker == max_worker:
                 continue
             # local host
@@ -654,25 +669,39 @@ class WorkerManager(object):
                 try:
                     from .hosts import Host
                     host = Host(worker_host, start_engine=False)
-                    env_file = os.path.join(os.path.expanduser('~'), '.sos', f'worker_envs.{os.getpid()}')
+                    env_file = os.path.join(
+                        os.path.expanduser('~'), '.sos',
+                        f'worker_envs.{os.getpid()}')
                     if not os.path.isfile(env_file):
                         with open(env_file, 'wb') as envfile:
-                            pickle.dump({x:y for x,y in os.environ.items() if isinstance(y, str)}, envfile)
+                            pickle.dump(
+                                {
+                                    x: y
+                                    for x, y in os.environ.items()
+                                    if isinstance(y, str)
+                                }, envfile)
                     # NOTE: we assume file systems are shared so we do not copy env_file to remote host
-                    cmd = ['sos', 'worker', '--router', env.config["sockets"]["worker_backend"],
-                        '--sig_mode', env.config['sig_mode'], '--run_mode', env.config['run_mode'],
-                        '--env', env_file, '--workdir', os.getcwd(), '-v', str(env.config['verbosity'])]
+                    cmd = [
+                        'sos', 'worker', '--router',
+                        env.config["sockets"]["worker_backend"], '--sig_mode',
+                        env.config['sig_mode'], '--run_mode',
+                        env.config['run_mode'], '--env', env_file, '--workdir',
+                        os.getcwd(), '-v',
+                        str(env.config['verbosity'])
+                    ]
                     if max_worker is not None:
                         cmd += ['-j', str(max_worker)]
                     p = host._host_agent.run_command(cmd, wait_for_task=True)
                     self._remote_connections.append(p)
                 except Exception as e:
-                    env.logger.error(f'Failed to start workers on host {worker_host}: {e}')
-                    raise RuntimeError(f'Failed to start workers on host {worker_host}: {e}')
+                    env.logger.error(
+                        f'Failed to start workers on host {worker_host}: {e}')
+                    raise RuntimeError(
+                        f'Failed to start workers on host {worker_host}: {e}')
                 self._num_workers[idx] = self._max_workers[idx]
-                self.report(f'start {max_worker} remote workers on {worker_host}')
+                self.report(
+                    f'start {max_worker} remote workers on {worker_host}')
             break
-
 
     def check_workers(self):
         '''Kill workers that have been pending for a while and check if all workers
@@ -681,7 +710,11 @@ class WorkerManager(object):
             self._local_worker_alive_time = time.time()
             # join processes if they are now gone, it should not do anything bad
             # if the process is still running
-            [worker.join() for worker in self._local_workers if not worker.is_alive()]
+            [
+                worker.join()
+                for worker in self._local_workers
+                if not worker.is_alive()
+            ]
             self._local_workers = [
                 worker for worker in self._local_workers if worker.is_alive()
             ]

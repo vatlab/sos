@@ -39,7 +39,7 @@ __all__ = []
 #     # https://github.com/pytest-dev/pytest-cov/issues/139
 #     from pytest_cov.embed import cleanup_on_sigterm
 #     cleanup_on_sigterm()
-# except:
+# except Exception:
 #     pass
 
 
@@ -340,7 +340,7 @@ class Base_Executor:
         try:
             succ = True
             return self.run_as_master(targets=targets, mode=mode)
-        except:
+        except Exception:
             succ = False
             # 1212: when a substep worker is killed, the worker will
             # be killed but the substep workers belonging to the master sos
@@ -1135,12 +1135,12 @@ class Base_Executor:
         # process step of the pipelinp
         try:
             dag = self.initialize_dag(targets=targets)
-        except UnknownTarget as e:
+        except UnknownTarget:
             # if the names cannot be found, try to see if they are named_output
             try:
                 named_targets = [named_output(x) for x in targets]
                 dag = self.initialize_dag(targets=named_targets)
-            except UnknownTarget as e:
+            except UnknownTarget:
                 raise RuntimeError(f'No step to generate target {targets}')
 
         # manager of processes
@@ -1356,8 +1356,12 @@ class Base_Executor:
                                         f'Master send res to nested')
                         manager.report()
                         dag.save(env.config['output_dag'])
-                        if isinstance(res, Exception) and env.config['error_mode'] == 'ignore':
-                            env.log_to_file('EXECUTOR', 'master sent exception to nested {res}. Turnning to result.')
+                        if isinstance(res, Exception
+                                     ) and env.config['error_mode'] == 'ignore':
+                            env.log_to_file(
+                                'EXECUTOR',
+                                'master sent exception to nested {res}. Turnning to result.'
+                            )
                             env.logger.warning(
                                 f'Error from step {runnable} is ignored: {res}')
                             res = {
@@ -1399,8 +1403,7 @@ class Base_Executor:
                                     if proc.in_status(
                                             'workflow_pending'
                                     ) and pwf in proc.step._pending_workflows:
-                                        proc.step._pending_workflows.remove(
-                                            pwf)
+                                        proc.step._pending_workflows.remove(pwf)
                                         if not proc.step._pending_workflows:
                                             proc.set_status('failed')
                                             manager.mark_idle(midx)
@@ -1577,7 +1580,10 @@ class Base_Executor:
                 if manager.all_done():
                     break
                 elif dag.degraded() and manager.all_pending():
-                    env.log_to_file('EXECUTOR', f'Master terminate because {"degration" if dag.degraded() else "" } {" all pending" if manager.all_pending() else ""}')
+                    env.log_to_file(
+                        'EXECUTOR',
+                        f'Master terminate because {"degration" if dag.degraded() else "" } {" all pending" if manager.all_pending() else ""}'
+                    )
                     break
                 else:
                     time.sleep(0.1)
@@ -1586,8 +1592,8 @@ class Base_Executor:
                 failed_steps, pending_steps = dag.pending()
                 if pending_steps:
                     sections = [
-                        self.workflow.section_by_id(x._step_uuid).step_name(True)
-                        for x in pending_steps
+                        self.workflow.section_by_id(
+                            x._step_uuid).step_name(True) for x in pending_steps
                     ]
                     exec_error.append(
                         self.workflow.name,
@@ -1603,7 +1609,9 @@ class Base_Executor:
         finally:
             manager.terminate()
         #
-        env.log_to_file('EXECUTOR', f'Master workflow {self.workflow.name} completed ' + ( 'with' if exec_error.errors else 'without') + ' error')
+        env.log_to_file(
+            'EXECUTOR', f'Master workflow {self.workflow.name} completed ' +
+            ('with' if exec_error.errors else 'without') + ' error')
 
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
@@ -1837,8 +1845,8 @@ class Base_Executor:
                 failed_steps, pending_steps = dag.pending()
                 if pending_steps:
                     sections = [
-                        self.workflow.section_by_id(x._step_uuid).step_name(True)
-                        for x in pending_steps
+                        self.workflow.section_by_id(
+                            x._step_uuid).step_name(True) for x in pending_steps
                     ]
                     exec_error.append(
                         self.workflow.name,
@@ -1852,7 +1860,9 @@ class Base_Executor:
             exec_error.append(self.workflow.name, e)
             # manager.terminate()
 
-        env.log_to_file('EXECUTOR', f'Subworkflow {self.workflow.name} completed ' + ( 'with' if exec_error.errors else 'without') + ' error')
+        env.log_to_file(
+            'EXECUTOR', f'Subworkflow {self.workflow.name} completed ' +
+            ('with' if exec_error.errors else 'without') + ' error')
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
             # if failed_steps:
