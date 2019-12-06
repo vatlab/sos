@@ -1304,11 +1304,7 @@ class Host:
         # find the task engine
         return [self._task_engine.check_task_status(task) for task in tasks]
 
-    def retrieve_results(self, tasks: List[str]) -> Dict[str, Union[
-            Dict[str, Union[int, str, Dict[int, Dict[Any, Any]], float]],
-            Dict[str, int], Dict[str, Union[int, str, Dict[file_target, str],
-                                            Dict[int, Dict[Any, Any]], float]],
-            Dict[str, Union[int, str, Dict[int, Dict[str, int]], float]]]]:
+    def retrieve_results(self, tasks: List[str]):
         return {task: self._host_agent.receive_result(task) for task in tasks}
 
     def execute_workflow(self, script, cmd, **template_args):

@@ -214,6 +214,91 @@ class MasterTaskParams(TaskParams):
 
         return self
 
+def combine_results(task_id, results):
+    # now we collect result
+    all_res = {
+        'ret_code': 0,
+        'output': None,
+        'subtasks': {},
+        'shared': {},
+        'skipped': 0,
+        'signature': {}
+    }
+    for res in results:
+        tid = res['task']
+        all_res['subtasks'][tid] = res
+
+        if 'exception' in res:
+            all_res['exception'] = res['exception']
+            all_res['ret_code'] += 1
+            continue
+        all_res['ret_code'] += res['ret_code']
+        if all_res['output'] is None:
+            all_res['output'] = copy.deepcopy(res['output'])
+        else:
+            try:
+                all_res['output'].extend(res['output'], keep_groups=True)
+            except Exception:
+                env.logger.warning(
+                    f"Failed to extend output {all_res['output']} with {res['output']}"
+                )
+        all_res['shared'].update(res['shared'])
+        # does not care if one or all subtasks are executed or skipped.
+        all_res['skipped'] += res.get('skipped', 0)
+        if 'signature' in res:
+            all_res['signature'].update(res['signature'])
+
+    if all_res['ret_code'] != 0:
+        if all_res['ret_code'] == len(results):
+            if env.config['run_mode'] == 'run':
+                env.logger.info(
+                    f'All {len(results)} tasks in {task_id} ``failed``')
+            else:
+                env.logger.debug(
+                    f'All {len(results)} tasks in {task_id} ``failed``')
+        else:
+            if env.config['run_mode'] == 'run':
+                env.logger.info(
+                    f'{all_res["ret_code"]} of {len(results)} tasks in {task_id} ``failed``'
+                )
+            else:
+                env.logger.debug(
+                    f'{all_res["ret_code"]} of {len(results)} tasks in {task_id} ``failed``'
+                )
+
+        # if some failed, some skipped, not skipped
+        if 'skipped' in all_res:
+            all_res.pop('skipped')
+    elif all_res['skipped']:
+        if all_res['skipped'] == len(results):
+            if env.config['run_mode'] == 'run':
+                env.logger.info(
+                    f'All {len(results)} tasks in {task_id} ``ignored`` or skipped'
+                )
+            else:
+                env.logger.debug(
+                    f'All {len(results)} tasks in {task_id} ``ignored`` or skipped'
+                )
+        else:
+            # if only partial skip, we still save signature and result etc
+            if env.config['run_mode'] == 'run':
+                env.logger.info(
+                    f'{all_res["skipped"]} of {len(results)} tasks in {task_id} ``ignored`` or skipped'
+                )
+            else:
+                env.logger.debug(
+                    f'{all_res["skipped"]} of {len(results)} tasks in {task_id} ``ignored`` or skipped'
+                )
+
+            all_res.pop('skipped')
+    else:
+        if env.config['run_mode'] == 'run':
+            env.logger.info(
+                f'All {len(results)} tasks in {task_id} ``completed``')
+        else:
+            env.logger.debug(
+                f'All {len(results)} tasks in {task_id} ``completed``')
+    return all_res
 
 class TaskStatus(Enum):
     new = 0
@@ -452,7 +537,48 @@ class TaskFile(object):
                 if signature_size > 0:
                     fh.write(signature)
 
-    def add_result(self, result: dict):
+    def add_result(self, result: dict={}):
+        if not result:
+            params = self._get_params()
+            # this is a master task, get all sub task IDs
+            if hasattr(params, 'task_stack'):
+                missing_tasks = set([x[0] for x in params.task_stack])
+                #
+                cache_file = os.path.join(
+                    os.path.expanduser('~'), '.sos', 'tasks', self.task_id + '.cache')
+                results = []
+                if os.path.isfile(cache_file):
+                    try:
+                        with open(cache_file, 'rb') as f:
+                            while True:
+                                res = pickle.load(f)
+                                if not 'task' in res:
+                                    # something is wrong
+                                    break
+                                missing_tasks.remove(res['task'])
+                                results.append(res)
+                        os.remove(cache_file)
+                    except Exception:
+                        # we read until an error occurs
+                        pass
+                if not results:
+                    # if there is no result at all, do not save result
+                    return
+                else:
+                    # now, if we have some results, we need to fill the rest of the aborted ones
+                    results.extend([
+                        {
+                            'task': t,
+                            'ret_code': 2,
+                            'shared': {},
+                            'exception': RuntimeError(f'Subtask {t} is aborted')
+                        }
+                    for t in missing_tasks])
+                result = combine_results(self.task_id, results)
+            else:
+                # single task, no result, do not save
+                return
+
         result_block = lzma.compress(pickle.dumps(result))
         with fasteners.InterProcessLock(
                 os.path.join(env.temp_dir, self.task_id + '.lck')):
@@ -468,6 +594,7 @@ class TaskFile(object):
                         header.pulse_size + header.stdout_size +
                         header.stderr_size)
                 fh.write(result_block)
+
 
     def add_signature(self, signature: dict):
         signature_block = lzma.compress(pickle.dumps(signature))
@@ -744,7 +871,7 @@ class TaskFile(object):
                 # terminal status
                 remove_task_files(self.task_id, [
                     '.sh', '.job_id', '.sosout', '.soserr', '.out', '.err',
-                    '.pulse'
+                    '.pulse', '.cache'
                 ])
 
     status = property(_get_status, _set_status)
@@ -955,6 +1082,8 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         # 1242
         if os.path.isfile(stdout_file) or os.path.isfile(stderr_file):
             tf.add_outputs(keep_result=True)
+        # 1323
+        tf.add_result()
         remove_task_files(task, ['.sosout', '.soserr', '.out', '.err'])
         # stdout and stderr files should not exist
         status_files = {
@@ -1009,6 +1138,9 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                 )
 
             tf.add_outputs()
+            # 1323
+            tf.add_result()
+
             # assume aborted
             tf.status = 'aborted'
             return dict(
@@ -1036,6 +1168,8 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         env.logger.warning(
             f'Task {task} considered as aborted due to missing pulse file.')
         tf.add_outputs()
+        # 1323
+        tf.add_result()
         return dict(
             status='aborted',
             files={
@@ -1645,6 +1779,9 @@ def kill_task(task):
             'a') as err:
         err.write(f'Task {task} killed by sos kill command or task engine.')
     tf.add_outputs()
+    # 1323
+    tf.add_result()
+
     TaskFile(task).status = 'aborted'
     remove_task_files(
         task,

@@ -19,7 +19,7 @@ from .monitor import ProcessMonitor
 from .targets import (InMemorySignature, file_target, sos_step, dynamic,
                       sos_targets)
 from .utils import StopInputGroup, env, pickleable, ProcessKilled, get_localhost_ip
-from .tasks import TaskFile, remove_task_files, monitor_interval, resource_monitor_interval
+from .tasks import TaskFile, combine_results, remove_task_files, monitor_interval, resource_monitor_interval
 from .step_executor import parse_shared_vars
 from .messages import decode_msg
 from .executor_utils import __null_func__, get_traceback_msg, prepare_env, clear_output
@@ -440,7 +440,7 @@ class BaseTaskExecutor(object):
             results = self.execute_master_task_distributedly(
                 params, master_runtime, sig_content, n_workers)
 
-        return self._combine_results(task_id, results)
+        return combine_results(task_id, results)
 
     def execute_master_task_in_parallel(self, params, master_runtime,
                                         sig_content, n_workers):
@@ -455,11 +455,13 @@ class BaseTaskExecutor(object):
                 x: master_runtime.get(x, {}) for x in ('_runtime', sub_id)
             }
             sub_sig = {sub_id: sig_content.get(sub_id, {})}
-            results.append(
-                p.apply_async(
+            res = p.apply_async(
                     self.execute_single_task,
                     (sub_id, sub_params, sub_runtime, sub_sig, True),
-                    callback=self._append_subtask_outputs))
+                    callback=self._append_subtask_outputs)
+            self._cache_subresult(params.ID, res)
+            results.append(res)
+
         for idx, r in enumerate(results):
             results[idx] = r.get()
         p.close()
@@ -484,6 +486,7 @@ class BaseTaskExecutor(object):
             except Exception as e:
                 env.logger.warning(
                     f'Failed to copy result of subtask {sub_id}: {e}')
+            self._cache_subresult(params.ID, res)
             results.append(res)
         return results
 
@@ -540,6 +543,7 @@ class BaseTaskExecutor(object):
                     self._append_subtask_outputs(res)
                 except Exception as e:
                     env.logger.warning(f'Failed to copy result of subtask: {e}')
+                self._cache_subresult(params.ID, res)
                 results.append(res)
             succ = True
         except Exception as e:
@@ -554,6 +558,11 @@ class BaseTaskExecutor(object):
             self.controller.join()
             disconnect_controllers(env.zmq_context if succ else None)
         return results
+
+    def _cache_subresult(self, master_ID, sub_result):
+        cache_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', tid + '.cache')
+        with open(cache_file, 'wb') as cache:
+            pickle.dump(sub_result, cache)
 
     def _parse_num_workers(self, num_workers):
         # return number of nodes and workers
@@ -629,92 +638,6 @@ class BaseTaskExecutor(object):
             remove_task_files(tid, ['.sosout', '.soserr', '.out', '.err'])
         except Exception as e:
             env.logger.debug(f'Failed to remove files {tid}: {e}')
-
-    def _combine_results(self, task_id, results):
-        # now we collect result
-        all_res = {
-            'ret_code': 0,
-            'output': None,
-            'subtasks': {},
-            'shared': {},
-            'skipped': 0,
-            'signature': {}
-        }
-        for res in results:
-            tid = res['task']
-            all_res['subtasks'][tid] = res
-
-            if 'exception' in res:
-                all_res['exception'] = res['exception']
-                all_res['ret_code'] += 1
-                continue
-            all_res['ret_code'] += res['ret_code']
-            if all_res['output'] is None:
-                all_res['output'] = copy.deepcopy(res['output'])
-            else:
-                try:
-                    all_res['output'].extend(res['output'], keep_groups=True)
-                except Exception:
-                    env.logger.warning(
-                        f"Failed to extend output {all_res['output']} with {res['output']}"
-                    )
-            all_res['shared'].update(res['shared'])
-            # does not care if one or all subtasks are executed or skipped.
-            all_res['skipped'] += res.get('skipped', 0)
-            if 'signature' in res:
-                all_res['signature'].update(res['signature'])
-
-        if all_res['ret_code'] != 0:
-            if all_res['ret_code'] == len(results):
-                if env.config['run_mode'] == 'run':
-                    env.logger.info(
-                        f'All {len(results)} tasks in {task_id} ``failed``')
-                else:
-                    env.logger.debug(
-                        f'All {len(results)} tasks in {task_id} ``failed``')
-            else:
-                if env.config['run_mode'] == 'run':
-                    env.logger.info(
-                        f'{all_res["ret_code"]} of {len(results)} tasks in {task_id} ``failed``'
-                    )
-                else:
-                    env.logger.debug(
-                        f'{all_res["ret_code"]} of {len(results)} tasks in {task_id} ``failed``'
-                    )
-
-            # if some failed, some skipped, not skipped
-            if 'skipped' in all_res:
-                all_res.pop('skipped')
-        elif all_res['skipped']:
-            if all_res['skipped'] == len(results):
-                if env.config['run_mode'] == 'run':
-                    env.logger.info(
-                        f'All {len(results)} tasks in {task_id} ``ignored`` or skipped'
-                    )
-                else:
-                    env.logger.debug(
-                        f'All {len(results)} tasks in {task_id} ``ignored`` or skipped'
-                    )
-            else:
-                # if only partial skip, we still save signature and result etc
-                if env.config['run_mode'] == 'run':
-                    env.logger.info(
-                        f'{all_res["skipped"]} of {len(results)} tasks in {task_id} ``ignored`` or skipped'
-                    )
-                else:
-                    env.logger.debug(
-                        f'{all_res["skipped"]} of {len(results)} tasks in {task_id} ``ignored`` or skipped'
-                    )
-
-                all_res.pop('skipped')
-        else:
-            if env.config['run_mode'] == 'run':
-                env.logger.info(
-                    f'All {len(results)} tasks in {task_id} ``completed``')
-            else:
-                env.logger.debug(
-                    f'All {len(results)} tasks in {task_id} ``completed``')
-        return all_res
 
     def _collect_task_result(self,
                              task_id,
