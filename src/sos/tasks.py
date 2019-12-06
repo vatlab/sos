@@ -584,13 +584,14 @@ class TaskFile(object):
         result.pop('signature', None)
         #
         result_block = lzma.compress(pickle.dumps(result))
+        signature_block = lzma.compress(pickle.dumps(signature)) if signature else b''
         with fasteners.InterProcessLock(
                 os.path.join(env.temp_dir, self.task_id + '.lck')):
             with open(self.task_file, 'r+b') as fh:
                 header = self._read_header(fh)
                 header = header._replace(
                     result_size=len(result_block),
-                    signature_size=0,
+                    signature_size=len(signature_block),
                 )
                 self._write_header(fh, header)
                 fh.seek(self.header_size + header.params_size +
@@ -598,21 +599,8 @@ class TaskFile(object):
                         header.pulse_size + header.stdout_size +
                         header.stderr_size)
                 fh.write(result_block)
-        #
-        if not signature:
-            return
-        signature_block = lzma.compress(pickle.dumps(signature))
-        with fasteners.InterProcessLock(
-                os.path.join(env.temp_dir, self.task_id + '.lck')):
-            with open(self.task_file, 'r+b') as fh:
-                header = self._read_header(fh)
-                header = header._replace(signature_size=len(signature_block))
-                self._write_header(fh, header)
-                fh.seek(self.header_size + header.params_size +
-                        header.runtime_size + header.shell_size +
-                        header.pulse_size + header.stdout_size +
-                        header.stderr_size + header.result_size)
-                fh.write(signature_block)
+                if signature:
+                    fh.write(signature_block)
 
     def _get_info(self):
         with open(self.task_file, 'rb') as fh:
