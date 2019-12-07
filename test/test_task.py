@@ -721,7 +721,7 @@ print('a')
                 'config_file': '~/docker.yml',
                 'default_queue': 'docker_limited',
                 'sig_mode': 'force',
-                'queue_args': {'cores': '1'}
+                'queue_args': {'cores': 1}
             }).run()
 
     def testLocalMaxCores(self):
