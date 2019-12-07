@@ -691,7 +691,7 @@ class WorkerManager(object):
                     ]
                     if max_worker is not None:
                         cmd += ['-j', str(max_worker)]
-                    p = host._host_agent.run_command(cmd, wait_for_task=True)
+                    p = host._host_agent.run_command(cmd, wait_for_task=False)
                     self._remote_connections.append(p)
                 except Exception as e:
                     env.logger.error(
