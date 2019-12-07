@@ -291,6 +291,9 @@ def create_task(global_def, global_vars, task_stmt, task_params):
             'TASK',
             f'Using specified workdir {env.sos_dict["_runtime"]["workdir"]}')
 
+    # 1324
+    env.sos_dict['_runtime'].update(env.config.get('queue_args', {}))
+
     # NOTE: we do not explicitly include 'step_input', 'step_output',
     # 'step_depends' and 'CONFIG'
     # because they will be included by env.sos_dict['__signature_vars__'] if they are actually

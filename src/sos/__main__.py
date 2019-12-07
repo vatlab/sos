@@ -312,12 +312,16 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         '-q',
         dest='__queue__',
         metavar='QUEUE',
+        nargs='+',
         help='''host (server) or job queues to execute all tasks in the
             workflow. The queue can be name, IP, or an alias defined in SoS
             configuration files. A host is assumed to be a remote host with process
             type unless other queue types and related information are defined in the
             host file. If left unspecified, tasks are executed as part of the regular
-            step processes unless task-specific queues are specified.''')
+            step processes unless task-specific queues are specified. Optional
+            KEY=VALUE pairs could be specified after queue name and be used to
+            expand task or workflow templates. These options will override task
+            options if the options with the same name is defined.''')
     parser.add_argument(
         '-r',
         dest='__remote__',
@@ -530,11 +534,32 @@ def cmd_run(args, workflow_args):
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(
             args.workflow, use_default=not args.__targets__)
-        if args.__queue__ in ("none", "None"):
+        if not args.__queue__:
+            args.__queue__ = None
+            queue_args = {}
+        elif args.__queue__[0] in ("none", "None"):
             env.logger.warning(
                 f"Use of -q {args.__queue__} is deprecated and will not be supported in the next release of SoS."
             )
             args.__queue__ = None
+            queue_args = {}
+        else:
+            queue_args = {}
+            for item in args.__queue__[1:]:
+                if '=' not in item:
+                    raise ValueError(
+                        f"KEY=VALUE pairs are required for definitions after queue name."
+                    )
+                k, v = item.split('=', 1)
+                if k == 'walltime':
+                    from .utils import format_HHMMSS
+                    v = format_HHMMSS(v)
+                elif k == 'mem':
+                    from .utils import expand_size
+                    v = expand_size(v)
+                queue_args[k] = v
+            args.__queue__ = args.__queue__[0]
+
         config = {
             'config_file':
                 args.__config__,
@@ -544,6 +569,8 @@ def cmd_run(args, workflow_args):
                 args.__report__,
             'default_queue':
                 args.__queue__,
+            'queue_args':
+                queue_args,
             'worker_procs':
                 get_nodelist() if under_cluster() else args.__worker_procs__,
             'max_running_jobs':
