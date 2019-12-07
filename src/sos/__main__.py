@@ -557,6 +557,14 @@ def cmd_run(args, workflow_args):
                 elif k == 'mem':
                     from .utils import expand_size
                     v = expand_size(v)
+                elif k == 'cores':
+                    v = int(v)
+                elif k == 'trunk_size':
+                    try:
+                        # trunk size could be None?
+                        v = int(v)
+                    except Exception:
+                        pass
                 queue_args[k] = v
             args.__queue__ = args.__queue__[0]
 

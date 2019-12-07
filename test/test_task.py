@@ -706,6 +706,24 @@ print('a')
                     'sig_mode': 'force',
                 }).run)
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
+    def testOverrideMaxCores(self):
+        '''Test use queue_args to override server restriction max_cores'''
+        script = SoS_Script('''
+[10]
+task: cores=8
+print('a')
+''')
+        wf = script.workflow()
+        Base_Executor(
+            wf,
+            config={
+                'config_file': '~/docker.yml',
+                'default_queue': 'docker_limited',
+                'sig_mode': 'force',
+                'queue_args': {'cores': '1'}
+            }).run()
+
     def testLocalMaxCores(self):
         '''Test server restriction max_cores'''
         script = SoS_Script('''
