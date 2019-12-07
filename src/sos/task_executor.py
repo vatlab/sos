@@ -457,11 +457,11 @@ class BaseTaskExecutor(object):
                     self.execute_single_task,
                     (sub_id, sub_params, sub_runtime, sub_sig, True),
                     callback=self._append_subtask_outputs)
-            self._cache_subresult(params.ID, res)
             results.append(res)
 
         for idx, r in enumerate(results):
             results[idx] = r.get()
+            self._cache_subresult(params.ID, results[idx])
         p.close()
         p.join()
         return results
