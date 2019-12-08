@@ -1413,21 +1413,13 @@ def load_config_files(filename=None):
             if isinstance(v, dict):
                 # v should be processed in place
                 res[k] = interpolate_value(cfg, v)
-            elif isinstance(v, str) and '{' in v and '}' in v:
+            elif isinstance(v, str) and '{' in v and '}' in v and not (k.endswith('_template') or k.endswith('_cmd')):
                 try:
                     res[k] = eval(
                         as_fstring(v), copy.copy(item), copy.copy(cfg))
-                except Exception:
-                    # if there is something cannot be resolved, it is ok because
-                    # it might require some other variables such as walltime.
-                    for kk, vv in item.items():
-                        if not isinstance(vv, (str, bytes, int, float, bool)):
-                            continue
-                        v = re.sub(r"{\s*" + kk + r"\s*}", str(vv), v)
-                    for kk, vv in cfg.items():
-                        if not isinstance(vv, (str, bytes, int, float, bool)):
-                            continue
-                        v = re.sub(r"{\s*" + kk + r"\s*}", str(vv), v)
+                except Exception as e:
+                    # we do not care about other places when interpolation fails
+                    env.logger.debug(f'Failed to interpolate {k}={v}: {e}')
                     res[k] = v
             else:
                 res[k] = v

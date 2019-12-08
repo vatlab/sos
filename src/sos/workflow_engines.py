@@ -2,6 +2,7 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
+import copy
 import os
 import subprocess
 
@@ -96,7 +97,8 @@ class WorkflowEngine:
             self.command[0] = 'sos-runner'
 
         self.command = subprocess.list2cmdline(self.command)
-        self.template_args = template_args
+        self.template_args = copy.deepcopy(self.config)
+        self.template_args.update(template_args)
         return True
 
 
