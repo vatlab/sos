@@ -418,7 +418,7 @@ class RemoteHost(object):
                 k = max(matched, key=len)
                 dest = self.path_map[k] + dest[len(k):]
             else:
-                env.logger.warning(
+                env.logger.debug(
                     f'Path {source} is not under any specified paths of localhost and is mapped to {dest} on remote host.'
                 )
             result[source] = dest.replace('\\', '/')
