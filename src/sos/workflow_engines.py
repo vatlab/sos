@@ -73,17 +73,15 @@ class WorkflowEngine:
     def execute_workflow(self, filename, command, **template_args):
         # there is no need to prepare workflow (e.g. copy over)
         if os.path.isfile(filename):
-            self.agent.send_to_host([filename])
-            self.filename = filename
+            ret = self.agent.send_to_host([filename])
         elif os.path.isfile(filename + '.sos'):
-            self.agent.send_to_host([filename + '.sos'])
-            self.filename = filename + '.sos'
+            ret = self.agent.send_to_host([filename + '.sos'])
         elif os.path.isfile(filename + '.ipynb'):
-            self.agent.send_to_host([filename + '.ipynb'])
-            self.filename = filename + '.ipynb'
+            ret = self.agent.send_to_host([filename + '.ipynb'])
         else:
             raise RuntimeError(f'Failed to locate script {filename}')
 
+        self.filename = list(ret.values())[0]
         self.command = self.remove_arg(command, '-r')
         # -c only point to local config file.
         self.command = self.remove_arg(self.command, '-c')
@@ -93,12 +91,16 @@ class WorkflowEngine:
         # a different path.
         if os.path.basename(command[0]) == 'sos':
             self.command[0] = 'sos'
+            self.command[2] = self.filename
         elif os.path.basename(command[0]) == 'sos-runner':
             self.command[0] = 'sos-runner'
-
+            self.command[1] = self.filename
+        else:
+            raise ValueError(f'Failed to generate remote execution command: {sel.command}')
         self.command = subprocess.list2cmdline(self.command)
         self.template_args = copy.deepcopy(self.config)
         self.template_args.update(template_args)
+        env.log_to_file('WORKFLOW', f'Execute command on remote host: {self.command}')
         return True
 
 
