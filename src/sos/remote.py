@@ -442,8 +442,19 @@ def setup_remote_access(cfg, hosts=[], password='', verbosity=1):
     for host in sorted(hosts if hosts else all_hosts):
         try:
             if host in all_hosts:
-                h = Host(host, start_engine=False)
+                h = Host(host, start_engine=False, test_connection=False)
                 host_agent = h._host_agent
+                #
+                # can ssh already?
+                response = test_ssh(host_agent)
+                if response.startswith('OK'):
+                    env.logger.info(
+                        f'Public key access is already enabled for host ``{host}`` with address ``{host_agent.address}``'
+                    )
+                    continue
+                elif 'Could not resolve hostname' in response:
+                    env.logger.error(response)
+                    sys.exit(1)
             else:
                 from argparse import Namespace
                 host_agent = Namespace(address=host, port=22)
@@ -456,26 +467,15 @@ def setup_remote_access(cfg, hosts=[], password='', verbosity=1):
         else:
             env.logger.info(f'Public key {public_key} is found. Creating one.')
             try:
-                subprocess.check_call(
+                subprocess.check_output(
                     'echo | ssh-keygen -t rsa',
                     shell=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL)
+                    stderr=subprocess.STDOUT).decode()
                 if not os.path.isfile(public_key):
                     raise RuntimeError('public key not found after ssh-keygen')
-            except Exception as e:
+            except subprocess.CalledProcessError as e:
+                print(e.output.decode())
                 raise RuntimeError(f'Failed to create public key: {e}')
-        #
-        # can ssh?
-        response = test_ssh(host_agent)
-        if response.startswith('OK'):
-            env.logger.info(
-                f'Public key access is already enabled for host ``{host}`` with address ``{host_agent.address}``'
-            )
-            continue
-        elif 'Could not resolve hostname' in response:
-            env.logger.error(response)
-            sys.exit(1)
         #
         response = copy_public_key(host, host_agent, password)
         stty_sane()
@@ -483,6 +483,8 @@ def setup_remote_access(cfg, hosts=[], password='', verbosity=1):
             env.logger.error(response)
             sys.exit(1)
         # file copied, check ssh again.
+        if isinstance(host_agent, Namespace):
+            host_agent = Host(host, start_engine=False, test_connection=False)._host_agent
         response = test_ssh(host_agent)
         if response.startswith('OK'):
             env.logger.info(
