@@ -21,6 +21,7 @@ from .targets import (RemovedTarget, file_target, sos_targets, sos_step, path,
 from .utils import env, Error, format_HHMMSS, expand_size, load_config_files, get_traceback
 from .eval import SoS_eval, stmtHash, analyze_global_statements
 from .tasks import TaskParams
+from .syntax import SOS_TAG
 from .controller import request_answer_from_controller
 
 
