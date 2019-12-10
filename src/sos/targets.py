@@ -415,6 +415,12 @@ class dynamic(BaseTarget):
     def target_name(self):
         return self._target
 
+    def target_exists(self, mode='any'):
+        return False
+
+    def target_signature(self, mode='any'):
+        return ''
+
     def resolve(self):
         if isinstance(self._target, str):
             return sorted(
