@@ -21,7 +21,6 @@ from .targets import (RemovedTarget, file_target, sos_targets, sos_step, path,
 from .utils import env, Error, format_HHMMSS, expand_size, load_config_files, get_traceback
 from .eval import SoS_eval, stmtHash, analyze_global_statements
 from .tasks import TaskParams
-from .syntax import SOS_TAG, SOS_RUNTIME_OPTIONS
 from .controller import request_answer_from_controller
 
 
@@ -269,8 +268,8 @@ def create_task(global_def, global_vars, task_stmt, task_params):
                 f'Only keyword arguments are accepted for task statement: "{task_params}" provided'
             )
         for k, v in kwargs.items():
-            if k not in SOS_RUNTIME_OPTIONS:
-                raise RuntimeError(f'Unrecognized runtime option {k}={v}')
+            # if k not in SOS_RUNTIME_OPTIONS:
+            #     raise RuntimeError(f'Unrecognized runtime option {k}={v}')
             # standardize walltime to an integer
             if k == 'walltime':
                 v = format_HHMMSS(v)

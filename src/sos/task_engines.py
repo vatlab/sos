@@ -731,11 +731,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
             'home_dir': os.path.expanduser('~')
         })
         if '_runtime' in env.sos_dict:
-            runtime.update({
-                x: env.sos_dict['_runtime'][x]
-                for x in ('nodes', 'cores', 'workdir', 'mem', 'walltime')
-                if x in env.sos_dict['_runtime']
-            })
+            runtime.update(env.sos_dict['_runtime'])
         if 'nodes' not in runtime:
             runtime['nodes'] = 1
         if 'cores' not in runtime:
@@ -745,6 +741,13 @@ class BackgroundProcess_TaskEngine(TaskEngine):
         job_text = ''
         for task_id in task_ids:
             runtime['task'] = task_id
+            tf = TaskFile(task_id)
+            task_runtime = tf.runtime
+            task_runtime['_runtime'].update(
+                tf.params.sos_dict.get('_runtime', {}))
+
+            runtime['command'] = f"sos execute {task_id} -v {env.verbosity} -s {env.config.get('sig_mode', 'default')} -m {env.config.get('run_mode', 'run')}"
+            runtime.update(task_runtime['_runtime'])
             try:
                 job_text += cfg_interpolate(self.task_template, runtime)
                 job_text += '\n'
