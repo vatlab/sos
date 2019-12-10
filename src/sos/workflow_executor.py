@@ -816,6 +816,8 @@ class Base_Executor:
         if self.resolve_dangling_targets(dag, targets) == 0:
             if targets:
                 raise UnknownTarget(f'No step to generate target {targets}.')
+        dag.show_nodes()
+
         # now, there should be no dangling targets, let us connect nodes
         dag.build()
 

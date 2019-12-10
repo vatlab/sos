@@ -11,6 +11,7 @@ import subprocess
 import time
 import unittest
 
+from sos import execute_workflow
 from sos._version import __version__
 from sos.parser import SoS_Script
 from sos.targets import file_target, sos_targets
@@ -2010,6 +2011,23 @@ assert(step_input.groups[1] == ['b_2.txt', 'b_3.txt'])
         for wf in ('B', 'C', 'D'):
             wf = script.workflow(wf)
             Base_Executor(wf).run()
+
+    def testNamedOutput1336(self):
+        'Test issue 1336'
+        execute_workflow('''
+import time
+
+[10]
+output: bak='A.bak'
+time.sleep(2)
+path('A.bak').touch()
+
+
+[20]
+input: named_output('bak')
+output: 'B.txt'
+_output.touch()
+''')
 
     def testRemoveEmptyGroups(self):
         '''Test remove of empty groups'''
