@@ -374,7 +374,7 @@ def kill_all_subprocesses(pid=None, include_self=False):
 
 def reevaluate_output():
     # re-process the output statement to determine output files
-    args, _ = SoS_eval(
+    args, kwargs = SoS_eval(
         f'__null_func__({env.sos_dict["step_output"]._undetermined})',
         extra_dict={
             '__null_func__': __null_func__,
@@ -386,6 +386,7 @@ def reevaluate_output():
         return
     # handle dynamic args
     args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
+    args.extend([x.resolve() if isinstance(x, dynamic) else x for x in kwargs.values()])
     return sos_targets(*args, _verify_existence=True)
 
 
