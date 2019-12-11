@@ -386,8 +386,8 @@ def reevaluate_output():
         return
     # handle dynamic args
     args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-    args.extend([x.resolve() if isinstance(x, dynamic) else x for x in kwargs.values()])
-    return sos_targets(*args, _verify_existence=True)
+    kwargs = {x:(y.resolve() if isinstance(y, dynamic) else y) for x,y in kwargs.items()}
+    return sos_targets(*args, **kwargs, _verify_existence=True)
 
 
 def validate_step_sig(sig):
