@@ -5,6 +5,7 @@
 import pkg_resources
 
 # backward compatibility #1337
+from .pattern import expand_pattern
 from .targets import path, paths
 from .utils import get_output, sos_get_param
 
