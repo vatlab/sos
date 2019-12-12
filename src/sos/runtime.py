@@ -7,10 +7,10 @@ import pkg_resources
 from .eval import interpolate
 from .pattern import expand_pattern
 from .targets import path, paths
-from .utils import get_output, get_logger, sos_handle_parameter_
+from .utils import get_output, get_logger, __get_param__
 
 # silent pyflakes
-get_output, sos_handle_parameter_
+get_output, __get_param__
 interpolate, expand_pattern, path, paths
 
 

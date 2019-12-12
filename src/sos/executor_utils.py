@@ -434,7 +434,7 @@ def strip_param_defs(stmt):
     # the parameters are translated to
     #
     # #begin_parameter name
-    # name = sos_handle_parameter_("name", value
+    # name = __get_param__("name", value
     # ) #end_parameter name
     #
     # we will need to remove these lines in cases when parameters are not handled
