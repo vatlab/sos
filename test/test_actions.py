@@ -660,14 +660,6 @@ report: output=path('a.txt')
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        # test report to other types of output: paths
-        script = SoS_Script(r'''
-[A_1]
-report: output=paths('a.txt')
-    something
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
         # test report to other types of output: file_target
         script = SoS_Script(r'''
 [A_1]
