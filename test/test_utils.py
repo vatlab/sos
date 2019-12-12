@@ -14,7 +14,7 @@ from sos.pattern import expand_pattern, extract_pattern
 from sos.targets import executable, sos_targets, file_target, sos_step
 # these functions are normally not available but can be imported
 # using their names for testing purposes
-from sos.utils import WorkflowDict, env, logger, stable_repr, split_fstring, as_fstring
+from sos.utils import WorkflowDict, env, get_logger, stable_repr, split_fstring, as_fstring
 from sos.workflow_executor import analyze_section
 from sos.workflow_executor import Base_Executor
 
@@ -42,16 +42,16 @@ class TestUtils(unittest.TestCase):
         '''Test logging level'''
         for verbosity in [0, 1, 2, 3, 4]:
             env.verbosity = verbosity
-            logger.debug(
+            get_logger().debug(
                 'Verbosity {}:debug message with ``empahsized text`` in between'
                 .format(env.verbosity))
-            logger.info(
+            get_logger().info(
                 'Verbosity {}:info message with ``empahsized text`` in between'
                 .format(env.verbosity))
-            logger.warning(
+            get_logger().warning(
                 'Verbosity {}:warning message with ``empahsized text`` in between'
                 .format(env.verbosity))
-            logger.error(
+            get_logger().error(
                 'Verbosity {}:error message with ``empahsized text`` in between'
                 .format(env.verbosity))
 
