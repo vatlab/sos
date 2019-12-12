@@ -4,7 +4,9 @@
 # Distributed under the terms of the 3-clause BSD License.
 import pkg_resources
 
-from .utils import __get_param__
+# backward compatibility #1337
+from .targets import path, paths
+from .utils import get_output, __get_param__
 
 # silent pyflakes
 __get_param__
