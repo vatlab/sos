@@ -556,7 +556,9 @@ class RuntimeEnvironments(object):
 
 # set up environment variable and a default logger
 env = RuntimeEnvironments()
-logger = env.logger
+
+def get_logger():
+    return env.logger
 
 
 #
