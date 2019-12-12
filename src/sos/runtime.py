@@ -4,14 +4,10 @@
 # Distributed under the terms of the 3-clause BSD License.
 import pkg_resources
 
-from .eval import interpolate
-from .pattern import expand_pattern
-from .targets import path, paths
-from .utils import get_output, get_logger, __get_param__
+from .utils import __get_param__
 
 # silent pyflakes
-get_output, __get_param__
-interpolate, expand_pattern, path, paths
+__get_param__
 
 
 def _load_group(group: str) -> None:
@@ -24,6 +20,7 @@ def _load_group(group: str) -> None:
             globals()[_name] = _plugin
         except Exception as e:
             # look for sos version requirement
+            from .utils import get_logger
             if 'Requirement.parse' in str(e):
                 import re
                 from ._version import __version__
