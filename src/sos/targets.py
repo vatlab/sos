@@ -692,7 +692,7 @@ class path(type(Path())):
 
     def __add__(self, part):
         if isinstance(part, (str, path)):
-            return path(str(self) + str(part))
+            return self.__class__(str(self) + str(part))
         else:
             raise ValueError(
                 f"Cannot concatenate path to {part} of type {type(part).__name__}: expect a string or path"
