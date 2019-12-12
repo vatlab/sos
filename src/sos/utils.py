@@ -1090,7 +1090,7 @@ def _parse_error(msg):
     raise ArgumentError(msg)
 
 
-def __get_param__(key, defvalue):
+def sos_get_param(key, defvalue):
     '''Parse command line arguments and set values to parameters section.
     NOTE: parmeters will not be handled if it is already defined in
     the environment. This makes the parameters variable.

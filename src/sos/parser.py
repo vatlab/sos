@@ -551,7 +551,7 @@ class SoS_Step:
                 # there is a possibility that value contains # so  sos_handle_parameter(name, val # aaa) will fail
                 self.statements[idx] = [
                     '!',
-                    f'#begin_parameter {name}\n{name} = __get_param__({name.strip()!r}, {value}\n) #end_parameter {name}\n',
+                    f'#begin_parameter {name}\n{name} = sos_get_param({name.strip()!r}, {value}\n) #end_parameter {name}\n',
                     statement[2].strip()
                 ]
                 self.parameters[name] = (value, statement[3])

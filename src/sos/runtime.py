@@ -6,10 +6,10 @@ import pkg_resources
 
 # backward compatibility #1337
 from .targets import path, paths
-from .utils import get_output, __get_param__
+from .utils import get_output, sos_get_param
 
 # silent pyflakes
-__get_param__
+sos_get_param, get_output, path, paths
 
 
 def _load_group(group: str) -> None:
