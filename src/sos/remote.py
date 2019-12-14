@@ -529,7 +529,7 @@ def run_command_on_hosts(cfg, hosts, cmd, verbosity):
             from .utils import get_traceback
             if verbosity and verbosity > 2:
                 sys.stderr.write(get_traceback())
-            env.logger.error(e)
+            env.logger.error(str(e))
 
 
 def push_to_hosts(cfg, hosts, items, verbosity):
@@ -556,7 +556,7 @@ def push_to_hosts(cfg, hosts, items, verbosity):
             from .utils import get_traceback
             if verbosity and verbosity > 2:
                 sys.stderr.write(get_traceback())
-            env.logger.error(e)
+            env.logger.error(str(e))
             sys.exit(1)
 
 
@@ -586,5 +586,5 @@ def pull_from_host(cfg, hosts, items, verbosity):
         from .utils import get_traceback
         if verbosity and verbosity > 2:
             sys.stderr.write(get_traceback())
-        env.logger.error(e)
+        env.logger.error(str(e))
         sys.exit(1)

@@ -91,7 +91,7 @@ class WorkflowSig(object):
                     ] for wf, steps in self.data['step'].items()
             }
         except Exception as e:
-            env.logger.warning(e)
+            env.logger.warning(str(e))
             return {}
 
     def transcripts(self):
@@ -101,7 +101,7 @@ class WorkflowSig(object):
                       ] for step, items in self.data['transcript'].items()
             }
         except Exception as e:
-            env.logger.warning(e)
+            env.logger.warning(str(e))
             return {}
 
     def placeholders(self):

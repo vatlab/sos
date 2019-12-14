@@ -134,7 +134,7 @@ class ProcessMonitor(threading.Thread):
                 # if the process died, exit the thread
                 # the warning message is usually:
                 # WARNING: psutil.NoSuchProcess no process found with pid XXXXX
-                # env.logger.warning(e)
+                # env.logger.warning(str(e))
                 env.logger.debug(
                     f'Monitor of {self.task_id} failed with message {e}')
                 break

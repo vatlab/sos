@@ -107,7 +107,7 @@ def Rmarkdown(script=None,
             #pid = p.pid
             ret = p.wait()
     except Exception as e:
-        env.logger.error(e)
+        env.logger.error(str(e))
     if ret != 0:
         temp_file = os.path.join('.sos', f'{"Rmarkdown"}_{os.getpid()}.md')
         shutil.copyfile(str(input), temp_file)

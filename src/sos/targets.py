@@ -516,10 +516,10 @@ class executable(BaseTarget):
                         shell=True,
                         timeout=5).decode()
                 except subprocess.TimeoutExpired as e:
-                    env.logger.warning(e)
+                    env.logger.warning(str(e))
                     return False
                 except subprocess.CalledProcessError as e:
-                    env.logger.warning(e)
+                    env.logger.warning(str(e))
                     return False
                 for ver in self._version:
                     if ver in output:

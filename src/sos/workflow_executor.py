@@ -1196,7 +1196,7 @@ class Base_Executor:
                                             'exception': e
                                         } for x in new_tasks
                                     }))
-                                env.logger.error(e)
+                                env.logger.error(str(e))
                                 proc.set_status('failed')
                                 if env.config['error_mode'] == 'abort':
                                     manager.stop_dag(dag)
@@ -1230,10 +1230,10 @@ class Base_Executor:
                                     runnable._socket = proc.socket
                                 except Exception as e:
                                     if env.config['error_mode'] == 'ignore':
-                                        env.logger.warning(e)
+                                        env.logger.warning(str(e))
                                         proc.socket.send(encode_msg(''))
                                     else:
-                                        env.logger.error(e)
+                                        env.logger.error(str(e))
                                         proc.socket.send(encode_msg(''))
                                         proc.set_status('failed')
                                         if env.config['error_mode'] == 'abort':
@@ -1719,9 +1719,9 @@ class Base_Executor:
                                 runnable._socket = proc.socket
                             except Exception as e:
                                 if env.config['error_mode'] == 'ignore':
-                                    env.logger.warning(e)
+                                    env.logger.warning(str(e))
                                 else:
-                                    env.logger.error(e)
+                                    env.logger.error(str(e))
                                 # tell the master that nested cannot resolve the
                                 # target so the workflow should stop
                                 proc.socket.send(encode_msg(False))

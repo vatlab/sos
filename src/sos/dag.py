@@ -224,7 +224,7 @@ class SoS_DAG(nx.DiGraph):
                             return node
                     time.sleep(0.1)
             except Exception as e:
-                env.logger.error(e)
+                env.logger.error(str(e))
             finally:
                 notifier.stop()
         return None

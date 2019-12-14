@@ -475,7 +475,7 @@ def cmd_run(args, workflow_args):
         except Exception as e:
             if args.verbosity and args.verbosity > 2:
                 sys.stderr.write(get_traceback())
-            env.logger.error(e)
+            env.logger.error(str(e))
             sys.exit(1)
 
     # '' means no -d
@@ -654,7 +654,7 @@ def cmd_run(args, workflow_args):
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
-        env.logger.error(e)
+        env.logger.error(str(e))
         sys.exit(1)
 
 
@@ -850,7 +850,7 @@ def cmd_worker(args, workflow_args):
         from .utils import get_traceback
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
-        env.logger.error(e)
+        env.logger.error(str(e))
         sys.exit(1)
 
 
@@ -978,7 +978,7 @@ def cmd_remote(args, workflow_args):
         from .utils import get_traceback
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
-        env.logger.error(e)
+        env.logger.error(str(e))
         sys.exit(1)
 
 
@@ -1514,7 +1514,7 @@ def cmd_status(args, workflow_args):
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
-        env.logger.error(e)
+        env.logger.error(str(e))
         sys.exit(1)
 
 
@@ -1609,7 +1609,7 @@ def cmd_purge(args, workflow_args):
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
-        env.logger.error(e)
+        env.logger.error(str(e))
         sys.exit(1)
 
 
@@ -2523,7 +2523,7 @@ def main():
         from .utils import env, get_traceback
         if env.verbosity and env.verbosity > 2:
             sys.stderr.write(get_traceback())
-        env.logger.error(e)
+        env.logger.error(str(e))
         sys.exit(1)
 
 

@@ -272,7 +272,7 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                         res = func(*args, **kwargs)
                     except Exception as e:
                         if 'allow_error' in kwargs and kwargs['allow_error']:
-                            env.logger.warning(e)
+                            env.logger.warning(str(e))
                             res = None
                         else:
                             raise
@@ -283,7 +283,7 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                     res = func(*args, **kwargs)
                 except Exception as e:
                     if 'allow_error' in kwargs and kwargs['allow_error']:
-                        env.logger.warning(e)
+                        env.logger.warning(str(e))
                         res = None
                     else:
                         raise
@@ -1234,7 +1234,7 @@ def pandoc(script=None,
             p = subprocess.Popen(cmd, shell=True)
             ret = p.wait()
     except Exception as e:
-        env.logger.error(e)
+        env.logger.error(str(e))
     if ret != 0:
         temp_file = os.path.join('.sos', f'pandoc_{os.getpid()}.md')
         shutil.copyfile(input, temp_file)

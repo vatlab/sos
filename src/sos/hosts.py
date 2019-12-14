@@ -672,7 +672,7 @@ class RemoteHost(object):
             self._prepare_task(task_id)
             return True
         except Exception as e:
-            env.logger.error(e)
+            env.logger.error(str(e))
             return False
 
     def _prepare_task(self, task_id):
