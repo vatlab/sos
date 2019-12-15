@@ -573,6 +573,20 @@ run: output='lc.txt', expand=True, tracked='test_action.txt'
         Base_Executor(wf).run()
         # should skip
         self.assertLess(time.time() - st, 5)
+        #
+        script = SoS_Script(r'''
+[1]
+input: 'test_action.txt'
+print('step is changed')
+run: output='lc.txt', expand=True, tracked='test_action.txt'
+    sleep 5
+    wc -l {_input[0]} > lc.txt
+''')
+        wf = script.workflow()
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertLess(time.time() - st, 5)
+
         # force
         env.config['sig_mode'] = 'build'
         Base_Executor(wf).run()
