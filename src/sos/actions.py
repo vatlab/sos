@@ -28,7 +28,7 @@ from concurrent.futures import ProcessPoolExecutor
 from .eval import interpolate
 from .parser import SoS_Script
 from .syntax import SOS_ACTION_OPTIONS
-from .targets import (executable, file_target, fileMD5, path, paths,
+from .targets import (textMD5, executable, file_target, fileMD5, path, paths,
                       sos_targets)
 from .utils import (StopInputGroup, TerminateExecution, TimeoutInterProcessLock,
                     env, get_traceback, short_repr, transcribe)
@@ -202,10 +202,10 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                     script = ''
 
                 try:
-                    tfiles = sos_targets(kwargs['tracked'])
+                    tfiles = sos_targets([] if kwargs['tracked'] is True else kwargs['tracked'])
                 except Exception as e:
                     raise ValueError(
-                        f'Parameter tracked of actions can be None, True/False, or one or more filenames: {tfiles} provided: {e}'
+                        f'Parameter tracked of actions can be None, True/False, or one or more filenames: {kwargs["tracked"]} provided: {e}'
                     )
 
                 # append input and output
@@ -214,7 +214,10 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                         tfiles.extend(sos_targets(kwargs[t]))
 
                 from .targets import RuntimeInfo
-                sig = RuntimeInfo(func.__name__, script, [], tfiles, [], kwargs)
+                sig = RuntimeInfo(textMD5(script), sos_targets(kwargs['input'] if 'input' in kwargs else []),
+                     sos_targets(kwargs['output'] if 'output' in kwargs else []),
+                     sos_targets(kwargs['tracked'] if 'tracked' in kwargs and kwargs['tracked'] is not True else []),
+                     kwargs)
                 sig.lock()
                 if env.config['sig_mode'] in ('default', 'skip', 'distributed'):
                     matched = sig.validate()

@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 import unittest
 
 from sos.hosts import Host
@@ -561,13 +562,17 @@ run: expand=True
         script = SoS_Script(r'''
 [1]
 input: 'test_action.txt'
-run: input='test_action.txt', output='lc.txt', expand=True
+run: output='lc.txt', expand=True, tracked='test_action.txt'
+    sleep 5
     wc -l {_input[0]} > lc.txt
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
         # the second time, should skip
+        st = time.time()
         Base_Executor(wf).run()
+        # should skip
+        self.assertLess(time.time() - st, 5)
         # force
         env.config['sig_mode'] = 'build'
         Base_Executor(wf).run()
