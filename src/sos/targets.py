@@ -1567,16 +1567,19 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         elif by == 'all':
             # default option
             self._groups = [_sos_group(range(len(self)), self._labels)]
-        elif isinstance(by, str) and by.startswith('pairsource'):
+        elif isinstance(by, str) and (by.startswith('pairsource') or by.startswith('pairlabel')):
             labels = list(dict.fromkeys(self.labels))
             if len(labels) == 1:
                 raise ValueError(
-                    f'Cannot pairsource input with a single source.')
-            if by == 'pairsource':
+                    f'Cannot pairlabel input with a single label.')
+            if by == 'pairsource' or by == 'pairlabel':
                 grp_size = 1
             else:
                 try:
-                    grp_size = int(by[10:])
+                    if by.startswith('pairsource'):
+                        grp_size = int(by[10:])
+                    else:
+                        grp_size = int(by[9:])
                 except Exception:
                     raise ValueError(f'Invalid pairsource option {by}')
             src_sizes = {s: self.labels.count(s) for s in labels}
@@ -1676,7 +1679,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 _sos_group(x, parent=self)
                 for x in combinations(range(len(self)), grp_size)
             ]
-        elif by == 'source':
+        elif by == 'source' or by == 'label':
             labels = list(dict.fromkeys(self.labels))
             self._groups = [
                 _sos_group([i for i, x in enumerate(self._labels) if x == src],

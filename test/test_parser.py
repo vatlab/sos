@@ -1123,7 +1123,7 @@ executed.append(_input)
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run, mode="dryrun")
         #
-        # group by source
+        # group by label
         file_target('c.txt').touch()
         script = SoS_Script('''
 [A]
@@ -1138,7 +1138,7 @@ _output.touch()
 [0: shared='executed']
 executed = []
 
-input: 'c.txt', output_from(['A', 'B']), group_by='source'
+input: 'c.txt', output_from(['A', 'B']), group_by='label'
 
 executed.append(_input)
 
@@ -1151,7 +1151,7 @@ executed.append(_input)
             sos_targets('b.txt', 'b1.txt')
         ])
         #
-        # group_by='pairsource'
+        # group_by='pairlabel'
         file_target('c.txt').touch()
         script = SoS_Script('''
 [A]
@@ -1165,7 +1165,7 @@ _output.touch()
 [0: shared='executed']
 executed = []
 
-input: output_from(['A', 'B']), group_by='pairsource'
+input: output_from(['A', 'B']), group_by='pairlabel'
 
 executed.append(_input)
 
@@ -1176,7 +1176,7 @@ executed.append(_input)
             env.sos_dict['executed'],
             [sos_targets('a1.txt', 'b1.txt'),
              sos_targets('a2.txt', 'b2.txt')])
-        # group_by='pairsource3'
+        # group_by='pairlabel3'
         self.touch(['c{}.txt'.format(x) for x in range(1, 7)])
 
         script = SoS_Script('''
@@ -1191,7 +1191,7 @@ _output.touch()
 [0: shared='executed']
 executed = []
 
-input: [f'c{x}.txt' for x in range(1, 7)], output_from(['A', 'B']), group_by='pairsource3'
+input: [f'c{x}.txt' for x in range(1, 7)], output_from(['A', 'B']), group_by='pairlabel3'
 
 executed.append(_input)
 
@@ -1204,7 +1204,7 @@ executed.append(_input)
             sos_targets('c4.txt', 'c5.txt', 'c6.txt', 'a4.txt', 'a5.txt',
                         'a6.txt', 'b4.txt', 'b5.txt', 'b6.txt')
         ])
-        # group_by='pairsource3'
+        # group_by='pairlabel3'
         self.touch(['c{}.txt'.format(x) for x in range(1, 7)])
 
         script = SoS_Script('''
@@ -1219,7 +1219,7 @@ _output.touch()
 [0: shared='executed']
 executed = []
 
-input: [f'c{x}.txt' for x in range(1, 3)], output_from(['A', 'B']), group_by='pairsource3'
+input: [f'c{x}.txt' for x in range(1, 3)], output_from(['A', 'B']), group_by='pairlabel3'
 
 executed.append(_input)
 
@@ -1565,7 +1565,7 @@ _output.touch()
                 out.write(filename + '\n')
         script = SoS_Script('''
 [1]
-input: {'A': 'a.txt', 'B': 'b.txt'}, group_by='pairsource'
+input: {'A': 'a.txt', 'B': 'b.txt'}, group_by='pairlabel'
 output: 'c.txt'
 assert _input['A'] == [file_target('a.txt')]
 assert _input['B'] == [file_target('b.txt')]
