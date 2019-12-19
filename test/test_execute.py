@@ -815,7 +815,7 @@ files = ['a.txt', 'b.txt']
 vars = [1, 2]
 
 input: files, group_by=1
-output: f"{_input}.bak", group_with='vars'
+output: f"{_input}.bak", group_with=dict(_vars=vars[_index])
 run: expand=True
     touch {_output}
 
