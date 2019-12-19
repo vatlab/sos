@@ -11,7 +11,7 @@ from sos.parser import SoS_Script
 from sos.targets import file_target
 from sos.utils import env
 from sos.workflow_executor import Base_Executor
-
+from sos import execute_workflow
 
 class TestNested(unittest.TestCase):
 
@@ -438,6 +438,19 @@ for i in range(3):
         ]:
             self.assertTrue(file_target(f).target_exists())
             file_target(f).unlink()
+
+    def testOutcomeOrientedNestedWorkflow(self):
+        '''test nested workflow triggered by targets'''
+        if os.path.isfile('test_15.txt'):
+            os.remove('test_15.txt')
+        execute_workflow('''
+[A: provides='test_{idx}.txt']
+_output.touch()
+
+[default]
+sos_run(targets='test_15.txt')
+        ''')
+        self.assertTrue(os.path.isfile('test_15.txt'))
 
     def testPassingVarsToNestedWorkflow(self):
         '''Test if variables can be passed to nested workflows'''
