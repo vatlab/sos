@@ -523,52 +523,6 @@ class Base_Step_Executor:
         env.sos_dict.set('_depends', dfiles)
         env.sos_dict.set('step_depends', dfiles)
 
-    def process_output_group_with(self, group_with):
-        # group_with is applied to step_output so for each _output is applies
-        # its _index-th element
-        if group_with is None or not group_with:
-            return {}
-        if isinstance(group_with, str):
-            var_name = ['_' + group_with]
-            if group_with not in env.sos_dict:
-                raise ValueError(f'Variable {group_with} does not exist.')
-            var_value = [env.sos_dict[group_with]]
-        elif isinstance(group_with, dict):
-            var_name = []
-            var_value = []
-            for k, v in group_with.items():
-                var_name.append(k)
-                var_value.append(v)
-        elif isinstance(group_with, Iterable):
-            try:
-                var_name = ['_' + x for x in group_with]
-            except Exception:
-                raise ValueError(
-                    f'Invalud value for option group_with {group_with}')
-            var_value = []
-            for vn in var_name:
-                if vn[1:] not in env.sos_dict:
-                    raise ValueError(f'Variable {vn[1:]} does not exist.')
-                var_value.append(env.sos_dict[vn[1:]])
-        else:
-            raise ValueError(
-                f'Unacceptable value for parameter group_with: {group_with}')
-        #
-        var = {}
-        for vn, vv in zip(var_name, var_value):
-            if isinstance(vv, (bool, int, float, str, bytes)):
-                var[vn] = vv
-            elif isinstance(vv, (list, tuple)):
-                if len(vv) != env.sos_dict["__num_groups__"]:
-                    raise ValueError(
-                        f'Length of provided attributes ({len(vv)}) does not match number of Substeps ({env.sos_dict["__num_groups__"]})'
-                    )
-                var[vn] = vv[env.sos_dict["_index"]]
-            else:
-                raise ValueError(
-                    'Unacceptable variables {vv} for option group_with')
-        return var
-
     def process_output_args(self, ofiles: sos_targets, **kwargs):
         for k in kwargs.keys():
             if k not in SOS_OUTPUT_OPTIONS:
@@ -583,16 +537,6 @@ class Base_Step_Executor:
                 )
             else:
                 ofiles = ofiles._get_group(env.sos_dict['_index'])
-
-        if 'group_with' in kwargs:
-            try:
-                vars = self.process_output_group_with(kwargs['group_with'])
-                if vars:
-                    ofiles.set(**vars)
-            except Exception as e:
-                raise RuntimeError(
-                    f'Failed to apply option "group_with" to input with {env.sos_dict["__num_groups__"]} groups: {e}'
-                )
 
         # create directory
         if ofiles.valid():

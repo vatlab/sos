@@ -13,7 +13,7 @@ SOS_TARGETS_OPTIONS = [
     'remove_empty_groups'
 ]
 SOS_INPUT_OPTIONS = ['concurrent']
-SOS_OUTPUT_OPTIONS = ['group_with']
+SOS_OUTPUT_OPTIONS = []
 SOS_DEPENDS_OPTIONS: List = []
 SOS_RUNTIME_OPTIONS = [
     'workdir', 'concurrent', 'active', 'walltime', 'nodes', 'cores', 'mem',
