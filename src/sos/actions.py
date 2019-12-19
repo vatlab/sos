@@ -587,11 +587,19 @@ def sos_run(workflow=None,
     if source is None:
         script = SoS_Script(env.sos_dict['__step_context__'].content,
                             env.sos_dict['__step_context__'].filename)
-        wfs = [script.workflow(wf, use_default=not targets) for wf in workflows]
+        if workflows:
+            wfs = [script.workflow(wf, use_default=True) for wf in workflows]
+        else:
+            wfs = [script.workflow(use_default=False)]
     else:
         # reading workflow from another file
         script = SoS_Script(filename=source)
-        wfs = [script.workflow(wf, use_default=not targets) for wf in workflows]
+
+        if workflows:
+            wfs = [script.workflow(wf, use_default=True) for wf in workflows]
+        else:
+            wfs = [script.workflow(use_default=False)]
+
     # if wf contains the current step or one of the previous one, this constitute
     # recusive nested workflow and should not be allowed
     all_parameters = set()
