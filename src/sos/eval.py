@@ -145,7 +145,7 @@ def SoS_exec(script: str, _dict: dict = None,
             if len(stmts) > 1:
                 exec(
                     compile(
-                        ast.Module(body=stmts[:-1], type_ignore=[]),
+                        ast.Module(body=stmts[:-1], type_ignores=[]),
                         filename=stmtHash.hash(script),
                         mode="exec"), _dict)
             # then we eval the last one
