@@ -13,7 +13,7 @@ from sos.targets import file_target
 from sos.utils import env
 # if the test is imported under sos/test, test interacive executor
 from sos.workflow_executor import Base_Executor
-
+from sos import execute_workflow
 
 class TestDAG(unittest.TestCase):
 
@@ -1279,6 +1279,17 @@ A_2 -> B;
 "C (a.txt)" -> B;
 }''')
 
+
+    def testProvidesSoSVariable(self):
+        '''Test provides non-filename targets #1341'''
+        execute_workflow('''
+[count: provides=sos_variable('numNotebooks')]
+numNotebooks = 1
+
+[default]
+depends: sos_variable('numNotebooks')
+print(f"There are {numNotebooks} notebooks in this directory")
+        ''')
 
 if __name__ == '__main__':
     unittest.main()

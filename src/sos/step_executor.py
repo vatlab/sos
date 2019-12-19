@@ -24,7 +24,7 @@ from .executor_utils import (__named_output__, __null_func__, __output_from__,
                              validate_step_sig, verify_input, ExecuteError)
 from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS,
                      SOS_TARGETS_OPTIONS)
-from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
+from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock, sos_variable,
                       UnknownTarget, dynamic, file_target, sos_step,
                       sos_targets, invalid_target, textMD5)
 from .tasks import MasterTaskParams, TaskFile
@@ -894,6 +894,9 @@ class Base_Step_Executor:
         result['__shared__'] = {}
         if 'shared' in self.step.options:
             result['__shared__'] = self.shared_vars
+        for x in result['__step_output__'].targets:
+            if isinstance(x, sos_variable):
+                result['__shared__'][x.target_name()] = env.sos_dict[x.target_name()]
         send_message_to_controller([
             'progress', 'step_completed',
             -1 if 'sos_run' in env.sos_dict['__signature_vars__'] else
