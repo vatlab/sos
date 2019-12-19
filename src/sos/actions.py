@@ -577,7 +577,9 @@ def sos_run(workflow=None,
         workflows = [workflow]
     elif isinstance(workflow, Sequence):
         workflows = list(workflow)
-    elif workflow is not None:
+    elif workflow is None:
+        workflows = []
+    else:
         raise ValueError(
             'workflow has to be None, a workflow name, or a list of workflow names'
         )
