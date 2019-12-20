@@ -41,8 +41,11 @@ before_install:
     # singularity
     - sudo sed -i -e 's/^Defaults\tsecure_path.*$//' /etc/sudoers
     - pip install sregistry[all]
+ 
 
-    - sudo R -e 'install.packages(c("rmarkdown"), repos = "http://cran.us.r-project.org")'
+    # this is to allow sos R_Library target to operate and pass test as well
+    - sudo chmod -R 777 /usr/local/lib/R/site-library
+    - R -e 'install.packages(c("rmarkdown"), repos = "http://cran.us.r-project.org")'
     - pip install pandas numpy
     # add docker
     - pip install docker pyyaml psutil tqdm fasteners pygments networkx pydot pydotplus graphviz imageio pillow entrypoints jupyter coverage codacy-coverage pytest pytest-cov python-coveralls
@@ -56,7 +59,7 @@ before_script:
     - cd test
     - sh build_test_docker.sh
 script:
-    - pytest -x -v --cov sos --cov-config ../.coveragerc --cov-report=xml
+    - pytest -v --cov sos --cov-config ../.coveragerc --cov-report=xml
 
 after_success:
     - coverage combine;
