@@ -624,7 +624,7 @@ sh:
         for i in range(5):
             if os.path.exists(f'rep_{i}'):
                 shutil.rmtree(f'rep_{i}')
-        script = SoS_Script(r'''\
+        script = SoS_Script(r'''
 [1: shared={'step1': 'step_output'}]
 input: for_each={'i': range(5)}, concurrent=True
 output: dynamic(f'rep_{i}/*.res')
