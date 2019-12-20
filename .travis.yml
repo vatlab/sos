@@ -6,6 +6,8 @@ os:
 language: python
 python:
     - "3.6"
+    - "3.7"
+    - "3.8"
 
 addons:
   apt:
@@ -32,6 +34,8 @@ addons:
       - graphviz
       - octave
       - ruby-full
+      - r-base
+      - pandoc
 
 before_install:
     # singularity
@@ -39,20 +43,8 @@ before_install:
     - pip install sregistry[all]
     - olddir=`pwd` && cd /tmp && wget https://github.com/singularityware/singularity/archive/2.6.0.tar.gz && tar zxf 2.6.0.tar.gz && cd singularity-2.6.0 && ./autogen.sh && ./configure --prefix=/usr/local && make && sudo make install && cd $olddir
 
-    # install anaconda Python 3
-    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then wget https://repo.continuum.io/miniconda/Miniconda3-4.5.11-Linux-x86_64.sh -O miniconda.sh; fi
-    #- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then wget  https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh; fi
-    - bash miniconda.sh -b -p $HOME/miniconda
-    - export PATH="$HOME/miniconda/bin:$PATH"
-    - hash -r
-    - conda config --set always_yes yes --set changeps1 no
-    - conda update -q conda
-    # Useful for debugging any issues with conda
-    #- conda info -a
-    - source activate 
-
-    # R
-    - conda install --quiet -c r r-markdown r-rmarkdown r-base64enc  pandoc pandas numpy gxx_linux-64
+    - R -e 'install.packages(c("rmarkdown"))'
+    - pip install pandas numpy
     # add docker
     - pip install docker pyyaml psutil tqdm fasteners pygments networkx pydot pydotplus graphviz imageio pillow entrypoints jupyter coverage codacy-coverage pytest pytest-cov python-coveralls
 
