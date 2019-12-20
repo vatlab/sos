@@ -645,7 +645,7 @@ def sos_run(workflow=None,
                     short_repr(env.sos_dict.get('_input', None), True),
                     'no args' if not args_output else args_output))
 
-        if not hasattr(env, '__socket__'):
+        if not hasattr(env, '__socket__') or env.__socket__ is None:
             raise RuntimeError(
                 'sos_run function cannot be executed in scratch cell.')
         # tell the master process to receive a workflow
