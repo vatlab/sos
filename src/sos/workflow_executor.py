@@ -1676,6 +1676,16 @@ class Base_Executor:
             'WORKER',
             f'- SUBSTART - Run workflow W{env.config["workflow_vars"].get("idx", "?")}'
         )
+
+        if targets and sos_targets(
+                targets).target_exists() and not env.config['trace_existing']:
+            env.logger.info(
+                f'Target{"s" if len(sos_targets(targets)) > 1 else ""} {sos_targets(targets)} already exists. Remove or use option "-T" if you would like to regenerate {"them" if len(targets) > 1 else "it"}.'
+            )
+            wf_result['__completed__'] = {}
+            parent_socket.send(encode_msg(wf_result))
+            return
+
         # this is the initial targets specified by subworkflow, users
         # should specify named_output directly if needed.
         dag = self.initialize_dag(targets=targets)
