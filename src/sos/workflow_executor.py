@@ -822,9 +822,9 @@ class Base_Executor:
         dag.build()
 
         # dag.show_nodes()
-        # trim the DAG if targets are specified
-        if targets:
-            dag = dag.subgraph_from(targets)
+        # # trim the DAG if targets are specified
+        # if targets:
+        #     dag = dag.subgraph_from(targets)
         # check error
         cycle = dag.circular_dependencies()
         if cycle:

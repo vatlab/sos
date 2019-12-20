@@ -756,6 +756,25 @@ sos_run('A', num=0)
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    def testNesteWithBothWorkflowAndTargets(self):
+        '''Test nested workflow with both workflow and targets'''
+        for file in ('A_out.txt', 'B_out.txt'):
+            if os.path.isfile(file):
+                os.remove(file)
+        execute_workflow(r'''
+[A_20]
+output: 'A_out.txt'
+_output.touch()
+
+[B]
+output: 'B_out.txt'
+_output.touch()
+
+[default]
+sos_run('A', targets='B_out.txt')
+''')
+        self.assertTrue(os.path.isfile('A_out.txt'))
+        self.assertTrue(os.path.isfile('B_out.txt'))
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
