@@ -310,21 +310,21 @@ class SoS_DAG(nx.DiGraph):
         else:
             return False
 
-    def subgraph_from(self, targets: sos_targets):
-        '''Trim DAG to keep only nodes that produce targets'''
-        if 'DAG' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
-            env.log_to_file('DAG', 'create subgraph')
-        # first, find all nodes with targets
-        subnodes = []
-        for node in self.nodes():
-            if node._output_targets.valid() and any(
-                    x in node._output_targets for x in targets):
-                subnodes.append(node)
-        #
-        ancestors = set()
-        for node in subnodes:
-            ancestors |= nx.ancestors(self, node)
-        return SoS_DAG(nx.subgraph(self, subnodes + list(ancestors)))
+    # def subgraph_from(self, targets: sos_targets):
+    #     '''Trim DAG to keep only nodes that produce targets'''
+    #     if 'DAG' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+    #         env.log_to_file('DAG', 'create subgraph')
+    #     # first, find all nodes with targets
+    #     subnodes = []
+    #     for node in self.nodes():
+    #         if node._output_targets.valid() and any(
+    #                 x in node._output_targets for x in targets):
+    #             subnodes.append(node)
+    #     #
+    #     ancestors = set()
+    #     for node in subnodes:
+    #         ancestors |= nx.ancestors(self, node)
+    #     return SoS_DAG(nx.subgraph(self, subnodes + list(ancestors)))
 
     def build(self):
         '''Connect nodes according to status of targets'''
