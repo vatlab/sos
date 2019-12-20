@@ -170,7 +170,7 @@ class TestTarget(unittest.TestCase):
         execute_workflow(r'''
 [10]
 input: for_each=dict(i=range(3))
-output: group_with=dict(var=['A', 'B', 'C'])
+output: group_with=dict(var=['A', 'B', 'C'][_index])
 print(i)
 
 [20]
