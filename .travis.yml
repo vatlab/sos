@@ -1,4 +1,4 @@
-dist: trusty
+dist: xenial
 group: edge
 os:
     - linux
