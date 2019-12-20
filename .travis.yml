@@ -30,7 +30,7 @@ addons:
       - autoconf
       - uuid-dev
       - libmagickwand-dev
-      - libmagickcore5-extra
+      - libmagickcore-extra
       - graphviz
       - octave
       - ruby-full
