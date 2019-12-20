@@ -42,7 +42,7 @@ before_install:
     - sudo sed -i -e 's/^Defaults\tsecure_path.*$//' /etc/sudoers
     - pip install sregistry[all]
 
-    - sudo R -e 'install.packages(c("rmarkdown"))'
+    - sudo R -e 'install.packages(c("rmarkdown"), repos = "http://cran.us.r-project.org")'
     - pip install pandas numpy
     # add docker
     - pip install docker pyyaml psutil tqdm fasteners pygments networkx pydot pydotplus graphviz imageio pillow entrypoints jupyter coverage codacy-coverage pytest pytest-cov python-coveralls
