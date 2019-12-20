@@ -6,6 +6,8 @@ os:
 language: python
 python:
     - "3.6"
+    - "3.7"
+    - "3.8"
 
 addons:
   apt:
@@ -46,10 +48,10 @@ before_install:
     - export PATH="$HOME/miniconda/bin:$PATH"
     - hash -r
     - conda config --set always_yes yes --set changeps1 no
-    - conda update -q conda
+    - conda create --name test python=${TRAVIS_PYTHON_VERSION}
     # Useful for debugging any issues with conda
     #- conda info -a
-    - source activate 
+    - conda activate test
 
     # R
     - conda install --quiet -c r r-markdown r-rmarkdown r-base64enc  pandoc pandas numpy gxx_linux-64
