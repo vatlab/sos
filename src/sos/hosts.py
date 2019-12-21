@@ -1144,19 +1144,17 @@ class Host:
             }
 
             # if local and remote hosts are the same
-            if LOCAL == REMOTE or (
-                    'address' in env.sos_dict['CONFIG']['hosts'][REMOTE] and
-                    env.sos_dict['CONFIG']['hosts'][REMOTE]['address'] ==
-                    'localhost'):
+            if LOCAL == REMOTE or 'address' not in env.sos_dict['CONFIG'][
+                    'hosts'][REMOTE] or (
+                        'address' in env.sos_dict['CONFIG']['hosts'][REMOTE] and
+                        env.sos_dict['CONFIG']['hosts'][REMOTE]['address'] ==
+                        'localhost'):
                 # there would be no path map
                 self.config['path_map'] = []
                 self.config['shared'] = ['/']
                 # override address setting to use localhost
                 self.config['address'] = 'localhost'
             else:
-                if 'address' not in env.sos_dict['CONFIG']['hosts'][REMOTE]:
-                    raise ValueError(
-                        f'No address defined for remote host {REMOTE}')
                 self.config['path_map'] = []
 
                 def normalize_value(x):
