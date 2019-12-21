@@ -244,7 +244,9 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                             f'Action ``{func.__name__}`` is ``ignored`` with signature constructed'
                         )
                         return None
+            original_env = {}
             if 'default_env' in kwargs:
+                original_env = copy.deepcopy(os.environ)
                 if not isinstance(kwargs['default_env'], dict):
                     raise ValueError(
                         f'Option default_env must be a dictionary, {kwargs["default_env"]} provided'
@@ -253,6 +255,7 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                     if k not in os.environ:
                         os.environ[k] = kwargs['default_env'][k]
             if 'env' in kwargs:
+                original_env = copy.deepcopy(os.environ)
                 if not isinstance(kwargs['env'], dict):
                     raise ValueError(
                         f'Option env must be a dictionary, {kwargs["env"]} provided'
@@ -281,6 +284,8 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                             raise
                 finally:
                     os.chdir(olddir)
+                    if original_env:
+                        os.environ = original_env
             else:
                 try:
                     res = func(*args, **kwargs)
@@ -290,6 +295,9 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                         res = None
                     else:
                         raise
+                finally:
+                    if original_env:
+                        os.environ = original_env
             if 'output' in kwargs and kwargs['output'] is not None:
                 ofiles = sos_targets(kwargs['output'])
                 for ofile in ofiles:
