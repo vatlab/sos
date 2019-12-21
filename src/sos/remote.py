@@ -439,6 +439,7 @@ def setup_remote_access(cfg, hosts=[], password='', verbosity=1):
     # public_key
     public_key = os.path.join(os.path.expanduser('~'), '.ssh', 'id_rsa.pub')
 
+    from argparse import Namespace
     for host in sorted(hosts if hosts else all_hosts):
         try:
             if host in all_hosts:
@@ -456,7 +457,6 @@ def setup_remote_access(cfg, hosts=[], password='', verbosity=1):
                     env.logger.error(response)
                     sys.exit(1)
             else:
-                from argparse import Namespace
                 host_agent = Namespace(address=host, port=22)
         except Exception as e:
             env.logger.error(f'Failed to start task engine {host}: {e}')
