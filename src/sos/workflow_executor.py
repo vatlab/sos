@@ -299,6 +299,8 @@ class Base_Executor:
         }
         workflow_info['command_line'] = subprocess.list2cmdline(
             [os.path.basename(sys.argv[0])] + sys.argv[1:])
+        if '-m tapping' in workflow_info['command_line']:
+            workflow_info['command_line'] = workflow_info['command_line'][:workflow_info['command_line'].index('-m tapping')]
         workflow_info['project_dir'] = os.getcwd()
         workflow_info['script'] = base64.b64encode(
             self.workflow.content.text().encode()).decode('ascii')
