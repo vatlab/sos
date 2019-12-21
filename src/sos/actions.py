@@ -285,7 +285,8 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                 finally:
                     os.chdir(olddir)
                     if original_env:
-                        os.environ = original_env
+                        os.environ.clear()
+                        os.environ.update(original_env)
             else:
                 try:
                     res = func(*args, **kwargs)
@@ -297,7 +298,8 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                         raise
                 finally:
                     if original_env:
-                        os.environ = original_env
+                        os.environ.clear()
+                        os.environ.update(original_env)
             if 'output' in kwargs and kwargs['output'] is not None:
                 ofiles = sos_targets(kwargs['output'])
                 for ofile in ofiles:
