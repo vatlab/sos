@@ -309,11 +309,9 @@ def create_task(global_def, global_vars, task_stmt, task_params):
         if isinstance(env.sos_dict['_runtime']['tags'], str):
             tags = [env.sos_dict['_runtime']['tags']]
         elif isinstance(env.sos_dict['_runtime']['tags'], Sequence):
-            tags = list(env.sos_dict['_runtime']['tags'])
+            tags = [str(x) for x in list(env.sos_dict['_runtime']['tags'])]
         else:
-            env.logger.warning(
-                f'Unacceptable value for parameter tags: {env.sos_dict["_runtime"]["tags"]}'
-            )
+            tags = str(env.sos_dict["_runtime"]["tags"]).split(' ')
         #
         for tag in tags:
             if not tag.strip():
