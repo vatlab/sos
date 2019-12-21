@@ -249,6 +249,9 @@ class SoS_DockerClient:
                 time.sleep(0.5)
             elif res == 'available':
                 return
+            elif res == 'unavailable':
+                raise RuntimeError(
+                    f'Docker image {image} is unavailable')
             elif res == 'help yourself':
                 break
             else:
@@ -266,6 +269,7 @@ class SoS_DockerClient:
         except subprocess.CalledProcessError as exc:
             err_msg = exc.output
         if not self._is_image_avail(image):
+            send_message_to_controller(['resource', 'docker_image', 'unavailable', image])
             raise RuntimeError(
                 f'Failed to pull docker image {image}:\n {err_msg}')
         send_message_to_controller(['resource', 'docker_image', 'available', image])

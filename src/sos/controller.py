@@ -297,12 +297,12 @@ class Controller(threading.Thread):
                 self.step_signatures.commit()
             elif msg[0] == 'resource':
                 if msg[1] == 'docker_image':
-                    if msg[2] == 'available':
+                    if msg[2] in ('available', 'unavailable'):
                         if 'docker_image' not in self._resources:
                             self._resources['docker_image'] = {}
                         self._resources['docker_image'][msg[3]] = msg[2]
                     else:
-                        raise ValueError(f'SoS currently only understand "available" message for docker resource.')
+                        raise ValueError(f'SoS currently only understand "available" or "unavailable" messages for docker resource.')
                 else:
                     raise ValueError(f'SoS currently does not handle resource of {msg[1]} type')
 
