@@ -255,6 +255,9 @@ class Controller(threading.Thread):
         # substep workers
         self.workers = None
 
+        # available resources
+        self._resources = {}
+
         # self.event_map = {}
         # for name in dir(zmq):
         #     if name.startswith('EVENT_'):
@@ -292,6 +295,17 @@ class Controller(threading.Thread):
             elif msg[0] == 'commit_sig':
                 self.workflow_signatures.commit()
                 self.step_signatures.commit()
+            elif msg[0] == 'resource':
+                if msg[1] == 'docker_image':
+                    if msg[2] == 'available':
+                        if 'docker_image' not in self._resources:
+                            self._resources['docker_image'] = {}
+                        self._resources['docker_image'][msg[3]] = msg[2]
+                    else:
+                        raise ValueError(f'SoS currently only understand "available" message for docker resource.')
+                else:
+                    raise ValueError(f'SoS currently does not handle resource of {msg[1]} type')
+
             else:
                 env.logger.warning(f'Unknown message passed {msg}')
         except Exception as e:
@@ -363,6 +377,22 @@ class Controller(threading.Thread):
             elif msg[0] == 'worker_available':
                 self.master_request_socket.send(
                     encode_msg(self.workers.worker_available(msg[1], msg[2:])))
+            elif msg[0] == 'resource':
+                if msg[1] == 'docker_image':
+                    if msg[2] == 'request':
+                        if 'docker_image' not in self._resources:
+                            self._resources['docker_image'] = {}
+                        if msg[3] in self._resources['docker_image']:
+                            self.master_request_socket.send(
+                                encode_msg(self._resources['docker_image'][msg[3]]))
+                        else:
+                            self._resources['docker_image'][msg[3]] = 'pending'
+                            self.master_request_socket.send(
+                                encode_msg('help yourself'))
+                    else:
+                        raise ValueError(f'SoS currently only accept request inquiry for docker resource')
+                else:
+                    raise ValueError(f'SoS currently does not handle resource of {msg[1]} type')
             elif msg[0] == 'done':
                 # handle all ctl_push_msgs #1062
                 while True:

@@ -8,11 +8,13 @@ import platform
 import shutil
 import subprocess
 import sys
+import time
 import tempfile
 
 from sos.eval import interpolate
 from sos.targets import sos_targets, path
 from sos.utils import env, pexpect_run
+from sos.controller import request_answer_from_controller, send_message_to_controller
 
 #
 # docker support
@@ -240,6 +242,18 @@ class SoS_DockerClient:
             )
         if image in self.pulled_images:
             return
+        # ask controller
+        while True:
+            res = request_answer_from_controller(['resource', 'docker_image', 'request', image])
+            if res == 'pending':
+                time.sleep(0.5)
+            elif res == 'available':
+                return
+            elif res == 'help yourself':
+                break
+            else:
+                raise ValueError(f'Unrecognized request from controller {res}')
+
         # if image is specified, check if it is available locally. If not, pull it
         err_msg = ''
         try:
@@ -254,6 +268,7 @@ class SoS_DockerClient:
         if not self._is_image_avail(image):
             raise RuntimeError(
                 f'Failed to pull docker image {image}:\n {err_msg}')
+        send_message_to_controller(['resource', 'docker_image', 'available', image])
         self.pulled_images.add(image)
 
     def run(self,
