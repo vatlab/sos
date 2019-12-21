@@ -36,11 +36,11 @@ class WorkflowEngine:
 
     def expand_template(self):
         try:
-            if self.filename.lower().endswith('.ipynb'):
+            if self.local_filename.lower().endswith('.ipynb'):
                 from .converter import extract_workflow
-                script = extract_workflow(self.filename)
+                script = extract_workflow(self.local_filename)
             else:
-                with open(self.filename) as script_file:
+                with open(self.local_filename) as script_file:
                     script = script_file.read()
             self.job_name = textMD5(script)
             self.template_args['filename'] = self.filename
@@ -51,7 +51,7 @@ class WorkflowEngine:
                                             self.template_args) + '\n'
         except Exception as e:
             raise ValueError(
-                f'Failed to generate job file for the execution of workflow {script}: {e}'
+                f'Failed to generate job file for the execution of workflow: {e}'
             )
         try:
             wf_dir = os.path.join(os.path.expanduser('~'), '.sos', 'workflows')
@@ -81,6 +81,7 @@ class WorkflowEngine:
         else:
             raise RuntimeError(f'Failed to locate script {filename}')
 
+        self.local_filename = filename
         self.filename = list(ret.values())[0]
         self.command = self.remove_arg(command, '-r')
         # -c only point to local config file.
