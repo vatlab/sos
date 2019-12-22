@@ -905,7 +905,7 @@ class Base_Step_Executor:
         ])
         return result
 
-    def set_task_queue_and_concurrency_from_task_params(self):
+    def set_task_queue_from_task_params(self):
         if self.step.task_params:
             try:
                 task_queue = get_value_of_param(
@@ -1141,31 +1141,32 @@ class Base_Step_Executor:
         self.pending_signatures[idx] = sig
         return skip_index
 
-    def is_task_active(self):
-        active = env.sos_dict['_runtime']['active']
-        if active is True:
-            return True
-        elif active is False:
-            return False
-        elif isinstance(active, int):
-            if active >= 0 and env.sos_dict['_index'] != active:
-                return False
-            if active < 0 and env.sos_dict[
-                    '_index'] != active + env.sos_dict['__num_groups__']:
-                return False
-            return True
-        elif isinstance(active, Sequence):
-            allowed_index = list([
-                x if x >= 0 else env.sos_dict['__num_groups__'] + x
-                for x in active
-            ])
-            return env.sos_dict['_index'] in allowed_index
-        elif isinstance(active, slice):
-            allowed_index = list(range(env.sos_dict['__num_groups__']))[active]
-            return env.sos_dict['_index'] in allowed_index
-        else:
-            raise RuntimeError(
-                f'Unacceptable value for option active: {active}')
+    # def is_task_active(self):
+    #     active = env.sos_dict['_runtime']['active']
+    #     env.logger.error(active)
+    #     if active is True:
+    #         return True
+    #     elif active is False:
+    #         return False
+    #     elif isinstance(active, int):
+    #         if active >= 0 and env.sos_dict['_index'] != active:
+    #             return False
+    #         if active < 0 and env.sos_dict[
+    #                 '_index'] != active + env.sos_dict['__num_groups__']:
+    #             return False
+    #         return True
+    #     elif isinstance(active, Sequence):
+    #         allowed_index = list([
+    #             x if x >= 0 else env.sos_dict['__num_groups__'] + x
+    #             for x in active
+    #         ])
+    #         return env.sos_dict['_index'] in allowed_index
+    #     elif isinstance(active, slice):
+    #         allowed_index = list(range(env.sos_dict['__num_groups__']))[active]
+    #         return env.sos_dict['_index'] in allowed_index
+    #     else:
+    #         raise RuntimeError(
+    #             f'Unacceptable value for option active: {active}')
 
     def check_results(self):
         for proc_result in [x for x in self.proc_results if x['ret_code'] == 0]:
@@ -1270,7 +1271,7 @@ class Base_Step_Executor:
                 f'Executing step {env.sos_dict["step_name"]} with step_input {env.sos_dict["step_input"]} and step_output {env.sos_dict["step_output"]}'
             )
 
-        self.set_task_queue_and_concurrency_from_task_params()
+        self.set_task_queue_from_task_params()
 
         # look for input statement.
         input_statement_idx = [
@@ -1782,10 +1783,10 @@ class Base_Step_Executor:
                         'run_mode'] == 'dryrun' and env.sos_dict['_index'] != 0:
                     continue
 
-                # check if the task is active
-                if 'active' in env.sos_dict['_runtime']:
-                    if not self.is_task_active():
-                        continue
+                # # check if the task is active
+                # if 'active' in env.sos_dict['_runtime']:
+                #     if not self.is_task_active():
+                #         continue
                 #
                 self.log('task')
                 try:

@@ -16,11 +16,11 @@ SOS_INPUT_OPTIONS = ['concurrent']
 SOS_OUTPUT_OPTIONS = []
 SOS_DEPENDS_OPTIONS: List = []
 SOS_RUNTIME_OPTIONS = [
-    'workdir', 'active', 'walltime', 'nodes', 'cores', 'mem',
+    'workdir', 'walltime', 'nodes', 'cores', 'mem',
     'shared', 'env', 'prepend_path', 'queue', 'to_host', 'from_host',
     'map_vars', 'trunk_size', 'trunk_workers', 'tags', 'logfile',
     # deprecated
-    'concurrent', 'name'
+    'concurrent', 'name', 'active'
 ]
 SOS_ACTION_OPTIONS = [
     'workdir', 'container', 'engine', 'docker_image', 'docker_file', 'active',
