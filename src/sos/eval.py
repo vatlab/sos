@@ -6,6 +6,8 @@
 import ast
 import sys
 import pickle
+import contextlib
+
 from typing import Any, Dict, Optional, Set
 
 from .utils import env, as_fstring, load_config_files, pickleable, ArgumentError
@@ -131,8 +133,16 @@ def SoS_exec(script: str, _dict: dict = None,
         _dict = env.sos_dict.dict()
 
     if not return_result:
-        exec(
-            compile(script, filename=stmtHash.hash(script), mode='exec'), _dict)
+        if env.verbosity == 0:
+            with contextlib.redirect_stdout(None):
+                exec(
+                    compile(
+                        script, filename=stmtHash.hash(script), mode='exec'),
+                    _dict)
+        else:
+            exec(
+                compile(script, filename=stmtHash.hash(script), mode='exec'),
+                _dict)
         return None
 
     try:
@@ -143,11 +153,19 @@ def SoS_exec(script: str, _dict: dict = None,
             # the last one is an expression and we will try to return the results
             # so we first execute the previous statements
             if len(stmts) > 1:
-                exec(
-                    compile(
-                        ast.Module(body=stmts[:-1], type_ignores=[]),
-                        filename=stmtHash.hash(script),
-                        mode="exec"), _dict)
+                if env.verbosity == 0:
+                    with contextlib.redirect_stdout(None):
+                        exec(
+                            compile(
+                                ast.Module(body=stmts[:-1], type_ignores=[]),
+                                filename=stmtHash.hash(script),
+                                mode="exec"), _dict)
+                else:
+                    exec(
+                        compile(
+                            ast.Module(body=stmts[:-1], type_ignores=[]),
+                            filename=stmtHash.hash(script),
+                            mode="exec"), _dict)
             # then we eval the last one
             res = eval(
                 compile(
@@ -156,9 +174,17 @@ def SoS_exec(script: str, _dict: dict = None,
                     mode="eval"), _dict)
         else:
             # otherwise we just execute the entire code
-            exec(
-                compile(script, filename=stmtHash.hash(script), mode='exec'),
-                _dict)
+            if env.verbosity == 0:
+                with contextlib.redirect_stdout(None):
+                    exec(
+                        compile(
+                            script, filename=stmtHash.hash(script),
+                            mode='exec'), _dict)
+            else:
+                exec(
+                    compile(
+                        script, filename=stmtHash.hash(script), mode='exec'),
+                    _dict)
             res = None
     except SyntaxError as e:
         raise SyntaxError(f"Invalid code {script}: {e}")
