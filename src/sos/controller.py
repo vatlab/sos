@@ -283,8 +283,7 @@ class Controller(threading.Thread):
                     self._completed[msg[2]] += 1
                 elif msg[1] == 'step_completed':
                     self._completed_steps[msg[3]] = msg[4]
-                if env.verbosity == 1 and env.config[
-                        'run_mode'] != 'interactive':
+                if env.verbosity == 0:
                     # update progress bar
                     self._progress_bar.update(msg[1],
                                               msg[2] if len(msg) > 2 else None)
@@ -411,8 +410,7 @@ class Controller(threading.Thread):
                         else:
                             break
 
-                if env.verbosity == 1 and env.config[
-                        'run_mode'] != 'interactive':
+                if env.verbosity == 0:
                     num_steps = len(
                         set(self._completed.keys())
                         | set(self._ignored.keys()))
@@ -556,7 +554,7 @@ class Controller(threading.Thread):
             poller.register(self.tapping_controller_socket, zmq.POLLIN)
 
         #poller.register(monitor_socket, zmq.POLLIN)
-        if env.verbosity == 1 and env.config['run_mode'] != 'interactive':
+        if env.verbosity == 0:
             # leading progress bar
             self._progress_bar = DotProgressBar(self.context)
 
