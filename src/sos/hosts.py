@@ -740,12 +740,12 @@ class RemoteHost(object):
         mapped_vars = {
             '_input', '_output', '_depends', 'input', 'output', 'depends'
         }
-        if 'mapp_vars' in task_vars['_runtime']:
-            if isinstance(task_vars['_runtime']['mapped_vars_vars'], str):
-                mapped_vars.add(task_vars['_runtime']['mapped_vars_vars'])
-            elif isinstance(task_vars['_runtime']['mapped_vars_vars'],
+        if 'map_vars' in task_vars['_runtime']:
+            if isinstance(task_vars['_runtime']['map_vars'], str):
+                mapped_vars.add(task_vars['_runtime']['map_vars'])
+            elif isinstance(task_vars['_runtime']['map_vars'],
                             (set, Sequence)):
-                mapped_vars |= set(task_vars['_runtime']['mapped_vars_vars'])
+                mapped_vars |= set(task_vars['_runtime']['map_vars'])
             else:
                 raise ValueError(
                     f'Unacceptable value for runtime option mapped_vars_vars: {task_vars["_runtime"]["mapped_vars_vars"]}'

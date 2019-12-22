@@ -918,18 +918,18 @@ class Base_Step_Executor:
                 raise ValueError(
                     f'Failed to determine value of parameter queue of {self.step.task_params}: {e}'
                 )
-            # check concurrent #1134
-            try:
-                task_concurrency = get_value_of_param(
-                    'concurrent',
-                    self.step.task_params,
-                    extra_dict=env.sos_dict.dict())
-                if task_concurrency:
-                    env.sos_dict['_runtime']['concurrent'] = task_concurrency[0]
-            except Exception as e:
-                raise ValueError(
-                    f'Failed to determine value of parameter queue of {self.step.task_params}: {e}'
-                )
+            # # check concurrent #1134
+            # try:
+            #     task_concurrency = get_value_of_param(
+            #         'concurrent',
+            #         self.step.task_params,
+            #         extra_dict=env.sos_dict.dict())
+            #     if task_concurrency:
+            #         env.sos_dict['_runtime']['concurrent'] = task_concurrency[0]
+            # except Exception as e:
+            #     raise ValueError(
+            #         f'Failed to determine value of parameter queue of {self.step.task_params}: {e}'
+            #     )
         # if -q is unspecified and option queue is unspecified,
         # or queue=None is specified, disregard the task keyword
         if (env.config['default_queue'] is None and
@@ -1288,8 +1288,9 @@ class Base_Step_Executor:
 
         # if shared is true, we have to disable concurrent because we
         # do not yet return anything from shared.
-        self.concurrent_substep = 'shared' not in self.step.options and \
-            ('concurrent' not in env.sos_dict['_runtime'] or env.sos_dict['_runtime']['concurrent'] is True)
+        self.concurrent_substep = 'shared' not in self.step.options
+        # and \
+        #     ('concurrent' not in env.sos_dict['_runtime'] or env.sos_dict['_runtime']['concurrent'] is True)
         if input_statement_idx is not None:
             # execute before input stuff
             for statement in self.step.statements[:input_statement_idx]:
@@ -1806,18 +1807,18 @@ class Base_Step_Executor:
                         f'Failed to execute process\n"{short_repr(self.step.task)}"\n{e}'
                     )
                 #
-                # if not concurrent, we have to wait for the completion of the task
-                if 'concurrent' in env.sos_dict['_runtime'] and env.sos_dict[
-                        '_runtime']['concurrent'] is False:
-                    # in this case the steps must be executed not concurrently
-                    runner = self.wait_for_results(all_submitted=False)
-                    try:
-                        yreq = next(runner)
-                        while True:
-                            yres = yield yreq
-                            yreq = runner.send(yres)
-                    except StopIteration:
-                        pass
+                # # if not concurrent, we have to wait for the completion of the task
+                # if 'concurrent' in env.sos_dict['_runtime'] and env.sos_dict[
+                #         '_runtime']['concurrent'] is False:
+                #     # in this case the steps must be executed not concurrently
+                #     runner = self.wait_for_results(all_submitted=False)
+                #     try:
+                #         yreq = next(runner)
+                #         while True:
+                #             yres = yield yreq
+                #             yreq = runner.send(yres)
+                #     except StopIteration:
+                #         pass
                 #
                 # endfor loop for each input group
                 #

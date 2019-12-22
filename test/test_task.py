@@ -169,29 +169,29 @@ with open(os.path.join({1!r}, 'result.txt'), 'w') as res:
             content = [x.strip() for x in res.readlines()]
             self.assertTrue('aaa.pp' in content)
 
-    def testSequential(self):
-        '''Test concurrency option for runtime environment'''
-        env.max_jobs = 5
-        start = time.time()
-        execute_workflow(
-            script=r"""
-import time
-[0]
+#     def testSequential(self):
+#         '''Test concurrency option for runtime environment'''
+#         env.max_jobs = 5
+#         start = time.time()
+#         execute_workflow(
+#             script=r"""
+# import time
+# [0]
 
-repeat = range(4)
-input: for_each='repeat'
+# repeat = range(4)
+# input: for_each='repeat'
 
-task: concurrent=False
+# task: concurrent=False
 
-print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
-time.sleep(_repeat + 1)
-print('I am {}, done'.format(_index))
-""",
-            options={
-                'default_queue': 'localhost',
-                'sig_mode': 'force'
-            })
-        self.assertGreater(time.time() - start, 11)
+# print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
+# time.sleep(_repeat + 1)
+# print('I am {}, done'.format(_index))
+# """,
+#             options={
+#                 'default_queue': 'localhost',
+#                 'sig_mode': 'force'
+#             })
+#         self.assertGreater(time.time() - start, 11)
 
     def testConcurrency(self):
         '''Test concurrency option for runtime environment'''
