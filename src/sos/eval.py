@@ -167,11 +167,19 @@ def SoS_exec(script: str, _dict: dict = None,
                             filename=stmtHash.hash(script),
                             mode="exec"), _dict)
             # then we eval the last one
-            res = eval(
-                compile(
-                    ast.Expression(body=stmts[-1].value),
-                    filename=stmtHash.hash(script),
-                    mode="eval"), _dict)
+            if env.verbosity == 0:
+                with contextlib.redirect_stdout(None):
+                    res = eval(
+                        compile(
+                            ast.Expression(body=stmts[-1].value),
+                            filename=stmtHash.hash(script),
+                            mode="eval"), _dict)
+            else:
+                res = eval(
+                    compile(
+                        ast.Expression(body=stmts[-1].value),
+                        filename=stmtHash.hash(script),
+                        mode="eval"), _dict)
         else:
             # otherwise we just execute the entire code
             if env.verbosity == 0:
