@@ -302,6 +302,13 @@ class Controller(threading.Thread):
                         self._resources['docker_image'][msg[3]] = msg[2]
                     else:
                         raise ValueError(f'SoS currently only understand "available" or "unavailable" messages for docker resource.')
+                elif msg[1] == 'singularity_image':
+                    if msg[2] in ('available', 'unavailable'):
+                        if 'singularity_image' not in self._resources:
+                            self._resources['singularity_image'] = {}
+                        self._resources['singularity_image'][msg[3]] = msg[2]
+                    else:
+                        raise ValueError(f'SoS currently only understand "available" or "unavailable" messages for docker resource.')
                 else:
                     raise ValueError(f'SoS currently does not handle resource of {msg[1]} type')
 
@@ -386,6 +393,19 @@ class Controller(threading.Thread):
                                 encode_msg(self._resources['docker_image'][msg[3]]))
                         else:
                             self._resources['docker_image'][msg[3]] = 'pending'
+                            self.master_request_socket.send(
+                                encode_msg('help yourself'))
+                    else:
+                        raise ValueError(f'SoS currently only accept request inquiry for docker resource')
+                elif msg[1] == 'singularity_image':
+                    if msg[2] == 'request':
+                        if 'singularity_image' not in self._resources:
+                            self._resources['singularity_image'] = {}
+                        if msg[3] in self._resources['singularity_image']:
+                            self.master_request_socket.send(
+                                encode_msg(self._resources['singularity_image'][msg[3]]))
+                        else:
+                            self._resources['singularity_image'][msg[3]] = 'pending'
                             self.master_request_socket.send(
                                 encode_msg('help yourself'))
                     else:

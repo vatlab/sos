@@ -13,6 +13,8 @@ from sos.eval import interpolate
 from sos.targets import path
 from sos.utils import env, pexpect_run
 
+from sos.controller import request_answer_from_controller, send_message_to_controller
+
 #
 # Singularity support
 #
@@ -229,6 +231,21 @@ class SoS_SingularityClient:
             return
         if '://' not in image:
             raise ValueError(f'Cannot locate or pull singularity image {image}')
+        # ask controller
+        while True:
+            res = request_answer_from_controller(['resource', 'singularity_image', 'request', image])
+            if res == 'pending':
+                time.sleep(0.5)
+            elif res == 'available':
+                return
+            elif res == 'unavailable':
+                raise RuntimeError(
+                    f'Docker image {image} is unavailable')
+            elif res == 'help yourself':
+                break
+            else:
+                raise ValueError(f'Unrecognized request from controller {res}')
+
         # if image is specified, check if it is available locally. If not, pull it
         try:
             print(f'HINT: Pulling image {image} to {image_file}')
@@ -239,10 +256,12 @@ class SoS_SingularityClient:
                 universal_newlines=True)
             self.pulled_images.add(image)
         except subprocess.CalledProcessError as exc:
+            send_message_to_controller(['resource', 'singularity_image', 'unavailable', image])
             env.logger.warning(f'Failed to pull {image}: {exc.output}')
         if not path(image_file).exists():
             raise ValueError(
                 f'Image {image_file} does not exist after pulling {image}.')
+        send_message_to_controller(['resource', 'singularity_image', 'available', image])
 
     def run(self,
             image,
