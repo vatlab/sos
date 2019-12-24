@@ -1439,9 +1439,7 @@ def get_status_parser(desc_only=False):
     parser.add_argument(
         '-a',
         '--all',
-        action='store_true',
-        help='''Check the status of all tasks on local or specified remote task queue,
-        including tasks created by workflows executed from other directories.'''
+        help=argparse.SUPPRESS
     )
     parser.add_argument(
         '-v',
@@ -1491,7 +1489,7 @@ def cmd_status(args, workflow_args):
         if not args.queue:
             print_task_status(
                 tasks=args.tasks,
-                check_all=args.all,
+                check_all=not args.tasks,
                 verbosity=args.verbosity,
                 html=args.html,
                 numeric_times=args.numeric_times,
@@ -1504,7 +1502,7 @@ def cmd_status(args, workflow_args):
             print(
                 host._task_engine.query_tasks(
                     tasks=args.tasks,
-                    check_all=args.all,
+                    check_all=not args.tasks,
                     verbosity=args.verbosity,
                     html=args.html,
                     numeric_times=args.numeric_times,

@@ -564,20 +564,10 @@ class TaskEngine(threading.Thread):
                     tags=None,
                     status=None):
         try:
-            if not check_all and not tasks:
-                from .signatures import WorkflowSignatures
-                workflow_signatures = WorkflowSignatures()
-                tasks = [
-                    x for x in workflow_signatures.tasks() if os.path.isfile(
-                        os.path.join(
-                            os.path.expanduser('~'), '.sos', 'tasks', x +
-                            '.task'))
-                ]
             return self.agent.check_output(
-                "sos status {} -v {} {} {} {} {} {} {}".format(
+                "sos status {} -v {} {} {} {} {} {}".format(
                     '' if tasks is None else ' '.join(tasks),
                     verbosity,
-                    '--all' if check_all else '',
                     '--html' if html else '',
                     '--numeric-times' if numeric_times else '',
                     f'--age {age}' if age else '',

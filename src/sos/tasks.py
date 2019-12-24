@@ -1264,15 +1264,15 @@ def print_task_status(tasks,
                       age=None,
                       tags=None,
                       status=None):
-    # verbose is ignored for now
-    if not check_all and not tasks:
-        from .signatures import WorkflowSignatures
-        workflow_signatures = WorkflowSignatures()
-        tasks = [
-            x for x in workflow_signatures.tasks() if os.path.isfile(
-                os.path.join(
-                    os.path.expanduser('~'), '.sos', 'tasks', x + '.task'))
-        ]
+    # # verbose is ignored for now
+    # if not check_all and not tasks:
+    #     from .signatures import WorkflowSignatures
+    #     workflow_signatures = WorkflowSignatures()
+    #     tasks = [
+    #         x for x in workflow_signatures.tasks() if os.path.isfile(
+    #             os.path.join(
+    #                 os.path.expanduser('~'), '.sos', 'tasks', x + '.task'))
+    #     ]
     import glob
     all_tasks: List = []
     if check_all:

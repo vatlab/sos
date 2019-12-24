@@ -6,6 +6,7 @@
 #
 # Utility functions used by various executors.
 #
+import os
 import sys
 import re
 import psutil
@@ -304,7 +305,8 @@ def create_task(global_def, global_vars, task_stmt, task_params):
             '__signature_vars__'
         })
 
-    task_tags = [env.sos_dict['step_name'], env.sos_dict['workflow_id']]
+    task_tags = [env.sos_dict['step_name'], env.sos_dict['workflow_id'],
+        os.path.basename(os.getcwd())]
     if 'tags' in env.sos_dict['_runtime']:
         if isinstance(env.sos_dict['_runtime']['tags'], str):
             tags = [env.sos_dict['_runtime']['tags']]
