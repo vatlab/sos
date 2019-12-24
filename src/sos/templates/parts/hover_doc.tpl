@@ -18,17 +18,17 @@ let sos_keywords = new Set([
   // keywords
   'input:', 'output:', 'depends:', 'task:',
   // options
-  'expand',
+  'expand', 'provides',
   // input options
   'for_each', 'paired_with', 'group_with', 'pattern',
-  'named_output', 'output_from',
+  'named_output', 'output_from', 'concurrent',
   // functions
   'sos_run', 'fail_if', 'done_if', 'warn_if', 'skip_if',
-  'get_output',
+  'get_output', 'expand_pattern',
   // task options
-  'walltime', 'cores', 'mem', 'queue', 'to_host',
+  'walltime', 'cores', 'mem', 'queue', 'to_host', 'nodes',
   'from_host', 'map_vars', 'trunk_size', 'trunk_workers', 'workdir',
-  'concurrent', 'shared', 'env', 'prepend_path', 'tags',
+  'shared', 'env', 'prepend_path', 'tags',
   // targets
   'file_target', 'executable', 'sos_variable', 'env_variable',
   'sos_step', 'dynamic', 'remote', 'system_resource',
@@ -38,12 +38,16 @@ let sos_keywords = new Set([
   'csh:', 'tcsh', 'zsh:', 'perl:', 'ruby:', 'node:',
   'pandoc:', 'docker_build:', 'download:', 'julia:',
   'R:', 'matlab:', 'python:', 'python2:', 'python3:',
+  'singularity_build:',
+  // action options
+  'args', 'allow_error', 'container', 'engine', 'env',
+  'stdout', 'stderr', tracked',
   // magics
-  '%capture', '%cd', '%clear', '%debug', '%dict',
-  '%expand', '%get', '%matplotlib', '%preview', '%pull',
-  '%push', '%put', '%render', '%run', '%runfile', '%revisions',
+  '%capture', '%cd', '%env',
+  '%expand', '%get', '%matplotlib', '%preview',
+  '%put', '%render', '%run', '%runfile', '%revisions',
   '%save', '%set', '%sessioninfo', '%shutdown', '%sosrun',
-  '%sossave', '%task', '%toc', '%sandbox', '%use', '%with'
+  '%convert', '%task', '%use', '%with'
   ]
 )
 
