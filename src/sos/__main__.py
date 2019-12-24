@@ -1439,6 +1439,7 @@ def get_status_parser(desc_only=False):
     parser.add_argument(
         '-a',
         '--all',
+        action='store_true',
         help=argparse.SUPPRESS
     )
     parser.add_argument(
@@ -1534,27 +1535,28 @@ def get_purge_parser(desc_only=False):
         name with tasks starting with these names. If no task ID is specified,
         all tasks related to specified workflows (option -w) will be removed.'''
     )
-    parser.add_argument(
+    group = parser.add_mutually_exclusive_group(required=False)
+    group.add_argument(
         '-a',
         '--all',
         action='store_true',
         help='''Clear all task information on local or specified remote task queue,
         including tasks created by other workflows.''')
-    parser.add_argument(
+    group.add_argument(
         '--age',
         help='''Remova all tasks that are created more than
         (default) or within specified age. Value of this parameter can be in units
         s (second), m (minute), h (hour), or d (day, default), or in the foramt of
         HH:MM:SS, with optional prefix + for older (default) and - for newer than
         specified age.''')
-    parser.add_argument(
+    group.add_argument(
         '-s',
         '--status',
         nargs='+',
         help='''Remove all tasks with specified status, which can be pending,
         submitted, running, completed, failed, and aborted. One of more status
         can be specified.''')
-    parser.add_argument(
+    group.add_argument(
         '-t',
         '--tags',
         nargs='*',

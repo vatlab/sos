@@ -831,14 +831,14 @@ touch {_output}
         # check tasks
         taskstatus = [
             x.split()[0] for x in subprocess.check_output(
-                'sos status --all -v1', shell=True).decode().splitlines()
+                'sos status -v1', shell=True).decode().splitlines()
         ]
         self.assertTrue(all(x in taskstatus for x in tasks))
         # purge one of them
         subprocess.call(f'sos purge {tasks[0]}', shell=True)
         taskstatus = [
             x.split()[0] for x in subprocess.check_output(
-                'sos status --all -v1', shell=True).decode().splitlines()
+                'sos status -v1', shell=True).decode().splitlines()
         ]
         self.assertTrue(tasks[0] not in taskstatus)
         self.assertTrue(tasks[1] in taskstatus)
@@ -846,7 +846,7 @@ touch {_output}
         subprocess.call(f'sos purge --all', shell=True)
         taskstatus = [
             x.split()[0] for x in subprocess.check_output(
-                'sos status --all -v1', shell=True).decode().splitlines()
+                'sos status -v1', shell=True).decode().splitlines()
         ]
         self.assertTrue(tasks[1] not in taskstatus)
 
