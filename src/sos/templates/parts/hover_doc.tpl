@@ -41,7 +41,7 @@ let sos_keywords = new Set([
   'singularity_build:',
   // action options
   'args', 'allow_error', 'container', 'engine', 'env',
-  'stdout', 'stderr', tracked',
+  'stdout', 'stderr', 'tracked',
   // magics
   '%capture', '%cd', '%env',
   '%expand', '%get', '%matplotlib', '%preview',
