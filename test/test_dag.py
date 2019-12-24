@@ -1000,12 +1000,13 @@ run:
 
         ''')
         # the workflow should call step K for step C_2, but not C_3
-        wf = script.workflow()
+        wf = script.workflow(use_default=False)
         #
         # test 1, we only need to generate target 'B1.txt'
         Base_Executor(
             wf, config={
-                'output_dag': 'test_outofdag1.dot'
+                'output_dag': 'test_outofdag1.dot',
+                'trace_existing': True
             }).initialize_dag(targets=['B1.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG(
@@ -1030,7 +1031,8 @@ strict digraph "" {
         # test 2, we would like to generate two files
         Base_Executor(
             wf, config={
-                'output_dag': 'test_outofdag2.dot'
+                'output_dag': 'test_outofdag2.dot',
+                'trace_existing': True
             }).initialize_dag(targets=['B2.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG(
@@ -1054,7 +1056,8 @@ strict digraph "" {
         #
         Base_Executor(
             wf, config={
-                'output_dag': 'test_outofdag3.dot'
+                'output_dag': 'test_outofdag3.dot',
+                'trace_existing': True
             }).initialize_dag(targets=['B3.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG(
