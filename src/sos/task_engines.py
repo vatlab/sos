@@ -644,16 +644,16 @@ class TaskEngine(threading.Thread):
                     tags=None,
                     verbosity=2):
         try:
-            if not tasks and not purge_all:
-                # if not --all and no task is specified, find all tasks in the current directory
-                from .signatures import WorkflowSignatures
-                workflow_signatures = WorkflowSignatures()
-                tasks = [
-                    x for x in workflow_signatures.tasks() if os.path.isfile(
-                        os.path.join(
-                            os.path.expanduser('~'), '.sos', 'tasks', x +
-                            '.task'))
-                ]
+            # if not tasks and not purge_all:
+            #     # if not --all and no task is specified, find all tasks in the current directory
+            #     from .signatures import WorkflowSignatures
+            #     workflow_signatures = WorkflowSignatures()
+            #     tasks = [
+            #         x for x in workflow_signatures.tasks() if os.path.isfile(
+            #             os.path.join(
+            #                 os.path.expanduser('~'), '.sos', 'tasks', x +
+            #                 '.task'))
+            #     ]
             return self.agent.check_output(
                 "sos purge {} {} {} {} {} -v {}".format(
                     ' '.join(tasks), '--all' if purge_all else '',

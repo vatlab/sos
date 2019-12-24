@@ -1788,15 +1788,15 @@ def purge_tasks(tasks,
                 tags=None,
                 verbosity=2):
     # verbose is ignored for now
-    if not tasks and not purge_all:
-        # if not --all and no task is specified, find all tasks in the current directory
-        from .signatures import WorkflowSignatures
-        workflow_signatures = WorkflowSignatures()
-        tasks = [
-            x for x in workflow_signatures.tasks() if os.path.isfile(
-                os.path.join(
-                    os.path.expanduser('~'), '.sos', 'tasks', x + '.task'))
-        ]
+    # if not tasks and not purge_all:
+    #     # if not --all and no task is specified, find all tasks in the current directory
+    #     from .signatures import WorkflowSignatures
+    #     workflow_signatures = WorkflowSignatures()
+    #     tasks = [
+    #         x for x in workflow_signatures.tasks() if os.path.isfile(
+    #             os.path.join(
+    #                 os.path.expanduser('~'), '.sos', 'tasks', x + '.task'))
+    #     ]
     import glob
     if tasks:
         all_tasks = []
@@ -1819,8 +1819,7 @@ def purge_tasks(tasks,
         ]
         is_all = True
     else:
-        env.logger.info('No relevant task to remove.')
-        return ''
+        raise ValueError(f'Please specify either tasks or --all')
     #
     if age is not None:
         age = expand_time(age, default_unit='d')

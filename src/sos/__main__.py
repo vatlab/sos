@@ -1542,7 +1542,7 @@ def get_purge_parser(desc_only=False):
         including tasks created by other workflows.''')
     parser.add_argument(
         '--age',
-        help='''Limit to tasks that are created more than
+        help='''Remova all tasks that are created more than
         (default) or within specified age. Value of this parameter can be in units
         s (second), m (minute), h (hour), or d (day, default), or in the foramt of
         HH:MM:SS, with optional prefix + for older (default) and - for newer than
@@ -1551,15 +1551,14 @@ def get_purge_parser(desc_only=False):
         '-s',
         '--status',
         nargs='+',
-        help='''Only remove tasks with
-        specified status, which can be pending, submitted, running, completed, failed,
-        and aborted. One of more status can be specified.''')
+        help='''Remove all tasks with specified status, which can be pending,
+        submitted, running, completed, failed, and aborted. One of more status
+        can be specified.''')
     parser.add_argument(
         '-t',
         '--tags',
         nargs='*',
-        help='''Only remove tasks with
-        one of the specified tags.''')
+        help='''Remove all tasks that matches one or more specified tags.''')
     parser.add_argument(
         '-q',
         '--queue',
@@ -1593,6 +1592,10 @@ def cmd_purge(args, workflow_args):
     #from .monitor import summarizeExecution
     env.verbosity = args.verbosity
     try:
+        if not args.tasks and not args.all:
+            args.all = args.age or args.tatus or args.tags
+        if not args.tasks and not args.all:
+            raise ValueError(f'Please specify either IDs of tasks or one or more of options --all, --age, --status, or --tags.')
         if not args.queue:
             purge_tasks(args.tasks, args.all, args.age, args.status, args.tags,
                         args.verbosity)
