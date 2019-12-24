@@ -771,48 +771,6 @@ print('a')
                     'sig_mode': 'force',
                 }).run)
 
-    def testPurgeWithoutOption(self):
-        '''Test sos purge to remove only tasks related to current directory'''
-        with cd_new('temp_a'):
-            with open('test.sos', 'w') as tst:
-                tst.write('''
-input: for_each={'i': range(2)}
-output: f'a{i}.txt'
-task:
-run: expand=True
-echo temp_a
-touch {_output}
-''')
-            subprocess.call('sos run test -s force -q localhost', shell=True)
-            tasks_a = get_tasks()
-        #
-        with cd_new('temp_b'):
-            with open('test.sos', 'w') as tst:
-                tst.write('''
-input: for_each={'i': range(2)}
-output: f'a{i}.txt'
-task:
-run: expand=True
-echo temp_b
-touch {_output}
-''')
-            subprocess.call('sos run test -s force -q localhost', shell=True)
-            tasks_b = get_tasks()
-            # only tasks related to this directory will be listed.
-            self.assertEqual(
-                len(tasks_b),
-                len(
-                    subprocess.check_output('sos status -v1',
-                                            shell=True).decode().splitlines()))
-            subprocess.call('sos purge', shell=True)
-        # check tasks
-        tasks = [
-            x.split()[0] for x in subprocess.check_output(
-                'sos status -v1 --all', shell=True).decode().splitlines()
-        ]
-        self.assertTrue(all(x in tasks for x in tasks_a))
-        self.assertFalse(any(x in tasks for x in tasks_b))
-
     def testPurgeAllWithOption(self):
         '''Test sos purge all with options such as -s completed'''
         with cd_new('temp_c'):
