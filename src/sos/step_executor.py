@@ -17,7 +17,7 @@ import zmq
 
 from .controller import close_socket, create_socket, send_message_to_controller
 from .messages import encode_msg, decode_msg
-from .eval import SoS_eval, SoS_exec, accessed_vars
+from .eval import SoS_eval, SoS_exec, accessed_vars, KeepOnlyImportAndDefine
 from .executor_utils import (__named_output__, __null_func__, __output_from__,
                              __traced__, clear_output, create_task,
                              get_traceback_msg, reevaluate_output, statementMD5,
@@ -1340,6 +1340,14 @@ class Base_Step_Executor:
                         break
                 else:
                     try:
+                        # 1354
+                        # if there are definition before input, the step cannot be
+                        # executed concurrently.
+                        if any(x in statement[1] for x in ('class', 'def', 'import')):
+                            step_def = KeepOnlyImportAndDefine().visit(
+                                ast.parse(statement[1]))
+                            if step_def.body:
+                                self.concurrent_substep = False
                         self.execute(statement[1])
                     except StopInputGroup as e:
                         # stop before substeps, because there is no output statement before it
