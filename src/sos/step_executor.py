@@ -1693,12 +1693,14 @@ class Base_Step_Executor:
                             matched = validate_step_sig(sig)
                             skip_index = bool(matched)
                             if skip_index:
-                                self.skip_substep()
                                 # matched["output"] might hav vars not defined in "output" #1355
+                                env.sos_dict.set('_output', matched["output"])
                                 self.output_groups[idx] = matched["output"]
                                 if 'vars' in matched:
                                     self.shared_vars[idx].update(
                                         matched["vars"])
+                                self.skip_substep()
+
                                 break
                         try:
                             if self.concurrent_substep:
