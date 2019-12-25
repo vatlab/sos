@@ -15,7 +15,7 @@ from sos.parser import SoS_Script
 from sos.targets import file_target, sos_targets
 from sos.utils import env
 from sos.workflow_executor import Base_Executor
-
+from sos import execute_workflow
 
 class TestSignature(unittest.TestCase):
 
@@ -855,6 +855,60 @@ with open(_input) as ifile, open(_output, 'w') as ofile:
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__substep_completed__'], 4)
 
+
+    def testSignatureWithOutputVars(self):
+        '''Test persistence of _output with vars #1355'''
+        if os.path.isfile('test_sig_with_vars.txt'):
+            os.remove('test_sig_with_vars.txt')
+        script = '''
+[10]
+output: f'test_sig_with_vars.txt'
+_output.touch()
+_output.set(seed=1)
+
+[20]
+print(_input.seed)
+        '''
+        execute_workflow(script)
+        # second time sshould be fine (using signature
+        execute_workflow(script)
+        #
+        # worker...
+        for i in range(2):
+            if os.path.isfile(f'test_sig_with_vars_{i}.txt'):
+                os.remove(f'test_sig_with_vars_{i}.txt')
+        script = '''
+[10]
+input: for_each=dict(i=range(2))
+output: f'test_sig_with_vars_{i}.txt'
+_output.touch()
+_output.set(seed=1)
+
+[20]
+print(_input.seed)
+        '''
+        execute_workflow(script)
+        # second time sshould be fine (using signature
+        execute_workflow(script)
+        # task
+        # worker...
+        for i in range(2):
+            if os.path.isfile(f'test_sig_with_vars_{i}.txt'):
+                os.remove(f'test_sig_with_vars_{i}.txt')
+        script = '''
+[10]
+input: for_each=dict(i=range(2))
+output: f'test_sig_with_vars_{i}.txt'
+task: queue='localhost'
+_output.touch()
+_output.set(seed=1)
+
+[20]
+print(_input.seed)
+        '''
+        execute_workflow(script)
+        # second time sshould be fine (using signature
+        execute_workflow(script)
 
 if __name__ == '__main__':
     unittest.main()
