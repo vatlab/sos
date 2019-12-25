@@ -1179,6 +1179,8 @@ class Base_Step_Executor:
         for idx, res in enumerate(self.proc_results):
             if self.pending_signatures[idx] is not None and res[
                     'ret_code'] == 0 and 'sig_skipped' not in res:
+                # task might return output with vars #1355
+                self.pending_signatures[idx].set_output(self.output_groups[idx])
                 self.pending_signatures[idx].write()
             if res['ret_code'] != 0 and 'output' in res:
                 clear_output(output=res['output'])
@@ -1692,8 +1694,8 @@ class Base_Step_Executor:
                             skip_index = bool(matched)
                             if skip_index:
                                 self.skip_substep()
-                                if env.sos_dict['step_output'].undetermined():
-                                    self.output_groups[idx] = matched["output"]
+                                # matched["output"] might hav vars not defined in "output" #1355
+                                self.output_groups[idx] = matched["output"]
                                 if 'vars' in matched:
                                     self.shared_vars[idx].update(
                                         matched["vars"])
