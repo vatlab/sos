@@ -1347,7 +1347,10 @@ class Base_Step_Executor:
                             step_def = KeepOnlyImportAndDefine().visit(
                                 ast.parse(statement[1]))
                             if step_def.body:
-                                self.step.global_def.body.extend(step_def.body)
+                                if isinstance(self.step.global_def, ast.Module):
+                                    self.step.global_def.body.extend(step_def.body)
+                                else:
+                                    self.step.global_def = step_def
                         self.execute(statement[1])
                     except StopInputGroup as e:
                         # stop before substeps, because there is no output statement before it
