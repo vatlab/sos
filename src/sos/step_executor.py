@@ -1341,13 +1341,13 @@ class Base_Step_Executor:
                 else:
                     try:
                         # 1354
-                        # if there are definition before input, the step cannot be
-                        # executed concurrently.
+                        # if there are definition before input, the definitions and imports
+                        # must be added to global_def in order to be executed by substeps
                         if any(x in statement[1] for x in ('class', 'def', 'import')):
                             step_def = KeepOnlyImportAndDefine().visit(
                                 ast.parse(statement[1]))
                             if step_def.body:
-                                self.concurrent_substep = False
+                                self.step.global_def.body.extend(step_def.body)
                         self.execute(statement[1])
                     except StopInputGroup as e:
                         # stop before substeps, because there is no output statement before it
