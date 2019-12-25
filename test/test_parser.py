@@ -12,6 +12,7 @@ from sos.targets import file_target, sos_targets, path, paths
 from sos.utils import ArgumentError, env
 from sos.workflow_executor import Base_Executor
 from sos.converter import extract_workflow
+from sos import execute_workflow
 
 section1_sos = '''
 #!/usr/bin/env sos-runner
@@ -2072,6 +2073,14 @@ print(i)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
+
+    def testConcurrentSubstepWithStepImport(self):
+        ''' Test concurrent substep with step leval import statement #1354'''
+        execute_workflow('''
+import time
+input: for_each=dict(i=range(2))
+time.sleep(0)
+        ''')
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
