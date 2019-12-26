@@ -1750,13 +1750,14 @@ class Base_Step_Executor:
                                     invalid_target())
                                 skip_index = True
                             else:
-                                # default mode
-                                idx_msg = f'(id={env.sos_dict["step_id"]}, index={idx})' if len(
-                                    self._substeps
-                                ) > 1 else f'(id={env.sos_dict["step_id"]})'
-                                env.logger.error(
-                                    f'{self.step.step_name(True)} {idx_msg} returns an error.'
-                                )
+                                if env.config['run_mode'] != 'interactive':
+                                    # default mode
+                                    idx_msg = f'(id={env.sos_dict["step_id"]}, index={idx})' if len(
+                                        self._substeps
+                                    ) > 1 else f'(id={env.sos_dict["step_id"]})'
+                                    env.logger.error(
+                                        f'{self.step.step_name(True)} {idx_msg} returns an error.'
+                                    )
                                 self.exec_error.append(str(idx), e)
                     else:
                         # if it is not the last statement group (e.g. statements before :output)
