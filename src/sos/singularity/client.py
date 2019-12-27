@@ -214,7 +214,7 @@ class SoS_SingularityClient:
             if ctx == 'file':
                 return image
             else:
-                return cname.replace('/', '-').replace(':', '-') + '.simg'
+                return cname.replace('/', '-').replace(':', '-') + '.sif'
         else:
             return image
 
@@ -250,7 +250,7 @@ class SoS_SingularityClient:
         try:
             print(f'HINT: Pulling image {image} to {image_file}')
             subprocess.check_output(
-                'singularity pull --name {} {}'.format(image_file, image),
+                'singularity pull {} {}'.format(image_file, image),
                 stderr=subprocess.STDOUT,
                 shell=True,
                 universal_newlines=True)

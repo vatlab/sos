@@ -97,7 +97,7 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                     'engine'] else None
                 if '://' in kwargs['container']:
                     cty, cname = kwargs['container'].split('://', 1)
-                elif kwargs['container'].endswith('.simg'):
+                elif kwargs['container'].endswith('.simg') or kwargs['container'].endswith('.sif'):
                     engine = 'singularity'
                     cty = 'file'
                     cname = kwargs['container']
@@ -112,10 +112,10 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                             f'docker engine only allows docker container {cty} specified'
                         )
                 elif engine == 'singularity':
-                    if cty is not None and cty not in ('docker', 'file',
+                    if cty is not None and cty not in ('docker', 'file', 'library',
                                                        'shub'):
                         raise ValueError(
-                            f'singularity engine only allows docker, file and shub container {cty} specified'
+                            f'singularity engine only allows docker, file, library, and shub container {cty} specified'
                         )
                 elif engine is not None and engine != 'local':
                     raise ValueError(
@@ -125,7 +125,7 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                     # engine is none, need to be refered
                     if cty == 'docker':
                         engine = 'docker'
-                    elif cty in ('file', 'shub'):
+                    elif cty in ('file', 'shub', 'library'):
                         engine = 'singularity'
                     elif cty == 'local':
                         engine = 'local'
