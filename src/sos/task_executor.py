@@ -249,18 +249,6 @@ class BaseTaskExecutor(object):
                     if not parent_dir.is_dir():
                         parent_dir.mkdir(parents=True, exist_ok=True)
 
-                        # go to user specified workdir
-            if 'workdir' in sos_dict['_runtime']:
-                if not os.path.isdir(
-                        os.path.expanduser(sos_dict['_runtime']['workdir'])):
-                    try:
-                        os.makedirs(
-                            os.path.expanduser(sos_dict['_runtime']['workdir']))
-                    except Exception as e:
-                        raise RuntimeError(
-                            f'Failed to create workdir {sos_dict["_runtime"]["workdir"]}: {e}'
-                        )
-                os.chdir(os.path.expanduser(sos_dict['_runtime']['workdir']))
             # set environ ...
             # we join PATH because the task might be executed on a different machine
             if 'env' in sos_dict['_runtime']:
