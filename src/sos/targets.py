@@ -601,10 +601,10 @@ class path(type(Path())):
             lambda x: x,
     }
 
-    def __new__(cls, host=None, *args, **kwargs):
+    def __new__(cls, *args, **kwargs):
         if cls is Path:
             cls = WindowsPath if os.name == 'nt' else PosixPath
-        return cls._from_parts(args).expanduser().expandnamed(host=host)
+        return cls._from_parts(args).expanduser().expandnamed(host=kwargs.get('host', None))
 
     @staticmethod
     def names(host=None):
@@ -625,6 +625,7 @@ class path(type(Path())):
 
     def _init(self, template=None):
         super(path, self)._init(template)
+
         if not (self._drv or self._root) and self._parts:
             if self._parts[0][:1] == '~':
                 expanded = self.expanduser()
@@ -640,7 +641,6 @@ class path(type(Path())):
     def expandnamed(self, host=None):
         if not self._parts or self._parts[0][:1] != '#':
             return self
-
         try:
             return self._from_parts([
                     env.sos_dict['CONFIG']['hosts'][
