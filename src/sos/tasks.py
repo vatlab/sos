@@ -119,7 +119,7 @@ class MasterTaskParams(TaskParams):
 
         if not self.task_stack:
             for key in ('walltime', 'max_walltime', 'cores', 'nodes',
-                        'max_cores', 'mem', 'max_mem', 'map_vars', 'name',
+                        'max_cores', 'mem', 'max_mem', 'name',
                         'workdir', 'verbosity', 'sig_mode', 'run_mode'):
                 if key in params.sos_dict['_runtime'] and params.sos_dict[
                         '_runtime'][key] is not None:

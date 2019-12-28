@@ -674,16 +674,15 @@ a = 1
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
 
-    def testOptionNameOfPath(self):
+    def testNamedPath(self):
         '''Test the use of option name of path'''
         script = SoS_Script('''
 import os
 # windows might not have HOME
 if 'HOME' in os.environ:
-    assert path(name='home') == os.environ['HOME']
-assert path(name='nonexisting', default='whatever') == 'whatever'
-assert path.names() == ['home']
-assert path.names('docker') == ['home']
+    assert path('#home') == os.environ['HOME']
+assert 'home' in path.names()
+assert 'home' in path.names('docker')
 ''')
         wf = script.workflow()
         Base_Executor(

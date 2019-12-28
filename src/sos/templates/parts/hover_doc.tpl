@@ -27,7 +27,7 @@ let sos_keywords = new Set([
   'get_output', 'expand_pattern',
   // task options
   'walltime', 'cores', 'mem', 'queue', 'to_host', 'nodes',
-  'from_host', 'map_vars', 'trunk_size', 'trunk_workers', 'workdir',
+  'from_host', 'trunk_size', 'trunk_workers', 'workdir',
   'shared', 'env', 'prepend_path', 'tags',
   // targets
   'file_target', 'executable', 'sos_variable', 'env_variable',

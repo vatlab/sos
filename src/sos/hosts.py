@@ -203,12 +203,6 @@ class LocalHost(object):
         if len(runtime) > 1 or runtime['_runtime'] or runtime != old_runtime:
             tf.runtime = runtime
         tf.status = 'pending'
-        #
-        if 'to_host' in task_vars['_runtime'] and isinstance(
-                task_vars['_runtime']['to_host'], dict):
-            for l, r in task_vars['_runtime']['to_host'].items():
-                if l != r:
-                    shutil.copy(l, r)
         self.send_job_file(task_file)
         return True
 
@@ -259,12 +253,6 @@ class LocalHost(object):
         tf = TaskFile(task_id)
         params = tf.params
         job_dict = params.sos_dict
-
-        if 'from_host' in job_dict['_runtime'] and isinstance(
-                job_dict['_runtime']['from_host'], dict):
-            for l, r in job_dict['_runtime']['from_host'].items():
-                if l != r:
-                    shutil.copy(r, l)
 
         res = tf.result
         if not res or 'ret_code' not in res:
@@ -398,7 +386,10 @@ class RemoteHost(object):
     def _map_path(self, source):
         result = {}
         cwd = os.getcwd()
-        if isinstance(source, (str, path)):
+        if isinstance(source, int) and source.startswith('#'):
+            result[path(source, host='localhost')] = path(
+                source, host=self.alias)
+        elif isinstance(source, (str, path)):
             dest = os.path.abspath(os.path.expanduser(source))
             # we use samefile to avoid problems with case-insensitive file system #522
             # we also use the "cwd" name to avoid wrong case for cwd. For example,
@@ -422,7 +413,7 @@ class RemoteHost(object):
                     f'Path {source} is not under any specified paths of localhost and is mapped to {dest} on remote host.'
                 )
             result[source] = dest.replace('\\', '/')
-        elif isinstance(source, (Sequence, set, sos_targets)):
+        elif isinstance(source, (Sequence, sos_targets)):
             for src in source:
                 result.update(self._map_path(src))
         else:
@@ -550,27 +541,22 @@ class RemoteHost(object):
             if ignored:
                 env.logger.info(f'``Ignore`` {ignored}')
             items = [x for x in items if isinstance(x, (str, path))]
-        elif isinstance(items, dict):
-            items = items
         else:
             env.logger.warning(
                 f'Unrecognized items to be sent to host: {items}')
             return {}
 
-        if isinstance(items, Sequence):
-            from .utils import find_symbolic_links
-            new_items = []
-            for item in items:
-                links = find_symbolic_links(item)
-                for link, realpath in links.items():
-                    env.logger.info(
-                        f'Adding {realpath} for symbolic link {link}')
-                new_items.extend(links.values())
-            items.extend(new_items)
+        from .utils import find_symbolic_links
+        new_items = []
+        for item in items:
+            links = find_symbolic_links(item)
+            for link, realpath in links.items():
+                env.logger.info(f'Adding {realpath} for symbolic link {link}')
+            new_items.extend(links.values())
+        items.extend(new_items)
 
-            sending = self._map_path(items)
-        else:
-            sending = items
+        sending = self._map_path(items)
+
         sent = {}
         for source in sorted(sending.keys()):
             dest = self._remote_abs(sending[source])
@@ -609,16 +595,25 @@ class RemoteHost(object):
         return sent
 
     def receive_from_host(self, items):
-        if isinstance(items, dict):
-            # specify as local:remote
-            # needs remote:local
-            receiving = {self._remote_abs(y): str(x) for x, y in items.items()}
+        if isinstance(items, str):
+            items = [items]
+        elif isinstance(items, path):
+            items = [str(items)]
+        elif isinstance(items, Sequence):
+            ignored = [x for x in items if not isinstance(x, (str, path))]
+            if ignored:
+                env.logger.info(f'``Ignore`` {ignored}')
+            items = [x for x in items if isinstance(x, (str, path))]
         else:
-            # y could be path
-            receiving = {
-                self._remote_abs(y): str(x)
-                for x, y in self._map_path(items).items()
-            }
+            env.logger.warning(
+                f'Unrecognized items to be retrieved from host: {items}')
+            return {}
+
+        # y could be path
+        receiving = {
+            self._remote_abs(y): str(x)
+            for x, y in self._map_path(items).items()
+        }
         #
         received = {}
         for source in sorted(receiving.keys()):
@@ -724,6 +719,13 @@ class RemoteHost(object):
                     f'{task_id} ``sent`` {short_repr(sent.keys())} to {self.alias}'
                 )
         if 'to_host' in task_vars['_runtime']:
+            if not isinstance(task_vars['_runtime']['to_host'], (str, Sequence)) or \
+                (isinstance(task_vars['_runtime']['to_host'], Sequence) and \
+                    not all(isinstance(x, str) for x in task_vars['_runtime']['to_host'])):
+                raise ValueError(
+                    f'Parameter to_host accepts a list of paths (strings). {task_vars["_runtime"]["to_host"]} provided'
+                )
+
             sent = self.send_to_host(task_vars['_runtime']['to_host'])
             if sent:
                 env.logger.info(
@@ -740,16 +742,6 @@ class RemoteHost(object):
         mapped_vars = {
             '_input', '_output', '_depends', 'input', 'output', 'depends'
         }
-        if 'map_vars' in task_vars['_runtime']:
-            if isinstance(task_vars['_runtime']['map_vars'], str):
-                mapped_vars.add(task_vars['_runtime']['map_vars'])
-            elif isinstance(task_vars['_runtime']['map_vars'],
-                            (set, Sequence)):
-                mapped_vars |= set(task_vars['_runtime']['map_vars'])
-            else:
-                raise ValueError(
-                    f'Unacceptable value for runtime option mapped_vars_vars: {task_vars["_runtime"]["mapped_vars_vars"]}'
-                )
 
         for var in mapped_vars:
             if var not in task_vars:
@@ -970,7 +962,7 @@ class RemoteHost(object):
                 )
         if 'from_host' in job_dict[
                 '_runtime'] and env.config['run_mode'] != 'dryrun':
-            if isinstance(job_dict['_runtime']['from_host'], (dict, str)):
+            if isinstance(job_dict['_runtime']['from_host'], (Sequence, str)):
                 received = self.receive_from_host(
                     job_dict['_runtime']['from_host'])
                 if received:
@@ -979,7 +971,7 @@ class RemoteHost(object):
                     )
             else:
                 env.logger.warning(
-                    f"Expecting a dictionary from from_host: {job_dict['_runtime']['from_host']} received"
+                    f"Expecting a string or list of string from from_host: {job_dict['_runtime']['from_host']} received"
                 )
         # we need to translate result from remote path to local
         if 'output' in res:

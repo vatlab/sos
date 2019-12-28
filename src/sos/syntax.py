@@ -18,7 +18,7 @@ SOS_DEPENDS_OPTIONS: List = []
 SOS_RUNTIME_OPTIONS = [
     'workdir', 'walltime', 'nodes', 'cores', 'mem',
     'shared', 'env', 'prepend_path', 'queue', 'to_host', 'from_host',
-    'map_vars', 'trunk_size', 'trunk_workers', 'tags', 'logfile',
+    'trunk_size', 'trunk_workers', 'tags', 'logfile',
     # deprecated
     'concurrent', 'name', 'active'
 ]
