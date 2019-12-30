@@ -99,32 +99,32 @@ run:
                 shell=True), 0)
         self.assertTrue(file_target('result_remote1.txt').target_exists())
 
-    @unittest.skipIf(sys.platform == 'win32' or not has_docker,
-                     'No symbloc link problem under win32 or no docker')
-    def testToHostRename(self):
-        '''Test to_host with dictionary'''
-        script = SoS_Script(r'''
-[1]
-sh:
-   echo "1" > 1.txt
-
-[10]
-task: to_host={'1.txt': '2.txt'}, from_host={'3.txt': '2.txt'}
-with open('2.txt', 'a') as t:
-  t.write('2\n')
-''')
-        wf = script.workflow()
-        Base_Executor(
-            wf,
-            config={
-                'config_file': '~/docker.yml',
-                'default_queue': 'docker',
-                'sig_mode': 'force',
-            }).run()
-        self.assertTrue(os.path.isfile('3.txt'))
-        with open('3.txt') as txt:
-            content = txt.read()
-            self.assertEqual('1\n2\n', content, 'Got {}'.format(content))
+#     @unittest.skipIf(sys.platform == 'win32' or not has_docker,
+#                      'No symbloc link problem under win32 or no docker')
+#     def testToHostRename(self):
+#         '''Test to_host with dictionary'''
+#         script = SoS_Script(r'''
+# [1]
+# sh:
+#    echo "1" > 1.txt
+# 
+# [10]
+# task: to_host={'1.txt': '2.txt'}, from_host={'3.txt': '2.txt'}
+# with open('2.txt', 'a') as t:
+#   t.write('2\n')
+# ''')
+#         wf = script.workflow()
+#         Base_Executor(
+#             wf,
+#             config={
+#                 'config_file': '~/docker.yml',
+#                 'default_queue': 'docker',
+#                 'sig_mode': 'force',
+#             }).run()
+#         self.assertTrue(os.path.isfile('3.txt'))
+#         with open('3.txt') as txt:
+#             content = txt.read()
+#             self.assertEqual('1\n2\n', content, 'Got {}'.format(content))
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testFromHostOption(self):
@@ -192,25 +192,25 @@ sh:
             }).run()
         self.assertTrue(os.path.isfile('llp'))
         os.remove('llp')
-        # dict form
-        script = SoS_Script('''
-[10]
-task: from_host={'llp': 'll'}
-sh:
-    echo "LLP" > ll
-''')
-        wf = script.workflow()
-        Base_Executor(
-            wf,
-            config={
-                'config_file': '~/docker.yml',
-                # do not wait for jobs
-                'wait_for_task': True,
-                'sig_mode': 'force',
-                'default_queue': 'localhost',
-            }).run()
-        self.assertTrue(os.path.isfile('llp'))
-        os.remove('llp')
+        # dict form is deprecated
+#         script = SoS_Script('''
+# [10]
+# task: from_host={'llp': 'll'}
+# sh:
+#     echo "LLP" > ll
+# ''')
+#         wf = script.workflow()
+#         Base_Executor(
+#             wf,
+#             config={
+#                 'config_file': '~/docker.yml',
+#                 # do not wait for jobs
+#                 'wait_for_task': True,
+#                 'sig_mode': 'force',
+#                 'default_queue': 'localhost',
+#             }).run()
+#         self.assertTrue(os.path.isfile('llp'))
+#         os.remove('llp')
 
     def testWorkerProcs(self):
         # test -j option
