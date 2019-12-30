@@ -102,7 +102,7 @@ class R_library(BaseTarget):
             if (!is.null(cur_version) && {version_satisfied}) {{
                 write(paste(package, cur_version, "AVAILABLE"), file={repr(output_file)})
             }} else if ({"TRUE" if self._autoinstall else "FALSE"}) {{
-                remotes::install_github(package_repo, force = TRUE)
+                remotes::install_github(package_repo, force=TRUE, upgrade="never")
                 if ({package_loaded}) cur_version <- packageVersion(package) else cur_version <- NULL
                 # if it still does not exist, write the package name to output
                 if (!is.null(cur_version)) {{
