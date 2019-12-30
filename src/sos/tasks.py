@@ -1312,7 +1312,7 @@ def print_task_status(tasks,
 
     if not all_tasks:
         env.logger.info(
-            'No matching tasks are identified. Use option -a to check all tasks.'
+            'No matching tasks are identified.'
         )
         return
 

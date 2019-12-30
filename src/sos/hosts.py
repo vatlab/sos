@@ -533,14 +533,14 @@ class RemoteHost(object):
     def send_to_host(self, items):
         # we only copy files and directories, not other types of targets
         if isinstance(items, str):
-            items = [items]
+            items = glob.glob(items)
         elif isinstance(items, path):
             items = [str(items)]
         elif isinstance(items, Sequence):
             ignored = [x for x in items if not isinstance(x, (str, path))]
             if ignored:
                 env.logger.info(f'``Ignore`` {ignored}')
-            items = [x for x in items if isinstance(x, (str, path))]
+            items = sum([glob.glob(x) if isinstance(x, str) else [x] for x in items], [])
         else:
             env.logger.warning(
                 f'Unrecognized items to be sent to host: {items}')
