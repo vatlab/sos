@@ -214,7 +214,20 @@ class SoS_SingularityClient:
             if ctx == 'file':
                 return image
             else:
-                return cname.replace('/', '-').replace(':', '-') + '.sif'
+                lib_path = path(
+                    os.environ['SOS_SINGULARITY_LIBRARY']
+                ) if 'SOS_SINGULARITY_LIBRARY' in os.environ else path(
+                    '~/.sos/singularity/library')
+                if not os.path.isdir(lib_path):
+                    try:
+                        os.makedirs(lib_path, exist_ok=True)
+                    except:
+                        raise RuntimeError(
+                            f'Failed to create singularity library directory {lib_path}'
+                        )
+                return os.path.join(
+                    lib_path,
+                    cname.replace('/', '-').replace(':', '-') + '.sif')
         else:
             return image
 
