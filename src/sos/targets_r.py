@@ -93,7 +93,7 @@ class R_library(BaseTarget):
         #
         if len(glob_wildcards('{repo}@{pkg}', [name])['repo']):
             # package is from github
-            self._install('remotes', None, repos)
+            self._install('remotes>=2.0.0', None, repos)
             install_script = f'''
             options(warn=-1)
             package_repo <-strsplit("{name}", split="@")[[1]][2]
