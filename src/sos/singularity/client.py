@@ -151,6 +151,11 @@ class SoS_SingularityClient:
         if not dest:
             raise ValueError(
                 f'Please specify result of sigularity build with option dest')
+
+        if os.path.isfile(dest) and not 'force' in kwargs:
+            raise ValueError(
+                f'Destination image {dest} already exists. Please remove or overwrite it with option "force=True"'
+            )
         with tempfile.TemporaryDirectory(dir=os.getcwd()) as tempdir:
             if script:
                 with open(os.path.join(tempdir, 'singularity.def'), 'w') as df:
@@ -209,27 +214,33 @@ class SoS_SingularityClient:
                     returncode=ret, cmd=cmd, stderr=msg)
 
     def _image_file(self, image):
+        lib_path = path(
+            os.environ['SOS_SINGULARITY_LIBRARY']
+        ) if 'SOS_SINGULARITY_LIBRARY' in os.environ else path(
+            '~/.sos/singularity/library')
+        if not os.path.isdir(lib_path):
+            try:
+                os.makedirs(lib_path, exist_ok=True)
+            except:
+                raise RuntimeError(
+                    f'Failed to create singularity library directory {lib_path}'
+                )
+
         if '://' in image:
             ctx, cname = image.split('://', 1)
             if ctx == 'file':
                 return image
             else:
-                lib_path = path(
-                    os.environ['SOS_SINGULARITY_LIBRARY']
-                ) if 'SOS_SINGULARITY_LIBRARY' in os.environ else path(
-                    '~/.sos/singularity/library')
-                if not os.path.isdir(lib_path):
-                    try:
-                        os.makedirs(lib_path, exist_ok=True)
-                    except:
-                        raise RuntimeError(
-                            f'Failed to create singularity library directory {lib_path}'
-                        )
                 return os.path.join(
                     lib_path,
                     cname.replace('/', '-').replace(':', '-') + '.sif')
-        else:
+        elif os.path.isfile(image):
+            # if image is a filename, ok
             return image
+        else:
+            # otherwise assuming it is an image in SoS Singulariry Library
+            return os.path.join(lib_path, image)
+
 
     def pull(self, image):
         self._ensure_singularity()
@@ -240,7 +251,7 @@ class SoS_SingularityClient:
             return image
         image_file = self._image_file(image)
         if os.path.exists(image_file):
-            env.logger.debug(f'Using existing singularity image {image_file}')
+            env.logger.debug(f'Using existing singularity image {image_file.replace(os.path.expanduser("~"), "~")}')
             return
         if '://' not in image:
             raise ValueError(f'Cannot locate or pull singularity image {image}')
@@ -261,7 +272,7 @@ class SoS_SingularityClient:
 
         # if image is specified, check if it is available locally. If not, pull it
         try:
-            print(f'HINT: Pulling image {image} to {image_file}')
+            print(f'HINT: Pulling image {image} to {image_file.replace(os.path.expanduser("~"), "~")}')
             subprocess.check_output(
                 'singularity pull {} {}'.format(image_file, image),
                 stderr=subprocess.STDOUT,
