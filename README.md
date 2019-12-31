@@ -7,8 +7,8 @@
 )](https://ci.appveyor.com/project/BoPeng/sos)
 
 
-**Script of Scripts (SoS)** consists of **[`SoS Notebook`](https://github.com/vatlab/sos-notebook)**, a Jupyter-based polyglot notebook that allows the use of multiple Jupyter kernels in one notebook, and
-a **[`SoS Workflow`](https://github.com/vatlab/sos)**, a workflow system for the execution of workflows in both process- and outcome-oriented styles. It is designed for data scientists and bioinformatics who routinely work with scripts in different languages such as bash, Python, R, and SAS. This repository contains the `SoS Workflow` workflow engine.
+**Script of Scripts (SoS)** consists of [`SoS Notebook`](https://github.com/vatlab/sos-notebook), a Jupyter-based polyglot notebook that allows the use of multiple Jupyter kernels in one notebook, and
+[`SoS Workflow`](https://github.com/vatlab/sos), a workflow system for the execution of workflows in both process- and outcome-oriented styles. It is designed for data scientists and bioinformatics who routinely work with scripts in different languages such as bash, Python, R, and SAS. This repository contains the `SoS Workflow` workflow engine.
 
 Please refer to relevant publications [SoS Notebook: An Interactive Multi-Language Data Analysis Environment](https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/bty405/5001386
 ) in Bioinformatics, [Script of Scripts: a pragmatic workflow system for daily computational research](https://doi.org/10.1371/journal.pcbi.1006843) in PLoS Computational Biology, and the [SoS homepage](http://vatlab.github.io/sos-docs) for more information on SoS Notebook and SoS Workflow.
