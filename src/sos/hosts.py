@@ -540,7 +540,7 @@ class RemoteHost(object):
             ignored = [x for x in items if not isinstance(x, (str, path))]
             if ignored:
                 env.logger.info(f'``Ignore`` {ignored}')
-            items = sum([glob.glob(x) if isinstance(x, str) else [x] for x in items], [])
+            items = sum([glob.glob(x) if isinstance(x, str) else [x] for x in items if x not in ignored], [])
         else:
             env.logger.warning(
                 f'Unrecognized items to be sent to host: {items}')
