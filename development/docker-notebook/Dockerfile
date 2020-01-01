@@ -17,13 +17,14 @@ USER    root
 
 #       Tools
 RUN     apt-get update
-RUN     apt-get install -y graphviz
+RUN     apt-get install -y graphviz zlib1g-dev libbz2-dev libcurl4-openssl-dev libssl-dev
 RUN     apt-get install -y texlive-xetex texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended
 
 RUN     apt-get install -y octave
 RUN     octave --eval 'pkg install -forge dataframe'
 
-RUN     apt-get install -y nodejs npm
+RUN     apt-get install -y nodejs-dev node-gyp libssl1.0-dev
+RUN     apt-get install -y npm
 
 RUN     apt-get install -y libgmp3-dev
 RUN     apt-get install -y software-properties-common
@@ -61,7 +62,7 @@ RUN     pip install markdown-kernel
 RUN     python -m markdown_kernel.install
 
 # Bioinfo
-RUN     pip install pysam
+#RUN     pip install pysam
 
 # SOS
 RUN     pip install docker markdown wand graphviz imageio pillow nbformat
