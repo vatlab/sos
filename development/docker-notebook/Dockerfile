@@ -9,7 +9,7 @@
 #
 
 # tag created in Fev 2019
-FROM jupyter/datascience-notebook:83ed2c63671f
+FROM jupyter/datascience-notebook:7a0c7325e470
 
 MAINTAINER Bo Peng <bpeng@mdanderson.org>
 
@@ -31,7 +31,7 @@ RUN     apt-get install -y software-properties-common
 
 # Install some packages for our examples
 #RUN     R --slave -e 'install.packages(c("package1", "package2"), lib="/usr/local/lib/R/site-library")'
-RUN     R --slave -e 'source("https://bioconductor.org/biocLite.R"); biocLite("biomaRt")'
+RUN     R --slave -e 'install.packages("BiocManager", repos="http://cran.us.r-project.org"); BiocManager::install("biomaRt")'
 RUN     R --slave -e 'install.packages("glmnet", repos="http://cran.us.r-project.org")'
 RUN     pip install sklearn
 
@@ -61,8 +61,6 @@ RUN     /bin/bash -c "source activate ipykernel_py2; python -m ipykernel install
 RUN     pip install markdown-kernel
 RUN     python -m markdown_kernel.install
 
-# Bioinfo
-#RUN     pip install pysam
 
 # SOS
 RUN     pip install docker markdown wand graphviz imageio pillow nbformat
@@ -79,5 +77,8 @@ RUN     python -m sos_notebook.install
 RUN     pip install jupyterlab==1.0.0a1
 RUN     jupyter labextension install transient-display-data@0.2.1
 RUN     jupyter labextension install jupyterlab-sos@0.4.2
+
+# Bioinfo
+#RUN     pip install pysam
 
 USER    jovyan

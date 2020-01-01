@@ -14,7 +14,6 @@ MAINTAINER Bo Peng <bpeng@mdanderson.org>
 
 USER    root
 
-RUN     R --slave -e 'source("https://bioconductor.org/biocLite.R"); biocLite("biomaRt")'
 RUN     R --slave -e 'install.packages("glmnet", repos="http://cran.us.r-project.org")'
 RUN     pip install sklearn
 
