@@ -67,14 +67,14 @@ RUN     julia -e "using Pkg;Pkg.add([\"Feather\", \"DataFrames\", \"NamedArrays\
 
 
 #RUN     conda install -y feather-format -c conda-forge
-RUN     pip install feather-format 
-RUN     python -c 'import feather'
+RUN     pip install feather-format
+# RUN     python -c 'import feather'
 
 # Bioinfo
 RUN     conda install pysam -c bioconda
 #       Python 2
-RUN     conda create -n ipykernel_py2 python=2 ipykernel
-RUN     /bin/bash -c "source activate ipykernel_py2; python -m ipykernel install --user; source deactivate"
+RUN     conda create -n ipykernel_py2 python=2 ipykernel pip pandas numpy
+RUN     /bin/bash -c "source activate ipykernel_py2; python -m ipykernel install --user; python -m pip install feather-format; source deactivate"
 
 #       Markdown kernel
 RUN     pip install markdown-kernel
