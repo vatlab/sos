@@ -97,11 +97,13 @@ class WorkflowEngine:
             self.command[0] = 'sos-runner'
             self.command[1] = self.filename
         else:
-            raise ValueError(f'Failed to generate remote execution command: {sel.command}')
+            raise ValueError(
+                f'Failed to generate remote execution command: {self.command}')
         self.command = subprocess.list2cmdline(self.command)
         self.template_args = copy.deepcopy(self.config)
         self.template_args.update(template_args)
-        env.log_to_file('WORKFLOW', f'Execute command on remote host: {self.command}')
+        env.log_to_file('WORKFLOW',
+                        f'Execute command on remote host: {self.command}')
         return True
 
 

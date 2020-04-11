@@ -604,13 +604,16 @@ class path(type(Path())):
     def __new__(cls, *args, **kwargs):
         if cls is Path:
             cls = WindowsPath if os.name == 'nt' else PosixPath
-        return cls._from_parts(args).expanduser().expandnamed(host=kwargs.get('host', None))
+        return cls._from_parts(args).expanduser().expandnamed(
+            host=kwargs.get('host', None))
 
     @staticmethod
     def names(host=None):
         if host is None:
             if '__host__' not in env.sos_dict:
-                env.logger.warning('Incomplete sos environment: missing __host__ definition, assuming "localhost".')
+                env.logger.warning(
+                    'Incomplete sos environment: missing __host__ definition, assuming "localhost".'
+                )
             host = env.sos_dict.get('__host__', 'localhost')
         if 'CONFIG' not in env.sos_dict or 'hosts' not in env.sos_dict['CONFIG']:
             raise RuntimeError(
@@ -643,36 +646,37 @@ class path(type(Path())):
             return self
         try:
             return self._from_parts([
-                    env.sos_dict['CONFIG']['hosts'][
-                        env.sos_dict.get('__host__', 'localhost') if host is None else host]['paths'][self._parts[0][1:]
-                ]] + self._parts[1:])
-        except Exception as e:
+                env.sos_dict['CONFIG']['hosts']
+                [env.sos_dict.get('__host__', 'localhost'
+                                 ) if host is None else host]['paths'][
+                                     self._parts[0][1:]]
+            ] + self._parts[1:])
+        except Exception:
             if host is None and '__host__' not in env.sos_dict:
                 raise RuntimeError(
-                    'Incomplete sos environment: missing __host__ definition.'
-                )
+                    'Incomplete sos environment: missing __host__ definition.')
             if 'CONFIG' not in env.sos_dict or 'hosts' not in env.sos_dict[
                     'CONFIG']:
                 raise RuntimeError(
                     'Incomplete sos environment: missing hosts definition.')
-            if host is not None and host not in env.sos_dict['CONFIG'][
-                    'hosts']:
+            if host is not None and host not in env.sos_dict['CONFIG']['hosts']:
                 raise RuntimeError(
-                    f'Incomplete sos environment: undefined host {host}'
-                )
-            elif env.sos_dict.get('__host__', 'localhost') not in env.sos_dict['CONFIG'][
-                    'hosts']:
+                    f'Incomplete sos environment: undefined host {host}')
+            elif env.sos_dict.get(
+                    '__host__',
+                    'localhost') not in env.sos_dict['CONFIG']['hosts']:
                 raise RuntimeError(
                     f'Incomplete sos environment: undefined host {env.sos_dict.get("__host__", "locahost")}'
                 )
-            if 'paths' not in env.sos_dict['CONFIG']['hosts'][
-                    env.sos_dict.get('__host__', 'localhost')]:
+            if 'paths' not in env.sos_dict['CONFIG']['hosts'][env.sos_dict.get(
+                    '__host__', 'localhost')]:
                 raise RuntimeError(
                     f'Incomplete sos environment: paths not defined for host {env.sos_dict.get("__host__", "localhost")}'
                 )
             name = self._parts[0][1:]
             if name not in env.sos_dict['CONFIG']['hosts'][
-                    env.sos_dict.get('__host__', 'localhost') if host is None else host]['paths']:
+                    env.sos_dict.get('__host__', 'localhost'
+                                    ) if host is None else host]['paths']:
                 raise ValueError(
                     f'Named path "{name}" not defined for host {env.sos_dict.get("__host__", "localhost") if host is None else host}'
                 )
@@ -1573,11 +1577,11 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         elif by == 'all':
             # default option
             self._groups = [_sos_group(range(len(self)), self._labels)]
-        elif isinstance(by, str) and (by.startswith('pairsource') or by.startswith('pairlabel')):
+        elif isinstance(by, str) and (by.startswith('pairsource') or
+                                      by.startswith('pairlabel')):
             labels = list(dict.fromkeys(self.labels))
             if len(labels) == 1:
-                raise ValueError(
-                    f'Cannot pairlabel input with a single label.')
+                raise ValueError(f'Cannot pairlabel input with a single label.')
             if by == 'pairsource' or by == 'pairlabel':
                 grp_size = 1
             else:

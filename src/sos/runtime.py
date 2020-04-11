@@ -10,7 +10,7 @@ from .targets import path, paths
 from .utils import get_output, sos_get_param
 
 # silent pyflakes
-sos_get_param, get_output, path, paths
+sos_get_param, get_output, path, paths, expand_pattern
 
 
 def _load_group(group: str) -> None:
@@ -37,9 +37,11 @@ def _load_group(group: str) -> None:
                         continue
             if _name == 'run':
                 # this is critical so we print the warning
-                get_logger().warning(f'Failed to load target {_entrypoint.name}: {e}')
+                get_logger().warning(
+                    f'Failed to load target {_entrypoint.name}: {e}')
             else:
-                get_logger().debug(f'Failed to load target {_entrypoint.name}: {e}')
+                get_logger().debug(
+                    f'Failed to load target {_entrypoint.name}: {e}')
 
 
 _load_group('sos_targets')

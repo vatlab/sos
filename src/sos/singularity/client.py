@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 import tempfile
 
 from sos.eval import interpolate
@@ -188,8 +189,9 @@ class SoS_SingularityClient:
                     env.logger.warning(
                         f'Unrecognized option for singularity build {arg}')
 
-            cmd = subprocess.list2cmdline(sudo_opt + [shutil.which('singularity'), 'build'] +
-                                          other_opts + file_opt)
+            cmd = subprocess.list2cmdline(
+                sudo_opt + [shutil.which('singularity'), 'build'] + other_opts +
+                file_opt)
 
             env.logger.debug(cmd)
             if env.config['run_mode'] == 'dryrun':
@@ -214,10 +216,9 @@ class SoS_SingularityClient:
                     returncode=ret, cmd=cmd, stderr=msg)
 
     def _image_file(self, image):
-        lib_path = path(
-            os.environ['SOS_SINGULARITY_LIBRARY']
-        ) if 'SOS_SINGULARITY_LIBRARY' in os.environ else path(
-            '~/.sos/singularity/library')
+        lib_path = path(os.environ['SOS_SINGULARITY_LIBRARY']
+                       ) if 'SOS_SINGULARITY_LIBRARY' in os.environ else path(
+                           '~/.sos/singularity/library')
         if not os.path.isdir(lib_path):
             try:
                 os.makedirs(lib_path, exist_ok=True)
@@ -241,7 +242,6 @@ class SoS_SingularityClient:
             # otherwise assuming it is an image in SoS Singulariry Library
             return os.path.join(lib_path, image)
 
-
     def pull(self, image):
         self._ensure_singularity()
 
@@ -251,20 +251,22 @@ class SoS_SingularityClient:
             return image
         image_file = self._image_file(image)
         if os.path.exists(image_file):
-            env.logger.debug(f'Using existing singularity image {image_file.replace(os.path.expanduser("~"), "~")}')
+            env.logger.debug(
+                f'Using existing singularity image {image_file.replace(os.path.expanduser("~"), "~")}'
+            )
             return
         if '://' not in image:
             raise ValueError(f'Cannot locate or pull singularity image {image}')
         # ask controller
         while True:
-            res = request_answer_from_controller(['resource', 'singularity_image', 'request', image])
+            res = request_answer_from_controller(
+                ['resource', 'singularity_image', 'request', image])
             if res == 'pending':
                 time.sleep(0.5)
             elif res == 'available':
                 return
             elif res == 'unavailable':
-                raise RuntimeError(
-                    f'Docker image {image} is unavailable')
+                raise RuntimeError(f'Docker image {image} is unavailable')
             elif res == 'help yourself':
                 break
             else:
@@ -272,7 +274,9 @@ class SoS_SingularityClient:
 
         # if image is specified, check if it is available locally. If not, pull it
         try:
-            print(f'HINT: Pulling image {image} to {image_file.replace(os.path.expanduser("~"), "~")}')
+            print(
+                f'HINT: Pulling image {image} to {image_file.replace(os.path.expanduser("~"), "~")}'
+            )
             subprocess.check_output(
                 'singularity pull {} {}'.format(image_file, image),
                 stderr=subprocess.STDOUT,
@@ -280,12 +284,14 @@ class SoS_SingularityClient:
                 universal_newlines=True)
             self.pulled_images.add(image)
         except subprocess.CalledProcessError as exc:
-            send_message_to_controller(['resource', 'singularity_image', 'unavailable', image])
+            send_message_to_controller(
+                ['resource', 'singularity_image', 'unavailable', image])
             env.logger.warning(f'Failed to pull {image}: {exc.output}')
         if not path(image_file).exists():
             raise ValueError(
                 f'Image {image_file} does not exist after pulling {image}.')
-        send_message_to_controller(['resource', 'singularity_image', 'available', image])
+        send_message_to_controller(
+            ['resource', 'singularity_image', 'available', image])
 
     def run(self,
             image,

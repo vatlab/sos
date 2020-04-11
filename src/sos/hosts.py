@@ -55,7 +55,6 @@ from .utils import (env, expand_size, expand_time, format_HHMMSS, short_repr)
 # Implementation wise, a queue instance is created for each queue.
 #
 
-from sos.targets import file_target
 from typing import Any, Dict, List, Optional, Union
 
 
@@ -251,8 +250,6 @@ class LocalHost(object):
 
     def receive_result(self, task_id: str) -> Dict[str, Any]:
         tf = TaskFile(task_id)
-        params = tf.params
-        job_dict = params.sos_dict
 
         res = tf.result
         if not res or 'ret_code' not in res:
@@ -540,7 +537,11 @@ class RemoteHost(object):
             ignored = [x for x in items if not isinstance(x, (str, path))]
             if ignored:
                 env.logger.info(f'``Ignore`` {ignored}')
-            items = sum([glob.glob(x) if isinstance(x, str) else [x] for x in items if x not in ignored], [])
+            items = sum([
+                glob.glob(x) if isinstance(x, str) else [x]
+                for x in items
+                if x not in ignored
+            ], [])
         else:
             env.logger.warning(
                 f'Unrecognized items to be sent to host: {items}')

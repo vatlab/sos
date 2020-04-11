@@ -35,7 +35,7 @@ import fasteners
 import yaml
 from tqdm import tqdm as ProgressBar
 
-__all__ = ['logger', 'get_output']
+__all__ = ['get_output']
 
 COLOR_CODE = {
     'ENDC': 0,  # RESET COLOR
@@ -556,6 +556,7 @@ class RuntimeEnvironments(object):
 
 # set up environment variable and a default logger
 env = RuntimeEnvironments()
+
 
 def get_logger():
     return env.logger
@@ -1415,7 +1416,8 @@ def load_config_files(filename=None):
             if isinstance(v, dict):
                 # v should be processed in place
                 res[k] = interpolate_value(cfg, v)
-            elif isinstance(v, str) and '{' in v and '}' in v and not (k.endswith('_template') or k.endswith('_cmd')):
+            elif isinstance(v, str) and '{' in v and '}' in v and not (
+                    k.endswith('_template') or k.endswith('_cmd')):
                 try:
                     res[k] = eval(
                         as_fstring(v), copy.copy(item), copy.copy(cfg))

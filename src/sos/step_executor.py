@@ -10,7 +10,7 @@ import subprocess
 import sys
 import time
 from collections import defaultdict
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import List
 
 import zmq
@@ -896,7 +896,8 @@ class Base_Step_Executor:
             result['__shared__'] = self.shared_vars
         for x in result['__step_output__'].targets:
             if isinstance(x, sos_variable):
-                result['__shared__'][x.target_name()] = env.sos_dict[x.target_name()]
+                result['__shared__'][x.target_name()] = env.sos_dict[
+                    x.target_name()]
         send_message_to_controller([
             'progress', 'step_completed',
             -1 if 'sos_run' in env.sos_dict['__signature_vars__'] else
@@ -1345,12 +1346,14 @@ class Base_Step_Executor:
                         # 1354
                         # if there are definition before input, the definitions and imports
                         # must be added to global_def in order to be executed by substeps
-                        if any(x in statement[1] for x in ('class', 'def', 'import')):
+                        if any(x in statement[1]
+                               for x in ('class', 'def', 'import')):
                             step_def = KeepOnlyImportAndDefine().visit(
                                 ast.parse(statement[1]))
                             if step_def.body:
                                 if isinstance(self.step.global_def, ast.Module):
-                                    self.step.global_def.body.extend(step_def.body)
+                                    self.step.global_def.body.extend(
+                                        step_def.body)
                                 else:
                                     self.step.global_def = step_def
                         self.execute(statement[1])
