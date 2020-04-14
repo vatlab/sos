@@ -1249,7 +1249,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     g.extend(ag, start=n_old, parent=self)
             else:
                 raise ValueError(
-                    f'Cannot merge a sos_targets objects with {len(self._groups)} groups with another sos_targets object with {len(ag)} groups.'
+                    f'Cannot merge a sos_targets objects with {len(self._groups)} groups with another sos_targets object with {len(arg._groups)} groups.'
                 )
         elif self._groups:
             # if the RHS has no _group but myself has groups...
