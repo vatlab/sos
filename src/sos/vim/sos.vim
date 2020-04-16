@@ -1,6 +1,6 @@
 " Vim syntax file
 " Language:	SoS (extended from python.vim)
-" Maintainer:	Bo Peng (bpeng@mdanderson.org)
+" Maintainer:	Bo Peng (Bo.Peng@bcm.edu)
 "
 " Usage
 "

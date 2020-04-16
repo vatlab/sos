@@ -10,7 +10,7 @@
 
 FROM mdabioinfo/sos-notebook:latest
 
-MAINTAINER Bo Peng <bpeng@mdanderson.org>
+MAINTAINER Bo Peng <Bo.Peng@bcm.edu>
 
 USER    root
 

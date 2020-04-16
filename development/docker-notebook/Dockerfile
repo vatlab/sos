@@ -11,7 +11,7 @@
 # tag created in Fev 2019
 FROM jupyter/datascience-notebook:7a0c7325e470
 
-MAINTAINER Bo Peng <bpeng@mdanderson.org>
+MAINTAINER Bo Peng <Bo.Peng@bcm.edu>
 
 USER    root
 

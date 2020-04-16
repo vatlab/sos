@@ -9,7 +9,7 @@
 #
 FROM continuumio/anaconda3
 
-MAINTAINER Bo Peng <bpeng@mdanderson.org>
+MAINTAINER Bo Peng <Bo.Peng@bcm.edu>
 
 RUN     mkdir /home/mdabioinfo
 ENV     HOME  /home/mdabioinfo
