@@ -419,7 +419,9 @@ class SoS_Step:
         if lineno:
             self.lineno = lineno
 
-    def add_script(self, key: str, value: str,
+    def add_script(self,
+                   key: str,
+                   value: str,
                    lineno: Optional[int] = None) -> None:
         '''script starts with key: value'''
         # we need a fake directive here because the : directive can be multi-line and
@@ -456,9 +458,14 @@ class SoS_Step:
             raise RuntimeError('Failed to parse script')
         # under window, the lines will be ended with \r\n, which will cause
         # trouble with textwrap.dedent.
-        self._script = '\n'.join(self._script.splitlines()) + '\n'
+        embedded_script = '\n'.join(self._script.splitlines()) + '\n'
         # dedent, which will not remove empty line, so _scrit will always ends with \n.
-        self._script = textwrap.dedent(self._script)
+        self._script = textwrap.dedent(embedded_script)
+        if self._script == embedded_script:
+            first_words = self._script[:10].splitlines()[0]
+            env.logger.warning(
+                f'Embedding script "{first_words}..." without indentation is error-prone and will be deprecated in the future.'
+            )
         # let us look for 'expand=""' in options
         if 'expand' in opt:
             sigil, opt = extract_option_from_arg_list(opt, 'expand', None)
@@ -770,7 +777,8 @@ class SoS_ScriptContent:
     '''A small class to record the script information to be used by nested
     workflow.'''
 
-    def __init__(self, content: str = '',
+    def __init__(self,
+                 content: str = '',
                  filename: Optional[str] = None) -> None:
         self.content = content
         self.filename = filename
