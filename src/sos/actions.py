@@ -70,7 +70,9 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
             for k in default_args:
                 if k in default_args and k not in kwargs:
                     kwargs[k] = default_args[k]
-            if '*' not in acceptable_args and 'docker_image' not in kwargs and 'container' not in kwargs and 'template' not in kwargs:
+            if '*' not in acceptable_args and all(
+                    x not in kwargs for x in ('docker_image', 'container',
+                                              'template', 'template_name')):
                 for key in kwargs.keys():
                     if key not in acceptable_args and key not in SOS_ACTION_OPTIONS:
                         raise ValueError(
@@ -336,31 +338,35 @@ class SoS_ExecuteScript:
         else:
             self.suffix = '.sh'
 
-    def process_template(self, cmd, **kwargs):
-        template_name = kwargs['template']
-        if 'CONFIG' not in env.sos_dict:
-            load_config_files()
-        if 'action_templates' in env.sos_dict[
-                'CONFIG'] and template_name in env.sos_dict['CONFIG'][
-                    'action_templates']:
-            template = env.sos_dict['CONFIG']['action_templates']
-        elif template_name == 'conda':
-            template = textwrap.dedent('''\
-                conda run -n {env_name} {cmd}
-                ''')
+    def process_template(self, cmd, filename, script, **kwargs):
+        if 'template' in kwargs:
+            template = kwargs['template']
         else:
-            raise ValueError(
-                'No template named {template_name} is built-in or provided in "action_templates" of config files.'
-            )
+            template_name = kwargs['template_name']
+            if 'CONFIG' not in env.sos_dict:
+                load_config_files()
+            if 'action_templates' in env.sos_dict[
+                    'CONFIG'] and template_name in env.sos_dict['CONFIG'][
+                        'action_templates']:
+                template = env.sos_dict['CONFIG']['action_templates'][
+                    template_name]
+            elif template_name == 'conda':
+                template = textwrap.dedent('''\
+                    conda run -n {env_name} {cmd}
+                    ''')
+            else:
+                raise ValueError(
+                    f'No template named {template_name} is built-in or provided in "action_templates" of config files.'
+                )
 
         try:
             context = copy.deepcopy(kwargs)
             context['cmd'] = cmd
+            context['filename'] = filename
+            context['script'] = script
             return interpolate(template, context)
         except Exception as e:
-            raise ValueError(
-                f'Failed to expand template {template_name} with text {template}: {e}'
-            )
+            raise ValueError(f'Failed to expand template {template}: {e}')
 
     def run(self, **kwargs):
         #
@@ -455,8 +461,9 @@ class SoS_ExecuteScript:
                         'filename': sos_targets('SCRIPT'),
                         'script': self.script
                     })
-                if 'template' in kwargs:
-                    templated_script = self.process_template(cmd, **kwargs)
+                if 'template_name' in kwargs or 'template' in kwargs:
+                    templated_script = self.process_template(
+                        cmd, sos_targets(script_file), self.script, **kwargs)
                     cmd_file = tempfile.NamedTemporaryFile(
                         mode='w+t',
                         suffix='.bat' if sys.platform == 'win32' else '.sh',
