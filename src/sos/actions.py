@@ -13,6 +13,7 @@ import sys
 import tarfile
 import time
 import tempfile
+import textwrap
 import urllib
 import urllib.error
 import urllib.parse
@@ -31,7 +32,8 @@ from .syntax import SOS_ACTION_OPTIONS
 from .targets import (textMD5, executable, file_target, fileMD5, path, paths,
                       sos_targets)
 from .utils import (StopInputGroup, TerminateExecution, TimeoutInterProcessLock,
-                    env, get_traceback, short_repr, transcribe)
+                    env, get_traceback, short_repr, transcribe,
+                    load_config_files)
 from .controller import send_message_to_controller
 from .messages import encode_msg, decode_msg
 
@@ -68,7 +70,7 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
             for k in default_args:
                 if k in default_args and k not in kwargs:
                     kwargs[k] = default_args[k]
-            if '*' not in acceptable_args and 'docker_image' not in kwargs and 'container' not in kwargs:
+            if '*' not in acceptable_args and 'docker_image' not in kwargs and 'container' not in kwargs and 'template' not in kwargs:
                 for key in kwargs.keys():
                     if key not in acceptable_args and key not in SOS_ACTION_OPTIONS:
                         raise ValueError(
@@ -97,7 +99,8 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                     'engine'] else None
                 if '://' in kwargs['container']:
                     cty, cname = kwargs['container'].split('://', 1)
-                elif kwargs['container'].endswith('.simg') or kwargs['container'].endswith('.sif'):
+                elif kwargs['container'].endswith(
+                        '.simg') or kwargs['container'].endswith('.sif'):
                     engine = 'singularity'
                     cty = 'file'
                     cname = kwargs['container']
@@ -112,8 +115,8 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                             f'docker engine only allows docker container {cty} specified'
                         )
                 elif engine == 'singularity':
-                    if cty is not None and cty not in ('docker', 'file', 'library',
-                                                       'shub'):
+                    if cty is not None and cty not in ('docker', 'file',
+                                                       'library', 'shub'):
                         raise ValueError(
                             f'singularity engine only allows docker, file, library, and shub container {cty} specified'
                         )
@@ -202,7 +205,8 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                     script = ''
 
                 try:
-                    tfiles = sos_targets([] if kwargs['tracked'] is True else kwargs['tracked'])
+                    tfiles = sos_targets(
+                        [] if kwargs['tracked'] is True else kwargs['tracked'])
                 except Exception as e:
                     raise ValueError(
                         f'Parameter tracked of actions can be None, True/False, or one or more filenames: {kwargs["tracked"]} provided: {e}'
@@ -214,10 +218,12 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                         tfiles.extend(sos_targets(kwargs[t]))
 
                 from .targets import RuntimeInfo
-                sig = RuntimeInfo(textMD5(script), sos_targets(kwargs['input'] if 'input' in kwargs else []),
-                     sos_targets(kwargs['output'] if 'output' in kwargs else []),
-                     sos_targets(kwargs['tracked'] if 'tracked' in kwargs and kwargs['tracked'] is not True else []),
-                     kwargs)
+                sig = RuntimeInfo(
+                    textMD5(script),
+                    sos_targets(kwargs['input'] if 'input' in kwargs else []),
+                    sos_targets(kwargs['output'] if 'output' in kwargs else []),
+                    sos_targets(kwargs['tracked'] if 'tracked' in kwargs and
+                                kwargs['tracked'] is not True else []), kwargs)
                 sig.lock()
                 if env.config['sig_mode'] in ('default', 'skip', 'distributed'):
                     matched = sig.validate()
@@ -330,6 +336,32 @@ class SoS_ExecuteScript:
         else:
             self.suffix = '.sh'
 
+    def process_template(self, cmd, **kwargs):
+        template_name = kwargs['template']
+        if 'CONFIG' not in env.sos_dict:
+            load_config_files()
+        if 'action_templates' in env.sos_dict[
+                'CONFIG'] and template_name in env.sos_dict['CONFIG'][
+                    'action_templates']:
+            template = env.sos_dict['CONFIG']['action_templates']
+        elif template_name == 'conda':
+            template = textwrap.dedent('''\
+                conda run -n {env_name} {cmd}
+                ''')
+        else:
+            raise ValueError(
+                'No template named {template_name} is built-in or provided in "action_templates" of config files.'
+            )
+
+        try:
+            context = copy.deepcopy(kwargs)
+            context['cmd'] = cmd
+            return interpolate(template, context)
+        except Exception as e:
+            raise ValueError(
+                f'Failed to expand template {template_name} with text {template}: {e}'
+            )
+
     def run(self, **kwargs):
         #
         if 'input' in kwargs:
@@ -392,6 +424,8 @@ class SoS_ExecuteScript:
                 p = None
                 script_file = tempfile.NamedTemporaryFile(
                     mode='w+t', suffix=self.suffix, delete=False).name
+                # potentially used for template
+                cmd_file = None
                 with open(script_file, 'w') as sfile:
                     sfile.write(self.script)
                 if not self.args:
@@ -421,6 +455,24 @@ class SoS_ExecuteScript:
                         'filename': sos_targets('SCRIPT'),
                         'script': self.script
                     })
+                if 'template' in kwargs:
+                    templated_script = self.process_template(cmd, **kwargs)
+                    cmd_file = tempfile.NamedTemporaryFile(
+                        mode='w+t',
+                        suffix='.bat' if sys.platform == 'win32' else '.sh',
+                        delete=False).name
+                    with open(cmd_file, 'w') as cfile:
+                        cfile.write(templated_script)
+                    # if it has an shebang line
+                    if templated_script.startswith(
+                            '#!') or sys.platform == 'win32':
+                        os.chmod(cmd_file, 0o775)
+                        cmd = cmd_file
+                    else:
+                        cmd = f'sh {shlex.quote(cmd_file)}'
+                    env.logger.debug(
+                        f'Running templated script \n{templated_script}\ncommand {cmd}'
+                    )
                 transcribe(self.script, cmd=transcript_cmd)
                 # if not notebook, not task, signature database is avaialble.
                 if env.sos_dict['_index'] == 0 and env.config['run_mode'] != 'interactive' \
@@ -536,7 +588,9 @@ class SoS_ExecuteScript:
                         se.close()
                 # clean up empty stdstream files
                 for item in ['stdout', 'stderr']:
-                    if item in kwargs and os.path.isfile(kwargs[item]) and os.path.getsize(kwargs[item]) == 0:
+                    if item in kwargs and os.path.isfile(
+                            kwargs[item]) and os.path.getsize(
+                                kwargs[item]) == 0:
                         try:
                             os.remove(kwargs[item])
                         except Exception:
@@ -567,6 +621,12 @@ class SoS_ExecuteScript:
                 except Exception:
                     # 1315: ignore in case the temp script file no longer exists
                     pass
+                if cmd_file is not None:
+                    try:
+                        os.remove(cmd_file)
+                    except Exception:
+                        # 1315: ignore in case the temp script file no longer exists
+                        pass
 
 
 @SoS_Action()
