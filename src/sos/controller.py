@@ -2,11 +2,13 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
+import tempfile
 import os
 import sys
 import zmq
 import time
 import threading
+import uuid
 from collections import defaultdict
 from .utils import env, ProcessKilled, get_localhost_ip
 from .signatures import StepSignatures, WorkflowSignatures
@@ -258,6 +260,9 @@ class Controller(threading.Thread):
         # available resources
         self._resources = {}
 
+        # temporary files
+        self._tempfiles = {}
+
         # self.event_map = {}
         # for name in dir(zmq):
         #     if name.startswith('EVENT_'):
@@ -301,16 +306,22 @@ class Controller(threading.Thread):
                             self._resources['docker_image'] = {}
                         self._resources['docker_image'][msg[3]] = msg[2]
                     else:
-                        raise ValueError(f'SoS currently only understand "available" or "unavailable" messages for docker resource.')
+                        raise ValueError(
+                            f'SoS currently only understand "available" or "unavailable" messages for docker resource.'
+                        )
                 elif msg[1] == 'singularity_image':
                     if msg[2] in ('available', 'unavailable'):
                         if 'singularity_image' not in self._resources:
                             self._resources['singularity_image'] = {}
                         self._resources['singularity_image'][msg[3]] = msg[2]
                     else:
-                        raise ValueError(f'SoS currently only understand "available" or "unavailable" messages for docker resource.')
+                        raise ValueError(
+                            f'SoS currently only understand "available" or "unavailable" messages for docker resource.'
+                        )
                 else:
-                    raise ValueError(f'SoS currently does not handle resource of {msg[1]} type')
+                    raise ValueError(
+                        f'SoS currently does not handle resource of {msg[1]} type'
+                    )
 
             else:
                 env.logger.warning(f'Unknown message passed {msg}')
@@ -346,6 +357,34 @@ class Controller(threading.Thread):
                         encode_msg(self.step_signatures.get(*msg[2:])))
                 else:
                     env.logger.warning(f'Unknown signature request {msg}')
+            elif msg[0] == 'sos_tempfile':
+                path, name, suffix, prefix, dir = msg[1:]
+                if path is not None:
+                    if path not in self._tempfiles.values():
+                        if not name:
+                            name = uuid.uuid4().hex
+                        self._tempfiles[name] = path
+                    self.master_request_socket.send(encode_msg(path))
+                elif name is not None and name in self._tempfiles:
+                    self.master_request_socket.send(
+                        encode_msg(self._tempfiles[name]))
+                else:
+                    #
+                    basename = uuid.uuid4().hex
+                    filename = basename
+                    if name is None:
+                        name = basename
+                    if suffix is not None:
+                        filename = filename + suffix
+                    if prefix is not None:
+                        filename = prefix + filename
+                    if dir is not None:
+                        filename = os.path.join(dir, filename)
+                    else:
+                        filename = os.path.join(tempfile.gettempdir(), filename)
+                    #
+                    self._tempfiles[name] = filename
+                    self.master_request_socket.send(encode_msg(filename))
             elif msg[0] == 'nprocs':
                 self.master_request_socket.send(encode_msg(self._nprocs))
             elif msg[0] == 'sos_step':
@@ -390,28 +429,37 @@ class Controller(threading.Thread):
                             self._resources['docker_image'] = {}
                         if msg[3] in self._resources['docker_image']:
                             self.master_request_socket.send(
-                                encode_msg(self._resources['docker_image'][msg[3]]))
+                                encode_msg(
+                                    self._resources['docker_image'][msg[3]]))
                         else:
                             self._resources['docker_image'][msg[3]] = 'pending'
                             self.master_request_socket.send(
                                 encode_msg('help yourself'))
                     else:
-                        raise ValueError(f'SoS currently only accept request inquiry for docker resource')
+                        raise ValueError(
+                            f'SoS currently only accept request inquiry for docker resource'
+                        )
                 elif msg[1] == 'singularity_image':
                     if msg[2] == 'request':
                         if 'singularity_image' not in self._resources:
                             self._resources['singularity_image'] = {}
                         if msg[3] in self._resources['singularity_image']:
                             self.master_request_socket.send(
-                                encode_msg(self._resources['singularity_image'][msg[3]]))
+                                encode_msg(self._resources['singularity_image'][
+                                    msg[3]]))
                         else:
-                            self._resources['singularity_image'][msg[3]] = 'pending'
+                            self._resources['singularity_image'][
+                                msg[3]] = 'pending'
                             self.master_request_socket.send(
                                 encode_msg('help yourself'))
                     else:
-                        raise ValueError(f'SoS currently only accept request inquiry for docker resource')
+                        raise ValueError(
+                            f'SoS currently only accept request inquiry for docker resource'
+                        )
                 else:
-                    raise ValueError(f'SoS currently does not handle resource of {msg[1]} type')
+                    raise ValueError(
+                        f'SoS currently does not handle resource of {msg[1]} type'
+                    )
             elif msg[0] == 'done':
                 # handle all ctl_push_msgs #1062
                 while True:
@@ -637,6 +685,14 @@ class Controller(threading.Thread):
             sys.stderr.write(f'{env.config["exec_mode"]} get an error {e}')
             return
         finally:
+            # remove temporary files
+            for name, tempfile in self._tempfiles.items():
+                try:
+                    if os.path.isfile(tempfile):
+                        os.remove(tempfile)
+                except Exception as e:
+                    env.logger.warning(
+                        f'Failed to tempfile associated with name {name}')
             # kill all workers
             self.workers.kill_all()
 

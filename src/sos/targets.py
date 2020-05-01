@@ -865,6 +865,16 @@ class file_target(path, BaseTarget):
         ])
 
 
+class sos_tempfile(file_target):
+
+    def __new__(cls, path=None, name=None, suffix=None, prefix=None, dir=None):
+        if cls is Path:
+            cls = WindowsPath if os.name == 'nt' else PosixPath
+        filename = request_answer_from_controller(
+            ['sos_tempfile', path, name, suffix, prefix, dir])
+        return cls._from_parts([filename])
+
+
 class paths(Sequence, os.PathLike):
     '''A collection of targets'''
     # check if string contains wildcard character

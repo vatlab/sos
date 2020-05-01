@@ -692,5 +692,27 @@ assert 'home' in path.names('docker')
                     os.path.join(os.path.expanduser('~'), 'docker.yml')
             }).run()
 
+    def testTempFile(self):
+        '''Test sos_tempfile target'''
+        script = SoS_Script('''
+filename = sos_tempfile(name='a')
+
+assert filename == sos_tempfile(name='a')
+assert filename != sos_tempfile(name='b')
+assert filename != sos_tempfile()
+assert sos_tempfile() != sos_tempfile()
+
+assert sos_tempfile(prefix='some') != sos_tempfile(prefix='some')
+assert sos_tempfile(suffix='.sh') != sos_tempfile(suffix='.sh')
+assert sos_tempfile(dir='.') != sos_tempfile(dir='.')
+
+assert sos_tempfile('a.txt') == sos_tempfile('a.txt')
+assert sos_tempfile(path('a.txt')) == sos_tempfile(path('a.txt'))
+assert sos_tempfile(file_target('a.txt')) == sos_tempfile(file_target('a.txt'))
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
 if __name__ == '__main__':
     unittest.main()

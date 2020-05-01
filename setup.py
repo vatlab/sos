@@ -115,6 +115,7 @@ sos = sos.converter:SoS_Lexer
 
 [sos_targets]
 file_target = sos.targets:file_target
+sos_tempfile = sos.targets:sos_tempfile
 dynamic = sos.targets:dynamic
 remote = sos.targets:remote
 executable = sos.targets:executable
