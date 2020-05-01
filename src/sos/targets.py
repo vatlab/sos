@@ -1468,7 +1468,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 target.set(name, property)
         else:
             raise ValueError(
-                'Unacceptable properties {properties} for function paired_with')
+                f'Unacceptable properties {properties} for function paired_with')
         return self
 
     def remove_targets(self, type, kept=None):
@@ -1526,7 +1526,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 group.set(name, property)
         else:
             raise ValueError(
-                'Unacceptable properties {properties} of type {properties.__class__.__name__} for function group_with'
+                f'Unacceptable properties {properties} of type {properties.__class__.__name__} for function group_with'
             )
         return self
 
