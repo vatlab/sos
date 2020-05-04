@@ -1459,7 +1459,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         if isinstance(properties, (bool, int, float, str, bytes)):
             for target in self._targets:
                 target.set(name, properties)
-        elif isinstance(properties, (list, tuple, sos_targets)):
+        elif isinstance(properties, (list, tuple, sos_targets, paths)):
             if len(properties) != len(self._targets):
                 raise ValueError(
                     f'Length of provided attributes ({len(properties)}) does not match length of sos_targets ({len(self._targets)})'
@@ -1468,7 +1468,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 target.set(name, property)
         else:
             raise ValueError(
-                f'Unacceptable properties {properties} for function paired_with')
+                f'Unacceptable properties {properties} for function paired_with'
+            )
         return self
 
     def remove_targets(self, type, kept=None):

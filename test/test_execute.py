@@ -686,6 +686,22 @@ run: expand=True
         for ofile in ['a.txt1', 'b.txt2']:
             self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).unlink()
+        #
+        # test paired_with paths
+        for file in ('1.txt', '2.txt'):
+            if os.path.isfile(file):
+                os.remove(file)
+        script = SoS_Script(r'''
+[1]
+input: 'a.txt', 'b.txt', paired_with = dict(bgen=paths(['1.txt', '2.txt'])), group_by=1
+output: _input.bgen
+_output.touch()
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for ofile in ['1.txt', '2.txt']:
+            self.assertTrue(file_target(ofile).target_exists('target'))
+            file_target(ofile).unlink()
 
     def testPairedWithAsTargetProperty(self):
         '''Test option paired_with with values accessed by individual target '''
@@ -1132,7 +1148,8 @@ touch {_input}.bak
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertEqual(
-            env.sos_dict['test'], sos_targets([
+            env.sos_dict['test'],
+            sos_targets([
                 os.path.join('temp', 'test_{}.txt.bak'.format(x))
                 for x in range(5)
             ]),
@@ -1141,7 +1158,8 @@ touch {_input}.bak
         # this time we use th existing signature
         Base_Executor(wf).run()
         self.assertEqual(
-            env.sos_dict['test'], sos_targets([
+            env.sos_dict['test'],
+            sos_targets([
                 os.path.join('temp', 'test_{}.txt.bak'.format(x))
                 for x in range(5)
             ]),
@@ -2445,9 +2463,7 @@ fail_if(True)
         #
         cleanup()
         st = time.time()
-        self.assertRaises(
-            Exception,
-            Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf).run)
         self.assertTrue(
             time.time() - st >= 8,
             'Test test should fail only after step 10 is completed')
@@ -2514,9 +2530,7 @@ _output.touch()
         # default mode
         #
         cleanup()
-        self.assertRaises(
-            Exception,
-            Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf).run)
         for i in range(10):
             if i == 5:
                 self.assertFalse(os.path.isfile(f'test_{i}.txt'))
@@ -2583,9 +2597,7 @@ fail_if(_index == 10, 'fail at 10')
         # default mode
         #
         cleanup()
-        self.assertRaises(
-            Exception,
-            Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf).run)
         for i in (5, 10):
             self.assertFalse(os.path.isfile(f'test_{i}.txt'))
         for i in range(190, 200):
@@ -2631,9 +2643,7 @@ _output.touch()
         #
         cleanup()
 
-        self.assertRaises(
-            Exception,
-            Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf).run)
         for i in (0, 2, 30, 31):
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
             self.assertFalse(os.path.isfile(f'test_{i}.bak'))
@@ -2702,9 +2712,7 @@ _output.touch()
         cleanup()
 
         st = time.time()
-        self.assertRaises(
-            Exception,
-            Base_Executor(wf).run)
+        self.assertRaises(Exception, Base_Executor(wf).run)
         self.assertTrue(
             time.time() - st >= 8,
             'Test test should fail only after step 10 is completed')
