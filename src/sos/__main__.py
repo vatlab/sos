@@ -700,7 +700,7 @@ def get_dryrun_parser(desc_only=False):
     parser.add_argument(
         '-q',
         dest='__queue__',
-        default='*',
+        nargs='+',
         metavar='QUEUE',
         help='''host (server) or job queues to execute all tasks in the
             workflow. The queue can be defined in global or local sos
