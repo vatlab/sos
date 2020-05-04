@@ -548,7 +548,7 @@ def cmd_run(args, workflow_args):
             for item in args.__queue__[1:]:
                 if '=' not in item:
                     raise ValueError(
-                        f"KEY=VALUE pairs are required for definitions after queue name."
+                        f"KEY=VALUE pairs are required for definitions after queue name: '{item}' provided."
                     )
                 k, v = item.split('=', 1)
                 if k == 'walltime':
@@ -1437,11 +1437,7 @@ def get_status_parser(desc_only=False):
         definitions, in case the definitions are not defined in global sos config.yml files.'''
     )
     parser.add_argument(
-        '-a',
-        '--all',
-        action='store_true',
-        help=argparse.SUPPRESS
-    )
+        '-a', '--all', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument(
         '-v',
         dest='verbosity',
@@ -1597,7 +1593,9 @@ def cmd_purge(args, workflow_args):
         if not args.tasks and not args.all:
             args.all = args.age or args.tatus or args.tags
         if not args.tasks and not args.all:
-            raise ValueError(f'Please specify either IDs of tasks or one or more of options --all, --age, --status, or --tags.')
+            raise ValueError(
+                f'Please specify either IDs of tasks or one or more of options --all, --age, --status, or --tags.'
+            )
         if not args.queue:
             purge_tasks(args.tasks, args.all, args.age, args.status, args.tags,
                         args.verbosity)
