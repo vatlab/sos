@@ -6,6 +6,7 @@
 import os
 from ._version import __version__
 
+from .__main__ import get_run_parser
 from .workflow_executor import Base_Executor
 from sos.parser import SoS_Script
 
@@ -37,7 +38,8 @@ def execute_workflow(script: str,
     args (list or dict, optional):
         Command line arguments as a list in the format of "[`--cutoff', '0.5']"
         or a dictionary in the format of {"cutoff": 0.5} for workflow parameters
-        defined in "parameter" statements.
+        defined in "parameter" statements. SoS options such as '-c', '-j',
+        and '-s' should be defined in options.
 
     options (dict, optional):
         Dictionary with the following configuration options. Please
@@ -53,6 +55,7 @@ def execute_workflow(script: str,
             run_mode: "run" or "dryrun"
             verbosity: option "-v"
             trace_existing: option "-T"
+            config_file: option "-c"
 
     config (dict, optional):
         config as if loaded from "options['config_file']"
@@ -95,13 +98,28 @@ def execute_workflow(script: str,
     # a convenience feature
     if isinstance(args, dict):
         run_options['workflow_vars'] = args
-        args = []
+        workflow_args = []
+    elif args:
+        # for convenience,
+        parser = get_run_parser(interactive=True, with_workflow=False)
+        for arg in args:
+            if arg.startswith(
+                    '-') and not arg.startswith('--') and not arg in ['-c']:
+                raise ValueError(
+                    'SoS options should be specified with parameter "option"')
+        # check args
+        sos_args, workflow_args = parser.parse_known_args(args)
+        if sos_args.__config__ and not 'config_file' in options:
+            options['config_file'] = sos_args.__config__
+    else:
+        workflow_args = []
+
     run_options.update(options)
 
     from .utils import env
     env.verbosity = run_options['verbosity']
 
-    executor = Base_Executor(wf, args=args, config=run_options)
+    executor = Base_Executor(wf, args=workflow_args, config=run_options)
     if isinstance(targets, str):
         targets = [targets]
     return executor.run(targets=targets)

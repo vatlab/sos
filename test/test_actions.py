@@ -15,6 +15,7 @@ from sos.parser import SoS_Script
 from sos.targets import file_target
 from sos.utils import env
 from sos.workflow_executor import Base_Executor
+from sos import execute_workflow
 
 
 def internet_on(host='8.8.8.8', port=80, timeout=3):
@@ -163,8 +164,9 @@ fail_if(True)
                           Base_Executor(wf, config={
                               'worker_procs': ['3']
                           }).run)
-        self.assertTrue(time.time() - st >= 8,
-                'Test test should fail only after step 10 is completed')
+        self.assertTrue(
+            time.time() - st >= 8,
+            'Test test should fail only after step 10 is completed')
 
     def testDelayedFailIfFromNestedWorkflow(self):
         # test fail_if of killing another running substep
@@ -188,8 +190,9 @@ fail_if(True)
                           Base_Executor(wf, config={
                               'worker_procs': ['3']
                           }).run)
-        self.assertTrue(time.time() - st >= 8,
-                'Test test should fail only after step 10 is completed')
+        self.assertTrue(
+            time.time() - st >= 8,
+            'Test test should fail only after step 10 is completed')
 
     def testWarnIf(self):
         '''Test action fail if'''
@@ -812,6 +815,32 @@ touch temp/{ff}
             #
             # test last iteration
             shutil.rmtree('temp')
+
+
+def test_action_option_template():
+    if os.path.isfile('template_output.txt'):
+        os.remove('template_output.txt')
+    execute_workflow('''
+run:  template='cat {filename}'
+    echo 'whatever' > template_output.txt
+''')
+    assert not os.path.isfile('template_output.txt')
+
+
+def test_action_option_template_name(config_factory):
+    cfg = config_factory('''\
+action_templates:
+    cat: |
+        cat {filename}
+
+''')
+    execute_workflow(
+        '''
+run:  template_name='cat'
+    echo 'whatever' > template_output.txt
+''',
+        args=['-c', cfg])
+    assert not os.path.isfile('template_output.txt')
 
 
 if __name__ == '__main__':
