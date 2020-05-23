@@ -17,6 +17,7 @@ from sos.utils import env
 from sos.workflow_executor import Base_Executor
 from sos import execute_workflow
 
+
 class TestSignature(unittest.TestCase):
 
     def setUp(self):
@@ -855,7 +856,6 @@ with open(_input) as ifile, open(_output, 'w') as ofile:
         res = Base_Executor(wf).run()
         self.assertEqual(res['__completed__']['__substep_completed__'], 4)
 
-
     def testSignatureWithOutputVars(self):
         '''Test persistence of _output with vars #1355'''
         if os.path.isfile('test_sig_with_vars.txt'):
@@ -910,5 +910,22 @@ print(_input.seed)
         # second time sshould be fine (using signature
         execute_workflow(script)
 
-if __name__ == '__main__':
-    unittest.main()
+
+def test_signature_with_local_parameter(tempfile_factory):
+    '''test for #1372'''
+    script = '''
+[default]
+input:
+output: f'constant-file-name.txt'
+parameter: n_mx = int
+bash: expand=True
+
+  echo {n_mx} > constant-file-name.txt
+'''
+    execute_workflow(script, args=['--n-mx', '60'])
+
+    assert os.path.isfile('constant-file-name.txt')
+    assert open('constant-file-name.txt').read().strip() == '60'
+
+    execute_workflow(script, args=['--n-mx', '80'])
+    assert open('constant-file-name.txt').read().strip() == '80'

@@ -2056,6 +2056,30 @@ class InMemorySignature:
             x in sdict and not callable(sdict[x]) and pickleable(sdict[x], x)
         }
 
+    def identify_local_args(self):
+        # #1372
+        # unlike global parameters that have been executed and padded,
+        # local paramters needs to be in the signature so that steps can be
+        # effectively skipped.
+        if not self.signature_vars or not env.config['workflow_args']:
+            return []
+
+        params = {x: [] for x in sorted(self.signature_vars)}
+
+        with_param = False
+        for par in env.config['workflow_args']:
+            if par.startswith('--'):
+                parname = par.split('=')[0][2:] if '=' in par else par[2:]
+                parname = parname.replace('-', '_')
+                if parname in self.signature_vars:
+                    params[parname].append(par)
+                    with_param = parname
+            elif par.startswith('-'):
+                with_param = False
+            elif with_param:
+                params[with_param].append(par)
+        return sum(params.values(), [])
+
     def write(self):
         if self.content is not None:
             return self.content
@@ -2113,7 +2137,8 @@ class InMemorySignature:
             'depends': dependent_sig,
             'depends_obj': self.dependent_files,
             'init_context_sig': init_context_sig,
-            'end_context': end_context
+            'end_context': end_context,
+            'local_args': self.identify_local_args(),
         }
         return self.content
 
@@ -2152,6 +2177,10 @@ class InMemorySignature:
                         return f'ID of context variable {key} ({objectMD5(env.sos_dict[key])}) mismatch: {short_repr(env.sos_dict[key])} does not match id {value}'
                 except Exception as e:
                     env.logger.debug(f"Variable {key} cannot be compared: {e}")
+
+        if 'local_args' in signature:
+            if signature['local_args'] != self.identify_local_args():
+                return f'Local parameters differ'
 
         res['vars'].update(signature['end_context'])
         #

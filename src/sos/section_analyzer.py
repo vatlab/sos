@@ -252,9 +252,11 @@ def get_signature_vars(section):
     saved with step signatures'''
 
     # signature vars should contain parameters defined in global section
-    # #1155
-    signature_vars = set(
-        section.parameters.keys()
+    # #1155, we however need to keep local parameters
+    signature_vars = set(section.parameters.keys()) - set(
+        section.global_parameters.keys())
+    signature_vars |= set(
+        section.global_parameters.keys()
         & accessed_vars(strip_param_defs(section.global_stmts)))
 
     input_idx = find_statement(section, 'input')
