@@ -300,7 +300,9 @@ class Base_Executor:
         workflow_info['command_line'] = subprocess.list2cmdline(
             [os.path.basename(sys.argv[0])] + sys.argv[1:])
         if '-m tapping' in workflow_info['command_line']:
-            workflow_info['command_line'] = workflow_info['command_line'][:workflow_info['command_line'].index('-m tapping')]
+            workflow_info['command_line'] = workflow_info[
+                'command_line'][:workflow_info['command_line']
+                                .index('-m tapping')]
         workflow_info['project_dir'] = os.getcwd()
         workflow_info['script'] = base64.b64encode(
             self.workflow.content.text().encode()).decode('ascii')
@@ -322,7 +324,8 @@ class Base_Executor:
                     }
                 }))
 
-    def run(self, targets: Optional[List[str]] = None,
+    def run(self,
+            targets: Optional[List[str]] = None,
             mode=None) -> Dict[str, Any]:
         #
         env.zmq_context = zmq.Context()
@@ -623,8 +626,8 @@ class Base_Executor:
                 else:
                     continue
 
-            existing_targets = set(dag.dangling(
-                targets)[1]) if env.config['trace_existing'] else traced
+            existing_targets = dag.dangling(
+                targets)[1] if env.config['trace_existing'] else traced
 
             remaining_targets = existing_targets
             while remaining_targets:
@@ -934,10 +937,10 @@ class Base_Executor:
             # for depending targets... they already exist but we will add
             # nodes that generates them if available.
             node_added = False
-            depending_targets = set(dag.dangling(targets)[1])
+            depending_targets = dag.dangling(targets)[1]
             for target in depending_targets:
                 if node_added:
-                    depending_targets = set(dag.dangling(targets)[1])
+                    depending_targets = dag.dangling(targets)[1]
                     node_added = False
                 if target not in depending_targets:
                     continue
