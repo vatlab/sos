@@ -911,7 +911,7 @@ print(_input.seed)
         execute_workflow(script)
 
 
-def test_signature_with_local_parameter(tempfile_factory):
+def test_signature_with_local_parameter():
     '''test for #1372'''
     script = '''
 [default]
