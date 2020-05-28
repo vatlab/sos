@@ -1526,7 +1526,7 @@ class Base_Step_Executor:
                             )
                         else:
                             env.logger.warning(
-                                f'{self.step.step_name(True)}{f" (index={idx})" if len(self._substeps) > 1 else ""} ignored due to mssing input {sos_targets(missed)}'
+                                f'{self.step.step_name(True)}{f" (index={idx})" if len(self._substeps) > 1 else ""} ignored due to missing input {sos_targets(missed)}'
                             )
                         self.output_groups[idx] = sos_targets(invalid_target())
                         env.sos_dict.set('_output',
