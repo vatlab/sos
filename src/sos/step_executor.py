@@ -1467,14 +1467,6 @@ class Base_Step_Executor:
         if self.concurrent_substep:
             if len(self._substeps) <= 1 or env.config['run_mode'] == 'dryrun':
                 self.concurrent_substep = False
-            elif len([
-                    x for x in self.step.statements[input_statement_idx:]
-                    if x[0] != ':'
-            ]) > 1:
-                self.concurrent_substep = False
-                env.logger.debug(
-                    'Substeps are executed sequentially because of existence of directives between statements.'
-                )
             elif any('sos_run' in x[1]
                      for x in self.step.statements[input_statement_idx:]):
                 self.concurrent_substep = False
