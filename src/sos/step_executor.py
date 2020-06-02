@@ -1991,6 +1991,10 @@ class Step_Executor(Base_Step_Executor):
 
     def wait_for_subworkflows(self, allow_pending):
         '''Wait for results from subworkflows'''
+        try:
+            allow_pending = int(allow_pending)
+        except:
+            allow_pending = min(max(os.cpu_count() // 2, 2), 8)
 
         while self._subworkflow_results:
             if allow_pending > 0:
