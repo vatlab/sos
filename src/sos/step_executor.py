@@ -373,7 +373,7 @@ class Base_Step_Executor:
         # this will be redefined in subclasses
         raise RuntimeError('Undefined base function wait_for_tasks')
 
-    def wait_for_subworkflows(self, workflow_results):
+    def wait_for_subworkflows(self, allow_pending=0):
         raise RuntimeError('Undefined base function wait_for_subworkflows')
 
     def handle_unknown_target(self, e):
@@ -1484,6 +1484,32 @@ class Base_Step_Executor:
             self.pending_signatures = [None for x in self._substeps]
 
             for idx, g in enumerate(self._substeps):
+                #
+                # https://github.com/vatlab/sos/issues/1376
+                #
+                #   [default]
+                #   input: for_each=dict(i=range(1000))
+                #   sos_run('a', t=i)
+                #
+                # when we have workflow like the following when steps
+                # are executed quickly with subworkflows submitted to the master
+                # the master process could be swamped with subworkflows, causing
+                # "too many open files".
+                #
+                # the following code will stop the step from continued
+                # execution and wait for the subworkflows to complete.
+                #
+                if self._subworkflow_results:
+                    try:
+                        runner = self.wait_for_subworkflows(
+                            allow_pending=env.config['worker_procs'])
+                        yreq = next(runner)
+                        while True:
+                            yres = yield yreq
+                            yreq = runner.send(yres)
+                    except StopIteration:
+                        pass
+
                 # other variables
                 #
                 _vars = {}
@@ -1818,6 +1844,7 @@ class Base_Step_Executor:
                     raise RuntimeError(
                         f'Failed to execute process\n"{short_repr(self.step.task)}"\n{e}'
                     )
+
                 #
                 # # if not concurrent, we have to wait for the completion of the task
                 # if 'concurrent' in env.sos_dict['_runtime'] and env.sos_dict[
@@ -1836,8 +1863,7 @@ class Base_Step_Executor:
                 #
             if self._subworkflow_results:
                 try:
-                    runner = self.wait_for_subworkflows(
-                        self._subworkflow_results)
+                    runner = self.wait_for_subworkflows(allow_pending=0)
                     yreq = next(runner)
                     while True:
                         yres = yield yreq
@@ -1965,10 +1991,16 @@ class Step_Executor(Base_Step_Executor):
                 break
         return results
 
-    def wait_for_subworkflows(self, workflow_results):
+    def wait_for_subworkflows(self, allow_pending):
         '''Wait for results from subworkflows'''
-        wf_ids = sum([x['pending_workflows'] for x in workflow_results], [])
-        for wf_id in wf_ids:
+
+        while self._subworkflow_results:
+            if allow_pending > 0:
+                n_pending = sum(
+                    len(x['pending_workflows'])
+                    for x in self._subworkflow_results)
+                if n_pending <= allow_pending:
+                    break
             # here we did not check if workflow ids match
             yield self.socket
             res = decode_msg(self.socket.recv())
@@ -1976,6 +2008,27 @@ class Step_Executor(Base_Step_Executor):
                 sys.exit(0)
             elif isinstance(res, Exception):
                 raise res
+            if not '__workflow_id__' in res:
+                raise ValueError(
+                    f'Unrecognized result from subworkflows: {res}')
+            # remove from _self._subworkflow_results
+            result_with_id = [
+                idx for idx, x in enumerate(self._subworkflow_results)
+                if res['__workflow_id__'] in x['pending_workflows']
+            ]
+            if not result_with_id:
+                raise RuntimeError(
+                    f'Failed to identify ID of returned subworkflow: {res}')
+            if len(result_with_id) > 1:
+                raise RuntimeError(
+                    'Multiple matches of subworkflow ID. This should not happen.'
+                )
+            self._subworkflow_results[
+                result_with_id[0]]['pending_workflows'].remove(
+                    res['__workflow_id__'])
+            if not self._subworkflow_results[
+                    result_with_id[0]]['pending_workflows']:
+                self._subworkflow_results.pop(result_with_id[0])
 
     def handle_unknown_target(self, e):
         self.socket.send(encode_msg(['missing_target', e.target]))
