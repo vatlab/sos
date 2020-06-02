@@ -2751,5 +2751,24 @@ with open(_input, 'r') as ifile, open(_output, 'w') as ofile:
         self.assertTrue(os.path.isfile('test_1270.out'))
 
 
-if __name__ == '__main__':
-    unittest.main()
+def test_param_with_step_no_statement():
+    # 1375
+    execute_workflow(
+        '''
+        [global]
+        parameter: num = [x+1 for x in range(5)]
+
+        [1]
+        input: for_each = 'num'
+        output: f'{_num}.txt'
+        bash: expand = True
+        touch {_output}
+
+        [2]
+        parameter: a = 1
+        output: f'{_input:n}.out'
+        task: trunk_workers = 1, trunk_size = 1, walltime = '3m', mem = '1G', cores = 1
+        bash: expand = True
+        echo {a} > {_output}
+            ''',
+        options={'default_queue': 'localhost'})
