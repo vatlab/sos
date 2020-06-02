@@ -4,10 +4,13 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import os
+import textwrap
+
 from ._version import __version__
 
 from .__main__ import get_run_parser
 from .workflow_executor import Base_Executor
+
 from sos.parser import SoS_Script
 
 assert __version__
@@ -63,7 +66,7 @@ def execute_workflow(script: str,
     Note: executing on specified host (option "-r") is not supported by this function.
     '''
     try:
-        script = SoS_Script(script)
+        script = SoS_Script(textwrap.dedent(script))
     except Exception as e:
         # show script with error
         raise ValueError(f'Failed to parse script {script}: {e}')
