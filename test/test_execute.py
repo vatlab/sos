@@ -2381,25 +2381,6 @@ time.sleep(10)
         ret.wait()
         self.assertNotEqual(ret.returncode, 0)
 
-    def testConcurrentRunningTasks(self):
-        '''Test two sos instances running the same task'''
-        with open('testRunTask.sos', 'w') as tk:
-            tk.write('''
-
-[1]
-task:
-import time
-time.sleep(5)
-''')
-        ret1 = subprocess.Popen(
-            ['sos', 'run', 'testRunTask', '-s', 'force', '-q', 'localhost'])
-        ret2 = subprocess.Popen(
-            ['sos', 'run', 'testRunTask', '-s', 'force', '-q', 'localhost'])
-        ret1.wait()
-        ret2.wait()
-        self.assertEqual(ret1.returncode, 0)
-        self.assertEqual(ret2.returncode, 0)
-
     @unittest.skipIf('TRAVIS' in os.environ, 'Temporarily disable on TRAVIS')
     def testRestartOrphanedTasks(self):
         '''Test restarting orphaned tasks which displays as running at first.'''
@@ -2797,3 +2778,22 @@ def test_parallel_nestedworkflow():
         bash: expand = True
         touch {_output}
         ''')
+
+
+def test_concurrent_running_tasks(script_factory):
+    '''Test two sos instances running the same task'''
+    script = script_factory('''
+        [1]
+        task:
+        import time
+        time.sleep(5)
+        ''')
+
+    ret1 = subprocess.Popen(
+        ['sos', 'run', script, '-s', 'force', '-q', 'localhost'])
+    ret2 = subprocess.Popen(
+        ['sos', 'run', script, '-s', 'force', '-q', 'localhost'])
+    ret1.wait()
+    ret2.wait()
+    assert ret1.returncode == 0
+    assert ret2.returncode == 0

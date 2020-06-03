@@ -1575,7 +1575,8 @@ class Base_Step_Executor:
 
                 # if there is no statement, no task, claim success
                 post_statement = []
-                if self.step.statements and self.step.statements[-1][0] != '!':
+                if not self.step.statements or self.step.statements[-1][
+                        0] != '!':
                     if self.step.task:
                         # if there is only task, we insert a fake statement so that it can be executed by the executor
                         post_statement = [['!', '']]
@@ -1799,7 +1800,7 @@ class Base_Step_Executor:
                             raise
                 # if there is no statement , but there are tasks, we should
                 # check signature here.
-                if self.step.statements[-1][0] != '!' and self.step.task and not self.concurrent_substep \
+                if (not self.step.statements or self.step.statements[-1][0] != '!') and self.step.task and not self.concurrent_substep \
                     and env.config['sig_mode'] != 'ignore' and not env.sos_dict['_output'].unspecified():
                     skip_index = self.check_task_sig()
 

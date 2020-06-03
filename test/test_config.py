@@ -16,6 +16,8 @@ from sos.utils import env, load_config_files
 # if the test is imported under sos/test, test interacive executor
 from sos.workflow_executor import Base_Executor
 
+from sos import execute_workflow
+
 
 class TestConfig(unittest.TestCase):
 
@@ -91,22 +93,6 @@ class TestConfig(unittest.TestCase):
                 stdout=subprocess.DEVNULL,
                 shell=True), 0)
 
-    def testGlobalVars(self):
-        '''Test SoS defined variables'''
-        script = SoS_Script(r"""
-[0]
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['SOS_VERSION'], __version__)
-        self.assertTrue(isinstance(env.sos_dict['CONFIG'], dict))
-        #
-        with open('local_cfg.yml', 'w') as cfg:
-            cfg.write('my_config: 5')
-        #
-        Base_Executor(wf, config={'config_file': 'local_cfg.yml'}).run()
-        self.assertEqual(env.sos_dict['CONFIG']['my_config'], 5)
-
     def testConfigSet(self):
         '''Test interpolation of config'''
         self.assertEqual(
@@ -167,5 +153,14 @@ class TestConfig(unittest.TestCase):
                          f'{getpass.getuser().lower()}@my')
 
 
-if __name__ == '__main__':
-    unittest.main()
+def test_global_vars(config_factory):
+    '''Test SoS defined variables'''
+    execute_workflow("[0]", options={'mode': 'dryrun'})
+
+    assert env.sos_dict['SOS_VERSION'] == __version__
+    assert isinstance(env.sos_dict['CONFIG'], dict)
+
+    cfg = config_factory('my_config: 5')
+
+    execute_workflow("[0]", options={'config_file': cfg})
+    assert env.sos_dict['CONFIG']['my_config'] == 5

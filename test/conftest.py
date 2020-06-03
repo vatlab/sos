@@ -21,6 +21,19 @@ def config_factory():
 
 
 @pytest.fixture
+def script_factory():
+    filename = tempfile.NamedTemporaryFile(suffix='.sos', delete=False).name
+
+    def get_script(text):
+        with open(filename, 'w') as conf:
+            conf.write(textwrap.dedent(text))
+        return filename
+
+    yield get_script
+    os.remove(filename)
+
+
+@pytest.fixture
 def temp_factory():
 
     temp_fds = []
