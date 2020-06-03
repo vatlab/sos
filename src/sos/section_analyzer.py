@@ -8,7 +8,7 @@ import ast
 from collections.abc import Mapping, Sequence
 from typing import Any, Dict, Optional
 
-from .eval import SoS_eval, accessed_vars, used_in_func, SoS_exec
+from .eval import SoS_eval, accessed_vars, used_in_func
 from .parser import SoS_Step
 from .targets import dynamic, remote, sos_targets, sos_step, named_output
 from .utils import env
@@ -408,11 +408,14 @@ def get_step_input(section, default_input):
     return step_input, dynamic_input
 
 
-def get_forward_step_output(section):
+def get_step_output(section, default_output):
     '''determine step output'''
     step_output: sos_targets = sos_targets()
+    #
+    if 'provides' in section.options and default_output:
+        step_output = default_output
 
-    # look for output statement.
+    # look for input statement.
     output_idx = find_statement(section, 'output')
     if output_idx is None:
         return step_output
@@ -454,78 +457,8 @@ def get_forward_step_output(section):
         [env.sos_dict.dict().pop(x) for x in svars]
         env.sos_dict.quick_update(old_values)
 
-    return step_output
-
-
-def get_auxiliary_step_output(section, default_output):
-    step_output: sos_targets = default_output
-
-    # look for output statement.
-    output_idx = find_statement(section, 'output')
-    if output_idx is None:
-        return step_output
-
-    # if we do have output, we have to evaluate starting from input...
-    # and we should not allow complicated things such as named_putput...
-    for statement in section.statements[:output_idx + 1]:
-        if statement[0] == '!':
-            try:
-                SoS_exec(statement[1], return_result=False)
-                continue
-            except Exception as e:
-                raise f'Failed to evaluate an statement "{value}" of an auxiliary step: {e}'
-        if statement[1] == 'depends':
-            continue
-        else:
-            value = statement[2]
-            try:
-                svars = [
-                    'output_from', 'named_output', 'sos_step', 'sos_variable'
-                ]
-                old_values = {
-                    x: env.sos_dict.dict()[x]
-                    for x in svars
-                    if x in env.sos_dict.dict()
-                }
-                env.sos_dict.quick_update({
-                    'output_from': no_output_from,
-                    'named_output': no_named_output,
-                    'sos_step': no_sos_step,
-                    'sos_variable': no_sos_variable,
-                })
-                args, kwargs = SoS_eval(
-                    f'__null_func__({value})', extra_dict=env.sos_dict.dict())
-                if any(isinstance(x, (dynamic, remote)) for x in args):
-                    raise ValueError(
-                        f'Auxiliary step does not allow dynamic or remote input or output: {value} provided'
-                    )
-                if statement[1] == 'input':
-                    step_input = sos_targets(
-                        *args, **{
-                            x: y
-                            for x, y in kwargs.items()
-                            if x not in SOS_TARGETS_OPTIONS
-                        })
-                    env.sos_dict.set('_input', step_input)
-                    env.sos_dict.set('step_input', step_input)
-                else:
-                    step_output = sos_targets(
-                        *args, **{
-                            x: y
-                            for x, y in kwargs.items()
-                            if x not in SOS_TARGETS_OPTIONS
-                        })
-            except SyntaxError:
-                raise
-            except Exception as e:
-                raise RuntimeError(
-                    f'Failed to determine input "{value}" of an auxiliary step: {e}'
-                )
-            finally:
-                [env.sos_dict.dict().pop(x) for x in svars]
-                env.sos_dict.quick_update(old_values)
-
-    if 'provides' in section.options and default_output is not None:
+    if 'provides' in section.options and default_output is not None and step_output.valid(
+    ):
         for out in default_output:
             # 981
             if not isinstance(out, sos_step) and out not in step_output:
@@ -601,11 +534,10 @@ def get_output_from_steps(stmt, last_step):
 def analyze_section(section: SoS_Step,
                     default_input: Optional[sos_targets] = None,
                     default_output: Optional[sos_targets] = None,
-                    context=None,
+                    context={},
                     vars_and_output_only: bool = False) -> Dict[str, Any]:
     '''Analyze a section for how it uses input and output, what variables
     it uses, and input, output, etc.'''
-
     # analysis_key = (section.md5, section.step_name(),
     #     default_input.target_name() if hasattr(default_input, 'target_name') else '',
     #     default_output.target_name() if hasattr(default_output, 'target_name') else '', vars_and_output_only)
@@ -615,8 +547,7 @@ def analyze_section(section: SoS_Step,
     # use a fresh env for analysis
     new_env, old_env = env.request_new()
     try:
-        prepare_env(section.global_def, section.global_vars,
-                    {} if context is None else context)
+        prepare_env(section.global_def, section.global_vars, context)
 
         env.sos_dict.set('step_name', section.step_name())
         env.sos_dict.set('__null_func__', __null_func__)
@@ -626,23 +557,13 @@ def analyze_section(section: SoS_Step,
                 f'Analyzing {section.step_name()} {"(output only)" if vars_and_output_only else ""}'
             )
 
-        # NOTE #1379: When context is not None, it is an auxiliary step, in this
-        # case we require the output to be decided and disallow unknown, and
-        # we will have to evaluate input: if we have to. This is because output
-        # from auxiliary step is required to set up DAG properly.
         res = {
-            'step_name':
-                section.step_name(),
-            'step_output':
-                get_forward_step_output(section) if context is None else
-                get_auxiliary_step_output(section, default_output),
+            'step_name': section.step_name(),
+            'step_output': get_step_output(section, default_output),
             # variables starting with __ are internals...
-            'environ_vars':
-                get_environ_vars(section),
-            'signature_vars':
-                get_signature_vars(section),
-            'changed_vars':
-                get_changed_vars(section)
+            'environ_vars': get_environ_vars(section),
+            'signature_vars': get_signature_vars(section),
+            'changed_vars': get_changed_vars(section)
         }
         if not vars_and_output_only:
             inps = get_step_input(section, default_input)
