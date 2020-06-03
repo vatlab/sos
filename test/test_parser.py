@@ -4,6 +4,7 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import os
+import pytest
 import subprocess
 import unittest
 
@@ -128,16 +129,6 @@ class TestParser(unittest.TestCase):
         script.workflow('proc-1')
         script.workflow('proc-1 + test-case:2')
 
-    def testTypeHint(self):
-        '''We should be able to differentiate type hint and sos action
-        '''
-        SoS_Script('''a : list = 5''')
-        SoS_Script('''a : list''')
-        # action
-        SoS_Script('''a : input='filename' ''')
-        # action
-        SoS_Script('''a : expand='${ }' ''')
-
     def testSections(self):
         '''Test section definitions'''
         # bad names
@@ -168,7 +159,8 @@ class TestParser(unittest.TestCase):
 
     def testParameters(self):
         '''Test ending parameters with new line #1311'''
-        self.assertRaises(ParsingError, SoS_Script, '''input: ['a.txt'\n\n'b.txt']\n''')
+        self.assertRaises(ParsingError, SoS_Script,
+                          '''input: ['a.txt'\n\n'b.txt']\n''')
 
     def testGlobalVariables(self):
         '''Test definition of variables'''
@@ -1643,19 +1635,6 @@ input: sos_step('A')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
 
-    def testSoSStepInOutput(self):
-        '''Test sos_step in output statement'''
-        script = SoS_Script('''
-[A]
-output: A='a.txt'
-_output.touch()
-
-[default]
-output: sos_step('A')
-''')
-        wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf).run)
-
     def testSoSVariableInInput(self):
         '''Test sos_variable in input statement'''
         script = SoS_Script('''
@@ -2008,7 +1987,6 @@ report:
         wf = script.workflow()
         Base_Executor(wf).run()
 
-
     def testTaskParamVar(self):
         '''Test global parameter passed to task parameters #1281'''
         script = SoS_Script(r'''
@@ -2062,7 +2040,6 @@ print(f'sum is {sum} at index {_index}')
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['sum'], 6)
 
-
     def testLimitedConcurrency(self):
         '''Set concurrent=INT'''
 
@@ -2082,7 +2059,26 @@ input: for_each=dict(i=range(2))
 time.sleep(0)
         ''')
 
-if __name__ == '__main__':
-    #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
-    # unittest.TextTestRunner(, suite).run()
-    unittest.main()
+
+def test_type_hint():
+    '''We should be able to differentiate type hint and sos action
+    '''
+    SoS_Script('''a : list = 5''')
+    SoS_Script('''a : list''')
+    # action
+    SoS_Script('''a : input='filename' ''')
+    # action
+    SoS_Script('''a : expand='${ }' ''')
+
+
+def test_sos_step_in_output():
+    '''Test sos_step in output statement'''
+    with pytest.raises(Exception):
+        execute_workflow('''
+            [A]
+            output: A='a.txt'
+            _output.touch()
+
+            [default]
+            output: sos_step('A')
+        ''')

@@ -151,68 +151,6 @@ a =1
                 stdout=subprocess.DEVNULL,
                 shell=True), 0)
 
-    def testInterpolation(self):
-        '''Test string interpolation during execution'''
-        self.touch(['a_1.txt', 'b_2.txt', 'c_2.txt'])
-        script = SoS_Script(r"""
-[0: shared='res']
-res = ''
-b = 200
-res += f"{b}"
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['res'], '200')
-        #
-        script = SoS_Script(r"""
-[0: shared='res']
-res = ''
-for b in range(5):
-    res += f"{b}"
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['res'], '01234')
-        #
-        script = SoS_Script(r"""
-[0: shared={'res':'step_output'}]
-input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
-output: [f'{x}_{y}_processed.txt' for x,y in zip(name, model)]
-
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(
-            env.sos_dict['res'],
-            ['a_1_processed.txt', 'b_2_processed.txt', 'c_2_processed.txt'])
-        #
-        script = SoS_Script(r"""
-[0: shared={'res':'step_output'}]
-input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
-output: [f"{x}_{y}_process.txt" for x,y in zip(name, model)]
-
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(
-            env.sos_dict['res'],
-            ['a_1_process.txt', 'b_2_process.txt', 'c_2_process.txt'])
-        #
-        script = SoS_Script(r"""
-[0: shared={'res':'step_output'}]
-def add_a(x):
-    return ['a'+_x for _x in x]
-
-input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
-output: add_a([f"{x}_{y}_process.txt" for x,y in zip(name, model)])
-
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(
-            env.sos_dict['res'],
-            ['aa_1_process.txt', 'ab_2_process.txt', 'ac_2_process.txt'])
-
     def testFuncDef(self):
         '''Test defintion of function that can be used by other steps'''
         self.touch(['aa.txt', 'ab.txt'])
@@ -2710,27 +2648,25 @@ _output.touch()
             'Test test should fail only after step 10 is completed')
         self.assertFalse(os.path.isfile('22.txt'))
 
-    def testStmtBeforeInput(self):
-        '''Bug #1270, if there is any statement before input, the step will be undetermined'''
-        if os.path.isfile('test_1270.txt'):
-            os.remove('test_1270.txt')
-        if os.path.isfile('test_1270.out'):
-            os.remove('test_1270.out')
-        script = SoS_Script(r'''\
-[10]
-with open('test_1270.txt', 'w') as t1:
-    t1.write('something')
 
-input: 'test_1270.txt'
-output: 'test_1270.out'
-with open(_input, 'r') as ifile, open(_output, 'w') as ofile:
-    ofile.write(ifile.read())
-''')
-        wf = script.workflow()
-        # this should run
-        Base_Executor(wf).run()
-        self.assertTrue(os.path.isfile('test_1270.txt'))
-        self.assertTrue(os.path.isfile('test_1270.out'))
+def test_stmt_before_input(clear_now_and_after):
+    '''Bug #1270, if there is any statement before input, the step will be undetermined'''
+
+    clear_now_and_after('test_1270.txt', 'test_1270.out')
+    execute_workflow(r'''
+        [10]
+        with open('test_1270.txt', 'w') as t1:
+            t1.write('something')
+
+        input: 'test_1270.txt'
+        output: 'test_1270.out'
+        with open(_input, 'r') as ifile, open(_output, 'w') as ofile:
+            ofile.write(ifile.read())
+
+        ''')
+
+    assert os.path.isfile('test_1270.txt')
+    assert os.path.isfile('test_1270.out')
 
 
 def test_param_with_step_no_statement():
@@ -2797,3 +2733,79 @@ def test_concurrent_running_tasks(script_factory):
     ret2.wait()
     assert ret1.returncode == 0
     assert ret2.returncode == 0
+
+
+def test_interpolation():
+    '''Test string interpolation during execution'''
+    execute_workflow(r"""
+        [0: shared='res']
+        res = ''
+        b = 200
+        res += f"{b}"
+    """)
+    assert env.sos_dict['res'] == '200'
+
+
+def test_interpolation_1():
+    '''Test string interpolation during execution'''
+    execute_workflow(r"""
+        [0: shared='res']
+        res = ''
+        for b in range(5):
+            res += f"{b}"
+    """)
+    assert env.sos_dict['res'] == '01234'
+
+
+def test_interpolation_2(temp_factory):
+    '''Test string interpolation during execution'''
+    temp_factory('a_1.txt', 'b_2.txt', 'c_2.txt')
+
+    execute_workflow(
+        r"""
+        [0: shared={'res':'step_output'}]
+        input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
+        output: [f'{x}_{y}_processed.txt' for x,y in zip(name, model)]
+        """,
+        options={'run_mode': 'dryrun'})
+
+    assert env.sos_dict['res'] == [
+        'a_1_processed.txt', 'b_2_processed.txt', 'c_2_processed.txt'
+    ]
+
+
+def test_interpolation_3(temp_factory):
+    '''Test string interpolation during execution'''
+    temp_factory('a_1.txt', 'b_2.txt', 'c_2.txt')
+
+    execute_workflow(
+        r"""
+        [0: shared={'res':'step_output'}]
+        input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
+        output: [f"{x}_{y}_process.txt" for x,y in zip(name, model)]
+        """,
+        options={'run_mode': 'dryrun'})
+
+    assert env.sos_dict['res'] == [
+        'a_1_process.txt', 'b_2_process.txt', 'c_2_process.txt'
+    ]
+
+
+def test_interpolation_4(temp_factory):
+    '''Test string interpolation during execution'''
+    temp_factory('a_1.txt', 'b_2.txt', 'c_2.txt')
+    execute_workflow(
+        r"""
+        [0: shared={'res':'step_output'}]
+        def add_a(x):
+            return ['a'+_x for _x in x]
+
+        input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
+        output: add_a([f"{x}_{y}_process.txt" for x,y in zip(name, model)])
+
+        """,
+        options={'run_mode': 'dryrun'})
+
+    assert env.sos_dict['res'] == [
+        'aa_1_process.txt', 'ab_2_process.txt', 'ac_2_process.txt'
+    ]
