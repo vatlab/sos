@@ -2335,7 +2335,7 @@ time.sleep(2)
         #self.assertNotEqual(ret.returncode, 0)
 
     @unittest.skipIf(
-        sys.platform == 'win32',
+        sys.platform == 'win32' or 'TRAVIS' in os.environ,
         'Cannot test due to a bug (ampaolo/psutil#875) with psutils under windows'
     )
     def testKillTask(self):
