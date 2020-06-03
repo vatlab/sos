@@ -1405,6 +1405,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                         if y == i
                     ],
                                labels=i).set(**grp._dict))
+            if not ret._targets:
+                env.logger.warning(f'No target with label "{i}" is available.')
             return ret
         else:
             return self._targets[i]
