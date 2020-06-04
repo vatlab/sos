@@ -15,6 +15,31 @@ from sos.utils import env
 from sos.workflow_executor import Base_Executor
 from sos import execute_workflow
 
+
+def assertDAG(dag, content):
+    '''Compare the content of dag in a file, to one of more DAG (strings).'''
+    if isinstance(dag, str):
+        with open(dag) as d:
+            # only get the first DAG
+            dot = 'strict' + d.read().split('strict')[1]
+    else:
+        out = StringIO()
+        dag.save(out)
+        dot = out.getvalue()
+
+    def sorted_dot(dot):
+        return sorted([
+            x.strip()
+            for x in dot.split('\n')
+            if x.strip() and not 'digraph' in x
+        ])
+
+    if isinstance(content, str):
+        assert sorted_dot(dot) == sorted_dot(content)
+    else:
+        assert sorted_dot(dot) in [sorted_dot(x) for x in content]
+
+
 class TestDAG(unittest.TestCase):
 
     def setUp(self):
@@ -59,7 +84,7 @@ class TestDAG(unittest.TestCase):
                 if x.strip() and not 'digraph' in x
             ]))
 
-    def testSimpleDAG(self):
+    def test_simple_dag(self):
         '''Test DAG with simple dependency'''
         for filename in ('a.txt', 'a1.txt'):
             with open(filename, 'w') as tmp:
@@ -257,7 +282,7 @@ C_3 -> C_4;
         for filename in ('a.txt', 'a1.txt'):
             os.remove(filename)
 
-    def testUndetermined(self):
+    def test_undetermined(self):
         '''Test DAG with undetermined input.'''
         #
         for filename in ('a.txt', 'd.txt'):
@@ -336,7 +361,7 @@ C_3 -> C_4;
         for filename in ('a.txt', 'd.txt'):
             os.remove(filename)
 
-    def testAuxiliarySteps(self):
+    def test_auxiliary_steps(self):
         script = SoS_Script('''
 [K: provides='{name}.txt']
 output: f"{name}.txt"
@@ -381,7 +406,7 @@ C_2;
 }
 ''')
 
-    def testCycle(self):
+    def test_cycle(self):
         '''Test cycle detection of DAG'''
         #
         #  A.txt --> B.txt
@@ -405,7 +430,7 @@ output: 'A.txt'
         wf = script.workflow()
         self.assertRaises(RuntimeError, Base_Executor(wf).initialize_dag)
 
-    def testLongChain(self):
+    def test_long_chain(self):
         '''Test long make file style dependencies.'''
         #
         for f in [
@@ -506,7 +531,7 @@ A_1 -> A_2;
             self.assertTrue(t.target_exists(), f + ' should exist')
             t.unlink()
 
-    def testTarget(self):
+    def test_target(self):
         '''Test executing only part of a workflow.'''
         #
         for f in [
@@ -654,7 +679,7 @@ strict digraph "" {
             self.assertTrue(t.target_exists())
             t.unlink()
 
-    def testPatternReuse(self):
+    def test_pattern_reuse(self):
         '''Test repeated use of steps that use pattern and produce different files.'''
         #
         for f in [
@@ -719,7 +744,7 @@ A_1 -> A_2;
             self.assertTrue(t.target_exists(), '{} should exist'.format(f))
             t.unlink()
 
-    def testParallelExecution(self):
+    def test_parallel_execution(self):
         '''Test basic parallel execution
         A1 <- None
         A2 <- B2
@@ -768,7 +793,7 @@ A_2;
             if file_target(f).exists():
                 file_target(f).unlink()
 
-    def testSharedDependency(self):
+    def test_shared_dependency(self):
         #
         # shared variable should introduce additional dependency
         #
@@ -813,7 +838,7 @@ A_1 -> A_3;
             self.assertTrue(file_target(f).target_exists())
             file_target(f).unlink()
 
-    def testLiteralConnection(self):
+    def test_literal_connection(self):
         '''Testing the connection of steps with by variables.'''
         for f in ['A1.txt']:
             if file_target(f).exists():
@@ -872,7 +897,7 @@ A_1 -> A_5;
             self.assertTrue(file_target(f).target_exists())
             file_target(f).unlink()
 
-    def testVariableTarget(self):
+    def test_variable_target(self):
         '''Test dependency caused by variable usage.'''
         script = SoS_Script(r'''
 [A: shared='b']
@@ -891,7 +916,7 @@ p = c + b
         Base_Executor(wf).run()
         self.assertTrue(env.sos_dict['p'], 3)
 
-    def testReverseSharedVariable(self):
+    def test_reverse_shared_variable(self):
         '''Test shared variables defined in auxiliary steps'''
         if file_target('a.txt').exists():
             file_target('a.txt').unlink()
@@ -912,7 +937,7 @@ print(b)
         Base_Executor(wf).run()
         self.assertTrue(env.sos_dict['b'], 1)
 
-    def testChainedDepends(self):
+    def test_chained_depends(self):
         '''Test chain dependent'''
         script = SoS_Script(r'''
 # this step provides variable `var`
@@ -939,7 +964,7 @@ run: expand=True
             if file_target(f).exists():
                 file_target(f).unlink()
 
-    def testOutputOfDAG(self):
+    def test_output_of_dag(self):
         '''Test output of dag'''
         #
         #for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
@@ -1004,7 +1029,8 @@ run:
         #
         # test 1, we only need to generate target 'B1.txt'
         Base_Executor(
-            wf, config={
+            wf,
+            config={
                 'output_dag': 'test_outofdag1.dot',
                 'trace_existing': True
             }).initialize_dag(targets=['B1.txt'])
@@ -1030,7 +1056,8 @@ strict digraph "" {
 ''')
         # test 2, we would like to generate two files
         Base_Executor(
-            wf, config={
+            wf,
+            config={
                 'output_dag': 'test_outofdag2.dot',
                 'trace_existing': True
             }).initialize_dag(targets=['B2.txt', 'C2.txt'])
@@ -1055,7 +1082,8 @@ strict digraph "" {
         # test 3, generate two separate trees
         #
         Base_Executor(
-            wf, config={
+            wf,
+            config={
                 'output_dag': 'test_outofdag3.dot',
                 'trace_existing': True
             }).initialize_dag(targets=['B3.txt', 'C2.txt'])
@@ -1073,7 +1101,7 @@ strict digraph "" {
             if file_target(f).exists():
                 file_target(f).unlink()
 
-    def testStepWithMultipleOutput(self):
+    def test_step_with_multiple_output(self):
         '''Test addition of steps with multiple outputs. It should be added only once'''
         script = SoS_Script('''
 [test_1: provides=['{}.txt'.format(i) for i in range(10)]]
@@ -1097,7 +1125,7 @@ depends: ['{}.txt'.format(i) for i in range(10, 20)]
         self.assertTrue(lc, 6)
         file_target('test.dot').unlink()
 
-    def testAuxiliarySosStep(self):
+    def test_auxiliary_sos_step(self):
         '''Testing the use of sos_step with auxiliary step. #736'''
         script = SoS_Script('''
 [default]
@@ -1115,7 +1143,7 @@ touch 1.txt
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    def testForwardStyleDepend(self):
+    def test_forward_style_depend(self):
         '''Test the execution of forward-style workflow with undtermined dependency'''
         if file_target('a.txt.bak').exists():
             file_target('a.txt.bak').unlink()
@@ -1136,7 +1164,7 @@ run: expand=True
         Base_Executor(wf).run()
         self.assertTrue(file_target('a.txt.bak').target_exists())
 
-    def testSoSStepMiniworkflow(self):
+    def test_sos_step_miniworkflow(self):
         '''Test the addition of mini forward workflows introduced by sos_step'''
         script = SoS_Script('''
 [a_1]
@@ -1200,29 +1228,7 @@ c_20 -> b_20;
 ''')
         file_target('test.dot').unlink()
 
-    def testMultiNamedOutput(self):
-        '''Test DAG built from multiple named_output #1166'''
-        script = SoS_Script('''
-[A]
-output: A='a.txt', B='b.txt'
-_output.touch()
-
-[default]
-input: named_output('A'), named_output('B')
-''')
-        wf = script.workflow()
-        Base_Executor(wf, config={'output_dag': 'test_named_output.dot'}).run()
-        # note that A2 is no longer mentioned
-        self.assertDAG(
-            'test_named_output.dot', '''
-strict digraph "" {
-default;
-"A (B)";
-"A (B)" -> default;
-}
-''')
-
-    def testCompoundWorkflow(self):
+    def test_compound_workflow(self):
         '''Test the DAG of compound workflow'''
         script = SoS_Script('''
 [A_1]
@@ -1282,8 +1288,7 @@ A_2 -> B;
 "C (a.txt)" -> B;
 }''')
 
-
-    def testProvidesSoSVariable(self):
+    def test_provides_sos_variable(self):
         '''Test provides non-filename targets #1341'''
         execute_workflow('''
 [count: provides=sos_variable('numNotebooks')]
@@ -1294,5 +1299,34 @@ depends: sos_variable('numNotebooks')
 print(f"There are {numNotebooks} notebooks in this directory")
         ''')
 
-if __name__ == '__main__':
-    unittest.main()
+
+def test_multi_named_output(clear_now_and_after):
+    '''Test DAG built from multiple named_output #1166'''
+    clear_now_and_after('a.txt', 'b.txt', 'test_named_output.dot')
+
+    execute_workflow(
+        '''
+        [A]
+        output: A='a.txt', B='b.txt'
+        _output.touch()
+
+        [default]
+        input: named_output('A'), named_output('B')
+        ''',
+        options={'output_dag': 'test_named_output.dot'})
+    # note that A2 is no longer mentioned
+    assertDAG('test_named_output.dot', [
+        '''
+        strict digraph "" {
+        default;
+        "A (B)";
+        "A (B)" -> default;
+        }
+        ''', '''
+        strict digraph "" {
+        default;
+        "A (A)";
+        "A (A)" -> default;
+        }
+        '''
+    ])

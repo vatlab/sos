@@ -5,6 +5,7 @@
 
 import glob
 import os
+import pytest
 import sys
 import shutil
 import subprocess
@@ -63,7 +64,7 @@ class TestExecute(unittest.TestCase):
             shutil.rmtree(os.path.expanduser(dirname))
         os.mkdir(os.path.expanduser(dirname))
 
-    def testCommandLine(self):
+    def test_command_line(self):
         '''Test command line arguments'''
         with open('test_cl.sos', 'w') as cl:
             cl.write('''\
@@ -151,7 +152,7 @@ a =1
                 stdout=subprocess.DEVNULL,
                 shell=True), 0)
 
-    def testFuncDef(self):
+    def test_func_def(self):
         '''Test defintion of function that can be used by other steps'''
         self.touch(['aa.txt', 'ab.txt'])
         script = SoS_Script(r"""
@@ -166,7 +167,7 @@ input: myfunc(['a.txt', 'b.txt'])
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['test'], ['aa.txt', 'ab.txt'])
 
-    def testInput(self):
+    def test_input(self):
         '''Test input specification'''
         self.touch(['test_input.txt', 'test_input1.txt'])
         script = SoS_Script(r"""
@@ -181,7 +182,7 @@ output: [x + '.res' for x in _input]
         self.assertTrue(
             file_target('test_input1.txt.res').resolve() in env.sos_dict['res'])
 
-    def testForEach(self):
+    def test_for_each(self):
         '''Test for_each option of input'''
         self.touch(['a.txt', 'b.txt', 'a.pdf'])
         script = SoS_Script(r"""
@@ -369,7 +370,7 @@ output: f"{A}.txt"
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['res'], ['2.txt', '4.txt'])
 
-    def testForEachAsTargetProperty(self):
+    def test_for_each_as_target_property(self):
         '''Test for_each option of input'''
         self.touch(['a.txt', 'b.txt', 'a.pdf'])
         script = SoS_Script(r"""
@@ -559,7 +560,7 @@ output: f"{_input.A}.txt"
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['res'], ['2.txt', '4.txt'])
 
-    def testGroupByWithNoInput(self):
+    def test_group_by_with_no_input(self):
         '''Test group_by with no input file'''
         script = SoS_Script(r'''
 [0]
@@ -568,7 +569,7 @@ input: group_by=2
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    def testPairedWith(self):
+    def test_paired_with(self):
         '''Test option paired_with '''
         self.touch(['a.txt', 'b.txt'])
         for ofile in ['a.txt1', 'b.txt2']:
@@ -641,7 +642,7 @@ _output.touch()
             self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).unlink()
 
-    def testPairedWithAsTargetProperty(self):
+    def test_paired_with_as_target_property(self):
         '''Test option paired_with with values accessed by individual target '''
         self.touch(['a.txt', 'b.txt'])
         for ofile in ['a.txt1', 'b.txt2']:
@@ -698,7 +699,7 @@ run: expand=True
             self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).unlink()
 
-    def testGroupWith(self):
+    def test_group_with(self):
         '''Test option group_with '''
         self.touch(['a.txt', 'b.txt'])
         for ofile in ['a.txt1', 'b.txt2']:
@@ -755,7 +756,7 @@ run: expand=True
             self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).unlink()
 
-    def testOutputGroupWith(self):
+    def test_output_group_with(self):
         '''Test option group_with in output statement'''
         self.touch(['a.txt', 'b.txt'])
         for ofile in ['a.txt1', 'b.txt2']:
@@ -823,7 +824,7 @@ assert(var2 == 'a')
             self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).unlink()
 
-    def testGroupWithAsTargetProperty(self):
+    def test_group_with_as_target_property(self):
         '''Test option group_with '''
         self.touch(['a.txt', 'b.txt'])
         for ofile in ['a.txt1', 'b.txt2']:
@@ -880,7 +881,7 @@ run: expand=True
             self.assertTrue(file_target(ofile).target_exists('target'))
             file_target(ofile).unlink()
 
-    def testInputPattern(self):
+    def test_input_pattern(self):
         '''Test option pattern of step input '''
         #env.verbosity = 4
         self.touch(['a-20.txt', 'b-10.txt'])
@@ -900,7 +901,7 @@ output: ['{}-{}-{}.txt'.format(x,y,z) for x,y,z in zip(_base, _name, _par)]
         self.assertEqual(env.sos_dict['_output'],
                          ["a-20-a-20.txt", 'b-10-b-10.txt'])
 
-    def testInputPatternAsTargetProperty(self):
+    def test_input_pattern_as_target_property(self):
         '''Test option pattern of step input '''
         #env.verbosity = 4
         self.touch(['a-20.txt', 'b-10.txt'])
@@ -917,7 +918,7 @@ output: [f'{x._base}-{x._name}-{x._par}.txt' for x in _input]
         self.assertEqual(env.sos_dict['_output'],
                          ["a-20-a-20.txt", 'b-10-b-10.txt'])
 
-    def testOutputPattern(self):
+    def test_output_pattern(self):
         '''Test option pattern of step output'''
         #env.verbosity = 4
         self.touch(['a-20.txt', 'b-10.txt'])
@@ -937,7 +938,7 @@ output: expand_pattern('{base}-{name}-{par}.txt'), expand_pattern('{par}.txt')
         self.assertEqual(env.sos_dict['_output'],
                          ['a-20-a-20.txt', 'b-10-b-10.txt', '20.txt', '10.txt'])
 
-    def testOutputFromInput(self):
+    def test_output_from_input(self):
         '''Test deriving output files from input files'''
         self.touch(['a.txt', 'b.txt'])
         script = SoS_Script(r"""
@@ -955,7 +956,7 @@ counter += 1
         self.assertEqual(env.sos_dict['counter'], 2)
         self.assertEqual(env.sos_dict['step'], ['a.txt.bak', 'b.txt.bak'])
 
-    def testDependsFromInput(self):
+    def test_depends_from_input(self):
         '''Test deriving dependent files from input files'''
         self.touch(['a.txt', 'b.txt'])
         for f in ('a.txt.bak', 'b.txt.bak'):
@@ -980,7 +981,7 @@ counter += 1
         self.assertEqual(env.sos_dict['step'].groups,
                          [['a.txt.bak'], ['b.txt.bak']])
 
-    def testLocalNamespace(self):
+    def test_local_namespace(self):
         '''Test if steps are well separated.'''
         # interctive mode behave differently
         self.touch('a.txt')
@@ -1037,7 +1038,7 @@ e = d + 1
         self.assertEqual(env.sos_dict['shared'], 'c.txt')
         self.assertEqual(env.sos_dict['d'], 2)
 
-    def testDynamicOutput(self):
+    def test_dynamic_output(self):
         '''Testing dynamic output'''
         #
         if not os.path.isdir('temp'):
@@ -1061,7 +1062,7 @@ for i in range(4):
         #
         shutil.rmtree('temp')
 
-    def testDynamicInput(self):
+    def test_dynamic_input(self):
         '''Testing dynamic input'''
         #
         if os.path.isdir('temp'):
@@ -1106,32 +1107,7 @@ touch {_input}.bak
         #
         shutil.rmtree('temp')
 
-    def testAssignmentAfterInput(self):
-        '''Testing assignment after input should be usable inside step process.'''
-        #
-        if os.path.isdir('temp'):
-            shutil.rmtree('temp')
-        os.mkdir('temp')
-        #
-        env.config['sig_mode'] = 'ignore'
-        script = SoS_Script('''
-[1]
-rep = range(5)
-input:  for_each='rep'
-output: f"temp/{_rep}.txt"
-
-# ff should change and be usable inside run
-ff = f"{_rep}.txt"
-run: expand=True
-echo {ff}
-touch temp/{ff}
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-        #
-        shutil.rmtree('temp')
-
-    def testUseOfRunmode(self):
+    def test_use_of_runmode(self):
         '''Test the use of run_mode variable in SoS script'''
         #
         if os.path.isdir('temp'):
@@ -1153,7 +1129,7 @@ for i in range(3):
         self.assertEqual(len(files), 3)
         shutil.rmtree('temp')
 
-    def testActionBeforeInput(self):
+    def test_action_before_input(self):
         '''Testing the execution of actions before input directive
         (variables such as _index should be made available). '''
         script = SoS_Script('''
@@ -1164,7 +1140,7 @@ input:
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
 
-    def testDuplicateIOFiles(self):
+    def test_duplicate_io_files(self):
         '''Test interpretation of duplicate input/output/depends'''
         self.resetDir('temp')
         # Test duplicate input
@@ -1202,7 +1178,7 @@ run: expand=True
         self.assertRaises(Exception, Base_Executor(wf).run)
         shutil.rmtree('temp')
 
-    def testOutputInLoop(self):
+    def test_output_in_loop(self):
         '''Test behavior of {_output} when used in loop'''
         if os.path.isdir('temp'):
             shutil.rmtree('temp')
@@ -1248,7 +1224,7 @@ touch {step_output}
         shutil.rmtree('temp')
 
     @multi_attempts
-    def testExecutionLock(self):
+    def test_execution_lock(self):
         '''Test execution lock of two processes'''
         with open('lock.sos', 'w') as lock:
             lock.write(r'''
@@ -1273,7 +1249,7 @@ with open('b.txt', 'w') as txt:
         # takes less than 5 seconds
         file_target('lock.sos').unlink()
 
-    def testRemovedIntermediateFiles(self):
+    def test_removed_intermediate_files(self):
         '''Test behavior of workflow with removed internediate files'''
         for file in ('a.txt', 'aa.txt'):
             if file_target(file).exists():
@@ -1310,7 +1286,7 @@ run: expand=True
         file_target('a.txt').unlink()
         file_target('aa.txt').unlink()
 
-    def testStoppedOutput(self):
+    def test_stopped_output(self):
         '''test output with stopped step'''
         for file in ["{}.txt".format(a) for a in range(10)]:
             if file_target(file).exists():
@@ -1339,7 +1315,7 @@ assert(len(step_input) == 5)
                     file_target("{}.txt".format(idx)).target_exists())
                 file_target(f"{idx}.txt").unlink()
 
-    def testAllowError(self):
+    def test_allow_error(self):
         '''Test option allow error'''
         if file_target('a.txt').exists():
             file_target('a.txt').unlink()
@@ -1356,7 +1332,7 @@ run:
         self.assertTrue(file_target('a.txt').target_exists())
         file_target('a.txt').unlink()
 
-    def testConcurrentWorker(self):
+    def test_concurrent_worker(self):
         '''Test the starting of multiple workers #493 '''
         with open('test_script.sos', 'w') as script:
             script.write('''
@@ -1369,7 +1345,7 @@ input: for_each={'i': range(2)}
         subprocess.call('sos run test_script', shell=True)
         os.remove('test_script.sos')
 
-    def testDependsCausedDependency(self):
+    def test_depends_caused_dependency(self):
         # test for #674
         for tfile in ('1.txt', '2.txt', '3.txt'):
             if file_target(tfile).exists():
@@ -1399,7 +1375,7 @@ run: expand=True
             if file_target(tfile).exists():
                 file_target(tfile).unlink()
 
-    def testConcurrentInputOption(self):
+    def test_concurrent_input_option(self):
         '''Test input option'''
         self.touch(['1.txt', '2.txt'])
         script = SoS_Script('''
@@ -1412,7 +1388,7 @@ run: expand = True
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    def testNonExistentDependentTarget(self):
+    def test_non_existent_dependent_target(self):
         '''Test non existent dependent targets'''
         script = SoS_Script(r"""
 [1]
@@ -1432,16 +1408,7 @@ depends: 'non-existent.txt'
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
 
-    @unittest.skipIf(
-        'TRAVIS' in os.environ,
-        'Skip test because travis fails on this test for unknown reason')
-    def testExecuteIPynb(self):
-        '''Test extracting and executing workflow from .ipynb files'''
-        script = SoS_Script(filename='sample_workflow.ipynb')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-    def testOutputReport(self):
+    def test_output_report(self):
         '''Test generation of report'''
         if os.path.isfile('report.html'):
             os.remove('report.html')
@@ -1470,7 +1437,7 @@ run: expand=True
 
     @unittest.skipIf(sys.platform == 'win32',
                      'Graphviz not available under windows')
-    def testOutputReportWithDAG(self):
+    def test_output_report_with_dag(self):
         # test dag
         if os.path.isfile('report.html'):
             os.remove('report.html')
@@ -1500,7 +1467,7 @@ run: expand=True
             content = rep.read()
         self.assertTrue('Execution DAG' in content)
 
-    def testSoSStepWithOutput(self):
+    def test_sos_step_with_output(self):
         '''Test checking output of sos_step #981'''
         script = SoS_Script('''
 [step]
@@ -1514,7 +1481,7 @@ depends: sos_step('step')
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    def testMultiSoSStep(self):
+    def test_multi_sos_step(self):
         '''Test matching 'a_1', 'a_2' etc with sos_step('a')'''
         for file in ('a_1', 'a_2'):
             if file_target(file).exists():
@@ -1541,7 +1508,7 @@ depends: sos_step('a_b')
         with open('a_1') as a1, open('a_2') as a2:
             self.assertEqual(a1.read(), a2.read())
 
-    def testDependsAuxiAndForward(self):
+    def test_depends_auxi_and_forward(self):
         '''Test depends on auxiliary, which then depends on a forward-workflow #983'''
         for f in ('a_1', 'a_2'):
             if file_target(f).exists():
@@ -1571,7 +1538,7 @@ depends: "a_2"
         with open('a_1') as a1, open('a_2') as a2:
             self.assertEqual(a1.read(), a2.read())
 
-    def testDependsAuxiAndSingleStepForward(self):
+    def test_depends_auxi_and_single_step_forward(self):
         '''Test depends on auxiliary, which then depends on a single-step forward-workflow'''
         for f in ('a_1', 'a_2'):
             if file_target(f).exists():
@@ -1599,7 +1566,7 @@ depends: "a_2"
         with open('a_1') as a1, open('a_2') as a2:
             self.assertEqual(a1.read(), a2.read())
 
-    def testDryrunPlaceholder(self):
+    def test_dryrun_placeholder(self):
         '''Test the creation and removal of placeholder files in dryrun mode'''
         if file_target('1.txt').exists():
             file_target('1.txt').unlink()
@@ -1620,7 +1587,7 @@ depends: a
         # but the file would be removed afterwards
         self.assertFalse(os.path.isfile('1.txt'))
 
-    def testDryrunInSosRun(self):
+    def test_dryrun_in_sos_run(self):
         '''Test dryrun mode with sos_run #1007'''
         file_target('1.txt').touch()
         script = SoS_Script('''
@@ -1637,7 +1604,7 @@ sos_run('remove')
         Base_Executor(wf).run(mode='run')
         self.assertFalse(os.path.isfile('1.txt'))
 
-    def testConcurrentWithDynamicOutput(self):
+    def test_concurrent_with_dynamic_output(self):
         '''Test concurrent steps with dynamic output'''
         douts = glob.glob('*.dout')
         for dout in douts:
@@ -1653,7 +1620,7 @@ path(f'{random.randint(0, 1000000)}.dout').touch()
         douts = glob.glob('*.dout')
         self.assertEqual(len(douts), 3)
 
-    def testGroupByWithEmtpyInput(self):
+    def test_group_by_with_emtpy_input(self):
         ''' Test option group by with empty input #1044'''
         script = SoS_Script('''
 [1]
@@ -1663,46 +1630,7 @@ print(_input)
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    def testMultiDepends(self):
-        '''Test a step with multiple depdendend steps'''
-        for file in ('dbsnp.vcf', 'hg19.fa', 'f1.fastq', 'f2.fastq', 'f1.bam',
-                     'f2.bam', 'f1.bam.idx', 'f2.bam.idx'):
-            if os.path.isfile(file):
-                os.remove(file)
-        self.touch(['f1.fastq', 'f2.fastq'])
-        script = SoS_Script('''
-import time
-
-[refseq: provides='hg19.fa']
-time.sleep(1)
-_output.touch()
-
-[dbsnp: provides='dbsnp.vcf']
-_output.touch()
-
-[align_10]
-depends: 'hg19.fa'
-input: 'f1.fastq', 'f2.fastq', group_by=1, concurrent=True
-output: _input.with_suffix('.bam')
-_output.touch()
-
-[align_20]
-input: group_by=1, concurrent=True
-output: _input.with_suffix('.bam.idx')
-_output.touch()
-
-[call_10]
-depends: 'dbsnp.vcf', 'hg19.fa'
-
-[call_20]
-''')
-        wf = script.workflow('align+call')
-        Base_Executor(wf).run()
-        for file in ('dbsnp.vcf', 'hg19.fa', 'f1.bam', 'f2.bam', 'f1.bam.idx',
-                     'f2.bam.idx'):
-            self.assertTrue(os.path.isfile(file))
-
-    def testRemovalOfOutputFromFailedStep(self):
+    def test_removal_of_output_from_failed_step(self):
         '''Test the removal of output files if a step fails #1055'''
         for file in ('failed.csv', 'result.csv'):
             if os.path.isfile(file):
@@ -1725,7 +1653,7 @@ path('result.csv').touch()
         self.assertFalse(os.path.isfile('failed.csv'))
         self.assertFalse(os.path.isfile('result.csv'))
 
-    def testDependsToConcurrentSubstep(self):
+    def test_depends_to_concurrent_substep(self):
         '''Testing forward style example'''
         # sos_variable('data') is passed to step [2]
         # but it is not passed to concurrent substep because
@@ -1744,7 +1672,7 @@ print(1)
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    def testPassOfTargetSource(self):
+    def test_pass_of_target_source(self):
         '''Test passing of source information from step_output'''
         script = SoS_Script('''
 [1]
@@ -1783,7 +1711,7 @@ assert step_input.labels == ['2']
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    def testRerunWithZap(self):
+    def test_rerun_with_zap(self):
         script = SoS_Script('''
 [step_10]
 input: for_each={'i': range(3)}
@@ -1823,7 +1751,7 @@ _input.zap()
         for i in range(3):
             os.remove(f'zapped_example_{i}.txt.zapped')
 
-    def testReturn_OutputInStepOutput(self):
+    def test_return_output_in_step_output(self):
         '''Testing the return of _output as groups of step_output'''
         script = SoS_Script('''\
 [1]
@@ -1860,7 +1788,7 @@ assert(step_input.groups[4].labels == ['a', 'b'])
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    def testOutputFrom(self):
+    def test_output_from(self):
         '''Testing output_from input function'''
         script = SoS_Script('''\
 [A]
@@ -1931,44 +1859,7 @@ assert(step_input.labels == ['K']*8)
             wf = script.workflow(wf)
             Base_Executor(wf).run()
 
-    def testNamedOutput(self):
-        '''Testing named_output input function'''
-        script = SoS_Script('''\
-
-[A]
-input: for_each=dict(i=range(4))
-output: aa=f'a_{i}.txt', bb=f'b_{i}.txt'
-_output.touch()
-
-[B]
-input: named_output('aa')
-assert(len(step_input.groups) == 4)
-assert(len(step_input) == 4)
-assert(step_input.labels == ['aa']*4)
-assert(step_input.groups[0] == 'a_0.txt')
-assert(step_input.groups[3] == 'a_3.txt')
-
-[C]
-input: K=named_output('bb')
-assert(len(step_input.groups) == 4)
-assert(len(step_input) == 4)
-assert(step_input.labels == ['K']*4)
-assert(step_input.groups[0] == 'b_0.txt')
-assert(step_input.groups[3] == 'b_3.txt')
-
-[D]
-input: K=named_output('bb', group_by=2)
-assert(len(step_input.groups) == 2)
-assert(len(step_input) == 4)
-assert(step_input.labels == ['K']*4)
-assert(step_input.groups[1] == ['b_2.txt', 'b_3.txt'])
-
-''')
-        for wf in ('B', 'C', 'D'):
-            wf = script.workflow(wf)
-            Base_Executor(wf).run()
-
-    def testNamedOutput1336(self):
+    def test_named_output1336(self):
         'Test issue 1336'
         execute_workflow('''
 import time
@@ -1985,79 +1876,7 @@ output: 'B.txt'
 _output.touch()
 ''')
 
-    def testRemoveEmptyGroups(self):
-        '''Test remove of empty groups'''
-        # case 1, default output
-        script = SoS_Script('''\
-[10]
-input: for_each=dict(i=range(4))
-output: f'a_{i}.txt'
-_output.touch()
-skip_if(i==2)
-
-[20]
-assert len(step_input.groups) == 4
-    ''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-        # case 2, use default remove_empty_groups=False
-        script = SoS_Script('''\
-[A]
-input: for_each=dict(i=range(4))
-output: f'a_{i}.txt'
-_output.touch()
-skip_if(i==2)
-
-[default]
-input: output_from('A')
-assert len(step_input.groups) == 4
-    ''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-        # case 3, use remove_empty_groups=True
-        script = SoS_Script('''\
-[A]
-input: for_each=dict(i=range(4))
-output: f'a_{i}.txt'
-_output.touch()
-skip_if(i==2)
-
-[default]
-input: output_from('A', remove_empty_groups=True)
-assert len(step_input.groups) == 3
-    ''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-        # case 4, use named_output
-        script = SoS_Script('''\
-[A]
-input: for_each=dict(i=range(4))
-output: A=f'a_{i}.txt'
-_output.touch()
-skip_if(i==2)
-
-[default]
-input: named_output('A')
-assert len(step_input.groups) == 4
-    ''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-        # case 5, use named_output
-        script = SoS_Script('''\
-[A]
-input: for_each=dict(i=range(4))
-output: A=f'a_{i}.txt'
-_output.touch()
-skip_if(i==2)
-
-[default]
-input: named_output('A', remove_empty_groups=True)
-assert len(step_input.groups) == 3
-    ''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-    def testSetVariablesTo_Output(self):
+    def test_set_variables_to_output(self):
         '''Test assigning variables to _output'''
         script = SoS_Script('''\
 [10]
@@ -2092,28 +1911,7 @@ assert(_input[0].tvar == _index)
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    def testAutoProvide(self):
-        '''Testing steps to provide plain output'''
-        script = SoS_Script('''\
-[global]
-
-a = 'a.txt'
-
-[b]
-output: a
-_output.touch()
-
-[default]
-
-input: a
-output: f"{file_target(a):n}.out"
-
-_output.touch()
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-    def testStepIDVars(self):
+    def test_step_id_vars(self):
         '''Test variables in a step'''
         script = SoS_Script('''
 [nested]
@@ -2136,7 +1934,7 @@ sos_run('nested')
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    def testReexecutionOfDynamicDepends(self):
+    def test_reexecution_of_dynamic_depends(self):
         '''Testing the rerun of steps to verify dependency'''
         for file in ('a.bam', 'a.bam.bai'):
             if os.path.isfile(file):
@@ -2166,7 +1964,7 @@ depends: _input.with_suffix('.bam.bai')
         self.assertEqual(res['__completed__']['__step_completed__'], 2)
         self.assertEqual(res['__completed__']['__step_skipped__'], 1)
 
-    def testTracedFunction(self):
+    def test_traced_function(self):
         for file in ('a.bam', 'a.bam.bai'):
             if os.path.isfile(file):
                 os.remove(file)
@@ -2190,170 +1988,7 @@ depends: traced(_input.with_suffix('.bam.bai'))
         self.assertEqual(res['__completed__']['__step_completed__'], 2)
         self.assertEqual(res['__completed__']['__step_skipped__'], 1)
 
-    @unittest.skipIf(
-        'TRAVIS' in os.environ or sys.platform == 'win32',
-        'Skip test because travis fails on this test for unknown reason, also due to a bug in psutil under windows'
-    )
-    def testKillWorker(self):
-        '''Test if the workflow can error out after a worker is killed'''
-        import psutil
-        import time
-        with open('testKill.sos', 'w') as tk:
-            tk.write('''
-import time
-
-[1]
-time.sleep(4)
-
-[2]
-time.sleep(4)
-''')
-        ret = subprocess.Popen(['sos', 'run', 'testKill'])
-        proc = psutil.Process(ret.pid)
-        while True:
-            children = proc.children(recursive=True)
-            if children:
-                children[0].terminate()
-                break
-            time.sleep(0.1)
-        ret.wait()
-        #self.assertNotEqual(ret.returncode, 0)
-        #
-        ret = subprocess.Popen(['sos', 'run', 'testKill'])
-        proc = psutil.Process(ret.pid)
-        while True:
-            children = proc.children(recursive=True)
-            if children:
-                children[0].kill()
-                break
-            time.sleep(0.1)
-        ret.wait()
-        #self.assertNotEqual(ret.returncode, 0)
-
-    @unittest.skipIf(
-        'TRAVIS' in os.environ,
-        'Skip test because travis fails on this test for unknown reason')
-    def testKillSubstepWorker(self):
-        '''Test if the workflow can error out after a worker is killed'''
-        import psutil
-        import time
-        with open('testKillSubstep.sos', 'w') as tk:
-            tk.write('''
-import time
-
-[1]
-input: for_each=dict(i=range(4))
-time.sleep(2)
-''')
-        ret = subprocess.Popen(['sos', 'run', 'testKillSubstep', '-j3'])
-        proc = psutil.Process(ret.pid)
-        while True:
-            children = proc.children(recursive=True)
-            print(children)
-            if children:
-                children[-1].terminate()
-                break
-            time.sleep(0.1)
-        ret.wait()
-
-        #self.assertNotEqual(ret.returncode, 0)
-        #
-        ret = subprocess.Popen(['sos', 'run', 'testKillSubstep', '-j3'])
-        proc = psutil.Process(ret.pid)
-        while True:
-            children = proc.children(recursive=True)
-            if children:
-                children[-1].kill()
-                break
-            time.sleep(0.1)
-        ret.wait()
-        #
-        # the sos command might still succeed if the killed worker has not received any
-        # job
-        #self.assertNotEqual(ret.returncode, 0)
-
-    @unittest.skipIf(
-        sys.platform == 'win32' or 'TRAVIS' in os.environ,
-        'Cannot test due to a bug (ampaolo/psutil#875) with psutils under windows'
-    )
-    def testKillTask(self):
-        '''Test if the workflow can error out after a worker is killed'''
-        subprocess.call(['sos', 'purge', '--all'])
-        import psutil
-        import time
-        with open('testKillTask.sos', 'w') as tk:
-            tk.write('''
-
-[1]
-task:
-import time
-time.sleep(10)
-''')
-        ret = subprocess.Popen(
-            ['sos', 'run', 'testKillTask', '-s', 'force', '-q', 'localhost'])
-        proc = psutil.Process(ret.pid)
-        while True:
-            children = proc.children(recursive=True)
-            execute = [x for x in children if 'execute' in x.cmdline()]
-            if len(execute) >= 1:
-                # a bug: if the process is killed too quickly (the signal
-                # function is not called), this will fail.
-                time.sleep(1)
-                execute[0].terminate()
-                break
-            time.sleep(0.1)
-        ret.wait()
-        self.assertNotEqual(ret.returncode, 0)
-        #
-        ret = subprocess.Popen(
-            ['sos', 'run', 'testKillTask', '-q', 'localhost'])
-        proc = psutil.Process(ret.pid)
-        while True:
-            children = proc.children(recursive=True)
-            execute = [x for x in children if 'execute' in x.cmdline()]
-            if len(execute) >= 1:
-                time.sleep(1)
-                execute[0].kill()
-                break
-            time.sleep(0.1)
-        ret.wait()
-        self.assertNotEqual(ret.returncode, 0)
-
-    @unittest.skipIf('TRAVIS' in os.environ, 'Temporarily disable on TRAVIS')
-    def testRestartOrphanedTasks(self):
-        '''Test restarting orphaned tasks which displays as running at first.'''
-        import psutil
-        import time
-        subprocess.call(['sos', 'purge', '--all'])
-
-        with open('testOrphan.sos', 'w') as tk:
-            tk.write('''
-
-[1]
-task:
-import time
-time.sleep(12)
-''')
-        ret = subprocess.Popen(
-            ['sos', 'run', 'testOrphan', '-s', 'force', '-q', 'localhost'])
-        proc = psutil.Process(ret.pid)
-        while True:
-            children = proc.children(recursive=True)
-            execute = [x for x in children if 'execute' in x.cmdline()]
-            if len(execute) >= 1:
-                # a bug: if the process is killed too quickly (the signal
-                # function is not called), this will fail.
-                time.sleep(1)
-                execute[0].kill()
-                break
-            time.sleep(0.1)
-        proc.kill()
-        #
-        ret = subprocess.Popen(['sos', 'run', 'testOrphan', '-q', 'localhost'])
-        ret.wait()
-        self.assertEqual(ret.returncode, 0)
-
-    def testErrorHandlingOfStep(self):
+    def test_error_handling_of_step(self):
         # test fail_if of killing another running substep
         def cleanup():
             for step in (10, 11):
@@ -2413,7 +2048,7 @@ fail_if(True)
         self.assertFalse(os.path.isfile('10.txt'))
         self.assertFalse(os.path.isfile('11.txt'))
 
-    def testErrorHandlingOfSubsteps(self):
+    def test_error_handling_of_substeps(self):
 
         def cleanup():
             for i in range(10):
@@ -2493,7 +2128,7 @@ _output.touch()
                 self.assertFalse(os.path.isfile(f'test_{i}.bak'))
         self.assertFalse(os.path.isfile(f'test_30.txt'))
 
-    def testErrorHandlingOfConcurrentSubsteps(self):
+    def test_error_handling_of_concurrent_substeps(self):
 
         def cleanup():
             for i in range(200):
@@ -2523,7 +2158,7 @@ fail_if(_index == 10, 'fail at 10')
         for i in range(190, 200):
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
 
-    def testErrorHandlingOfTasks(self):
+    def test_error_handling_of_tasks(self):
 
         def cleanup():
             for i in (0, 1, 2, 30, 31):
@@ -2595,58 +2230,6 @@ _output.touch()
         for i in (0, 2):
             self.assertFalse(os.path.isfile(f'test_{i}.bak'))
         self.assertFalse(os.path.isfile(f'test_1.txt'))
-
-    def testErrorHandlingOfMissingInput(self):
-        # finishing another step if currently missing
-        def cleanup():
-            if os.path.isfile('11.txt'):
-                os.remove('11.txt')
-            if os.path.isfile('22.txt'):
-                os.remove('22.txt')
-
-        script = SoS_Script(r"""
-import time
-
-[10]
-time.sleep(8)
-
-[11]
-output: '11.txt'
-_output.touch()
-
-[20]
-input: None
-time.sleep(2)
-
-[21]
-input: 'no_existent.txt'
-
-[22]
-output: '22.txt'
-_output.touch()
-""")
-        #
-        # default mode
-        #
-        wf = script.workflow()
-        cleanup()
-
-        st = time.time()
-        self.assertRaises(Exception, Base_Executor(wf).run)
-        self.assertTrue(
-            time.time() - st >= 8,
-            'Test test should fail only after step 10 is completed')
-        self.assertTrue(os.path.isfile('11.txt'))
-        #
-        # ignore mode,
-        # step 22 should be executed but immediately stopped due to error
-        #
-        cleanup()
-        Base_Executor(wf, config={'error_mode': 'ignore'}).run()
-        self.assertTrue(
-            time.time() - st >= 8,
-            'Test test should fail only after step 10 is completed')
-        self.assertFalse(os.path.isfile('22.txt'))
 
 
 def test_stmt_before_input(clear_now_and_after):
@@ -2809,3 +2392,425 @@ def test_interpolation_4(temp_factory):
     assert env.sos_dict['res'] == [
         'aa_1_process.txt', 'ab_2_process.txt', 'ac_2_process.txt'
     ]
+
+
+def test_named_output():
+    '''Testing named_output input function'''
+    for wf in ('B', 'C', 'D'):
+        execute_workflow(
+            '''
+            [A]
+            input: for_each=dict(i=range(4))
+            output: aa=f'a_{i}.txt', bb=f'b_{i}.txt'
+            _output.touch()
+
+            [B]
+            input: named_output('aa')
+            assert(len(step_input.groups) == 4)
+            assert(len(step_input) == 4)
+            assert(step_input.labels == ['aa']*4)
+            assert(step_input.groups[0] == 'a_0.txt')
+            assert(step_input.groups[3] == 'a_3.txt')
+
+            [C]
+            input: K=named_output('bb')
+            assert(len(step_input.groups) == 4)
+            assert(len(step_input) == 4)
+            assert(step_input.labels == ['K']*4)
+            assert(step_input.groups[0] == 'b_0.txt')
+            assert(step_input.groups[3] == 'b_3.txt')
+
+            [D]
+            input: K=named_output('bb', group_by=2)
+            assert(len(step_input.groups) == 2)
+            assert(len(step_input) == 4)
+            assert(step_input.labels == ['K']*4)
+            assert(step_input.groups[1] == ['b_2.txt', 'b_3.txt'])
+            ''',
+            workflow=wf)
+
+
+def test_auto_provide():
+    '''Testing steps to provide plain output'''
+    execute_workflow('''
+        [global]
+
+        a = 'a.txt'
+
+        [b]
+        output: a
+        _output.touch()
+
+        [default]
+
+        input: a
+        output: f"{file_target(a):n}.out"
+
+        _output.touch()
+        ''')
+
+
+def test_error_handling_of_missing_input(clear_now_and_after):
+    # finishing another step if currently missing
+    clear_now_and_after('11.txt', '22.txt')
+
+    st = time.time()
+
+    script = """
+        import time
+
+        [10]
+        time.sleep(8)
+
+        [11]
+        output: '11.txt'
+        _output.touch()
+
+        [20]
+        input: None
+        time.sleep(2)
+
+        [21]
+        input: 'no_existent.txt'
+
+        [22]
+        output: '22.txt'
+        _output.touch()
+        """
+    with pytest.raises(Exception):
+        execute_workflow(script)
+
+    assert time.time(
+    ) - st >= 8, 'Test test should fail only after step 10 is completed'
+    assert os.path.isfile('11.txt')
+
+    clear_now_and_after('11.txt', '22.txt')
+
+    execute_workflow(script, options={'error_mode': 'ignore'})
+
+    assert time.time(
+    ) - st >= 8, 'Test test should fail only after step 10 is completed'
+    assert not os.path.isfile('22.txt')
+
+
+def test_assignment_after_input(temp_factory):
+    '''Testing assignment after input should be usable inside step process.'''
+    #
+    temp_factory(dir='temp')
+
+    execute_workflow(
+        '''
+        [1]
+        rep = range(5)
+        input:  for_each='rep'
+        output: f"temp/{_rep}.txt"
+
+        # ff should change and be usable inside run
+        ff = f"{_rep}.txt"
+        run: expand=True
+        echo {ff}
+        touch temp/{ff}
+        ''',
+        options={'sig_mode': 'ignore'})
+
+
+def test_1379(clear_now_and_after):
+    clear_now_and_after('a.txt', 'b.txt')
+
+    execute_workflow('''
+        [multi: provides=['a.txt', 'b.txt']]
+
+        out = 'a.txt', 'b.txt'
+        output: out
+
+        import time
+        time.sleep(2)
+        _output.touch()
+
+
+        [step_1]
+        input: 'a.txt'
+
+        [step_2]
+        input: 'b.txt'
+        ''')
+
+
+def test_remove_empty_groups_default():
+    '''Test remove of empty groups'''
+    # case 1, default output
+    execute_workflow('''
+        [10]
+        input: for_each=dict(i=range(4))
+        output: f'a_{i}.txt'
+        _output.touch()
+        skip_if(i==2)
+
+        [20]
+        assert len(step_input.groups) == 4
+        ''')
+
+
+def test_remove_empty_groups_false():
+    '''Test remove of empty groups'''
+    # case 2, use default remove_empty_groups=False
+    execute_workflow('''
+        [A]
+        input: for_each=dict(i=range(4))
+        output: f'a_{i}.txt'
+        _output.touch()
+        skip_if(i==2)
+
+        [default]
+        input: output_from('A')
+        assert len(step_input.groups) == 4
+        ''')
+
+
+def test_remove_empty_groups_true():
+    '''Test remove of empty groups'''
+    # case 3, use remove_empty_groups=True
+    execute_workflow('''
+        [A]
+        input: for_each=dict(i=range(4))
+        output: f'a_{i}.txt'
+        _output.touch()
+        skip_if(i==2)
+
+        [default]
+        input: output_from('A', remove_empty_groups=True)
+        assert len(step_input.groups) == 3
+        ''')
+
+
+def test_remove_empty_groups_named():
+    '''Test remove of empty groups'''
+    # case 4, use named_output
+    execute_workflow('''
+        [A]
+        input: for_each=dict(i=range(4))
+        output: A=f'a_{i}.txt'
+        _output.touch()
+        skip_if(i==2)
+
+        [default]
+        input: named_output('A')
+        assert len(step_input.groups) == 4
+        ''')
+
+
+def test_remove_empty_groups_empty_named():
+    '''Test remove of empty groups'''
+    # case 5, use named_output
+    execute_workflow('''
+        [A]
+        input: for_each=dict(i=range(4))
+        output: A=f'a_{i}.txt'
+        _output.touch()
+        skip_if(i==2)
+
+        [default]
+        input: named_output('A', remove_empty_groups=True)
+        assert len(step_input.groups) == 3
+        ''')
+
+
+def test_multi_depends(clear_now_and_after, temp_factory):
+    '''Test a step with multiple depdendend steps'''
+
+    clear_now_and_after('dbsnp.vcf', 'hg19.fa', 'f1.fastq', 'f2.fastq',
+                        'f1.bam', 'f2.bam', 'f1.bam.idx', 'f2.bam.idx')
+    temp_factory('f1.fastq', 'f2.fastq')
+
+    execute_workflow(
+        '''
+        import time
+
+        [refseq: provides='hg19.fa']
+        time.sleep(1)
+        _output.touch()
+
+        [dbsnp: provides='dbsnp.vcf']
+        _output.touch()
+
+        [align_10]
+        depends: 'hg19.fa'
+        input: 'f1.fastq', 'f2.fastq', group_by=1, concurrent=True
+        output: _input.with_suffix('.bam')
+        _output.touch()
+
+        [align_20]
+        input: group_by=1, concurrent=True
+        output: _input.with_suffix('.bam.idx')
+        _output.touch()
+
+        [call_10]
+        depends: 'dbsnp.vcf', 'hg19.fa'
+
+        [call_20]
+        ''',
+        workflow='align+call')
+
+    for file in ('dbsnp.vcf', 'hg19.fa', 'f1.bam', 'f2.bam', 'f1.bam.idx',
+                 'f2.bam.idx'):
+        assert os.path.isfile(file)
+
+
+def test_execute_ipynb():
+    '''Test extracting and executing workflow from .ipynb files'''
+    script = SoS_Script(filename='sample_workflow.ipynb')
+    wf = script.workflow()
+    Base_Executor(wf).run()
+
+
+@pytest.mark.skipif(
+    sys.platform == 'win32',
+    reason='Skip test because travis fails on this test for unknown reason, also due to a bug in psutil under windows'
+)
+def test_kill_worker(script_factory):
+    '''Test if the workflow can error out after a worker is killed'''
+    import psutil
+    import time
+
+    script_file = script_factory('''
+        import time
+
+        [1]
+        time.sleep(4)
+
+        [2]
+        time.sleep(4)
+        ''')
+    ret = subprocess.Popen(['sos', 'run', script_file])
+    proc = psutil.Process(ret.pid)
+    while True:
+        children = proc.children(recursive=True)
+        if children:
+            children[0].terminate()
+            break
+        time.sleep(0.1)
+    ret.wait()
+
+    ret = subprocess.Popen(['sos', 'run', script_file])
+    proc = psutil.Process(ret.pid)
+    while True:
+        children = proc.children(recursive=True)
+        if children:
+            children[0].kill()
+            break
+        time.sleep(0.1)
+    ret.wait()
+
+
+def test_kill_substep_worker(script_factory):
+    '''Test if the workflow can error out after a worker is killed'''
+    import psutil
+    import time
+
+    script_file = script_factory('''
+        import time
+
+        [1]
+        input: for_each=dict(i=range(4))
+        time.sleep(2)
+        ''')
+    ret = subprocess.Popen(['sos', 'run', script_file, '-j3'])
+    proc = psutil.Process(ret.pid)
+    while True:
+        children = proc.children(recursive=True)
+        print(children)
+        if children:
+            children[-1].terminate()
+            break
+        time.sleep(0.1)
+    ret.wait()
+
+    ret = subprocess.Popen(['sos', 'run', script_file, '-j3'])
+    proc = psutil.Process(ret.pid)
+    while True:
+        children = proc.children(recursive=True)
+        if children:
+            children[-1].kill()
+            break
+        time.sleep(0.1)
+    ret.wait()
+
+
+@pytest.mark.skipif(
+    True, reason='This test needs to be improved to make it consistent')
+def test_kill_task(script_factory):
+    '''Test if the workflow can error out after a worker is killed'''
+    subprocess.call(['sos', 'purge', '--all'])
+    import psutil
+    import time
+
+    script_file = script_factory('''
+        [1]
+        task:
+        import time
+        time.sleep(10)
+        ''')
+    ret = subprocess.Popen(
+        ['sos', 'run', script_file, '-s', 'force', '-q', 'localhost'])
+    proc = psutil.Process(ret.pid)
+
+    while True:
+        children = proc.children(recursive=True)
+        execute = [x for x in children if 'execute' in x.cmdline()]
+        if len(execute) >= 1:
+            # a bug: if the process is killed too quickly (the signal
+            # function is not called), this will fail.
+            time.sleep(1)
+            execute[0].terminate()
+            break
+        time.sleep(0.1)
+    ret.wait()
+    assert ret.returncode != 0
+
+    ret = subprocess.Popen(['sos', 'run', script_file, '-q', 'localhost'])
+    proc = psutil.Process(ret.pid)
+    while True:
+        children = proc.children(recursive=True)
+        execute = [x for x in children if 'execute' in x.cmdline()]
+        if len(execute) >= 1:
+            time.sleep(1)
+            execute[0].kill()
+            break
+        time.sleep(0.1)
+    ret.wait()
+    assert ret.returncode != 0
+
+
+@pytest.mark.skipif(
+    True, reason='This test needs to be improved to make it consistent')
+def test_restart_orphaned_tasks(script_factory):
+    '''Test restarting orphaned tasks which displays as running at first.'''
+    import psutil
+    import time
+    subprocess.call(['sos', 'purge', '--all'])
+
+    script_file = script_factory('''
+        [1]
+        task:
+        import time
+        time.sleep(12)
+        ''')
+    ret = subprocess.Popen(
+        ['sos', 'run', script_file, '-s', 'force', '-q', 'localhost'])
+    proc = psutil.Process(ret.pid)
+
+    while True:
+        children = proc.children(recursive=True)
+        execute = [x for x in children if 'execute' in x.cmdline()]
+        if len(execute) >= 1:
+            # a bug: if the process is killed too quickly (the signal
+            # function is not called), this will fail.
+            time.sleep(1)
+            execute[0].kill()
+            break
+        time.sleep(0.1)
+    proc.kill()
+    #
+    ret = subprocess.Popen(['sos', 'run', script_file, '-q', 'localhost'])
+    ret.wait()
+    assert ret.returncode == 0
