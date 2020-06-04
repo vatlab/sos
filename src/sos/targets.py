@@ -1384,7 +1384,6 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
     def __getitem__(self, i):
         if isinstance(i, str):
-            env.logger.error(f'get {i}')
             ret = sos_targets()
             ret._undetermined = self._undetermined
             ret._targets = [
@@ -1437,7 +1436,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     )
             else:
                 raise AttributeError(
-                    f'{self.__class__.__name__} object has no attribute {name}')
+                    f'{self.__class__.__name__} object of length {len(self)} has no attribute {name}'
+                )
 
     def target_name(self):
         return f"sos_targets([{','.join(x.target_name() for x in self._targets)}],_labels=[{','.join(self._labels)}])"
