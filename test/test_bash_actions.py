@@ -13,28 +13,6 @@ from sos.targets import file_target
 from sos.utils import env
 from sos.workflow_executor import Base_Executor
 
-
-class TestActions(unittest.TestCase):
-
-    def setUp(self):
-        env.reset()
-        self.temp_files = []
-
-    def tearDown(self):
-        for f in self.temp_files:
-            file_target(f).unlink()
-
-    def touch(self, files):
-        '''create temporary files'''
-        if isinstance(files, str):
-            files = [files]
-        #
-        for f in files:
-            with open(f, 'w') as tmp:
-                tmp.write('test')
-        #
-        self.temp_files.extend(files)
-
 def test_bash():
     '''Test action bash'''
     script = execute_workflow(r'''
