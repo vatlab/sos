@@ -4,14 +4,12 @@
 # Distributed under the terms of the 3-clause BSD License.
 import os
 import shutil
-import unittest
+
 import pytest
 
 from sos import execute_workflow
-from sos.parser import SoS_Script
 from sos.targets import file_target
-from sos.utils import env
-from sos.workflow_executor import Base_Executor
+
 
 def test_bash():
     '''Test action bash'''
@@ -37,7 +35,7 @@ def test_csh():
     '''Test action csh'''
     if not shutil.which('csh'):
         return
-    script = execute_workflow(r'''
+    execute_workflow(r'''
         [0]
         csh:
             foreach color (red orange yellow green blue)
@@ -49,7 +47,7 @@ def test_tcsh():
     '''Test action tcsh'''
     if not shutil.which('tcsh'):
         return
-    script = execute_workflow(r'''
+    execute_workflow(r'''
         [0]
         tcsh:
             foreach color (red orange yellow green blue)
@@ -61,7 +59,7 @@ def test_zsh():
     '''Test action zsh'''
     if not shutil.which('zsh'):
         return
-    script = execute_workflow(r'''
+    execute_workflow(r'''
         [0]
         zsh:
             echo "Hello World!", $SHELL
@@ -71,7 +69,7 @@ def test_args():
     '''Test args option of scripts'''
     if os.path.isfile('a.txt'):
         file_target('a.txt').unlink()
-    script = execute_workflow(r'''
+    execute_workflow(r'''
         [0]
         sh: args='-n {filename:q}'
             touch a.txt
