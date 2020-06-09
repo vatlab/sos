@@ -80,7 +80,7 @@ except Exception as e:
 
 
 @unittest.skipIf(not has_docker or sys.platform == 'win32',
-                    'Skip test because docker is not installed.')
+                 'Skip test because docker is not installed.')
 def test_bash_in_docker():
     '''Test action bash in docker environment'''
     execute_workflow(r'''
@@ -101,22 +101,25 @@ def test_bash_in_docker():
 #        wf = script.workflow()
 #        Base_Executor(wf).run()
 
+
 @unittest.skipIf(not has_docker or sys.platform == 'win32',
-                    'Skip test because docker is not installed.')
+                 'Skip test because docker is not installed.')
 def test_sh_in_docker():
     '''Test action sh in docker environment'''
     # test docker
-    script = execute_workflow(r'''
+    script = execute_workflow(
+        r'''
         [0]
         run: container='docker://ubuntu'
         echo 'Echo
         ''',
-    options={'run_mode': 'dryrun'})
+        options={'run_mode': 'dryrun'})
     with pytest.raises(Exception):
         execute_workflow(script)
 
+
 @unittest.skipIf(not has_docker or sys.platform == 'win32',
-                    'Skip test because docker is not installed.')
+                 'Skip test because docker is not installed.')
 def test_docker_build_linux_image():
     '''Test action docker build'''
     execute_workflow(r'''
@@ -132,10 +135,16 @@ def test_docker_build_linux_image():
 
         WORKDIR /home
         ''')
+
+
+@unittest.skipIf(not has_docker or sys.platform == 'win32',
+                 'Skip test because docker is not installed.')
+def test_docker_build_linux_image_option_label_compress():
+    '''Test action docker build'''
     # build with more options
     execute_workflow(r'''
         [0]
-        docker_build:  tag='test/docker_build1', label='label with space', compress=True, memory='2G'
+        docker_build:  tag='test/docker_build1', label='my_label', compress=True, memory='2G'
         #
         # Super simple example of a Dockerfile
         #
@@ -145,9 +154,28 @@ def test_docker_build_linux_image():
         WORKDIR /home
         ''')
 
+
+@unittest.skipIf(not has_docker or sys.platform == 'win32',
+                 'Skip test because docker is not installed.')
+def test_docker_build_linux_image_label_with_space():
+    '''Test action docker build'''
+    with pytest.raises(Exception):
+        execute_workflow(r'''
+            [0]
+            docker_build:  tag='test/docker_build1', label='my label with space', compress=True, memory='2G'
+            #
+            # Super simple example of a Dockerfile
+            #
+            FROM ubuntu:latest
+            MAINTAINER Andrew Odewahn "odewahn@oreilly.com"
+
+            WORKDIR /home
+            ''')
+
+
 @unittest.skipIf(not has_docker or sys.platform != 'win32' or
-                    'APPVEYOR' in os.environ,
-                    'Skip test because docker is not installed.')
+                 'APPVEYOR' in os.environ,
+                 'Skip test because docker is not installed.')
 def test_docker_build_windows_image():
     '''Test action docker build'''
     execute_workflow(r'''
@@ -161,8 +189,9 @@ def test_docker_build_windows_image():
 
         ''')
 
+
 @unittest.skipIf(not has_docker or sys.platform == 'win32',
-                    'Skip test because docker is not installed.')
+                 'Skip test because docker is not installed.')
 def test_docker_image():
     '''Test docker_image option'''
     execute_workflow(r'''
@@ -179,6 +208,7 @@ def test_docker_image():
             ls -l /input_data
             /usr/local/bin/fastqc /input_data/*.fastq --outdir /output_data
         ''')
+
 
 @unittest.skipIf(
     not has_docker or sys.platform == 'win32',
@@ -202,8 +232,9 @@ def test_docker_image_from_file():
             echo "a"
         ''')
 
+
 @unittest.skipIf(not has_docker or sys.platform == 'win32',
-                    'Skip test because docker is not installed.')
+                 'Skip test because docker is not installed.')
 def test_docker_script_action():
     '''Test action sh in docker environment'''
     # test docker
@@ -213,8 +244,9 @@ def test_docker_script_action():
         echo 'Echo'
         ''')
 
+
 @unittest.skipIf(not has_docker or sys.platform == 'win32',
-                    'Skip test because docker is not installed.')
+                 'Skip test because docker is not installed.')
 def test_port_option():
     '''Test use of option port in action'''
     execute_workflow(r'''
