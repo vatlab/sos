@@ -155,7 +155,8 @@ def test_docker_build_linux_image_option_label_compress():
         ''')
 
 
-@unittest.skipIf(not has_docker or sys.platform == 'win32',
+@unittest.skipIf(not has_docker or sys.platform == 'win32' or
+                 'TRAVIS' in os.environ,
                  'Skip test because docker is not installed.')
 def test_docker_build_linux_image_label_with_space():
     '''Test action docker build'''
