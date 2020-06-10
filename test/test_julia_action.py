@@ -12,10 +12,9 @@ from sos import execute_workflow
 
 
 @pytest.mark.skipif(not shutil.which('julia'), reason="julia not available")
-def test_julia(self):
+def test_julia(clear_now_and_after):
     '''Test action Julia'''
-    if os.path.isfile('julia_example.txt'):
-        os.remove('julia_example.txt')
+    clear_now_and_after('julia_example.txt')
     execute_workflow(r'''
         [0]
         julia:

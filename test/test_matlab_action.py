@@ -12,10 +12,9 @@ from sos import execute_workflow
 
 
 @pytest.mark.skipif(not shutil.which('matlab'), reason='Matlab not installed')
-def test_matlab():
+def test_matlab(clear_now_and_after):
     '''Test action matlab'''
-    if os.path.isfile('/tmp/matlab_example.txt'):
-        os.remove('/tmp/matlab_example.txt')
+    clear_now_and_after('/tmp/matlab_example.txt')
     execute_workflow(r'''
         [0]
         matlab:
