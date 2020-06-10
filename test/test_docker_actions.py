@@ -90,7 +90,7 @@ def test_bash_in_docker():
 
 
 #    @pytest.mark.skipif(not has_docker or sys.platform != 'win32', reason='Skip test because docker is not installed.')
-#    def testBatchScriptInDocker(self):
+#    def testBatchScriptInDocker():
 #        '''Test action powershell in docker environment'''
 #        script = execute_workflow(r'''
 #           [0]
@@ -108,7 +108,7 @@ def test_sh_in_docker():
         run: container='docker://ubuntu'
         echo 'Echo
         ''',
-    options={'run_mode': 'dryrun'})
+        options={'run_mode': 'dryrun'})
     with pytest.raises(Exception):
         execute_workflow(script)
 
@@ -129,10 +129,16 @@ def test_docker_build_linux_image():
 
         WORKDIR /home
         ''')
+
+
+@pytest.mark.skipif(not has_docker or sys.platform == 'win32',
+                 reason='Skip test because docker is not installed.')
+def test_docker_build_linux_image_option_label_compress():
+    '''Test action docker build'''
     # build with more options
     execute_workflow(r'''
         [0]
-        docker_build:  tag='test/docker_build1', label='label with space', compress=True, memory='2G'
+        docker_build:  tag='test/docker_build1', label='my_label', compress=True, memory='2G'
         #
         # Super simple example of a Dockerfile
         #
@@ -142,9 +148,29 @@ def test_docker_build_linux_image():
         WORKDIR /home
         ''')
 
+
+@pytest.mark.skipif(not has_docker or sys.platform == 'win32' or
+                 'TRAVIS' in os.environ,
+                 reason='Skip test because docker is not installed.')
+def test_docker_build_linux_image_label_with_space():
+    '''Test action docker build'''
+    with pytest.raises(Exception):
+        execute_workflow(r'''
+            [0]
+            docker_build:  tag='test/docker_build1', label='my label with space', compress=True, memory='2G'
+            #
+            # Super simple example of a Dockerfile
+            #
+            FROM ubuntu:latest
+            MAINTAINER Andrew Odewahn "odewahn@oreilly.com"
+
+            WORKDIR /home
+            ''')
+
+
 @pytest.mark.skipif(not has_docker or sys.platform != 'win32' or
-                    'APPVEYOR' in os.environ,
-                    reason='Skip test because docker is not installed.')
+                 'APPVEYOR' in os.environ,
+                 reason='Skip test because docker is not installed.')
 def test_docker_build_windows_image():
     '''Test action docker build'''
     execute_workflow(r'''
@@ -157,6 +183,7 @@ def test_docker_build_windows_image():
         MAINTAINER someone@microsoft.com
 
         ''')
+
 
 @pytest.mark.skipif(not has_docker or sys.platform == 'win32',
                     reason='Skip test because docker is not installed.')
@@ -176,6 +203,7 @@ def test_docker_image():
             ls -l /input_data
             /usr/local/bin/fastqc /input_data/*.fastq --outdir /output_data
         ''')
+
 
 @pytest.mark.skipif(
     not has_docker or sys.platform == 'win32',
@@ -198,6 +226,7 @@ def test_docker_image_from_file():
 
             echo "a"
         ''')
+
 
 @pytest.mark.skipif(not has_docker or sys.platform == 'win32',
                     reason='Skip test because docker is not installed.')
