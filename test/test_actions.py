@@ -10,15 +10,13 @@ import socket
 import sys
 import time
 import unittest
+
 import pytest
 
 from sos import execute_workflow
-
 from sos.parser import SoS_Script
 from sos.targets import file_target
 from sos.utils import env
-from sos.workflow_executor import Base_Executor
-from sos import execute_workflow
 
 
 def internet_on(host='8.8.8.8', port=80, timeout=3):
@@ -497,7 +495,7 @@ def test_pandoc_2(clear_now_and_after):
 
 
 @pytest.mark.skipif(not shutil.which('pandoc'), reason="Needs pandoc")
-def test_pandoc_2(clear_now_and_after):
+def test_pandoc_3(clear_now_and_after):
     # test acceptance of a list of input filenames
     clear_now_and_after('default_10.md', 'default_20.md', 'output.html')
 
