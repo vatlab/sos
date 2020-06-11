@@ -8,12 +8,12 @@ import subprocess
 import unittest
 from io import StringIO
 
+from sos import execute_workflow
 from sos.parser import SoS_Script
 from sos.targets import file_target
 from sos.utils import env
 # if the test is imported under sos/test, test interacive executor
 from sos.workflow_executor import Base_Executor
-from sos import execute_workflow
 
 
 def assertDAG(dag, content):
@@ -38,6 +38,328 @@ def assertDAG(dag, content):
         assert sorted_dot(dot) == sorted_dot(content)
     else:
         assert sorted_dot(dot) in [sorted_dot(x) for x in content]
+
+
+def get_initial_dag(test):
+    script = SoS_Script(test)
+    wf = script.workflow()
+    dag = Base_Executor(wf).initialize_dag()
+    return dag
+
+
+def test_simple_dag(clear_now_and_after):
+    '''Test DAG with simple dependency'''
+    for filename in ('a.txt', 'a1.txt'):
+        with open(filename, 'w') as tmp:
+            tmp.write('hey')
+    # basica case
+    # 1 -> 2 -> 3 -> 4
+    graph=('''
+[A_1]
+
+[A_2]
+
+[A_3]
+
+[A_4]
+    ''')
+    dag = get_initial_dag(graph)
+    assertDAG(
+        dag, '''strict digraph "" {
+A_2;
+A_4;
+A_1;
+A_3;
+A_2 -> A_3;
+A_1 -> A_2;
+A_3 -> A_4;
+}
+''')
+
+    # basica case
+    # 1 -> 2 -> 3 -> 4
+    graph = ('''
+[A_1]
+
+[A_2]
+
+[A_3]
+input: 'a.txt'
+
+[A_4]
+
+    ''')
+    dag = get_initial_dag(graph)
+    assertDAG(
+        dag, '''strict digraph "" {
+A_2;
+A_4;
+A_1;
+A_3;
+A_1 -> A_2;
+A_3 -> A_4;
+}
+''')
+
+    #
+    # 1 -> 2 -> 3 -> 4
+    #
+    graph = ('''
+[A_1]
+input: 'a.txt'
+output: 'b.txt'
+
+[A_2]
+input: 'b.txt'
+output: 'c.txt'
+
+[A_3]
+input: 'c.txt'
+output: 'd.txt'
+
+[A_4]
+input: 'd.txt'
+output: 'e.txt'
+
+    ''')
+    dag = get_initial_dag(graph)
+    assertDAG(
+        dag, '''strict digraph "" {
+A_2;
+A_4;
+A_1;
+A_3;
+A_2 -> A_3;
+A_1 -> A_2;
+A_3 -> A_4;
+}
+''')
+    #
+    # 1 -> 2
+    # 3 -> 4 (3 does not have any input)
+    #
+    graph = ('''
+[B_1]
+input: 'a.txt'
+output: 'b.txt'
+
+[B_2]
+input: 'b.txt'
+output: 'c.txt'
+
+[B_3]
+input: None
+output: 'd.txt'
+
+[B_4]
+input: 'd.txt'
+output: 'e.txt'
+
+    ''')
+    dag = get_initial_dag(graph)
+    assertDAG(
+        dag, '''strict digraph "" {
+B_2;
+B_4;
+B_1;
+B_3;
+B_1 -> B_2;
+B_3 -> B_4;
+}
+''')
+    #
+    # 1 -> 2
+    # 3 -> 4 (3 depends on something else)
+    #
+    graph = ('''
+[B_1]
+input: 'a.txt'
+output: 'b.txt'
+
+[B_2]
+input: 'b.txt'
+output: 'c.txt'
+
+[B_3]
+input: 'a1.txt'
+output: 'd.txt'
+
+[B_4]
+input: 'd.txt'
+output: 'e.txt'
+
+    ''')
+
+    dag = get_initial_dag(graph)
+    assertDAG(
+        dag, '''strict digraph "" {
+B_1;
+B_4;
+B_2;
+B_3;
+B_1 -> B_2;
+B_3 -> B_4;
+}
+''')
+    #
+    # (1) -> 2
+    # (1) -> 3 -> 4
+    #
+    # 2 and 3 depends on the output of 1
+    graph = ('''
+[C_1]
+input: 'a.txt'
+output: 'b.txt'
+
+[C_2]
+input: 'b.txt'
+output: 'c.txt'
+
+[C_3]
+input:  'b.txt'
+output: 'd.txt'
+
+[C_4]
+depends: 'd.txt'
+output: 'e.txt'
+
+    ''')
+    dag = get_initial_dag(graph)
+    assertDAG(
+        dag, '''
+strict digraph "" {
+C_1;
+C_4;
+C_2;
+C_3;
+C_1 -> C_2;
+C_1 -> C_3;
+C_3 -> C_4;
+}
+''')
+    for filename in ('a.txt', 'a1.txt'):
+        clear_now_and_after(filename)
+
+def test_undetermined(clear_now_and_after):
+    '''Test DAG with undetermined input.'''
+    #
+    for filename in ('a.txt', 'd.txt'):
+        with open(filename, 'w') as tmp:
+            tmp.write('hey')
+    # input of step 3 is undertermined so
+    # it depends on all its previous steps.
+    graph=('''
+[C_1]
+input: 'a.txt'
+output: 'b.txt'
+
+[C_2]
+input: 'b.txt'
+output: 'c.txt'
+
+[C_3]
+input:  dynamic('*.txt')
+output: 'd.txt'
+
+[C_4]
+depends: 'd.txt'
+output: 'e.txt'
+
+    ''')
+    dag = get_initial_dag(graph)
+    dag.show_nodes()
+    # dag.save('a.dot')
+    assertDAG(
+        dag, '''
+strict digraph "" {
+C_1;
+C_4;
+C_2;
+C_3;
+C_1 -> C_2;
+C_2 -> C_3;
+C_3 -> C_4;
+}
+''')
+    #
+    # output of step
+    #
+    graph=('''
+[C_1]
+input: 'a.txt'
+output: 'b.txt'
+
+[C_2]
+input: 'b.txt'
+output: 'c.txt'
+
+[C_3]
+input:  dynamic('*.txt')
+
+[C_4]
+depends: 'd.txt'
+output: 'e.txt'
+
+    ''')
+    dag = get_initial_dag(graph)
+    assertDAG(
+        dag, '''
+strict digraph "" {
+C_1;
+C_4;
+C_2;
+C_3;
+C_1 -> C_2;
+C_2 -> C_3;
+C_3 -> C_4;
+}
+''')
+    for filename in ('a.txt', 'd.txt'):
+        clear_now_and_after(filename)
+
+def test_auxiliary_steps(clear_now_and_after):
+    test=('''
+[K: provides='{name}.txt']
+output: f"{name}.txt"
+
+run: expand=True
+touch '{name}.txt'
+
+[C_2]
+input: 'b.txt'
+output: 'c.txt'
+
+run:
+touch c.txt
+
+[C_3]
+input: 'a.txt'
+
+    ''')
+    # a.txt exists and b.txt does not exist
+    with open('a.txt', 'w') as atfile:
+        atfile.write('garbage')
+    if os.path.isfile('b.txt'):
+        clear_now_and_after('b.txt')
+    # the workflow should call step K for step C_2, but not C_3
+    dag = get_initial_dag(test)
+    #
+    # Ticket 363:
+    #
+    # we have two possibilities here, one is to ignore a.txt,
+    # and one is to regenerate a.txt because it is not generated
+    # by sos (without signature)        #
+    #
+    dag.show_nodes()
+    assertDAG(
+        dag, '''
+strict digraph "" {
+"K (b.txt)";
+C_3;
+C_2;
+"K (b.txt)" -> C_2;
+}
+''')
 
 
 class TestDAG(unittest.TestCase):
@@ -83,328 +405,6 @@ class TestDAG(unittest.TestCase):
                 for x in content.split('\n')
                 if x.strip() and not 'digraph' in x
             ]))
-
-    def test_simple_dag(self):
-        '''Test DAG with simple dependency'''
-        for filename in ('a.txt', 'a1.txt'):
-            with open(filename, 'w') as tmp:
-                tmp.write('hey')
-        # basica case
-        # 1 -> 2 -> 3 -> 4
-        script = SoS_Script('''
-[A_1]
-
-[A_2]
-
-[A_3]
-
-[A_4]
-        ''')
-        wf = script.workflow()
-        dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(
-            dag, '''strict digraph "" {
-A_2;
-A_4;
-A_1;
-A_3;
-A_2 -> A_3;
-A_1 -> A_2;
-A_3 -> A_4;
-}
-''')
-        # basica case
-        # 1 -> 2 -> 3 -> 4
-        script = SoS_Script('''
-[A_1]
-
-[A_2]
-
-[A_3]
-input: 'a.txt'
-
-[A_4]
-
-        ''')
-        wf = script.workflow()
-        dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(
-            dag, '''strict digraph "" {
-A_2;
-A_4;
-A_1;
-A_3;
-A_1 -> A_2;
-A_3 -> A_4;
-}
-''')
-
-        #
-        # 1 -> 2 -> 3 -> 4
-        #
-        script = SoS_Script('''
-[A_1]
-input: 'a.txt'
-output: 'b.txt'
-
-[A_2]
-input: 'b.txt'
-output: 'c.txt'
-
-[A_3]
-input: 'c.txt'
-output: 'd.txt'
-
-[A_4]
-input: 'd.txt'
-output: 'e.txt'
-
-        ''')
-        wf = script.workflow()
-        dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(
-            dag, '''strict digraph "" {
-A_2;
-A_4;
-A_1;
-A_3;
-A_2 -> A_3;
-A_1 -> A_2;
-A_3 -> A_4;
-}
-''')
-        #
-        # 1 -> 2
-        # 3 -> 4 (3 does not have any input)
-        #
-        script = SoS_Script('''
-[B_1]
-input: 'a.txt'
-output: 'b.txt'
-
-[B_2]
-input: 'b.txt'
-output: 'c.txt'
-
-[B_3]
-input: None
-output: 'd.txt'
-
-[B_4]
-input: 'd.txt'
-output: 'e.txt'
-
-        ''')
-        wf = script.workflow()
-        dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(
-            dag, '''strict digraph "" {
-B_2;
-B_4;
-B_1;
-B_3;
-B_1 -> B_2;
-B_3 -> B_4;
-}
-''')
-        #
-        # 1 -> 2
-        # 3 -> 4 (3 depends on something else)
-        #
-        script = SoS_Script('''
-[B_1]
-input: 'a.txt'
-output: 'b.txt'
-
-[B_2]
-input: 'b.txt'
-output: 'c.txt'
-
-[B_3]
-input: 'a1.txt'
-output: 'd.txt'
-
-[B_4]
-input: 'd.txt'
-output: 'e.txt'
-
-        ''')
-
-        wf = script.workflow()
-        dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(
-            dag, '''strict digraph "" {
-B_1;
-B_4;
-B_2;
-B_3;
-B_1 -> B_2;
-B_3 -> B_4;
-}
-''')
-        #
-        # (1) -> 2
-        # (1) -> 3 -> 4
-        #
-        # 2 and 3 depends on the output of 1
-        script = SoS_Script('''
-[C_1]
-input: 'a.txt'
-output: 'b.txt'
-
-[C_2]
-input: 'b.txt'
-output: 'c.txt'
-
-[C_3]
-input:  'b.txt'
-output: 'd.txt'
-
-[C_4]
-depends: 'd.txt'
-output: 'e.txt'
-
-        ''')
-        wf = script.workflow()
-        dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(
-            dag, '''
-strict digraph "" {
-C_1;
-C_4;
-C_2;
-C_3;
-C_1 -> C_2;
-C_1 -> C_3;
-C_3 -> C_4;
-}
-''')
-        for filename in ('a.txt', 'a1.txt'):
-            os.remove(filename)
-
-    def test_undetermined(self):
-        '''Test DAG with undetermined input.'''
-        #
-        for filename in ('a.txt', 'd.txt'):
-            with open(filename, 'w') as tmp:
-                tmp.write('hey')
-        # input of step 3 is undertermined so
-        # it depends on all its previous steps.
-        script = SoS_Script('''
-[C_1]
-input: 'a.txt'
-output: 'b.txt'
-
-[C_2]
-input: 'b.txt'
-output: 'c.txt'
-
-[C_3]
-input:  dynamic('*.txt')
-output: 'd.txt'
-
-[C_4]
-depends: 'd.txt'
-output: 'e.txt'
-
-        ''')
-        wf = script.workflow()
-        dag = Base_Executor(wf).initialize_dag()
-        dag.show_nodes()
-        # dag.save('a.dot')
-        self.assertDAG(
-            dag, '''
-strict digraph "" {
-C_1;
-C_4;
-C_2;
-C_3;
-C_1 -> C_2;
-C_2 -> C_3;
-C_3 -> C_4;
-}
-''')
-        #
-        # output of step
-        #
-        script = SoS_Script('''
-[C_1]
-input: 'a.txt'
-output: 'b.txt'
-
-[C_2]
-input: 'b.txt'
-output: 'c.txt'
-
-[C_3]
-input:  dynamic('*.txt')
-
-[C_4]
-depends: 'd.txt'
-output: 'e.txt'
-
-        ''')
-        wf = script.workflow()
-        dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(
-            dag, '''
-strict digraph "" {
-C_1;
-C_4;
-C_2;
-C_3;
-C_1 -> C_2;
-C_2 -> C_3;
-C_3 -> C_4;
-}
-''')
-        for filename in ('a.txt', 'd.txt'):
-            os.remove(filename)
-
-    def test_auxiliary_steps(self):
-        script = SoS_Script('''
-[K: provides='{name}.txt']
-output: f"{name}.txt"
-
-run: expand=True
-    touch '{name}.txt'
-
-[C_2]
-input: 'b.txt'
-output: 'c.txt'
-
-run:
-    touch c.txt
-
-[C_3]
-input: 'a.txt'
-
-        ''')
-        # a.txt exists and b.txt does not exist
-        with open('a.txt', 'w') as atfile:
-            atfile.write('garbage')
-        if os.path.isfile('b.txt'):
-            os.remove('b.txt')
-        # the workflow should call step K for step C_2, but not C_3
-        wf = script.workflow()
-        dag = Base_Executor(wf).initialize_dag()
-        #
-        # Ticket 363:
-        #
-        # we have two possibilities here, one is to ignore a.txt,
-        # and one is to regenerate a.txt because it is not generated
-        # by sos (without signature)        #
-        #
-        dag.show_nodes()
-        self.assertDAG(
-            dag, '''
-strict digraph "" {
-"K (b.txt)";
-C_3;
-C_2;
-"K (b.txt)" -> C_2;
-}
-''')
 
     def test_cycle(self):
         '''Test cycle detection of DAG'''
