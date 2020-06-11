@@ -7,14 +7,11 @@ import os
 import signal
 import sys
 import threading
-import unittest
 from contextlib import contextmanager
 
-from sos.parser import SoS_Script
-from sos.targets import file_target
-from sos.utils import env
-# if the test is imported under sos/test, test interacive executor
-from sos.workflow_executor import Base_Executor
+import pytest
+
+from sos import execute_workflow
 
 try:
     import _thread
@@ -81,203 +78,179 @@ except Exception as e:
     has_docker = False
 
 
-class TestDockerActions(unittest.TestCase):
-
-    def setUp(self):
-        self.olddir = os.getcwd()
-        try:
-            # this only works with nose, but is also
-            # only needed by nose
-            os.chdir(os.path.dirname(__file__))
-        except Exception:
-            pass
-        env.reset()
-        self.temp_files = []
-
-    def tearDown(self):
-        for f in self.temp_files:
-            file_target(f).unlink()
-        os.chdir(self.olddir)
-
-    def touch(self, files):
-        '''create temporary files'''
-        if isinstance(files, str):
-            files = [files]
-        #
-        for f in files:
-            with open(f, 'w') as tmp:
-                tmp.write('test')
-        #
-        self.temp_files.extend(files)
-
-    @unittest.skipIf(not has_docker or sys.platform == 'win32',
-                     'Skip test because docker is not installed.')
-    def test_bash_in_docker(self):
-        '''Test action bash in docker environment'''
-        script = SoS_Script(r'''
-[0]
-run:  container='docker://ubuntu'
-echo 'Echo'
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
+@pytest.mark.skipif(not has_docker or sys.platform == 'win32',
+                    reason='Skip test because docker is not installed.')
+def test_bash_in_docker():
+    '''Test action bash in docker environment'''
+    execute_workflow(r'''
+        [0]
+        run:  container='docker://ubuntu'
+        echo 'Echo'
+        ''')
 
 
-#    @unittest.skipIf(not has_docker or sys.platform != 'win32', 'Skip test because docker is not installed.')
-#    def testBatchScriptInDocker(self):
+#    @pytest.mark.skipif(not has_docker or sys.platform != 'win32', reason='Skip test because docker is not installed.')
+#    def testBatchScriptInDocker():
 #        '''Test action powershell in docker environment'''
-#        script = SoS_Script(r'''
-#[0]
-#run:  container='docker://microsoft/windowsservercore'
-#dir c:\
-#''')
-#        wf = script.workflow()
-#        Base_Executor(wf).run()
+#        script = execute_workflow(r'''
+#           [0]
+#           run:  container='docker://microsoft/windowsservercore'
+#           dir c:\
+#           ''')
 
-    @unittest.skipIf(not has_docker or sys.platform == 'win32',
-                     'Skip test because docker is not installed.')
-    def test_sh_in_docker(self):
-        '''Test action sh in docker environment'''
-        # test docker
-        script = SoS_Script(r'''
-[0]
-run: container='docker://ubuntu'
-echo 'Echo
-''')
-        wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf).run)
+@pytest.mark.skipif(not has_docker or sys.platform == 'win32',
+                    reason='Skip test because docker is not installed.')
+def test_sh_in_docker():
+    '''Test action sh in docker environment'''
+    # test docker
+    script = execute_workflow(r'''
+        [0]
+        run: container='docker://ubuntu'
+        echo 'Echo
+        ''',
+        options={'run_mode': 'dryrun'})
+    with pytest.raises(Exception):
+        execute_workflow(script)
+
+@pytest.mark.skipif(not has_docker or sys.platform == 'win32',
+                    reason='Skip test because docker is not installed.')
+def test_docker_build_linux_image():
+    '''Test action docker build'''
+    execute_workflow(r'''
+        [0]
+        docker_build:  tag='test/docker_build'
         #
-        Base_Executor(wf).run(mode='dryrun')
-
-    @unittest.skipIf(not has_docker or sys.platform == 'win32',
-                     'Skip test because docker is not installed.')
-    def test_docker_build_linux_image(self):
-        '''Test action docker build'''
-        script = SoS_Script(r'''
-[0]
-docker_build:  tag='test/docker_build'
-#
-# Super simple example of a Dockerfile
-#
-FROM ubuntu:latest
-MAINTAINER Andrew Odewahn "odewahn@oreilly.com"
-
-RUN apt-get update
-
-WORKDIR /home
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-        # build with more options
-        script = SoS_Script(r'''
-[0]
-docker_build:  tag='test/docker_build1', label='label with space', compress=True, memory='2G'
-#
-# Super simple example of a Dockerfile
-#
-FROM ubuntu:latest
-MAINTAINER Andrew Odewahn "odewahn@oreilly.com"
-
-WORKDIR /home
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-    @unittest.skipIf(not has_docker or sys.platform != 'win32' or
-                     'APPVEYOR' in os.environ,
-                     'Skip test because docker is not installed.')
-    def test_docker_build_windows_image(self):
-        '''Test action docker build'''
-        script = SoS_Script(r'''
-[0]
-docker_build:  tag='test/docker_build'
-# Indicates that the windowsservercore image will be used as the base image.
-FROM microsoft/windowsservercore
-
-# Metadata indicating an image maintainer.
-MAINTAINER someone@microsoft.com
-
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-    @unittest.skipIf(not has_docker or sys.platform == 'win32',
-                     'Skip test because docker is not installed.')
-    def test_docker_image(self):
-        '''Test docker_image option'''
-        script = SoS_Script(r'''
-import os
-import glob
-[0]
-fastq_files = glob.glob('data/*.fastq')
-input_volume = os.path.dirname(fastq_files[0])
-output_volume = os.getcwd()
-
-run: container='docker://compbio/ngseasy-fastqc:1.0-r001',
-    volumes=[f"{input_volume}:/input_data", f"{output_volume}:/output_data"]
-
-    ls -l /input_data
-    /usr/local/bin/fastqc /input_data/*.fastq --outdir /output_data
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-    @unittest.skipIf(
-        not has_docker or sys.platform == 'win32',
-        'Skip test because docker is not installed, or in travis, which failed for unknown reason'
-    )
-    def test_docker_image_from_file(self):
-        '''Test docker_image load from a file.'''
-        # image from a saved file
-        script = SoS_Script(r'''
-[0]
-run:   container='docker://blang/busybox-bash'
-
-[1]
-run:
-    docker save blang/busybox-bash > hello.tar
-    docker rmi -f blang/busybox-bash
-
-[2]
-run: container='docker://blang/busybox-bash', docker_file = 'hello.tar'
-
-    echo "a"
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-    @unittest.skipIf(not has_docker or sys.platform == 'win32',
-                     'Skip test because docker is not installed.')
-    def test_docker_script_action(self):
-        '''Test action sh in docker environment'''
-        # test docker
-        script = SoS_Script(r'''
-[0]
-script: container='docker://ubuntu', args='{script}'
-echo 'Echo'
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-    @unittest.skipIf(not has_docker or sys.platform == 'win32',
-                     'Skip test because docker is not installed.')
-    def test_port_option(self):
-        '''Test use of option port in action'''
-        script = SoS_Script(r'''
-[0]
-run:  container='ubuntu', port=True
-echo 'Echo'
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
+        # Super simple example of a Dockerfile
         #
-        script = SoS_Script(r'''
-[0]
-run:  container='ubuntu', port=2345
-echo 'Echo'
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
+        FROM ubuntu:latest
+        MAINTAINER Andrew Odewahn "odewahn@oreilly.com"
 
-if __name__ == '__main__':
-    unittest.main()
+        RUN apt-get update
+
+        WORKDIR /home
+        ''')
+
+
+@pytest.mark.skipif(not has_docker or sys.platform == 'win32',
+                 reason='Skip test because docker is not installed.')
+def test_docker_build_linux_image_option_label_compress():
+    '''Test action docker build'''
+    # build with more options
+    execute_workflow(r'''
+        [0]
+        docker_build:  tag='test/docker_build1', label='my_label', compress=True, memory='2G'
+        #
+        # Super simple example of a Dockerfile
+        #
+        FROM ubuntu:latest
+        MAINTAINER Andrew Odewahn "odewahn@oreilly.com"
+
+        WORKDIR /home
+        ''')
+
+
+@pytest.mark.skipif(not has_docker or sys.platform == 'win32' or
+                 'TRAVIS' in os.environ,
+                 reason='Skip test because docker is not installed.')
+def test_docker_build_linux_image_label_with_space():
+    '''Test action docker build'''
+    with pytest.raises(Exception):
+        execute_workflow(r'''
+            [0]
+            docker_build:  tag='test/docker_build1', label='my label with space', compress=True, memory='2G'
+            #
+            # Super simple example of a Dockerfile
+            #
+            FROM ubuntu:latest
+            MAINTAINER Andrew Odewahn "odewahn@oreilly.com"
+
+            WORKDIR /home
+            ''')
+
+
+@pytest.mark.skipif(not has_docker or sys.platform != 'win32' or
+                 'APPVEYOR' in os.environ,
+                 reason='Skip test because docker is not installed.')
+def test_docker_build_windows_image():
+    '''Test action docker build'''
+    execute_workflow(r'''
+        [0]
+        docker_build:  tag='test/docker_build'
+        # Indicates that the windowsservercore image will be used as the base image.
+        FROM microsoft/windowsservercore
+
+        # Metadata indicating an image maintainer.
+        MAINTAINER someone@microsoft.com
+
+        ''')
+
+
+@pytest.mark.skipif(not has_docker or sys.platform == 'win32',
+                    reason='Skip test because docker is not installed.')
+def test_docker_image():
+    '''Test docker_image option'''
+    execute_workflow(r'''
+        import os
+        import glob
+        [0]
+        fastq_files = glob.glob('data/*.fastq')
+        input_volume = os.path.dirname(fastq_files[0])
+        output_volume = os.getcwd()
+
+        run: container='docker://compbio/ngseasy-fastqc:1.0-r001',
+            volumes=[f"{input_volume}:/input_data", f"{output_volume}:/output_data"]
+
+            ls -l /input_data
+            /usr/local/bin/fastqc /input_data/*.fastq --outdir /output_data
+        ''')
+
+
+@pytest.mark.skipif(
+    not has_docker or sys.platform == 'win32',
+    reason='Skip test because docker is not installed, or in travis, which failed for unknown reason'
+)
+def test_docker_image_from_file():
+    '''Test docker_image load from a file.'''
+    # image from a saved file
+    execute_workflow(r'''
+        [0]
+        run:   container='docker://blang/busybox-bash'
+
+        [1]
+        run:
+            docker save blang/busybox-bash > hello.tar
+            docker rmi -f blang/busybox-bash
+
+        [2]
+        run: container='docker://blang/busybox-bash', docker_file = 'hello.tar'
+
+            echo "a"
+        ''')
+
+
+@pytest.mark.skipif(not has_docker or sys.platform == 'win32',
+                    reason='Skip test because docker is not installed.')
+def test_docker_script_action():
+    '''Test action sh in docker environment'''
+    # test docker
+    execute_workflow(r'''
+        [0]
+        script: container='docker://ubuntu', args='{script}'
+        echo 'Echo'
+        ''')
+
+@pytest.mark.skipif(not has_docker or sys.platform == 'win32',
+                    reason='Skip test because docker is not installed.')
+def test_port_option():
+    '''Test use of option port in action'''
+    execute_workflow(r'''
+        [0]
+        run:  container='ubuntu', port=True
+        echo 'Echo'
+        ''')
+    #
+    execute_workflow(r'''
+        [0]
+        run:  container='ubuntu', port=2345
+        echo 'Echo'
+        ''')

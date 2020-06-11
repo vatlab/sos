@@ -5,12 +5,13 @@
 
 import glob
 import os
-import pytest
-import sys
 import shutil
 import subprocess
+import sys
 import time
 import unittest
+
+import pytest
 
 from sos import execute_workflow
 from sos._version import __version__
@@ -2056,8 +2057,8 @@ fail_if(True)
                     os.remove(f'test_{i}.txt')
                 if os.path.isfile(f'test_{i}.bak'):
                     os.remove(f'test_{i}.bak')
-            if os.path.isfile(f'test_30.txt'):
-                os.remove(f'test_30.txt')
+            if os.path.isfile('test_30.txt'):
+                os.remove('test_30.txt')
 
         script = SoS_Script(r"""
 import time
@@ -2095,7 +2096,7 @@ _output.touch()
                 # the following step is not executed
                 self.assertFalse(os.path.isfile(f'test_{i}.bak'))
         # but the another branch continues
-        self.assertTrue(os.path.isfile(f'test_30.txt'))
+        self.assertTrue(os.path.isfile('test_30.txt'))
         #
         # ignore mode
         #
@@ -2109,7 +2110,7 @@ _output.touch()
             else:
                 self.assertTrue(os.path.isfile(f'test_{i}.txt'))
                 self.assertTrue(os.path.isfile(f'test_{i}.bak'))
-        self.assertTrue(os.path.isfile(f'test_30.txt'))
+        self.assertTrue(os.path.isfile('test_30.txt'))
         #
         # abort mode
         #
@@ -2126,7 +2127,7 @@ _output.touch()
             else:
                 self.assertFalse(os.path.isfile(f'test_{i}.txt'))
                 self.assertFalse(os.path.isfile(f'test_{i}.bak'))
-        self.assertFalse(os.path.isfile(f'test_30.txt'))
+        self.assertFalse(os.path.isfile('test_30.txt'))
 
     def test_error_handling_of_concurrent_substeps(self):
 
@@ -2202,7 +2203,7 @@ _output.touch()
         for i in (0, 2, 30, 31):
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
             self.assertFalse(os.path.isfile(f'test_{i}.bak'))
-        self.assertFalse(os.path.isfile(f'test_1.txt'))
+        self.assertFalse(os.path.isfile('test_1.txt'))
         #
         #  ignore mode
         #
@@ -2213,7 +2214,7 @@ _output.touch()
             self.assertTrue(os.path.isfile(f'test_{i}.txt'))
         for i in (0, 2):
             self.assertFalse(os.path.isfile(f'test_{i}.bak'))
-        self.assertFalse(os.path.isfile(f'test_1.txt'))
+        self.assertFalse(os.path.isfile('test_1.txt'))
         #
         # abort mode
         #
@@ -2229,7 +2230,7 @@ _output.touch()
             self.assertFalse(os.path.isfile(f'test_{i}.txt'))
         for i in (0, 2):
             self.assertFalse(os.path.isfile(f'test_{i}.bak'))
-        self.assertFalse(os.path.isfile(f'test_1.txt'))
+        self.assertFalse(os.path.isfile('test_1.txt'))
 
 
 def test_stmt_before_input(clear_now_and_after):
