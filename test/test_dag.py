@@ -39,8 +39,9 @@ def assertDAG(dag, content):
     else:
         assert sorted_dot(dot) in [sorted_dot(x) for x in content]
 
-def get_initial_dag(graph):
-    script = SoS_Script(graph)
+
+def get_initial_dag(test):
+    script = SoS_Script(test)
     wf = script.workflow()
     dag = Base_Executor(wf).initialize_dag()
     return dag
@@ -53,6 +54,7 @@ def test_simple_dag(clear_now_and_after):
             tmp.write('hey')
     # basica case
     # 1 -> 2 -> 3 -> 4
+
     assertDAG(
         get_initial_dag('''
 [A_1]
@@ -340,6 +342,7 @@ C_2;
 }
 ''')
 
+    
 class TestDAG(unittest.TestCase):
 
     def setUp(self):
