@@ -5,6 +5,7 @@
 
 import os
 import subprocess
+import textwrap
 import unittest
 from io import StringIO
 
@@ -54,172 +55,178 @@ def test_simple_dag(clear_now_and_after):
     # basica case
     # 1 -> 2 -> 3 -> 4
     assertDAG(
-        get_initial_dag('''
-[A_1]
+        get_initial_dag(
+            textwrap.dedent('''
+            [A_1]
 
-[A_2]
+            [A_2]
 
-[A_3]
+            [A_3]
 
-[A_4]''')
-, '''strict digraph "" {
-A_2;
-A_4;
-A_1;
-A_3;
-A_2 -> A_3;
-A_1 -> A_2;
-A_3 -> A_4;
-}
-''')
+            [A_4]'''))
+        , textwrap.dedent('''strict digraph "" {
+            A_2;
+            A_4;
+            A_1;
+            A_3;
+            A_2 -> A_3;
+            A_1 -> A_2;
+            A_3 -> A_4;
+            }
+            '''))
     # basica case
     # 1 -> 2 -> 3 -> 4
     assertDAG(
-        get_initial_dag('''
-[A_1]
+        get_initial_dag(
+            textwrap.dedent('''
+            [A_1]
 
-[A_2]
+            [A_2]
 
-[A_3]
-input: 'a.txt'
+            [A_3]
+            input: 'a.txt'
 
-[A_4]''')
-, '''strict digraph "" {
-A_2;
-A_4;
-A_1;
-A_3;
-A_1 -> A_2;
-A_3 -> A_4;
-}
-''')
+            [A_4]'''))
+        , textwrap.dedent('''strict digraph "" {
+            A_2;
+            A_4;
+            A_1;
+            A_3;
+            A_1 -> A_2;
+            A_3 -> A_4;
+            }
+            '''))
     #
     # 1 -> 2 -> 3 -> 4
     #
     assertDAG(
-        get_initial_dag('''
-[A_1]
-input: 'a.txt'
-output: 'b.txt'
+        get_initial_dag(
+            textwrap.dedent('''
+            [A_1]
+            input: 'a.txt'
+            output: 'b.txt'
 
-[A_2]
-input: 'b.txt'
-output: 'c.txt'
+            [A_2]
+            input: 'b.txt'
+            output: 'c.txt'
 
-[A_3]
-input: 'c.txt'
-output: 'd.txt'
+            [A_3]
+            input: 'c.txt'
+            output: 'd.txt'
 
-[A_4]
-input: 'd.txt'
-output: 'e.txt'
-''')
-, '''strict digraph "" {
-A_2;
-A_4;
-A_1;
-A_3;
-A_2 -> A_3;
-A_1 -> A_2;
-A_3 -> A_4;
-}
-''')
+            [A_4]
+            input: 'd.txt'
+            output: 'e.txt'
+            '''))
+        , textwrap.dedent('''strict digraph "" {
+            A_2;
+            A_4;
+            A_1;
+            A_3;
+            A_2 -> A_3;
+            A_1 -> A_2;
+            A_3 -> A_4;
+            }
+            '''))
     #
     # 1 -> 2
     # 3 -> 4 (3 does not have any input)
     #
     assertDAG(
-        get_initial_dag('''
-[B_1]
-input: 'a.txt'
-output: 'b.txt'
+        get_initial_dag(
+            textwrap.dedent('''
+            [B_1]
+            input: 'a.txt'
+            output: 'b.txt'
 
-[B_2]
-input: 'b.txt'
-output: 'c.txt'
+            [B_2]
+            input: 'b.txt'
+            output: 'c.txt'
 
-[B_3]
-input: None
-output: 'd.txt'
+            [B_3]
+            input: None
+            output: 'd.txt'
 
-[B_4]
-input: 'd.txt'
-output: 'e.txt'
-''')
-, '''strict digraph "" {
-B_2;
-B_4;
-B_1;
-B_3;
-B_1 -> B_2;
-B_3 -> B_4;
-}
-''')
+            [B_4]
+            input: 'd.txt'
+            output: 'e.txt'
+            '''))
+        , textwrap.dedent('''strict digraph "" {
+            B_2;
+            B_4;
+            B_1;
+            B_3;
+            B_1 -> B_2;
+            B_3 -> B_4;
+            }
+            '''))
     #
     # 1 -> 2
     # 3 -> 4 (3 depends on something else)
     #
     assertDAG(
-        get_initial_dag('''
-[B_1]
-input: 'a.txt'
-output: 'b.txt'
+        get_initial_dag(
+            textwrap.dedent('''
+            [B_1]
+            input: 'a.txt'
+            output: 'b.txt'
 
-[B_2]
-input: 'b.txt'
-output: 'c.txt'
+            [B_2]
+            input: 'b.txt'
+            output: 'c.txt'
 
-[B_3]
-input: 'a1.txt'
-output: 'd.txt'
+            [B_3]
+            input: 'a1.txt'
+            output: 'd.txt'
 
-[B_4]
-input: 'd.txt'
-output: 'e.txt'
-''')
-, '''strict digraph "" {
-B_1;
-B_4;
-B_2;
-B_3;
-B_1 -> B_2;
-B_3 -> B_4;
-}
-''')
+            [B_4]
+            input: 'd.txt'
+            output: 'e.txt'
+            '''))
+        , textwrap.dedent('''strict digraph "" {
+            B_1;
+            B_4;
+            B_2;
+            B_3;
+            B_1 -> B_2;
+            B_3 -> B_4;
+            }
+            '''))
     #
     # (1) -> 2
     # (1) -> 3 -> 4
     #
     # 2 and 3 depends on the output of 1
     assertDAG(
-        get_initial_dag('''
-[C_1]
-input: 'a.txt'
-output: 'b.txt'
+        get_initial_dag(
+            textwrap.dedent('''
+            [C_1]
+            input: 'a.txt'
+            output: 'b.txt'
 
-[C_2]
-input: 'b.txt'
-output: 'c.txt'
+            [C_2]
+            input: 'b.txt'
+            output: 'c.txt'
 
-[C_3]
-input:  'b.txt'
-output: 'd.txt'
+            [C_3]
+            input:  'b.txt'
+            output: 'd.txt'
 
-[C_4]
-depends: 'd.txt'
-output: 'e.txt'
-''')
-, '''
-strict digraph "" {
-C_1;
-C_4;
-C_2;
-C_3;
-C_1 -> C_2;
-C_1 -> C_3;
-C_3 -> C_4;
-}
-''')
+            [C_4]
+            depends: 'd.txt'
+            output: 'e.txt'
+            '''))
+        , textwrap.dedent('''
+            strict digraph "" {
+            C_1;
+            C_4;
+            C_2;
+            C_3;
+            C_1 -> C_2;
+            C_1 -> C_3;
+            C_3 -> C_4;
+            }
+            '''))
     for filename in ('a.txt', 'a1.txt'):
         clear_now_and_after(filename)
 
@@ -232,89 +239,91 @@ def test_undetermined(clear_now_and_after):
     # input of step 3 is undertermined so
     # it depends on all its previous steps.
     assertDAG(
-        get_initial_dag('''
-[C_1]
-input: 'a.txt'
-output: 'b.txt'
+        get_initial_dag(
+            textwrap.dedent('''
+            [C_1]
+            input: 'a.txt'
+            output: 'b.txt'
 
-[C_2]
-input: 'b.txt'
-output: 'c.txt'
+            [C_2]
+            input: 'b.txt'
+            output: 'c.txt'
 
-[C_3]
-input:  dynamic('*.txt')
-output: 'd.txt'
+            [C_3]
+            input:  dynamic('*.txt')
+            output: 'd.txt'
 
-[C_4]
-depends: 'd.txt'
-output: 'e.txt'
-''')
-    # dag.show_nodes()
-    # dag.save('a.dot')
-, '''
-strict digraph "" {
-C_1;
-C_4;
-C_2;
-C_3;
-C_1 -> C_2;
-C_2 -> C_3;
-C_3 -> C_4;
-}
-''')
+            [C_4]
+            depends: 'd.txt'
+            output: 'e.txt'
+            '''))
+                # dag.show_nodes()
+                # dag.save('a.dot')
+        , textwrap.dedent('''
+            strict digraph "" {
+            C_1;
+            C_4;
+            C_2;
+            C_3;
+            C_1 -> C_2;
+            C_2 -> C_3;
+            C_3 -> C_4;
+            }
+            '''))
     #
     # output of step
     #
     assertDAG(
-        get_initial_dag('''
-[C_1]
-input: 'a.txt'
-output: 'b.txt'
+        get_initial_dag(
+            textwrap.dedent('''
+            [C_1]
+            input: 'a.txt'
+            output: 'b.txt'
 
-[C_2]
-input: 'b.txt'
-output: 'c.txt'
+            [C_2]
+            input: 'b.txt'
+            output: 'c.txt'
 
-[C_3]
-input:  dynamic('*.txt')
+            [C_3]
+            input:  dynamic('*.txt')
 
-[C_4]
-depends: 'd.txt'
-output: 'e.txt'
-''')
-, '''
-strict digraph "" {
-C_1;
-C_4;
-C_2;
-C_3;
-C_1 -> C_2;
-C_2 -> C_3;
-C_3 -> C_4;
-}
-''')
+            [C_4]
+            depends: 'd.txt'
+            output: 'e.txt'
+            '''))
+        , textwrap.dedent('''
+            strict digraph "" {
+            C_1;
+            C_4;
+            C_2;
+            C_3;
+            C_1 -> C_2;
+            C_2 -> C_3;
+            C_3 -> C_4;
+            }
+            '''))
     for filename in ('a.txt', 'd.txt'):
         clear_now_and_after
 
 def test_auxiliary_steps(clear_now_and_after):
-    graph = ('''
-[K: provides='{name}.txt']
-output: f"{name}.txt"
+    graph = textwrap.dedent(('''
+        [K: provides='{name}.txt']
+        output: f"{name}.txt"
 
-run: expand=True
-touch '{name}.txt'
+        run: expand=True
+        touch '{name}.txt'
 
-[C_2]
-input: 'b.txt'
-output: 'c.txt'
+        [C_2]
+        input: 'b.txt'
+        output: 'c.txt'
 
-run:
-touch c.txt
+        run:
+        touch c.txt
 
-[C_3]
-input: 'a.txt'
+        [C_3]
+        input: 'a.txt'
 
-    ''')
+        '''))
     # a.txt exists and b.txt does not exist
     with open('a.txt', 'w') as atfile:
         atfile.write('garbage')
@@ -331,14 +340,14 @@ input: 'a.txt'
     #
     dag.show_nodes()
     assertDAG(
-        dag, '''
-strict digraph "" {
-"K (b.txt)";
-C_3;
-C_2;
-"K (b.txt)" -> C_2;
-}
-''')
+        dag, textwrap.dedent('''
+        strict digraph "" {
+        "K (b.txt)";
+        C_3;
+        C_2;
+        "K (b.txt)" -> C_2;
+        }
+        '''))
 
 class TestDAG(unittest.TestCase):
 
