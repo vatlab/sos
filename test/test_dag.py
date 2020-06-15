@@ -42,6 +42,7 @@ def assertDAG(dag, content):
 
 
 def get_initial_dag(test):
+    test = textwrap.dedent(test)
     script = SoS_Script(test)
     wf = script.workflow()
     dag = Base_Executor(wf).initialize_dag()
@@ -57,15 +58,14 @@ def test_simple_dag(clear_now_and_after):
     # 1 -> 2 -> 3 -> 4
 
     assertDAG(
-        get_initial_dag(
-            textwrap.dedent('''
+        get_initial_dag('''
             [A_1]
 
             [A_2]
 
             [A_3]
 
-            [A_4]'''))
+            [A_4]''')
         , textwrap.dedent('''strict digraph "" {
             A_2;
             A_4;
@@ -79,8 +79,7 @@ def test_simple_dag(clear_now_and_after):
     # basica case
     # 1 -> 2 -> 3 -> 4
     assertDAG(
-        get_initial_dag(
-            textwrap.dedent('''
+        get_initial_dag('''
             [A_1]
 
             [A_2]
@@ -88,7 +87,7 @@ def test_simple_dag(clear_now_and_after):
             [A_3]
             input: 'a.txt'
 
-            [A_4]'''))
+            [A_4]''')
         , textwrap.dedent('''strict digraph "" {
             A_2;
             A_4;
@@ -102,8 +101,7 @@ def test_simple_dag(clear_now_and_after):
     # 1 -> 2 -> 3 -> 4
     #
     assertDAG(
-        get_initial_dag(
-            textwrap.dedent('''
+        get_initial_dag('''
             [A_1]
             input: 'a.txt'
             output: 'b.txt'
@@ -119,7 +117,7 @@ def test_simple_dag(clear_now_and_after):
             [A_4]
             input: 'd.txt'
             output: 'e.txt'
-            '''))
+            ''')
         , textwrap.dedent('''strict digraph "" {
             A_2;
             A_4;
@@ -135,8 +133,7 @@ def test_simple_dag(clear_now_and_after):
     # 3 -> 4 (3 does not have any input)
     #
     assertDAG(
-        get_initial_dag(
-            textwrap.dedent('''
+        get_initial_dag('''
             [B_1]
             input: 'a.txt'
             output: 'b.txt'
@@ -152,7 +149,7 @@ def test_simple_dag(clear_now_and_after):
             [B_4]
             input: 'd.txt'
             output: 'e.txt'
-            '''))
+            ''')
         , textwrap.dedent('''strict digraph "" {
             B_2;
             B_4;
@@ -167,8 +164,7 @@ def test_simple_dag(clear_now_and_after):
     # 3 -> 4 (3 depends on something else)
     #
     assertDAG(
-        get_initial_dag(
-            textwrap.dedent('''
+        get_initial_dag('''
             [B_1]
             input: 'a.txt'
             output: 'b.txt'
@@ -184,7 +180,7 @@ def test_simple_dag(clear_now_and_after):
             [B_4]
             input: 'd.txt'
             output: 'e.txt'
-            '''))
+            ''')
         , textwrap.dedent('''strict digraph "" {
             B_1;
             B_4;
@@ -200,8 +196,7 @@ def test_simple_dag(clear_now_and_after):
     #
     # 2 and 3 depends on the output of 1
     assertDAG(
-        get_initial_dag(
-            textwrap.dedent('''
+        get_initial_dag('''
             [C_1]
             input: 'a.txt'
             output: 'b.txt'
@@ -217,7 +212,7 @@ def test_simple_dag(clear_now_and_after):
             [C_4]
             depends: 'd.txt'
             output: 'e.txt'
-            '''))
+            ''')
         , textwrap.dedent('''
             strict digraph "" {
             C_1;
@@ -241,8 +236,7 @@ def test_undetermined(clear_now_and_after):
     # input of step 3 is undertermined so
     # it depends on all its previous steps.
     assertDAG(
-        get_initial_dag(
-            textwrap.dedent('''
+        get_initial_dag('''
             [C_1]
             input: 'a.txt'
             output: 'b.txt'
@@ -258,7 +252,7 @@ def test_undetermined(clear_now_and_after):
             [C_4]
             depends: 'd.txt'
             output: 'e.txt'
-            '''))
+            ''')
                 # dag.show_nodes()
                 # dag.save('a.dot')
         , textwrap.dedent('''
@@ -276,8 +270,7 @@ def test_undetermined(clear_now_and_after):
     # output of step
     #
     assertDAG(
-        get_initial_dag(
-            textwrap.dedent('''
+        get_initial_dag('''
             [C_1]
             input: 'a.txt'
             output: 'b.txt'
@@ -292,7 +285,7 @@ def test_undetermined(clear_now_and_after):
             [C_4]
             depends: 'd.txt'
             output: 'e.txt'
-            '''))
+            ''')
         , textwrap.dedent('''
             strict digraph "" {
             C_1;
@@ -405,17 +398,17 @@ class TestDAG(unittest.TestCase):
         #
         #  C.txt --> A.txt
         #
-        script = SoS_Script('''
-[A_1]
-input: 'A.txt'
-output: 'B.txt'
+        script = SoS_Script(textwrap.dedent('''
+        [A_1]
+        input: 'A.txt'
+        output: 'B.txt'
 
-[A_2]
-output: 'C.txt'
+        [A_2]
+        output: 'C.txt'
 
-[A_3]
-output: 'A.txt'
-        ''')
+        [A_3]
+        output: 'A.txt'
+        '''))
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow()
         self.assertRaises(RuntimeError, Base_Executor(wf).initialize_dag)
@@ -437,81 +430,81 @@ output: 'A.txt'
         #  A2 <- B2 <- C1 <- C2 <- C4
         #                    C3
         #
-        script = SoS_Script('''
-[A_1]
-input: 'B1.txt'
-output: 'A1.txt'
-run:
-    touch A1.txt
+        script = SoS_Script(textwrap.dedent('''
+        [A_1]
+        input: 'B1.txt'
+        output: 'A1.txt'
+        run:
+            touch A1.txt
 
-[A_2]
-depends:  'B2.txt'
-output: 'A2.txt'
-run:
-    touch A2.txt
+        [A_2]
+        depends:  'B2.txt'
+        output: 'A2.txt'
+        run:
+            touch A2.txt
 
-[B1: provides='B1.txt']
-depends: 'B2.txt'
-run:
-    touch B1.txt
+        [B1: provides='B1.txt']
+        depends: 'B2.txt'
+        run:
+            touch B1.txt
 
-[B2: provides='B2.txt']
-depends: 'B3.txt', 'C1.txt'
-run:
-    touch B2.txt
+        [B2: provides='B2.txt']
+        depends: 'B3.txt', 'C1.txt'
+        run:
+            touch B2.txt
 
-[B3: provides='B3.txt']
-run:
-    touch B3.txt
+        [B3: provides='B3.txt']
+        run:
+            touch B3.txt
 
-[C1: provides='C1.txt']
-depends: 'C2.txt', 'C3.txt'
-run:
-    touch C1.txt
+        [C1: provides='C1.txt']
+        depends: 'C2.txt', 'C3.txt'
+        run:
+            touch C1.txt
 
-[C2: provides='C2.txt']
-depends: 'C4.txt'
-run:
-    touch C2.txt
+        [C2: provides='C2.txt']
+        depends: 'C4.txt'
+        run:
+            touch C2.txt
 
-[C3: provides='C3.txt']
-depends: 'C4.txt'
-run:
-    touch C3.txt
+        [C3: provides='C3.txt']
+        depends: 'C4.txt'
+        run:
+            touch C3.txt
 
-[C4: provides='C4.txt']
-run:
-    touch C4.txt
+        [C4: provides='C4.txt']
+        run:
+            touch C4.txt
 
-''')
+        '''))
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow()
         #env.verbosity = 4
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(
-            dag, '''
-strict digraph "" {
-"C4 (C4.txt)";
-"B1 (B1.txt)";
-"C1 (C1.txt)";
-"C2 (C2.txt)";
-"C3 (C3.txt)";
-A_1;
-"B2 (B2.txt)";
-"B3 (B3.txt)";
-A_2;
-"C4 (C4.txt)" -> "C2 (C2.txt)";
-"C4 (C4.txt)" -> "C3 (C3.txt)";
-"B1 (B1.txt)" -> A_1;
-"C1 (C1.txt)" -> "B2 (B2.txt)";
-"C2 (C2.txt)" -> "C1 (C1.txt)";
-"C3 (C3.txt)" -> "C1 (C1.txt)";
-A_1 -> A_2;
-"B2 (B2.txt)" -> "B1 (B1.txt)";
-"B2 (B2.txt)" -> A_2;
-"B3 (B3.txt)" -> "B2 (B2.txt)";
-}
-''')
+            dag, textwrap.dedent('''
+            strict digraph "" {
+            "C4 (C4.txt)";
+            "B1 (B1.txt)";
+            "C1 (C1.txt)";
+            "C2 (C2.txt)";
+            "C3 (C3.txt)";
+            A_1;
+            "B2 (B2.txt)";
+            "B3 (B3.txt)";
+            A_2;
+            "C4 (C4.txt)" -> "C2 (C2.txt)";
+            "C4 (C4.txt)" -> "C3 (C3.txt)";
+            "B1 (B1.txt)" -> A_1;
+            "C1 (C1.txt)" -> "B2 (B2.txt)";
+            "C2 (C2.txt)" -> "C1 (C1.txt)";
+            "C3 (C3.txt)" -> "C1 (C1.txt)";
+            A_1 -> A_2;
+            "B2 (B2.txt)" -> "B1 (B1.txt)";
+            "B2 (B2.txt)" -> A_2;
+            "B3 (B3.txt)" -> "B2 (B2.txt)";
+            }
+            '''))
         Base_Executor(wf).run()
         for f in [
                 'A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt',
@@ -538,52 +531,52 @@ A_1 -> A_2;
         #  A2 <- B2 <- C1 <- C2 <- C4
         #                    C3
         #
-        script = SoS_Script('''
-[A1]
-input: 'B1.txt'
-output: 'A1.txt'
-run:
-    touch A1.txt
+        script = SoS_Script(textwrap.dedent('''
+        [A1]
+        input: 'B1.txt'
+        output: 'A1.txt'
+        run:
+            touch A1.txt
 
-[A2]
-depends:  'B2.txt'
-run:
-    touch A2.txt
+        [A2]
+        depends:  'B2.txt'
+        run:
+            touch A2.txt
 
-[B1: provides='B1.txt']
-depends: 'B2.txt'
-run:
-    touch B1.txt
+        [B1: provides='B1.txt']
+        depends: 'B2.txt'
+        run:
+            touch B1.txt
 
-[B2: provides='B2.txt']
-depends: 'B3.txt', 'C1.txt'
-run:
-    touch B2.txt
+        [B2: provides='B2.txt']
+        depends: 'B3.txt', 'C1.txt'
+        run:
+            touch B2.txt
 
-[B3: provides='B3.txt']
-run:
-    touch B3.txt
+        [B3: provides='B3.txt']
+        run:
+            touch B3.txt
 
-[C1: provides='C1.txt']
-depends: 'C2.txt', 'C3.txt'
-run:
-    touch C1.txt
+        [C1: provides='C1.txt']
+        depends: 'C2.txt', 'C3.txt'
+        run:
+            touch C1.txt
 
-[C2: provides='C2.txt']
-depends: 'C4.txt'
-run:
-    touch C2.txt
+        [C2: provides='C2.txt']
+        depends: 'C4.txt'
+        run:
+            touch C2.txt
 
-[C3: provides='C3.txt']
-depends: 'C4.txt'
-run:
-    touch C3.txt
+        [C3: provides='C3.txt']
+        depends: 'C4.txt'
+        run:
+            touch C3.txt
 
-[C4: provides='C4.txt']
-run:
-    touch C4.txt
+        [C4: provides='C4.txt']
+        run:
+            touch C4.txt
 
-        ''')
+        '''))
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow(use_default=False)
         #
@@ -591,24 +584,24 @@ run:
         dag = Base_Executor(wf).initialize_dag(targets=['B1.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG(
-            dag, '''
-strict digraph "" {
-"B3 (B3.txt)";
-"C4 (C4.txt)";
-"C2 (C2.txt)";
-"C1 (C1.txt)";
-"B1 (B1.txt)";
-"B2 (B2.txt)";
-"C3 (C3.txt)";
-"B3 (B3.txt)" -> "B2 (B2.txt)";
-"C4 (C4.txt)" -> "C3 (C3.txt)";
-"C4 (C4.txt)" -> "C2 (C2.txt)";
-"C2 (C2.txt)" -> "C1 (C1.txt)";
-"C1 (C1.txt)" -> "B2 (B2.txt)";
-"B2 (B2.txt)" -> "B1 (B1.txt)";
-"C3 (C3.txt)" -> "C1 (C1.txt)";
-}
-''')
+            dag, textwrap.dedent('''
+            strict digraph "" {
+            "B3 (B3.txt)";
+            "C4 (C4.txt)";
+            "C2 (C2.txt)";
+            "C1 (C1.txt)";
+            "B1 (B1.txt)";
+            "B2 (B2.txt)";
+            "C3 (C3.txt)";
+            "B3 (B3.txt)" -> "B2 (B2.txt)";
+            "C4 (C4.txt)" -> "C3 (C3.txt)";
+            "C4 (C4.txt)" -> "C2 (C2.txt)";
+            "C2 (C2.txt)" -> "C1 (C1.txt)";
+            "C1 (C1.txt)" -> "B2 (B2.txt)";
+            "B2 (B2.txt)" -> "B1 (B1.txt)";
+            "C3 (C3.txt)" -> "C1 (C1.txt)";
+            }
+            '''))
         Base_Executor(wf).run(targets=['B1.txt'])
         for f in ['A1.txt', 'A2.txt']:
             self.assertFalse(file_target(f).target_exists())
@@ -624,22 +617,22 @@ strict digraph "" {
         dag = Base_Executor(wf).initialize_dag(targets=['B2.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG(
-            dag, '''
-strict digraph "" {
-"C4 (C4.txt)";
-"B2 (B2.txt)";
-"C3 (C3.txt)";
-"B3 (B3.txt)";
-"C2 (C2.txt)";
-"C1 (C1.txt)";
-"C4 (C4.txt)" -> "C2 (C2.txt)";
-"C4 (C4.txt)" -> "C3 (C3.txt)";
-"C3 (C3.txt)" -> "C1 (C1.txt)";
-"B3 (B3.txt)" -> "B2 (B2.txt)";
-"C2 (C2.txt)" -> "C1 (C1.txt)";
-"C1 (C1.txt)" -> "B2 (B2.txt)";
-}
-''')
+            dag, textwrap.dedent('''
+            strict digraph "" {
+            "C4 (C4.txt)";
+            "B2 (B2.txt)";
+            "C3 (C3.txt)";
+            "B3 (B3.txt)";
+            "C2 (C2.txt)";
+            "C1 (C1.txt)";
+            "C4 (C4.txt)" -> "C2 (C2.txt)";
+            "C4 (C4.txt)" -> "C3 (C3.txt)";
+            "C3 (C3.txt)" -> "C1 (C1.txt)";
+            "B3 (B3.txt)" -> "B2 (B2.txt)";
+            "C2 (C2.txt)" -> "C1 (C1.txt)";
+            "C1 (C1.txt)" -> "B2 (B2.txt)";
+            }
+            '''))
         Base_Executor(wf).run(targets=['B2.txt', 'C2.txt'])
         for f in ['A1.txt', 'B1.txt', 'A2.txt']:
             self.assertFalse(file_target(f).target_exists())
@@ -653,14 +646,14 @@ strict digraph "" {
         dag = Base_Executor(wf).initialize_dag(targets=['B3.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG(
-            dag, '''
-strict digraph "" {
-"B3 (B3.txt)";
-"C2 (C2.txt)";
-"C4 (C4.txt)";
-"C4 (C4.txt)" -> "C2 (C2.txt)";
-}
-''')
+            dag, textwrap.dedent('''
+            strict digraph "" {
+            "B3 (B3.txt)";
+            "C2 (C2.txt)";
+            "C4 (C4.txt)";
+            "C4 (C4.txt)" -> "C2 (C2.txt)";
+            }
+            '''))
         Base_Executor(wf).run(targets=['B3.txt', 'C2.txt'])
         for f in ['A1.txt', 'B1.txt', 'A2.txt', 'B2.txt', 'C1.txt', 'C3.txt']:
             self.assertFalse(file_target(f).target_exists())
@@ -682,50 +675,50 @@ strict digraph "" {
         #  A1 <- P <- B2
         #  A2
         #
-        script = SoS_Script('''
-[A_1]
-input: 'B1.txt.p', 'B2.txt.p'
-output: 'A1.txt'
-run:
-    touch A1.txt
+        script = SoS_Script(textwrap.dedent('''
+        [A_1]
+        input: 'B1.txt.p', 'B2.txt.p'
+        output: 'A1.txt'
+        run:
+            touch A1.txt
 
-[A_2]
-output: 'A2.txt'
-run:
-    touch A2.txt
+        [A_2]
+        output: 'A2.txt'
+        run:
+            touch A2.txt
 
-[B1: provides='B1.txt']
-run:
-    touch B1.txt
+        [B1: provides='B1.txt']
+        run:
+            touch B1.txt
 
-[B2: provides='B2.txt']
-run:
-    touch B2.txt
+        [B2: provides='B2.txt']
+        run:
+            touch B2.txt
 
-[P: provides='{filename}.p']
-input: filename
-run: expand=True
-    touch {_output}
-''')
+        [P: provides='{filename}.p']
+        input: filename
+        run: expand=True
+            touch {_output}
+        '''))
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(
-            dag, '''
-strict digraph "" {
-"P (B2.txt.p)";
-"B1 (B1.txt)";
-"B2 (B2.txt)";
-A_2;
-A_1;
-"P (B1.txt.p)";
-"P (B2.txt.p)" -> A_1;
-"B1 (B1.txt)" -> "P (B1.txt.p)";
-"B2 (B2.txt)" -> "P (B2.txt.p)";
-A_1 -> A_2;
-"P (B1.txt.p)" -> A_1;
-}
-''')
+            dag, textwrap.dedent('''
+            strict digraph "" {
+            "P (B2.txt.p)";
+            "B1 (B1.txt)";
+            "B2 (B2.txt)";
+            A_2;
+            A_1;
+            "P (B1.txt.p)";
+            "P (B2.txt.p)" -> A_1;
+            "B1 (B1.txt)" -> "P (B1.txt.p)";
+            "B2 (B2.txt)" -> "P (B2.txt.p)";
+            A_1 -> A_2;
+            "P (B1.txt.p)" -> A_1;
+            }
+            '''))
         Base_Executor(wf).run()
         for f in [
                 'A1.txt', 'A2.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p'
@@ -742,39 +735,39 @@ A_1 -> A_2;
         for f in ['A1.txt', 'B2.txt', 'A2.txt']:
             if file_target(f).exists():
                 file_target(f).unlink()
-        script = SoS_Script('''
-[A_1]
-output: 'A1.txt'
-run:
-    sleep 0
-    touch A1.txt
+        script = SoS_Script(textwrap.dedent('''
+        [A_1]
+        output: 'A1.txt'
+        run:
+            sleep 0
+            touch A1.txt
 
-[A_2]
-input:  'B2.txt'
-output: 'A2.txt'
-run:
-    sleep 0
-    touch A2.txt
+        [A_2]
+        input:  'B2.txt'
+        output: 'A2.txt'
+        run:
+            sleep 0
+            touch A2.txt
 
-[B: provides='B2.txt']
-output: 'B2.txt'
-run:
-    touch B2.txt
+        [B: provides='B2.txt']
+        output: 'B2.txt'
+        run:
+            touch B2.txt
 
 
-''')
+        '''))
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(
-            dag, '''
-strict digraph "" {
-A_1;
-A_2;
-"B (B2.txt)";
-"B (B2.txt)" -> A_2;
-}
-''')
+            dag, textwrap.dedent('''
+            strict digraph "" {
+            A_1;
+            A_2;
+            "B (B2.txt)";
+            "B (B2.txt)" -> A_2;
+            }
+            '''))
         env.max_jobs = 4
         #env.verbosity = 4
         Base_Executor(wf).run()
@@ -793,35 +786,35 @@ A_2;
         #
         # A1 introduces a shared variable ss, A3 depends on ss but not A2
         #
-        script = SoS_Script('''
-[A_1: shared='ss']
-ss = 'A1'
+        script = SoS_Script(textwrap.dedent('''
+        [A_1: shared='ss']
+        ss = 'A1'
 
-[A_2]
-input: None
+        [A_2]
+        input: None
 
-run:
-    sleep 0
+        run:
+            sleep 0
 
-[A_3]
-input: None
-import time
-time.sleep(0)
-with open(f"{ss}.txt", 'w') as tmp:
-    tmp.write('test')
+        [A_3]
+        input: None
+        import time
+        time.sleep(0)
+        with open(f"{ss}.txt", 'w') as tmp:
+            tmp.write('test')
 
-''')
+        '''))
         wf = script.workflow('A')
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(
-            dag, '''
-strict digraph "" {
-A_3;
-A_1;
-A_2;
-A_1 -> A_3;
-}
-''')
+            dag, textwrap.dedent('''
+            strict digraph "" {
+            A_3;
+            A_1;
+            A_2;
+            A_1 -> A_3;
+            }
+            '''))
         env.max_jobs = 3
         Base_Executor(wf).run()
         for f in ['A1.txt']:
@@ -836,51 +829,51 @@ A_1 -> A_3;
         #
         # A1 introduces a shared variable ss, A3 depends on ss but not A2
         #
-        script = SoS_Script('''
-[A_1: shared='p']
-run:
-    touch 'A1.txt'
+        script = SoS_Script(textwrap.dedent('''
+        [A_1: shared='p']
+        run:
+            touch 'A1.txt'
 
-p = 'A1.txt'
+        p = 'A1.txt'
 
-[A_2]
-input: None
+        [A_2]
+        input: None
 
-run:
-    sleep 0
+        run:
+            sleep 0
 
-[A_3]
-input: p
-depends: sos_variable('p')
+        [A_3]
+        input: p
+        depends: sos_variable('p')
 
-run:
-    sleep 0
+        run:
+            sleep 0
 
-[A_4]
-input: p
-depends: sos_variable('p')
-run:
-    sleep 0
+        [A_4]
+        input: p
+        depends: sos_variable('p')
+        run:
+            sleep 0
 
-[A_5]
-input: dynamic(p)
-depends: sos_variable('p')
-''')
+        [A_5]
+        input: dynamic(p)
+        depends: sos_variable('p')
+        '''))
         wf = script.workflow('A')
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(
-            dag, '''
-strict digraph "" {
-A_1;
-A_4;
-A_2;
-A_3;
-A_5;
-A_1 -> A_4;
-A_1 -> A_3;
-A_1 -> A_5;
-}
-''')
+            dag, textwrap.dedent('''
+            strict digraph "" {
+            A_1;
+            A_4;
+            A_2;
+            A_3;
+            A_5;
+            A_1 -> A_4;
+            A_1 -> A_3;
+            A_1 -> A_5;
+            }
+            '''))
         env.max_jobs = 3
         Base_Executor(wf).run()
         for f in ['A1.txt']:
@@ -968,52 +961,52 @@ run: expand=True
         #  A2 <- B2 <- C1 <- C2 <- C4
         #                    C3
         #
-        script = SoS_Script('''
-[A_1]
-input: 'B1.txt'
-output: 'A1.txt'
-run:
-    touch A1.txt
+        script = SoS_Script(textwrap.dedent('''
+        [A_1]
+        input: 'B1.txt'
+        output: 'A1.txt'
+        run:
+            touch A1.txt
 
-[A_2]
-depends:  'B2.txt'
-run:
-    touch A2.txt
+        [A_2]
+        depends:  'B2.txt'
+        run:
+            touch A2.txt
 
-[B1: provides='B1.txt']
-depends: 'B2.txt'
-run:
-    touch B1.txt
+        [B1: provides='B1.txt']
+        depends: 'B2.txt'
+        run:
+            touch B1.txt
 
-[B2: provides='B2.txt']
-depends: 'B3.txt', 'C1.txt'
-run:
-    touch B2.txt
+        [B2: provides='B2.txt']
+        depends: 'B3.txt', 'C1.txt'
+        run:
+            touch B2.txt
 
-[B3: provides='B3.txt']
-run:
-    touch B3.txt
+        [B3: provides='B3.txt']
+        run:
+            touch B3.txt
 
-[C1: provides='C1.txt']
-depends: 'C2.txt', 'C3.txt'
-run:
-    touch C1.txt
+        [C1: provides='C1.txt']
+        depends: 'C2.txt', 'C3.txt'
+        run:
+            touch C1.txt
 
-[C2: provides='C2.txt']
-depends: 'C4.txt'
-run:
-    touch C2.txt
+        [C2: provides='C2.txt']
+        depends: 'C4.txt'
+        run:
+            touch C2.txt
 
-[C3: provides='C3.txt']
-depends: 'C4.txt'
-run:
-    touch C3.txt
+        [C3: provides='C3.txt']
+        depends: 'C4.txt'
+        run:
+            touch C3.txt
 
-[C4: provides='C4.txt']
-run:
-    touch C4.txt
+        [C4: provides='C4.txt']
+        run:
+            touch C4.txt
 
-        ''')
+        '''))
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow(use_default=False)
         #
@@ -1026,24 +1019,24 @@ run:
             }).initialize_dag(targets=['B1.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG(
-            'test_outofdag1.dot', '''
-strict digraph "" {
-"B3 (B3.txt)";
-"C4 (C4.txt)";
-"C2 (C2.txt)";
-"C1 (C1.txt)";
-"B1 (B1.txt)";
-"B2 (B2.txt)";
-"C3 (C3.txt)";
-"B3 (B3.txt)" -> "B2 (B2.txt)";
-"C4 (C4.txt)" -> "C3 (C3.txt)";
-"C4 (C4.txt)" -> "C2 (C2.txt)";
-"C2 (C2.txt)" -> "C1 (C1.txt)";
-"C1 (C1.txt)" -> "B2 (B2.txt)";
-"B2 (B2.txt)" -> "B1 (B1.txt)";
-"C3 (C3.txt)" -> "C1 (C1.txt)";
-}
-''')
+            'test_outofdag1.dot', textwrap.dedent('''
+            strict digraph "" {
+            "B3 (B3.txt)";
+            "C4 (C4.txt)";
+            "C2 (C2.txt)";
+            "C1 (C1.txt)";
+            "B1 (B1.txt)";
+            "B2 (B2.txt)";
+            "C3 (C3.txt)";
+            "B3 (B3.txt)" -> "B2 (B2.txt)";
+            "C4 (C4.txt)" -> "C3 (C3.txt)";
+            "C4 (C4.txt)" -> "C2 (C2.txt)";
+            "C2 (C2.txt)" -> "C1 (C1.txt)";
+            "C1 (C1.txt)" -> "B2 (B2.txt)";
+            "B2 (B2.txt)" -> "B1 (B1.txt)";
+            "C3 (C3.txt)" -> "C1 (C1.txt)";
+            }
+            '''))
         # test 2, we would like to generate two files
         Base_Executor(
             wf,
@@ -1053,22 +1046,22 @@ strict digraph "" {
             }).initialize_dag(targets=['B2.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG(
-            'test_outofdag2.dot', '''
-strict digraph "" {
-"C4 (C4.txt)";
-"B2 (B2.txt)";
-"C3 (C3.txt)";
-"B3 (B3.txt)";
-"C2 (C2.txt)";
-"C1 (C1.txt)";
-"C4 (C4.txt)" -> "C2 (C2.txt)";
-"C4 (C4.txt)" -> "C3 (C3.txt)";
-"C3 (C3.txt)" -> "C1 (C1.txt)";
-"B3 (B3.txt)" -> "B2 (B2.txt)";
-"C2 (C2.txt)" -> "C1 (C1.txt)";
-"C1 (C1.txt)" -> "B2 (B2.txt)";
-}
-''')
+            'test_outofdag2.dot', textwrap.dedent('''
+            strict digraph "" {
+            "C4 (C4.txt)";
+            "B2 (B2.txt)";
+            "C3 (C3.txt)";
+            "B3 (B3.txt)";
+            "C2 (C2.txt)";
+            "C1 (C1.txt)";
+            "C4 (C4.txt)" -> "C2 (C2.txt)";
+            "C4 (C4.txt)" -> "C3 (C3.txt)";
+            "C3 (C3.txt)" -> "C1 (C1.txt)";
+            "B3 (B3.txt)" -> "B2 (B2.txt)";
+            "C2 (C2.txt)" -> "C1 (C1.txt)";
+            "C1 (C1.txt)" -> "B2 (B2.txt)";
+            }
+            '''))
         # test 3, generate two separate trees
         #
         Base_Executor(
@@ -1079,35 +1072,35 @@ strict digraph "" {
             }).initialize_dag(targets=['B3.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG(
-            'test_outofdag3.dot', '''
-strict digraph "" {
-"B3 (B3.txt)";
-"C2 (C2.txt)";
-"C4 (C4.txt)";
-"C4 (C4.txt)" -> "C2 (C2.txt)";
-}
-''')
+            'test_outofdag3.dot', textwrap.dedent('''
+            strict digraph "" {
+            "B3 (B3.txt)";
+            "C2 (C2.txt)";
+            "C4 (C4.txt)";
+            "C4 (C4.txt)" -> "C2 (C2.txt)";
+            }
+            '''))
         for f in ['C2.txt', 'B3.txt', 'C4.txt', 'test.dot', 'test_2.dot']:
             if file_target(f).exists():
                 file_target(f).unlink()
 
     def test_step_with_multiple_output(self):
         '''Test addition of steps with multiple outputs. It should be added only once'''
-        script = SoS_Script('''
-[test_1: provides=['{}.txt'.format(i) for i in range(10)]]
-output: ['{}.txt'.format(i) for i in range(10)]
-run:
-  touch {output}
+        script = SoS_Script(textwrap.dedent('''
+        [test_1: provides=['{}.txt'.format(i) for i in range(10)]]
+        output: ['{}.txt'.format(i) for i in range(10)]
+        run:
+        touch {output}
 
-[test_2: provides=['{}.txt'.format(i) for i in range(10, 20)]]
-depends: ['{}.txt'.format(i) for i in range(10)]
-output: ['{}.txt'.format(i) for i in range(10, 20)]
-run:
-  touch {output}
+        [test_2: provides=['{}.txt'.format(i) for i in range(10, 20)]]
+        depends: ['{}.txt'.format(i) for i in range(10)]
+        output: ['{}.txt'.format(i) for i in range(10, 20)]
+        run:
+        touch {output}
 
-[default]
-depends: ['{}.txt'.format(i) for i in range(10, 20)]
-''')
+        [default]
+        depends: ['{}.txt'.format(i) for i in range(10, 20)]
+        '''))
         wf = script.workflow()
         Base_Executor(wf, config={'output_dag': 'test.dot'}).initialize_dag()
         with open('test.dot') as dot:
@@ -1117,19 +1110,19 @@ depends: ['{}.txt'.format(i) for i in range(10, 20)]
 
     def test_auxiliary_sos_step(self):
         '''Testing the use of sos_step with auxiliary step. #736'''
-        script = SoS_Script('''
-[default]
-depends: '1.txt'
+        script = SoS_Script(textwrap.dedent('''
+        [default]
+        depends: '1.txt'
 
-[A_1]
-print("Hi")
+        [A_1]
+        print("Hi")
 
 
-[C_1: provides = "1.txt"]
-depends: sos_step("A_1")
-run:
-touch 1.txt
-''')
+        [C_1: provides = "1.txt"]
+        depends: sos_step("A_1")
+        run:
+        touch 1.txt
+        '''))
         wf = script.workflow()
         Base_Executor(wf).run()
 
@@ -1138,156 +1131,157 @@ touch 1.txt
         if file_target('a.txt.bak').exists():
             file_target('a.txt.bak').unlink()
         self.touch('a.txt')
-        script = SoS_Script('''
-[10]
-input: 'a.txt'
-output: f"{_input}.bak"
-run: expand=True
-    cp {_input} {_output}
+        script = SoS_Script(textwrap.dedent('''
+        [10]
+        input: 'a.txt'
+        output: f"{_input}.bak"
+        run: expand=True
+            cp {_input} {_output}
 
-[20]
-depends: "a.txt.bak"
-run: expand=True
-    ls {_depends}
-''')
+        [20]
+        depends: "a.txt.bak"
+        run: expand=True
+            ls {_depends}
+        '''))
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertTrue(file_target('a.txt.bak').target_exists())
 
     def test_sos_step_miniworkflow(self):
         '''Test the addition of mini forward workflows introduced by sos_step'''
-        script = SoS_Script('''
-[a_1]
-print(step_name)
+        script = SoS_Script(textwrap.dedent('''
+        [a_1]
+        print(step_name)
 
-[a_2]
-print(step_name)
-[a_20]
-print(step_name)
+        [a_2]
+        print(step_name)
+        [a_20]
+        print(step_name)
 
-[b_1]
-print(step_name)
+        [b_1]
+        print(step_name)
 
-[b_2]
-print(step_name)
+        [b_2]
+        print(step_name)
 
-[b_20]
-depends: sos_step('c')
-print(step_name)
+        [b_20]
+        depends: sos_step('c')
+        print(step_name)
 
-[c_1]
-print(step_name)
+        [c_1]
+        print(step_name)
 
-[c_2]
-print(step_name)
+        [c_2]
+        print(step_name)
 
-[c_20]
-print(step_name)
+        [c_20]
+        print(step_name)
 
 
 
-[default]
-depends: sos_step('a'), sos_step('b')
-''')
+        [default]
+        depends: sos_step('a'), sos_step('b')
+        '''))
         wf = script.workflow()
         Base_Executor(wf, config={'output_dag': 'test.dot'}).run()
         # note that A2 is no longer mentioned
         self.assertDAG(
-            'test.dot', '''
-strict digraph "" {
-default;
-a_1;
-a_2;
-a_20;
-b_1;
-b_2;
-b_20;
-c_1;
-c_2;
-c_20;
-a_1 -> a_2;
-a_2 -> a_20;
-a_20 -> default;
-b_1 -> b_2;
-b_2 -> b_20;
-b_20 -> default;
-c_1 -> c_2;
-c_2 -> c_20;
-c_20 -> b_20;
-}
-''')
+            'test.dot', textwrap.dedent('''
+            strict digraph "" {
+            default;
+            a_1;
+            a_2;
+            a_20;
+            b_1;
+            b_2;
+            b_20;
+            c_1;
+            c_2;
+            c_20;
+            a_1 -> a_2;
+            a_2 -> a_20;
+            a_20 -> default;
+            b_1 -> b_2;
+            b_2 -> b_20;
+            b_20 -> default;
+            c_1 -> c_2;
+            c_2 -> c_20;
+            c_20 -> b_20;
+            }
+            '''))
         file_target('test.dot').unlink()
 
     def test_compound_workflow(self):
         '''Test the DAG of compound workflow'''
-        script = SoS_Script('''
-[A_1]
-[A_2]
-[B]
- ''')
+        script = SoS_Script(textwrap.dedent('''
+        [A_1]
+        [A_2]
+        [B]
+        '''))
         wf = script.workflow('A+B')
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(
-            dag, '''strict digraph "" {
-A_1;
-A_2;
-B;
-A_1 -> A_2;
-A_2 -> B;
-}''')
+            dag, textwrap.dedent('''strict digraph "" {
+            A_1;
+            A_2;
+            B;
+            A_1 -> A_2;
+            A_2 -> B;
+            }'''))
         # with empty depends
-        script = SoS_Script('''
-[A_1]
-[A_2]
-[B]
-depends:
- ''')
+        script = SoS_Script(textwrap.dedent('''
+        [A_1]
+        [A_2]
+        [B]
+        depends:
+        '''))
         wf = script.workflow('A+B')
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(
-            dag, '''strict digraph "" {
-A_1;
-A_2;
-B;
-A_1 -> A_2;
-A_2 -> B;
-}''')
+            dag, textwrap.dedent('''strict digraph "" {
+            A_1;
+            A_2;
+            B;
+            A_1 -> A_2;
+            A_2 -> B;
+            }'''))
         if os.path.isfile('a.txt'):
             os.remove('a.txt')
-        script = SoS_Script('''
-[A_1]
-[A_2]
-[C]
-output: 'a.txt'
-_output.touch()
+        script = SoS_Script(textwrap.dedent('''
+        [A_1]
+        [A_2]
+        [C]
+        output: 'a.txt'
+        _output.touch()
 
-[B]
-depends: 'a.txt'
- ''')
+        [B]
+        depends: 'a.txt'
+        '''))
         # with more depends
         wf = script.workflow('A+B')
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(
-            dag, '''strict digraph "" {
-A_1;
-A_2;
-B;
-"C (a.txt)";
-A_1 -> A_2;
-A_2 -> B;
-"C (a.txt)" -> B;
-}''')
+            dag, textwrap.dedent('''strict digraph "" {
+            A_1;
+            A_2;
+            B;
+            "C (a.txt)";
+            A_1 -> A_2;
+            A_2 -> B;
+            "C (a.txt)" -> B;
+            }'''))
 
     def test_provides_sos_variable(self):
         '''Test provides non-filename targets #1341'''
-        execute_workflow('''
-[count: provides=sos_variable('numNotebooks')]
-numNotebooks = 1
+        execute_workflow(
+        '''
+        [count: provides=sos_variable('numNotebooks')]
+        numNotebooks = 1
 
-[default]
-depends: sos_variable('numNotebooks')
-print(f"There are {numNotebooks} notebooks in this directory")
-        ''')
+        [default]
+        depends: sos_variable('numNotebooks')
+        print(f"There are {numNotebooks} notebooks in this directory")
+                ''')
 
 
 def test_multi_named_output(clear_now_and_after):
