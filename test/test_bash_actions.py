@@ -13,7 +13,7 @@ from sos.targets import file_target
 
 def test_bash():
     '''Test action bash'''
-    script=(r'''
+    script = execute_workflow(r'''
         [0]
         bash:
             echo 'Echo'
@@ -23,7 +23,7 @@ def test_bash():
 
 def test_sh():
     '''Test action run'''
-    script=(r'''
+    script = execute_workflow(r'''
         [0]
         sh:
             echo 'Echo'
