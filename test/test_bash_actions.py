@@ -8,7 +8,6 @@ import shutil
 import pytest
 
 from sos import execute_workflow
-from sos.targets import file_target
 
 
 def test_bash():
@@ -19,14 +18,15 @@ def test_bash():
         echo 'Echo'
         ''')
 
+
 def test_bash_1():
-    script = (r'''
-        [0]
-        bash:
-        echo 'Echo
-        ''')
     with pytest.raises(Exception):
-        execute_workflow(script)
+        execute_workflow(r'''
+            [0]
+            bash:
+            echo 'Echo
+            ''')
+
 
 def test_sh():
     '''Test action run'''
@@ -36,19 +36,19 @@ def test_sh():
         echo 'Echo'
         ''')
 
-def test_sh_1():
-    script = (r'''
-        [0]
-        sh:
-        echo 'Echo
-        ''')
-    with pytest.raises(Exception):
-        execute_workflow(script)
 
+def test_sh_1():
+    with pytest.raises(Exception):
+        execute_workflow(r'''
+            [0]
+            sh:
+            echo 'Echo
+            ''')
+
+
+@pytest.mark.skipif(not shutil.which('csh'), reason="Needs csh")
 def test_csh():
     '''Test action csh'''
-    if not shutil.which('csh'):
-        return
     execute_workflow(r'''
         [0]
         csh:
@@ -57,10 +57,10 @@ def test_csh():
             end
     ''')
 
+
+@pytest.mark.skipif(not shutil.which('tcsh'), reason="Needs tcsh")
 def test_tcsh():
     '''Test action tcsh'''
-    if not shutil.which('tcsh'):
-        return
     execute_workflow(r'''
         [0]
         tcsh:
@@ -69,20 +69,21 @@ def test_tcsh():
             end
     ''')
 
+
+@pytest.mark.skipif(not shutil.which('zsh'), reason="Needs zsh")
 def test_zsh():
     '''Test action zsh'''
-    if not shutil.which('zsh'):
-        return
     execute_workflow(r'''
         [0]
         zsh:
             echo "Hello World!", $SHELL
     ''')
 
-def test_args():
+
+def test_args(clear_now_and_after):
     '''Test args option of scripts'''
-    if os.path.isfile('a.txt'):
-        file_target('a.txt').unlink()
+    clear_now_and_after('a.txt')
+
     execute_workflow(r'''
         [0]
         sh: args='-n {filename:q}'
