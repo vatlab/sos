@@ -13,21 +13,35 @@ from sos.targets import file_target
 
 def test_bash():
     '''Test action bash'''
-    script = execute_workflow(r'''
+    execute_workflow(r'''
         [0]
         bash:
-            echo 'Echo'
-    ''')
+        echo 'Echo'
+        ''')
+
+def test_bash_1():
+    script = (r'''
+        [0]
+        bash:
+        echo 'Echo
+        ''')
     with pytest.raises(Exception):
         execute_workflow(script)
 
 def test_sh():
     '''Test action run'''
-    script = execute_workflow(r'''
+    execute_workflow(r'''
         [0]
         sh:
-            echo 'Echo'
-    ''')
+        echo 'Echo'
+        ''')
+
+def test_sh_1():
+    script = (r'''
+        [0]
+        sh:
+        echo 'Echo
+        ''')
     with pytest.raises(Exception):
         execute_workflow(script)
 
