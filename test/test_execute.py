@@ -931,10 +931,10 @@ ofiles = []
 output: dynamic(ofiles)
 
 for i in range(4):
-ff = 'temp/something{}.html'.format(i)
-ofiles.append(ff)
-with open(ff, 'w') as h:
-    h.write('a')
+    ff = 'temp/something{}.html'.format(i)
+    ofiles.append(ff)
+    with open(ff, 'w') as h:
+        h.write('a')
 ''')
     wf = script.workflow()
     Base_Executor(wf).run()
