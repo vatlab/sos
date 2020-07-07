@@ -49,72 +49,72 @@ a =1
         'sos --version', stderr=subprocess.STDOUT, shell=True).decode()
     assert result.startswith('sos {}'.format(__version__))
     assert subprocess.call(
-            'sos',
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            shell=True) == 0
+        'sos', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+        shell=True) == 0
     assert subprocess.call(
-            'sos -h',
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            shell=True) == 0
+        'sos -h',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
     assert subprocess.call(
-            'sos run -h',
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            shell=True) == 0
+        'sos run -h',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
     #
     assert subprocess.call(
-            'sos run test_cl -w -W',
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            shell=True) == 1
+        'sos run test_cl -w -W',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 1
     assert subprocess.call(
-            'sos-runner -h',
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            shell=True) == 0
+        'sos-runner -h',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
     assert subprocess.call(
-            'sos dryrun -h',
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            shell=True) == 0
+        'sos dryrun -h',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
     assert subprocess.call(
-            'sos dryrun test_cl',
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            shell=True) == 0
+        'sos dryrun test_cl',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
     assert subprocess.call(
-            'sos dryrun test_cl.sos',
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            shell=True) == 0
+        'sos dryrun test_cl.sos',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
     assert subprocess.call(
-            'sos dryrun test_cl L',
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            shell=True) == 0
+        'sos dryrun test_cl L',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
     assert subprocess.call(
-            'sos-runner test_cl L',
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            shell=True) == 0
+        'sos-runner test_cl L',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
     # script help
     assert subprocess.call(
-            'sos-runner test_cl -h',
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            shell=True) == 0
+        'sos-runner test_cl -h',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
     assert subprocess.call(
-            'sos convert -h',
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            shell=True) == 0
+        'sos convert -h',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
+
 
 def test_func_def(temp_factory):
     '''Test defintion of function that can be used by other steps'''
     temp_factory('aa.txt', 'ab.txt')
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         def myfunc(a):
             sum(range(5))
             return ['a' + x for x in a]
@@ -129,7 +129,8 @@ def test_func_def(temp_factory):
 def test_input(temp_factory):
     '''Test input specification'''
     temp_factory('test_input.txt', 'test_input1.txt')
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared={'res':'step_output'}]
         input: '*.txt'
         output: [x + '.res' for x in _input]
@@ -137,6 +138,7 @@ def test_input(temp_factory):
         options={'run_mode': 'dryrun'})
     assert file_target('test_input.txt.res').resolve() in env.sos_dict['res']
     assert file_target('test_input1.txt.res').resolve() in env.sos_dict['res']
+
 
 def test_for_each(temp_factory):
     '''Test for_each option of input'''
@@ -162,7 +164,8 @@ def test_for_each(temp_factory):
     assert env.sos_dict['all_loop'] == "1 1 1 2 2 2 "
     #
     # test same-level for loop and parameter with nested list
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared=['processed']]
         files = ['a.txt', 'b.txt']
         par = [(1, 2), (1, 3), (2, 3)]
@@ -175,12 +178,12 @@ def test_for_each(temp_factory):
         processed.append((_par, _res))
         """,
         options={'run_mode': 'dryrun'})
-    assert env.sos_dict['processed'] == [((1, 2), 'p1.txt'),
-                                        ((1, 3), 'p2.txt'),
-                                        ((2, 3), 'p3.txt')]
+    assert env.sos_dict['processed'] == [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'),
+                                         ((2, 3), 'p3.txt')]
     #
     # test for each for pandas dataframe
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared={'res':'step_output'}]
         import pandas as pd
         data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
@@ -234,7 +237,8 @@ def test_for_each(temp_factory):
     assert env.sos_dict['all_loop'] == "300 50 300 200 300 100 100 50 "
     #
     # test same-level for loop and parameter with nested list
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared=['processed']]
         files = ['a.txt', 'b.txt']
         processed = []
@@ -245,12 +249,12 @@ def test_for_each(temp_factory):
         processed.append((par, res))
         """,
         options={'run_mode': 'dryrun'})
-    assert env.sos_dict['processed'] == [((1, 2), 'p1.txt'),
-                                        ((1, 3), 'p2.txt'),
-                                        ((2, 3), 'p3.txt')]
+    assert env.sos_dict['processed'] == [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'),
+                                         ((2, 3), 'p3.txt')]
     #
     # test for each for pandas dataframe
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared={'res':'step_output'}]
         import pandas as pd
         input: for_each={'data': pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])}
@@ -260,7 +264,8 @@ def test_for_each(temp_factory):
     assert env.sos_dict['res'] == ['1_2_Hello.txt', '2_4_World.txt']
     #
     # support for pands Series and Index types
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared={'res':'step_output'}]
         import pandas as pd
         data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
@@ -270,7 +275,8 @@ def test_for_each(temp_factory):
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['res'] == ['a_1.txt', 'a_2.txt']
     #
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared={'res':'step_output'}]
         import pandas as pd
         data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
@@ -282,7 +288,8 @@ def test_for_each(temp_factory):
     assert env.sos_dict['res'] == ['Hello.txt', 'World.txt']
 
     # test for each of Series
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared={'res':'step_output'}]
         import pandas as pd
         data = pd.DataFrame([(0, 1, 'Ha'), (1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
@@ -296,7 +303,8 @@ def test_for_each(temp_factory):
     assert env.sos_dict['res'] == ['2.txt', '4.txt']
 
     # test iterable
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared={'res':'step_output'}]
         import pandas as pd
         data = pd.DataFrame([(0, 1, 'Ha'), (1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
@@ -308,6 +316,7 @@ def test_for_each(temp_factory):
         """,
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['res'] == ['2.txt', '4.txt']
+
 
 def test_for_each_as_target_property(temp_factory):
     '''Test for_each option of input'''
@@ -333,7 +342,8 @@ def test_for_each_as_target_property(temp_factory):
     assert env.sos_dict['all_loop'] == "1 1 1 2 2 2 "
     #
     # test same-level for loop and parameter with nested list
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared=['processed']]
         files = ['a.txt', 'b.txt']
         par = [(1, 2), (1, 3), (2, 3)]
@@ -347,12 +357,12 @@ def test_for_each_as_target_property(temp_factory):
         processed.append((_input._par, _input._res))
         """,
         options={'run_mode': 'dryrun'})
-    assert env.sos_dict['processed'] == [((1, 2), 'p1.txt'),
-                                        ((1, 3), 'p2.txt'),
-                                        ((2, 3), 'p3.txt')]
+    assert env.sos_dict['processed'] == [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'),
+                                         ((2, 3), 'p3.txt')]
     #
     # test for each for pandas dataframe
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared={'res':'step_output'}]
         import pandas as pd
         data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
@@ -407,7 +417,8 @@ def test_for_each_as_target_property(temp_factory):
     assert env.sos_dict['all_loop'] == "300 50 300 200 300 100 100 50 "
     #
     # test same-level for loop and parameter with nested list
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared=['processed']]
         files = ['a.txt', 'b.txt']
         processed = []
@@ -418,12 +429,12 @@ def test_for_each_as_target_property(temp_factory):
         processed.append((_input.par, _input.res))
         """,
         options={'run_mode': 'dryrun'})
-    assert env.sos_dict['processed'] == [((1, 2), 'p1.txt'),
-                                        ((1, 3), 'p2.txt'),
-                                        ((2, 3), 'p3.txt')]
+    assert env.sos_dict['processed'] == [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'),
+                                         ((2, 3), 'p3.txt')]
     #
     # test for each for pandas dataframe
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared={'res':'step_output'}]
         import pandas as pd
         input: for_each={'data': pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])}
@@ -433,7 +444,8 @@ def test_for_each_as_target_property(temp_factory):
     assert env.sos_dict['res'] == ['1_2_Hello.txt', '2_4_World.txt']
     #
     # support for pands Series and Index types
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared={'res':'step_output'}]
         import pandas as pd
         data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
@@ -443,7 +455,8 @@ def test_for_each_as_target_property(temp_factory):
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['res'] == ['a_1.txt', 'a_2.txt']
     #
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared={'res':'step_output'}]
         import pandas as pd
         data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
@@ -455,7 +468,8 @@ def test_for_each_as_target_property(temp_factory):
     assert env.sos_dict['res'] == ['Hello.txt', 'World.txt']
 
     # test for each of Series
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared={'res':'step_output'}]
         import pandas as pd
         data = pd.DataFrame([(0, 1, 'Ha'), (1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
@@ -469,7 +483,8 @@ def test_for_each_as_target_property(temp_factory):
     assert env.sos_dict['res'] == ['2.txt', '4.txt']
 
     # test iterable
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared={'res':'step_output'}]
         import pandas as pd
         data = pd.DataFrame([(0, 1, 'Ha'), (1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
@@ -482,12 +497,14 @@ def test_for_each_as_target_property(temp_factory):
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['res'] == ['2.txt', '4.txt']
 
+
 def test_group_by_with_no_input():
     '''Test group_by with no input file'''
     execute_workflow(r'''
         [0]
         input: group_by=2
         ''')
+
 
 def test_paired_with(temp_factory, clear_now_and_after):
     '''Test option paired_with '''
@@ -546,6 +563,7 @@ def test_paired_with(temp_factory, clear_now_and_after):
     for ofile in ['1.txt', '2.txt']:
         assert file_target(ofile).target_exists('target')
 
+
 def test_paired_with_as_target_property(temp_factory):
     '''Test option paired_with with values accessed by individual target '''
     temp_factory('a.txt', 'b.txt')
@@ -597,6 +615,7 @@ def test_paired_with_as_target_property(temp_factory):
         assert file_target(ofile).target_exists('target')
         file_target(ofile).unlink()
 
+
 def test_group_with(temp_factory):
     '''Test option group_with '''
     temp_factory('a.txt', 'b.txt')
@@ -647,6 +666,7 @@ def test_group_with(temp_factory):
     for ofile in ['a.txt1']:
         assert file_target(ofile).target_exists('target')
         file_target(ofile).unlink()
+
 
 def test_output_group_with(temp_factory):
     '''Test option group_with in output statement'''
@@ -710,6 +730,7 @@ def test_output_group_with(temp_factory):
         assert file_target(ofile).target_exists('target')
         file_target(ofile).unlink()
 
+
 def test_group_with_as_target_property(temp_factory):
     '''Test option group_with '''
     temp_factory('a.txt', 'b.txt')
@@ -761,11 +782,13 @@ def test_group_with_as_target_property(temp_factory):
         assert file_target(ofile).target_exists('target')
         file_target(ofile).unlink()
 
+
 def test_input_pattern(temp_factory):
     '''Test option pattern of step input '''
     #env.verbosity = 4
     temp_factory('a-20.txt', 'b-10.txt')
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared=['base', 'name', 'par', '_output']]
 
         files = ['a-20.txt', 'b-10.txt']
@@ -779,11 +802,13 @@ def test_input_pattern(temp_factory):
     assert env.sos_dict['par'] == ["20", '10']
     assert env.sos_dict['_output'] == ["a-20-a-20.txt", 'b-10-b-10.txt']
 
+
 def test_input_pattern_as_target_property(temp_factory):
     '''Test option pattern of step input '''
     #env.verbosity = 4
     temp_factory('a-20.txt', 'b-10.txt')
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared=['_output']]
 
         files = ['a-20.txt', 'b-10.txt']
@@ -794,11 +819,13 @@ def test_input_pattern_as_target_property(temp_factory):
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['_output'] == ["a-20-a-20.txt", 'b-10-b-10.txt']
 
+
 def test_output_pattern(temp_factory):
     '''Test option pattern of step output'''
     #env.verbosity = 4
     temp_factory('a-20.txt', 'b-10.txt')
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared=['base', 'name', 'par', '_output']]
 
         files = ['a-20.txt', 'b-10.txt']
@@ -810,12 +837,16 @@ def test_output_pattern(temp_factory):
     assert env.sos_dict['base'] == ["a-20", 'b-10']
     assert env.sos_dict['name'] == ["a", 'b']
     assert env.sos_dict['par'] == ["20", '10']
-    assert env.sos_dict['_output'] == ['a-20-a-20.txt', 'b-10-b-10.txt', '20.txt', '10.txt']
+    assert env.sos_dict['_output'] == [
+        'a-20-a-20.txt', 'b-10-b-10.txt', '20.txt', '10.txt'
+    ]
+
 
 def test_output_from_input(temp_factory):
     '''Test deriving output files from input files'''
     temp_factory('a.txt', 'b.txt')
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [0: shared={'counter':'counter', 'step':'step_output'}]
         files = ['a.txt', 'b.txt']
         counter = 0
@@ -830,11 +861,13 @@ def test_output_from_input(temp_factory):
     assert env.sos_dict['counter'] == 2
     assert env.sos_dict['step'] == ['a.txt.bak', 'b.txt.bak']
 
+
 def test_depends_from_input(temp_factory, clear_now_and_after):
     '''Test deriving dependent files from input files'''
     temp_factory('a.txt', 'b.txt')
     clear_now_and_after('a.txt.bak', 'b.txt.bak')
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [bak: provides='{file}.bak']
         _output.touch()
 
@@ -851,6 +884,7 @@ def test_depends_from_input(temp_factory, clear_now_and_after):
     assert env.sos_dict['step'] == ['a.txt.bak', 'b.txt.bak']
     assert env.sos_dict['step'].groups == [['a.txt.bak'], ['b.txt.bak']]
 
+
 def test_local_namespace(temp_factory):
     '''Test if steps are well separated.'''
     # interctive mode behave differently
@@ -865,9 +899,10 @@ def test_local_namespace(temp_factory):
 
     """)
     with pytest.raises(Exception):
-        execute_workflow(script)     
+        execute_workflow(script)
     # however, alias should be sent back
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [1: shared={'shared': 'step_output'}]
         input: 'a.txt'
         output: 'b.txt'
@@ -883,7 +918,8 @@ def test_local_namespace(temp_factory):
     assert env.sos_dict['tt'] == ['b.txt.res']
     #
     # this include other variables set in the step
-    execute_workflow(r"""
+    execute_workflow(
+        r"""
         [1: shared={'shared':'c', 'd':'d'}]
         input: 'a.txt'
         output: 'b.txt'
@@ -906,10 +942,11 @@ def test_local_namespace(temp_factory):
     assert env.sos_dict['shared'] == 'c.txt'
     assert env.sos_dict['d'] == 2
 
+
 def test_dynamic_output(temp_factory):
     '''Testing dynamic output'''
     #
-    temp_factory(dir = 'temp')
+    temp_factory(dir='temp')
     #
     execute_workflow('''
         [10: shared={'test':'step_output'}]
@@ -922,12 +959,15 @@ def test_dynamic_output(temp_factory):
             with open(ff, 'w') as h:
                 h.write('a')
         ''')
-    assert env.sos_dict['test'] == ['temp/something{}.html'.format(x) for x in range(4)]
+    assert env.sos_dict['test'] == [
+        'temp/something{}.html'.format(x) for x in range(4)
+    ]
+
 
 def test_dynamic_input(temp_factory):
     '''Testing dynamic input'''
     #
-    temp_factory(dir = 'temp')
+    temp_factory(dir='temp')
     #
     script = SoS_Script('''
 import os
@@ -946,21 +986,20 @@ run: expand=True
 ''')
     wf = script.workflow()
     Base_Executor(wf).run()
-    assert env.sos_dict['test'], sos_targets([
-            os.path.join('temp', 'test_{}.txt.bak'.format(x))
-            for x in range(5)
-        ]) == f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}"
+    assert env.sos_dict['test'], sos_targets(
+        [os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]
+    ) == f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}"
     # this time we use th existing signature
     Base_Executor(wf).run()
-    assert env.sos_dict['test'], sos_targets([
-            os.path.join('temp', 'test_{}.txt.bak'.format(x))
-            for x in range(5)
-        ]) == f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}"
+    assert env.sos_dict['test'], sos_targets(
+        [os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]
+    ) == f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}"
+
 
 def test_use_of_runmode(temp_factory):
     '''Test the use of run_mode variable in SoS script'''
     #
-    temp_factory(dir = 'temp')
+    temp_factory(dir='temp')
     env.config['sig_mode'] = 'ignore'
     execute_workflow('''
         [1: shared={'res': '_output'}]
@@ -974,19 +1013,22 @@ def test_use_of_runmode(temp_factory):
     files = glob.glob(os.path.join('temp', '*.txt'))
     assert len(files) == 3
 
+
 def test_action_before_input():
     '''Testing the execution of actions before input directive
     (variables such as _index should be made available). '''
-    execute_workflow('''
+    execute_workflow(
+        '''
         [0]
         run('echo "A"')
         input:
         ''',
         options={'run_mode': 'dryrun'})
 
+
 def test_duplicate_io_files(temp_factory):
     '''Test interpretation of duplicate input/output/depends'''
-    temp_factory(dir = 'temp')
+    temp_factory(dir='temp')
     # Test duplicate input
     os.system('touch temp/1.txt')
     execute_workflow('''
@@ -1005,7 +1047,7 @@ def test_duplicate_io_files(temp_factory):
     touch temp/{len(_output)}.output
     ''')
     with pytest.raises(Exception):
-        execute_workflow(script)     
+        execute_workflow(script)
     # Test duplicate depends
     script = textwrap.dedent('''
     [1]
@@ -1017,11 +1059,12 @@ def test_duplicate_io_files(temp_factory):
     touch temp/{len(_depends)}.depends
     ''')
     with pytest.raises(Exception):
-        execute_workflow(script)    
+        execute_workflow(script)
+
 
 def test_output_in_loop(temp_factory):
     '''Test behavior of {_output} when used in loop'''
-    temp_factory(dir = 'temp')
+    temp_factory(dir='temp')
     env.config['sig_mode'] = 'ignore'
     execute_workflow('''
         [default]
@@ -1039,7 +1082,7 @@ def test_output_in_loop(temp_factory):
     with open('temp/out.log') as out:
         assert len(out.read().split()) == 5
     #
-    temp_factory(dir = 'temp')
+    temp_factory(dir='temp')
     env.config['sig_mode'] = 'ignore'
     execute_workflow('''
     [default]
@@ -1055,6 +1098,7 @@ def test_output_in_loop(temp_factory):
     ''')
     with open('temp/out.log') as out:
         assert len(out.read().split()) == 5
+
 
 @multi_attempts
 def test_execution_lock():
@@ -1081,6 +1125,7 @@ txt.write('A2\n')
     # two processes execute A_1 and A_2 separately, usually
     # takes less than 5 seconds
     file_target('lock.sos').unlink()
+
 
 def test_removed_intermediate_files(clear_now_and_after):
     '''Test behavior of workflow with removed internediate files'''
@@ -1117,6 +1162,7 @@ cat {_input} > {_output}
     file_target('a.txt').unlink()
     file_target('aa.txt').unlink()
 
+
 def test_stopped_output():
     '''test output with stopped step'''
     for file in ["{}.txt".format(a) for a in range(10)]:
@@ -1141,6 +1187,7 @@ def test_stopped_output():
             assert file_target("{}.txt".format(idx)).target_exists()
             file_target(f"{idx}.txt").unlink()
 
+
 def test_allow_error(clear_now_and_after):
     '''Test option allow error'''
     clear_now_and_after('a.txt')
@@ -1154,6 +1201,7 @@ def test_allow_error(clear_now_and_after):
         ''')
     assert file_target('a.txt').target_exists()
 
+
 def test_concurrent_worker(clear_now_and_after):
     '''Test the starting of multiple workers #493 '''
     with open('test_script.sos', 'w') as script:
@@ -1166,6 +1214,7 @@ input: for_each={'i': range(2)}
 ''')
     subprocess.call('sos run test_script', shell=True)
     clear_now_and_after('test_script.sos')
+
 
 def test_depends_caused_dependency():
     # test for #674
@@ -1195,6 +1244,7 @@ def test_depends_caused_dependency():
         if file_target(tfile).exists():
             file_target(tfile).unlink()
 
+
 def test_concurrent_input_option(temp_factory):
     '''Test input option'''
     temp_factory('1.txt', '2.txt')
@@ -1206,6 +1256,7 @@ def test_concurrent_input_option(temp_factory):
         echo {_n} {_input}
         ''')
 
+
 def test_non_existent_dependent_target():
     '''Test non existent dependent targets'''
     with pytest.raises(Exception):
@@ -1214,14 +1265,15 @@ def test_non_existent_dependent_target():
 
             [2]
             depends: sos_step('wrong')
-            """) 
+            """)
     with pytest.raises(Exception):
         execute_workflow(r"""
             [1]
 
             [2]
             depends: 'non-existent.txt'
-            """)   
+            """)
+
 
 def test_output_report(clear_now_and_after):
     '''Test generation of report'''
@@ -1249,35 +1301,39 @@ cat {_input} > {_output}
     Base_Executor(wf).run()
     assert os.path.isfile('report.html')
 
-@pytest.mark.skipif(sys.platform == 'win32', reason='Graphviz not available under windows')
+
+@pytest.mark.skipif(
+    sys.platform == 'win32', reason='Graphviz not available under windows')
 def test_output_report_with_dag(clear_now_and_after):
     # test dag
     clear_now_and_after('report.html')
-    script = SoS_Script(r"""
-[1: shared = {'dfile':'_output'}]
-output: '1.txt'
-run:
-    echo 1 > 1.txt
+    execute_workflow(
+        r"""
+        [1: shared = {'dfile':'_output'}]
+        output: '1.txt'
+        run:
+            echo 1 > 1.txt
 
-[2: shared = {'ifile':'_output'}]
-output: '2.txt'
-run: expand=True
-    echo {_input} > 2.txt
+        [2: shared = {'ifile':'_output'}]
+        output: '2.txt'
+        run: expand=True
+            echo {_input} > 2.txt
 
-[3]
-depends: ifile, sos_variable('ifile'), sos_variable('dfile')
-input: dfile
-output: '4.txt'
-run: expand=True
-    cat {_input} > {_output}
-""")
-    env.config['output_report'] = 'report.html'
-    env.config['output_dag'] = 'report.dag'
-    wf = script.workflow()
-    Base_Executor(wf).run()
+        [3]
+        depends: ifile, sos_variable('ifile'), sos_variable('dfile')
+        input: dfile
+        output: '4.txt'
+        run: expand=True
+            cat {_input} > {_output}
+        """,
+        options={
+            'output_report': 'report.html',
+            'output_dag': 'report.dag'
+        })
     with open('report.html') as rep:
         content = rep.read()
     assert 'Execution DAG' in content
+
 
 def test_sos_step_with_output():
     '''Test checking output of sos_step #981'''
@@ -1290,6 +1346,7 @@ def test_sos_step_with_output():
         [default]
         depends: sos_step('step')
         ''')
+
 
 def test_multi_sos_step():
     '''Test matching 'a_1', 'a_2' etc with sos_step('a')'''
@@ -1315,6 +1372,7 @@ def test_multi_sos_step():
     assert os.path.isfile('a_2')
     with open('a_1') as a1, open('a_2') as a2:
         assert a1.read() == a2.read()
+
 
 def test_depends_auxi_and_forward():
     '''Test depends on auxiliary, which then depends on a forward-workflow #983'''
@@ -1344,6 +1402,7 @@ def test_depends_auxi_and_forward():
     with open('a_1') as a1, open('a_2') as a2:
         assert a1.read() == a2.read()
 
+
 def test_depends_auxi_and_single_step_forward():
     '''Test depends on auxiliary, which then depends on a single-step forward-workflow'''
     for f in ('a_1', 'a_2'):
@@ -1370,11 +1429,13 @@ def test_depends_auxi_and_single_step_forward():
     with open('a_1') as a1, open('a_2') as a2:
         assert a1.read() == a2.read()
 
+
 def test_dryrun_placeholder():
     '''Test the creation and removal of placeholder files in dryrun mode'''
     if file_target('1.txt').exists():
         file_target('1.txt').unlink()
-    execute_workflow('''
+    execute_workflow(
+        '''
         a = '1.txt'
 
         [out: provides=a]
@@ -1389,10 +1450,12 @@ def test_dryrun_placeholder():
     # but the file would be removed afterwards
     assert not os.path.isfile('1.txt')
 
+
 def test_dryrun_in_sos_run(temp_factory):
     '''Test dryrun mode with sos_run #1007'''
     temp_factory('1.txt')
-    script = SoS_Script(textwrap.dedent('''
+    script = SoS_Script(
+        textwrap.dedent('''
         [remove]
         run:
         rm 1.txt
@@ -1405,6 +1468,7 @@ def test_dryrun_in_sos_run(temp_factory):
     assert os.path.isfile('1.txt')
     Base_Executor(wf).run(mode='run')
     assert not os.path.isfile('1.txt')
+
 
 def test_concurrent_with_dynamic_output(clear_now_and_after):
     '''Test concurrent steps with dynamic output'''
@@ -1420,6 +1484,7 @@ def test_concurrent_with_dynamic_output(clear_now_and_after):
     douts = glob.glob('*.dout')
     assert len(douts) == 3
 
+
 def test_group_by_with_emtpy_input():
     ''' Test option group by with empty input #1044'''
     execute_workflow('''
@@ -1427,6 +1492,7 @@ def test_group_by_with_emtpy_input():
         input: group_by=1
         print(_input)
         ''')
+
 
 def test_removal_of_output_from_failed_step(clear_now_and_after):
     '''Test the removal of output files if a step fails #1055'''
@@ -1443,13 +1509,14 @@ path('result.csv').touch()
 ''')
     wf = script.workflow()
     with pytest.raises(Exception):
-        Base_Executor(wf).run()     
+        Base_Executor(wf).run()
     # rerun should still raise
     with pytest.raises(Exception):
-        Base_Executor(wf).run()    
+        Base_Executor(wf).run()
 
     assert not os.path.isfile('failed.csv')
     assert not os.path.isfile('result.csv')
+
 
 def test_depends_to_concurrent_substep():
     '''Testing forward style example'''
@@ -1467,6 +1534,7 @@ def test_depends_to_concurrent_substep():
         input: for_each={'i': range(2)}, group_by=1, concurrent=True
         print(1)
         ''')
+
 
 def test_pass_of_target_source():
     '''Test passing of source information from step_output'''
@@ -1500,6 +1568,7 @@ def test_pass_of_target_source():
         input: 'c.txt'
         assert step_input.labels == ['2']
         ''')
+
 
 def test_rerun_with_zap():
     execute_workflow('''
@@ -1536,6 +1605,7 @@ def test_rerun_with_zap():
     for i in range(3):
         os.remove(f'zapped_example_{i}.txt.zapped')
 
+
 def test_return_output_in_step_output():
     '''Testing the return of _output as groups of step_output'''
     execute_workflow('''\
@@ -1568,6 +1638,7 @@ def test_return_output_in_step_output():
         assert(step_input.groups[4] == ['a_4.txt', 'b_4.txt'])
         assert(step_input.groups[4].labels == ['a', 'b'])
         ''')
+
 
 def test_output_from():
     '''Testing output_from input function'''
@@ -1640,6 +1711,7 @@ assert(step_input.labels == ['K']*8)
         wf = script.workflow(wf)
         Base_Executor(wf).run()
 
+
 def test_named_output1336():
     'Test issue 1336'
     execute_workflow('''
@@ -1656,6 +1728,7 @@ def test_named_output1336():
         output: 'B.txt'
         _output.touch()
         ''')
+
 
 def test_set_variables_to_output():
     '''Test assigning variables to _output'''
@@ -1688,6 +1761,7 @@ def test_set_variables_to_output():
         assert(_input[0].tvar == _index)
         ''')
 
+
 def test_step_id_vars():
     '''Test variables in a step'''
     execute_workflow('''
@@ -1709,63 +1783,66 @@ def test_step_id_vars():
         sos_run('nested')
         ''')
 
+
 def test_reexecution_of_dynamic_depends(clear_now_and_after):
     '''Testing the rerun of steps to verify dependency'''
     clear_now_and_after('a.bam', 'a.bam.bai')
-    script = textwrap.dedent('''
-    [BAI: provides='{filename}.bam.bai']
-    _output.touch()
+    script = '''
+        [BAI: provides='{filename}.bam.bai']
+        _output.touch()
 
-    [BAM]
-    output: 'a.bam'
-    _output.touch()
+        [BAM]
+        output: 'a.bam'
+        _output.touch()
 
-    [default]
-    input: 'a.bam'
-    depends: _input.with_suffix('.bam.bai')
-    ''')
+        [default]
+        input: 'a.bam'
+        depends: _input.with_suffix('.bam.bai')
+        '''
     execute_workflow(script)
     # if we run again, because depends, the step will be re-checked
-    # os.remove('a.bam')
+    os.remove('a.bam')
     res = execute_workflow(script)
     assert res['__completed__']['__step_completed__'] == 2
     assert res['__completed__']['__step_skipped__'] == 0
     #
-    # os.remove('a.bam')
+    os.remove('a.bam')
     res = execute_workflow(script, options={'trace_existing': True})
     assert res['__completed__']['__step_completed__'] == 2
     assert res['__completed__']['__step_skipped__'] == 1
 
+
 def test_traced_function(clear_now_and_after):
     clear_now_and_after('a.bam', 'a.bam.bai')
     execute_workflow('''
-    [BAI: provides='{filename}.bam.bai']
-    _output.touch()
+        [BAI: provides='{filename}.bam.bai']
+        _output.touch()
 
-    [BAM]
-    output: 'a.bam'
-    _output.touch()
+        [BAM]
+        output: 'a.bam'
+        _output.touch()
 
-    [default]
-    input: 'a.bam'
-    depends: traced(_input.with_suffix('.bam.bai'))
+        [default]
+        input: 'a.bam'
+        depends: traced(_input.with_suffix('.bam.bai'))
     ''')
     # if we run again, because depends, the step will be re-checked
-    # os.remove('a.bam')
+    os.remove('a.bam')
     res = execute_workflow('''
-    [BAI: provides='{filename}.bam.bai']
-    _output.touch()
+        [BAI: provides='{filename}.bam.bai']
+        _output.touch()
 
-    [BAM]
-    output: 'a.bam'
-    _output.touch()
+        [BAM]
+        output: 'a.bam'
+        _output.touch()
 
-    [default]
-    input: 'a.bam'
-    depends: traced(_input.with_suffix('.bam.bai'))
-    ''')
+        [default]
+        input: 'a.bam'
+        depends: traced(_input.with_suffix('.bam.bai'))
+        ''')
     assert res['__completed__']['__step_completed__'] == 2
     assert res['__completed__']['__step_skipped__'] == 1
+
 
 def test_error_handling_of_step():
     # test fail_if of killing another running substep
@@ -1774,7 +1851,8 @@ def test_error_handling_of_step():
             if os.path.isfile(f'{step}.txt'):
                 os.remove(f'{step}.txt')
 
-    script = (textwrap.dedent(r"""
+    script = (
+        textwrap.dedent(r"""
     import time
 
     [10]
@@ -1798,7 +1876,8 @@ def test_error_handling_of_step():
     st = time.time()
     with pytest.raises(Exception):
         execute_workflow(script)
-    assert time.time() - st >= 8, 'Test test should fail only after step 10 is completed'
+    assert time.time(
+    ) - st >= 8, 'Test test should fail only after step 10 is completed'
     assert os.path.isfile('10.txt')
     assert os.path.isfile('11.txt')
     #
@@ -1808,7 +1887,8 @@ def test_error_handling_of_step():
     #
     st = time.time()
     execute_workflow(script, options={'error_mode': 'ignore'})
-    assert time.time() - st >= 8, 'Test test should fail only after step 10 is completed'
+    assert time.time(
+    ) - st >= 8, 'Test test should fail only after step 10 is completed'
     assert os.path.isfile('10.txt')
     assert os.path.isfile('11.txt')
     #
@@ -1821,18 +1901,12 @@ def test_error_handling_of_step():
     assert not os.path.isfile('10.txt')
     assert not os.path.isfile('11.txt')
 
-def test_error_handling_of_substeps():
 
-    def cleanup():
-        for i in range(10):
-            if os.path.isfile(f'test_{i}.txt'):
-                os.remove(f'test_{i}.txt')
-            if os.path.isfile(f'test_{i}.bak'):
-                os.remove(f'test_{i}.bak')
-        if os.path.isfile('test_30.txt'):
-            os.remove('test_30.txt')
+def test_error_handling_of_substeps(clear_now_and_after):
+    clear_now_and_after([f'test_{i}.txt' for i in range(10)],
+                        [f'test_{i}.bak' for i in range(10)], 'test_30.txt')
 
-    script = SoS_Script(r"""
+    script = r"""
 import time
 
 [10]
@@ -1852,14 +1926,14 @@ input: None
 output: 'test_30.txt'
 time.sleep(2)
 _output.touch()
-""")
-    wf = script.workflow()
+"""
+
     #
     # default mode
     #
-    cleanup()
     with pytest.raises(Exception):
-        Base_Executor(wf).run()
+        execute_workflow(script)
+
     for i in range(10):
         if i == 5:
             assert not os.path.isfile(f'test_{i}.txt')
@@ -1873,9 +1947,10 @@ _output.touch()
     #
     # ignore mode
     #
-    cleanup()
+    clear_now_and_after([f'test_{i}.txt' for i in range(10)],
+                        [f'test_{i}.bak' for i in range(10)], 'test_30.txt')
 
-    Base_Executor(wf, config={'error_mode': 'ignore'}).run()
+    execute_workflow(script, options={'error_mode': 'ignore'})
     for i in range(6, 10):
         if i == 5:
             assert not os.path.isfile(f'test_{i}.txt')
@@ -1887,7 +1962,8 @@ _output.touch()
     #
     # abort mode
     #
-    cleanup()
+    clear_now_and_after([f'test_{i}.txt' for i in range(10)],
+                        [f'test_{i}.bak' for i in range(10)], 'test_30.txt')
 
     with pytest.raises(Exception):
         execute_workflow(script, options={'error_mode': 'abort'})
@@ -1899,6 +1975,7 @@ _output.touch()
             assert not os.path.isfile(f'test_{i}.txt')
             assert not os.path.isfile(f'test_{i}.bak')
     assert not os.path.isfile('test_30.txt')
+
 
 def test_error_handling_of_concurrent_substeps():
 
@@ -1930,16 +2007,12 @@ def test_error_handling_of_concurrent_substeps():
     for i in range(190, 200):
         assert os.path.isfile(f'test_{i}.txt')
 
-def test_error_handling_of_tasks():
 
-    def cleanup():
-        for i in (0, 1, 2, 30, 31):
-            if os.path.isfile(f'test_{i}.txt'):
-                os.remove(f'test_{i}.txt')
-            if os.path.isfile(f'test_{i}.bak'):
-                os.remove(f'test_{i}.bak')
+def test_error_handling_of_tasks(clear_now_and_after):
+    clear_now_and_after([f'test_{i}.txt' for i in (0, 1, 2, 30, 31)],
+                        [f'test_{i}.bak' for i in (0, 1, 2, 30, 31)])
 
-    script = SoS_Script(r"""
+    script = r"""
 import time
 
 [10]
@@ -1963,15 +2036,14 @@ _output.touch()
 [31]
 output: 'test_31.txt'
 _output.touch()
-    """)
-    wf = script.workflow()
+    """
     #
     # default mode
     #
-    cleanup()
 
     with pytest.raises(Exception):
-        Base_Executor(wf).run()   
+        execute_workflow(script)
+
     for i in (0, 2, 30, 31):
         assert os.path.isfile(f'test_{i}.txt')
         assert not os.path.isfile(f'test_{i}.bak')
@@ -1979,9 +2051,10 @@ _output.touch()
     #
     #  ignore mode
     #
-    cleanup()
+    clear_now_and_after([f'test_{i}.txt' for i in (0, 1, 2, 30, 31)],
+                        [f'test_{i}.bak' for i in (0, 1, 2, 30, 31)])
 
-    Base_Executor(wf, config={'error_mode': 'ignore'}).run()
+    execute_workflow(script, options={'error_mode': 'ignore'})
     for i in (0, 2, 30, 31):
         assert os.path.isfile(f'test_{i}.txt')
     for i in (0, 2):
@@ -1990,7 +2063,8 @@ _output.touch()
     #
     # abort mode
     #
-    cleanup()
+    clear_now_and_after([f'test_{i}.txt' for i in (0, 1, 2, 30, 31)],
+                        [f'test_{i}.bak' for i in (0, 1, 2, 30, 31)])
 
     with pytest.raises(Exception):
         execute_workflow(script, options={'error_mode': 'abort'})
