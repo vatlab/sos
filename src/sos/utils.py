@@ -1411,17 +1411,16 @@ def load_config_files(filename=None):
         if isinstance(v, dict):
             process_based_on(cfg, v)
     # interpolation
-    def interpolate_value(cfg, item):
+    def interpolate_value(global_dict, item):
         res = {}
         for k, v in item.items():
             if isinstance(v, dict):
                 # v should be processed in place
-                res[k] = interpolate_value(cfg, v)
+                res[k] = interpolate_value(global_dict, v)
             elif isinstance(v, str) and '{' in v and '}' in v and not (
                     k.endswith('_template') or k.endswith('_cmd')):
                 try:
-                    res[k] = eval(
-                        as_fstring(v), copy.copy(item), copy.copy(cfg))
+                    res[k] = eval(as_fstring(v), copy.copy(item), global_dict)
                 except Exception as e:
                     # we do not care about other places when interpolation fails
                     env.logger.debug(f'Failed to interpolate {k}={v}: {e}')
@@ -1432,12 +1431,14 @@ def load_config_files(filename=None):
 
     #
     res = {}
+    global_dict = copy.deepcopy(cfg)
+    exec('import os, sys', global_dict)
     for k, v in cfg.items():
         if isinstance(v, dict):
-            res[k] = interpolate_value(cfg, v)
+            res[k] = interpolate_value(global_dict, v)
         elif isinstance(v, str) and '{' in v and '}' in v:
             try:
-                res[k] = eval(as_fstring(v), copy.copy(cfg))
+                res[k] = eval(as_fstring(v), global_dict)
             except Exception:
                 res[k] = v
         else:
