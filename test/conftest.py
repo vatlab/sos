@@ -40,11 +40,16 @@ def temp_factory():
     temp_dirs = []
 
     def get_tempfiles(*args, **kwargs):
+        content = kwargs.get('content', None)
         for names in args:
             if isinstance(names, str):
                 names = [names]
             for name in names:
-                pathlib.Path(name).touch()
+                if content is None:
+                    pathlib.Path(name).touch()
+                else:
+                    with open(name, 'w') as tf:
+                        tf.write(content)
                 temp_fds.append(name)
         if 'dir' in kwargs:
             if isinstance(kwargs['dir'], str):
