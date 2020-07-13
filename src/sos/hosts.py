@@ -279,6 +279,7 @@ class RemoteHost(object):
                  test_connection: bool = True) -> None:
         self.config = config
         self.cm_opts = self._get_control_master_options()
+        self.pem_opts = self._get_identify_file_options()
         self.alias = self.config['alias']
         #
         self.address = self.config['address']
@@ -343,29 +344,36 @@ class RemoteHost(object):
                 return ''
         return f'-o "ControlMaster=auto" -o "ControlPath={master_dir}/%r@%h:%p" -o "ControlPersist=10m"'
 
+    def _get_identify_file_options(self):
+        if 'pem_file' in self.config and isinstance(
+                self.config['pem_file'],
+                str) and self.config['pem_file'].strip() != '':
+            return f''' -i '{self.config["pem_file"]}' '''
+        return ''
+
     def _get_send_cmd(self, rename=False):
         if rename:
-            return 'ssh ' + self.cm_opts + ''' -q {host} -p {port} "mkdir -p {dest:dpq}" && ''' + \
-                '''rsync -a --no-g -e 'ssh ''' + self.cm_opts + ''' -p {port}' {source:aep} "{host}:{dest:dep}" && ''' + \
-                '''ssh ''' + self.cm_opts + ''' -q {host} -p {port} "mv {dest:dep}/{source:b} {dest:ep}" '''
-        return 'ssh ' + self.cm_opts + ''' -q {host} -p {port} "mkdir -p {dest:dpq}" && rsync -a --no-g -e 'ssh -p {port}' {source:aep} "{host}:{dest:dep}"'''
+            return 'ssh ' + self.cm_opts + self.pem_opts + ''' -q {host} -p {port} "mkdir -p {dest:dpq}" && ''' + \
+                '''rsync -a --no-g -e 'ssh ''' + self.cm_opts + self.pem_opts + ''' -p {port}' {source:aep} "{host}:{dest:dep}" && ''' + \
+                '''ssh ''' + self.cm_opts + self.pem_opts + ''' -q {host} -p {port} "mv {dest:dep}/{source:b} {dest:ep}" '''
+        return 'ssh ' + self.cm_opts + self.pem_opts + ''' -q {host} -p {port} "mkdir -p {dest:dpq}" && rsync -a --no-g -e 'ssh -p {port}' {source:aep} "{host}:{dest:dep}"'''
 
     def _get_receive_cmd(self, rename=False):
         if rename:
-            return '''rsync -a --no-g -e 'ssh ''' + self.cm_opts + ''' -p {port}' {host}:{source:e} "{dest:adep}" && ''' + \
+            return '''rsync -a --no-g -e 'ssh ''' + self.cm_opts + self.pem_opts + ''' -p {port}' {host}:{source:e} "{dest:adep}" && ''' + \
                 '''mv "{dest:adep}/{source:b}" "{dest:aep}"'''
-        return '''rsync -a --no-g -e 'ssh ''' + self.cm_opts + ''' -p {port}' {host}:{source:e} "{dest:adep}"'''
+        return '''rsync -a --no-g -e 'ssh ''' + self.cm_opts + self.pem_opts + ''' -p {port}' {host}:{source:e} "{dest:adep}"'''
 
     def _get_execute_cmd(self, under_workdir=True) -> str:
         return self.config.get(
-            'execute_cmd', 'ssh ' + self.cm_opts +
+            'execute_cmd', 'ssh ' + self.cm_opts + self.pem_opts +
             """ -q {host} -p {port} "bash --login -c '""" +
             (' [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && '
              if under_workdir else ' ') + ''' {cmd}'" ''')
 
     def _get_query_cmd(self):
         return self.config.get(
-            'query_cmd', '''ssh ''' + self.cm_opts +
+            'query_cmd', '''ssh ''' + self.cm_opts + self.pem_opts +
             ''' -q {host} -p {port} "bash --login -c 'sos status {task} -v 0'" '''
         )
 
@@ -804,9 +812,9 @@ class RemoteHost(object):
 
     def send_job_file(self, job_file, dir='tasks'):
         send_cmd = cfg_interpolate(
-            f'ssh {self.cm_opts}'
+            f'ssh {self.cm_opts + self.pem_opts}'
             f' -q {{address}} -p {{port}} "[ -d ~/.sos/{dir} ] || mkdir -p ~/.sos/{dir}" && '
-            f' rsync --ignore-existing -a --no-g -e "ssh {self.cm_opts}'
+            f' rsync --ignore-existing -a --no-g -e "ssh {self.cm_opts + self.pem_opts}'
             f' -q -p {{port}}" {{job_file:ap}} {{address}}:.sos/{dir}/', {
                 'job_file': sos_targets(job_file),
                 'address': self.address,
@@ -820,7 +828,9 @@ class RemoteHost(object):
                 f'Failed to copy job {job_file} to {self.alias} using command {send_cmd}: {e}'
             )
 
-    def check_output(self, cmd: object, under_workdir=False,
+    def check_output(self,
+                     cmd: object,
+                     under_workdir=False,
                      **kwargs) -> object:
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
