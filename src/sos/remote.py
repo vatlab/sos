@@ -283,10 +283,12 @@ def stty_sane():
         pass
 
 
-def test_queue(host, cmd=None):
+def test_queue(host, cmd=None, verbosity=1):
     try:
         h = Host(host, start_engine=False)
-    except Exception:
+    except Exception as e:
+        if verbosity > 2:
+            env.logger.warning(e)
         return [host, '?', '?', '-', '-', '-', '-', '-']
     ssh_res = test_ssh(h._host_agent)
     return [
@@ -300,7 +302,7 @@ def test_queue(host, cmd=None):
 
 
 def test_queues(cfg, hosts=[], cmd=None, verbosity=1):
-    env.verbosity = 1
+    env.verbosity = verbosity
     all_hosts = cfg.get('hosts', [])
     if not all_hosts:
         env.logger.warning(
@@ -321,7 +323,8 @@ def test_queues(cfg, hosts=[], cmd=None, verbosity=1):
         return
     from multiprocessing import Pool
     pool = Pool(min(len(hosts), 10))
-    host_description.extend(pool.starmap(test_queue, [(x, cmd) for x in hosts]))
+    host_description.extend(
+        pool.starmap(test_queue, [(x, cmd, verbosity) for x in hosts]))
     if verbosity == 0:
         # just print succ or self
         for hd in host_description:
@@ -484,7 +487,8 @@ def setup_remote_access(cfg, hosts=[], password='', verbosity=1):
             sys.exit(1)
         # file copied, check ssh again.
         if isinstance(host_agent, Namespace):
-            host_agent = Host(host, start_engine=False, test_connection=False)._host_agent
+            host_agent = Host(
+                host, start_engine=False, test_connection=False)._host_agent
         response = test_ssh(host_agent)
         if response.startswith('OK'):
             env.logger.info(
