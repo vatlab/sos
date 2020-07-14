@@ -2,7 +2,7 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
-
+import os
 import getpass
 import subprocess
 import pytest
@@ -158,7 +158,8 @@ def test_get_config(config_factory):
             },
             'H': '{val}'
         },
-        'O': 'A{nonexisting}'
+        'O': 'A{nonexisting}',
+        'X': '{os.environ["HOME"]}'
     })
     load_config_files(myconfig)
     assert get_config('A', 'D') == '45'
@@ -189,3 +190,4 @@ def test_get_config(config_factory):
     with pytest.raises(ValueError):
         get_config('O')
     assert get_config('O', nonexisting=7) == 'A7'
+    assert get_config('X') == os.environ["HOME"]
