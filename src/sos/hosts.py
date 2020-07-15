@@ -284,6 +284,7 @@ class RemoteHost(object):
         #
         self.address = self.config['address']
         self.port = self.config.get('port', 22)
+        self.pem_file = self.config.get('pem_file', None)
         self.shared_dirs = self._get_shared_dirs()
         self.path_map = self._get_path_map()
         # we already test connect of remote hosts
@@ -342,7 +343,7 @@ class RemoteHost(object):
                     f'Failed to create ssh control master directory {master_dir}: {e}'
                 )
                 return ''
-        return f'-o "ControlMaster=auto" -o "ControlPath={master_dir}/%r@%h:%p" -o "ControlPersist=10m"'
+        return f"-o 'ControlMaster=auto' -o 'ControlPath={master_dir}/%r@%h:%p' -o 'ControlPersist=10m'"
 
     def _get_identify_file_options(self):
         if 'pem_file' in self.config and isinstance(
@@ -356,7 +357,8 @@ class RemoteHost(object):
             return 'ssh ' + self.cm_opts + self.pem_opts + ''' -q {host} -p {port} "mkdir -p {dest:dpq}" && ''' + \
                 '''rsync -a --no-g -e 'ssh ''' + self.cm_opts + self.pem_opts + ''' -p {port}' {source:aep} "{host}:{dest:dep}" && ''' + \
                 '''ssh ''' + self.cm_opts + self.pem_opts + ''' -q {host} -p {port} "mv {dest:dep}/{source:b} {dest:ep}" '''
-        return 'ssh ' + self.cm_opts + self.pem_opts + ''' -q {host} -p {port} "mkdir -p {dest:dpq}" && rsync -a --no-g -e 'ssh -p {port}' {source:aep} "{host}:{dest:dep}"'''
+        return 'ssh ' + self.cm_opts + self.pem_opts + ''' -q {host} -p {port} "mkdir -p {dest:dpq}" ''' + \
+            ''' && rsync -a --no-g -e "ssh -p {port} ''' + self.cm_opts + self.pem_opts + ''' " {source:aep} "{host}:{dest:dep}"'''
 
     def _get_receive_cmd(self, rename=False):
         if rename:
@@ -466,10 +468,12 @@ class RemoteHost(object):
 
     def test_connection(self):
         try:
-            cmd = cfg_interpolate('ssh {host} -p {port} true', {
-                'host': self.address,
-                'port': self.port
-            })
+            cmd = cfg_interpolate(
+                'ssh {host} {pf_opt} -p {port} true', {
+                    'host': self.address,
+                    'port': self.port,
+                    'pf_opt': f"-i '{self.pem_file}'" if self.pem_file else ''
+                })
             p = pexpect.spawn(cmd)
             # could be prompted for Password or password, so use assword
             while True:
@@ -1192,6 +1196,9 @@ class Host:
                         for x in lpaths.keys()
                         if x in rpaths
                     ])
+                if 'pem_files' in cfg[LOCAL] and REMOTE in cfg[LOCAL][
+                        'pem_files']:
+                    self.config['pem_file'] = cfg[LOCAL]['pem_files'][REMOTE]
         elif LOCAL == REMOTE:
             # now we have checked local and remote are not defined, but they are the same, so
             # it is safe to assume that they are both local hosts
