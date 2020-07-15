@@ -906,12 +906,13 @@ class RemoteHost(object):
         sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
         # use -p to preserve modification times so that we can keep the job status locally.
         receive_cmd = cfg_interpolate(
-            "scp -P {port} -p -q {address}:.sos/tasks/{task}.* {sys_task_dir}",
+            "scp -P {port} {pem_opts} -p -q {address}:.sos/tasks/{task}.* {sys_task_dir}",
             {
                 'port': self.port,
                 'address': self.address,
                 'task': task_id,
-                'sys_task_dir': sys_task_dir
+                'sys_task_dir': sys_task_dir,
+                'pem_opts': self.pem_opts,
             })
         # it is possible that local files are readonly (e.g. a pluse file) so we first need to
         # make sure the files are readable and remove them. Also, we do not want any file that is
