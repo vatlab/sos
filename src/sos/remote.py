@@ -167,7 +167,6 @@ def test_scp(host):
 
 
 def test_cmd(host, cmd):
-    return 'OK'
     # test the execution of sos commands
     try:
         ret = host.check_call(
@@ -181,7 +180,6 @@ def test_cmd(host, cmd):
 
 
 def test_paths(host):
-    return 'OK'
     if host.address == 'localhost':
         return 'OK'
     # shared means, if localhost creates a file, it should be
@@ -215,6 +213,7 @@ def test_paths(host):
             host.send_to_host(os.path.join(local, f".sos_test_{tID}.txt"))
         except Exception as e:
             return f'Failed to send files under {local} to remote host under {remote}: {e}'
+
         # the file should be available on remote host
         try:
             remote_content = host.check_output(
