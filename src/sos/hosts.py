@@ -472,31 +472,27 @@ class RemoteHost(object):
             })
             p = pexpect.spawn(cmd)
             # could be prompted for Password or password, so use assword
-            i = p.expect([
-                "(?i)are you sure you want to continue connecting",
-                "[pP]assword:", pexpect.EOF
-            ],
-                         timeout=5)
-            if i == 0:
-                p.sendline('yes')
-                p.expect([
+            while True:
+                i = p.expect([
                     "(?i)are you sure you want to continue connecting",
                     "[pP]assword:", pexpect.EOF
                 ],
-                         timeout=5)
-            elif i == 1:
-                p.close(force=True)
-                from .remote import stty_sane
-                stty_sane()
-                return f'ssh connection to {self.address} was prompted for password. Please set up public key authentication to the remote host before continue.'
-            elif i == 2:
-                p.close()
-                if p.exitstatus == 0:
-                    return 'OK'
-                elif p.before:
-                    return p.before.decode()
-                else:
-                    return f'Command "{cmd}" exits with code {p.exitstatus}'
+                             timeout=5)
+                if i == 0:
+                    p.sendline('yes')
+                elif i == 1:
+                    p.close(force=True)
+                    from .remote import stty_sane
+                    stty_sane()
+                    return f'ssh connection to {self.address} was prompted for password. Please set up public key authentication to the remote host before continue.'
+                elif i == 2:
+                    p.close()
+                    if p.exitstatus == 0:
+                        return 'OK'
+                    elif p.before:
+                        return p.before.decode()
+                    else:
+                        return f'Command "{cmd}" exits with code {p.exitstatus}'
         except pexpect.TIMEOUT:
             return f'ssh connection to {self.address} time out with prompt: {str(p.before)}'
         except Exception as e:
@@ -1139,13 +1135,14 @@ class Host:
             if REMOTE not in env.sos_dict['CONFIG']['hosts']:
                 raise ValueError(f'Undefined remote host {REMOTE}')
 
-            # now we have definition for local and remote hosts
+            # now we have definition for local and remote hosts but we only
+            # exapnd address, which we have to know right now
             cfg = env.sos_dict['CONFIG']['hosts']
             self.config = get_config(
                 'hosts',
                 self.alias,
                 excluded_keys=('paths', 'shared'),
-                raw_keys=('task_template', 'workflow_template', 'job_template'))
+                expand_keys=('address', 'port'))
 
             # if local and remote hosts are the same
             if LOCAL == REMOTE or 'address' not in env.sos_dict['CONFIG'][
