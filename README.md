@@ -30,10 +30,10 @@ if you have helped fixing bugs or making improvements to the source code. In add
   ```
   This will install SoS Workflow, SoS Notebook and its JupyterLab extension, language modules for
   `Bash`, `Python2`, `Python3`, `R`, `R` itself (`r-base` and `r-irkernel` etc) and needed
-  libraries (e.g. `feather`) if needed.  
+  libraries (e.g. `feather`) if needed.
 
 * If you are not using conda, you will have to install all the pieces one by one, but you will also have the freedom to use non-conda installation of `R`, `Julia` etc. With a working Python 3.6 installation, you can install SoS Workflow with command
-  
+
   ```bash
   pip install sos
   ```
@@ -58,6 +58,9 @@ if you have helped fixing bugs or making improvements to the source code. In add
   Different modules might be needed to assist data exchange among kernels. Please refer to [the installation page of sos website](https://vatlab.github.io/sos-docs/#runningsos) for details.
 
 ### Change Log of SoS Workflow and SoS Notebook
+
+SoS 0.21.12
+* [sos#1392](https://github.com/vatlab/sos/issues/1392): Allow the use of `pem_file` to authenticate to remote hosts.
 
 SoS 0.20.9
 * [sos#1319](https://github.com/vatlab/SoS/issues/1319): Extend option `-r host` to allow workflow to be executed with templates and on PBS
