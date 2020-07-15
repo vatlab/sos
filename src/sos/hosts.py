@@ -1197,11 +1197,17 @@ class Host:
                         for x in lpaths.keys()
                         if x in rpaths
                     ])
-                if 'pem_files' in cfg[LOCAL] and REMOTE in cfg[LOCAL][
-                        'pem_files']:
-                    self.config['pem_file'] = cfg[LOCAL]['pem_files'][REMOTE]
-                elif 'pem_file' in cfg[LOCAL]:
-                    self.config['pem_file'] = cfg[LOCAL]['pem_file']
+                if 'pem_file' in cfg[LOCAL]:
+                    if isinstance(cfg[LOCAL]['pem_file'], dict):
+                        if REMOTE in cfg[LOCAL]['pem_file']:
+                            self.config['pem_file'] = cfg[LOCAL]['pem_file'][
+                                REMOTE]
+                    elif isinstance(cfg[LOCAL]['pem_file'], str):
+                        self.config['pem_file'] = cfg[LOCAL]['pem_file']
+                    else:
+                        raise ValueError(
+                            f"Option pem_file should be a string or dictionary, {cfg[LOCAL]['pem_file']} provided."
+                        )
         elif LOCAL == REMOTE:
             # now we have checked local and remote are not defined, but they are the same, so
             # it is safe to assume that they are both local hosts
