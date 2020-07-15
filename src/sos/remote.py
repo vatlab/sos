@@ -250,7 +250,6 @@ def test_paths(host):
 
 
 def test_shared(host):
-    return 'OK'
     if host.address == 'localhost':
         return 'OK (localhost)'
     # shared means, if localhost creates a file, it should be
