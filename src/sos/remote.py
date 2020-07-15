@@ -435,8 +435,7 @@ def create_public_key():
         p = pexpect.spawn(cmd, echo=False)
         while True:
             i = p.expect([
-                "Enter file in which to save .*",
-                "Enter passphrase.*",
+                "Enter file in which to save .*", "Enter passphrase.*",
                 "Enter same passphrase again:.*", 'Overwrite .*', pexpect.EOF
             ])
             if i in (0, 1, 2):

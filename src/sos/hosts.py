@@ -284,6 +284,7 @@ class RemoteHost(object):
         #
         self.address = self.config['address']
         self.port = self.config.get('port', 22)
+        self.perm_file = self.config.get('perm_file', None)
         self.shared_dirs = self._get_shared_dirs()
         self.path_map = self._get_path_map()
         # we already test connect of remote hosts
@@ -466,10 +467,12 @@ class RemoteHost(object):
 
     def test_connection(self):
         try:
-            cmd = cfg_interpolate('ssh {host} -p {port} true', {
-                'host': self.address,
-                'port': self.port
-            })
+            cmd = cfg_interpolate(
+                'ssh {host} {pf_opt} -p {port} true', {
+                    'host': self.address,
+                    'port': self.port,
+                    'pf_opt': f"-i '{self.perm_file}'" if self.perm_file else ''
+                })
             p = pexpect.spawn(cmd)
             # could be prompted for Password or password, so use assword
             while True:
@@ -1192,6 +1195,9 @@ class Host:
                         for x in lpaths.keys()
                         if x in rpaths
                     ])
+                if 'perm_files' in cfg[LOCAL] and REMOTE in cfg[LOCAL][
+                        'perm_files']:
+                    self.config['perm_file'] = cfg[LOCAL]['perm_files'][REMOTE]
         elif LOCAL == REMOTE:
             # now we have checked local and remote are not defined, but they are the same, so
             # it is safe to assume that they are both local hosts
