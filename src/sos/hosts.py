@@ -906,12 +906,13 @@ class RemoteHost(object):
         sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
         # use -p to preserve modification times so that we can keep the job status locally.
         receive_cmd = cfg_interpolate(
-            "scp -P {port} -p -q {address}:.sos/tasks/{task}.* {sys_task_dir}",
+            "scp -P {port} {pem_opts} -p -q {address}:.sos/tasks/{task}.* {sys_task_dir}",
             {
                 'port': self.port,
                 'address': self.address,
                 'task': task_id,
-                'sys_task_dir': sys_task_dir
+                'sys_task_dir': sys_task_dir,
+                'pem_opts': self.pem_opts,
             })
         # it is possible that local files are readonly (e.g. a pluse file) so we first need to
         # make sure the files are readable and remove them. Also, we do not want any file that is
@@ -1146,8 +1147,7 @@ class Host:
                 'hosts',
                 self.alias,
                 excluded_keys=('paths', 'shared'),
-                expand_keys=('address', 'port'))
-
+                expand_keys=('address', 'port', 'pem_file'))
             # if local and remote hosts are the same
             if LOCAL == REMOTE or 'address' not in env.sos_dict['CONFIG'][
                     'hosts'][REMOTE] or (
@@ -1196,9 +1196,18 @@ class Host:
                         for x in lpaths.keys()
                         if x in rpaths
                     ])
-                if 'pem_files' in cfg[LOCAL] and REMOTE in cfg[LOCAL][
-                        'pem_files']:
-                    self.config['pem_file'] = cfg[LOCAL]['pem_files'][REMOTE]
+                if 'pem_file' in cfg[LOCAL]:
+                    if isinstance(cfg[LOCAL]['pem_file'], dict):
+                        if REMOTE in cfg[LOCAL]['pem_file']:
+                            self.config['pem_file'] = get_config(
+                                'hosts', LOCAL, 'pem_file', REMOTE)
+                    elif isinstance(cfg[LOCAL]['pem_file'], str):
+                        self.config['pem_file'] = get_config(
+                            'hosts', LOCAL, 'pem_file')
+                    else:
+                        raise ValueError(
+                            f"Option pem_file should be a string or dictionary, {cfg[LOCAL]['pem_file']} provided."
+                        )
         elif LOCAL == REMOTE:
             # now we have checked local and remote are not defined, but they are the same, so
             # it is safe to assume that they are both local hosts
