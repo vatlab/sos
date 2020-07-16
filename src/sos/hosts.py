@@ -1063,7 +1063,8 @@ class Host:
         for host, host_info in env.sos_dict['CONFIG']['hosts'].items():
             # find by key hostname
             if 'hostname' in host_info:
-                hn = get_config('hosts', host, 'hostname').lower()
+                hn = get_config(
+                    'hosts', host, 'hostname', expected_type=str).lower()
                 if hn.split('.')[0] == hostname or hn == hostname.split('.')[0]:
                     return host
         for host, host_info in env.sos_dict['CONFIG']['hosts'].items():
@@ -1073,7 +1074,7 @@ class Host:
         for host, host_info in env.sos_dict['CONFIG']['hosts'].items():
             # find by address
             if 'address' in host_info:
-                addr = get_config('hosts', host, 'address')
+                addr = get_config('hosts', host, 'address', expected_type=str)
                 if addr.split('@')[-1].lower() == hostname or addr.split(
                         '.', 1)[0].split('@')[-1].lower() == hostname:
                     return host
@@ -1085,7 +1086,7 @@ class Host:
         for host, host_info in env.sos_dict['CONFIG']['hosts'].items():
             # find by key hostname
             if 'address' in host_info:
-                addr = get_config('hosts', host, 'address')
+                addr = get_config('hosts', host, 'address', expected_type=str)
                 if any(ip == addr.split('@')[-1] for ip in ips):
                     return host
         # now check if a key localhost is defined
@@ -1147,7 +1148,8 @@ class Host:
                 'hosts',
                 self.alias,
                 excluded_keys=('paths', 'shared'),
-                expand_keys=('address', 'port', 'pem_file'))
+                expand_keys=('address', 'port', 'pem_file'),
+                expected_type=dict)
             # if local and remote hosts are the same
             if LOCAL == REMOTE or 'address' not in env.sos_dict['CONFIG'][
                     'hosts'][REMOTE] or (
@@ -1170,13 +1172,15 @@ class Host:
                     common = set(cfg[LOCAL]['shared'].keys()) & set(
                         cfg[REMOTE]['shared'].keys())
                     if common:
-                        shrd = get_config('hosts', LOCAL, 'shared')
-                        rmt_shrd = get_config('hosts', REMOTE, 'shared')
+                        lcl_shrd = get_config(
+                            'hosts', LOCAL, 'shared', expected_type=dict)
+                        rmt_shrd = get_config(
+                            'hosts', REMOTE, 'shared', expected_type=dict)
                         self.config['shared'] = [
-                            normalize_value(shrd[x]) for x in common
+                            normalize_value(lcl_shrd[x]) for x in common
                         ]
                         self.config['path_map'] = [
-                            f'{normalize_value(shrd[x])} -> {normalize_value(rmt_shrd[x])}'
+                            f'{normalize_value(lcl_shrd[x])} -> {normalize_value(rmt_shrd[x])}'
                             for x in common
                         ]
                 # if paths are defined for both local and remote host, define path_map
@@ -1189,8 +1193,10 @@ class Host:
                             f'One or more local paths {", ".join(cfg[LOCAL]["paths"].keys())} cannot be mapped to remote host {REMOTE} with paths {",".join(cfg[REMOTE]["paths"].keys())}'
                         )
                     #
-                    lpaths = get_config('hosts', LOCAL, 'paths')
-                    rpaths = get_config('hosts', REMOTE, 'paths')
+                    lpaths = get_config(
+                        'hosts', LOCAL, 'paths', expected_type=dict)
+                    rpaths = get_config(
+                        'hosts', REMOTE, 'paths', expected_type=dict)
                     self.config['path_map'].extend([
                         f'{normalize_value(lpaths[x])} -> {normalize_value(rpaths[x])}'
                         for x in lpaths.keys()
@@ -1200,10 +1206,14 @@ class Host:
                     if isinstance(cfg[LOCAL]['pem_file'], dict):
                         if REMOTE in cfg[LOCAL]['pem_file']:
                             self.config['pem_file'] = get_config(
-                                'hosts', LOCAL, 'pem_file', REMOTE)
+                                'hosts',
+                                LOCAL,
+                                'pem_file',
+                                REMOTE,
+                                expected_type=str)
                     elif isinstance(cfg[LOCAL]['pem_file'], str):
                         self.config['pem_file'] = get_config(
-                            'hosts', LOCAL, 'pem_file')
+                            'hosts', LOCAL, 'pem_file', expected_type=str)
                     else:
                         raise ValueError(
                             f"Option pem_file should be a string or dictionary, {cfg[LOCAL]['pem_file']} provided."

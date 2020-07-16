@@ -648,8 +648,11 @@ class path(type(Path())):
             return self._from_parts([
                 get_config(
                     'hosts',
-                    env.sos_dict.get('__host__', 'localhost')
-                    if host is None else host, 'paths', self._parts[0][1:])
+                    env.sos_dict.get('__host__', 'localhost'
+                                    ) if host is None else host,
+                    'paths',
+                    self._parts[0][1:],
+                    expected_type=str)
             ] + self._parts[1:])
         except Exception:
             if host is None and '__host__' not in env.sos_dict:

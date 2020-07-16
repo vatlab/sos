@@ -77,7 +77,7 @@ def get_config(*args, **kwargs):
       expand_keys: keys that are expanded
       allowed_keys: retrieve only specified keys from a dicitonary.
       exclude_keys: exclude specified keys
-
+      expected_type: expected type or types
     '''
     default = kwargs.get('default', None)
     allowed_keys = kwargs.get('allowed_keys', None)
@@ -85,6 +85,8 @@ def get_config(*args, **kwargs):
     raw_keys = kwargs.get('raw_keys', None)
     expand_keys = kwargs.get('expand_keys', None)
     raw = kwargs.get('raw', False)
+    expected_type = kwargs.get('expected_type', None)
+
     #
     keys = []
     custom_dict = {}
@@ -136,7 +138,11 @@ def get_config(*args, **kwargs):
                 val = default
         else:
             val = default
-    #
+
+    if expected_type is not None and not isinstance(val, expected_type):
+        raise ValueError(
+            f'A value of type {expected_type} is expected, "{val}" specified.')
+
     if raw is True:
         return val
 
