@@ -1147,8 +1147,7 @@ class Host:
                 'hosts',
                 self.alias,
                 excluded_keys=('paths', 'shared'),
-                expand_keys=('address', 'port'))
-
+                expand_keys=('address', 'port', 'pem_file'))
             # if local and remote hosts are the same
             if LOCAL == REMOTE or 'address' not in env.sos_dict['CONFIG'][
                     'hosts'][REMOTE] or (
@@ -1200,10 +1199,11 @@ class Host:
                 if 'pem_file' in cfg[LOCAL]:
                     if isinstance(cfg[LOCAL]['pem_file'], dict):
                         if REMOTE in cfg[LOCAL]['pem_file']:
-                            self.config['pem_file'] = cfg[LOCAL]['pem_file'][
-                                REMOTE]
+                            self.config['pem_file'] = get_config(
+                                'hosts', LOCAL, 'pem_file', REMOTE)
                     elif isinstance(cfg[LOCAL]['pem_file'], str):
-                        self.config['pem_file'] = cfg[LOCAL]['pem_file']
+                        self.config['pem_file'] = get_config(
+                            'hosts', LOCAL, 'pem_file')
                     else:
                         raise ValueError(
                             f"Option pem_file should be a string or dictionary, {cfg[LOCAL]['pem_file']} provided."
