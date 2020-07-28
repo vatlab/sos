@@ -1149,7 +1149,8 @@ def cmd_preview(args, unknown_args):
     if args.host:
         # remote host?
         host = Host(args.host, start_engine=False)
-        rargs = ['sos', 'preview'] + args.items + ['--html']
+        rargs = [host.config.get('sos', 'sos'), 'preview'
+                ] + args.items + ['--html']
         if args.style:
             rargs += ['-s', args.style] + unknown_args
         if 'GENERAL' in env.config['SOS_DEBUG'] or 'ALL' in env.config[

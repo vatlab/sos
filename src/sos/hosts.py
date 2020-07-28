@@ -382,7 +382,7 @@ class RemoteHost(object):
     def _get_query_cmd(self):
         return self.config.get(
             'query_cmd', '''ssh ''' + self.cm_opts + self.pem_opts +
-            ''' -q {host} -p {port} "bash --login -c 'sos status {task} -v 0'" '''
+            ''' -q {host} -p {port} "bash --login -c '{self.config.get("sos", "sos")} status {task} -v 0'" '''
         )
 
     def is_shared(self, path):

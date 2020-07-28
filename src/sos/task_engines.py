@@ -565,7 +565,8 @@ class TaskEngine(threading.Thread):
                     status=None):
         try:
             return self.agent.check_output(
-                "sos status {} -v {} {} {} {} {} {}".format(
+                "{} status {} -v {} {} {} {} {} {}".format(
+                    self.agent.config.get('sos', 'sos'),
                     '' if tasks is None else ' '.join(tasks),
                     verbosity,
                     '--html' if html else '',
@@ -613,8 +614,9 @@ class TaskEngine(threading.Thread):
         #
         # verbosity cannot be send to underlying command because task engines
         # rely on the output of certain verbosity (-v1) to post kill the jobs
-        cmd = "sos kill {} {} {}".format(
-            '' if all_tasks else ' '.join(tasks),
+        cmd = "{} kill {} {} {}".format(
+            self.agent.config.get('sos',
+                                  'sos'), '' if all_tasks else ' '.join(tasks),
             f'--tags {" ".join(tags)}' if tags else '',
             '-a' if all_tasks else '')
 
@@ -655,8 +657,9 @@ class TaskEngine(threading.Thread):
             #                 '.task'))
             #     ]
             return self.agent.check_output(
-                "sos purge {} {} {} {} {} -v {}".format(
-                    ' '.join(tasks), '--all' if purge_all else '',
+                "{} purge {} {} {} {} {} -v {}".format(
+                    self.agent.config.get('sos', 'sos'), ' '.join(tasks),
+                    '--all' if purge_all else '',
                     f'--age {age}' if age is not None else '',
                     f'--status {" ".join(status)}' if status is not None else
                     '', f'--tags {" ".join(tags)}' if tags is not None else '',
@@ -736,7 +739,8 @@ class BackgroundProcess_TaskEngine(TaskEngine):
             task_runtime['_runtime'].update(
                 tf.params.sos_dict.get('_runtime', {}))
 
-            runtime['command'] = f"sos execute {task_id} -v {env.verbosity} -s {env.config.get('sig_mode', 'default')} -m {env.config.get('run_mode', 'run')}"
+            runtime[
+                'command'] = f"{self.config.get('sos', 'sos')} execute {task_id} -v {env.verbosity} -s {env.config.get('sig_mode', 'default')} -m {env.config.get('run_mode', 'run')}"
             runtime.update(task_runtime['_runtime'])
             try:
                 job_text += cfg_interpolate(self.task_template, runtime)

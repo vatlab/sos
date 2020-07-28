@@ -295,7 +295,7 @@ def test_queue(host, cmd=None, verbosity=1):
     return [
         h.alias, h._host_agent.address, h._engine_type, ssh_res,
         test_scp(h._host_agent) if ssh_res.startswith('OK') else '-',
-        test_cmd(h._host_agent, ["sos", "-h"])
+        test_cmd(h._host_agent, [h.config.get("sos", "sos"), "-h"])
         if ssh_res.startswith('OK') else '-',
         test_paths(h._host_agent) if ssh_res.startswith('OK') else '-',
         test_shared(h._host_agent) if ssh_res.startswith('OK') else '-'
