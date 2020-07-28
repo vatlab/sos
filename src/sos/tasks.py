@@ -18,8 +18,8 @@ from datetime import datetime
 from typing import Union, Dict, List
 
 from .utils import (env, expand_time, linecount_of_file, sample_lines,
-                    short_repr, tail_of_file, expand_size, format_HHMMSS,
-                    DelayedAction, format_duration)
+                    short_repr, tail_of_file, pretty_size, expand_size,
+                    format_HHMMSS, DelayedAction, format_duration)
 from .targets import sos_targets
 
 monitor_interval = 5
@@ -119,8 +119,8 @@ class MasterTaskParams(TaskParams):
 
         if not self.task_stack:
             for key in ('walltime', 'max_walltime', 'cores', 'nodes',
-                        'max_cores', 'mem', 'max_mem', 'name',
-                        'workdir', 'verbosity', 'sig_mode', 'run_mode'):
+                        'max_cores', 'mem', 'max_mem', 'name', 'workdir',
+                        'verbosity', 'sig_mode', 'run_mode'):
                 if key in params.sos_dict['_runtime'] and params.sos_dict[
                         '_runtime'][key] is not None:
                     self.sos_dict['_runtime'][key] = params.sos_dict[
@@ -215,6 +215,7 @@ class MasterTaskParams(TaskParams):
 
         return self
 
+
 def combine_results(task_id, results):
     # now we collect result
     all_res = {
@@ -300,6 +301,7 @@ def combine_results(task_id, results):
             env.logger.debug(
                 f'All {len(results)} tasks in {task_id} ``completed``')
     return all_res
+
 
 class TaskStatus(Enum):
     new = 0
@@ -538,7 +540,7 @@ class TaskFile(object):
                 if signature_size > 0:
                     fh.write(signature)
 
-    def add_result(self, result: dict={}):
+    def add_result(self, result: dict = {}):
         if not result:
             params = self._get_params()
             # this is a master task, get all sub task IDs
@@ -546,7 +548,8 @@ class TaskFile(object):
                 missing_tasks = set([x[0] for x in params.task_stack])
                 #
                 cache_file = os.path.join(
-                    os.path.expanduser('~'), '.sos', 'tasks', self.task_id + '.cache')
+                    os.path.expanduser('~'), '.sos', 'tasks',
+                    self.task_id + '.cache')
                 results = []
                 if os.path.isfile(cache_file):
                     try:
@@ -567,14 +570,12 @@ class TaskFile(object):
                     return
                 else:
                     # now, if we have some results, we need to fill the rest of the aborted ones
-                    results.extend([
-                        {
-                            'task': t,
-                            'ret_code': 2,
-                            'shared': {},
-                            'exception': RuntimeError(f'Subtask {t} is aborted')
-                        }
-                    for t in missing_tasks])
+                    results.extend([{
+                        'task': t,
+                        'ret_code': 2,
+                        'shared': {},
+                        'exception': RuntimeError(f'Subtask {t} is aborted')
+                    } for t in missing_tasks])
                 result = combine_results(self.task_id, results)
             else:
                 # single task, no result, do not save
@@ -584,7 +585,8 @@ class TaskFile(object):
         result.pop('signature', None)
         #
         result_block = lzma.compress(pickle.dumps(result))
-        signature_block = lzma.compress(pickle.dumps(signature)) if signature else b''
+        signature_block = lzma.compress(
+            pickle.dumps(signature)) if signature else b''
         with fasteners.InterProcessLock(
                 os.path.join(env.temp_dir, self.task_id + '.lck')):
             with open(self.task_file, 'r+b') as fh:
@@ -1311,9 +1313,7 @@ def print_task_status(tasks,
         ]
 
     if not all_tasks:
-        env.logger.info(
-            'No matching tasks are identified.'
-        )
+        env.logger.info('No matching tasks are identified.')
         return
 
     raw_status = check_tasks([x[0] for x in all_tasks], check_all)
@@ -1397,16 +1397,17 @@ def print_task_status(tasks,
             if tf.has_result():
                 if s not in ('pending', 'submitted', 'running'):
                     res = tf.result
-                    if 'pulse' in res:
-                        pulse_content = res['pulse']
-                        summary = summarizeExecution(t, res['pulse'], status=s)
-                        # row('Execution')
-                        for line in summary.split('\n'):
-                            fields = line.split(None, 1)
-                            if fields[0] == 'task':
-                                continue
-                            row(fields[0],
-                                '' if fields[1] is None else fields[1])
+
+                    if 'start_time' in res and 'end_time' in res:
+                        row(
+                            'Duration',
+                            format_duration(res["end_time"] -
+                                            res["start_time"]))
+                    if 'peak_cpu' in res:
+                        row('Peak CPU', f'{res["peak_cpu"]*100} %')
+                    if 'peak_mem' in res:
+                        row('Peak mem', pretty_size(res["peak_mem"]))
+
                     # this is a placeholder for the frontend to draw figure
                     row(td=f'<div id="res_{t}"></div>')
             elif s == 'running':
@@ -1663,13 +1664,19 @@ showResourceFigure_''' + t + '''()
                     f'{k:22}{short_repr(v) if verbosity == 3 else pprint.pformat(v)}'
                 )
             print()
-
             if tf.has_result():
                 if s not in ('pending', 'submitted', 'running'):
                     res = tf.result
-                    if 'pulse' in res:
-                        print('EXECUTION STATS:\n================')
-                        print(summarizeExecution(t, res['pulse'], status=s))
+                    print('EXECUTION STATS:\n================')
+                    if 'start_time' in res and 'end_time' in res:
+                        print(
+                            f'Duration:\t{format_duration(res["end_time"] - res["start_time"])}'
+                        )
+                    if 'peak_cpu' in res:
+                        print(f'Peak CPU:\t{res["peak_cpu"]*100} %')
+                    if 'peak_mem' in res:
+                        print(f'Peak mem:\t{pretty_size(res["peak_mem"])}')
+
             elif s == 'running':
                 # we have separate pulse, out and err files
                 pulse_file = os.path.join(
