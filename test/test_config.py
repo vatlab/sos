@@ -159,7 +159,7 @@ def test_get_config(config_factory):
             'H': '{val}'
         },
         'O': 'A{nonexisting}',
-        'X': '{os.environ["HOME"]}'
+        'X': '{os.environ.get("HOME", "no_home")}'
     })
     load_config_files(myconfig)
     assert get_config('A', 'D') == '45'
@@ -190,4 +190,4 @@ def test_get_config(config_factory):
     with pytest.raises(ValueError):
         get_config('O')
     assert get_config('O', nonexisting=7) == 'A7'
-    assert get_config('X') == os.environ["HOME"]
+    assert get_config('X') == os.environ.get("HOME", "no_home")
