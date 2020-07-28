@@ -366,13 +366,18 @@ class RemoteHost(object):
                 '''mv "{dest:adep}/{source:b}" "{dest:aep}"'''
         return '''rsync -a --no-g -e 'ssh ''' + self.cm_opts + self.pem_opts + ''' -p {port}' {host}:{source:e} "{dest:adep}"'''
 
-    def _get_execute_cmd(self, under_workdir=True) -> str:
+    def _get_execute_cmd(self, under_workdir=True, use_heredoc=True) -> str:
         # #1396
-        return self.config.get(
-            'execute_cmd', 'ssh ' + self.cm_opts + self.pem_opts +
-            """ -q {host} -p {port} <<'HEREDOC!!'\nbash --login -c '""" +
-            (' [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && '
-             if under_workdir else ' ') + ''' {cmd} '\nHEREDOC!!\n''')
+        if 'execute_cmd' in self.config:
+            return self.config['execute_cmd']
+        if use_heredoc:
+            return 'ssh ' + self.cm_opts + self.pem_opts + """ -q {host} -p {port} <<'HEREDOC!!'\nbash --login -c '""" + (
+                ' [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && '
+                if under_workdir else ' ') + ''' {cmd} '\nHEREDOC!!\n'''
+        else:
+            return 'ssh ' + self.cm_opts + self.pem_opts + """ -q {host} -p {port} "bash --login -c '""" + (
+                ' [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && '
+                if under_workdir else ' ') + ''' {cmd}'" '''
 
     def _get_query_cmd(self):
         return self.config.get(
@@ -837,12 +842,13 @@ class RemoteHost(object):
             cmd = subprocess.list2cmdline(cmd)
         try:
             cmd = cfg_interpolate(
-                self._get_execute_cmd(under_workdir=under_workdir), {
-                    'host': self.address,
-                    'port': self.port,
-                    'cmd': cmd.replace("'", r"'\''"),
-                    'workdir': self._map_var(os.getcwd())
-                })
+                self._get_execute_cmd(
+                    under_workdir=under_workdir, use_heredoc="." in cmd), {
+                        'host': self.address,
+                        'port': self.port,
+                        'cmd': cmd.replace("'", r"'\''"),
+                        'workdir': self._map_var(os.getcwd())
+                    })
         except Exception as e:
             raise ValueError(
                 f'Failed to run command {cmd}: {e} ({env.sos_dict["CONFIG"]})')
@@ -859,12 +865,13 @@ class RemoteHost(object):
             cmd = subprocess.list2cmdline(cmd)
         try:
             cmd = cfg_interpolate(
-                self._get_execute_cmd(under_workdir=under_workdir), {
-                    'host': self.address,
-                    'port': self.port,
-                    'cmd': cmd.replace("'", r"'\''"),
-                    'workdir': self._map_var(os.getcwd())
-                })
+                self._get_execute_cmd(
+                    under_workdir=under_workdir, use_heredoc="." in cmd), {
+                        'host': self.address,
+                        'port': self.port,
+                        'cmd': cmd.replace("'", r"'\''"),
+                        'workdir': self._map_var(os.getcwd())
+                    })
         except Exception as e:
             raise ValueError(f'Failed to run command {cmd}: {e}')
         if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
@@ -880,12 +887,13 @@ class RemoteHost(object):
             cmd = subprocess.list2cmdline(cmd)
         try:
             cmd = cfg_interpolate(
-                self._get_execute_cmd(under_workdir=False), {
-                    'host': self.address,
-                    'port': self.port,
-                    'cmd': cmd.replace("'", r"'\''"),
-                    'workdir': self._map_var(os.getcwd())
-                })
+                self._get_execute_cmd(
+                    under_workdir=False, use_heredoc="." in cmd), {
+                        'host': self.address,
+                        'port': self.port,
+                        'cmd': cmd.replace("'", r"'\''"),
+                        'workdir': self._map_var(os.getcwd())
+                    })
         except Exception as e:
             raise ValueError(f'Failed to run command {cmd}: {e}')
         if 'TASK' in env.config['SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
