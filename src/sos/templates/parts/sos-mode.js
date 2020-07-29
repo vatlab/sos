@@ -3,7 +3,7 @@
  * Distributed under the terms of the Modified BSD License.
  **/
 
-(function(mod) {
+(function (mod) {
   if (typeof exports == "object" && typeof module == "object") // CommonJS
     mod(require("codemirror/lib/codemirror"),
       require("codemirror/mode/python/python"),
@@ -14,14 +14,23 @@
       require("codemirror/mode/javascript/javascript"),
       require("codemirror/mode/shell/shell"),
       require("codemirror/mode/julia/julia"),
-      require("codemirror/mode/markdown/markdown"));
+      require("codemirror/mode/markdown/markdown"),
+      require("codemirror/mode/htmlembedded/htmlembedded"),
+      require("codemirror/mode/xml/xml"),
+      require("codemirror/mode/yaml/yaml"),
+      require("codemirror/mode/javascript/javascript"),
+      require("codemirror/mode/stex/stex"),
+      require("codemirror/addon/selection/active-line"),
+      require("codemirror/addon/fold/foldcode"),
+      require("codemirror/addon/fold/foldgutter"),
+      require("codemirror/addon/fold/indent-fold"));
   else if (typeof define == "function" && define.amd) // AMD
     define(["codemirror/lib/codemirror", "codemirror/mode/python/python",
       "codemirror/mode/markdown/markdown", "codemirror/mode/r/r"
     ], mod);
   else // Plain browser env
     mod(CodeMirror);
-})(function(CodeMirror) {
+})(function (CodeMirror) {
   "use strict";
 
   var sosKeywords = ["input", "output", "depends", "parameter"];
@@ -79,7 +88,35 @@
     },
     'octave': 'octave',
     'matlab': 'octave',
-  }
+    html: "htmlembedded",
+    xml: "xml",
+    yaml: "yaml",
+    json: {
+      name: "javascript",
+      jsonMode: true
+    },
+    stex: "stex"
+  };
+
+  var extMap = {
+    sos: 'python3',
+    py: "python3",
+    r: "r",
+    md: "markdown",
+    rb: "ruby",
+    sas: "sas",
+    sh: "shell",
+    jl: "julia",
+    js: "javascript",
+    ts: "typecript",
+    m: "matlab",
+    html: "html",
+    xml: "xml",
+    yaml: "yaml",
+    yml: "yaml",
+    json: "json",
+    tex: "stex"
+  };
 
   function findMode(mode) {
     if (mode in modeMap) {
@@ -88,9 +125,20 @@
     return null;
   }
 
+  function findModeFromFilename(filename) {
+    if (!filename) {
+      return 'markdown';
+    }
+    let ext = filename.split('.').pop().toLowerCase();
+    if (ext in extMap) {
+      return extMap[ext];
+    }
+    return 'markdown';
+  }
+
   function markExpr(python_mode) {
     return {
-      startState: function() {
+      startState: function () {
         return {
           in_python: false,
           sigil: null,
@@ -99,7 +147,7 @@
         };
       },
 
-      copyState: function(state) {
+      copyState: function (state) {
         return {
           in_python: state.in_python,
           sigil: state.sigil,
@@ -108,7 +156,7 @@
         };
       },
 
-      token: function(stream, state) {
+      token: function (stream, state) {
         if (state.in_python) {
           if (stream.match(state.sigil.right)) {
             state.in_python = false;
@@ -153,14 +201,14 @@
             }
             return "sos-sigil" + (state.matched ? "" : " sos-unmatched");
           }
-          while (stream.next() && !stream.match(state.sigil.left, false)) {}
+          while (stream.next() && !stream.match(state.sigil.left, false)) { }
           return null;
         }
       }
     }
   }
 
-  CodeMirror.defineMode("sos", function(conf, parserConf) {
+  CodeMirror.defineMode("sos", function (conf, parserConf) {
     let sosPythonConf = {};
     for (let prop in parserConf) {
       if (parserConf.hasOwnProperty(prop)) {
@@ -195,7 +243,7 @@
       });
       var overlay_mode = markExpr(python_mode);
       return {
-        startState: function() {
+        startState: function () {
           return {
             sos_mode: true,
             base_state: CodeMirror.startState(base_mode),
@@ -209,7 +257,7 @@
           };
         },
 
-        copyState: function(state) {
+        copyState: function (state) {
           return {
             sos_mode: state.sos_mode,
             base_state: CodeMirror.copyState(base_mode, state.base_state),
@@ -222,7 +270,7 @@
           };
         },
 
-        token: function(stream, state) {
+        token: function (stream, state) {
           if (state.sos_mode) {
             if (stream.sol()) {
               let sl = stream.peek();
@@ -290,7 +338,7 @@
           }
         },
 
-        indent: function(state, textAfter) {
+        indent: function (state, textAfter) {
           // inner indent
           if (!state.sos_mode) {
             if (!base_mode.indent) return CodeMirror.Pass;
@@ -301,7 +349,7 @@
           }
         },
 
-        innerMode: function(state) {
+        innerMode: function (state) {
           return state.sos_mode ? {
             state: state.base_state,
             mode: base_mode
@@ -316,7 +364,7 @@
       base_mode = CodeMirror.getMode(conf, sosPythonConf);
       overlay_mode = markExpr(base_mode);
       return {
-        startState: function() {
+        startState: function () {
           return {
             sos_state: null,
             base_state: CodeMirror.startState(base_mode),
@@ -332,7 +380,7 @@
           };
         },
 
-        copyState: function(state) {
+        copyState: function (state) {
           return {
             sos_state: state.sos_state,
             base_state: CodeMirror.copyState(base_mode, state.base_state),
@@ -347,7 +395,7 @@
           };
         },
 
-        token: function(stream, state) {
+        token: function (stream, state) {
           if (stream.sol()) {
             let sl = stream.peek();
             if (sl == '[') {
@@ -467,6 +515,22 @@
                 }
               }
             }
+            let mode_string = state.sos_state.slice(6).toLowerCase();
+            // for report, we need to find "output" option
+            if (mode_string === "report" &&
+              stream.match(/^.*output\s*=\s*/, false)) {
+              let found = stream.match(/^.*output\s*=\s*[rRbufF]*"""([^"]+)"""/, false);
+              if (!found)
+                found = stream.match(/^.*output\s*=\s*[rRbufF]*'''([^.]+)'''/, false);
+              if (!found)
+                found = stream.match(/^.*output\s*=\s*[rRbufF]*"([^"]+)"/, false);
+              if (!found)
+                found = stream.match(/^.*output\s*=\s*[rRbufF]*'([^']+)'/, false);
+
+              // found[1] is the filename
+              state.sos_state = 'start ' + findModeFromFilename(found ? found[1] : found);
+            }
+
             let token = base_mode.token(stream, state.base_state);
             // if it is end of line, ending the starting switch mode
             if (stream.eol() && stream.peek() !== ',') {
@@ -521,7 +585,7 @@
           }
         },
 
-        indent: function(state, textAfter) {
+        indent: function (state, textAfter) {
           // inner indent
           if (state.inner_mode) {
             if (!state.inner_mode.indent) return CodeMirror.Pass;
@@ -531,7 +595,7 @@
           }
         },
 
-        innerMode: function(state) {
+        innerMode: function (state) {
           return state.inner_mode ? null : {
             state: state.base_state,
             mode: base_mode
