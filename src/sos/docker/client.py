@@ -244,14 +244,14 @@ class SoS_DockerClient:
             return
         # ask controller
         while True:
-            res = request_answer_from_controller(['resource', 'docker_image', 'request', image])
+            res = request_answer_from_controller(
+                ['resource', 'docker_image', 'request', image])
             if res == 'pending':
                 time.sleep(0.5)
             elif res == 'available':
                 return
             elif res == 'unavailable':
-                raise RuntimeError(
-                    f'Docker image {image} is unavailable')
+                raise RuntimeError(f'Docker image {image} is unavailable')
             elif res == 'help yourself':
                 break
             else:
@@ -269,11 +269,51 @@ class SoS_DockerClient:
         except subprocess.CalledProcessError as exc:
             err_msg = exc.output
         if not self._is_image_avail(image):
-            send_message_to_controller(['resource', 'docker_image', 'unavailable', image])
+            send_message_to_controller(
+                ['resource', 'docker_image', 'unavailable', image])
             raise RuntimeError(
                 f'Failed to pull docker image {image}:\n {err_msg}')
-        send_message_to_controller(['resource', 'docker_image', 'available', image])
+        send_message_to_controller(
+            ['resource', 'docker_image', 'available', image])
         self.pulled_images.add(image)
+
+    def _get_volumes_opt(self, kwargs):
+        #
+        wdir = os.path.abspath(os.getcwd())
+
+        # _input, _output, _depends
+        def get_dirs(targets):
+            if not isinstance(targets, sos_targets):
+                return []
+            return [x.parent for x in targets._targets if isinstance(x, path)]
+
+        binds = {
+            f'{path(x):p}': f'{path(x):p}'
+            for x in set([wdir] + get_dirs(env.sos_dict['_input']) +
+                         get_dirs(env.sos_dict['_output']) +
+                         get_dirs(env.sos_dict['_depends']))
+        }
+
+        if 'volumes' in kwargs:
+            volumes = [kwargs['volumes']] if isinstance(
+                kwargs['volumes'], str) else kwargs['volumes']
+            for vol in volumes:
+                if not vol:
+                    continue
+                if isinstance(vol, (str, path)):
+                    vol = str(vol)
+                else:
+                    raise ValueError(
+                        f'Unacceptable value {vol} for parameter volumes')
+                if vol.count(':') == 0:
+                    host_dir, mnt_dir = vol, vol
+                elif vol.count(':') in (1, 2):
+                    host_dir, mnt_dir = vol.split(':', 1)
+                else:
+                    raise ValueError(
+                        f'Invalid format for volume specification: {vol}')
+                binds[f'{path(host_dir).resolve():p}'] = f'{path(mnt_dir):p}'
+        return ' '.join([f'-v {x}:{y}' for x, y in binds.items()])
 
     def run(self,
             image,
@@ -308,37 +348,7 @@ class SoS_DockerClient:
             #
             # under mac, we by default share /Users within docker
             wdir = os.path.abspath(os.getcwd())
-            binds = []
-            if 'volumes' in kwargs:
-                volumes = [kwargs['volumes']] if isinstance(
-                    kwargs['volumes'], str) else kwargs['volumes']
-                has_wdir = False
-                for vol in volumes:
-                    if not vol:
-                        continue
-                    if isinstance(vol, (str, path)):
-                        vol = str(vol)
-                    else:
-                        raise ValueError(
-                            f'Unacceptable value {vol} for parameter volumes')
-                    if vol.count(':') == 0:
-                        host_dir, mnt_dir = vol, vol
-                    elif vol.count(':') in (1, 2):
-                        host_dir, mnt_dir = vol.split(':', 1)
-                    else:
-                        raise ValueError(
-                            f'Invalid format for volume specification: {vol}')
-                    binds.append(
-                        f'{path(host_dir).resolve():p}:{path(mnt_dir):p}')
-                    if wdir.startswith(
-                            os.path.abspath(os.path.expanduser(host_dir))):
-                        has_wdir = True
-                volumes_opt = ' '.join('-v {}'.format(x) for x in binds)
-                if not has_wdir:
-                    volumes_opt += f' -v {path(wdir):p}:{path(wdir):p}'
-            else:
-                volumes_opt = f' -v {path(wdir):p}:{path(wdir):p}'
-
+            volumes_opt = self._get_volumes_opt(kwargs)
             #
             mem_limit_opt = ''
             if 'mem_limit' in kwargs:
