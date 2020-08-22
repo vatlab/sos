@@ -254,3 +254,15 @@ def test_port_option():
         run:  container='ubuntu', port=2345
         echo 'Echo'
         ''')
+
+@pytest.mark.skipif(not has_docker or sys.platform == 'win32',
+                    reason='Skip test because docker is not installed.')
+def test_auto_output_mount():
+    '''Test use of option port in action'''
+    execute_workflow(r'''
+        output: '../data/1.txt'
+        run: container='ubuntu'
+        sh: expand=True
+            touch {_output}
+        ''')
+    assert os.path.isfile('../data/1.txt')

@@ -288,12 +288,11 @@ class SoS_DockerClient:
             return [x.parent for x in targets._targets if isinstance(x, path)]
 
         binds = {
-            f'{path(x):p}': f'{path(x):p}'
+            f'{path(x).resolve():p}': f'{path(x).resolve():p}'
             for x in set([wdir] + get_dirs(env.sos_dict['_input']) +
                          get_dirs(env.sos_dict['_output']) +
                          get_dirs(env.sos_dict['_depends']))
         }
-
         if 'volumes' in kwargs:
             volumes = [kwargs['volumes']] if isinstance(
                 kwargs['volumes'], str) else kwargs['volumes']
