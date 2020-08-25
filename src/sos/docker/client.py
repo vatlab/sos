@@ -261,11 +261,12 @@ class SoS_DockerClient:
         err_msg = ''
         try:
             print(f'HINT: Pulling docker image {image}')
-            subprocess.check_output(
+            subprocess.run(
                 'docker pull {}'.format(image),
                 stderr=subprocess.STDOUT,
                 shell=True,
-                universal_newlines=True)
+                universal_newlines=True,
+                check=True)
         except subprocess.CalledProcessError as exc:
             err_msg = exc.output
         if not self._is_image_avail(image):

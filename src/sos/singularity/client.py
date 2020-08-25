@@ -275,13 +275,14 @@ class SoS_SingularityClient:
         # if image is specified, check if it is available locally. If not, pull it
         try:
             print(
-                f'HINT: Pulling image {image} to {image_file.replace(os.path.expanduser("~"), "~")}'
+                f'HINT: Pulling singularity image {image} to {image_file.replace(os.path.expanduser("~"), "~")}'
             )
-            subprocess.check_output(
+            subprocess.run(
                 'singularity pull {} {}'.format(image_file, image),
                 stderr=subprocess.STDOUT,
                 shell=True,
-                universal_newlines=True)
+                universal_newlines=True,
+                check=True)
             self.pulled_images.add(image)
         except subprocess.CalledProcessError as exc:
             send_message_to_controller(
