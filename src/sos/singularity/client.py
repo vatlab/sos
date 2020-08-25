@@ -277,12 +277,11 @@ class SoS_SingularityClient:
             print(
                 f'HINT: Pulling singularity image {image} to {image_file.replace(os.path.expanduser("~"), "~")}'
             )
-            subprocess.run(
+            subprocess.check_output(
                 'singularity pull {} {}'.format(image_file, image),
                 stderr=subprocess.STDOUT,
                 shell=True,
-                universal_newlines=True,
-                check=True)
+                universal_newlines=True)
             self.pulled_images.add(image)
         except subprocess.CalledProcessError as exc:
             send_message_to_controller(
@@ -291,6 +290,8 @@ class SoS_SingularityClient:
         if not path(image_file).exists():
             raise ValueError(
                 f'Image {image_file} does not exist after pulling {image}.')
+        else:
+            print(f'HINT: Singularity image {image} is now up to date')
         send_message_to_controller(
             ['resource', 'singularity_image', 'available', image])
 

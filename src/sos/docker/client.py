@@ -261,12 +261,11 @@ class SoS_DockerClient:
         err_msg = ''
         try:
             print(f'HINT: Pulling docker image {image}')
-            subprocess.run(
+            subprocess.check_output(
                 'docker pull {}'.format(image),
                 stderr=subprocess.STDOUT,
                 shell=True,
-                universal_newlines=True,
-                check=True)
+                universal_newlines=True)
         except subprocess.CalledProcessError as exc:
             err_msg = exc.output
         if not self._is_image_avail(image):
@@ -274,6 +273,8 @@ class SoS_DockerClient:
                 ['resource', 'docker_image', 'unavailable', image])
             raise RuntimeError(
                 f'Failed to pull docker image {image}:\n {err_msg}')
+        else:
+            print(f'HINT: Docker image {image} is now up to date')
         send_message_to_controller(
             ['resource', 'docker_image', 'available', image])
         self.pulled_images.add(image)
