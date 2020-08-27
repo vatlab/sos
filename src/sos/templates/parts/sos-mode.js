@@ -23,7 +23,8 @@
       require("codemirror/addon/selection/active-line"),
       require("codemirror/addon/fold/foldcode"),
       require("codemirror/addon/fold/foldgutter"),
-      require("codemirror/addon/fold/indent-fold"));
+      require("codemirror/addon/fold/indent-fold"),
+      require("codemirror/addon/display/autorefresh"));
   else if (typeof define == "function" && define.amd) // AMD
     define(["codemirror/lib/codemirror", "codemirror/mode/python/python",
       "codemirror/mode/markdown/markdown", "codemirror/mode/r/r"
