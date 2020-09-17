@@ -17,11 +17,9 @@ if _py_ver.major == 2 or (_py_ver.major == 3 and
 # version of the SoS language
 __sos_version__ = '1.0'
 # version of the sos command
-__version__ = '0.21.15'
+__version__ = '0.21.16'
 __py_version__ = '{}.{}.{}'.format(_py_ver.major, _py_ver.minor, _py_ver.micro)
 
 #
 SOS_FULL_VERSION = '{} for Python {}.{}.{}'.format(__version__, _py_ver.major,
                                                    _py_ver.minor, _py_ver.micro)
-SOS_COPYRIGHT = '''SoS {} : Copyright (c) 2016 Bo Peng'''.format(__version__)
-SOS_CONTACT = '''Please visit http://github.com/vatlab/SoS for more information.'''
