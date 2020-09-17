@@ -1886,8 +1886,17 @@ def get_nodelist():
         env.log_to_file('WORKER', f'Using "-j {args}" on a PBS cluster.')
         return args
     elif "PE_HOSTFILE" in os.environ:
+        # The pathname of a file containing a  detailed  descrip-
+        #  tion  of  the  layout of the parallel environment to be
+        #  setup by the start-up procedure. Each line of the  file
+        #  refers  to a host on which parallel processes are to be
+        #  run. The first entry of each line denotes the hostname,
+        #  the second entry the number of parallel processes to be
+        #  run on the host, the third entry the name of the queue,
+        #  and  the  fourth  entry a processor range to be used in
+        #  case of a multiprocessor machine.
         with open(os.environ["PE_HOSTFILE"], 'r') as hosts:
-            args = [':'.join(host.split()) for host in hosts]
+            args = [':'.join(host.split()[:2]) for host in hosts]
         env.log_to_file('WORKER', f'Using "-j {args}" on a SGE cluster.')
         return args
     elif "LSB_MCPU_HOSTS" in os.environ:
