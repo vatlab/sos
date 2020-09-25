@@ -689,7 +689,7 @@ class Base_Step_Executor:
             if tf.has_stdout():
                 print(TaskFile(tid).stdout)
 
-        for idx, task in enumerate(self.proc_results):
+        for idx, task in self.proc_results.items():
             # if it is done
             if isinstance(task, dict):
                 continue
@@ -704,12 +704,12 @@ class Base_Step_Executor:
                     #    self.proc_results[idx] = mres
         #
         # check if all have results?
-        if any(isinstance(x, str) for x in self.proc_results):
+        if any(isinstance(x, str) for x in self.proc_results.values()):
             raise RuntimeError(
-                f'Failed to get results for tasks {", ".join(x for x in self.proc_results if isinstance(x, str))}'
+                f'Failed to get results for tasks {", ".join(x for x in self.proc_results.values() if isinstance(x, str))}'
             )
         #
-        for idx, res in enumerate(self.proc_results):
+        for idx, res in self.proc_results.items():
             if 'skipped' in res and res['skipped']:
                 self.completed['__task_skipped__'] += 1
                 # complete case: task skipped
@@ -1056,11 +1056,11 @@ class Base_Step_Executor:
         # and we need to mark some steps has been completed.
         if self.concurrent_substep:
             self._completed_concurrent_substeps += 1
-            self.proc_results.append({
+            self.proc_results[idx] = {
                 'index': idx,
                 'ret_code': 0,
                 'output': copy.deepcopy(env.sos_dict['_output'])
-            })
+            }
         send_message_to_controller(
             ['progress', 'substep_ignored', env.sos_dict['step_id']])
 
@@ -1099,7 +1099,7 @@ class Base_Step_Executor:
              'step_output', 'step_name',
               '_runtime', 'step_id', 'workflow_id', '__num_groups__',
               '__signature_vars__'}
-        self.proc_results.append({})
+        self.proc_results[env.sos_dict['_index']] = {}
         self.submit_substep(
             dict(
                 stmt=statement[1],
@@ -1170,14 +1170,14 @@ class Base_Step_Executor:
     #             f'Unacceptable value for option active: {active}')
 
     def check_results(self):
-        for proc_result in [x for x in self.proc_results if x['ret_code'] == 0]:
+        for proc_result in [x for x in self.proc_results.values() if x['ret_code'] == 0]:
             if 'stdout' in proc_result and proc_result['stdout']:
                 sys.stdout.write(proc_result['stdout'])
             if 'stderr' in proc_result and proc_result['stderr']:
                 sys.stderr.write(proc_result['stderr'])
 
         # now that output is settled, we can write remaining signatures
-        for idx, res in enumerate(self.proc_results):
+        for idx, res in self.proc_results.items():
             if self.pending_signatures[idx] is not None and res[
                     'ret_code'] == 0 and 'sig_skipped' not in res:
                 # task might return output with vars #1355
@@ -1186,7 +1186,7 @@ class Base_Step_Executor:
             if res['ret_code'] != 0 and 'output' in res:
                 clear_output(output=res['output'])
 
-        for proc_result in [x for x in self.proc_results if x['ret_code'] != 0]:
+        for proc_result in [x for x in self.proc_results.values() if x['ret_code'] != 0]:
             if 'stdout' in proc_result and proc_result['stdout']:
                 sys.stdout.write(proc_result['stdout'])
             if 'stderr' in proc_result and proc_result['stderr']:
@@ -1431,7 +1431,7 @@ class Base_Step_Executor:
             # assuming everything starts from 0 is after input
             input_statement_idx = 0
 
-        self.proc_results = []
+        self.proc_results = {}
         self.vars_to_be_shared = set()
         if 'shared' in self.step.options:
             self.vars_to_be_shared = parse_shared_vars(
@@ -1835,7 +1835,7 @@ class Base_Step_Executor:
                         'task_def': taskdef,
                         'task_vars': task_vars
                     })
-                    self.proc_results.append(task)
+                    self.proc_results[env.sos_dict['_index']] = task
                 except Exception as e:
                     # FIXME: cannot catch exception from subprocesses
                     if env.verbosity > 2:
@@ -1880,7 +1880,7 @@ class Base_Step_Executor:
             except StopIteration:
                 pass
 
-            for idx, res in enumerate(self.proc_results):
+            for idx, res in self.proc_results.items():
                 if 'sig_skipped' in res:
                     self.completed['__substep_skipped__'] += 1
                     self.completed['__substep_completed__'] -= 1
