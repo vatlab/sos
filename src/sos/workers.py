@@ -184,6 +184,7 @@ class SoS_Worker(mp.Process):
     def run(self):
         # env.logger.warning(f'Worker created {os.getpid()}')
         env.config.update(self.config)
+        env.verbosity = self.config.get('verbosity', 2)
 
         if 'PROFILE' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
                 'SOS_DEBUG']:
