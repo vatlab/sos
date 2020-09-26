@@ -645,15 +645,15 @@ class path(type(Path())):
         if not self._parts or self._parts[0][:1] != '#':
             return self
         try:
-            return self._from_parts([
-                get_config(
+            cfg = get_config(
                     'hosts',
                     env.sos_dict.get('__host__', 'localhost'
                                     ) if host is None else host,
-                    'paths',
-                    self._parts[0][1:],
-                    expected_type=str)
-            ] + self._parts[1:])
+                    expected_type=dict)
+            try:
+                return self._from_parts([cfg['paths'][self._parts[0][1:]]] + self._parts[1:])
+            except KeyError:
+                return self._from_parts([cfg['shared'][self._parts[0][1:]]] + self._parts[1:])
         except Exception:
             if host is None and '__host__' not in env.sos_dict:
                 raise RuntimeError(

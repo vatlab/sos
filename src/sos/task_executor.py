@@ -17,7 +17,7 @@ from threading import Event
 
 from .eval import SoS_eval, SoS_exec
 from .monitor import ProcessMonitor
-from .targets import (InMemorySignature, file_target, sos_step, dynamic,
+from .targets import (InMemorySignature, file_target, sos_step, dynamic, path,
                       sos_targets)
 from .utils import StopInputGroup, env, pickleable, ProcessKilled, get_localhost_ip
 from .tasks import TaskFile, combine_results, remove_task_files, monitor_interval, resource_monitor_interval
@@ -201,15 +201,14 @@ class BaseTaskExecutor(object):
             open(env.sos_dict['__std_err__'], 'w').close()
 
         try:
+            orig_dir = os.getcwd()
             # go to 'workdir'
             if 'workdir' in sos_dict['_runtime']:
-                if not os.path.isdir(
-                        os.path.expanduser(sos_dict['_runtime']['workdir'])):
+                workdir = path(sos_dict['_runtime']['workdir'])
+                if not os.path.isdir(workdir):
                     try:
-                        os.makedirs(
-                            os.path.expanduser(sos_dict['_runtime']['workdir']))
-                        os.chdir(
-                            os.path.expanduser(sos_dict['_runtime']['workdir']))
+                        os.makedirs(workdir)
+                        os.chdir(workdir)
                     except Exception as e:
                         # sometimes it is not possible to go to a "workdir" because of
                         # file system differences, but this should be ok if a work_dir
@@ -218,10 +217,7 @@ class BaseTaskExecutor(object):
                             f'Failed to create workdir {sos_dict["_runtime"]["workdir"]}: {e}'
                         )
                 else:
-                    os.chdir(
-                        os.path.expanduser(sos_dict['_runtime']['workdir']))
-            #
-            orig_dir = os.getcwd()
+                    os.chdir(workdir)
 
             # we will need to check existence of targets because the task might
             # be executed on a remote host where the targets are not available.

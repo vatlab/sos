@@ -276,12 +276,12 @@ def SoS_Action(run_mode: Union[str, List[str]] = 'deprecated',
                     raise RuntimeError(
                         f'workdir option should be a path of type str or path, {kwargs["workdir"]} provided'
                     )
-                if not os.path.isdir(os.path.expanduser(kwargs['workdir'])):
-                    os.makedirs(
-                        os.path.expanduser(kwargs['workdir']), exist_ok=True)
+                workdir = path(kwargs['workdir'])
+                if not os.path.isdir(workdir):
+                    os.makedirs(workdir, exist_ok=True)
                 try:
                     olddir = os.getcwd()
-                    os.chdir(os.path.expanduser(kwargs['workdir']))
+                    os.chdir(workdir)
                     try:
                         res = func(*args, **kwargs)
                     except Exception as e:
