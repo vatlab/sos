@@ -1378,7 +1378,9 @@ def print_task_status(tasks,
                 row(td=f'<pre style="text-align:left">{params.global_def}</pre>'
                    )
             # row('Environment')
+            global_runtime = tf.runtime['_runtime']
             job_vars = params.sos_dict
+            job_vars['_runtime'].update(global_runtime)
             for k in sorted(job_vars.keys()):
                 v = job_vars[k]
                 if not k.startswith('__') and not k == 'CONFIG':
@@ -1657,7 +1659,9 @@ showResourceFigure_''' + t + '''()
                 print(params.global_def)
                 print()
             print('ENVIRONMENT:\n============')
+            global_runtime = tf.runtime['_runtime']
             job_vars = params.sos_dict
+            job_vars['_runtime'].update(global_runtime)
             for k in sorted(job_vars.keys()):
                 v = job_vars[k]
                 print(
