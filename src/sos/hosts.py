@@ -399,7 +399,7 @@ class RemoteHost(object):
     def _map_path(self, source):
         result = {}
         cwd = os.getcwd()
-        if isinstance(source, int) and source.startswith('#'):
+        if isinstance(source, str) and source.startswith('#'):
             result[path(source, host='localhost')] = path(
                 source, host=self.alias)
         elif isinstance(source, (str, path)):
@@ -442,6 +442,8 @@ class RemoteHost(object):
         if isinstance(source, path):
             source = str(source)
         if isinstance(source, str):
+            if source.startswith('#'):
+                return path(source, host=self.alias)
             dest = os.path.abspath(os.path.expanduser(source))
             # we use samefile to avoid problems with case-insensitive file system #522
             # we also use the "cwd" name to avoid wrong case for cwd. For example,
