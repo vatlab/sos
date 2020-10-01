@@ -59,7 +59,7 @@ RUN     conda install -y pyarrow -c conda-forge
 
 #       Markdown kernel
 RUN     pip install markdown-kernel
-RUN     python -m markdown_kernel.install
+RUN     python -m markdown_kernel.install --prefix /opt/conda/share/jupyter/kernels
 
 # SOS
 RUN     pip install docker markdown wand graphviz imageio pillow nbformat
