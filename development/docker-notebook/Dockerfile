@@ -57,9 +57,6 @@ RUN     julia -e "using Pkg;Pkg.add([\"Feather\", \"DataFrames\", \"NamedArrays\
 
 RUN     conda install -y pyarrow -c conda-forge
 
-#       Markdown kernel
-RUN     pip install markdown-kernel
-RUN     python -m markdown_kernel.install --prefix /opt/conda/share/jupyter/kernels
 
 # SOS
 RUN     pip install docker markdown wand graphviz imageio pillow nbformat
@@ -70,6 +67,11 @@ RUN     DUMMY=${DUMMY} conda install -c conda-forge sos sos-notebook sos-r sos-j
 RUN     pip install sos-ruby sos-javascript sos-bioinfo
 RUN     conda install -c conda-forge jupyterlab-transient-display-data jupyterlab-sos
 RUN     jupyter lab build --dev-build=False --minimize=False
+
+#       Markdown kernel
+RUN     pip install markdown-kernel
+RUN     python -m markdown_kernel.install --prefix /opt/conda/
+
 ENV     JUPYTER_ENABLE_LAB TRUE
 
 USER    jovyan
