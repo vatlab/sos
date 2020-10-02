@@ -3,6 +3,7 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
+import os
 import shutil
 import subprocess
 import unittest
@@ -24,7 +25,7 @@ class TestTarget(unittest.TestCase):
         for f in self.temp_files:
             file_target(f).unlink()
 
-    @unittest.skipIf(not shutil.which('Rscript'), 'Octave not installed')
+    @unittest.skipIf(not shutil.which('Rscript') ir 'TRAVIS' in os.environ, 'R not installed or cannot auto-install')
     def test_r_library(self):
         '''Test target R_Library'''
         script = SoS_Script('''
