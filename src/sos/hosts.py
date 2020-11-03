@@ -1278,29 +1278,29 @@ class Host:
 
                 for entrypoint in pkg_resources.iter_entry_points(
                         group='sos_taskengines'):
-                    if entrypoint.name == self._engine_type:
-                        try:
+                    try:
+                        if entrypoint.name == self._engine_type:
                             task_engine = entrypoint.load()(
                                 self.host_instances[self.alias])
                             break
-                        except Exception as e:
-                            raise RuntimeError(
-                                f'Failed to load task engine {self._engine_type}: {e}'
-                            )
+                    except Exception as e:
+                        env.logger.debug(
+                            f'Failed to load task engine {self._engine_type}: {e}'
+                        )
 
                 for entrypoint in pkg_resources.iter_entry_points(
                         group='sos_workflowengines'):
-                    if entrypoint.name == self._engine_type:
-                        try:
+                    try:
+                        if entrypoint.name == self._engine_type:
                             workflow_engine = entrypoint.load()(
                                 self.host_instances[self.alias])
                             break
-                        except Exception as e:
-                            raise RuntimeError(
-                                f'Failed to load workflow engine {self._engine_type}: {e}'
-                            )
+                    except Exception as e:
+                        env.logger.debug(
+                            f'Failed to load workflow engine {self._engine_type}: {e}'
+                        )
 
-                if task_engine is None or workflow_engine is None:
+                if task_engine is None and workflow_engine is None:
                     raise ValueError(f'Failed to load task engine of type "{self._engine_type}". Please check the engine name or install relevant module.')
 
             self.host_instances[self.alias]._task_engine = task_engine
@@ -1316,7 +1316,6 @@ class Host:
             self._task_engine = self._host_agent._task_engine
         if hasattr(self._host_agent, '_workflow_engine'):
             self._workflow_engine = self._host_agent._workflow_engine
-
         # it is possible that Host() is initialized before with start_engine=False
         # and called again to start engine
         if start_engine and self._task_engine is not None and not self._task_engine.is_alive(
