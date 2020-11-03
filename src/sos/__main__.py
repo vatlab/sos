@@ -1591,9 +1591,7 @@ def cmd_purge(args, workflow_args):
     #from .monitor import summarizeExecution
     env.verbosity = args.verbosity
     try:
-        if not args.tasks and not args.all:
-            args.all = args.age or args.status or args.tags
-        if not args.tasks and not args.all:
+        if not (args.tasks or args.all or args.status or args.tags):
             raise ValueError(
                 f'Please specify either IDs of tasks or one or more of options --all, --age, --status, or --tags.'
             )

@@ -1793,7 +1793,7 @@ def kill_task(task):
 
 
 def purge_tasks(tasks,
-                purge_all=False,
+                purge_all=None,
                 age=None,
                 status=None,
                 tags=None,
@@ -1821,16 +1821,14 @@ def purge_tasks(tasks,
             if not matched:
                 print(f'{t}\tmissing')
             all_tasks.extend(matched)
-        is_all = False
-    elif purge_all:
+    elif purge_all or age or status or tags:
         tasks = glob.glob(
             os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
         all_tasks = [
             (os.path.basename(x)[:-5], os.path.getmtime(x)) for x in tasks
         ]
-        is_all = True
     else:
-        raise ValueError(f'Please specify either tasks or --all')
+        raise ValueError(f'Please specify either tasks or one or more of --all, --status, --tags--age')
     #
     if age is not None:
         age = expand_time(age, default_unit='d')
@@ -1841,7 +1839,7 @@ def purge_tasks(tasks,
 
     if status:
         # at most 20 threads
-        task_status = check_tasks([x[0] for x in all_tasks], is_all)
+        task_status = check_tasks([x[0] for x in all_tasks], not tasks)
         all_tasks = [
             x for x in all_tasks if task_status[x[0]]['status'] in status
         ]
