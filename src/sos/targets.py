@@ -1045,7 +1045,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
     def __init__(self,
                  *args,
-                 group_by=None,
+                 group_by='auto',
                  paired_with=None,
                  pattern=None,
                  group_with=None,
@@ -1078,7 +1078,10 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             for target in self._targets:
                 if not target.target_exists('any'):
                     raise UnknownTarget(target)
-        if group_by:
+        if group_by is None:
+            self._groups = []
+        elif group_by != 'auto':
+            # if not "auto", we regroup....
             self._group(group_by)
         if paired_with:
             self._handle_paired_with(paired_with)

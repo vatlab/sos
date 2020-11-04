@@ -70,7 +70,7 @@ def __null_func__(*args, **kwargs) -> Any:
 
 
 def __output_from__(steps,
-                    group_by=None,
+                    group_by='auto',
                     paired_with=None,
                     pattern=None,
                     group_with=None,
@@ -105,7 +105,7 @@ def __output_from__(steps,
             raise RuntimeError(f'Failed to obtain output of step {step}')
         targets.extend(res)
 
-    if group_by or paired_with or pattern or group_with or for_each:
+    if group_by != 'auto' or paired_with or pattern or group_with or for_each:
         targets = sos_targets(
             targets,
             group_by=group_by,
@@ -121,7 +121,7 @@ def __traced__(*args, **kwargs):
 
 
 def __named_output__(name,
-                     group_by=None,
+                     group_by='auto',
                      paired_with=None,
                      pattern=None,
                      group_with=None,
@@ -132,7 +132,7 @@ def __named_output__(name,
         env.logger.warning(f'named_output("{name}") is not found')
         return sos_targets([])
 
-    if group_by or paired_with or pattern or group_with or for_each:
+    if group_by != 'auto' or paired_with or pattern or group_with or for_each:
         targets = sos_targets(
             targets,
             group_by=group_by,
