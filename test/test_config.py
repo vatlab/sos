@@ -123,7 +123,7 @@ def test_interpolate(config_factory):
         stderr=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         shell=True) == 0
-    load_config_files(myconfig)
+    load_config_files(myconfig, default_config_files=False)
     assert get_config('me') == f'{getpass.getuser().lower()}@my'
 
 

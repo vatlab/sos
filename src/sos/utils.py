@@ -1290,7 +1290,7 @@ class TimeoutInterProcessLock(fasteners.InterProcessLock):
 config_cache: dict = {}
 
 
-def load_config_files(filename=None):
+def load_config_files(filename=None, default_config_files=True):
     # user-specified configuration file.
     if filename is None and 'config_file' in env.config:
         filename = env.config['config_file']
@@ -1314,40 +1314,41 @@ def load_config_files(filename=None):
 
     cfg = {}
     # site configuration file
-    sos_config_file = os.path.join(
-        os.path.split(__file__)[0], 'site_config.yml')
-    if os.path.isfile(sos_config_file):
-        try:
-            with open(sos_config_file) as config:
-                cfg = yaml.safe_load(config)
-        except Exception as e:
-            raise RuntimeError(
-                f'Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})'
-            )
+    if default_config_files:
+        sos_config_file = os.path.join(
+            os.path.split(__file__)[0], 'site_config.yml')
+        if os.path.isfile(sos_config_file):
+            try:
+                with open(sos_config_file) as config:
+                    cfg = yaml.safe_load(config)
+            except Exception as e:
+                raise RuntimeError(
+                    f'Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})'
+                )
 
-    # global site file
-    sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'hosts.yml')
-    if os.path.isfile(sos_config_file):
-        try:
-            with open(sos_config_file) as config:
-                gd = yaml.safe_load(config)
-            dict_merge(cfg, gd)
-        except Exception as e:
-            print(get_traceback())
-            env.logger.warning(
-                f'Failed to parse global sos hosts file {sos_config_file}: {e}')
-    # global config file
-    sos_config_file = os.path.join(
-        os.path.expanduser('~'), '.sos', 'config.yml')
-    if os.path.isfile(sos_config_file):
-        try:
-            with open(sos_config_file) as config:
-                gd = yaml.safe_load(config)
-            dict_merge(cfg, gd)
-        except Exception as e:
-            env.logger.warning(
-                f'Failed to parse global sos config file {sos_config_file}: {e}'
-            )
+        # global site file
+        sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'hosts.yml')
+        if os.path.isfile(sos_config_file):
+            try:
+                with open(sos_config_file) as config:
+                    gd = yaml.safe_load(config)
+                dict_merge(cfg, gd)
+            except Exception as e:
+                print(get_traceback())
+                env.logger.warning(
+                    f'Failed to parse global sos hosts file {sos_config_file}: {e}')
+        # global config file
+        sos_config_file = os.path.join(
+            os.path.expanduser('~'), '.sos', 'config.yml')
+        if os.path.isfile(sos_config_file):
+            try:
+                with open(sos_config_file) as config:
+                    gd = yaml.safe_load(config)
+                dict_merge(cfg, gd)
+            except Exception as e:
+                env.logger.warning(
+                    f'Failed to parse global sos config file {sos_config_file}: {e}'
+                )
 
     if filename is not None:
         if not os.path.isfile(os.path.expanduser(filename)):
