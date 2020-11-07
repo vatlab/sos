@@ -33,7 +33,7 @@ def internet_on(host='8.8.8.8', port=80, timeout=3):
 with_network = internet_on()
 
 
-def testAcceptableArgs():
+def test_acceptable_args():
     '''test acceptable args of options'''
     with pytest.raises(Exception):
         execute_workflow(r"""
@@ -42,7 +42,7 @@ def testAcceptableArgs():
             """)
 
 
-def testGetOutput():
+def test_get_output():
     '''Test utility function get_output'''
     execute_workflow(r"""
         [0: shared='ret']
@@ -78,7 +78,7 @@ def testGetOutput():
             """)
 
 
-def testFailIf(temp_factory):
+def test_fail_if(temp_factory):
     '''Test action fail if'''
     temp_factory('a.txt')
 
@@ -98,7 +98,7 @@ def testFailIf(temp_factory):
         """)
 
 
-def testDelayedFailIf():
+def test_delayed_fail_if():
     # test fail_if of killing another running substep
     st = time.time()
     with pytest.raises(Exception):
@@ -120,7 +120,7 @@ def testDelayedFailIf():
     ) - st >= 8, 'Test test should fail only after step 10 is completed'
 
 
-def testDelayedFailIfFromNestedWorkflow():
+def test_delayed_fail_if_from_nested_workflow():
     # test fail_if of killing another running substep
 
     st = time.time()
@@ -146,7 +146,7 @@ def testDelayedFailIfFromNestedWorkflow():
     ) - st >= 8, 'Test test should fail only after step 10 is completed'
 
 
-def testWarnIf(temp_factory):
+def test_warn_if(temp_factory):
     '''Test action fail if'''
     execute_workflow(
         r"""
@@ -165,7 +165,7 @@ def testWarnIf(temp_factory):
         options={'run_mode': 'dryrun'})
 
 
-def testStopIf():
+def test_stop_if():
     '''Test action stop_if'''
     execute_workflow(r'''
         [0: shared='result']
@@ -224,7 +224,7 @@ def test_stop_if_2(clear_now_and_after):
     assert os.path.isfile('test_stop_if_1.txt')
 
 
-def testSkipIf():
+def test_skip_if():
     '''Test action stop_if'''
     execute_workflow(r'''
         [0: shared='result']
@@ -263,7 +263,7 @@ def test_skip_if_1(clear_now_and_after):
     assert not os.path.isfile('test_stop_if_1.txt')
 
 
-def testDoneIf(clear_now_and_after):
+def test_done_if(clear_now_and_after):
     'Test action done_if'
     clear_now_and_after([f'test_done_if_{rep}.txt' for rep in range(2)])
 
@@ -285,7 +285,7 @@ def testDoneIf(clear_now_and_after):
     assert (os.path.isfile('test_done_if_1.txt'))
 
 
-def testRun():
+def test_run():
     '''Test action run'''
     execute_workflow(r'''
         [0]
@@ -306,7 +306,7 @@ def test_run_1():
             ''')
 
 
-def testRunWithShebang():
+def test_run_with_shebang():
     execute_workflow(r'''
         [0]
         run:
@@ -316,7 +316,7 @@ def testRunWithShebang():
 
 
 @pytest.mark.skipif(not shutil.which('perl'), reason="Needs perl")
-def testPerl():
+def test_perl():
     '''Test action perl'''
     execute_workflow(r'''
         [0]
@@ -329,7 +329,7 @@ def testPerl():
 
 
 @pytest.mark.skipif(not shutil.which('ruby'), reason="Needs ruby")
-def testRuby():
+def test_ruby():
     '''Test action ruby'''
     execute_workflow(r'''
         [0]
@@ -349,7 +349,7 @@ def testRuby():
 @pytest.mark.skipif(
     not with_network or 'TRAVIS' in os.environ or 'APPVEYOR' in os.environ,
     reason='Skip test because of no internet connection or in travis test')
-def testDownload(temp_factory, clear_now_and_after):
+def test_download(temp_factory, clear_now_and_after):
     '''Test download of resources'''
 
     clear_now_and_after('tmp')
@@ -386,7 +386,7 @@ def testDownload(temp_factory, clear_now_and_after):
 @pytest.mark.skipif(
     not with_network or 'TRAVIS' in os.environ or 'APPVEYOR' in os.environ,
     reason='Skip test because of no internet connection or in travis test')
-def testDownloadMissingFile(temp_factory, clear_now_and_after):
+def test_download_missing_file(temp_factory, clear_now_and_after):
 
     clear_now_and_after('tmp')
     temp_factory(dir='tmp')
@@ -407,7 +407,7 @@ def testDownloadMissingFile(temp_factory, clear_now_and_after):
 @pytest.mark.skipif(
     not with_network or 'TRAVIS' in os.environ or 'APPVEYOR' in os.environ,
     reason='Skip test because of no internet connection or in travis test')
-def testDownloadLargeFile(temp_factory, clear_now_and_after):
+def test_download_large_file(temp_factory, clear_now_and_after):
     # test decompress tar.gz, .zip and .gz files
 
     clear_now_and_after('tmp')
@@ -432,7 +432,7 @@ def testDownloadLargeFile(temp_factory, clear_now_and_after):
 
 
 @pytest.mark.skipif(not shutil.which('pandoc'), reason="Needs pandoc")
-def testPandoc(clear_now_and_after):
+def test_pandoc(clear_now_and_after):
     '''Test action pandoc'''
     clear_now_and_after('report.md', 'myreport.html')
 
@@ -517,7 +517,7 @@ def test_pandoc_3(clear_now_and_after):
         assert file_target(f).target_exists()
 
 
-def testReport(clear_now_and_after):
+def test_report(clear_now_and_after):
     '''Test action report'''
     clear_now_and_after('report.txt')
 
@@ -640,7 +640,7 @@ def test_report_7(clear_now_and_after):
             ''')
 
 
-def testOptionWorkdir(temp_factory):
+def test_option_workdir(temp_factory):
     '''Test option workdir of tasks'''
     temp_factory(dir='temp_wdr')
 
@@ -658,7 +658,7 @@ def testOptionWorkdir(temp_factory):
         assert 'hello' == tmp.read()
 
 
-def testActionScript():
+def test_action_script():
     '''Test action script'''
     execute_workflow(r'''
         [A_1]
@@ -672,7 +672,7 @@ def testActionScript():
         assert 'something' == tmp.read()
 
 
-def testRegenerateReport(clear_now_and_after):
+def test_regenerate_report(clear_now_and_after):
     '''Testing the regeneration of report once is needed. The problem
     here is the 'input' parameter of report.'''
     clear_now_and_after('a1.md', 'a2.md', 'out.md')
@@ -709,7 +709,7 @@ def testRegenerateReport(clear_now_and_after):
     execute_workflow(script)
 
 
-def testActiveActionOption(temp_factory):
+def test_active_action_option(temp_factory):
     '''Test the active option of actions'''
     # disallow
     with pytest.raises(Exception):
@@ -782,7 +782,3 @@ def test_action_option_template_name(config_factory):
         ''',
         args=['-c', cfg])
     assert not os.path.isfile('template_output.txt')
-
-
-if __name__ == '__main__':
-    unittest.main()
