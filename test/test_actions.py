@@ -77,6 +77,13 @@ def test_get_output():
             ret = get_output('cat -h')
             """)
 
+@pytest.mark.skipif(not shutil.which('bash'),  reason='Needs bash.')
+def test_get_output_extra_kwargs():
+    execute_workflow(r"""
+        [0]
+        ret = get_output('echo "ECHO" | wc -l', executable="/bin/bash")
+        """)
+
 
 def test_fail_if(temp_factory):
     '''Test action fail if'''

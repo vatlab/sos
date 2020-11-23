@@ -754,11 +754,13 @@ def stable_repr(obj):
 # A utility function that returns output of a command
 
 
-def get_output(cmd, show_command=False, prompt='$ '):
+def get_output(cmd, show_command=False, prompt='$ ', **kwargs):
     import subprocess
     try:
+        if 'shell' not in kwargs:
+            kwargs['shell'] = True
         output = subprocess.check_output(
-            cmd, stderr=subprocess.DEVNULL, shell=True).decode()
+            cmd, stderr=subprocess.DEVNULL, **kwargs).decode()
     except subprocess.CalledProcessError as e:
         if e.output.decode():
             env.logger.error(e.output.decode())
