@@ -1424,7 +1424,9 @@ def format_duration(time_diff_secs, short=True):
     rec = [(secs // (3600 * 24), 'day'), (secs % (3600 * 24) // 3600, 'hr'),
            (secs % 3600 // 60, 'min'), (secs % 60, 'sec')]
     txt = [f'{x} {y}' for x, y in rec if x > 0]
-    return (txt[0] if short else ' '.join(txt)) if txt else '0s'
+    if short and len(txt) > 1:
+        txt = [x for x in txt[:2] if not x.endswith('sec')]
+    return ' '.join(txt) if txt else '0s'
 
 
 def format_HHMMSS(v):
