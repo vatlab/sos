@@ -35,6 +35,8 @@ __all__ = ['dynamic', 'executable', 'env_variable', 'sos_variable']
 
 
 def is_basic_type(obj):
+    if obj is None:
+        return True
     if isinstance(obj, (bool, int, float, str, bytes)):
         return True
     if isinstance(obj, (tuple, list, set)):
