@@ -35,6 +35,7 @@ addons:
             - octave
             - ruby-full
             - r-base
+            - r-rmarkdown
             - pandoc
 
 before_install:
