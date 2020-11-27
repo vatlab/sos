@@ -187,14 +187,14 @@ def test_docker_build_windows_image():
 
 @pytest.mark.skipif(not has_docker or sys.platform == 'win32',
                     reason='Skip test because docker is not installed.')
-def test_docker_image():
+def test_docker_image(fastq_files):
     '''Test docker_image option'''
     execute_workflow(r'''
         import os
         import glob
         [0]
-        fastq_files = glob.glob('data/*.fastq')
-        input_volume = os.path.dirname(fastq_files[0])
+        fastq_files = glob.glob('data/S20_R*.fastq')
+        input_volume = os.path.dirname(os.path.abspath(fastq_files[0]))
         output_volume = os.getcwd()
 
         run: container='docker://compbio/ngseasy-fastqc:1.0-r001',
