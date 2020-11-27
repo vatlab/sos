@@ -1974,76 +1974,66 @@ report:
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    def test_task_param_var(self):
-        '''Test global parameter passed to task parameters #1281'''
-        script = SoS_Script(r'''
-[global]
-parameter: job_size = 60
+def test_task_param_var():
+    '''Test global parameter passed to task parameters #1281'''
+    execute_workflow(r'''
+        [global]
+        parameter: job_size = 60
 
-[1]
-task: trunk_size = job_size
-bash:
-        echo 1
-''')
-        wf = script.workflow()
-        Base_Executor(wf, config={'default_queue': 'localhost'}).run()
+        [1]
+        task: trunk_size = job_size
+        bash:
+                echo 1
+        ''', options={'default_queue': 'localhost'})
 
-    def test_task_param_var_to_substep(self):
-        '''Test global parameter passed to task parameters in substep #1281'''
-        script = SoS_Script(r'''
-[global]
-parameter: job_size = 60
+def test_task_param_var_to_substep():
+    '''Test global parameter passed to task parameters in substep #1281'''
+    execute_workflow(r'''
+        [global]
+        parameter: job_size = 60
 
-[1]
-input: for_each=dict(i=range(3))
+        [1]
+        input: for_each=dict(i=range(3))
 
-task: trunk_size = job_size
-bash: expand=True
-        echo {i}
-''')
-        wf = script.workflow()
-        Base_Executor(wf, config={'default_queue': 'localhost'}).run()
+        task: trunk_size = job_size
+        bash: expand=True
+                echo {i}
+        ''',
+        options={'default_queue': 'localhost'})
 
-    def test_empty_parameter(self):
-        # parameter: without content #1283
-        script = SoS_Script(r'''
-parameter:
+def test_empty_parameter():
+    # parameter: without content #1283
+    execute_workflow(r'''
+        parameter:
 
-print(1)
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
+        print(1)
+        ''')
 
-    def test_sequential_substeps(self):
-        '''Test sequential execution of substeps'''
-        script = SoS_Script(r'''
-[10: shared='sum']
-sum = 0
-input: for_each=dict(i=range(4)), concurrent=False
-sum += i
-print(f'sum is {sum} at index {_index}')
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['sum'], 6)
+def test_sequential_substeps():
+    '''Test sequential execution of substeps'''
+    execute_workflow(r'''
+        [10: shared='sum']
+        sum = 0
+        input: for_each=dict(i=range(4)), concurrent=False
+        sum += i
+        print(f'sum is {sum} at index {_index}')
+        ''')
+    assert env.sos_dict['sum'] == 6
 
-    def test_limited_concurrency(self):
-        '''Set concurrent=INT'''
+def test_limited_concurrency():
+    '''Set concurrent=INT'''
+    execute_workflow(r'''
+        [10]
+        input: for_each=dict(i=range(6)), concurrent=2
+        print(i)
+        ''')
 
-        script = SoS_Script(r'''
-[10]
-input: for_each=dict(i=range(6)), concurrent=2
-print(i)
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-    def test_concurrent_substep_with_step_import(self):
-        ''' Test concurrent substep with step leval import statement #1354'''
-        execute_workflow('''
-import time
-input: for_each=dict(i=range(2))
-time.sleep(0)
+def test_concurrent_substep_with_step_import():
+    ''' Test concurrent substep with step leval import statement #1354'''
+    execute_workflow('''
+        import time
+        input: for_each=dict(i=range(2))
+        time.sleep(0)
         ''')
 
 
