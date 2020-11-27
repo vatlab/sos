@@ -43,7 +43,7 @@ def test_script_to_html(temp_factory):
         #
         assert subprocess.call(['sos', 'convert', script_file, '--to', 'html']) == 0
 
-def test_extract_workflow():
+def test_extract_workflow(sample_workflow):
     '''Test extract workflow from ipynb file'''
     content = extract_workflow('sample_workflow.ipynb')
     print(content)

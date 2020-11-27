@@ -1482,20 +1482,7 @@ run:
         # this is ok, see https://github.com/vatlab/SoS/issues/1221
         Base_Executor(wf).run()
 
-    def test_comments(self):
-        '''Test the use of comments in sos script'''
-        # extract workflow from ipynb
-        wf = extract_workflow('sample_workflow.ipynb')
-        self.assertFalse('this is a test workflow' in wf)
-        self.assertEqual(
-            wf.count('this comment will be included but not shown in help'), 1)
-        self.assertTrue(
-            wf.count('this comment will become the comment for parameter b'), 1)
-        self.assertTrue(
-            wf.count('this comment will become the comment for parameter d'), 1)
-        self.assertFalse('this is a cell with another kernel' in wf)
-        self.assertFalse(
-            'this comment will not be included in exported workflow' in wf)
+
 
     def test_help_message(self):
         '''Test help message from ipynb notebook'''
@@ -2082,3 +2069,14 @@ def test_sos_step_in_output():
             [default]
             output: sos_step('A')
         ''')
+
+def test_comments(sample_workflow):
+    '''Test the use of comments in sos script'''
+    # extract workflow from ipynb
+    wf = extract_workflow('sample_workflow.ipynb')
+    assert 'this is a test workflow' not in wf
+    assert wf.count('this comment will be included but not shown in help') == 1
+    assert wf.count('this comment will become the comment for parameter b') == 1
+    assert wf.count('this comment will become the comment for parameter d') == 1
+    assert 'this is a cell with another kernel' not in wf
+    assert 'this comment will not be included in exported workflow' not in wf
