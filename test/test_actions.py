@@ -9,7 +9,6 @@ import shutil
 import socket
 import sys
 import time
-import unittest
 
 import pytest
 

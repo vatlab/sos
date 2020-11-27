@@ -1,5 +1,4 @@
 import pytest
-import uuid
 import os
 import shutil
 import tempfile

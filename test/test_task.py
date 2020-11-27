@@ -234,7 +234,7 @@ task:
 run:
     temp_cmd
 """)
-        wf = script.workflow()
+        script.workflow()
         env.config['sig_mode'] = 'force'
         #self.assertRaises(Exception, Base_Executor(wf).run)
         #
@@ -801,7 +801,7 @@ touch {_output}
         self.assertTrue(tasks[0] not in taskstatus)
         self.assertTrue(tasks[1] in taskstatus)
         #
-        subprocess.call(f'sos purge --all', shell=True)
+        subprocess.call('sos purge --all', shell=True)
         taskstatus = [
             x.split()[0] for x in subprocess.check_output(
                 'sos status -v1', shell=True).decode().splitlines()
@@ -1090,10 +1090,10 @@ with open(_input, 'r') as inf, open(_output, 'w') as outf:
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def test_remote_input_target(self):
         '''Test the use of remote target'''
-        if os.path.isfile(f'vars.sh'):
-            os.remove(f'vars.sh')
-        if os.path.isfile(f'vars1.sh'):
-            os.remove(f'vars1.sh')
+        if os.path.isfile('vars.sh'):
+            os.remove('vars.sh')
+        if os.path.isfile('vars1.sh'):
+            os.remove('vars1.sh')
         script = SoS_Script('''
 
 [10]
@@ -1119,10 +1119,10 @@ with open(_input, 'r') as inf, open(_output, 'w') as outf:
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def test_remote_output_target(self):
         '''Test the use of remote target'''
-        if os.path.isfile(f'vars.sh'):
-            os.remove(f'vars.sh')
-        if os.path.isfile(f'vars1.sh'):
-            os.remove(f'vars1.sh')
+        if os.path.isfile('vars.sh'):
+            os.remove('vars.sh')
+        if os.path.isfile('vars1.sh'):
+            os.remove('vars1.sh')
         script = SoS_Script('''
 [10]
 input: remote('/lib/init/vars.sh')
@@ -1145,10 +1145,10 @@ with open(_input, 'r') as inf, open(_output, 'w') as outf:
         self.assertFalse(os.path.isfile('vars1.sh'))
         #
         # case with trunksize
-        if os.path.isfile(f'vars.sh'):
-            os.remove(f'vars.sh')
-        if os.path.isfile(f'vars1.sh'):
-            os.remove(f'vars1.sh')
+        if os.path.isfile('vars.sh'):
+            os.remove('vars.sh')
+        if os.path.isfile('vars1.sh'):
+            os.remove('vars1.sh')
         script = SoS_Script('''
 [10]
 import os
