@@ -59,7 +59,7 @@ R:
         '''Test re-execution of steps with R_library'''
         script = SoS_Script('''
 [1]
-depends: R_library("ggplot2>=2.2", autoinstall=True)
+depends: R_library("bmass>=1.0.3", autoinstall=True)
 output: '1.txt'
 run: expand=True
     sleep 5
