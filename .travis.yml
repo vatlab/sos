@@ -35,6 +35,7 @@ addons:
             - octave
             - ruby-full
             - r-base
+            - r-base-dev
             - pandoc
 
 before_install:
@@ -44,6 +45,7 @@ before_install:
 
     # this is to allow sos R_Library target to operate and pass test as well
     - sudo chmod -R 777 /usr/local/lib/R/site-library
+    - R -e 'install.packages(c("digest", "rlang"), repos = "http://cran.us.r-project.org")'
     - R -e 'install.packages(c("rmarkdown"), repos = "http://cran.us.r-project.org")'
     - pip install pandas numpy
     # add docker
