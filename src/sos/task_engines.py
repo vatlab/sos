@@ -552,7 +552,9 @@ class TaskEngine(threading.Thread):
                     self.running_pending_tasks.pop(task_id)
                 if status == 'completed':
                     # status changed to completed
-                    self.task_results[task_id] = self.agent.receive_result(task_id)
+                    self.task_results[task_id] = self._thread_workers.submit(
+                        self.agent.receive_result,
+                        task_id)
             # for running pending tasks
             if status == 'aborted' and task_id in self.running_pending_tasks:
                 self.pending_tasks.append(task_id)
@@ -561,8 +563,9 @@ class TaskEngine(threading.Thread):
 
     def get_results(self, task_ids):
         while True:
-            if all(x in self.task_status for x in task_ids):
-                return {x: self.task_results[x] for x in task_ids}
+            with threading.Lock():
+                if all(x in self.task_results and not self.task_results[x].running() for x in task_ids):
+                    return {x: self.task_results[x].result() for x in task_ids}
             time.sleep(0.1)
 
     def query_tasks(self,
