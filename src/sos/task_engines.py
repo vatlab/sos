@@ -45,6 +45,7 @@ class TaskEngine(threading.Thread):
 
         self.task_status = OrderedDict()
         self.task_info = defaultdict(dict)
+        self.task_results = {}
         self.last_checked = None
         if 'status_check_interval' not in self.config:
             self.status_check_interval = 10
@@ -498,6 +499,7 @@ class TaskEngine(threading.Thread):
                     self.task_info[task_id]['date'] = [None, None, None]
                 if task_id in self.task_status and self.task_status[
                         task_id] == status:
+                    # nothing has changed.
                     self.notify_controller({
                         'queue': self.agent.alias,
                         'task_id': task_id,
@@ -548,11 +550,20 @@ class TaskEngine(threading.Thread):
                 if status in ('completed', 'failed'
                              ) and task_id in self.running_pending_tasks:
                     self.running_pending_tasks.pop(task_id)
+                if status == 'completed':
+                    # status changed to completed
+                    self.task_results[task_id] = self.agent.receive_result(task_id)
             # for running pending tasks
             if status == 'aborted' and task_id in self.running_pending_tasks:
                 self.pending_tasks.append(task_id)
                 self.task_status[task_id] = 'pending'
                 self.running_pending_tasks.pop(task_id)
+
+    def get_results(self, task_ids):
+        while True:
+            if all(x in self.task_status for x in task_ids):
+                return {x: self.task_results[x] for x in task_ids}
+            time.sleep(0.1)
 
     def query_tasks(self,
                     tasks=None,

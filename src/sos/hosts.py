@@ -1347,7 +1347,7 @@ class Host:
         return [self._task_engine.check_task_status(task) for task in tasks]
 
     def retrieve_results(self, tasks: List[str]):
-        return {task: self._host_agent.receive_result(task) for task in tasks}
+        return self._task_engine.get_results(tasks)
 
     def execute_workflow(self, script, cmd, **template_args):
         if not self._workflow_engine:
