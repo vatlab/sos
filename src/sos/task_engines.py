@@ -579,14 +579,14 @@ class TaskEngine(threading.Thread):
                         else:
                             res[task_id] = {
                                 'task_id': task_id,
-                                'exception': f'Task {self.task_status[task_id]}',
+                                'exception': ValueError(f'Task {task_id} returns status {self.task_results[task_id]}'),
                                 'ret_code': 1,
                                 'output': sos_targets()
                             }
                     else:
                         res[task_id] = {
                                 'task_id': task_id,
-                                'exception': f'Task missing',
+                                'exception': ValueError(f'Missing task {task_id}'),
                                 'ret_code': 1,
                                 'output': sos_targets()
                         }
