@@ -162,7 +162,10 @@ def test_for_each(temp_factory):
     assert env.sos_dict['counter'] == 6
     assert env.sos_dict['all_names'] == "a b c a b c "
     assert env.sos_dict['all_loop'] == "1 1 1 2 2 2 "
-    #
+
+def test_for_each_same_level(temp_factory):
+    '''Test for_each option of input'''
+    temp_factory('a.txt', 'b.txt', 'a.pdf')
     # test same-level for loop and parameter with nested list
     execute_workflow(
         r"""
@@ -180,7 +183,10 @@ def test_for_each(temp_factory):
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['processed'] == [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'),
                                          ((2, 3), 'p3.txt')]
-    #
+
+def test_for_each_dataframe(temp_factory):
+    '''Test for_each option of input'''
+    temp_factory('a.txt', 'b.txt', 'a.pdf')
     # test for each for pandas dataframe
     execute_workflow(
         r"""
@@ -194,6 +200,8 @@ def test_for_each(temp_factory):
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['res'] == ['1_2_Hello.txt', '2_4_World.txt']
 
+def test_for_each_dict(temp_factory):
+    '''Test for_each option of input'''
     # test dictionary format of for_each
     temp_factory('a.txt', 'b.txt', 'a.pdf')
     execute_workflow(r"""
@@ -214,7 +222,10 @@ def test_for_each(temp_factory):
     assert env.sos_dict['counter'] == 6
     assert env.sos_dict['all_names'] == "a b c a b c "
     assert env.sos_dict['all_loop'] == "1 1 1 2 2 2 "
-    #
+
+
+def test_for_each_multikey_dict(temp_factory):
+    '''Test for_each option of input'''
     # test multi-key dictionary format of for_each
     temp_factory('a.txt')
     execute_workflow(r"""
@@ -235,7 +246,12 @@ def test_for_each(temp_factory):
     assert env.sos_dict['counter'] == 4
     assert env.sos_dict['all_names'] == "1 2 3 4 "
     assert env.sos_dict['all_loop'] == "300 50 300 200 300 100 100 50 "
-    #
+
+
+def test_for_each_nested_list(temp_factory):
+    '''Test for_each option of input'''
+    # test dictionary format of for_each
+    temp_factory('p1.txt', 'p2.txt', 'p3.txt', 'a.txt', 'b.txt')
     # test same-level for loop and parameter with nested list
     execute_workflow(
         r"""
@@ -251,7 +267,9 @@ def test_for_each(temp_factory):
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['processed'] == [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'),
                                          ((2, 3), 'p3.txt')]
-    #
+
+def test_for_each_pandas(temp_factory):
+    '''Test for_each option of input'''
     # test for each for pandas dataframe
     execute_workflow(
         r"""
@@ -262,7 +280,9 @@ def test_for_each(temp_factory):
         """,
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['res'] == ['1_2_Hello.txt', '2_4_World.txt']
-    #
+
+def test_for_each_series():
+    '''Test for_each option of input'''
     # support for pands Series and Index types
     execute_workflow(
         r"""
@@ -274,7 +294,9 @@ def test_for_each(temp_factory):
         """,
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['res'] == ['a_1.txt', 'a_2.txt']
-    #
+
+def test_for_each_dataframe_row():
+    '''Test for_each option of input'''
     execute_workflow(
         r"""
         [0: shared={'res':'step_output'}]
@@ -287,6 +309,7 @@ def test_for_each(temp_factory):
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['res'] == ['Hello.txt', 'World.txt']
 
+def test_for_each_each_series():
     # test for each of Series
     execute_workflow(
         r"""
@@ -302,6 +325,7 @@ def test_for_each(temp_factory):
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['res'] == ['2.txt', '4.txt']
 
+def test_for_each_iterable():
     # test iterable
     execute_workflow(
         r"""
@@ -340,8 +364,12 @@ def test_for_each_as_target_property(temp_factory):
     assert env.sos_dict['counter'] == 6
     assert env.sos_dict['all_names'] == "a b c a b c "
     assert env.sos_dict['all_loop'] == "1 1 1 2 2 2 "
-    #
+
+
+def test_for_each_as_target_property_same_level_loop(temp_factory):
+    '''Test for_each option of input'''
     # test same-level for loop and parameter with nested list
+    temp_factory('a.txt', 'b.txt', 'p1.txt', 'p2.txt', 'p3.txt')
     execute_workflow(
         r"""
         [0: shared=['processed']]
@@ -359,7 +387,9 @@ def test_for_each_as_target_property(temp_factory):
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['processed'] == [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'),
                                          ((2, 3), 'p3.txt')]
-    #
+
+
+def test_for_each_as_target_property_pandas():
     # test for each for pandas dataframe
     execute_workflow(
         r"""
@@ -374,6 +404,8 @@ def test_for_each_as_target_property(temp_factory):
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['res'] == ['1_2_Hello.txt', '2_4_World.txt']
 
+def test_for_each_as_target_property_dict(temp_factory):
+    '''Test for_each option of input'''
     # test dictionary format of for_each
     temp_factory('a.txt', 'b.txt', 'a.pdf')
     execute_workflow(r"""
@@ -394,7 +426,9 @@ def test_for_each_as_target_property(temp_factory):
     assert env.sos_dict['counter'] == 6
     assert env.sos_dict['all_names'] == "a b c a b c "
     assert env.sos_dict['all_loop'] == "1 1 1 2 2 2 "
-    #
+
+def test_for_each_as_target_property_multidict(temp_factory):
+    '''Test for_each option of input'''
     # test multi-key dictionary format of for_each
     temp_factory('a.txt')
     execute_workflow(r"""
@@ -415,8 +449,11 @@ def test_for_each_as_target_property(temp_factory):
     assert env.sos_dict['counter'] == 4
     assert env.sos_dict['all_names'] == "1 2 3 4 "
     assert env.sos_dict['all_loop'] == "300 50 300 200 300 100 100 50 "
-    #
+
+def test_for_each_as_target_property_nested_list(temp_factory):
+    '''Test for_each option of input'''
     # test same-level for loop and parameter with nested list
+    temp_factory('a.txt', 'b.txt', 'p1.txt', 'p2.txt', 'p3.txt')
     execute_workflow(
         r"""
         [0: shared=['processed']]
@@ -431,7 +468,9 @@ def test_for_each_as_target_property(temp_factory):
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['processed'] == [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'),
                                          ((2, 3), 'p3.txt')]
-    #
+
+def test_for_each_as_target_property_pandas(temp_factory):
+    '''Test for_each option of input'''
     # test for each for pandas dataframe
     execute_workflow(
         r"""
@@ -443,6 +482,9 @@ def test_for_each_as_target_property(temp_factory):
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['res'] == ['1_2_Hello.txt', '2_4_World.txt']
     #
+
+def test_for_each_as_target_property_index_type(temp_factory):
+    '''Test for_each option of input'''
     # support for pands Series and Index types
     execute_workflow(
         r"""
@@ -454,7 +496,9 @@ def test_for_each_as_target_property(temp_factory):
         """,
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['res'] == ['a_1.txt', 'a_2.txt']
-    #
+
+def test_for_each_as_target_property_dataframe_keys(temp_factory):
+    '''Test for_each option of input'''
     execute_workflow(
         r"""
         [0: shared={'res':'step_output'}]
@@ -467,6 +511,8 @@ def test_for_each_as_target_property(temp_factory):
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['res'] == ['Hello.txt', 'World.txt']
 
+def test_for_each_as_target_property_series(temp_factory):
+    '''Test for_each option of input'''
     # test for each of Series
     execute_workflow(
         r"""
@@ -482,6 +528,8 @@ def test_for_each_as_target_property(temp_factory):
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['res'] == ['2.txt', '4.txt']
 
+def test_for_each_as_target_property_iterables(temp_factory):
+    '''Test for_each option of input'''
     # test iterable
     execute_workflow(
         r"""
@@ -496,6 +544,18 @@ def test_for_each_as_target_property(temp_factory):
         """,
         options={'run_mode': 'dryrun'})
     assert env.sos_dict['res'] == ['2.txt', '4.txt']
+
+def test_for_each_with_full_context(temp_factory):
+    # test iterable
+    execute_workflow(
+        r"""
+        input: for_each = [
+            {'A': 1, 'B': 2},
+            {'A': 5, 'B': 7}
+            ]
+
+        print(f'A={A}, B={B}')
+        """)
 
 
 def test_group_by_with_no_input():

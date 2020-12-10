@@ -1859,6 +1859,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             for_each = [for_each]
         elif isinstance(for_each, Sequence):
             for_each = for_each
+            if all(isinstance(x, dict) for x in for_each):
+                keys = [tuple(sorted(x.keys())) for x in for_each]
+                # the keys should be all the same, or all different.
+                if len(set(keys)) == 1 and all(isinstance(x, str) for x in keys[0]):
+                    # this is a special case for specified contexts. #1403
+                    for_each = [{','.join(keys[0]): [[x[key] for key in keys[0]] for x in for_each]}]
+                elif len(set(keys)) != len(keys):
+                    raise ValueError(f'List of dictionaries for parameter for_each should have all different, or all the same keys.')
         else:
             raise ValueError(
                 f'Unacceptable value for parameter for_each: {for_each}')
