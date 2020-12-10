@@ -104,9 +104,12 @@ class TaskEngine(threading.Thread):
     def monitor_tasks(self, tasks=None, status=None, age=None):
         '''Start monitoring specified or all tasks'''
         self.engine_ready.wait()
+
         if not tasks:
             tasks = self.task_status.keys()
+            missing_tasks = []
         else:
+            missing_tasks = [x for x in tasks if x not in self.task_status]
             tasks = [x for x in tasks if x in self.task_status]
 
         # we only monitor running tasks
@@ -133,7 +136,9 @@ class TaskEngine(threading.Thread):
                  self.task_info[x].get('date',
                                        (time.time(), None, None))[0] < -age)))
         ],
-                      key=lambda x: -x[2][0])
+                      key=lambda x: -x[2][0]) + [
+                          (x, 'missing', '') for x in missing_tasks
+                      ]
 
     def get_tasks(self):
         with threading.Lock():
