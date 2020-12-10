@@ -14,6 +14,7 @@ from .eval import cfg_interpolate
 from .utils import env, expand_time
 from .tasks import TaskFile
 from .messages import encode_msg
+from .targets import sos_targets
 
 
 class TaskEngine(threading.Thread):
@@ -566,11 +567,31 @@ class TaskEngine(threading.Thread):
                 self.running_pending_tasks.pop(task_id)
 
     def get_results(self, task_ids):
+        res = {}
         while True:
             with threading.Lock():
-                if all(x in self.task_results and not self.task_results[x].running() for x in task_ids):
-                    return {x: self.task_results[x].result() for x in task_ids}
-            time.sleep(0.1)
+                for task_id in task_ids:
+                    if task_id in self.task_results and not self.task_results[task_id].running():
+                        res[task_id] = self.task_results[task_id].result()
+                    elif task_id in self.task_status:
+                        if self.task_status[task_id] in ('running', 'pending', 'submitted'):
+                            time.sleep(0.1)
+                        else:
+                            res[task_id] = {
+                                'task_id': task_id,
+                                'exception': f'Task {self.task_status[task_id]}',
+                                'ret_code': 1,
+                                'output': sos_targets()
+                            }
+                    else:
+                        res[task_id] = {
+                                'task_id': task_id,
+                                'exception': f'Task missing',
+                                'ret_code': 1,
+                                'output': sos_targets()
+                        }
+            if len(res) == len(task_ids):
+                return res
 
     def query_tasks(self,
                     tasks=None,
