@@ -687,6 +687,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
 
     def __init__(self, agent):
         super(BackgroundProcess_TaskEngine, self).__init__(agent)
+        self.wait_for_task = False
         if 'task_template' in self.config:
             self.task_template = self.config['task_template'].replace(
                 '\r\n', '\n')
