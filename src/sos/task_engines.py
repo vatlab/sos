@@ -550,11 +550,10 @@ class TaskEngine(threading.Thread):
                 if status in ('completed', 'failed'
                              ) and task_id in self.running_pending_tasks:
                     self.running_pending_tasks.pop(task_id)
-                if status == 'completed':
-                    # status changed to completed
-                    self.task_results[task_id] = self._thread_workers.submit(
-                        self.agent.receive_result,
-                        task_id)
+                # status changed to completed
+                self.task_results[task_id] = self._thread_workers.submit(
+                    self.agent.receive_result,
+                    task_id)
             # for running pending tasks
             if status == 'aborted' and task_id in self.running_pending_tasks:
                 self.pending_tasks.append(task_id)
