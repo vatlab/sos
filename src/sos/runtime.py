@@ -24,26 +24,26 @@ def _load_group(group: str) -> None:
         except Exception as e:
             # look for sos version requirement
             from .utils import get_logger
-            if 'Requirement.parse' in str(e):
+
+            if "Requirement.parse" in str(e):
                 import re
                 from ._version import __version__
                 from pkg_resources import parse_version
+
                 m = re.search(r"Requirement.parse\('sos>=([^)]*)'\)", str(e))
                 if m:
                     if parse_version(__version__) < parse_version(m.group(1)):
                         get_logger().warning(
-                            f'Failed to load target {_entrypoint.name}: please upgrade your version of sos from {__version__} to at least version {m.group(1)}'
+                            f"Failed to load target {_entrypoint.name}: please upgrade your version of sos from {__version__} to at least version {m.group(1)}"
                         )
                         continue
-            if _name == 'run':
+            if _name == "run":
                 # this is critical so we print the warning
-                get_logger().warning(
-                    f'Failed to load target {_entrypoint.name}: {e}')
+                get_logger().warning(f"Failed to load target {_entrypoint.name}: {e}")
             else:
-                get_logger().debug(
-                    f'Failed to load target {_entrypoint.name}: {e}')
+                get_logger().debug(f"Failed to load target {_entrypoint.name}: {e}")
 
 
-_load_group('sos_targets')
-_load_group('sos_actions')
-_load_group('sos_functions')
+_load_group("sos_targets")
+_load_group("sos_actions")
+_load_group("sos_functions")

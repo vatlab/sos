@@ -9,57 +9,90 @@ import re
 from typing import Callable, List
 
 SOS_TARGETS_OPTIONS = [
-    'group_by', 'paired_with', 'pattern', 'group_with', 'for_each',
-    'remove_empty_groups'
+    "group_by",
+    "paired_with",
+    "pattern",
+    "group_with",
+    "for_each",
+    "remove_empty_groups",
 ]
-SOS_INPUT_OPTIONS = ['concurrent']
+SOS_INPUT_OPTIONS = ["concurrent"]
 SOS_OUTPUT_OPTIONS = []
 SOS_DEPENDS_OPTIONS: List = []
 SOS_RUNTIME_OPTIONS = [
-    'workdir', 'walltime', 'nodes', 'cores', 'mem',
-    'shared', 'env', 'prepend_path', 'queue', 'to_host', 'from_host',
-    'trunk_size', 'trunk_workers', 'tags', 'logfile',
+    "workdir",
+    "walltime",
+    "nodes",
+    "cores",
+    "mem",
+    "shared",
+    "env",
+    "prepend_path",
+    "queue",
+    "to_host",
+    "from_host",
+    "trunk_size",
+    "trunk_workers",
+    "tags",
+    "logfile",
     # deprecated
-    'concurrent', 'name', 'active'
+    "concurrent",
+    "name",
+    "active",
 ]
 SOS_ACTION_OPTIONS = [
-    'workdir', 'container', 'engine', 'docker_image', 'docker_file', 'active',
-    'input', 'output', 'allow_error', 'tracked', 'stdout', 'stderr',
-    'default_env', 'env'
+    "workdir",
+    "container",
+    "engine",
+    "docker_image",
+    "docker_file",
+    "active",
+    "input",
+    "output",
+    "allow_error",
+    "tracked",
+    "stdout",
+    "stderr",
+    "default_env",
+    "env",
 ]
 
-SOS_DIRECTIVES = ['input', 'output', 'depends', 'task', 'parameter']
-SOS_SECTION_OPTIONS = ['provides', 'shared', 'workdir']
+SOS_DIRECTIVES = ["input", "output", "depends", "task", "parameter"]
+SOS_SECTION_OPTIONS = ["provides", "shared", "workdir"]
 
-SOS_KEYWORDS = SOS_INPUT_OPTIONS + SOS_OUTPUT_OPTIONS + SOS_DEPENDS_OPTIONS + SOS_RUNTIME_OPTIONS \
-    + SOS_ACTION_OPTIONS + SOS_DIRECTIVES + SOS_SECTION_OPTIONS
+SOS_KEYWORDS = (
+    SOS_INPUT_OPTIONS
+    + SOS_OUTPUT_OPTIONS
+    + SOS_DEPENDS_OPTIONS
+    + SOS_RUNTIME_OPTIONS
+    + SOS_ACTION_OPTIONS
+    + SOS_DIRECTIVES
+    + SOS_SECTION_OPTIONS
+)
 
 SOS_USAGES = {
-    'input':
-        '''
+    "input": """
 input: filename, filename, ... [group_by=GROUP] [filetype=FILETYPE]
           [paired_with=PAIRS] [for_each=VARS] [pattern=PATTEN]
 
 Specify input targets of a SoS step.
 
 See online documentation for details of variables.
-''',
-    'output':
-        '''
+""",
+    "output": """
 output: target, target, ...
 
 Specify output targets of a SoS step.
 
 See online documentation for details of variables.
-''',
-    'depends':
-        '''
+""",
+    "depends": """
 depends: target, target, ...
 
 Specify dependent targets of a SoS step.
 
 See online documentation for details of variables.
-'''
+""",
 }
 
 #
@@ -75,16 +108,24 @@ class LazyRegex(object):
     # These are the parameters on a real _sre.SRE_Pattern object, which we
     # will map to local members so that we don't have the proxy overhead.
     _regex_attributes_to_copy = [
-        '__copy__', '__deepcopy__', 'findall', 'finditer', 'match', 'scanner',
-        'search', 'split', 'sub', 'subn'
+        "__copy__",
+        "__deepcopy__",
+        "findall",
+        "finditer",
+        "match",
+        "scanner",
+        "search",
+        "split",
+        "sub",
+        "subn",
     ]
 
     # We use slots to keep the overhead low. But we need a slot entry for
     # all of the attributes we will copy
     __slots__ = [
-        '_real_regex',
-        '_regex_args',
-        '_regex_kwargs',
+        "_real_regex",
+        "_regex_args",
+        "_regex_kwargs",
     ] + _regex_attributes_to_copy
 
     def __init__(self, *args, **kwargs) -> None:
@@ -98,8 +139,9 @@ class LazyRegex(object):
 
     def _compile_and_collapse(self) -> None:
         """Actually compile the requested regex"""
-        self._real_regex = self._real_re_compile(*self._regex_args,
-                                                 **self._regex_kwargs)
+        self._real_regex = self._real_re_compile(
+            *self._regex_args, **self._regex_kwargs
+        )
         for attr in self._regex_attributes_to_copy:
             setattr(self, attr, getattr(self._real_regex, attr))
 
@@ -137,7 +179,7 @@ class LazyRegex(object):
 
 
 # Regular expressions for parsing section headers and options
-_SECTION_HEADER_TMPL = r'''
+_SECTION_HEADER_TMPL = r"""
     ^\[\s*                             # [
     (?P<section_name>
     [a-zA-Z*0-9_-]+                    # name,
@@ -151,15 +193,15 @@ _SECTION_HEADER_TMPL = r'''
     (?P<section_option>.*)             # section options
     )?                                 # optional
     \]\s*$                             # ]
-    '''
+    """
 
-_GLOBAL_SECTION_HEADER_TMPL = r'''
+_GLOBAL_SECTION_HEADER_TMPL = r"""
     ^\[\s*                             # [
     global\s*                          # global
     \]\s*$                             # ]
-    '''
+    """
 
-_SECTION_NAME_TMPL = r'''
+_SECTION_NAME_TMPL = r"""
     ^\s*                               # start
     (?P<name>                          # optional name
     [a-zA-Z*]                          # alphabet or '*'
@@ -173,9 +215,9 @@ _SECTION_NAME_TMPL = r'''
     (?P<alias>[^)]+)                   # optional alias
     \s*\))?
     \s*$
-    '''
+    """
 
-_SUBWORKFLOW_TMPL = r'''
+_SUBWORKFLOW_TMPL = r"""
     ^\s*                               # leading space
     (?P<name>                          # name
     ([a-zA-Z]+\.)*                     # optional name
@@ -184,32 +226,34 @@ _SUBWORKFLOW_TMPL = r'''
     (:(?P<steps>                       # index start from :
     [\d\s-]+))?                        # with - and digit
     \s*$                               # end
-    '''
+    """
 
-_SECTION_OPTION_TMPL = r'''
+_SECTION_OPTION_TMPL = r"""
     ^\s*                               # start
     (?P<name>{})                       # one of the option names
     (\s*=\s*                           # =
     (?P<value>.+)                      # value
     )?                                 # value is optional
     \s*$
-    '''.format('|'.join(SOS_SECTION_OPTIONS))
+    """.format(
+    "|".join(SOS_SECTION_OPTIONS)
+)
 
-_FORMAT_LINE_TMPL = r'''
+_FORMAT_LINE_TMPL = r"""
     ^                                  # from first column
     \#fileformat\s*=\s*                # starts with #fileformat=SOS
     (?P<format_name>\S*)               # format name
     \s*$                               # till end of line
-    '''
+    """
 
-_FORMAT_VERSION_TMPL = r'''
+_FORMAT_VERSION_TMPL = r"""
     ^                                  # from first column
     (?P<format_name>[a-zA-Z]+)         # format name
     (?P<format_version>[\d\.]+)        # any number and .
     \s*$                               # till end of line
-    '''
+    """
 
-_DIRECTIVE_TMPL = r'''
+_DIRECTIVE_TMPL = r"""
     ^                                  # from start of line
     (?P<directive_name>                #
     (?!({})\s*:)                       # not a python keyword followed by : (can be input)
@@ -222,9 +266,11 @@ _DIRECTIVE_TMPL = r'''
                                        # a(), or arbitrary expression (['a'...], dictionary, set
                                        # etc) which is difficult to match, so we use negative
                                        # pattern to exclude expressions starting with :, | etc
-    '''.format('|'.join(keyword.kwlist), '|'.join(SOS_DIRECTIVES))
+    """.format(
+    "|".join(keyword.kwlist), "|".join(SOS_DIRECTIVES)
+)
 
-_INDENTED_ACTION_TMPL = r'''
+_INDENTED_ACTION_TMPL = r"""
     ^                                  # from start of line but allow space
     (?P<action_name>                   #
     (?!\s+({}|{})\s*:)                 # not a python keyword or SoS directive followed by :
@@ -236,25 +282,27 @@ _INDENTED_ACTION_TMPL = r'''
                                        # a(), or arbitrary expression (['a'...], dictionary, set
                                        # etc) which is difficult to match, so we use negative
                                        # pattern to exclude expressions starting with :, | etc
-    '''.format('|'.join(keyword.kwlist), '|'.join(SOS_DIRECTIVES))
+    """.format(
+    "|".join(keyword.kwlist), "|".join(SOS_DIRECTIVES)
+)
 
-_ASSIGNMENT_TMPL = r'''
+_ASSIGNMENT_TMPL = r"""
     ^                                  # from start of line
     (?P<var_name>[\w_][\d\w_]*)        # variable name
     \s*=(?!=)\s*                            # assignment
     (?P<var_value>.*)             # variable content
-    '''
+    """
 
-_CONFIG_NAME = r'''
+_CONFIG_NAME = r"""
    ^
    [a-zA-Z]                            # first letter must be
    [a-zA-Z0-9_]*
    (\.[a-zA-Z]                         # followed by more names separated with '.'
    [a-zA-Z0-9_]*)*
    $
-   '''
+   """
 
-_SOS_MAGIC_TMPL = r'''                  # SOS magic
+_SOS_MAGIC_TMPL = r"""                  # SOS magic
     ^%(dict                             # %dict
     |run                                # %run
     |paste                              # %paste
@@ -266,13 +314,13 @@ _SOS_MAGIC_TMPL = r'''                  # SOS magic
     |shutdown                           # %shutdown
     )(\s+.*)?
     $
-    '''
+    """
 
-_SOS_CELL_TMPL = r'''                   # %cell
+_SOS_CELL_TMPL = r"""                   # %cell
     ^%cell(\s+.*)?
-    '''
+    """
 
-_SOS_CELL_LINE_TMPL = r'''
+_SOS_CELL_LINE_TMPL = r"""
     ^
     %cell(\s+                           # %cell
     (?P<cell_type>
@@ -286,17 +334,17 @@ _SOS_CELL_LINE_TMPL = r'''
     .*                                  # arbitrary stuff
     )?)?
     $
-    '''
+    """
 
-_INDENTED_TMPL = r'''
+_INDENTED_TMPL = r"""
     ^                                   # start from beginning of string
     (
     \s*\n                               # empty lines are ignored
     )*
     (\s*)\S                             # match a line with a non-space character
-    '''
+    """
 
-_SOS_WILDCARD_TMPL = r'''
+_SOS_WILDCARD_TMPL = r"""
     \{
         \s*
         (?P<name>\w+?)
@@ -307,16 +355,16 @@ _SOS_WILDCARD_TMPL = r'''
         )?
         \s*
     \}
-    '''
+    """
 
-_SOS_TAG_TMPL = r'''
+_SOS_TAG_TMPL = r"""
     ^[\w_.-]+$                          # - is allowed in between
-    '''
+    """
 
-_SOS_LOGLINE = r'''
+_SOS_LOGLINE = r"""
     ^                                   # 2017-11-01 14:26:16,145:
     \d\d\d\d\-\d\d\-\d\d\s+\d\d:\d\d:\d\d,\d\d\d:
-'''
+"""
 
 SOS_SECTION_HEADER = LazyRegex(_SECTION_HEADER_TMPL, re.VERBOSE)
 SOS_GLOBAL_SECTION_HEADER = LazyRegex(_GLOBAL_SECTION_HEADER_TMPL, re.VERBOSE)
