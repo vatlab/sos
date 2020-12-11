@@ -1506,6 +1506,7 @@ class Base_Executor:
                             )
                             res = proc.step._host.retrieve_results(
                                 proc.step._pending_tasks)
+                            print(f'GOT RESULT {res}')
                             proc.socket.send(encode_msg(res))
                             proc.step._pending_tasks = []
                             proc.set_status('running')

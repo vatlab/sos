@@ -759,27 +759,6 @@ print('a')
             },
         ).run()
 
-    def test_local_max_cores(self):
-        """Test server restriction max_cores"""
-        script = SoS_Script(
-            """
-[10]
-task: cores=8
-print('a')
-"""
-        )
-        wf = script.workflow()
-        self.assertRaises(
-            Exception,
-            Base_Executor(
-                wf,
-                config={
-                    "config_file": "~/docker.yml",
-                    "default_queue": "local_limited",
-                    "sig_mode": "force",
-                },
-            ).run,
-        )
 
     def test_list_hosts(self):
         """test list hosts using sos status -q"""
@@ -1278,3 +1257,19 @@ def test_sync_master_task(clear_now_and_after):
         assert os.path.isfile(f"test_{i}.bak")
         with open(f"test_{i}.bak") as outf:
             assert outf.read() == f"test_{i}_{val}.bak"
+
+
+def test_local_max_cores():
+    """Test server restriction max_cores"""
+    with pytest.raises(Exception):
+        execute_workflow(
+        """
+[10]
+task: cores=8
+print('a')
+""", options={
+                "config_file": "~/docker.yml",
+                "default_queue": "local_limited",
+                "sig_mode": "force",
+            },
+        )
