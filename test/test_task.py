@@ -669,29 +669,6 @@ print('a')
             ).run,
         )
 
-    def test_local_max_mem(self):
-        """Test server restriction max_mem"""
-        script = SoS_Script(
-            """
-[10]
-task: mem='2G'
-print('a')
-"""
-        )
-        wf = script.workflow()
-        self.assertRaises(
-            Exception,
-            Base_Executor(
-                wf,
-                config={
-                    "config_file": "~/docker.yml",
-                    "default_queue": "local_limited",
-                    "sig_mode": "force",
-                },
-            ).run,
-        )
-
-
     def test_local_runtime_max_walltime(self):
         """Test server max_walltime option"""
         script = SoS_Script(
@@ -758,7 +735,6 @@ print('a')
                 "queue_args": {"cores": 1},
             },
         ).run()
-
 
     def test_list_hosts(self):
         """test list hosts using sos status -q"""
@@ -1181,7 +1157,8 @@ def test_remote_output_target(clear_now_and_after):
 def test_remote_output_target_with_trunksize(clear_now_and_after):
     clear_now_and_after("vars.sh", "vars1.sh")
 
-    execute_workflow("""\
+    execute_workflow(
+        """\
         [10]
         import os
         input: remote('/lib/init/vars.sh'), remote('/lib/init/init-d-script'), group_by=1
@@ -1200,30 +1177,33 @@ def test_remote_output_target_with_trunksize(clear_now_and_after):
     assert not os.path.isfile("vars.sh")
     assert not os.path.isfile("init-d-script")
 
+
 def test_runtime_max_walltime():
     """Test server max_walltime option"""
     with pytest.raises(Exception):
         execute_workflow(
-        """
+            """
         [10]
         task:
         import time
         time.sleep(25)
-        """, options={
+        """,
+            options={
                 "config_file": "~/docker.yml",
                 "default_queue": "docker_limited",
                 "sig_mode": "force",
-            }
+            },
         )
+
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_sync_master_task(clear_now_and_after):
     """Test sync input and output with remote host with trunksize"""
     clear_now_and_after(
-        [f"test_{i}.txt" for i in range(4)],
-        [f"test_{i}.bak" for i in range(4)]
+        [f"test_{i}.txt" for i in range(4)], [f"test_{i}.bak" for i in range(4)]
     )
     import random
+
     val = random.randint(1, 10000)
     execute_workflow(
         r"""
@@ -1243,12 +1223,14 @@ def test_sync_master_task(clear_now_and_after):
 
         with open(_input, 'r') as inf, open(_output, 'w') as outf:
             outf.write(inf.read() + '.bak')
-        """, args=["--g", str(val)],
-    options={
+        """,
+        args=["--g", str(val)],
+        options={
             "config_file": "~/docker.yml",
             "default_queue": "docker",
             "sig_mode": "force",
-    })
+        },
+    )
     # now check if
     for i in range(4):
         assert os.path.isfile(f"test_{i}.txt")
@@ -1263,11 +1245,29 @@ def test_local_max_cores():
     """Test server restriction max_cores"""
     with pytest.raises(Exception):
         execute_workflow(
-        """
-[10]
-task: cores=8
-print('a')
-""", options={
+            """
+        [10]
+        task: cores=8
+        print('a')
+        """,
+            options={
+                "config_file": "~/docker.yml",
+                "default_queue": "local_limited",
+                "sig_mode": "force",
+            },
+        )
+
+
+def test_local_max_mem():
+    """Test server restriction max_mem"""
+    with pytest.raises(Exception):
+        execute_workflow(
+            """
+        [10]
+        task: mem='2G'
+        print('a')
+        """,
+            options={
                 "config_file": "~/docker.yml",
                 "default_queue": "local_limited",
                 "sig_mode": "force",
