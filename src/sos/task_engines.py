@@ -571,15 +571,18 @@ class TaskEngine(threading.Thread):
         while True:
             with threading.Lock():
                 for task_id in task_ids:
-                    if task_id in self.task_results and not self.task_results[task_id].running():
-                        res[task_id] = self.task_results[task_id].result()
+                    if task_id in self.task_results:
+                        if self.task_results[task_id].running():
+                            time.sleep(0.1)
+                        else:
+                            res[task_id] = self.task_results[task_id].result()
                     elif task_id in self.task_status:
                         if self.task_status[task_id] in ('running', 'pending', 'submitted'):
                             time.sleep(0.1)
                         else:
                             res[task_id] = {
                                 'task_id': task_id,
-                                'exception': ValueError(f'Task {task_id} returns status {self.task_results[task_id]}'),
+                                'exception': ValueError(f'Task {task_id} returns status {self.task_status[task_id]}'),
                                 'ret_code': 1,
                                 'output': sos_targets()
                             }

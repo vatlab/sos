@@ -691,28 +691,6 @@ print('a')
             ).run,
         )
 
-    def test_runtime_max_walltime(self):
-        """Test server max_walltime option"""
-        script = SoS_Script(
-            """
-[10]
-task:
-import time
-time.sleep(25)
-"""
-        )
-        wf = script.workflow()
-        self.assertRaises(
-            Exception,
-            Base_Executor(
-                wf,
-                config={
-                    "config_file": "~/docker.yml",
-                    "default_queue": "docker_limited",
-                    "sig_mode": "force",
-                },
-            ).run,
-        )
 
     def test_local_runtime_max_walltime(self):
         """Test server max_walltime option"""
@@ -1293,6 +1271,18 @@ def test_remote_output_target_with_trunksize(clear_now_and_after):
     assert not os.path.isfile("vars.sh")
     assert not os.path.isfile("init-d-script")
 
-
-if __name__ == "__main__":
-    unittest.main()
+def test_runtime_max_walltime():
+    """Test server max_walltime option"""
+    with pytest.raises(Exception):
+        execute_workflow(
+        """
+        [10]
+        task:
+        import time
+        time.sleep(25)
+        """, options={
+                "config_file": "~/docker.yml",
+                "default_queue": "docker_limited",
+                "sig_mode": "force",
+            }
+        )
