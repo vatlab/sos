@@ -59,6 +59,12 @@ if you have helped fixing bugs or making improvements to the source code. In add
 
 ### Change Log of SoS Workflow and SoS Notebook
 
+SoS Notebook 0.22.3
+* [sos-notebook#303](https://github.com/vatlab/sos-notebook/issues/303): Make task execution non-blocking in sos notebook, so that the buttons to check status and remove tasks actually operatable.
+
+SoS Notebook 0.22.2
+* [sos-notebook#307](https://github.com/vatlab/sos-notebook/issues/307): Use a new template organization method for nbconvert > 0.6.0.
+
 SoS 0.21.12
 * [sos#1392](https://github.com/vatlab/sos/issues/1392): Allow the use of `pem_file` to authenticate to remote hosts.
 
