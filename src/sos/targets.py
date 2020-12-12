@@ -455,9 +455,10 @@ class dynamic(BaseTarget):
 class remote(BaseTarget):
     """A remote target is not tracked and not translated during task execution"""
 
-    def __init__(self, *targets):
+    def __init__(self, *targets, host=None):
         super(remote, self).__init__()
         self.__unresolvable_object__ = True
+        self._host = host
         if len(targets) == 1:
             self._target = targets[0]
         else:
@@ -475,10 +476,32 @@ class remote(BaseTarget):
             return repr(self._target)
 
     def target_exists(self, mode="any"):
-        return True
+        if not self._host and not env.config["default_queue"]:
+            return True
+        try:
+            from .hosts import Host
+
+            h = Host(self._host if self._host else env.config["default_queue"])
+            return h.target_exists(sos_targets(self._target))
+        except Exception as e:
+            env.logger.debug(
+                f'Failed to check existence of {self._target} on {self._host if self._host else env.config["default_queue"]}: {e}'
+            )
+            return True
 
     def target_signature(self, mode="any"):
-        return textMD5(self.target_name())
+        if not self._host and not env.config["default_queue"]:
+            return textMD5(self.target_name())
+        try:
+            from .hosts import Host
+
+            h = Host(self._host if self._host else env.config["default_queue"])
+            return h.target_signature(sos_targets(self._target))
+        except Exception as e:
+            env.logger.debug(
+                f'Failed to check existence of {self._target} on {self._host if self._host else env.config["default_queue"]}: {e}'
+            )
+            return textMD5(self.target_name())
 
     def resolve(self):
         return self._target
@@ -2095,6 +2118,7 @@ class InMemorySignature:
         self.output_files = output_files.remove_targets(type=sos_step)
         self.signature_vars = signature_vars
         self.shared_vars = shared_vars
+
         # signatures that exist before execution and might change during execution
         self.init_signature = {
             x: deepcopy(sdict[x])
@@ -2309,7 +2333,6 @@ class RuntimeInfo(InMemorySignature):
             signature_vars,
             shared_vars=shared_vars,
         )
-
         self.sig_id = textMD5(
             f'{self.step_md5} {self.input_files} {self.output_files} {self.dependent_files} {stable_repr(self.init_signature)}{sdict["_index"] if self.output_files.undetermined() else ""}'
         )

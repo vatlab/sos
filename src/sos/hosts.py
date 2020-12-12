@@ -6,6 +6,7 @@ import glob
 import multiprocessing as mp
 import os
 import shutil
+import base64
 import socket
 import stat
 import subprocess
@@ -144,6 +145,12 @@ class LocalHost(object):
 
     def test_connection(self):
         return "OK"
+
+    def target_exists(self, targets):
+        return targets.target_exists()
+
+    def target_signature(self, targets):
+        return targets.target_signature()
 
     def send_to_host(self, items):
         return {x: x for x in items}
@@ -320,6 +327,43 @@ class RemoteHost(object):
             test_res = self.test_connection()
             if test_res != "OK":
                 raise RuntimeError(f"Failed to connect to {self.alias}: {test_res}")
+
+    def target_exists(self, targets):
+        try:
+            msg = self.check_output(
+                [
+                    "sos",
+                    "preview",
+                    "--exists",
+                    base64.b64encode(repr(targets).encode()).decode(),
+                ],
+                under_workdir=True,
+            ).strip()
+        except Exception as e:
+            msg = f"error: {e}"
+        if msg.startswith("error:"):
+            env.logger.debug(msg)
+            return True
+        return msg == "yes"
+
+    def target_signature(self, targets):
+        try:
+            msg = self.check_output(
+                [
+                    "sos",
+                    "preview",
+                    "--signature",
+                    base64.b64encode(repr(targets).encode()).decode(),
+                ],
+                under_workdir=True,
+            ).strip()
+        except Exception as e:
+            msg = f"error: {e}"
+        if msg.startswith("error:"):
+            env.logger.debug(msg)
+            return textMD5(self.target_name())
+        else:
+            return msg
 
     def _get_shared_dirs(self) -> List[Any]:
         value = self.config.get("shared", [])
@@ -1495,6 +1539,12 @@ class Host:
 
     def map_var(self, rvars):
         return self._host_agent._map_var(rvars)
+
+    def target_exists(self, targets):
+        return self._host_agent.target_exists(targets)
+
+    def target_signature(self, targets):
+        return self._host_agent.target_signature(targets)
 
     def submit_task(self, task_id: str) -> str:
         if not self._task_engine:

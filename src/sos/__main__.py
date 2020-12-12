@@ -1092,6 +1092,8 @@ def get_preview_parser(desc_only=False):
             of GENERAL, WORKER, CONTROLLER, STEP, VARIABLE, EXECUTOR, TARGET, ZERONQ, TASK,
             DAG, and ACTION, or ALL for all debug information""",
     )
+    parser.add_argument("--exists", help=argparse.SUPPRESS)
+    parser.add_argument("--signature", help=argparse.SUPPRESS)
     parser.set_defaults(func=cmd_preview)
     return parser
 
@@ -1213,27 +1215,65 @@ def cmd_preview(args, unknown_args):
 
     load_config_files(args.config)
     env.verbosity = args.verbosity
+
     if args.host:
         # remote host?
         host = Host(args.host, start_engine=False)
-        rargs = [host.config.get("sos", "sos"), "preview"] + args.items + ["--html"]
-        if args.style:
-            rargs += ["-s", args.style] + unknown_args
+        if args.exists:
+            rargs = [host.config.get("sos", "sos"), "preview", "--exists", args.exists]
+        elif args.signature:
+            rargs = [
+                host.config.get("sos", "sos"),
+                "preview",
+                "--signature",
+                args.signature,
+            ]
+        else:
+            rargs = [host.config.get("sos", "sos"), "preview"] + args.items + ["--html"]
+            if args.style:
+                rargs += ["-s", args.style] + unknown_args
+
         if "GENERAL" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
             env.log_to_file("GENERAL", 'Running "{}"'.format(" ".join(rargs)))
-        msgs = eval(host._host_agent.check_output(rargs, under_workdir=True))
+        msgs = host._host_agent.check_output(rargs, under_workdir=True).strip()
+        if not args.exists and not args.signature:
+            msgs = eval(msgs)
     else:
-        from .preview import get_previewers
+        if args.exists or args.signature:
+            from base64 import b64decode
+            from .targets import sos_targets, file_target
 
-        previewers = get_previewers()
-        msgs = []
-        style = (
-            {"style": args.style, "options": unknown_args}
-            if args.style or unknown_args
-            else None
-        )
-        for filename in args.items:
-            msgs.extend(preview_file(previewers, filename, style))
+            items = b64decode(
+                (args.exists if args.exists else args.signature).encode()
+            ).decode()
+
+            try:
+                items = eval(items)
+
+                if args.exists:
+                    msgs = "yes" if sos_targets(items).target_exists() else "no"
+                else:
+                    msgs = str(sos_targets(items).target_signature())
+            except Exception as e:
+                msgs = f"error: {e}"
+        else:
+            from .preview import get_previewers
+
+            previewers = get_previewers()
+            msgs = []
+            style = (
+                {"style": args.style, "options": unknown_args}
+                if args.style or unknown_args
+                else None
+            )
+            for filename in args.items:
+                msgs.extend(preview_file(previewers, filename, style))
+    if args.exists or args.signature:
+        # in the case of --host, we are getting msg printed
+        # otherwise we are getting msgs produced locally
+        print(msgs)
+        sys.exit(1 if msgs.startswith("error:") else 0)
+
     if args.html:
         print(msgs)
     else:
