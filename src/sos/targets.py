@@ -649,6 +649,10 @@ class path(type(Path())):
     def __str__(self):
         return super(path, self.expandname().expanduser()).__str__()
 
+    def __repr__(self):
+        raw_str = super(path, self).__str__()
+        return "{}({!r})".format(self.__class__.__name__, raw_str.replace(self._flavour.sep, '/'))
+
     def shrink(self, host=None):
         try:
             if not self.is_absolute():
