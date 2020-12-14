@@ -700,10 +700,10 @@ class path(type(Path())):
                     [cfg["shared"][self._parts[0][1:]]] + self._parts[1:]
                 )
         except Exception:
-            if self._parts[0] == '#cwd':
-                return self._from_parts(
-                    [self.cwd()] + self._parts[1:]
-                )
+            # if self._parts[0] == '#cwd':
+            #     return self._from_parts(
+            #         [self.cwd()] + self._parts[1:]
+            #     )
             if host is None and "__host__" not in env.sos_dict:
                 return self
                 # raise RuntimeError(
