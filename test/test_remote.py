@@ -221,6 +221,7 @@ def test_signature_of_remote_target(clear_now_and_after, monkeypatch):
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remote_exec(clear_now_and_after):
     clear_now_and_after("result_exec.txt")
+    root_dir = '/root/build' if "TRAVIS" in os.environ else '/root'
     execute_workflow(
         """
         output: 'result_exec.txt'
@@ -240,12 +241,14 @@ def test_remote_exec(clear_now_and_after):
     with open(file_target("result_exec.txt")) as res:
         result = res.read()
         assert "Output: result_exec.txt" in result
-        assert "PWD: /root/vatlab/sos/test." in result
+        assert f"PWD: {root_dir}/vatlab/sos/test." in result
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remote_exec_named_path(clear_now_and_after):
     clear_now_and_after("result_named_path.txt")
+    root_dir = '/root/build' if "TRAVIS" in os.environ else '/root'
+
     execute_workflow(
         """
         output: '#home/result_named_path.txt'
@@ -266,12 +269,13 @@ def test_remote_exec_named_path(clear_now_and_after):
         result = res.read()
         print(result)
         assert "Output: /root/result_named_path.txt" in result
-        assert "PWD: /root/vatlab/sos/test." in result
+        assert f"PWD: {root_dir}/vatlab/sos/test." in result
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remote_exec_workdir_named_path(clear_now_and_after):
     clear_now_and_after(file_target("#home/wd/result_workdir_named_path.txt"))
+    root_dir = '/root/build' if "TRAVIS" in os.environ else '/root'
     execute_workflow(
         """
         output: '#home/wd/result_workdir_named_path.txt'
@@ -292,7 +296,7 @@ def test_remote_exec_workdir_named_path(clear_now_and_after):
         result = res.read()
         print(result)
         assert "Output: /root/wd/result_workdir_named_path.txt" in result
-        assert "PWD: /root." in result
+        assert f"PWD: {root_dir}." in result
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")

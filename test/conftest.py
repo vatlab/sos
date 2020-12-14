@@ -48,7 +48,7 @@ def temp_factory():
     def get_tempfiles(*args, **kwargs):
         content = kwargs.get('content', None)
         for names in args:
-            if isinstance(names, str):
+            if isinstance(names, os.PathLike):
                 names = [names]
             for name in names:
                 if content is None:
@@ -58,7 +58,7 @@ def temp_factory():
                         tf.write(content)
                 temp_fds.append(name)
         if 'dir' in kwargs:
-            if isinstance(kwargs['dir'], str):
+            if isinstance(kwargs['dir'], os.PathLike):
                 dirs = [kwargs['dir']]
             else:
                 dirs = kwargs['dir']
@@ -104,7 +104,7 @@ def clear_now_and_after():
 
     def get_names(*args):
         for names in args:
-            if isinstance(names, str):
+            if isinstance(names, os.PathLike):
                 temp_fds.append(names)
             else:
                 temp_fds.extend(names)
