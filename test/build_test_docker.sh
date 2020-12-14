@@ -122,6 +122,7 @@ cat >> ~/docker.yml << 'HERE'
         status_check_interval: 5
         task_template: |
             #!/bin/bash
+            # {task}
             cd {cur_dir}
             sos execute {task} -v {verbosity} -s {sig_mode} {'--dryrun' if run_mode == 'dryrun' else ''}
         max_running_jobs: 100
