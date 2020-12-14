@@ -275,7 +275,6 @@ def test_remote_exec_named_path(clear_now_and_after):
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remote_exec_workdir_named_path(clear_now_and_after):
     clear_now_and_after(file_target("#home/wd/result_workdir_named_path.txt"))
-    root_dir = '/root/build' if "TRAVIS" in os.environ else '/root'
     execute_workflow(
         """
         output: '#home/wd/result_workdir_named_path.txt'
@@ -294,9 +293,8 @@ def test_remote_exec_workdir_named_path(clear_now_and_after):
     assert file_target("#home/wd/result_workdir_named_path.txt").target_exists()
     with open(file_target("#home/wd/result_workdir_named_path.txt")) as res:
         result = res.read()
-        print(result)
         assert "Output: /root/wd/result_workdir_named_path.txt" in result
-        assert f"PWD: {root_dir}." in result
+        assert f"PWD: /root." in result
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
