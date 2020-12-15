@@ -750,6 +750,8 @@ def test_named_path():
     )
 
 
+@pytest.mark.skipif(
+    sys.platform == 'win32', reason='Graphviz not available under windows')
 def test_shrink_path():
     execute_workflow(
         """
