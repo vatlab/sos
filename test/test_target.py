@@ -752,11 +752,11 @@ def test_named_path():
 
 @pytest.mark.skipif(
     sys.platform == 'win32', reason='Graphviz not available under windows')
-def test_shrink_path():
+def test_to_named_path_path():
     execute_workflow(
         """
         [10: shared="a"]
-        a = path('/root/xxx/whatever').shrink(host='docker')
+        a = path('/root/xxx/whatever').to_named_path(host='docker')
         """,
         options={
             "config_file": os.path.join(os.path.expanduser("~"), "docker.yml"),

@@ -23,6 +23,61 @@ except subprocess.CalledProcessError:
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
+def test_to_host_option(clear_now_and_after):
+    """Test from_remote option"""
+    clear_now_and_after("to_host_testfile.txt", "to_host_linecount.txt")
+    with open("to_host_testfile.txt", "w") as tf:
+        for i in range(100):
+            tf.write(f"line {i+1}\n")
+    execute_workflow(
+        """
+        [10]
+        output: 'to_host_linecount.txt'
+        task: to_host='to_host_testfile.txt'
+        sh:
+            wc -l to_host_testfile.txt > to_host_linecount.txt
+        """,
+        options={
+            "config_file": "~/docker.yml",
+            "default_queue": "docker",
+            "sig_mode": "force",
+        },
+    )
+    assert os.path.isfile("to_host_linecount.txt")
+    with open("to_host_linecount.txt") as lc:
+        assert lc.read().strip().startswith("100")
+
+
+@pytest.mark.skipif(not has_docker, reason="Docker container not usable")
+def test_to_host_option_with_named_path(clear_now_and_after):
+    """Test from_remote option"""
+    clear_now_and_after(
+        os.path.expanduser("~/to_host_named_testfile.txt"),
+        "to_host_named_linecount.txt",
+    )
+    with open(os.path.expanduser("~/to_host_named_testfile.txt"), "w") as tf:
+        for i in range(200):
+            tf.write(f"line {i+1}\n")
+    execute_workflow(
+        """
+        [10]
+        output: 'to_host_named_linecount.txt'
+        task: to_host='#home/to_host_named_testfile.txt'
+        sh:
+            wc -l ~/to_host_named_testfile.txt > to_host_named_linecount.txt
+        """,
+        options={
+            "config_file": "~/docker.yml",
+            "default_queue": "docker",
+            "sig_mode": "force",
+        },
+    )
+    assert os.path.isfile("to_host_named_linecount.txt")
+    with open("to_host_named_linecount.txt") as lc:
+        assert lc.read().strip().startswith("200")
+
+
+@pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_from_host_option(clear_now_and_after):
     """Test from_remote option"""
     clear_now_and_after("llp")
@@ -63,6 +118,28 @@ def test_local_from_host_option(clear_now_and_after):
         },
     )
     assert os.path.isfile("llp")
+
+
+@pytest.mark.skipif(not has_docker, reason="Docker container not usable")
+def test_local_from_host_option_with_named_path(clear_now_and_after):
+    """Test from_remote option"""
+    clear_now_and_after(os.path.expanduser("~/llp"))
+    execute_workflow(
+        """
+        [10]
+        task: from_host='#home/llp'
+        sh:
+        echo "LLP" > ~/llp
+        """,
+        options={
+            "config_file": "~/docker.yml",
+            # do not wait for jobs
+            "wait_for_task": True,
+            "sig_mode": "force",
+            "default_queue": "localhost",
+        },
+    )
+    assert os.path.isfile(os.path.expanduser("~/llp"))
 
 
 def test_worker_procs():
@@ -221,7 +298,7 @@ def test_signature_of_remote_target(clear_now_and_after, monkeypatch):
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remote_exec(clear_now_and_after):
     clear_now_and_after("result_exec.txt")
-    root_dir = '/root/build' if "TRAVIS" in os.environ else '/root'
+    root_dir = "/root/build" if "TRAVIS" in os.environ else "/root"
     execute_workflow(
         """
         output: 'result_exec.txt'
@@ -247,7 +324,7 @@ def test_remote_exec(clear_now_and_after):
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remote_exec_named_path(clear_now_and_after):
     clear_now_and_after("result_named_path.txt")
-    root_dir = '/root/build' if "TRAVIS" in os.environ else '/root'
+    root_dir = "/root/build" if "TRAVIS" in os.environ else "/root"
 
     execute_workflow(
         """

@@ -261,7 +261,7 @@ run(f"touch {_output}")
     @unittest.skipIf(sys.platform == 'win32',
                      'Windows executable cannot execute bash loop.')
     def test_signature_after_removal_of_files(self):
-        '''test action shrink'''
+        '''test action to_named_path'''
         if os.path.isfile('largefile.txt'):
             os.remove('largefile.txt')
         script = SoS_Script(r'''

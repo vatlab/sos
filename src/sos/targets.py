@@ -653,10 +653,12 @@ class path(type(Path())):
         raw_str = super(path, self).__str__()
         return "{}({!r})".format(self.__class__.__name__, raw_str.replace(self._flavour.sep, '/'))
 
-    def shrink(self, host=None):
+    def to_named_path(self, host=None):
         try:
-            if not self.is_absolute():
-                raise ValueError(f'{self} is not an absolute path.')
+            if self._parts[0].startswith('#'):
+                return self
+            #
+            p = self if self.is_absolute() else self.resolve()
             host = env.sos_dict.get("__host__", "localhost") if host is None else host
             cfg = get_config(
                 "hosts",
@@ -665,7 +667,7 @@ class path(type(Path())):
             )
             if 'paths' not in cfg:
                 raise ValueError('No path is defined in host defintion.')
-            relative_paths = [(name, path) for name, path in cfg['paths'].items() if self.is_relative_to(path)]
+            relative_paths = [(name, path) for name, path in cfg['paths'].items() if p.is_relative_to(path)]
             if not relative_paths:
                 raise ValueError(f'{self} is not relative to any of the pre-defined paths for host {host}.')
             if len(relative_paths) > 1:
@@ -673,7 +675,7 @@ class path(type(Path())):
                 max_length = max(len(str(x[1])) for x in relative_paths)
                 relative_paths = [x for x in relative_paths if len(str(x[1])) == max_length]
             # return the anchored
-            related = str(self)[len(relative_paths[0][1]):]
+            related = str(p)[len(relative_paths[0][1]):]
             if related and not related.startswith('/'):
                 related = '/' + related
             return '#' + relative_paths[0][0] + related
