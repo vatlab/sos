@@ -371,7 +371,7 @@ def test_remote_exec_workdir_named_path(clear_now_and_after):
     with open(file_target("#home/wd/result_workdir_named_path.txt")) as res:
         result = res.read()
         assert "Output: /root/wd/result_workdir_named_path.txt" in result
-        assert f"PWD: /root." in result
+        assert "PWD: /root." in result
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")

@@ -481,12 +481,28 @@ def test_for_each_as_target_property_pandas():
         data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
 
         input: for_each='data'
-        print([x._dict for x in step_input._groups])
         output: f"{_input._data['A']}_{_input._data['B']}_{_input._data['C']}.txt"
         """,
         options={"run_mode": "dryrun"},
     )
     assert env.sos_dict["res"] == ["1_2_Hello.txt", "2_4_World.txt"]
+
+
+def test_for_each_as_target_property_pandas_direct_value(temp_factory):
+    """Test for_each option of input"""
+    # test for each for pandas dataframe
+    execute_workflow(
+        r"""
+        [0: shared={'res':'step_output'}]
+        import pandas as pd
+        input: for_each={'data': pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])}
+        output: f"{_input.data['A']}_{_input.data['B']}_{_input.data['C']}.txt"
+        """,
+        options={"run_mode": "dryrun"},
+    )
+    assert env.sos_dict["res"] == ["1_2_Hello.txt", "2_4_World.txt"]
+    #
+
 
 
 def test_for_each_as_target_property_dict(temp_factory):
@@ -564,21 +580,6 @@ def test_for_each_as_target_property_nested_list(temp_factory):
         ((2, 3), "p3.txt"),
     ]
 
-
-def test_for_each_as_target_property_pandas(temp_factory):
-    """Test for_each option of input"""
-    # test for each for pandas dataframe
-    execute_workflow(
-        r"""
-        [0: shared={'res':'step_output'}]
-        import pandas as pd
-        input: for_each={'data': pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])}
-        output: f"{_input.data['A']}_{_input.data['B']}_{_input.data['C']}.txt"
-        """,
-        options={"run_mode": "dryrun"},
-    )
-    assert env.sos_dict["res"] == ["1_2_Hello.txt", "2_4_World.txt"]
-    #
 
 
 def test_for_each_as_target_property_index_type(temp_factory):
@@ -3056,7 +3057,5 @@ _output.touch()
 
     """
     )
-    from sos.targets import path
-
     assert os.path.isfile("test_chdir/a_0.txt")
     assert os.path.isfile("test_chdir/a_0.txt")

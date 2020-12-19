@@ -10,7 +10,6 @@ import subprocess
 import sys
 import time
 import unittest
-import sqlite3
 from contextlib import contextmanager
 
 from sos.hosts import Host
