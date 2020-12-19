@@ -821,9 +821,10 @@ class file_target(path, BaseTarget):
             raise ValueError(f"{self} does not exist.")
 
     def sig_file(self):
+        # self.resolve() does not resolve non-existing file and cannot be used here
         return os.path.join(
             os.path.expanduser('~'), '.sos', 'signatures',
-            f"{textMD5(str(self.resolve()))}.file_info"
+            f"{textMD5(os.path.abspath(self))}.file_info"
         )
 
     def validate(self, sig=None):
