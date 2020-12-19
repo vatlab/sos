@@ -29,8 +29,10 @@ from concurrent.futures import ProcessPoolExecutor
 from .eval import interpolate
 from .parser import SoS_Script
 from .syntax import SOS_ACTION_OPTIONS
-from .targets import textMD5, executable, file_target, fileMD5, path, paths, sos_targets
+from .targets import executable, file_target, path, paths, sos_targets
 from .utils import (
+    textMD5,
+    fileMD5,
     StopInputGroup,
     TerminateExecution,
     TimeoutInterProcessLock,
@@ -685,7 +687,8 @@ class SoS_ExecuteScript:
                 if ret != 0:
                     with open(debug_script_file, "w") as sfile:
                         sfile.write(self.script)
-                    cmd = cmd.replace(script_file, f".sos/{path(debug_script_file):b}")
+                    cmd = cmd.replace(script_file,
+                        os.path.expanduser(f"~/.sos/{path(debug_script_file):b}"))
                     out = (
                         f", stdout={kwargs['stdout']}"
                         if "stdout" in kwargs

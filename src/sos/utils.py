@@ -36,6 +36,11 @@ import fasteners
 import yaml
 from tqdm import tqdm as ProgressBar
 
+try:
+    from xxhash import xxh64 as hash_md5
+except ImportError:
+    from hashlib import md5 as hash_md5
+
 __all__ = ["get_output"]
 
 COLOR_CODE = {
@@ -300,6 +305,62 @@ class WorkflowDict(object):
         }
 
 
+def textMD5(text):
+    """Get md5 of a piece of text"""
+    m = hash_md5()
+    if isinstance(text, str):
+        m.update(text.encode())
+    else:
+        m.update(text)
+    return m.hexdigest()
+
+
+def objectMD5(obj):
+    """Get md5 of an object"""
+    if hasattr(obj, "target_name"):
+        return obj.target_name()
+    try:
+        return textMD5(pickle.dumps(obj))
+    except Exception:
+        return ""
+
+
+def fileMD5(filename, partial=True):
+    """Calculate partial MD5, basically the first and last 8M
+    of the file for large files. This should signicicantly reduce
+    the time spent on the creation and comparison of file signature
+    when dealing with large bioinformat ics datasets."""
+    filesize = os.path.getsize(filename)
+    # calculate md5 for specified file
+    md5 = hash_md5()
+    block_size = 2 ** 20  # buffer of 1M
+    try:
+        # 2**24 = 16M
+        if (not partial) or filesize < 2 ** 24:
+            with open(filename, "rb") as f:
+                while True:
+                    data = f.read(block_size)
+                    if not data:
+                        break
+                    md5.update(data)
+        else:
+            count = 16
+            # otherwise, use the first and last 8M
+            with open(filename, "rb") as f:
+                while True:
+                    data = f.read(block_size)
+                    count -= 1
+                    if count == 8:
+                        # 2**23 = 8M
+                        f.seek(-(2 ** 23), 2)
+                    if not data or count == 0:
+                        break
+                    md5.update(data)
+    except IOError as e:
+        sys.exit(f"Failed to read {filename}: {e}")
+    return md5.hexdigest()
+
+
 #
 # Runtime environment
 #
@@ -443,10 +504,15 @@ class RuntimeEnvironments(object):
         self.parameter_vars = set()
         #
         # this directory will be used by a lot of processes
-        self.exec_dir = os.getcwd()
+        self.exec_dir = os.path.join(
+            os.path.expanduser("~"), ".sos", textMD5(os.getcwd())
+        )
 
         os.makedirs(
             os.path.join(os.path.expanduser("~"), ".sos", "tasks"), exist_ok=True
+        )
+        os.makedirs(
+            os.path.join(os.path.expanduser("~"), ".sos", "signatures"), exist_ok=True
         )
 
     #
@@ -532,14 +598,13 @@ class RuntimeEnvironments(object):
 
     def _set_exec_dir(self, edir):
         if not os.path.isdir(edir):
-            raise RuntimeError(f"Exec dir {edir} does not exist.")
-        os.makedirs(os.path.join(edir, ".sos"), exist_ok=True)
+            os.makedirs(edir, exist_ok=True)
         self._exec_dir = edir
 
     def _get_exec_dir(self):
         if self._exec_dir is None:
             raise RuntimeError("Exec dir is not set")
-        os.makedirs(os.path.join(self._exec_dir, ".sos"), exist_ok=True)
+        os.makedirs(os.path.join(self._exec_dir), exist_ok=True)
         return self._exec_dir
 
     exec_dir = property(_get_exec_dir, _set_exec_dir)
@@ -985,7 +1050,9 @@ def transcribe(text, cmd=None):
     if cmd is not None:
         text = "{}:\n{}".format(cmd, "    " + text.replace("\n", "\n    ") + "\n")
     with fasteners.InterProcessLock(os.path.join(env.temp_dir, "transcript.lck")):
-        with open(os.path.join(env.exec_dir, ".sos", "transcript.txt"), "a") as trans:
+        with open(
+            os.path.join(os.path.expanduser("~"), ".sos", "transcript.txt"), "a"
+        ) as trans:
             trans.write(text)
 
 
@@ -1036,17 +1103,16 @@ def expand_size(size):
 
 
 def find_symbolic_links(item):
-    item = os.path.expanduser(item)
-    if os.path.islink(item):
-        if not os.path.exists(item):
+    if item.is_symlink():
+        if not item.exists():
             env.logger.warning(f"Non-existent symbolic link {item}")
-        return {item: os.path.realpath(item)}
-    elif os.path.isfile(item):
+        return {item: item.resolve()}
+    elif item.is_file():
         return {}
     else:
         result = {}
-        for x in os.listdir(item):
-            result.update(find_symbolic_links(os.path.join(item, x)))
+        for x in item.iterdir():
+            result.update(find_symbolic_links(x))
         return result
 
 
