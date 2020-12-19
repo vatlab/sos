@@ -34,7 +34,7 @@ class SoS_SingularityClient:
 
     def _ensure_singularity(self):
         if not shutil.which('singularity'):
-            raise RuntimeError(f'Command singularity is not found')
+            raise RuntimeError('Command singularity is not found')
 
     def _is_image_avail(self, image):
         # the command will return ID of the image if it exists
@@ -151,7 +151,7 @@ class SoS_SingularityClient:
         self._ensure_singularity()
         if not dest:
             raise ValueError(
-                f'Please specify result of sigularity build with option dest')
+                'Please specify result of sigularity build with option dest')
 
         if os.path.isfile(dest) and not 'force' in kwargs:
             raise ValueError(
@@ -165,7 +165,7 @@ class SoS_SingularityClient:
             else:
                 if not src:
                     raise ValueError(
-                        f'Please specify either a script file as script or a source url with option --src'
+                        'Please specify either a script file as script or a source url with option --src'
                     )
                 file_opt = [dest, src]
 

@@ -506,7 +506,7 @@ def cmd_run(args, workflow_args):
         for item in args.__remote__[1:]:
             if "=" not in item:
                 raise ValueError(
-                    f"KEY=VALUE pairs are required for definitions after host name."
+                    "KEY=VALUE pairs are required for definitions after host name."
                 )
             template_args[item.split("=")[0]] = item.split("=", 1)[1]
         # execute the command on remote host
@@ -532,7 +532,7 @@ def cmd_run(args, workflow_args):
     env.verbosity = args.verbosity
 
     if hasattr(args, "keep_going") and args.keep_going:
-        env.logger.warning(f"Option -k is deprecated and is now the default mode.")
+        env.logger.warning("Option -k is deprecated and is now the default mode.")
         args.__error_mode__ = "default"
 
     if args.__report__ and args.__dag__:
@@ -553,7 +553,7 @@ def cmd_run(args, workflow_args):
 
         if not shutil.which("dot"):
             raise RuntimeError(
-                f"Command dot from package graphviz is required for the generation of DAG animation in workflow report (options -p with -d)"
+                "Command dot from package graphviz is required for the generation of DAG animation in workflow report (options -p with -d)"
             )
 
     from .workflow_executor import Base_Executor
@@ -1242,6 +1242,7 @@ def cmd_preview(args, unknown_args):
         if args.exists or args.signature:
             from base64 import b64decode
             from .targets import sos_targets, file_target
+            assert file_target
 
             items = b64decode(
                 (args.exists if args.exists else args.signature).encode()
@@ -1739,7 +1740,7 @@ def cmd_purge(args, workflow_args):
     try:
         if not (args.tasks or args.all or args.status or args.tags):
             raise ValueError(
-                f"Please specify either IDs of tasks or one or more of options --all, --age, --status, or --tags."
+                "Please specify either IDs of tasks or one or more of options --all, --age, --status, or --tags."
             )
         if not args.queue:
             purge_tasks(

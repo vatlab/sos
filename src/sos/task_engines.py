@@ -369,7 +369,7 @@ class TaskEngine(threading.Thread):
                     self.last_report = time.time()
                     env.log_to_file(
                         'TASK',
-                        f'No running or pending task. Task engine is idle.')
+                        'No running or pending task. Task engine is idle.')
 
     def submit_task(self, task_id):
         # we wait for the engine to start
@@ -536,7 +536,7 @@ class TaskEngine(threading.Thread):
                 elif task_id in self.running_tasks:
                     # this should not happen
                     env.logger.warning(
-                        f'Task in "new" status when it is supposed to be running. Resubmitting.'
+                        'Task in "new" status when it is supposed to be running. Resubmitting.'
                     )
                     self.submit_task(task_id)
                 if task_id in self.pending_tasks:
@@ -666,7 +666,7 @@ class TaskEngine(threading.Thread):
             ret = self.agent.check_output(cmd)
             env.logger.debug(f'"{cmd}" executed with response "{ret}"')
         except subprocess.CalledProcessError:
-            env.logger.error(f'Failed to kill all tasks' if all_tasks else
+            env.logger.error('Failed to kill all tasks' if all_tasks else
                              f'Failed to kill tasks {" ".join(tasks)}')
             return ''
         return ret

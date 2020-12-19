@@ -77,7 +77,7 @@ def execute_workflow(script: str,
     wf = script.workflow(workflow, use_default=not targets)
 
     if not isinstance(config, dict):
-        raise ValueError(f'Option config should be a dictionary.')
+        raise ValueError('Option config should be a dictionary.')
     run_options = {
         'config_file': None,
         'extra_config': config,

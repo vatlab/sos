@@ -1844,7 +1844,7 @@ def dot_to_gif(filename: str, warn=None):
         src.format = "png"
         outfile = src.render(filename="sosDot", directory=tempDirectory)
         # dot command can generate more than outfiles returned by the render function
-        pngFiles = glob.glob(os.path.join(tempDirectory, f"sosDot*.png"))
+        pngFiles = glob.glob(os.path.join(tempDirectory, "sosDot*.png"))
         if len(pngFiles) == 1:
             return b64_of(outfile)
         # create a gif files from multiple png files

@@ -420,7 +420,7 @@ def copy_public_key(host, agent, password):
             i = p.expect(["assword:", pexpect.EOF])
             if i == 0:
                 p.close(force=True)
-                return f"Incorrect password specified (you can try to specify it with command line option --password)"
+                return "Incorrect password specified (you can try to specify it with command line option --password)"
         if i == 2:
             p.close()
             return f"Failed to copy public key to {agent.address}"
@@ -456,10 +456,10 @@ def copy_public_key(host, agent, password):
             i = p.expect(["assword:", pexpect.EOF])
             if i == 0:
                 p.close(force=True)
-                return f"Incorrect password specified (you can try to specify it with command line option --password)"
+                return "Incorrect password specified (you can try to specify it with command line option --password)"
         elif i != 1:
             p.close()
-            return f"Failed to append public key to .ssh/authorized_keys"
+            return "Failed to append public key to .ssh/authorized_keys"
     except Exception as e:
         p.close()
         return f"Failed to append public key to .ssh/authorized_keys: {e}"

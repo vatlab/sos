@@ -11,7 +11,6 @@ import socket
 import stat
 import subprocess
 import sys
-import time
 import pexpect
 from collections.abc import Sequence
 
@@ -931,7 +930,7 @@ class RemoteHost(object):
                 path(runtime["_runtime"]["workdir"], host=self.alias)
             except Exception as e:
                 raise ValueError(
-                    f'Working directory {runtime["_runtime"]["workdir"]} does not exist on remote host {self.alias}'
+                    f'Working directory {runtime["_runtime"]["workdir"]} does not exist on remote host {self.alias}: {e}'
                 )
         elif path(runtime["_runtime"]["workdir"]).is_absolute():
             env.logger.debug(

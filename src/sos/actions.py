@@ -1300,7 +1300,7 @@ def report(script=None, input=None, output=None, **kwargs):
             raise ValueError(f"More than one output is specified {output}")
         if not isinstance(output[0], (file_target, path)):
             raise ValueError(
-                f"Action report can only output to file target or standard output"
+                "Action report can only output to file target or standard output"
             )
         file_handle = open(os.path.expanduser(str(output[0])), "w")
         writer = file_handle.write

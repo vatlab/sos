@@ -530,7 +530,7 @@ class Base_Executor:
         # try pattern?
         for pattern, steps in self._target_patterns.items():
             if len(steps) > 1:
-                raise RuntimeError(f"Multiple steps providing the same pattern.")
+                raise RuntimeError("Multiple steps providing the same pattern.")
             # if this is a regular string
             res = extract_pattern(pattern, [str(target)])
             if res and not any(None in x for x in res.values()):
@@ -1463,7 +1463,7 @@ class Base_Executor:
                     if hasattr(runnable, "_from_nested"):
                         # if the runnable is from nested, we will need to send the result back
                         # to the nested workflow
-                        env.log_to_file("EXECUTOR", f"Master send res to nested")
+                        env.log_to_file("EXECUTOR", "Master send res to nested")
                         manager.report()
                         dag.save(env.config["output_dag"])
                         if (
@@ -1502,7 +1502,7 @@ class Base_Executor:
                         self.handle_unknown_target(res.target, dag, runnable)
                     # if the job is failed
                     elif isinstance(res, Exception):
-                        env.log_to_file("EXECUTOR", f"Master received an exception")
+                        env.log_to_file("EXECUTOR", "Master received an exception")
                         if runnable._status == "workflow_running_pending":
                             for pwf in runnable._pending_workflows:
                                 for midx, proc in enumerate(manager.procs):
@@ -1882,7 +1882,7 @@ class Base_Executor:
                         self.handle_unknown_target(res.target, dag, runnable)
                     # if the job is failed
                     elif isinstance(res, Exception):
-                        env.log_to_file("EXECUTOR", f"Nested received an exception")
+                        env.log_to_file("EXECUTOR", "Nested received an exception")
                         runnable._status = "failed"
                         dag.save(env.config["output_dag"])
                         exec_error.append(runnable._node_id, res)

@@ -1990,7 +1990,7 @@ def purge_tasks(tasks, purge_all=None, age=None, status=None, tags=None, verbosi
         all_tasks = [(os.path.basename(x)[:-5], os.path.getmtime(x)) for x in tasks]
     else:
         raise ValueError(
-            f"Please specify either tasks or one or more of --all, --status, --tags--age"
+            "Please specify either tasks or one or more of --all, --status, --tags--age"
         )
     #
     if age is not None:

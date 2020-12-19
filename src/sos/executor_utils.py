@@ -22,7 +22,6 @@ from .targets import (
     file_target,
     sos_targets,
     sos_step,
-    path,
     dynamic,
     sos_variable,
     RuntimeInfo,
@@ -111,7 +110,7 @@ def __output_from__(
                     step = env.sos_dict["__last_step__"]
                 else:
                     raise ValueError(
-                        f"output_from(-1) is called for a step without previous step"
+                        "output_from(-1) is called for a step without previous step"
                     )
             elif "_" in env.sos_dict["step_name"]:
                 step = f"{env.sos_dict['step_name'].rsplit('_', 1)[0]}_{step}"

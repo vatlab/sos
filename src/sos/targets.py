@@ -6,7 +6,6 @@
 import copy
 import glob
 import os
-import pickle
 import re
 import shlex
 import shutil
@@ -961,7 +960,7 @@ class paths(Sequence, os.PathLike):
         if len(self._paths) == 1:
             return self._paths[0].__fspath__()
         if not self._paths:
-            raise ValueError(f"Cannot treat an empty paths as single path")
+            raise ValueError("Cannot treat an empty paths as single path")
         raise ValueError(
             f"Cannot treat an paths object {self} with more than one paths as a single path"
         )
@@ -1618,7 +1617,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         ):
             labels = list(dict.fromkeys(self.labels))
             if len(labels) == 1:
-                raise ValueError(f"Cannot pairlabel input with a single label.")
+                raise ValueError("Cannot pairlabel input with a single label.")
             if by == "pairsource" or by == "pairlabel":
                 grp_size = 1
             else:
@@ -1890,7 +1889,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     ]
                 elif len(set(keys)) != len(keys):
                     raise ValueError(
-                        f"List of dictionaries for parameter for_each should have all different, or all the same keys."
+                        "List of dictionaries for parameter for_each should have all different, or all the same keys."
                     )
         else:
             raise ValueError(f"Unacceptable value for parameter for_each: {for_each}")
@@ -2017,7 +2016,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         if len(self._targets) == 1:
             return self._targets[0].__fspath__()
         elif len(self._targets) == 0:
-            raise ValueError(f"Cannot treat an empty sos_targets as single target")
+            raise ValueError("Cannot treat an empty sos_targets as single target")
         else:
             raise ValueError(
                 f"Cannot treat an sos_targets object {self} with more than one targets as a single target"
@@ -2239,7 +2238,7 @@ class InMemorySignature:
 
         if "local_args" in signature:
             if signature["local_args"] != self.identify_local_args():
-                return f"Local parameters differ"
+                return "Local parameters differ"
 
         res["vars"].update(signature["end_context"])
         #
@@ -2455,7 +2454,7 @@ class RuntimeInfo(InMemorySignature):
     def validate(self):
         """Check if ofiles and ifiles match signatures recorded in md5file"""
         if not self.sig_id:
-            return f"no signature for steps with nested workflow"
+            return "no signature for steps with nested workflow"
         if "TARGET" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
             env.log_to_file("TARGET", f"Validating {self.sig_id}")
         #

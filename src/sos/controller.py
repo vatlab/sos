@@ -299,7 +299,7 @@ class Controller(threading.Thread):
                         self._resources["docker_image"][msg[3]] = msg[2]
                     else:
                         raise ValueError(
-                            f'SoS currently only understand "available" or "unavailable" messages for docker resource.'
+                            'SoS currently only understand "available" or "unavailable" messages for docker resource.'
                         )
                 elif msg[1] == "singularity_image":
                     if msg[2] in ("available", "unavailable"):
@@ -308,7 +308,7 @@ class Controller(threading.Thread):
                         self._resources["singularity_image"][msg[3]] = msg[2]
                     else:
                         raise ValueError(
-                            f'SoS currently only understand "available" or "unavailable" messages for docker resource.'
+                            'SoS currently only understand "available" or "unavailable" messages for docker resource.'
                         )
                 else:
                     raise ValueError(
@@ -435,7 +435,7 @@ class Controller(threading.Thread):
                             self.master_request_socket.send(encode_msg("help yourself"))
                     else:
                         raise ValueError(
-                            f"SoS currently only accept request inquiry for docker resource"
+                            "SoS currently only accept request inquiry for docker resource"
                         )
                 elif msg[1] == "singularity_image":
                     if msg[2] == "request":
@@ -450,7 +450,7 @@ class Controller(threading.Thread):
                             self.master_request_socket.send(encode_msg("help yourself"))
                     else:
                         raise ValueError(
-                            f"SoS currently only accept request inquiry for docker resource"
+                            "SoS currently only accept request inquiry for docker resource"
                         )
                 else:
                     raise ValueError(
@@ -720,13 +720,13 @@ class Controller(threading.Thread):
             return
         finally:
             # remove temporary files
-            for name, tempfile in self._tempfiles.items():
+            for name, tmpfile in self._tempfiles.items():
                 try:
-                    if os.path.isfile(tempfile):
-                        os.remove(tempfile)
+                    if os.path.isfile(tmpfile):
+                        os.remove(tmpfile)
                 except Exception as e:
                     env.logger.warning(
-                        f"Failed to tempfile associated with name {name}"
+                        f"Failed to tempfile associated with name {name}: {e}"
                     )
             # kill all workers
             self.workers.kill_all()

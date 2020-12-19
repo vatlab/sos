@@ -256,7 +256,7 @@ class SoS_Worker(mp.Process):
                 if reply is None:
                     if len(wr) != 0:
                         env.logger.error(
-                            f"WORKER terminates with pending tasks. sos might not be termianting properly."
+                            "WORKER terminates with pending tasks. sos might not be termianting properly."
                         )
                     if (
                         "WORKER" in env.config["SOS_DEBUG"]
@@ -554,10 +554,10 @@ class WorkerManager(object):
         self._n_requested += 1
         if msg_type == "substep":
             self._substep_requests.insert(0, msg)
-            self.report(f"Substep requested")
+            self.report("Substep requested")
         elif msg_type == "task":
             self._task_requests.insert(0, msg)
-            self.report(f"Task requested")
+            self.report("Task requested")
         else:
             port = msg["config"]["sockets"]["master_port"]
             self._step_requests[port] = msg

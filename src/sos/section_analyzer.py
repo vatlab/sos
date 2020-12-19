@@ -15,6 +15,8 @@ from .utils import env
 from .executor_utils import __null_func__, prepare_env, strip_param_defs
 from .syntax import SOS_TARGETS_OPTIONS
 
+# imported for eval, assert to reduce warning
+assert file_target
 
 def get_param_of_function(name, param_list, extra_dict={}):
     tree = ast.parse(f"__null_func__({param_list})")
@@ -484,7 +486,7 @@ def get_step_output(section, default_output, analysis_type):
                 try:
                     SoS_exec(statement[1], return_result=False)
                 except Exception as e:
-                    raise f'Failed to evaluate an statement "{value}" of an auxiliary step: {e}'
+                    raise f'Failed to evaluate an statement "{statement[1]}" of an auxiliary step: {e}'
             continue
 
         if statement[1] == "input" and analysis_type != "backward":

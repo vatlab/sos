@@ -200,7 +200,7 @@ class WorkflowSignatures(SignatureDB):
     def clear(self):
         try:
             self.conn.execute(
-                f"DELETE FROM workflows WHERE master_id = ?", (env.config["master_id"],)
+                "DELETE FROM workflows WHERE master_id = ?", (env.config["master_id"],)
             )
             self.conn.commit()
         except sqlite3.DatabaseError as e:
