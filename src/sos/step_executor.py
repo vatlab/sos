@@ -1228,6 +1228,7 @@ class Base_Step_Executor:
                 global_def=self.step.global_def,
                 # 1225: the step might contain large variables from global section, but
                 # we do not have to sent them if they are not used in substeps.
+                cwd=os.getcwd(),
                 global_vars={
                     x: y
                     for x, y in self.step.global_vars.items()

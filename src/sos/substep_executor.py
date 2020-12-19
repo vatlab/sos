@@ -6,6 +6,7 @@
 import contextlib
 import subprocess
 import sys
+import os
 from io import StringIO
 
 import zmq
@@ -50,6 +51,7 @@ def execute_substep(
     proc_vars={},
     shared_vars=[],
     config={},
+    cwd=None,
 ):
     """Execute a substep with specific input etc
 
@@ -126,12 +128,13 @@ def execute_substep(
         proc_vars=proc_vars,
         shared_vars=shared_vars,
         config=config,
+        cwd=cwd,
     )
     env.result_socket.send(encode_msg(res))
 
 
 def _execute_substep(
-    stmt, global_def, global_vars, task, task_params, proc_vars, shared_vars, config
+    stmt, global_def, global_vars, task, task_params, proc_vars, shared_vars, config, cwd
 ):
     # vatlab/sos-notebook#272
     # if config contains exec_mode, we remove it to avoid it manifest the worker exec_mode
@@ -157,7 +160,12 @@ def _execute_substep(
     errmsg = ""
     capture_output = env.config["run_mode"] == "interactive"
     idx = env.sos_dict["_index"]
+    original_cwd = None
     try:
+        if cwd:
+            original_cwd = os.getcwd()
+            if original_cwd != cwd:
+                os.chdir(cwd)
         if sig:
             # if not in distributed mode, the signature must have been checked at
             # the step level
@@ -298,6 +306,8 @@ def _execute_substep(
             res.update({"stdout": outmsg, "stderr": errmsg})
         return res
     finally:
+        if original_cwd:
+            os.chdir(original_cwd)
         # release the lock even if the process becomes zombie? #871
         if sig:
             sig.release(quiet=True)
