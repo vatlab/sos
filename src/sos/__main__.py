@@ -453,6 +453,15 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             unless a separate filename is specified.""",
     )
     output.add_argument(
+        '-M',
+        metavar="MONITOR_ID",
+        dest="monitor_id",
+        help='''If a monitor ID is specified, the workflow will be executed in
+            monitor mode with resource used written to ~/.sos/workflows/{id}.pulse.
+            Only workflows executed in monitored mode will be reported by "sos status".
+        '''
+    )
+    output.add_argument(
         "-v",
         dest="verbosity",
         type=int,
@@ -491,17 +500,6 @@ def cmd_run(args, workflow_args):
         load_config_files(args.__config__)
         host = Host(args.__remote__[0])
 
-        if not os.path.isfile(args.script):
-            if os.path.isfile(args.script + ".sos"):
-                args.script = args.script + ".sos"
-            elif os.path.isfile(args.script + ".ipynb"):
-                args.script = args.script + ".ipynb"
-            else:
-                raise ValueError(
-                    f"File not found {args.script} (tried {args.script}, {args.script}.sos, and {args.script}.ipynb)"
-                )
-
-        host.send_to_host(args.script)
         template_args = {}
         for item in args.__remote__[1:]:
             if "=" not in item:
@@ -666,6 +664,15 @@ def cmd_run(args, workflow_args):
             # env.logger.debug(f'Process being tapped as slave {config["slave_id"]} at {config["sockets"]["tapping_logging"]} (logger) and {config["sockets"]["tapping_controller"]} (controller)')
             config["exec_mode"] = args.exec_mode[1]
 
+        if args.monitor_id:
+            from .monitor import WorkflowMonitor
+            m = WorkflowMonitor(
+                args.monitor_id,
+                monitor_interval=5,
+                resource_monitor_interval=60
+            )
+            m.start()
+
         executor = Base_Executor(workflow, args=workflow_args, config=config)
         # start controller
         executor.run(args.__targets__, mode=config["run_mode"])
@@ -684,6 +691,7 @@ def cmd_run(args, workflow_args):
             sys.stderr.write(get_traceback())
         env.logger.error(str(e))
         sys.exit(1)
+
 
 
 #
