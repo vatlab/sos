@@ -57,7 +57,7 @@ class TaskParams(object):
 
 class MasterTaskParams(TaskParams):
     def __init__(self, num_workers=None):
-        self.ID = "M_0"
+        self.ID = "t0"
         self.name = self.ID
         self.global_def = ""
         self.task = ""
@@ -212,7 +212,8 @@ class MasterTaskParams(TaskParams):
         self.task_stack.append([task_id, params])
         self.tags = sorted(list(set(self.tags)))
         #
-        self.ID = f"M{len(self.task_stack)}_{self.task_stack[0][0]}"
+        id_prefix = f't{len(self.task_stack)}'
+        self.ID = f"{id_prefix}{self.task_stack[0][0][:-(len(id_prefix))]}"
         self.name = self.ID
 
     def finalize(self):
@@ -1444,7 +1445,7 @@ def print_task_status(
         ]
 
     if not all_tasks:
-        env.logger.info("No matching tasks are identified.")
+        env.logger.debug("No matching tasks are identified.")
         return
 
     raw_status = check_tasks([x[0] for x in all_tasks], check_all)
@@ -1930,7 +1931,7 @@ def kill_tasks(tasks, tags=None):
         ]
 
     if not all_tasks:
-        env.logger.warning("No task to kill")
+        env.logger.debug("No task to kill")
         return
     all_tasks = sorted(list(set(all_tasks)))
     # at most 20 threads

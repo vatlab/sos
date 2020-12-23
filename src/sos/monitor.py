@@ -176,7 +176,7 @@ class WorkflowMonitor(threading.Thread):
         )
         # remove previous status file, which could be readonly if the job is killed
         if os.path.isfile(self.pulse_file):
-            if not os.access(self.pulse_file, os.W_OK):
+            if not os.stat(self.pulse_file).st_mode & stat.S_IWUSR:
                 os.chmod(self.pulse_file, stat.S_IREAD | stat.S_IWRITE)
             os.remove(self.pulse_file)
         self.sos_dict = sos_dict
@@ -209,12 +209,18 @@ class WorkflowMonitor(threading.Thread):
         p = psutil.Process(self.pid)
         p.kill()
 
+    def write(self, msg):
+        with open(self.pulse_file, "a") as pd:
+            pd.write(
+                f"#{time.time()}\t{msg}\n"
+            )
+
     def run(self):
         counter = 0
         start_time = time.time()
         while True:
             try:
-                if not os.path.isfile(self.pulse_file) or not os.access(self.pulse_file, os.W_OK):
+                if not os.path.isfile(self.pulse_file) or not os.stat(self.pulse_file).st_mode & stat.S_IWUSR:
                     env.logger.warning(f"Workflow {self.workflow_id} ``aborted``")
                     # the job should be killed
                     p = psutil.Process(self.pid)

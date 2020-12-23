@@ -160,6 +160,8 @@ class TaskEngine(threading.Thread):
                 try:
                     # return creation time, start time, and duration
                     tid, tags, ct, st, dr, tst = line.split('\t')
+                    if tid.startswith('w'):
+                        continue
                     # for some reason on windows there can be a \r at the end
                     self.task_status[tid] = tst.strip()
                     self.task_info[tid]['date'] = [
@@ -607,10 +609,11 @@ class TaskEngine(threading.Thread):
                     status=None):
         try:
             return self.agent.check_output(
-                "{} status {} -v {} {} {} {} {} {}".format(
+                "{} status {} -v {} {} {} {} {} {} {}".format(
                     self.agent.config.get('sos', 'sos'),
                     '' if tasks is None else ' '.join(tasks),
                     verbosity,
+                    '--all tasks' if check_all else '',
                     '--html' if html else '',
                     '--numeric-times' if numeric_times else '',
                     f'--age {age}' if age else '',
@@ -660,7 +663,7 @@ class TaskEngine(threading.Thread):
             self.agent.config.get('sos',
                                   'sos'), '' if all_tasks else ' '.join(tasks),
             f'--tags {" ".join(tags)}' if tags else '',
-            '-a' if all_tasks else '')
+            '--all tasks' if all_tasks else '')
 
         try:
             ret = self.agent.check_output(cmd)
