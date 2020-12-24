@@ -1290,17 +1290,17 @@ class Host:
         REMOTE = self._get_remote_host(alias)
         self.alias = REMOTE
 
-        if LOCAL == "localhost" and DETECTED is not None:
-            LOCAL = DETECTED
-
-        if LOCAL != "localhost" and LOCAL != DETECTED:
-            # if "localhost" is defined, but does not match by ip address etc,
-            # we assume that the matched_host is a separate host with the same
-            # configuration (see #1407 for details)
-            env.logger.debug(f'Specified host {LOCAL} does not match detected host {DETECTED}.')
-            cfg = copy.deepcopy(env.sos_dict["CONFIG"]["hosts"][LOCAL])
-            env.sos_dict["CONFIG"]["hosts"][DETECTED] = cfg
-            LOCAL = DETECTED
+        if DETECTED is not None:
+            if LOCAL == "localhost":
+                LOCAL = DETECTED
+            elif LOCAL != DETECTED:
+                # if "localhost" is defined, but does not match by ip address etc,
+                # we assume that the matched_host is a separate host with the same
+                # configuration (see #1407 for details)
+                env.logger.debug(f'Specified host {LOCAL} does not match detected host {DETECTED}.')
+                cfg = copy.deepcopy(env.sos_dict["CONFIG"]["hosts"][LOCAL])
+                env.sos_dict["CONFIG"]["hosts"][DETECTED] = cfg
+                LOCAL = DETECTED
 
         # now we need to find definition for local and remote host
         if LOCAL == "localhost" and REMOTE == "localhost":
