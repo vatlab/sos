@@ -1233,7 +1233,7 @@ class Host:
                     return host
                 if any(ip == addr.split("@")[-1] for ip in ips):
                     return host
-        return None
+        return hostname.split(".")[0]
 
     def _get_local_host(self) -> str:
         if "CONFIG" not in env.sos_dict or "hosts" not in env.sos_dict["CONFIG"]:
@@ -1290,17 +1290,8 @@ class Host:
         REMOTE = self._get_remote_host(alias)
         self.alias = REMOTE
 
-        if DETECTED is not None:
-            if LOCAL == "localhost":
-                LOCAL = DETECTED
-            elif LOCAL != DETECTED:
-                # if "localhost" is defined, but does not match by ip address etc,
-                # we assume that the matched_host is a separate host with the same
-                # configuration (see #1407 for details)
-                env.logger.debug(f'Specified host {LOCAL} does not match detected host {DETECTED}.')
-                cfg = copy.deepcopy(env.sos_dict["CONFIG"]["hosts"][LOCAL])
-                env.sos_dict["CONFIG"]["hosts"][DETECTED] = cfg
-                LOCAL = DETECTED
+        if LOCAL == "localhost" and DETECTED in env.sos_dict["CONFIG"]["hosts"]:
+            LOCAL = DETECTED
 
         # now we need to find definition for local and remote host
         if LOCAL == "localhost" and REMOTE == "localhost":
@@ -1324,9 +1315,19 @@ class Host:
                 expand_keys=("address", "port", "pem_file"),
                 expected_type=dict,
             )
+
+            same_host = LOCAL == REMOTE
+            if LOCAL != "localhost" and LOCAL != DETECTED and DETECTED not in env.sos_dict['CONFIG']['hosts']:
+                # if "localhost" is defined, but does not match by ip address etc,
+                # we assume that the matched_host is a separate host with the same
+                # configuration (see #1407 for details)
+                env.logger.debug(f'Specified host {LOCAL} does not match detected host {DETECTED}.')
+                cfg = copy.deepcopy(env.sos_dict["CONFIG"]["hosts"][LOCAL])
+                env.sos_dict["CONFIG"]["hosts"][DETECTED] = cfg
+                LOCAL = DETECTED
+
             # if local and remote hosts are the same
-            if (
-                LOCAL == REMOTE
+            if (same_host
                 or "address" not in env.sos_dict["CONFIG"]["hosts"][REMOTE]
                 or (
                     "address" in env.sos_dict["CONFIG"]["hosts"][REMOTE]
@@ -1339,6 +1340,7 @@ class Host:
                 self.config["shared"] = ["/"]
                 # override address setting to use localhost
                 self.config["address"] = "localhost"
+
             else:
                 self.config["path_map"] = []
 
