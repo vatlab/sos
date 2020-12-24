@@ -2,6 +2,7 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
+import copy
 import glob
 import multiprocessing as mp
 import os
@@ -1215,7 +1216,41 @@ class Host:
                 "localhost": {"address": "localhost", "alias": "localhost"}
             }
             return "localhost"
-        # check localhost definition
+        # try host name
+        # try IP Address
+        hostname = socket.gethostname()
+        ips = socket.gethostbyname_ex(hostname)[2]
+        ips = [ip for ip in ips if not ip.startswith("127.")]
+        hostname = hostname.lower()
+        #
+        matched_host = None
+        for host, host_info in env.sos_dict["CONFIG"]["hosts"].items():
+            # find by key hostname
+            if "hostname" in host_info and host_info["hostname"].lower() == hostname:
+                matched_host = host
+                break
+            # find by key hostname
+            if "hostname" in host_info:
+                hn = get_config("hosts", host, "hostname", expected_type=str).lower()
+                if hn.split(".")[0] == hostname or hn == hostname.split(".")[0]:
+                    matched_host = host
+                    break
+            # find by alias
+            if host.lower() == hostname:
+                matched_host = host
+                break
+            # find by address
+            if "address" in host_info:
+                addr = get_config("hosts", host, "address", expected_type=str)
+                if (
+                    addr.split("@")[-1].lower() == hostname
+                    or addr.split(".", 1)[0].split("@")[-1].lower() == hostname
+                ):
+                    matched_host = host
+                if any(ip == addr.split("@")[-1] for ip in ips):
+                    matched_host = host
+        #
+        # check if a key localhost is defined
         if "localhost" in env.sos_dict["CONFIG"]:
             if (
                 env.sos_dict["CONFIG"]["localhost"]
@@ -1224,47 +1259,21 @@ class Host:
                 raise ValueError(
                     f"Undefined localhost {env.sos_dict['CONFIG']['localhost']}"
                 )
-            return env.sos_dict["CONFIG"]["localhost"]
-        #
-        # try host name
-        hostname = socket.gethostname().lower()
-        for host, host_info in env.sos_dict["CONFIG"]["hosts"].items():
-            # find by key hostname
-            if "hostname" in host_info and host_info["hostname"].lower() == hostname:
-                return host
-        for host, host_info in env.sos_dict["CONFIG"]["hosts"].items():
-            # find by key hostname
-            if "hostname" in host_info:
-                hn = get_config("hosts", host, "hostname", expected_type=str).lower()
-                if hn.split(".")[0] == hostname or hn == hostname.split(".")[0]:
-                    return host
-        for host, host_info in env.sos_dict["CONFIG"]["hosts"].items():
-            # find by alias
-            if host.lower() == hostname:
-                return host
-        for host, host_info in env.sos_dict["CONFIG"]["hosts"].items():
-            # find by address
-            if "address" in host_info:
-                addr = get_config("hosts", host, "address", expected_type=str)
-                if (
-                    addr.split("@")[-1].lower() == hostname
-                    or addr.split(".", 1)[0].split("@")[-1].lower() == hostname
-                ):
-                    return host
-        # try IP Address
-        hostname = socket.gethostname()
-        ips = socket.gethostbyname_ex(hostname)[2]
-        ips = [ip for ip in ips if not ip.startswith("127.")]
-        # if the IP matches any address?
-        for host, host_info in env.sos_dict["CONFIG"]["hosts"].items():
-            # find by key hostname
-            if "address" in host_info:
-                addr = get_config("hosts", host, "address", expected_type=str)
-                if any(ip == addr.split("@")[-1] for ip in ips):
-                    return host
-        # default
-        env.sos_dict["CONFIG"]["localhost"] = "localhost"
-        return "localhost"
+            # if "localhost" is defined, but does not match by ip address etc,
+            # we assume that the matched_host is a separate host with the same
+            # configuration (see #1407 for details)
+            entry = env.sos_dict["CONFIG"]["localhost"]
+            if matched_host is None:
+                cfg = copy.deepcopy(env.sos_dict["CONFIG"]["hosts"][entry])
+                env.sos_dict["CONFIG"]["hosts"][hostname] = cfg
+                return hostname
+            else:
+                if matched_host != entry:
+                    env.logger.debug(f'Specified host {entry} does not match detected host {matched_host}.')
+                return env.sos_dict["CONFIG"]["localhost"]
+        else:
+            env.sos_dict["CONFIG"]["localhost"] = "localhost"
+            return "localhost"
 
     def _get_remote_host(self, alias: Optional[str]) -> str:
         # get a remote host specified by Alias
