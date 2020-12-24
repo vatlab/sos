@@ -1205,40 +1205,24 @@ class Host:
                 del host._task_engine
         cls.host_instances = {}
 
-    def _get_local_host(self) -> str:
-        if "CONFIG" not in env.sos_dict or "hosts" not in env.sos_dict["CONFIG"]:
-            from .utils import load_config_files
-
-            load_config_files()
-        # look for an entry with gethost
-        if "hosts" not in env.sos_dict["CONFIG"]:
-            env.sos_dict["CONFIG"]["hosts"] = {
-                "localhost": {"address": "localhost", "alias": "localhost"}
-            }
-            return "localhost"
-        # try host name
-        # try IP Address
+    def _detect_host(self) -> str:
         hostname = socket.gethostname()
         ips = socket.gethostbyname_ex(hostname)[2]
         ips = [ip for ip in ips if not ip.startswith("127.")]
         hostname = hostname.lower()
         #
-        matched_host = None
         for host, host_info in env.sos_dict["CONFIG"]["hosts"].items():
             # find by key hostname
             if "hostname" in host_info and host_info["hostname"].lower() == hostname:
-                matched_host = host
-                break
+                return host
             # find by key hostname
             if "hostname" in host_info:
                 hn = get_config("hosts", host, "hostname", expected_type=str).lower()
                 if hn.split(".")[0] == hostname or hn == hostname.split(".")[0]:
-                    matched_host = host
-                    break
+                    return host
             # find by alias
             if host.lower() == hostname:
-                matched_host = host
-                break
+                return host
             # find by address
             if "address" in host_info:
                 addr = get_config("hosts", host, "address", expected_type=str)
@@ -1246,9 +1230,21 @@ class Host:
                     addr.split("@")[-1].lower() == hostname
                     or addr.split(".", 1)[0].split("@")[-1].lower() == hostname
                 ):
-                    matched_host = host
+                    return host
                 if any(ip == addr.split("@")[-1] for ip in ips):
-                    matched_host = host
+                    return host
+        return None
+
+    def _get_local_host(self) -> str:
+        if "CONFIG" not in env.sos_dict or "hosts" not in env.sos_dict["CONFIG"]:
+            from .utils import load_config_files
+            load_config_files()
+        # look for an entry with gethost
+        if "hosts" not in env.sos_dict["CONFIG"]:
+            env.sos_dict["CONFIG"]["hosts"] = {
+                "localhost": {"address": "localhost", "alias": "localhost"}
+            }
+            return "localhost"
         #
         # check if a key localhost is defined
         if "localhost" in env.sos_dict["CONFIG"]:
@@ -1259,18 +1255,7 @@ class Host:
                 raise ValueError(
                     f"Undefined localhost {env.sos_dict['CONFIG']['localhost']}"
                 )
-            # if "localhost" is defined, but does not match by ip address etc,
-            # we assume that the matched_host is a separate host with the same
-            # configuration (see #1407 for details)
-            entry = env.sos_dict["CONFIG"]["localhost"]
-            if matched_host is None:
-                cfg = copy.deepcopy(env.sos_dict["CONFIG"]["hosts"][entry])
-                env.sos_dict["CONFIG"]["hosts"][hostname] = cfg
-                return hostname
-            else:
-                if matched_host != entry:
-                    env.logger.debug(f'Specified host {entry} does not match detected host {matched_host}.')
-                return env.sos_dict["CONFIG"]["localhost"]
+            return env.sos_dict["CONFIG"]["localhost"]
         else:
             env.sos_dict["CONFIG"]["localhost"] = "localhost"
             return "localhost"
@@ -1301,8 +1286,21 @@ class Host:
 
     def _get_config(self, alias: Optional[str]) -> None:
         LOCAL = self._get_local_host()
+        DETECTED = self._detect_host()
         REMOTE = self._get_remote_host(alias)
         self.alias = REMOTE
+
+        if LOCAL == "localhost" and DETECTED is not None:
+            LOCAL = DETECTED
+
+        if LOCAL != "localhost" and LOCAL != DETECTED:
+            # if "localhost" is defined, but does not match by ip address etc,
+            # we assume that the matched_host is a separate host with the same
+            # configuration (see #1407 for details)
+            env.logger.debug(f'Specified host {LOCAL} does not match detected host {DETECTED}.')
+            cfg = copy.deepcopy(env.sos_dict["CONFIG"]["hosts"][LOCAL])
+            env.sos_dict["CONFIG"]["hosts"][DETECTED] = cfg
+            LOCAL = DETECTED
 
         # now we need to find definition for local and remote host
         if LOCAL == "localhost" and REMOTE == "localhost":
