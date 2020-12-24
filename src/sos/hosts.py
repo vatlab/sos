@@ -1338,9 +1338,9 @@ class Host:
                 # there would be no path map
                 self.config["path_map"] = []
                 self.config["shared"] = ["/"]
-                # override address setting to use localhost
-                self.config["address"] = "localhost"
-
+                # do not override address setting to use localhost
+                # because the address should be used in #1407
+                # self.config["address"] = "localhost"
             else:
                 self.config["path_map"] = []
 
