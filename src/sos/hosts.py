@@ -1307,7 +1307,6 @@ class Host:
 
             # now we have definition for local and remote hosts but we only
             # exapnd address, which we have to know right now
-            cfg = env.sos_dict["CONFIG"]["hosts"]
             self.config = get_config(
                 "hosts",
                 self.alias,
@@ -1317,15 +1316,16 @@ class Host:
             )
 
             same_host = LOCAL == REMOTE
-            if LOCAL != "localhost" and LOCAL != DETECTED and DETECTED not in env.sos_dict['CONFIG']['hosts']:
+            if same_host and LOCAL != "localhost" and LOCAL != DETECTED and DETECTED not in env.sos_dict['CONFIG']['hosts']:
                 # if "localhost" is defined, but does not match by ip address etc,
                 # we assume that the matched_host is a separate host with the same
                 # configuration (see #1407 for details)
                 env.logger.debug(f'Specified host {LOCAL} does not match detected host {DETECTED}.')
-                cfg = copy.deepcopy(env.sos_dict["CONFIG"]["hosts"][LOCAL])
-                env.sos_dict["CONFIG"]["hosts"][DETECTED] = cfg
+                local_cfg = copy.deepcopy(env.sos_dict["CONFIG"]["hosts"][LOCAL])
+                env.sos_dict["CONFIG"]["hosts"][DETECTED] = local_cfg
                 LOCAL = DETECTED
 
+            cfg = env.sos_dict["CONFIG"]["hosts"]
             # if local and remote hosts are the same
             if (same_host
                 or "address" not in env.sos_dict["CONFIG"]["hosts"][REMOTE]
