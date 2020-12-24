@@ -1215,6 +1215,17 @@ class Host:
                 "localhost": {"address": "localhost", "alias": "localhost"}
             }
             return "localhost"
+        # check localhost definition
+        if "localhost" in env.sos_dict["CONFIG"]:
+            if (
+                env.sos_dict["CONFIG"]["localhost"]
+                not in env.sos_dict["CONFIG"]["hosts"]
+            ):
+                raise ValueError(
+                    f"Undefined localhost {env.sos_dict['CONFIG']['localhost']}"
+                )
+            return env.sos_dict["CONFIG"]["localhost"]
+        #
         # try host name
         hostname = socket.gethostname().lower()
         for host, host_info in env.sos_dict["CONFIG"]["hosts"].items():
@@ -1251,19 +1262,9 @@ class Host:
                 addr = get_config("hosts", host, "address", expected_type=str)
                 if any(ip == addr.split("@")[-1] for ip in ips):
                     return host
-        # now check if a key localhost is defined
-        if "localhost" in env.sos_dict["CONFIG"]:
-            if (
-                env.sos_dict["CONFIG"]["localhost"]
-                not in env.sos_dict["CONFIG"]["hosts"]
-            ):
-                raise ValueError(
-                    f"Undefined localhost {env.sos_dict['CONFIG']['localhost']}"
-                )
-            return env.sos_dict["CONFIG"]["localhost"]
-        else:
-            env.sos_dict["CONFIG"]["localhost"] = "localhost"
-            return "localhost"
+        # default
+        env.sos_dict["CONFIG"]["localhost"] = "localhost"
+        return "localhost"
 
     def _get_remote_host(self, alias: Optional[str]) -> str:
         # get a remote host specified by Alias
