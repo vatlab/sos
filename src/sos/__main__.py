@@ -912,6 +912,56 @@ def cmd_worker(args, workflow_args):
 
 
 #
+# subcommand server
+#
+def get_server_parser(desc_only=False):
+    parser = argparse.ArgumentParser(
+        "server", description="""Starting a server process to handle requests"""
+    )
+    if desc_only:
+        return parser
+    parser.add_argument(
+        '-p',
+        '--port',
+        type=int,
+        default=55789,
+        help='''Port at which the server listens to request, mostly
+            for debug purposes'''
+    )
+    parser.add_argument(
+        '-e',
+        "--exit-after",
+        type=int,
+        default=60,
+        help='''Seconds after which the server will quite without any request''')
+    parser.set_defaults(func=cmd_server)
+    return parser
+
+def cmd_server(args, workflow_args):
+    if workflow_args:
+        raise RuntimeError(f'Unrecognized arguments {" ".join(workflow_args)}')
+
+    import zmq
+    from .messages import encode_msg, decode_msg
+
+    context = zmq.Context()
+    socket = context.socket(zmq.REP)
+    socket.bind(f"tcp://*:{args.port}")
+
+    while True:
+        #  Wait for next request from client
+        if socket.poll(1000*args.exit_after, zmq.POLLIN):
+            msg = decode_msg(socket.recv())
+            if msg == 'alive':
+                socket.send(encode_msg("yes"))
+            else:
+                socket.send(encode_msg(f'Unrecognized request {msg}'))
+                break
+        else:
+            break
+    # after idling args.exit_after, quit
+    sys.exit(0)
+#
 # subcommand remote
 #
 
@@ -2849,6 +2899,9 @@ def main():
         #
         # command remove
         add_sub_parser(subparsers, get_remove_parser(desc_only="remove" != subcommand))
+        #
+        # command server
+        add_sub_parser(subparsers, get_server_parser(desc_only="server" != subcommand))
         #
         # addon packages
         if subcommand is None or subcommand not in [

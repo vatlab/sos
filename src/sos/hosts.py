@@ -322,11 +322,32 @@ class RemoteHost(object):
         self.pem_file = self.config.get("pem_file", None)
         self.shared_dirs = self._get_shared_dirs()
         self.path_map = self._get_path_map()
+
+        self.tunnel_proc = None
+        self.remote_socket = None
+
         # we already test connect of remote hosts
         if test_connection:
             test_res = self.test_connection()
             if test_res != "OK":
                 raise RuntimeError(f"Failed to connect to {self.alias}: {test_res}")
+
+    def connect_socket(self):
+        from .messages import encode_msg, decode_msg
+        if self.remote_socket is not None:
+            self.remote_socket.send(encode_msg('alive'))
+            if self.remote_socket.poll(5000, zmq.POLLIN):
+                # should be "yes"
+                ret = decode_msg(self.remote_socket.recv())
+                assert ret == "yes"
+                return self.remote_socket
+        # we need to start a new server
+        self.tunnel_proc = self.run_command(
+            ['sos', 'server']
+        )
+        return self.connect_cocket()
+
+
 
     def target_exists(self, targets):
         try:
