@@ -13,6 +13,9 @@ import stat
 import subprocess
 import sys
 import pexpect
+import zmq
+from zmq import ssh as zmq_ssh
+
 from collections.abc import Sequence
 
 import pkg_resources
@@ -341,11 +344,19 @@ class RemoteHost(object):
                 ret = decode_msg(self.remote_socket.recv())
                 assert ret == "yes"
                 return self.remote_socket
+
         # we need to start a new server
         self.tunnel_proc = self.run_command(
-            ['sos', 'server']
+            ['sos', 'server'],
+            wait_for_task=False
         )
-        return self.connect_cocket()
+        context = zmq.Context()
+        socket = context.socket(zmq.REQ)
+        zmq_ssh.tunnel_connection(socket,
+            f"tcp://localhost:55678",
+            self.address)
+        self.remote_socket = socket
+        return remote_socket
 
 
 

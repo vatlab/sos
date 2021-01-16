@@ -948,17 +948,20 @@ def cmd_server(args, workflow_args):
     socket = context.socket(zmq.REP)
     socket.bind(f"tcp://*:{args.port}")
 
-    while True:
-        #  Wait for next request from client
-        if socket.poll(1000*args.exit_after, zmq.POLLIN):
-            msg = decode_msg(socket.recv())
-            if msg == 'alive':
-                socket.send(encode_msg("yes"))
+    try:
+        while True:
+            #  Wait for next request from client
+            if socket.poll(1000*args.exit_after, zmq.POLLIN):
+                msg = decode_msg(socket.recv())
+                if msg == 'alive':
+                    socket.send(encode_msg("yes"))
+                else:
+                    socket.send(encode_msg(f'Unrecognized request {msg}'))
+                    break
             else:
-                socket.send(encode_msg(f'Unrecognized request {msg}'))
                 break
-        else:
-            break
+    finally:
+        socket.close()
     # after idling args.exit_after, quit
     sys.exit(0)
 #
