@@ -929,8 +929,8 @@ def get_server_parser(desc_only=False):
             for debug purposes'''
     )
     parser.add_argument(
-        '-e',
-        "--exit-after",
+        '-d',
+        "--duration",
         type=int,
         default=60,
         help='''Seconds after which the server will quite without any request''')
@@ -951,7 +951,7 @@ def cmd_server(args, workflow_args):
     try:
         while True:
             #  Wait for next request from client
-            if socket.poll(1000*args.exit_after, zmq.POLLIN):
+            if socket.poll(-1 if args.duration is None else 1000*args.duration, zmq.POLLIN):
                 msg = decode_msg(socket.recv())
                 print(msg)
                 if msg == 'alive':
@@ -963,7 +963,7 @@ def cmd_server(args, workflow_args):
                 break
     finally:
         socket.close()
-    # after idling args.exit_after, quit
+    # after idling args.duration, quit
     sys.exit(0)
 #
 # subcommand remote

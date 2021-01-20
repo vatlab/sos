@@ -347,6 +347,8 @@ class RemoteHost(object):
             ret = decode_msg(self.remote_socket.recv())
             assert ret == "yes"
             return True
+        self.remote_socket.close()
+        self.remote_socket = None
         return False
 
     def connect_socket(self):
@@ -366,8 +368,10 @@ class RemoteHost(object):
         # we need to start a new server
         print('start on remote')
         self.tunnel_proc = self.run_command(
-            ['sos', 'server'],
-            wait_for_task=True
+            ['nohup', 'sos', 'server', '--duration', '0'],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            wait_for_task=False
         )
         print('start end')
 
@@ -1101,14 +1105,12 @@ class RemoteHost(object):
             from .utils import pexpect_run
 
             return pexpect_run(cmd)
-        elif wait_for_task or sys.platform == "win32":
-            # keep proc persistent to avoid a subprocess is still running warning.
-            p = subprocess.Popen(cmd, shell=True, **kwargs)
-            p.wait()
         else:
-            p = DaemonizedProcess(cmd, **kwargs)
-            p.start()
-            p.join()
+            p = subprocess.Popen(cmd, shell=True, **kwargs)
+            if wait_for_task or sys.platform == "win32":
+                # keep proc persistent to avoid a subprocess is still running warning.
+                p.wait()
+            return p
 
     def receive_result(self, task_id: str) -> Dict[str, int]:
         # for filetype in ('res', 'status', 'out', 'err'):
