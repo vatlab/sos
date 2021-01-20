@@ -953,9 +953,43 @@ def cmd_server(args, workflow_args):
             #  Wait for next request from client
             if socket.poll(-1 if args.duration is None else 1000*args.duration, zmq.POLLIN):
                 msg = decode_msg(socket.recv())
-                print(msg)
                 if msg == 'alive':
                     socket.send(encode_msg("yes"))
+                elif msg[0] == 'signature':
+                    items, target_dir = msg[1:]
+                    from .targets import sos_targets, file_target
+                    assert file_target
+
+                    try:
+                        orig_dir = os.getcwd()
+                        os.chdir(target_dir)
+
+                        items = eval(items)
+
+                        msgs = str(sos_targets(items).target_signature())
+                    except Exception as e:
+                        msgs = f"error: {e}"
+                    finally:
+                        os.chdir(orig_dir)
+
+                    socket.send(encode_msg['msgs'])
+                elif msg[0] == 'exists':
+                    items, target_dir = msg[1:]
+                    from .targets import sos_targets, file_target
+                    assert file_target
+
+                    try:
+                        orig_dir = os.getcwd()
+                        os.chdir(target_dir)
+
+                        items = eval(items)
+                        msgs = "yes" if sos_targets(items).target_exists() else "no"
+                    except Exception as e:
+                        msgs = f"error: {e}"
+                    finally:
+                        os.chdir(orig_dir)
+
+                    socket.send(encode_msg['msgs'])
                 else:
                     socket.send(encode_msg(f'Unrecognized request {msg}'))
                     break
@@ -1165,8 +1199,6 @@ def get_preview_parser(desc_only=False):
             of GENERAL, WORKER, CONTROLLER, STEP, VARIABLE, EXECUTOR, TARGET, ZERONQ, TASK,
             DAG, and ACTION, or ALL for all debug information""",
     )
-    parser.add_argument("--exists", help=argparse.SUPPRESS)
-    parser.add_argument("--signature", help=argparse.SUPPRESS)
     parser.set_defaults(func=cmd_preview)
     return parser
 
@@ -1292,63 +1324,25 @@ def cmd_preview(args, unknown_args):
     if args.host:
         # remote host?
         host = Host(args.host, start_engine=False)
-        if args.exists:
-            rargs = [host.config.get("sos", "sos"), "preview", "--exists", args.exists]
-        elif args.signature:
-            rargs = [
-                host.config.get("sos", "sos"),
-                "preview",
-                "--signature",
-                args.signature,
-            ]
-        else:
-            rargs = [host.config.get("sos", "sos"), "preview"] + args.items + ["--html"]
-            if args.style:
-                rargs += ["-s", args.style] + unknown_args
+        rargs = [host.config.get("sos", "sos"), "preview"] + args.items + ["--html"]
+        if args.style:
+            rargs += ["-s", args.style] + unknown_args
 
         if "GENERAL" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
             env.log_to_file("GENERAL", 'Running "{}"'.format(" ".join(rargs)))
-        msgs = host._host_agent.check_output(rargs, under_workdir=True).strip()
-        if not args.exists and not args.signature:
-            msgs = eval(msgs)
+        msgs = eval(host._host_agent.check_output(rargs, under_workdir=True).strip())
     else:
-        if args.exists or args.signature:
-            from base64 import b64decode
-            from .targets import sos_targets, file_target
+        from .preview import get_previewers
 
-            assert file_target
-
-            items = b64decode(
-                (args.exists if args.exists else args.signature).encode()
-            ).decode()
-
-            try:
-                items = eval(items)
-
-                if args.exists:
-                    msgs = "yes" if sos_targets(items).target_exists() else "no"
-                else:
-                    msgs = str(sos_targets(items).target_signature())
-            except Exception as e:
-                msgs = f"error: {e}"
-        else:
-            from .preview import get_previewers
-
-            previewers = get_previewers()
-            msgs = []
-            style = (
-                {"style": args.style, "options": unknown_args}
-                if args.style or unknown_args
-                else None
-            )
-            for filename in args.items:
-                msgs.extend(preview_file(previewers, filename, style))
-    if args.exists or args.signature:
-        # in the case of --host, we are getting msg printed
-        # otherwise we are getting msgs produced locally
-        print(msgs)
-        sys.exit(1 if msgs.startswith("error:") else 0)
-
+        previewers = get_previewers()
+        msgs = []
+        style = (
+            {"style": args.style, "options": unknown_args}
+            if args.style or unknown_args
+            else None
+        )
+        for filename in args.items:
+            msgs.extend(preview_file(previewers, filename, style))
     if args.html:
         print(msgs)
     else:

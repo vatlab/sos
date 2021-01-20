@@ -379,33 +379,23 @@ class RemoteHost(object):
 
     def target_exists(self, targets):
         try:
-            msg = self.check_output(
-                [
-                    "sos",
-                    "preview",
-                    "--exists",
-                    base64.b64encode(repr(targets).encode()).decode(),
-                ],
-                under_workdir=True,
-            ).strip()
+            socket = self.connect_to_server()
+            socket.send(
+                encode_msg(['signature', repr(targets), self._map_var(os.getcwd())]))
+            msg = decode_msg(socket.recv())
         except Exception as e:
             msg = f"error: {e}"
         if msg.startswith("error:"):
             env.logger.debug(msg)
-            return True
+            return False
         return msg == "yes"
 
     def target_signature(self, targets):
         try:
-            msg = self.check_output(
-                [
-                    "sos",
-                    "preview",
-                    "--signature",
-                    base64.b64encode(repr(targets).encode()).decode(),
-                ],
-                under_workdir=True,
-            ).strip()
+            socket = self.connect_to_server()
+            socket.send(
+                encode_msg(['signature', repr(targets), self._map_var(os.getcwd())]))
+            return decode_msg(socket.recv())
         except Exception as e:
             msg = f"error: {e}"
         if msg.startswith("error:"):
