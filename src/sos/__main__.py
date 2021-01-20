@@ -924,7 +924,7 @@ def get_server_parser(desc_only=False):
         '-p',
         '--port',
         type=int,
-        default=55789,
+        required=True,
         help='''Port at which the server listens to request, mostly
             for debug purposes'''
     )

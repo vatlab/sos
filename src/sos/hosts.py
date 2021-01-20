@@ -12,6 +12,7 @@ import socket
 import stat
 import subprocess
 import sys
+import time
 import pexpect
 import zmq
 from zmq import ssh as zmq_ssh
@@ -327,59 +328,53 @@ class RemoteHost(object):
         self.shared_dirs = self._get_shared_dirs()
         self.path_map = self._get_path_map()
 
-        self.tunnel_proc = None
-        self.remote_socket = None
-
         # we already test connect of remote hosts
         if test_connection:
             test_res = self.test_connection()
             if test_res != "OK":
                 raise RuntimeError(f"Failed to connect to {self.alias}: {test_res}")
 
-    def _test_socket(self):
-        if not self.remote_socket:
-            return False
-        print('test socket')
-        self.remote_socket.send(encode_msg('alive'))
-        if self.remote_socket.poll(5000, zmq.POLLIN):
-            print('has response')
-            # should be "yes"
-            ret = decode_msg(self.remote_socket.recv())
-            assert ret == "yes"
-            return True
-        self.remote_socket.close()
-        self.remote_socket = None
-        return False
+    def _get_remote_server_port(self):
+        return str(5000 + os.getuid())
 
-    def connect_socket(self):
-        if self._test_socket():
-            return self.remote_socket
+    def _get_tunneled_socket(self):
+        rsock = zmq.Context().socket(zmq.REQ)
+        try:
+            zmq_ssh.tunnel_connection(rsock,
+                f"tcp://localhost:{self._get_remote_server_port()}",
+                self.address)
+            # test it
+            rsock.send(encode_msg('alive'))
+            if rsock.poll(1000, zmq.POLLIN):
+                # should be "yes"
+                ret = decode_msg(rsock.recv())
+                assert ret == "yes"
+                return rsock
+        finally:
+            rsock.close()
+        return None
 
-        context = zmq.Context()
-        self.remote_socket = context.socket(zmq.REQ)
-        print('create socket')
-        zmq_ssh.tunnel_connection(self.remote_socket,
-            f"tcp://localhost:55678",
-            self.address)
-
-        if self._test_socket():
-            return self.remote_socket
-
-        # we need to start a new server
-        print('start on remote')
-        self.tunnel_proc = self.run_command(
-            ['nohup', 'sos', 'server', '--duration', '0'],
+    def connect_to_server(self):
+        rsock = self._get_tunneled_socket()
+        if rsock:
+            return rsock
+        # start a remote server (short lived...)
+        self.run_command(
+            ['nohup', 'sos', 'server', '--port', self._get_remote_server_port()],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             wait_for_task=False
         )
-        print('start end')
-
-        if self._test_socket():
-            return self.remote_socket
-
-        raise RuntimeError(f'Failed to connect to remote socket {self.alias}')
-
+        attempts = 0
+        while True:
+            rsock = self._get_tunneled_socket()
+            if rsock is not None:
+                return rsock
+            elif attempts < 5:
+                time.sleep(1)
+                attempts += 1
+            else:
+                raise RuntimeError(f'Failed to start a remote server on {self.alias}. Please make sure you have the latest version of sos installed and accessible.')
 
 
     def target_exists(self, targets):
@@ -669,7 +664,7 @@ class RemoteHost(object):
                         "[pP]assword:",
                         pexpect.EOF,
                     ],
-                    timeout=5,
+                    timeout=10,
                 )
                 if i == 0:
                     p.sendline("yes")
@@ -688,7 +683,7 @@ class RemoteHost(object):
                     else:
                         return f'Command "{cmd}" exits with code {p.exitstatus}'
         except pexpect.TIMEOUT:
-            return f"ssh connection to {self.address} time out with prompt: {str(p.before)}"
+            return f"ssh connection to {self.address} time out."
         except Exception as e:
             return f"Failed to check remote connection {self.address}:{self.port}: {e}"
         return "OK"
