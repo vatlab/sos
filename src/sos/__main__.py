@@ -2043,25 +2043,15 @@ def cmd_kill(args, workflow_args):
         args.jobs if not args.jobs else [x for x in args.jobs if x.startswith("w")]
     )
 
+    if not (args.jobs or args.all or args.tags):
+        raise ValueError(
+            "Please specify either IDs of jobs or one or more of options --all or --tags."
+        )
     if not args.queue:
-        if args.all:
-            if args.jobs:
-                env.logger.warning(
-                    'Task ids "{}" are ignored with option --all'.format(
-                        " ".join(args.jobs)
-                    )
-                )
-            if args.tags:
-                env.logger.warning("Option tags is ignored with option --all")
-            if args.all in ("both", "tasks"):
-                kill_tasks([])
-            if args.all in ("both", "workflows"):
-                kill_workflows([])
-        else:
-            if args.tasks:
-                kill_tasks(tasks=args.tasks, tags=args.tags)
-            if args.workflows:
-                kill_workflows(workflows=args.workflows, tags=args.tags)
+        if (args.tasks or args.all in ('both', 'tasks') or args.tags):
+            kill_tasks(args.tasks, tags=args.tags)
+        if (args.workflows or args.all in ('both', 'workflows') or args.tags):
+            kill_workflows(workflows=args.workflows, tags=args.tags)
     else:
         # remote host?
         load_config_files(args.config)
