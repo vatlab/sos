@@ -953,6 +953,7 @@ def cmd_server(args, workflow_args):
             #  Wait for next request from client
             if socket.poll(1000*args.exit_after, zmq.POLLIN):
                 msg = decode_msg(socket.recv())
+                print(msg)
                 if msg == 'alive':
                     socket.send(encode_msg("yes"))
                 else:

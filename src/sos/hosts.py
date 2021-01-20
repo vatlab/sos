@@ -21,6 +21,7 @@ from collections.abc import Sequence
 import pkg_resources
 
 from .eval import Undetermined, cfg_interpolate, get_config
+from .messages import encode_msg, decode_msg
 from .syntax import SOS_LOGLINE
 from .targets import path, sos_targets
 from .task_engines import BackgroundProcess_TaskEngine
@@ -335,28 +336,45 @@ class RemoteHost(object):
             if test_res != "OK":
                 raise RuntimeError(f"Failed to connect to {self.alias}: {test_res}")
 
-    def connect_socket(self):
-        from .messages import encode_msg, decode_msg
-        if self.remote_socket is not None:
-            self.remote_socket.send(encode_msg('alive'))
-            if self.remote_socket.poll(5000, zmq.POLLIN):
-                # should be "yes"
-                ret = decode_msg(self.remote_socket.recv())
-                assert ret == "yes"
-                return self.remote_socket
+    def _test_socket(self):
+        if not self.remote_socket:
+            return False
+        print('test socket')
+        self.remote_socket.send(encode_msg('alive'))
+        if self.remote_socket.poll(5000, zmq.POLLIN):
+            print('has response')
+            # should be "yes"
+            ret = decode_msg(self.remote_socket.recv())
+            assert ret == "yes"
+            return True
+        return False
 
-        # we need to start a new server
-        self.tunnel_proc = self.run_command(
-            ['sos', 'server'],
-            wait_for_task=False
-        )
+    def connect_socket(self):
+        if self._test_socket():
+            return self.remote_socket
+
         context = zmq.Context()
-        socket = context.socket(zmq.REQ)
-        zmq_ssh.tunnel_connection(socket,
+        self.remote_socket = context.socket(zmq.REQ)
+        print('create socket')
+        zmq_ssh.tunnel_connection(self.remote_socket,
             f"tcp://localhost:55678",
             self.address)
-        self.remote_socket = socket
-        return remote_socket
+
+        if self._test_socket():
+            return self.remote_socket
+
+        # we need to start a new server
+        print('start on remote')
+        self.tunnel_proc = self.run_command(
+            ['sos', 'server'],
+            wait_for_task=True
+        )
+        print('start end')
+
+        if self._test_socket():
+            return self.remote_socket
+
+        raise RuntimeError(f'Failed to connect to remote socket {self.alias}')
 
 
 
