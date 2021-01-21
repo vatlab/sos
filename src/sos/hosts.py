@@ -351,9 +351,10 @@ class RemoteHost(object):
 
     def _create_tunneled_socket(self):
         rsock = zmq.Context().socket(zmq.REQ)
-        zmq_ssh.tunnel_connection(rsock,
-            f"tcp://localhost:{self._get_remote_server_port()}",
-            self.address)
+        raddr = f"tcp://localhost:{self._get_remote_server_port()}"
+        rserver = self.address + ("" if self.port == 22 else f":{self.port}")
+        rkeyfile = self.config['pem_file'] if 'pem_file' in self.config else None
+        zmq_ssh.tunnel_connection(socket=rsock, addr=raddr, server=rserver, keyfile=rkeyfile)
         # test it
         rsock.send(encode_msg('alive'))
         if rsock.poll(1000, zmq.POLLIN):
