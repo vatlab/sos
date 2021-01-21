@@ -241,7 +241,7 @@ def cmd_convert(args, unknown_args):
                 converter = entrypoint.load()()
                 converter.convert(args.from_file, args.to_file, args, unknown_args)
                 return
-            elif entrypoint.name == args.converter_name + ".func":
+            if entrypoint.name == args.converter_name + ".func":
                 func = entrypoint.load()
                 func(args.from_file, args.to_file, args, unknown_args)
                 return
@@ -545,7 +545,7 @@ def cmd_run(args, workflow_args):
         except ImportError as e:
             raise RuntimeError(
                 f"Python packages graphviz, pillow, and imageio are required for the generation of DAG animation in workflow report (options -p with -d): {e}"
-            )
+            ) from e
 
         import shutil
 
@@ -660,7 +660,7 @@ def cmd_run(args, workflow_args):
             except Exception as e:
                 raise ValueError(
                     f"Unsupported exec_mode (option -m). {args.exec_mode} provided: {e}"
-                )
+                ) from e
             # env.logger.debug(f'Process being tapped as slave {config["slave_id"]} at {config["sockets"]["tapping_logging"]} (logger) and {config["sockets"]["tapping_controller"]} (controller)')
             config["exec_mode"] = args.exec_mode[1]
 
@@ -687,6 +687,7 @@ def cmd_run(args, workflow_args):
             print(
                 f"Execution profile of master process {os.getpid()} is saved to {pr_file}"
             )
+        return True
     except Exception as e:
         if args.monitor_id:
             try:
@@ -896,7 +897,8 @@ def cmd_worker(args, workflow_args):
         import time
 
         procs = [SoS_Worker(env.config) for i in range(args.workers)]
-        [p.start() for p in procs]
+        for p in procs:
+            p.start()
         env.logger.info(f"{args.workers} workers started on {get_localhost_ip()}")
         while True:
             if all(not p.is_alive() for p in procs):
@@ -914,6 +916,7 @@ def cmd_worker(args, workflow_args):
 #
 # subcommand server
 #
+
 def get_server_parser(desc_only=False):
     parser = argparse.ArgumentParser(
         "server", description="""Starting a server process to handle requests"""
@@ -945,94 +948,11 @@ def get_server_parser(desc_only=False):
             of GENERAL, WORKER, CONTROLLER, STEP, VARIABLE, EXECUTOR, TARGET, ZERONQ, TASK,
             DAG, and ACTION, or ALL for all debug information""",
     )
+    from .server import cmd_server
     parser.set_defaults(func=cmd_server)
     return parser
 
-def cmd_server(args, workflow_args):
-    if workflow_args:
-        raise RuntimeError(f'Unrecognized arguments {" ".join(workflow_args)}')
 
-    import zmq
-    from .messages import encode_msg, decode_msg
-    from .utils import env
-
-    context = zmq.Context()
-    server_socket = context.socket(zmq.REP)
-    server_socket.bind(f"tcp://*:{args.port}")
-
-    env.verbosity = args.verbosity
-
-    try:
-        while True:
-            #  Wait for next request from client
-            if server_socket.poll(-1 if args.duration is None else 1000*args.duration, zmq.POLLIN):
-                action = decode_msg(server_socket.recv())
-                env.logger.info(f'RECV: {action}')
-                if action == 'alive':
-                    reply_msg = "yes"
-                elif action[0] == 'signature':
-                    items, target_dir = action[1:]
-                    from .targets import sos_targets, file_target
-                    assert file_target
-
-                    try:
-                        orig_dir = os.getcwd()
-                        os.chdir(target_dir)
-
-                        items = eval(items)
-
-                        reply_msg = str(sos_targets(items).target_signature())
-                    except Exception as e:
-                        reply_msg = f"error: {e}"
-                    finally:
-                        os.chdir(orig_dir)
-                elif action[0] == 'exists':
-                    items, target_dir = action[1:]
-                    from .targets import sos_targets, file_target
-                    assert file_target
-
-                    try:
-                        orig_dir = os.getcwd()
-                        os.chdir(target_dir)
-
-                        items = eval(items)
-                        reply_msg = "yes" if sos_targets(items).target_exists() else "no"
-                    except Exception as e:
-                        reply_msg = f"error: {e}"
-                    finally:
-                        os.chdir(orig_dir)
-                elif action[0] == 'check_output':
-                    import subprocess
-                    cmd, workdir, kwargs = action[1:]
-
-                    try:
-                        if workdir:
-                            orig_dir = os.getcwd()
-                            os.chdir(workdir)
-                        else:
-                            orig_dir = None
-                        output = subprocess.check_output(cmd, shell=True, **kwargs).decode()
-                        reply_msg = (0, output)
-                    except subprocess.CalledProcessedError as e:
-                        reply_msg = (e.returncode, e.output)
-                    except Exception as e:
-                        reply_msg = (1, f"error: failed to check output of {cmd}: {e}")
-                    finally:
-                        if orig_dir is not None:
-                            os.chdir(orig_dir)
-                else:
-                    reply_msg = f'Unrecognized request {action}'
-                env.logger.info(f'SEND: {str(reply_msg)}[:40]')
-                server_socket.send(encode_msg(reply_msg))
-            else:
-                break
-    except Exception as e:
-        env.logger.error(e)
-        sys.exit(1)
-    finally:
-        server_socket.close()
-    # after idling args.duration, quit
-    sys.exit(0)
 #
 # subcommand remote
 #
@@ -1553,7 +1473,7 @@ def cmd_execute(args, workflow_args):
                         executor = entrypoint.load()()
                         found = True
                     except Exception as e:
-                        raise RuntimeError(f"Failed to load task executor {name}: {e}")
+                        raise RuntimeError(f"Failed to load task executor {name}: {e}") from e
             if not found:
                 raise RuntimeError(f"Failed to identify task executor {args.executor}.")
         for task in args.tasks:
@@ -1570,7 +1490,7 @@ def cmd_execute(args, workflow_args):
                 env.logger.error("{} does not match any existing task".format(task))
                 exit_code.append(1)
                 continue
-            elif len(matched) > 1:
+            if len(matched) > 1:
                 env.logger.error(
                     '"{}" matches more than one task ID {}'.format(
                         task, ", ".join(matched)
@@ -1578,8 +1498,8 @@ def cmd_execute(args, workflow_args):
                 )
                 exit_code.append(1)
                 continue
-            else:
-                task = matched[0]
+
+            task = matched[0]
             # this is for local execution, perhaps on a remote host, and
             # there is no daemon process etc. It also does not handle job
             # preparation.
@@ -1627,13 +1547,12 @@ def cmd_execute(args, workflow_args):
                 env.log_to_file("TASK", f"Put results for {args.tasks}")
             res = host.retrieve_results(args.tasks)
             return
-        elif all(x != "pending" for x in res) and not args.wait:
+        if all(x != "pending" for x in res) and not args.wait:
             return
-        elif any(x in ("pending", "running", "submitted") for x in res):
+        if any(x in ("pending", "running", "submitted") for x in res):
+            time.sleep(0.01)
             continue
-        else:
-            raise RuntimeError("Job returned with status {}".format(res))
-        time.sleep(0.01)
+        raise RuntimeError("Job returned with status {}".format(res))
 
 
 #
@@ -2233,9 +2152,9 @@ class AnswerMachine:
             if res == "a":
                 self._confirmed = True
                 return True
-            elif res == "y":
+            if res == "y":
                 return True
-            elif res == "n":
+            if res == "n":
                 return False
 
 
@@ -2288,7 +2207,7 @@ def cmd_remove(args, unknown_args):
         # a special case where all file and runtime signatures are removed.
         # no other options are allowed.
         if sig_files:
-            sig_ids = list(set([x[0] for x in sig_files]))
+            sig_ids = list({x[0] for x in sig_files})
             step_signatures = StepSignatures()
             num_removed_steps = step_signatures.remove_many(sig_ids)
             if not num_removed_steps:
@@ -2829,17 +2748,16 @@ def add_sub_parser(subparsers, parser, name=None, hidden=False):
             parents=[parser],
             add_help=False,
         )
-    else:
-        return subparsers.add_parser(
-            parser.prog if name is None else name,
-            description=parser.description,
-            epilog=parser.epilog,
-            help=parser.short_description
-            if hasattr(parser, "short_description")
-            else parser.description,
-            parents=[parser],
-            add_help=False,
-        )
+    return subparsers.add_parser(
+        parser.prog if name is None else name,
+        description=parser.description,
+        epilog=parser.epilog,
+        help=parser.short_description
+        if hasattr(parser, "short_description")
+        else parser.description,
+        parents=[parser],
+        add_help=False,
+    )
 
 
 def main():
