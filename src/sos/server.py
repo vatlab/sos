@@ -78,7 +78,7 @@ def handle_check_call(cmd, workdir, kwargs):
         if orig_dir is not None:
             os.chdir(orig_dir)
 
-def handle_poll_call(cmd, pid):
+def handle_poll_call(pid):
     global g_running_procs
     if pid not in g_running_procs:
         return 'exception', ValueError(f'Invalid call id {pid}')
@@ -122,7 +122,7 @@ def cmd_server(args, workflow_args):
                     reply_msg = handle_poll_call(*params[1:])
                 else:
                     reply_msg = f'Unrecognized request {params}'
-                env.logger.info(f'SEND: {str(reply_msg)}[:40]')
+                env.logger.info(f'SEND: {str(reply_msg)[:40]}')
                 server_socket.send(encode_msg(reply_msg))
             else:
                 break

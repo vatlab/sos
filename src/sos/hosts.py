@@ -1077,7 +1077,7 @@ class RemoteHost(object):
             rsocket.send(
                 encode_msg(['poll_call', call_id])
             )
-            key, value = decode_msg(rsocket.rec())
+            key, value = decode_msg(rsocket.recv())
             if key == 'done':
                 return value
             if key == 'exception':
