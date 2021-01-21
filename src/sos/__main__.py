@@ -1002,7 +1002,7 @@ def cmd_server(args, workflow_args):
                     finally:
                         os.chdir(orig_dir)
                 else:
-                    reply_msg = f'Unrecognized request {action}')
+                    reply_msg = f'Unrecognized request {action}'
                 env.logger.info(f'SEND: {reply_msg}')
                 server_socket.send(encode_msg(reply_msg))
             else:
