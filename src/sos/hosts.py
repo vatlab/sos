@@ -318,7 +318,6 @@ class RemoteHost(object):
         test_connection: bool = True,
     ) -> None:
         self.config = config
-        self.cm_opts = self._get_control_master_options()
         self.pem_opts = self._get_identify_file_options()
         self.alias = self.config["alias"]
         #
@@ -460,18 +459,6 @@ class RemoteHost(object):
             )
         return res
 
-    def _get_control_master_options(self):
-        master_dir = os.path.join(os.path.expanduser("~"), ".ssh", "controlmasters")
-        if not os.path.isdir(master_dir):
-            try:
-                os.makedirs(master_dir, exist_ok=True)
-            except Exception as e:
-                env.logger.debug(
-                    f"Failed to create ssh control master directory {master_dir}: {e}"
-                )
-                return ""
-        return f"-o 'ControlMaster=auto' -o 'ControlPath={master_dir}/%r@%h:%p' -o 'ControlPersist=10m'"
-
     def _get_identify_file_options(self):
         if (
             "pem_file" in self.config
@@ -485,25 +472,20 @@ class RemoteHost(object):
         if rename:
             return (
                 "ssh "
-                + self.cm_opts
                 + self.pem_opts
                 + """ -q {host} -p {port} "mkdir -p {dest:dpq}" && """
                 + """rsync -a --no-g -e 'ssh """
-                + self.cm_opts
                 + self.pem_opts
                 + """ -p {port}' {source:aep} "{host}:{dest:dep}" && """
                 + """ssh """
-                + self.cm_opts
                 + self.pem_opts
                 + """ -q {host} -p {port} "mv {dest:dep}/{source:b} {dest:ep}" """
             )
         return (
             "ssh "
-            + self.cm_opts
             + self.pem_opts
             + """ -q {host} -p {port} "mkdir -p {dest:dpq}" """
             + """ && rsync -a --no-g -e "ssh -p {port} """
-            + self.cm_opts
             + self.pem_opts
             + ''' " {source:aep} "{host}:{dest:dep}"'''
         )
@@ -512,14 +494,12 @@ class RemoteHost(object):
         if rename:
             return (
                 """rsync -a --no-g -e 'ssh """
-                + self.cm_opts
                 + self.pem_opts
                 + """ -p {port}' {host}:{source:e} "{dest:adep}" && """
                 + '''mv "{dest:adep}/{source:b}" "{dest:aep}"'''
             )
         return (
             """rsync -a --no-g -e 'ssh """
-            + self.cm_opts
             + self.pem_opts
             + ''' -p {port}' {host}:{source:e} "{dest:adep}"'''
         )
@@ -531,7 +511,6 @@ class RemoteHost(object):
         if use_heredoc:
             return (
                 "ssh "
-                + self.cm_opts
                 + self.pem_opts
                 + """ -q {host} -p {port} <<'HEREDOC!!'\nbash --login -c '"""
                 + (
@@ -544,7 +523,6 @@ class RemoteHost(object):
         else:
             return (
                 "ssh "
-                + self.cm_opts
                 + self.pem_opts
                 + """ -q {host} -p {port} "bash --login -c '"""
                 + (
@@ -559,7 +537,6 @@ class RemoteHost(object):
         return self.config.get(
             "query_cmd",
             """ssh """
-            + self.cm_opts
             + self.pem_opts
             + """ -q {host} -p {port} "bash --login -c '{self.config.get("sos", "sos")} status {task} -v 0'" """,
         )
@@ -1017,9 +994,9 @@ class RemoteHost(object):
 
     def send_job_file(self, job_file, dir="tasks"):
         send_cmd = cfg_interpolate(
-            f"ssh {self.cm_opts + self.pem_opts}"
+            f"ssh {self.pem_opts}"
             f' -q {{address}} -p {{port}} "[ -d ~/.sos/{dir} ] || mkdir -p ~/.sos/{dir}" && '
-            f' rsync --ignore-existing -a --no-g -e "ssh {self.cm_opts + self.pem_opts}'
+            f' rsync --ignore-existing -a --no-g -e "ssh {self.pem_opts}'
             f' -q -p {{port}}" {{job_file:ap}} {{address}}:.sos/{dir}/',
             {
                 "job_file": sos_targets(job_file),
