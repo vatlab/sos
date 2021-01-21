@@ -327,6 +327,7 @@ class RemoteHost(object):
         self.pem_file = self.config.get("pem_file", None)
         self.shared_dirs = self._get_shared_dirs()
         self.path_map = self._get_path_map()
+        self.remote_socket = None
 
         # we already test connect of remote hosts
         if test_connection:
@@ -337,7 +338,18 @@ class RemoteHost(object):
     def _get_remote_server_port(self):
         return str(5000 + os.getuid())
 
-    def _get_tunneled_socket(self):
+    def _test_tunneled_socket(self, rsock):
+        if not rsock:
+            return False
+        rsock.send(encode_msg('alive'))
+        if rsock.poll(1000, zmq.POLLIN):
+            # should be "yes"
+            ret = decode_msg(rsock.recv())
+            assert ret == "yes"
+            return True
+        return False
+
+    def _create_tunneled_socket(self):
         rsock = zmq.Context().socket(zmq.REQ)
         zmq_ssh.tunnel_connection(rsock,
             f"tcp://localhost:{self._get_remote_server_port()}",
@@ -353,9 +365,9 @@ class RemoteHost(object):
         return None
 
     def connect_to_server(self):
-        rsock = self._get_tunneled_socket()
-        if rsock:
-            return rsock
+        if self._test_tunneled_socket(self.remote_socket):
+            return self.remote_socket
+
         # start a remote server (short lived...)
         port = self._get_remote_server_port()
         env.logger.debug(f'Starting remote server on port {port}')
@@ -370,9 +382,10 @@ class RemoteHost(object):
         while True:
             env.logger.debug(f'Waiting for post {port} {attempts}')
 
-            rsock = self._get_tunneled_socket()
+            rsock = self._create_tunneled_socket()
             if rsock is not None:
-                return rsock
+                self.remote_socket = rsock
+                return self.remote_socket
             elif attempts < 5:
                 time.sleep(1)
                 attempts += 1
@@ -386,7 +399,7 @@ class RemoteHost(object):
         try:
             rsocket = self.connect_to_server()
             rsocket.send(
-                encode_msg(['signature', repr(targets), self._map_var(os.getcwd())]))
+                encode_msg(['exists', repr(targets), self._map_var(os.getcwd())]))
             msg = decode_msg(rsocket.recv())
         except Exception as e:
             msg = f"error: {e}"
@@ -396,7 +409,6 @@ class RemoteHost(object):
         return msg == "yes"
 
     def target_signature(self, targets):
-        env.logger.error(f'CHECK SIGNATURE {targets}')
         try:
             rsocket = self.connect_to_server()
             rsocket.send(
