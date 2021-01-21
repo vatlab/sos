@@ -945,7 +945,7 @@ def cmd_server(args, workflow_args):
 
     context = zmq.Context()
     server_socket = context.socket(zmq.REP)
-    socserver_socketket.bind(f"tcp://*:{args.port}")
+    server_socket.bind(f"tcp://*:{args.port}")
 
     try:
         while True:
