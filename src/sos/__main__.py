@@ -1002,6 +1002,7 @@ def cmd_server(args, workflow_args):
                     finally:
                         os.chdir(orig_dir)
                 elif action[0] == 'check_output':
+                    import subprocess
                     cmd, workdir, kwargs = action[1:]
 
                     try:
@@ -1021,12 +1022,12 @@ def cmd_server(args, workflow_args):
                             os.chdir(orig_dir)
                 else:
                     reply_msg = f'Unrecognized request {action}'
-                env.logger.info(f'SEND: {reply_msg}')
+                env.logger.info(f'SEND: {str(reply_msg)}[:40]')
                 server_socket.send(encode_msg(reply_msg))
             else:
                 break
     except Exception as e:
-        env.error(e)
+        env.logger.error(e)
         sys.exit(1)
     finally:
         server_socket.close()
