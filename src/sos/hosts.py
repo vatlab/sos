@@ -1054,29 +1054,38 @@ class RemoteHost(object):
 
 
     def check_call(self, cmd, under_workdir=False, **kwargs):
-        if isinstance(cmd, list):
-            cmd = subprocess.list2cmdline(cmd)
-        try:
-            cmd = cfg_interpolate(
-                self._get_execute_cmd(
-                    under_workdir=under_workdir, use_heredoc="." in cmd
-                ),
-                {
-                    "host": self.address,
-                    "port": self.port,
-                    "cmd": cmd.replace("'", r"'\''"),
-                    "workdir": self._map_var(os.getcwd()),
-                },
-            )
-        except Exception as e:
-            raise ValueError(f"Failed to run command {cmd}: {e}")
         if "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
-            env.log_to_file("TASK", f"Executing command ``{cmd}``")
+            env.log_to_file("TASK", f"Executing command ``{cmd}`` on {self.alias}")
+
         try:
-            return subprocess.check_call(cmd, shell=True, **kwargs)
+            rsocket = self.connect_to_server()
+            rsocket.send(
+                encode_msg(['check_call',
+                cmd,
+                self._map_var(os.getcwd()) if under_workdir else '',
+                kwargs]))
+            call_status, call_msg = decode_msg(rsocket.recv())
         except Exception as e:
             env.logger.debug(f"Check output of {cmd} failed: {e}")
             raise
+        if call_status != "running":
+            raise RuntimeError(f'Called to run {cmd} on {self.alias}: {call_msg}')
+
+        call_id = call_msg
+        while True:
+            # wait for the completion of the call
+            rsocket.send(
+                encode_msg(['poll_call', call_id])
+            )
+            key, value = decode_msg(rsocket.rec())
+            if key == 'done':
+                return value
+            if key == 'exception':
+                raise value
+            if key != 'running':
+                raise RuntimeError(f'Invalid return {key} from remote server {self.alias}')
+            time.sleep(0.5)
+
 
     def run_command(self, cmd, wait_for_task, realtime=False, **kwargs):
         if isinstance(cmd, list):

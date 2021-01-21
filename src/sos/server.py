@@ -57,6 +57,39 @@ def handle_check_output(cmd, workdir, kwargs):
             os.chdir(orig_dir)
 
 
+g_running_procs = {}
+
+def handle_check_call(cmd, workdir, kwargs):
+    global g_running_procs
+    try:
+        if workdir:
+            orig_dir = os.getcwd()
+            os.chdir(workdir)
+        else:
+            orig_dir = None
+
+        p = subprocess.Popen(cmd, shell=isinstance(cmd, str), **kwargs)
+        g_running_procs[p.pid] = p
+
+        return 'running', p.pid
+    except Exception as e:
+        return 'exception', e
+    finally:
+        if orig_dir is not None:
+            os.chdir(orig_dir)
+
+def handle_poll_call(cmd, pid):
+    global g_running_procs
+    if pid not in g_running_procs:
+        return 'exception', ValueError(f'Invalid call id {pid}')
+
+    ret = g_running_procs[pid].poll()
+
+    if ret is None:
+        return 'running', ''
+
+    return 'done', ret
+
 def cmd_server(args, workflow_args):
     if workflow_args:
         raise RuntimeError(f'Unrecognized arguments {" ".join(workflow_args)}')
@@ -73,18 +106,22 @@ def cmd_server(args, workflow_args):
             if server_socket.poll(
                     -1 if args.duration is None else 1000 * args.duration,
                     zmq.POLLIN):
-                action = decode_msg(server_socket.recv())
-                env.logger.info(f'RECV: {action}')
-                if action == 'alive':
+                params = decode_msg(server_socket.recv())
+                env.logger.info(f'RECV: {params}')
+                if params == 'alive':
                     reply_msg = "yes"
-                elif action[0] == 'signature':
-                    reply_msg = handle_signature(*actions[1:])
-                elif action[0] == 'exists':
-                    reply_msg = handle_exists(*actions[1:])
-                elif action[0] == 'check_output':
-                    reply_msg = handle_check_output(*actions[1:])
+                elif params[0] == 'signature':
+                    reply_msg = handle_signature(*params[1:])
+                elif params[0] == 'exists':
+                    reply_msg = handle_exists(*params[1:])
+                elif params[0] == 'check_output':
+                    reply_msg = handle_check_output(*params[1:])
+                elif params[0] == 'check_call':
+                    reply_msg = handle_check_call(*params[1:])
+                elif params[0] == 'poll_call':
+                    reply_msg = handle_poll_call(*params[1:])
                 else:
-                    reply_msg = f'Unrecognized request {action}'
+                    reply_msg = f'Unrecognized request {params}'
                 env.logger.info(f'SEND: {str(reply_msg)}[:40]')
                 server_socket.send(encode_msg(reply_msg))
             else:
