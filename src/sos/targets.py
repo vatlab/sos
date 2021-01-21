@@ -438,6 +438,7 @@ class remote(BaseTarget):
             return True
 
     def target_signature(self, mode="any"):
+        env.logger.warning(f'sss {self}')
         if not self._host and not env.config["default_queue"]:
             return textMD5(self.target_name())
         try:
@@ -2244,7 +2245,9 @@ class InMemorySignature:
         res["vars"].update(signature["end_context"])
         #
         for cur_type in ["input", "output", "depends"]:
+            env.logger.warning(signature)
             for f, m in signature[cur_type].items():
+                env.logger.error(f'CHECKING {f}')
                 try:
                     if "(" in f and ")" in f:
                         # this part is hard, because this can be a customized target.

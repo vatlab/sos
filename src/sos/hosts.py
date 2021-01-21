@@ -339,19 +339,22 @@ class RemoteHost(object):
 
     def _get_tunneled_socket(self):
         rsock = zmq.Context().socket(zmq.REQ)
-        try:
-            zmq_ssh.tunnel_connection(rsock,
-                f"tcp://localhost:{self._get_remote_server_port()}",
-                self.address)
-            # test it
-            rsock.send(encode_msg('alive'))
-            if rsock.poll(1000, zmq.POLLIN):
-                # should be "yes"
-                ret = decode_msg(rsock.recv())
-                assert ret == "yes"
-                return rsock
-        finally:
-            rsock.close()
+        zmq_ssh.tunnel_connection(rsock,
+            f"tcp://localhost:{self._get_remote_server_port()}",
+            self.address)
+        # test it
+        rsock.send(encode_msg('alive'))
+        env.logger.warning(f'WAIT ')
+        if rsock.poll(1000, zmq.POLLIN):
+            # should be "yes"
+            ret = decode_msg(rsock.recv())
+            env.logger.warning(f'ok ')
+
+            assert ret == "yes"
+            return rsock
+        env.logger.warning(f'close ')
+
+        rsock.close()
         return None
 
     def connect_to_server(self):
@@ -359,14 +362,19 @@ class RemoteHost(object):
         if rsock:
             return rsock
         # start a remote server (short lived...)
+        port = self._get_remote_server_port()
+        env.logger.debug(f'Starting remote server on port {port}')
         self.run_command(
-            ['nohup', 'sos', 'server', '--port', self._get_remote_server_port()],
+            ['nohup', 'sos', 'server', '--port', port, '--duration', '60'],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             wait_for_task=False
         )
+
         attempts = 0
         while True:
+            env.logger.debug(f'Waiting for post {port} {attempts}')
+
             rsock = self._get_tunneled_socket()
             if rsock is not None:
                 return rsock
@@ -374,30 +382,37 @@ class RemoteHost(object):
                 time.sleep(1)
                 attempts += 1
             else:
-                raise RuntimeError(f'Failed to start a remote server on {self.alias}. Please make sure you have the latest version of sos installed and accessible.')
+                msg = f'Failed to start a remote server on {self.alias}. Please make sure you have the latest version of sos installed and accessible.'
+                env.logger.error(msg)
+                raise RuntimeError(msg)
 
 
     def target_exists(self, targets):
+        env.logger.error(f'CHECK exist {targets}')
+
         try:
-            socket = self.connect_to_server()
-            socket.send(
+            rsocket = self.connect_to_server()
+            rsocket.send(
                 encode_msg(['signature', repr(targets), self._map_var(os.getcwd())]))
-            msg = decode_msg(socket.recv())
+            msg = decode_msg(rsocket.recv())
         except Exception as e:
             msg = f"error: {e}"
+        env.logger.warning(f'GOT {msg}')
         if msg.startswith("error:"):
             env.logger.debug(msg)
             return False
         return msg == "yes"
 
     def target_signature(self, targets):
+        env.logger.error(f'CHECK SIGNATURE {targets}')
         try:
-            socket = self.connect_to_server()
-            socket.send(
+            rsocket = self.connect_to_server()
+            rsocket.send(
                 encode_msg(['signature', repr(targets), self._map_var(os.getcwd())]))
-            return decode_msg(socket.recv())
+            msg = decode_msg(rsocket.recv())
         except Exception as e:
             msg = f"error: {e}"
+        env.logger.error(f'GOT {msg}')
         if msg.startswith("error:"):
             env.logger.debug(msg)
             return textMD5(targets.target_name())

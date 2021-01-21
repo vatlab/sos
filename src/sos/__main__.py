@@ -932,7 +932,6 @@ def get_server_parser(desc_only=False):
         '-d',
         "--duration",
         type=int,
-        default=60,
         help='''Seconds after which the server will quite without any request''')
     parser.set_defaults(func=cmd_server)
     return parser
@@ -945,18 +944,18 @@ def cmd_server(args, workflow_args):
     from .messages import encode_msg, decode_msg
 
     context = zmq.Context()
-    socket = context.socket(zmq.REP)
-    socket.bind(f"tcp://*:{args.port}")
+    server_socket = context.socket(zmq.REP)
+    socserver_socketket.bind(f"tcp://*:{args.port}")
 
     try:
         while True:
             #  Wait for next request from client
-            if socket.poll(-1 if args.duration is None else 1000*args.duration, zmq.POLLIN):
-                msg = decode_msg(socket.recv())
-                if msg == 'alive':
-                    socket.send(encode_msg("yes"))
-                elif msg[0] == 'signature':
-                    items, target_dir = msg[1:]
+            if server_socket.poll(-1 if args.duration is None else 1000*args.duration, zmq.POLLIN):
+                action = decode_msg(server_socket.recv())
+                if action == 'alive':
+                    server_socket.send(encode_msg("yes"))
+                elif action[0] == 'signature':
+                    items, target_dir = action[1:]
                     from .targets import sos_targets, file_target
                     assert file_target
 
@@ -972,9 +971,9 @@ def cmd_server(args, workflow_args):
                     finally:
                         os.chdir(orig_dir)
 
-                    socket.send(encode_msg['msgs'])
-                elif msg[0] == 'exists':
-                    items, target_dir = msg[1:]
+                    server_socket.send(encode_msg[msgs])
+                elif action[0] == 'exists':
+                    items, target_dir = action[1:]
                     from .targets import sos_targets, file_target
                     assert file_target
 
@@ -989,14 +988,16 @@ def cmd_server(args, workflow_args):
                     finally:
                         os.chdir(orig_dir)
 
-                    socket.send(encode_msg['msgs'])
+                    server_socket.send(encode_msg['msgs'])
                 else:
-                    socket.send(encode_msg(f'Unrecognized request {msg}'))
+                    server_socket.send(encode_msg(f'Unrecognized request {action}'))
                     break
             else:
                 break
+    except Exception as e:
+        sys.exit(str(e))
     finally:
-        socket.close()
+        server_socket.close()
     # after idling args.duration, quit
     sys.exit(0)
 #
