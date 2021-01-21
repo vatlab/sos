@@ -1001,6 +1001,24 @@ def cmd_server(args, workflow_args):
                         reply_msg = f"error: {e}"
                     finally:
                         os.chdir(orig_dir)
+                elif action[0] == 'check_output':
+                    cmd, workdir, kwargs = action[1:]
+
+                    try:
+                        if workdir:
+                            orig_dir = os.getcwd()
+                            os.chdir(workdir)
+                        else:
+                            orig_dir = None
+                        output = subprocess.check_output(cmd, shell=True, **kwargs).decode()
+                        reply_msg = (0, output)
+                    except subprocess.CalledProcessedError as e:
+                        reply_msg = (e.returncode, e.output)
+                    except Exception as e:
+                        reply_msg = (1, f"error: failed to check output of {cmd}: {e}")
+                    finally:
+                        if orig_dir is not None:
+                            os.chdir(orig_dir)
                 else:
                     reply_msg = f'Unrecognized request {action}'
                 env.logger.info(f'SEND: {reply_msg}')

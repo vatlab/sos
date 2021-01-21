@@ -1036,31 +1036,21 @@ class RemoteHost(object):
             )
 
     def check_output(self, cmd: object, under_workdir=False, **kwargs) -> object:
-        if isinstance(cmd, list):
-            cmd = subprocess.list2cmdline(cmd)
         try:
-            cmd = cfg_interpolate(
-                self._get_execute_cmd(
-                    under_workdir=under_workdir, use_heredoc="." in cmd
-                ),
-                {
-                    "host": self.address,
-                    "port": self.port,
-                    "cmd": cmd.replace("'", r"'\''"),
-                    "workdir": self._map_var(os.getcwd()),
-                },
-            )
-        except Exception as e:
-            raise ValueError(
-                f'Failed to run command {cmd}: {e} ({env.sos_dict["CONFIG"]})'
-            )
-        if "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
-            env.log_to_file("TASK", f"Executing command ``{cmd}``")
-        try:
-            return subprocess.check_output(cmd, shell=True, **kwargs).decode()
+            rsocket = self.connect_to_server()
+            rsocket.send(
+                encode_msg(['check_output',
+                cmd,
+                self._map_var(os.getcwd()) if under_workdir else '',
+                kwargs]))
+            ret, msg = decode_msg(rsocket.recv())
         except Exception as e:
             env.logger.debug(f"Check output of {cmd} failed: {e}")
             raise
+        if ret != 0:
+            raise RuntimeError(str(msg))
+        return msg
+
 
     def check_call(self, cmd, under_workdir=False, **kwargs):
         if isinstance(cmd, list):
