@@ -390,7 +390,6 @@ class RemoteHost(object):
             msg = decode_msg(rsocket.recv())
         except Exception as e:
             msg = f"error: {e}"
-        env.logger.warning(f'GOT {msg}')
         if msg.startswith("error:"):
             env.logger.debug(msg)
             return False
@@ -405,7 +404,6 @@ class RemoteHost(object):
             msg = decode_msg(rsocket.recv())
         except Exception as e:
             msg = f"error: {e}"
-        env.logger.error(f'GOT {msg}')
         if msg.startswith("error:"):
             env.logger.debug(msg)
             return textMD5(targets.target_name())
