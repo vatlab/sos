@@ -344,16 +344,11 @@ class RemoteHost(object):
             self.address)
         # test it
         rsock.send(encode_msg('alive'))
-        env.logger.warning(f'WAIT ')
         if rsock.poll(1000, zmq.POLLIN):
             # should be "yes"
             ret = decode_msg(rsock.recv())
-            env.logger.warning(f'ok ')
-
             assert ret == "yes"
             return rsock
-        env.logger.warning(f'close ')
-
         rsock.close()
         return None
 
@@ -388,8 +383,6 @@ class RemoteHost(object):
 
 
     def target_exists(self, targets):
-        env.logger.error(f'CHECK exist {targets}')
-
         try:
             rsocket = self.connect_to_server()
             rsocket.send(

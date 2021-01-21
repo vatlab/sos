@@ -965,13 +965,13 @@ def cmd_server(args, workflow_args):
 
                         items = eval(items)
 
-                        msgs = str(sos_targets(items).target_signature())
+                        ret_msg = str(sos_targets(items).target_signature())
                     except Exception as e:
-                        msgs = f"error: {e}"
+                        ret_msg = f"error: {e}"
                     finally:
                         os.chdir(orig_dir)
 
-                    server_socket.send(encode_msg[msgs])
+                    server_socket.send(encode_msg(ret_msg))
                 elif action[0] == 'exists':
                     items, target_dir = action[1:]
                     from .targets import sos_targets, file_target
@@ -982,13 +982,13 @@ def cmd_server(args, workflow_args):
                         os.chdir(target_dir)
 
                         items = eval(items)
-                        msgs = "yes" if sos_targets(items).target_exists() else "no"
+                        ret_msg = "yes" if sos_targets(items).target_exists() else "no"
                     except Exception as e:
-                        msgs = f"error: {e}"
+                        ret_msg = f"error: {e}"
                     finally:
                         os.chdir(orig_dir)
 
-                    server_socket.send(encode_msg['msgs'])
+                    server_socket.send(encode_msg(ret_msg))
                 else:
                     server_socket.send(encode_msg(f'Unrecognized request {action}'))
                     break
