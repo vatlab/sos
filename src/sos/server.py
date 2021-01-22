@@ -96,7 +96,14 @@ def cmd_server(args, workflow_args):
 
     context = zmq.Context()
     server_socket = context.socket(zmq.REP)
-    server_socket.bind(f"tcp://*:{args.port}")
+    try:
+        server_socket.bind(f"tcp://*:{args.port}")
+    except Exception as e:
+        port = server_socket.bind_to_random_port(f"tcp://*")
+        print(f'Error binding to {args.port}, try {port}')
+        server_socket.close()
+        context.destroy()
+        sys.exit(1)
 
     env.verbosity = args.verbosity
 
@@ -131,5 +138,6 @@ def cmd_server(args, workflow_args):
         sys.exit(1)
     finally:
         server_socket.close()
+        context.destroy()
     # after idling args.duration, quit
     sys.exit(0)
