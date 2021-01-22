@@ -202,7 +202,7 @@ echo 'adf' >> 'result_remote.txt'
 """
         )
     assert 0 == subprocess.call(
-        "sos run test_remote.sos -c ~/docker.yml -r docker -s force -q localhost",
+        "sos run test_remote.sos -c ~/docker.yml -r docker -s force",
         shell=True,
     )
 
@@ -213,7 +213,6 @@ echo 'adf' >> 'result_remote.txt'
     assert 0 == subprocess.call(
         "sos remote pull docker --files result_remote.txt -c ~/docker.yml", shell=True
     )
-
     assert file_target("result_remote.txt").target_exists()
 
     # self.assertEqual(subprocess.call('sos preview result_remote.txt', shell=True), 0)

@@ -48,7 +48,7 @@ def handle_check_output(cmd, workdir, kwargs):
             orig_dir = None
         output = subprocess.check_output(cmd, shell=True, **kwargs).decode()
         return (0, output)
-    except subprocess.CalledProcessedError as e:
+    except subprocess.CalledProcessError as e:
         return (e.returncode, e.output)
     except Exception as e:
         return (1, f"error: failed to check output of {cmd}: {e}")
