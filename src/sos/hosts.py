@@ -12,12 +12,17 @@ import socket
 import stat
 import subprocess
 import sys
+import time
 import pexpect
+import zmq
+from zmq import ssh as zmq_ssh
+
 from collections.abc import Sequence
 
 import pkg_resources
 
 from .eval import Undetermined, cfg_interpolate, get_config
+from .messages import encode_msg, decode_msg
 from .syntax import SOS_LOGLINE
 from .targets import path, sos_targets
 from .task_engines import BackgroundProcess_TaskEngine
@@ -322,41 +327,94 @@ class RemoteHost(object):
         self.pem_file = self.config.get("pem_file", None)
         self.shared_dirs = self._get_shared_dirs()
         self.path_map = self._get_path_map()
+        self.remote_socket = None
+
         # we already test connect of remote hosts
         if test_connection:
             test_res = self.test_connection()
             if test_res != "OK":
                 raise RuntimeError(f"Failed to connect to {self.alias}: {test_res}")
 
+    def _get_remote_server_port(self):
+        return str(5000 + os.getuid())
+
+    def _test_tunneled_socket(self, rsock):
+        if not rsock:
+            return False
+        rsock.send(encode_msg('alive'))
+        if rsock.poll(1000, zmq.POLLIN):
+            # should be "yes"
+            ret = decode_msg(rsock.recv())
+            assert ret == "yes"
+            return True
+        return False
+
+    def _create_tunneled_socket(self):
+        rsock = zmq.Context().socket(zmq.REQ)
+        raddr = f"tcp://localhost:{self._get_remote_server_port()}"
+        rserver = self.address + ("" if self.port == 22 else f":{self.port}")
+        rkeyfile = self.config['pem_file'] if 'pem_file' in self.config else None
+        zmq_ssh.tunnel_connection(socket=rsock, addr=raddr, server=rserver, keyfile=rkeyfile)
+        # test it
+        rsock.send(encode_msg('alive'))
+        if rsock.poll(1000, zmq.POLLIN):
+            # should be "yes"
+            ret = decode_msg(rsock.recv())
+            assert ret == "yes"
+            return rsock
+        rsock.close()
+        return None
+
+    def connect_to_server(self):
+        if self._test_tunneled_socket(self.remote_socket):
+            return self.remote_socket
+
+        # start a remote server (short lived...)
+        port = self._get_remote_server_port()
+        env.logger.debug(f'Starting remote server on port {port}')
+        self.run_command(
+            ['nohup', 'sos', 'server', '--port', port, '--duration', '60'],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            wait_for_task=False
+        )
+
+        attempts = 0
+        while True:
+            env.logger.debug(f'Waiting for post {port} {attempts}')
+
+            rsock = self._create_tunneled_socket()
+            if rsock is not None:
+                self.remote_socket = rsock
+                return self.remote_socket
+            elif attempts < 5:
+                time.sleep(1)
+                attempts += 1
+            else:
+                msg = f'Failed to start a remote server on {self.alias}. Please make sure you have the latest version of sos installed and accessible.'
+                env.logger.error(msg)
+                raise RuntimeError(msg)
+
+
     def target_exists(self, targets):
         try:
-            msg = self.check_output(
-                [
-                    "sos",
-                    "preview",
-                    "--exists",
-                    base64.b64encode(repr(targets).encode()).decode(),
-                ],
-                under_workdir=True,
-            ).strip()
+            rsocket = self.connect_to_server()
+            rsocket.send(
+                encode_msg(['exists', repr(targets), self._map_var(os.getcwd())]))
+            msg = decode_msg(rsocket.recv())
         except Exception as e:
             msg = f"error: {e}"
         if msg.startswith("error:"):
             env.logger.debug(msg)
-            return True
+            return False
         return msg == "yes"
 
     def target_signature(self, targets):
         try:
-            msg = self.check_output(
-                [
-                    "sos",
-                    "preview",
-                    "--signature",
-                    base64.b64encode(repr(targets).encode()).decode(),
-                ],
-                under_workdir=True,
-            ).strip()
+            rsocket = self.connect_to_server()
+            rsocket.send(
+                encode_msg(['signature', repr(targets), self._map_var(os.getcwd())]))
+            msg = decode_msg(rsocket.recv())
         except Exception as e:
             msg = f"error: {e}"
         if msg.startswith("error:"):
@@ -615,7 +673,7 @@ class RemoteHost(object):
                         "[pP]assword:",
                         pexpect.EOF,
                     ],
-                    timeout=5,
+                    timeout=10,
                 )
                 if i == 0:
                     p.sendline("yes")
@@ -634,7 +692,7 @@ class RemoteHost(object):
                     else:
                         return f'Command "{cmd}" exits with code {p.exitstatus}'
         except pexpect.TIMEOUT:
-            return f"ssh connection to {self.address} time out with prompt: {str(p.before)}"
+            return f"ssh connection to {self.address} time out."
         except Exception as e:
             return f"Failed to check remote connection {self.address}:{self.port}: {e}"
         return "OK"
@@ -979,56 +1037,55 @@ class RemoteHost(object):
             )
 
     def check_output(self, cmd: object, under_workdir=False, **kwargs) -> object:
-        if isinstance(cmd, list):
-            cmd = subprocess.list2cmdline(cmd)
         try:
-            cmd = cfg_interpolate(
-                self._get_execute_cmd(
-                    under_workdir=under_workdir, use_heredoc="." in cmd
-                ),
-                {
-                    "host": self.address,
-                    "port": self.port,
-                    "cmd": cmd.replace("'", r"'\''"),
-                    "workdir": self._map_var(os.getcwd()),
-                },
-            )
-        except Exception as e:
-            raise ValueError(
-                f'Failed to run command {cmd}: {e} ({env.sos_dict["CONFIG"]})'
-            )
-        if "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
-            env.log_to_file("TASK", f"Executing command ``{cmd}``")
-        try:
-            return subprocess.check_output(cmd, shell=True, **kwargs).decode()
+            rsocket = self.connect_to_server()
+            rsocket.send(
+                encode_msg(['check_output',
+                cmd,
+                self._map_var(os.getcwd()) if under_workdir else '',
+                kwargs]))
+            ret, msg = decode_msg(rsocket.recv())
         except Exception as e:
             env.logger.debug(f"Check output of {cmd} failed: {e}")
             raise
+        if ret != 0:
+            raise RuntimeError(str(msg))
+        return msg
+
 
     def check_call(self, cmd, under_workdir=False, **kwargs):
-        if isinstance(cmd, list):
-            cmd = subprocess.list2cmdline(cmd)
-        try:
-            cmd = cfg_interpolate(
-                self._get_execute_cmd(
-                    under_workdir=under_workdir, use_heredoc="." in cmd
-                ),
-                {
-                    "host": self.address,
-                    "port": self.port,
-                    "cmd": cmd.replace("'", r"'\''"),
-                    "workdir": self._map_var(os.getcwd()),
-                },
-            )
-        except Exception as e:
-            raise ValueError(f"Failed to run command {cmd}: {e}")
         if "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
-            env.log_to_file("TASK", f"Executing command ``{cmd}``")
+            env.log_to_file("TASK", f"Executing command ``{cmd}`` on {self.alias}")
+
         try:
-            return subprocess.check_call(cmd, shell=True, **kwargs)
+            rsocket = self.connect_to_server()
+            rsocket.send(
+                encode_msg(['check_call',
+                cmd,
+                self._map_var(os.getcwd()) if under_workdir else '',
+                kwargs]))
+            call_status, call_msg = decode_msg(rsocket.recv())
         except Exception as e:
             env.logger.debug(f"Check output of {cmd} failed: {e}")
             raise
+        if call_status != "running":
+            raise RuntimeError(f'Called to run {cmd} on {self.alias}: {call_msg}')
+
+        call_id = call_msg
+        while True:
+            # wait for the completion of the call
+            rsocket.send(
+                encode_msg(['poll_call', call_id])
+            )
+            key, value = decode_msg(rsocket.recv())
+            if key == 'done':
+                return value
+            if key == 'exception':
+                raise value
+            if key != 'running':
+                raise RuntimeError(f'Invalid return {key} from remote server {self.alias}')
+            time.sleep(0.5)
+
 
     def run_command(self, cmd, wait_for_task, realtime=False, **kwargs):
         if isinstance(cmd, list):
@@ -1051,14 +1108,12 @@ class RemoteHost(object):
             from .utils import pexpect_run
 
             return pexpect_run(cmd)
-        elif wait_for_task or sys.platform == "win32":
-            # keep proc persistent to avoid a subprocess is still running warning.
-            p = subprocess.Popen(cmd, shell=True, **kwargs)
-            p.wait()
         else:
-            p = DaemonizedProcess(cmd, **kwargs)
-            p.start()
-            p.join()
+            p = subprocess.Popen(cmd, shell=True, **kwargs)
+            if wait_for_task or sys.platform == "win32":
+                # keep proc persistent to avoid a subprocess is still running warning.
+                p.wait()
+            return p
 
     def receive_result(self, task_id: str) -> Dict[str, int]:
         # for filetype in ('res', 'status', 'out', 'err'):
