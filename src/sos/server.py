@@ -46,7 +46,7 @@ def handle_check_output(cmd, workdir, kwargs):
             os.chdir(workdir)
         else:
             orig_dir = None
-        output = subprocess.check_output(cmd, shell=True, **kwargs).decode()
+        output = subprocess.check_output(cmd, shell=isinstance(cmd, str), **kwargs).decode()
         return (0, output)
     except subprocess.CalledProcessError as e:
         return (e.returncode, e.output)
