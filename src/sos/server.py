@@ -88,9 +88,11 @@ def handle_poll_call(pid):
     if ret is None:
         return 'running', ''
 
+    g_running_procs.pop(pid)
     return 'done', ret
 
 def cmd_server(args, workflow_args):
+    global g_running_procs
     if workflow_args:
         raise RuntimeError(f'Unrecognized arguments {" ".join(workflow_args)}')
 
@@ -131,7 +133,7 @@ def cmd_server(args, workflow_args):
                     reply_msg = f'Unrecognized request {params}'
                 env.logger.info(f'SEND: {str(reply_msg)[:40]}')
                 server_socket.send(encode_msg(reply_msg))
-            else:
+            elif not any(p.poll() is None for p in g_running_procs.values()):
                 break
     except Exception as e:
         env.logger.error(e)

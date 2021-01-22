@@ -935,7 +935,7 @@ def get_server_parser(desc_only=False):
         '-d',
         "--duration",
         type=int,
-        help='''Seconds after which the server will quite without any request''')
+        help='''Seconds after which the server will quite without any request. Default to never.''')
     parser.add_argument(
         "-v",
         "--verbosity",
