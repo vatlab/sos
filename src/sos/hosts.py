@@ -339,8 +339,6 @@ class RemoteHost(object):
         return str(5000 + os.getuid())
 
     def _test_tunneled_socket(self, rsock):
-        if not rsock:
-            return False
         rsock.send(encode_msg('alive'))
         if rsock.poll(1000, zmq.POLLIN):
             # should be "yes"
@@ -355,24 +353,16 @@ class RemoteHost(object):
         rserver = self.address + ("" if self.port == 22 else f":{self.port}")
         rkeyfile = self.config['pem_file'] if 'pem_file' in self.config else None
         zmq_ssh.tunnel_connection(socket=lsock, addr=raddr, server=rserver, keyfile=rkeyfile)
-        # test it
-        lsock.send(encode_msg('alive'))
-        if lsock.poll(1000, zmq.POLLIN):
-            # should be "yes"
-            ret = decode_msg(lsock.recv())
-            assert ret == "yes"
-            return lsock
-        lsock.close()
-        return None
+        return lsock
 
     def connect_to_server(self):
         if not self.remote_socket():
-            rsock = self._create_tunneled_socket()
+            self.remote_socket = self._create_tunneled_socket()
 
         if self._test_tunneled_socket(self.remote_socket):
             return self.remote_socket
 
-        # start a remote server (short lived...)
+        # if does not work, start a remote server (short lived...)
         port = self._get_remote_server_port()
         env.logger.debug(f'Starting remote server on port {port}')
         p = self.run_command(
@@ -385,10 +375,7 @@ class RemoteHost(object):
         attempts = 0
         while True:
             env.logger.debug(f'Waiting for post {port} {attempts}')
-
-            rsock = self._create_tunneled_socket()
-            if rsock is not None:
-                self.remote_socket = rsock
+            if self._test_tunneled_socket(self.remote_socket):
                 return self.remote_socket
             elif attempts < 5:
                 time.sleep(1)
