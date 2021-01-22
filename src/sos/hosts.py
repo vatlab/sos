@@ -350,29 +350,32 @@ class RemoteHost(object):
         return False
 
     def _create_tunneled_socket(self):
-        rsock = zmq.Context().socket(zmq.REQ)
+        lsock = zmq.Context().socket(zmq.REQ)
         raddr = f"tcp://localhost:{self._get_remote_server_port()}"
         rserver = self.address + ("" if self.port == 22 else f":{self.port}")
         rkeyfile = self.config['pem_file'] if 'pem_file' in self.config else None
-        zmq_ssh.tunnel_connection(socket=rsock, addr=raddr, server=rserver, keyfile=rkeyfile)
+        zmq_ssh.tunnel_connection(socket=lsock, addr=raddr, server=rserver, keyfile=rkeyfile)
         # test it
-        rsock.send(encode_msg('alive'))
-        if rsock.poll(1000, zmq.POLLIN):
+        lsock.send(encode_msg('alive'))
+        if lsock.poll(1000, zmq.POLLIN):
             # should be "yes"
-            ret = decode_msg(rsock.recv())
+            ret = decode_msg(lsock.recv())
             assert ret == "yes"
-            return rsock
-        rsock.close()
+            return lsock
+        lsock.close()
         return None
 
     def connect_to_server(self):
+        if not self.remote_socket():
+            rsock = self._create_tunneled_socket()
+
         if self._test_tunneled_socket(self.remote_socket):
             return self.remote_socket
 
         # start a remote server (short lived...)
         port = self._get_remote_server_port()
         env.logger.debug(f'Starting remote server on port {port}')
-        self.run_command(
+        p = self.run_command(
             ['nohup', 'sos', 'server', '--port', port, '--duration', '60'],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
