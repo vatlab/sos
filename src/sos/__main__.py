@@ -1613,6 +1613,7 @@ def get_status_parser(desc_only=False):
     parser.add_argument(
         "-s",
         "--status",
+        choices=('pending', 'submitted', 'running', 'completed', 'failed', 'aborted'),
         nargs="*",
         help="""Display jobs with one of the specified status.""",
     )
@@ -1772,6 +1773,7 @@ def get_purge_parser(desc_only=False):
         "-s",
         "--status",
         nargs="+",
+        choices=('pending', 'submitted', 'running', 'completed', 'failed', 'aborted'),
         help="""Remove all jobs with specified status, which can be pending,
         submitted, running, completed, failed, and aborted. One of more status
         can be specified.""",
