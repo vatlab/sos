@@ -352,11 +352,12 @@ class RemoteHost(object):
         raddr = f"tcp://localhost:{self._get_remote_server_port()}"
         rserver = self.address + ("" if self.port == 22 else f":{self.port}")
         rkeyfile = self.config['pem_file'] if 'pem_file' in self.config else None
-        zmq_ssh.tunnel_connection(socket=lsock, addr=raddr, server=rserver, keyfile=rkeyfile)
+        port = zmq_ssh.tunnel_connection(socket=lsock, addr=raddr, server=rserver, keyfile=rkeyfile)
+        env.log_to_file('REMOTE', f'Create a tunneled connection with local port {port}')
         return lsock
 
     def connect_to_server(self):
-        if not self.remote_socket():
+        if not self.remote_socket:
             self.remote_socket = self._create_tunneled_socket()
 
         if self._test_tunneled_socket(self.remote_socket):
@@ -364,7 +365,7 @@ class RemoteHost(object):
 
         # if does not work, start a remote server (short lived...)
         port = self._get_remote_server_port()
-        env.logger.debug(f'Starting remote server on port {port}')
+        env.log_to_file('REMOTE', f'Starting remote server on port {port}')
         p = self.run_command(
             ['nohup', 'sos', 'server', '--port', port, '--duration', '60'],
             stdout=subprocess.DEVNULL,
