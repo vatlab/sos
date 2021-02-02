@@ -202,7 +202,7 @@ echo 'adf' >> 'result_remote.txt'
 """
         )
     assert 0 == subprocess.call(
-        "sos run test_remote.sos -c ~/docker.yml -r docker -s force -q localhost",
+        "sos run test_remote.sos -c ~/docker.yml -r docker -s force",
         shell=True,
     )
 
