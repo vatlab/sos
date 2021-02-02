@@ -486,7 +486,6 @@ class SoS_ExecuteScript:
 
             debug_script_file = os.path.join(
                 env.exec_dir,
-                ".sos",
                 f'{env.sos_dict["step_name"]}_{env.sos_dict["_index"]}_{str(uuid.uuid4())[:8]}{self.suffix}',
             )
             # with open(debug_script_file, 'w') as sfile:
@@ -687,8 +686,7 @@ class SoS_ExecuteScript:
                 if ret != 0:
                     with open(debug_script_file, "w") as sfile:
                         sfile.write(self.script)
-                    cmd = cmd.replace(script_file,
-                        os.path.expanduser(f"~/.sos/{path(debug_script_file):b}"))
+                    cmd = cmd.replace(script_file, debug_script_file)
                     out = (
                         f", stdout={kwargs['stdout']}"
                         if "stdout" in kwargs

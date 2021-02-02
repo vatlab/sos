@@ -1049,7 +1049,7 @@ def transcribe(text, cmd=None):
         text = "{}:\n{}".format(cmd, "    " + text.replace("\n", "\n    ") + "\n")
     with fasteners.InterProcessLock(os.path.join(env.temp_dir, "transcript.lck")):
         with open(
-            os.path.join(os.path.expanduser("~"), ".sos", "transcript.txt"), "a"
+            os.path.join(env.exec_dir, "transcript.txt"), "a"
         ) as trans:
             trans.write(text)
 
