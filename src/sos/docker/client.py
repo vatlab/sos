@@ -474,7 +474,7 @@ class SoS_DockerClient:
             ret = self._run_cmd(cmd, **kwargs)
 
             if ret != 0:
-                debug_script_dir = os.path.join(os.path.expanduser('~'), '.sos')
+                debug_script_dir = env.exec_dir
                 msg = 'The script has been saved to {}/{}. To reproduce the error please run:\n``{}``'.format(
                     debug_script_dir, tempscript,
                     cmd.replace(f'{path(tempdir):p}',

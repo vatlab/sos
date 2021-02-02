@@ -56,7 +56,9 @@ before_install:
 sudo: required
 services:
     - docker
-install: "pip install ."
+install:
+    - pip install .
+    - pip install sos-pbs
 before_script:
     - cd test
     - sh build_test_docker.sh
