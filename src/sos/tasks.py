@@ -1367,7 +1367,7 @@ def check_tasks(tasks, is_all: bool):
     # at most 20 threads
     from multiprocessing.pool import ThreadPool as Pool
 
-    p = Pool(min(20, len(tasks)))
+    p = Pool(min(10, len(tasks)))
     # the result can be {} for unchanged, or real results
     raw_status = p.starmap(check_task, [(x, status_cache.get(x, {})) for x in tasks])
 
@@ -1935,7 +1935,7 @@ def kill_tasks(tasks, tags=None):
         return
     all_tasks = sorted(list(set(all_tasks)))
     # at most 20 threads
-    p = Pool(min(20, len(all_tasks)))
+    p = Pool(min(10, len(all_tasks)))
     killed = p.map(kill_task, all_tasks)
     for s, t in zip(killed, all_tasks):
         print(f"{t}\t{s}")
