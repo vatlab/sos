@@ -961,7 +961,7 @@ class RemoteHost(object):
         send_cmd = cfg_interpolate(
             f"ssh {self.cm_opts + self.pem_opts}"
             f' -q {{address}} -p {{port}} "[ -d ~/.sos/{dir} ] || mkdir -p ~/.sos/{dir}" && '
-            f' rsync --ignore-existing -a --no-g -e "ssh {self.cm_opts + self.pem_opts}'
+            f' rsync -a --no-g -e "ssh {self.cm_opts + self.pem_opts}'
             f' -q -p {{port}}" {{job_file:ap}} {{address}}:.sos/{dir}/',
             {
                 "job_file": sos_targets(job_file),
