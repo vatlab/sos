@@ -88,7 +88,7 @@ class TestTask(unittest.TestCase):
                 os.remove(filename)
         params = TaskParams(
             name="ffffffffffffffff",
-            global_def={},
+            global_def=None,
             task="b=a",
             sos_dict={"a": 1},
             tags=["b", "a"],

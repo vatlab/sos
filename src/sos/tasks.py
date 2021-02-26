@@ -59,7 +59,7 @@ class MasterTaskParams(TaskParams):
     def __init__(self, num_workers=None):
         self.ID = "t0"
         self.name = self.ID
-        self.global_def = ""
+        self.global_def = None
         self.task = ""
 
         self.sos_dict = {
@@ -1823,9 +1823,9 @@ showResourceFigure_"""
             print("TAGS:\n=====")
             print(tf.tags)
             print()
-            if params.global_def:
+            if params.global_def and params.global_def[1]:
                 print("GLOBAL:\n=======")
-                print(params.global_def)
+                print(params.global_def[1])
                 print()
             print("ENVIRONMENT:\n============")
             global_runtime = tf.runtime["_runtime"]
