@@ -95,18 +95,23 @@ class BaseTaskExecutor(object):
                 task_id,
                 monitor_interval=monitor_interval,
                 resource_monitor_interval=resource_monitor_interval,
-                max_walltime=runtime["_runtime"].get("max_walltime", None),
-                max_mem=runtime["_runtime"].get("max_mem", None),
-                max_procs=runtime["_runtime"].get("max_procs", None),
+                max_walltime=(runtime["_runtime"].get("max_walltime", None),
+                              runtime["_runtime"].get("walltime", None)),
+                max_mem=(runtime["_runtime"].get("max_mem", None),
+                         runtime["_runtime"].get("mem", None)),
+                max_procs=(runtime["_runtime"].get("max_procs", None),
+                           runtime["_runtime"].get("procs", None)),
                 sos_dict=params.sos_dict,
             )
 
             m.start()
 
             if hasattr(params, "task_stack"):
-                res = self.execute_master_task(task_id, params, runtime, sig_content)
+                res = self.execute_master_task(task_id, params, runtime,
+                                               sig_content)
             else:
-                res = self.execute_single_task(task_id, params, runtime, sig_content)
+                res = self.execute_single_task(task_id, params, runtime,
+                                               sig_content)
         except KeyboardInterrupt:
             tf.status = "aborted"
             raise
@@ -118,10 +123,10 @@ class BaseTaskExecutor(object):
 
         if res["ret_code"] != 0 and "exception" in res:
             with open(
-                os.path.join(
-                    os.path.expanduser("~"), ".sos", "tasks", task_id + ".soserr"
-                ),
-                "a",
+                    os.path.join(
+                        os.path.expanduser("~"), ".sos", "tasks",
+                        task_id + ".soserr"),
+                    "a",
             ) as err:
                 err.write(f'Task {task_id} exits with code {res["ret_code"]}')
 
@@ -137,9 +142,13 @@ class BaseTaskExecutor(object):
 
         return res["ret_code"]
 
-    def execute_single_task(
-        self, task_id, params, runtime, sig_content, quiet=False, **kwargs
-    ):
+    def execute_single_task(self,
+                            task_id,
+                            params,
+                            runtime,
+                            sig_content,
+                            quiet=False,
+                            **kwargs):
         """
         Execute a single task, with
 
@@ -156,11 +165,8 @@ class BaseTaskExecutor(object):
         if task_id in runtime:
             params.sos_dict.update(runtime[task_id])
 
-        if (
-            quiet
-            and "TASK" in env.config["SOS_DEBUG"]
-            or "ALL" in env.config["SOS_DEBUG"]
-        ):
+        if (quiet and "TASK" in env.config["SOS_DEBUG"] or
+                "ALL" in env.config["SOS_DEBUG"]):
             env.log_to_file("TASK", f"Executing task {task_id}")
 
         global_def, task, sos_dict = params.global_def, params.task, params.sos_dict
@@ -170,42 +176,36 @@ class BaseTaskExecutor(object):
         env.sos_dict.quick_update(sos_dict)
 
         for key in [
-            "step_input",
-            "_input",
-            "step_output",
-            "_output",
-            "step_depends",
-            "_depends",
+                "step_input",
+                "_input",
+                "step_output",
+                "_output",
+                "step_depends",
+                "_depends",
         ]:
             if key in sos_dict and isinstance(sos_dict[key], sos_targets):
                 # resolve remote() target
                 env.sos_dict.set(
-                    key, sos_dict[key].remove_targets(type=sos_step).resolve_remote()
-                )
+                    key, sos_dict[key].remove_targets(
+                        type=sos_step).resolve_remote())
 
         # when no output is specified, we just treat the task as having no output (determined)
         env.sos_dict["_output"]._undetermined = False
-        sig = (
-            None
-            if env.config["sig_mode"] == "ignore"
-            else InMemorySignature(
-                env.sos_dict["_input"],
-                env.sos_dict["_output"],
-                env.sos_dict["_depends"],
-                env.sos_dict["__signature_vars__"],
-                shared_vars=parse_shared_vars(
-                    env.sos_dict["_runtime"].get("shared", None)
-                ),
-            )
-        )
+        sig = (None
+               if env.config["sig_mode"] == "ignore" else InMemorySignature(
+                   env.sos_dict["_input"],
+                   env.sos_dict["_output"],
+                   env.sos_dict["_depends"],
+                   env.sos_dict["__signature_vars__"],
+                   shared_vars=parse_shared_vars(env.sos_dict["_runtime"].get(
+                       "shared", None)),
+               ))
 
         if sig and self._validate_task_signature(
-            sig, sig_content.get(task_id, {}), task_id, quiet
-        ):
+                sig, sig_content.get(task_id, {}), task_id, quiet):
             # env.logger.info(f'{task_id} ``skipped``')
             return self._collect_task_result(
-                task_id, sos_dict, params.tags, skipped=True, signature=sig
-            )
+                task_id, sos_dict, params.tags, skipped=True, signature=sig)
 
         # if we are to really execute the task, touch the task file so that sos status shows correct
         # execution duration.
@@ -215,15 +215,16 @@ class BaseTaskExecutor(object):
         # task output
         env.sos_dict.set(
             "__std_out__",
-            os.path.join(os.path.expanduser("~"), ".sos", "tasks", task_id + ".sosout"),
+            os.path.join(
+                os.path.expanduser("~"), ".sos", "tasks", task_id + ".sosout"),
         )
         env.sos_dict.set(
             "__std_err__",
-            os.path.join(os.path.expanduser("~"), ".sos", "tasks", task_id + ".soserr"),
+            os.path.join(
+                os.path.expanduser("~"), ".sos", "tasks", task_id + ".soserr"),
         )
         env.logfile = os.path.join(
-            os.path.expanduser("~"), ".sos", "tasks", task_id + ".soserr"
-        )
+            os.path.expanduser("~"), ".sos", "tasks", task_id + ".soserr")
         # clear the content of existing .out and .err file if exists, but do not create one if it does not exist
         if os.path.exists(env.sos_dict["__std_out__"]):
             open(env.sos_dict["__std_out__"], "w").close()
@@ -251,11 +252,10 @@ class BaseTaskExecutor(object):
 
             # we will need to check existence of targets because the task might
             # be executed on a remote host where the targets are not available.
-            for target in (
-                sos_dict["_input"] if isinstance(sos_dict["_input"], list) else []
-            ) + (
-                sos_dict["_depends"] if isinstance(sos_dict["_depends"], list) else []
-            ):
+            for target in (sos_dict["_input"] if isinstance(
+                    sos_dict["_input"], list) else
+                           []) + (sos_dict["_depends"] if isinstance(
+                               sos_dict["_depends"], list) else []):
                 # if the file does not exist (although the signature exists)
                 # request generation of files
                 if isinstance(target, str):
@@ -264,9 +264,9 @@ class BaseTaskExecutor(object):
                         raise RuntimeError(f"{target} not found")
                 # the sos_step target should not be checked in tasks because tasks are
                 # independently executable units.
-                elif not isinstance(target, sos_step) and not target.target_exists(
-                    "target"
-                ):
+                elif not isinstance(
+                        target,
+                        sos_step) and not target.target_exists("target"):
                     raise RuntimeError(f"{target} not found")
 
             # create directory. This usually has been done at the step level but the task can be executed
@@ -294,24 +294,21 @@ class BaseTaskExecutor(object):
             if "prepend_path" in sos_dict["_runtime"]:
                 if isinstance(sos_dict["_runtime"]["prepend_path"], str):
                     os.environ["PATH"] = (
-                        sos_dict["_runtime"]["prepend_path"]
-                        + os.pathsep
-                        + os.environ["PATH"]
-                    )
-                elif isinstance(env.sos_dict["_runtime"]["prepend_path"], Sequence):
+                        sos_dict["_runtime"]["prepend_path"] + os.pathsep +
+                        os.environ["PATH"])
+                elif isinstance(env.sos_dict["_runtime"]["prepend_path"],
+                                Sequence):
                     os.environ["PATH"] = (
-                        os.pathsep.join(sos_dict["_runtime"]["prepend_path"])
-                        + os.pathsep
-                        + os.environ["PATH"]
-                    )
+                        os.pathsep.join(sos_dict["_runtime"]["prepend_path"]) +
+                        os.pathsep + os.environ["PATH"])
                 else:
                     raise ValueError(
                         f'Unacceptable input for option prepend_path: {sos_dict["_runtime"]["prepend_path"]}'
                     )
 
-            with open(env.sos_dict["__std_out__"], "a") as my_stdout, open(
-                env.sos_dict["__std_err__"], "a"
-            ) as my_stderr:
+            with open(env.sos_dict["__std_out__"],
+                      "a") as my_stdout, open(env.sos_dict["__std_err__"],
+                                              "a") as my_stderr:
                 with redirect_stdout(my_stdout), redirect_stderr(my_stderr):
                     # step process
                     SoS_exec(task)
@@ -370,10 +367,10 @@ class BaseTaskExecutor(object):
             msg = get_traceback_msg(e)
             # env.logger.error(f'{task_id} ``failed``: {msg}')
             with open(
-                os.path.join(
-                    os.path.expanduser("~"), ".sos", "tasks", task_id + ".soserr"
-                ),
-                "a",
+                    os.path.join(
+                        os.path.expanduser("~"), ".sos", "tasks",
+                        task_id + ".soserr"),
+                    "a",
             ) as err:
                 err.write(msg + "\n")
             return {
@@ -386,7 +383,8 @@ class BaseTaskExecutor(object):
         finally:
             os.chdir(orig_dir)
 
-        return self._collect_task_result(task_id, sos_dict, params.tags, signature=sig)
+        return self._collect_task_result(
+            task_id, sos_dict, params.tags, signature=sig)
 
     def execute_master_task(self, task_id, params, master_runtime, sig_content):
         """
@@ -401,11 +399,9 @@ class BaseTaskExecutor(object):
         """
         # used by self._collect_subtask_outputs
         self.master_stdout = os.path.join(
-            os.path.expanduser("~"), ".sos", "tasks", task_id + ".sosout"
-        )
+            os.path.expanduser("~"), ".sos", "tasks", task_id + ".sosout")
         self.master_stderr = os.path.join(
-            os.path.expanduser("~"), ".sos", "tasks", task_id + ".soserr"
-        )
+            os.path.expanduser("~"), ".sos", "tasks", task_id + ".soserr")
 
         if os.path.exists(self.master_stdout):
             open(self.master_stdout, "w").close()
@@ -425,21 +421,17 @@ class BaseTaskExecutor(object):
         # regular trunk_workers = ?? (0 was used as default)
         # a previous version of master task file has params.num_workers
         n_workers = (
-            params.num_workers
-            if hasattr(params, "num_workers")
-            else params.sos_dict["_runtime"].get("num_workers", 1)
-        )
+            params.num_workers if hasattr(params, "num_workers") else
+            params.sos_dict["_runtime"].get("num_workers", 1))
 
         if isinstance(n_workers, int):
             if n_workers > 1:
                 results = self.execute_master_task_in_parallel(
-                    params, master_runtime, sig_content, n_workers
-                )
+                    params, master_runtime, sig_content, n_workers)
             else:
                 # n_workers = 1
                 results = self.execute_master_task_sequentially(
-                    params, master_runtime, sig_content
-                )
+                    params, master_runtime, sig_content)
         elif n_nodes == 1:
             if n_workers is None:
                 n_workers = 1
@@ -451,12 +443,10 @@ class BaseTaskExecutor(object):
 
             if n_workers == 1:
                 results = self.execute_master_task_sequentially(
-                    params, master_runtime, sig_content
-                )
+                    params, master_runtime, sig_content)
             else:
                 results = self.execute_master_task_in_parallel(
-                    params, master_runtime, sig_content, n_workers
-                )
+                    params, master_runtime, sig_content, n_workers)
         else:
             # n_workers should be a sequence
             if not n_workers:
@@ -466,14 +456,12 @@ class BaseTaskExecutor(object):
                     f'task options trunk_workers={n_workers} is inconsistent with command line option -j {env.config["worker_procs"]}'
                 )
             results = self.execute_master_task_distributedly(
-                params, master_runtime, sig_content, n_workers
-            )
+                params, master_runtime, sig_content, n_workers)
 
         return combine_results(task_id, results)
 
-    def execute_master_task_in_parallel(
-        self, params, master_runtime, sig_content, n_workers
-    ):
+    def execute_master_task_in_parallel(self, params, master_runtime,
+                                        sig_content, n_workers):
         # multiple workers, concurrent execution using a pool
         from multiprocessing.pool import Pool
 
@@ -482,7 +470,9 @@ class BaseTaskExecutor(object):
         for sub_id, sub_params in params.task_stack:
             if hasattr(params, "common_dict"):
                 sub_params.sos_dict.update(params.common_dict)
-            sub_runtime = {x: master_runtime.get(x, {}) for x in ("_runtime", sub_id)}
+            sub_runtime = {
+                x: master_runtime.get(x, {}) for x in ("_runtime", sub_id)
+            }
             sub_sig = {sub_id: sig_content.get(sub_id, {})}
             res = p.apply_async(
                 self.execute_single_task,
@@ -498,28 +488,30 @@ class BaseTaskExecutor(object):
         p.join()
         return results
 
-    def execute_master_task_sequentially(self, params, master_runtime, sig_content):
+    def execute_master_task_sequentially(self, params, master_runtime,
+                                         sig_content):
         # single worker, execute sequentially, n_workers is not a positive number
         results = []
         for sub_id, sub_params in params.task_stack:
             if hasattr(params, "common_dict"):
                 sub_params.sos_dict.update(params.common_dict)
-            sub_runtime = {x: master_runtime.get(x, {}) for x in ("_runtime", sub_id)}
+            sub_runtime = {
+                x: master_runtime.get(x, {}) for x in ("_runtime", sub_id)
+            }
             sub_sig = {sub_id: sig_content.get(sub_id, {})}
-            res = self.execute_single_task(
-                sub_id, sub_params, sub_runtime, sub_sig, True
-            )
+            res = self.execute_single_task(sub_id, sub_params, sub_runtime,
+                                           sub_sig, True)
             try:
                 self._append_subtask_outputs(res)
             except Exception as e:
-                env.logger.warning(f"Failed to copy result of subtask {sub_id}: {e}")
+                env.logger.warning(
+                    f"Failed to copy result of subtask {sub_id}: {e}")
             self._cache_subresult(params.ID, res)
             results.append(res)
         return results
 
-    def execute_master_task_distributedly(
-        self, params, master_runtime, sig_content, n_workers
-    ):
+    def execute_master_task_distributedly(self, params, master_runtime,
+                                          sig_content, n_workers):
         # multiple workers, start workers from remote hosts
         env.zmq_context = zmq.Context()
 
@@ -535,12 +527,13 @@ class BaseTaskExecutor(object):
         try:
 
             # start a result receving socket
-            self.result_pull_socket = create_socket(
-                env.zmq_context, zmq.PULL, "substep result collector"
-            )
+            self.result_pull_socket = create_socket(env.zmq_context, zmq.PULL,
+                                                    "substep result collector")
             local_ip = get_localhost_ip()
-            port = self.result_pull_socket.bind_to_random_port(f"tcp://{local_ip}")
-            env.config["sockets"]["result_push_socket"] = f"tcp://{local_ip}:{port}"
+            port = self.result_pull_socket.bind_to_random_port(
+                f"tcp://{local_ip}")
+            env.config["sockets"][
+                "result_push_socket"] = f"tcp://{local_ip}:{port}"
 
             # send tasks to the controller
             results = []
@@ -553,19 +546,17 @@ class BaseTaskExecutor(object):
                 sub_sig = {sub_id: sig_content.get(sub_id, {})}
 
                 # submit tasks
-                send_message_to_controller(
-                    [
-                        "task",
-                        dict(
-                            task_id=sub_id,
-                            params=sub_params,
-                            runtime=sub_runtime,
-                            sig_content=sub_sig,
-                            config=env.config,
-                            quiet=True,
-                        ),
-                    ]
-                )
+                send_message_to_controller([
+                    "task",
+                    dict(
+                        task_id=sub_id,
+                        params=sub_params,
+                        runtime=sub_runtime,
+                        sig_content=sub_sig,
+                        config=env.config,
+                        quiet=True,
+                    ),
+                ])
 
             for idx in range(len(params.task_stack)):
                 res = decode_msg(self.result_pull_socket.recv())
@@ -591,8 +582,7 @@ class BaseTaskExecutor(object):
 
     def _cache_subresult(self, master_id, sub_result):
         cache_file = os.path.join(
-            os.path.expanduser("~"), ".sos", "tasks", master_id + ".cache"
-        )
+            os.path.expanduser("~"), ".sos", "tasks", master_id + ".cache")
         with open(cache_file, "ab") as cache:
             pickle.dump(sub_result, cache)
 
@@ -618,8 +608,7 @@ class BaseTaskExecutor(object):
             return None, None
         else:
             raise RuntimeError(
-                f"Unacceptable value for parameter trunk_workers {num_workers}"
-            )
+                f"Unacceptable value for parameter trunk_workers {num_workers}")
 
     def _append_subtask_outputs(self, result):
         """
@@ -627,18 +616,16 @@ class BaseTaskExecutor(object):
         """
         tid = result["task"]
         tags = " ".join(result.get("tags", []))
-        with open(self.master_stdout, "ab") as out, open(
-            self.master_stderr, "ab"
-        ) as err:
+        with open(self.master_stdout,
+                  "ab") as out, open(self.master_stderr, "ab") as err:
             dest = out if result["ret_code"] == 0 else err
             dest.write(
-                f'> {tid}\t{tags}\t{"completed" if result["ret_code"] == 0 else "failed"}\n'.encode()
-            )
+                f'> {tid}\t{tags}\t{"completed" if result["ret_code"] == 0 else "failed"}\n'
+                .encode())
             if "output" in result and result["output"]:
                 dest.write(f'output files:\n{result["output"]}\n'.encode())
             sub_out = os.path.join(
-                os.path.expanduser("~"), ".sos", "tasks", tid + ".sosout"
-            )
+                os.path.expanduser("~"), ".sos", "tasks", tid + ".sosout")
             if os.path.isfile(sub_out):
                 with open(sub_out, "rb") as sout:
                     out_content = sout.read()
@@ -651,8 +638,7 @@ class BaseTaskExecutor(object):
                     env.logger.warning(f"Failed to remove {sub_out}: {e}")
 
             sub_err = os.path.join(
-                os.path.expanduser("~"), ".sos", "tasks", tid + ".soserr"
-            )
+                os.path.expanduser("~"), ".sos", "tasks", tid + ".soserr")
             if "exception" in result:
                 dest.write(str(result["exception"]).encode())
             # err.write(
@@ -675,9 +661,12 @@ class BaseTaskExecutor(object):
         except Exception as e:
             env.logger.debug(f"Failed to remove files {tid}: {e}")
 
-    def _collect_task_result(
-        self, task_id, sos_dict, tags, skipped=False, signature=None
-    ):
+    def _collect_task_result(self,
+                             task_id,
+                             sos_dict,
+                             tags,
+                             skipped=False,
+                             signature=None):
         shared = {}
         if "shared" in env.sos_dict["_runtime"]:
             svars = env.sos_dict["_runtime"]["shared"]
@@ -759,9 +748,9 @@ class BaseTaskExecutor(object):
             # handle dynamic args
             env.sos_dict.set(
                 "_output",
-                sos_targets(
-                    [x.resolve() if isinstance(x, dynamic) else x for x in args]
-                ),
+                sos_targets([
+                    x.resolve() if isinstance(x, dynamic) else x for x in args
+                ]),
             )
 
         return {
@@ -777,7 +766,9 @@ class BaseTaskExecutor(object):
             "peak_cpu": sos_dict.get("peak_cpu", 0),
             "peak_mem": sos_dict.get("peak_mem", 0),
             "end_time": time.time(),
-            "signature": {task_id: signature.write()} if signature else {},
+            "signature": {
+                task_id: signature.write()
+            } if signature else {},
         }
 
     def _validate_task_signature(self, sig, saved_sig, task_id, is_subtask):
@@ -835,4 +826,5 @@ class BaseTaskExecutor(object):
         elif env.config["sig_mode"] == "force":
             return False
         else:
-            raise RuntimeError(f'Unrecognized signature mode {env.config["sig_mode"]}')
+            raise RuntimeError(
+                f'Unrecognized signature mode {env.config["sig_mode"]}')
