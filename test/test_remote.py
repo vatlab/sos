@@ -213,7 +213,6 @@ echo 'adf' >> 'result_remote.txt'
     assert 0 == subprocess.call(
         "sos remote pull docker --files result_remote.txt -c ~/docker.yml", shell=True
     )
-
     assert file_target("result_remote.txt").target_exists()
 
     # self.assertEqual(subprocess.call('sos preview result_remote.txt', shell=True), 0)
@@ -253,7 +252,7 @@ sh: expand=True
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_signature_of_remote_target(clear_now_and_after, monkeypatch):
     """Test remote() target"""
-    monkeypatch.setenv("SOS_DEBUG", "TASK,-")
+    monkeypatch.setenv("SOS_DEBUG", "TASK,REMOTE,-")
     clear_now_and_after("remote_file.txt")  # , "result.txt")
     with open("remote_file.txt", "w") as rf:
         rf.write(
