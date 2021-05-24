@@ -256,7 +256,6 @@ def _execute_substep(
                 res["task_id"] = None
             if not e.keep_output:
                 # treat as an error
-                clear_output()
                 res["output"] = sos_targets([])
             elif sig:
                 sig.set_output(env.sos_dict["_output"])
