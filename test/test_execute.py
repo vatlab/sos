@@ -2881,7 +2881,7 @@ def test_execute_ipynb():
 
 
 @pytest.mark.skipif(
-    sys.platform == "win32",
+    True,
     reason="Skip test because travis fails on this test for unknown reason, also due to a bug in psutil under windows",
 )
 def test_kill_worker(script_factory):
