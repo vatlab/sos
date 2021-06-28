@@ -20,7 +20,7 @@ jobs:
         if [ -f requirements_dev.txt ]; then pip install -r requirements_dev.txt; fi
     - name: Analysing the code with pylint
       run: |
-        python -m pylint --fail-under=10 `find -regextype egrep -regex '(.*.py)$'` |
+        python -m pylint --fail-under=10 --rcfile=.github/linters/.python-lint `find -regextype egrep -regex '(.*.py)$'` |
         tee pylint.txt
     - name: Upload pylint.txt as artifact
       uses: actions/upload-artifact@v2
