@@ -180,6 +180,25 @@ disable=print-statement,
         import-self,
         no-name-in-module,
         eval-used,
+        consider-using-with,
+        logging-format-interpolation,
+        consider-using-get,
+        unnecessary-lambda,
+        no-else-return,
+        pointless-statement,
+        too-many-nested-blocks,
+        too-many-instance-attributes,
+        logging-not-lazy,
+        super-with-arguments,
+        raise-missing-from,
+        wrong-import-order,
+        exec-used,
+        
+
+
+
+
+
 
 
 # Enable the message, report, category or checker with the given id(s). You can
@@ -217,7 +236,7 @@ score=yes
 [REFACTORING]
 
 # Maximum number of nested blocks for function / method body
-max-nested-blocks=5
+max-nested-blocks=10
 
 # Complete name of functions that never returns. When checking for
 # inconsistent-return-statements if a never returning function is called then
