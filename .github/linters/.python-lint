@@ -193,7 +193,44 @@ disable=print-statement,
         raise-missing-from,
         wrong-import-order,
         exec-used,
-        
+        inconsistent-return-statements,
+        useless-super-delegation,
+        no-else-raise,
+        redefined-argument-from-local,
+        expression-not-assigned,
+        consider-using-in,
+        self-assigning-variable,
+        redefined-builtin,
+        deprecated-method,
+        consider-using-set-comprehension,
+        consider-iterating-dictionary,
+        no-else-continue,
+        unneeded-not,
+        chained-comparison,
+        invalid-unary-operand-type,
+        consider-using-dict-items,
+        unnecessary-comprehension,
+        simplifiable-if-expression,
+        unused-variable,
+        unused-import,
+        use-a-generator,
+        no-value-for-parameter,
+        too-many-boolean-expressions,
+        signature-differs,
+        arguments-renamed,
+        super-init-not-called,
+        abstract-method,
+        reimported,
+        undefined-loop-variable,
+        no-else-break,
+        anomalous-backslash-in-string,
+
+
+
+
+
+
+
 
 
 
