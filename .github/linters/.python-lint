@@ -224,6 +224,13 @@ disable=print-statement,
         undefined-loop-variable,
         no-else-break,
         anomalous-backslash-in-string,
+        self-cls-assignment,
+        try-except-raise,
+        misplaced-comparison-constant,
+        consider-using-generator,
+        undefined-variable,
+        useless-return,
+        
 
 
 
