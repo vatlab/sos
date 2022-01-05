@@ -4,29 +4,23 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import contextlib
+import os
 import subprocess
 import sys
-import os
 from io import StringIO
 
 import zmq
 
 from .controller import close_socket, create_socket, send_message_to_controller
-from .messages import encode_msg
 from .eval import SoS_exec
-from .executor_utils import (
-    clear_output,
-    create_task,
-    get_traceback_msg,
-    kill_all_subprocesses,
-    prepare_env,
-    reevaluate_output,
-    statementMD5,
-    validate_step_sig,
-    verify_input,
-)
+from .executor_utils import (clear_output, create_task, get_traceback_msg,
+                             kill_all_subprocesses, prepare_env,
+                             reevaluate_output, statementMD5,
+                             validate_step_sig, verify_input)
+from .messages import encode_msg
 from .targets import RemovedTarget, RuntimeInfo, UnavailableLock, sos_targets
-from .utils import ArgumentError, StopInputGroup, TerminateExecution, ProcessKilled, env
+from .utils import (ArgumentError, ProcessKilled, StopInputGroup,
+                    TerminateExecution, env)
 
 
 @contextlib.contextmanager

@@ -5,28 +5,19 @@
 
 import multiprocessing as mp
 import os
+import pickle
 import signal
 import time
-import pickle
 from typing import Any, Dict, Optional
 
 import zmq
 
-from .controller import (
-    close_socket,
-    connect_controllers,
-    create_socket,
-    disconnect_controllers,
-)
+from .controller import (close_socket, connect_controllers, create_socket,
+                         disconnect_controllers)
 from .executor_utils import kill_all_subprocesses, prepare_env
-from .utils import (
-    env,
-    ProcessKilled,
-    short_repr,
-    get_localhost_ip,
-    get_open_files_and_connections,
-)
-from .messages import encode_msg, decode_msg
+from .messages import decode_msg, encode_msg
+from .utils import (ProcessKilled, env, get_localhost_ip,
+                    get_open_files_and_connections, short_repr)
 
 
 def signal_handler(*args, **kwargs):

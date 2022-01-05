@@ -2,28 +2,30 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
+import base64
 import copy
 import glob
 import multiprocessing as mp
 import os
 import shutil
-import base64
 import socket
 import stat
 import subprocess
 import sys
-import pexpect
 from collections.abc import Sequence
+from typing import Any, Dict, List, Optional, Union
 
+import pexpect
 import pkg_resources
 
 from .eval import Undetermined, cfg_interpolate, get_config
 from .syntax import SOS_LOGLINE
 from .targets import path, sos_targets
 from .task_engines import BackgroundProcess_TaskEngine
-from .workflow_engines import BackgroundProcess_WorkflowEngine
 from .tasks import TaskFile
-from .utils import env, expand_size, expand_time, format_HHMMSS, short_repr, textMD5
+from .utils import (env, expand_size, expand_time, format_HHMMSS, short_repr,
+                    textMD5)
+from .workflow_engines import BackgroundProcess_WorkflowEngine
 
 #
 # A 'queue' is defined by queue configurations in SoS configuration files.
@@ -57,7 +59,6 @@ from .utils import env, expand_size, expand_time, format_HHMMSS, short_repr, tex
 # Implementation wise, a queue instance is created for each queue.
 #
 
-from typing import Any, Dict, List, Optional, Union
 
 
 class DaemonizedProcess(mp.Process):

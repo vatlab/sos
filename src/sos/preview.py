@@ -6,8 +6,10 @@
 import argparse
 import base64
 import io
+
 import pkg_resources
-from sos.utils import dehtml, env, dot_to_gif, linecount_of_file
+
+from sos.utils import dehtml, dot_to_gif, env, linecount_of_file
 
 
 def get_previewers():
@@ -268,6 +270,7 @@ def preview_txt(filename, kernel=None, style=None):
 
 def preview_csv(filename, kernel=None, style=None):
     import pandas
+
     from .visualize import Visualizer
 
     data = pandas.read_csv(filename)
@@ -276,6 +279,7 @@ def preview_csv(filename, kernel=None, style=None):
 
 def preview_xls(filename, kernel=None, style=None):
     import pandas
+
     from .visualize import Visualizer
 
     data = pandas.read_excel(filename)

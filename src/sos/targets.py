@@ -14,26 +14,19 @@ import sys
 from collections.abc import Iterable, Sequence
 from copy import deepcopy
 from itertools import combinations, tee
-from pathlib import Path, WindowsPath, PosixPath
+from pathlib import Path, PosixPath, WindowsPath
 from shlex import quote
-from typing import Union, Dict, Any, List
+from typing import Any, Dict, List, Union
+
 import fasteners
 import pkg_resources
 
-from .utils import (
-    Error,
-    env,
-    pickleable,
-    short_repr,
-    stable_repr,
-    textMD5,
-    objectMD5,
-    fileMD5,
-)
+from .controller import (request_answer_from_controller,
+                         send_message_to_controller)
+from .eval import get_config, interpolate
 from .pattern import extract_pattern
-from .eval import interpolate, get_config
-from .controller import request_answer_from_controller, send_message_to_controller
-
+from .utils import (Error, env, fileMD5, objectMD5, pickleable, short_repr,
+                    stable_repr, textMD5)
 
 __all__ = ["dynamic", "executable", "env_variable", "sos_variable"]
 
@@ -267,6 +260,7 @@ class system_resource(BaseTarget):
     def target_exists(self, mode="any"):
         if self._mem:
             import psutil
+
             from .utils import expand_size
 
             avail = psutil.virtual_memory().available
@@ -275,6 +269,7 @@ class system_resource(BaseTarget):
                 return False
         if self._disk:
             import psutil
+
             from .utils import expand_size
 
             avail = psutil.disk_usage(os.path.abspath(".")).free

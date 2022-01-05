@@ -9,6 +9,7 @@ import shutil
 import socket
 import sys
 import time
+
 import pytest
 
 from sos import execute_workflow

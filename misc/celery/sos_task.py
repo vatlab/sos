@@ -5,10 +5,14 @@
 
 import os
 import pickle
-from sos.utils import env
-from sos.tasks import TaskEngine, execute_task
+
 from celery import Celery
+
+from sos.tasks import TaskEngine, execute_task
+from sos.utils import env
+
 from .app import app
+
 
 class Celery_TaskEngine(TaskEngine):
     def __init__(self, agent):

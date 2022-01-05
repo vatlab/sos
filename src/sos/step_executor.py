@@ -16,52 +16,21 @@ from typing import List
 import zmq
 
 from .controller import close_socket, create_socket, send_message_to_controller
-from .messages import encode_msg, decode_msg
-from .eval import SoS_eval, SoS_exec, accessed_vars, KeepOnlyImportAndDefine
-from .executor_utils import (
-    __named_output__,
-    __null_func__,
-    __output_from__,
-    __traced__,
-    clear_output,
-    create_task,
-    get_traceback_msg,
-    reevaluate_output,
-    statementMD5,
-    validate_step_sig,
-    verify_input,
-    ExecuteError,
-)
-from .syntax import (
-    SOS_DEPENDS_OPTIONS,
-    SOS_INPUT_OPTIONS,
-    SOS_OUTPUT_OPTIONS,
-    SOS_TARGETS_OPTIONS,
-)
-from .targets import (
-    RemovedTarget,
-    RuntimeInfo,
-    UnavailableLock,
-    sos_variable,
-    UnknownTarget,
-    dynamic,
-    file_target,
-    sos_step,
-    sos_targets,
-    invalid_target
-)
+from .eval import KeepOnlyImportAndDefine, SoS_eval, SoS_exec, accessed_vars
+from .executor_utils import (ExecuteError, __named_output__, __null_func__,
+                             __output_from__, __traced__, clear_output,
+                             create_task, get_traceback_msg, reevaluate_output,
+                             statementMD5, validate_step_sig, verify_input)
+from .messages import decode_msg, encode_msg
+from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
+                     SOS_OUTPUT_OPTIONS, SOS_TARGETS_OPTIONS)
+from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
+                      UnknownTarget, dynamic, file_target, invalid_target,
+                      sos_step, sos_targets, sos_variable)
 from .tasks import MasterTaskParams, TaskFile
-from .utils import (
-    ArgumentError,
-    StopInputGroup,
-    TerminateExecution,
-    env,
-    get_traceback,
-    short_repr,
-    ProcessKilled,
-    get_localhost_ip,
-    textMD5,
-)
+from .utils import (ArgumentError, ProcessKilled, StopInputGroup,
+                    TerminateExecution, env, get_localhost_ip, get_traceback,
+                    short_repr, textMD5)
 
 __all__: List = []
 

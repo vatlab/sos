@@ -6,7 +6,7 @@ current_line = ''
 
 
 try:
-    from queue import Empty # python3 convention
+    from queue import Empty  # python3 convention
 except ImportError:
     from Queue import Empty
 
@@ -116,11 +116,12 @@ def km_from_string(s=''):
     from traitlets.config.loader import KeyValueConfigLoader
     try:
         # Updated by Bo Peng for module names
-        from jupyter_client.manager import  KernelManager
         from jupyter_client import find_connection_file
+        from jupyter_client.manager import KernelManager
     except ImportError:
         #  IPython < 1.0
-        from IPython.zmq.blockingkernelmanager import BlockingKernelManager as KernelManager
+        from IPython.zmq.blockingkernelmanager import \
+            BlockingKernelManager as KernelManager
         from IPython.zmq.kernelapp import kernel_aliases
         try:
             from IPython.lib.kernel import find_connection_file
@@ -243,6 +244,7 @@ def get_doc(word, level=0):
     return [d.encode(vim_encoding) for d in doc]
 
 import re
+
 # from http://serverfault.com/questions/71285/in-centos-4-4-how-can-i-strip-escape-sequences-from-a-text-file
 strip = re.compile('\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]')
 def strip_color_escapes(s):
@@ -685,8 +687,8 @@ def interrupt_kernel_hack(signal_to_send=None):
     Only works on posix.
     """
     global pid
-    import signal
     import os
+    import signal
     if pid is None:
         # Avoid errors if we couldn't get pid originally,
         # by trying to obtain it now

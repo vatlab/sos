@@ -3,34 +3,24 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 import copy
-import os
-import fasteners
-import pickle
-import time
 import lzma
 import math
+import os
+import pickle
 import struct
-from enum import Enum
+import time
 from collections import namedtuple
 from collections.abc import Sequence
 from datetime import datetime
+from enum import Enum
+from typing import Dict, List, Union
 
-from typing import Union, Dict, List
+import fasteners
 
-from .utils import (
-    env,
-    expand_time,
-    linecount_of_file,
-    sample_lines,
-    short_repr,
-    tail_of_file,
-    pretty_size,
-    expand_size,
-    format_HHMMSS,
-    DelayedAction,
-    format_duration,
-)
 from .targets import sos_targets
+from .utils import (DelayedAction, env, expand_size, expand_time,
+                    format_duration, format_HHMMSS, linecount_of_file,
+                    pretty_size, sample_lines, short_repr, tail_of_file)
 
 monitor_interval = 5
 resource_monitor_interval = 60
@@ -1466,8 +1456,9 @@ def print_task_status(
 
     if html:
         # HTML output
-        from .utils import isPrimitive
         import pprint
+
+        from .utils import isPrimitive
 
         print('<table width="100%" class="resource_table">')
 

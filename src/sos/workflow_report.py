@@ -3,15 +3,15 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
+import base64
 import getpass
 import os
 import time
-import base64
 from collections import defaultdict
 
-from .utils import env, format_duration, dot_to_gif
-from .controller import request_answer_from_controller
 from ._version import __version__
+from .controller import request_answer_from_controller
+from .utils import dot_to_gif, env, format_duration
 
 
 class WorkflowSig(object):

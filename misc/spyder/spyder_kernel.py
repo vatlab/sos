@@ -3,6 +3,7 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
+import argparse
 # A complete rewritten will be needed after spyder officially supports
 # third-party kernel.
 #
@@ -10,14 +11,16 @@
 # and qtconsole.
 #
 import os
-import sys
 import re
-import argparse
-from sos.utils import env
+import sys
+
+from spyder.utils.ipython.spyder_kernel import SpyderKernel
+
 from sos.eval import SoS_exec
+from sos.utils import env
 
 from .kernel import SoS_Kernel
-from spyder.utils.ipython.spyder_kernel import SpyderKernel
+
 
 class SoS_SpyderKernel(SoS_Kernel, SpyderKernel):
     """Spyder kernel for Jupyter"""
@@ -55,8 +58,8 @@ class SoS_SpyderKernel(SoS_Kernel, SpyderKernel):
         return parser
 
     def handle_magic_edit(self, options):
-        import subprocess
         import shlex
+        import subprocess
         options = self._interpolate_option(options)
         if options is None:
             return

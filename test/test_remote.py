@@ -5,10 +5,11 @@
 
 import os
 import subprocess
+
 import pytest
 
-from sos.targets import file_target
 from sos import execute_workflow
+from sos.targets import file_target
 
 has_docker = True
 try:

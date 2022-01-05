@@ -4,10 +4,10 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import os
+import shutil
 
 from sos.targets import BaseTarget
 from sos.utils import env, textMD5
-import shutil
 
 
 class R_library(BaseTarget):
@@ -36,9 +36,10 @@ class R_library(BaseTarget):
         Therefore if the input name is {repo}/{pkg} the package will be
         installed from github if not available, else from cran or bioc
         """
-        from sos.pattern import glob_wildcards
-        import tempfile
         import subprocess
+        import tempfile
+
+        from sos.pattern import glob_wildcards
 
         output_file = tempfile.NamedTemporaryFile(
             mode="w+t", suffix=".txt", delete=False

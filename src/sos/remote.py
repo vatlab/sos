@@ -9,9 +9,9 @@ import sys
 
 import pexpect
 
-from .utils import env
-from .targets import path
 from .hosts import Host
+from .targets import path
+from .utils import env
 
 
 def list_queues(cfg, hosts=[], verbosity=1):

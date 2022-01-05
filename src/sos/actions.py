@@ -11,9 +11,9 @@ import shutil
 import subprocess
 import sys
 import tarfile
-import time
 import tempfile
 import textwrap
+import time
 import urllib
 import urllib.error
 import urllib.parse
@@ -21,31 +21,21 @@ import urllib.request
 import uuid
 import zipfile
 from collections.abc import Sequence
+from concurrent.futures import ProcessPoolExecutor
 from functools import wraps
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 from tqdm import tqdm as ProgressBar
-from concurrent.futures import ProcessPoolExecutor
 
+from .controller import send_message_to_controller
 from .eval import interpolate
+from .messages import decode_msg, encode_msg
 from .parser import SoS_Script
 from .syntax import SOS_ACTION_OPTIONS
 from .targets import executable, file_target, path, paths, sos_targets
-from .utils import (
-    textMD5,
-    fileMD5,
-    StopInputGroup,
-    TerminateExecution,
-    TimeoutInterProcessLock,
-    env,
-    get_traceback,
-    short_repr,
-    transcribe,
-    load_config_files,
-)
-from .controller import send_message_to_controller
-from .messages import encode_msg, decode_msg
-
-from typing import Any, Callable, Dict, List, Tuple, Union
+from .utils import (StopInputGroup, TerminateExecution,
+                    TimeoutInterProcessLock, env, fileMD5, get_traceback,
+                    load_config_files, short_repr, textMD5, transcribe)
 
 __all__ = [
     "SoS_Action",

@@ -9,12 +9,13 @@ import shutil
 import subprocess
 import sys
 import unittest
+
 import pytest
 
 from sos import execute_workflow
 from sos.eval import interpolate
 from sos.parser import SoS_Script
-from sos.targets import file_target, path, paths, sos_targets, sos_step
+from sos.targets import file_target, path, paths, sos_step, sos_targets
 from sos.utils import env
 from sos.workflow_executor import Base_Executor
 

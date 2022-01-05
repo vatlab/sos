@@ -17,7 +17,6 @@ from sos._version import __version__
 from sos.parser import SoS_Script
 from sos.targets import file_target, sos_targets
 from sos.utils import env
-
 # if the test is imported under sos/test, test interacive executor
 from sos.workflow_executor import Base_Executor
 
@@ -2886,8 +2885,9 @@ def test_execute_ipynb():
 )
 def test_kill_worker(script_factory):
     """Test if the workflow can error out after a worker is killed"""
-    import psutil
     import time
+
+    import psutil
 
     script_file = script_factory(
         """
@@ -2923,8 +2923,9 @@ def test_kill_worker(script_factory):
 
 def test_kill_substep_worker(script_factory):
     """Test if the workflow can error out after a worker is killed"""
-    import psutil
     import time
+
+    import psutil
 
     script_file = script_factory(
         """
@@ -2961,8 +2962,9 @@ def test_kill_substep_worker(script_factory):
 def test_kill_task(script_factory):
     """Test if the workflow can error out after a worker is killed"""
     subprocess.call(["sos", "purge", "--all"])
-    import psutil
     import time
+
+    import psutil
 
     script_file = script_factory(
         """
@@ -3007,8 +3009,9 @@ def test_kill_task(script_factory):
 @pytest.mark.skipif(True, reason="This test needs to be improved to make it consistent")
 def test_restart_orphaned_tasks(script_factory):
     """Test restarting orphaned tasks which displays as running at first."""
-    import psutil
     import time
+
+    import psutil
 
     subprocess.call(["sos", "purge", "--all"])
 

@@ -10,53 +10,31 @@ import subprocess
 import sys
 import time
 import uuid
-import zmq
-
 from collections import defaultdict
 from collections.abc import Sequence
 from io import StringIO
-from typing import Any, Dict, List, Optional, Union
 from threading import Event
+from typing import Any, Dict, List, Optional, Union
 
+import zmq
+
+from .controller import (Controller, close_socket, connect_controllers,
+                         create_socket, disconnect_controllers,
+                         request_answer_from_controller,
+                         send_message_to_controller)
 from .dag import SoS_DAG
 from .eval import analyze_global_statements
+from .executor_utils import ExecuteError, prepare_env
 from .hosts import Host
+from .messages import decode_msg, encode_msg
 from .parser import SoS_Workflow
 from .pattern import extract_pattern
-from .workflow_report import render_report
-from .controller import (
-    Controller,
-    connect_controllers,
-    disconnect_controllers,
-    create_socket,
-    close_socket,
-    request_answer_from_controller,
-    send_message_to_controller,
-)
 from .section_analyzer import analyze_section
-from .targets import (
-    BaseTarget,
-    RemovedTarget,
-    UnavailableLock,
-    UnknownTarget,
-    file_target,
-    path,
-    paths,
-    sos_step,
-    sos_targets,
-    invalid_target,
-    sos_variable,
-    named_output,
-)
-from .utils import (
-    env,
-    pickleable,
-    short_repr,
-    get_localhost_ip,
-    textMD5,
-)
-from .executor_utils import prepare_env, ExecuteError
-from .messages import encode_msg, decode_msg
+from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
+                      UnknownTarget, file_target, invalid_target, named_output,
+                      path, paths, sos_step, sos_targets, sos_variable)
+from .utils import env, get_localhost_ip, pickleable, short_repr, textMD5
+from .workflow_report import render_report
 
 __all__ = []
 

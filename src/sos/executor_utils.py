@@ -7,38 +7,24 @@
 # Utility functions used by various executors.
 #
 import os
-import sys
 import re
-import psutil
+import sys
 import traceback
-
-from typing import Any
 from collections.abc import Sequence
 from io import StringIO
 from tokenize import generate_tokens
+from typing import Any
 
-from .targets import (
-    RemovedTarget,
-    file_target,
-    sos_targets,
-    sos_step,
-    dynamic,
-    sos_variable,
-    RuntimeInfo,
-)
-from .utils import (
-    env,
-    Error,
-    format_HHMMSS,
-    expand_size,
-    load_config_files,
-    get_traceback,
-    textMD5
-)
-from .eval import SoS_eval, stmtHash, analyze_global_statements
-from .tasks import TaskParams
-from .syntax import SOS_TAG
+import psutil
+
 from .controller import request_answer_from_controller
+from .eval import SoS_eval, analyze_global_statements, stmtHash
+from .syntax import SOS_TAG
+from .targets import (RemovedTarget, RuntimeInfo, dynamic, file_target,
+                      sos_step, sos_targets, sos_variable)
+from .tasks import TaskParams
+from .utils import (Error, env, expand_size, format_HHMMSS, get_traceback,
+                    load_config_files, textMD5)
 
 
 class ExecuteError(Error):

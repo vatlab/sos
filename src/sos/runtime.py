@@ -27,8 +27,10 @@ def _load_group(group: str) -> None:
 
             if "Requirement.parse" in str(e):
                 import re
-                from ._version import __version__
+
                 from pkg_resources import parse_version
+
+                from ._version import __version__
 
                 m = re.search(r"Requirement.parse\('sos>=([^)]*)'\)", str(e))
                 if m:

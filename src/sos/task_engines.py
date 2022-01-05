@@ -11,10 +11,10 @@ import time
 from collections import OrderedDict, defaultdict
 
 from .eval import cfg_interpolate
-from .utils import env, expand_time
-from .tasks import TaskFile
 from .messages import encode_msg
 from .targets import sos_targets
+from .tasks import TaskFile
+from .utils import env, expand_time
 
 
 class TaskEngine(threading.Thread):

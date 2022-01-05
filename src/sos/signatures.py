@@ -3,9 +3,9 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
+import lzma
 import os
 import pickle
-import lzma
 import sqlite3
 
 from .utils import env

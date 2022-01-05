@@ -4,7 +4,6 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import os
-import pytest
 import shutil
 import subprocess
 import sys
@@ -12,12 +11,14 @@ import time
 import unittest
 from contextlib import contextmanager
 
+import pytest
+
+from sos import execute_workflow
 from sos.hosts import Host
 from sos.parser import SoS_Script
 from sos.targets import file_target
+from sos.tasks import TaskFile, TaskParams
 from sos.utils import env, textMD5
-from sos.tasks import TaskParams, TaskFile
-from sos import execute_workflow
 from sos.workflow_executor import Base_Executor
 
 has_docker = sys.platform != "win32"

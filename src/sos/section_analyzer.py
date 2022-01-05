@@ -4,16 +4,16 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import ast
-
 from collections.abc import Mapping, Sequence
 from typing import Any, Dict, Optional
 
-from .eval import SoS_eval, accessed_vars, used_in_func, SoS_exec
-from .parser import SoS_Step
-from .targets import dynamic, remote, sos_targets, sos_step, named_output, file_target
-from .utils import env
+from .eval import SoS_eval, SoS_exec, accessed_vars, used_in_func
 from .executor_utils import __null_func__, prepare_env, strip_param_defs
+from .parser import SoS_Step
 from .syntax import SOS_TARGETS_OPTIONS
+from .targets import (dynamic, file_target, named_output, remote, sos_step,
+                      sos_targets)
+from .utils import env
 
 # imported for eval, assert to reduce warning
 assert file_target

@@ -2,17 +2,20 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
-import tempfile
 import os
 import sys
-import zmq
-import time
+import tempfile
 import threading
+import time
 import uuid
 from collections import defaultdict
-from .utils import env, ProcessKilled, get_localhost_ip, get_open_files_and_connections
+
+import zmq
+
+from .messages import decode_msg, encode_msg
 from .signatures import StepSignatures, WorkflowSignatures
-from .messages import encode_msg, decode_msg
+from .utils import (ProcessKilled, env, get_localhost_ip,
+                    get_open_files_and_connections)
 
 EVENT_MAP = {}
 for name in ("PUSH", "PULL", "PAIR", "REQ", "REP"):

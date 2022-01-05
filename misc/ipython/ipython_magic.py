@@ -26,16 +26,17 @@
 #
 
 import copy
-from sos.utils import env, WorkflowDict
-from sos.eval import SoS_exec, SoS_eval
 
 from IPython.core.error import UsageError
+from IPython.core.magic import (Magics, line_cell_magic, line_magic,
+                                magics_class)
 from IPython.lib.clipboard import ClipboardEmpty
-from IPython.core.magic import Magics, magics_class, line_magic, line_cell_magic
-
 # cannot use relative import because the module will be copied to
 # ~/.ipython/extensions
 from sos_notebook.workflow_executor import runfile
+
+from sos.eval import SoS_eval, SoS_exec
+from sos.utils import WorkflowDict, env
 
 
 # The class MUST call this class decorator at creation time

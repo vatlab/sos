@@ -5,7 +5,6 @@
 
 import keyword
 import re
-
 from typing import Callable, List
 
 SOS_TARGETS_OPTIONS = [

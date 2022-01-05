@@ -5,13 +5,13 @@
 import argparse
 import json
 import operator
+import random
+import string
 from collections import defaultdict
 from itertools import tee
 
 import numpy
 import pandas
-import string
-import random
 
 
 def is_sorted(iterable, compare=operator.le):

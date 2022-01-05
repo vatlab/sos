@@ -4,8 +4,8 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import os
-import sys
 import shutil
+import sys
 import unittest
 
 from sos.parser import SoS_Script

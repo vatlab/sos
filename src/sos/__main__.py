@@ -5,9 +5,10 @@
 
 import argparse
 import ast
+import datetime
 import os
 import sys
-import datetime
+
 import pkg_resources
 
 script_help = """A SoS script that defines one or more workflows, in format
@@ -484,14 +485,9 @@ def cmd_run(args, workflow_args):
     # if sys.platform != 'win32':
     #    mp.set_start_method('forkserver')
 
-    from .utils import (
-        env,
-        get_traceback,
-        load_config_files,
-        get_nodelist,
-        under_cluster,
-    )
     from .parser import SoS_Script
+    from .utils import (env, get_nodelist, get_traceback, load_config_files,
+                        under_cluster)
 
     if args.__remote__ is not None:
         # if executing on a remote host...
@@ -536,8 +532,8 @@ def cmd_run(args, workflow_args):
     if args.__report__ and args.__dag__:
         try:
             import graphviz
-            import PIL
             import imageio
+            import PIL
 
             assert graphviz
             assert PIL
@@ -866,8 +862,9 @@ def get_worker_parser(desc_only=False):
 
 
 def cmd_worker(args, workflow_args):
-    from .utils import env, load_config_files
     import pickle
+
+    from .utils import env, load_config_files
 
     env.verbosity = args.verbosity
     env.config = {
@@ -891,9 +888,10 @@ def cmd_worker(args, workflow_args):
         env.logger.warning(f"Failed to change directory to workdir {args.workdir}")
     load_config_files(args.config)
     try:
-        from .workers import SoS_Worker
-        from .utils import get_localhost_ip
         import time
+
+        from .utils import get_localhost_ip
+        from .workers import SoS_Worker
 
         procs = [SoS_Worker(env.config) for i in range(args.workers)]
         [p.start() for p in procs]
@@ -1118,8 +1116,9 @@ def get_preview_parser(desc_only=False):
 
 
 def preview_file(previewers, filename, style=None):
-    from .utils import pretty_size
     from IPython.core.display import HTML
+
+    from .utils import pretty_size
 
     msg = []
     if not os.path.isfile(filename):
@@ -1229,8 +1228,8 @@ def preview_file(previewers, filename, style=None):
 
 
 def cmd_preview(args, unknown_args):
-    from .utils import env, load_config_files
     from .hosts import Host
+    from .utils import env, load_config_files
 
     load_config_files(args.config)
     env.verbosity = args.verbosity
@@ -1260,7 +1259,8 @@ def cmd_preview(args, unknown_args):
     else:
         if args.exists or args.signature:
             from base64 import b64decode
-            from .targets import sos_targets, file_target
+
+            from .targets import file_target, sos_targets
 
             assert file_target
 
@@ -1431,9 +1431,10 @@ def get_execute_parser(desc_only=False):
 
 
 def cmd_execute(args, workflow_args):
-    from .tasks import check_task
-    from .utils import env, load_config_files, get_nodelist, under_cluster
     import glob
+
+    from .tasks import check_task
+    from .utils import env, get_nodelist, load_config_files, under_cluster
 
     if args.queue is None:
         # local machine ...
@@ -1509,8 +1510,9 @@ def cmd_execute(args, workflow_args):
             exit_code.append(executor.execute(task))
         sys.exit(sum(exit_code))
     # with queue definition
-    from .hosts import Host
     import time
+
+    from .hosts import Host
 
     # this is for local execution using a task queue. The task queue
     # will prepare the task, sync files, and execute this command remotely
@@ -1636,10 +1638,10 @@ def get_status_parser(desc_only=False):
 
 
 def cmd_status(args, workflow_args):
-    from .tasks import print_task_status
-    from .workflow_engines import print_workflow_status
-    from .utils import env, load_config_files, get_traceback
     from .hosts import Host
+    from .tasks import print_task_status
+    from .utils import env, get_traceback, load_config_files
+    from .workflow_engines import print_workflow_status
 
     args.tasks = (
         args.jobs if not args.jobs else [x for x in args.jobs if x.startswith("t")]
@@ -1810,10 +1812,10 @@ def get_purge_parser(desc_only=False):
 
 
 def cmd_purge(args, workflow_args):
-    from .tasks import purge_tasks
-    from .workflow_engines import purge_workflows
-    from .utils import env, load_config_files, get_traceback
     from .hosts import Host
+    from .tasks import purge_tasks
+    from .utils import env, get_traceback, load_config_files
+    from .workflow_engines import purge_workflows
 
     # from .monitor import summarizeExecution
     env.verbosity = args.verbosity
@@ -1973,10 +1975,10 @@ def get_kill_parser(desc_only=False):
 
 
 def cmd_kill(args, workflow_args):
-    from .tasks import kill_tasks
-    from .workflow_engines import kill_workflows
-    from .utils import env, load_config_files
     from .hosts import Host
+    from .tasks import kill_tasks
+    from .utils import env, load_config_files
+    from .workflow_engines import kill_workflows
 
     if not args.jobs and not args.tags and not args.all:
         env.logger.warning("Please specify job id, or one of options --all and --tags")
@@ -2166,9 +2168,9 @@ class AnswerMachine:
 
 
 def cmd_remove(args, unknown_args):
-    from .utils import env
-    from .targets import file_target
     from .signatures import StepSignatures, WorkflowSignatures
+    from .targets import file_target
+    from .utils import env
 
     env.verbosity = args.verbosity
 
@@ -2238,6 +2240,7 @@ def cmd_remove(args, unknown_args):
         args.size = expand_size(args.size)
     if args.age:
         import time
+
         from .utils import expand_time
 
         args.age = expand_time(args.age, default_unit="d")
@@ -2535,9 +2538,11 @@ def get_config_parser(desc_only=False):
 
 def cmd_config(args, workflow_args):
     import fnmatch
+
     import yaml
-    from .utils import env, dict_merge, load_config_files
+
     from .syntax import CONFIG_NAME
+    from .utils import dict_merge, env, load_config_files
 
     if workflow_args:
         raise RuntimeError("Unrecognized arguments {}".format(" ".join(workflow_args)))

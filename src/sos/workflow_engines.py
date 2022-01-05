@@ -8,9 +8,8 @@ import stat
 import subprocess
 import time
 
-
 from .eval import cfg_interpolate
-from .utils import env, textMD5, expand_time, format_duration
+from .utils import env, expand_time, format_duration, textMD5
 
 
 class WorkflowEngine:
@@ -64,8 +63,8 @@ class WorkflowEngine:
 
     def execute_workflow(self, filename, command, **template_args):
         # there is no need to prepare workflow (e.g. copy over)
-        from .parser import SoS_Script
         from .__main__ import get_run_parser
+        from .parser import SoS_Script
 
         parser = get_run_parser(interactive=False, with_workflow=True)
         args, workflow_args = parser.parse_known_args(command[2:])

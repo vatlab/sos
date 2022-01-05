@@ -7,14 +7,14 @@ import os
 import shutil
 import subprocess
 import sys
-import time
 import tempfile
+import time
 
+from sos.controller import (request_answer_from_controller,
+                            send_message_to_controller)
 from sos.eval import interpolate
 from sos.targets import path
 from sos.utils import env, pexpect_run
-
-from sos.controller import request_answer_from_controller, send_message_to_controller
 
 #
 # Singularity support

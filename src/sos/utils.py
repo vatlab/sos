@@ -3,8 +3,8 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
-import ast
 import argparse
+import ast
 import base64
 import copy
 import getpass
@@ -12,29 +12,28 @@ import logging
 import math
 import os
 import pickle
-import psutil
 import re
-import sys
 import socket
+import sys
 import tempfile
 import threading
 import time
 import traceback
 import types
 import urllib
-from zmq.log.handlers import PUBHandler
-
 import urllib.parse
 import urllib.request
-from collections.abc import Sequence, Mapping, Set, KeysView
 from collections import defaultdict
+from collections.abc import KeysView, Mapping, Sequence, Set
 from html.parser import HTMLParser
-from io import FileIO, StringIO, BytesIO
-from typing import Optional, List, Dict
+from io import BytesIO, FileIO, StringIO
+from typing import Dict, List, Optional
 
 import fasteners
+import psutil
 import yaml
 from tqdm import tqdm as ProgressBar
+from zmq.log.handlers import PUBHandler
 
 try:
     from xxhash import xxh64 as hash_md5
@@ -1209,7 +1208,7 @@ def sos_get_param(key, defvalue):
     #
     # Argparse would produce cut_off for both definition of --cut-off and --cut_off, however
     # you can only use the matching input...
-    from .targets import path, paths, sos_targets, file_target
+    from .targets import file_target, path, paths, sos_targets
 
     ret_type = None
 
@@ -1751,8 +1750,9 @@ def pexpect_run(cmd, shell=False, win_width=None, stdout_socket=None):
                 break
         return child.wait()
     else:
-        import pexpect
         import subprocess
+
+        import pexpect
 
         if win_width:
             os.environ["COLUMNS"] = str(win_width)
@@ -1787,7 +1787,7 @@ def pexpect_run(cmd, shell=False, win_width=None, stdout_socket=None):
 
 
 def format_par(name, par):
-    from .targets import path, file_target
+    from .targets import file_target, path
 
     try:
         name = name.replace("_", "-")
@@ -1824,6 +1824,7 @@ def b64_of(filename: str):
 def dot_to_gif(filename: str, warn=None):
     import glob
     import tempfile
+
     from graphviz import Source
     from PIL import Image, ImageDraw, ImageFont
 

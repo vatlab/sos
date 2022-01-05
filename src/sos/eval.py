@@ -4,15 +4,15 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import ast
-import sys
+import contextlib
 import copy
 import pickle
-import contextlib
-
+import sys
 from typing import Any, Dict, Optional, Set
 
-from .utils import env, as_fstring, load_config_files, pickleable, ArgumentError
 from ._version import __version__
+from .utils import (ArgumentError, as_fstring, env, load_config_files,
+                    pickleable)
 
 
 def interpolate(text, global_dict=None, local_dict=None):

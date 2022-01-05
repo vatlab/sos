@@ -4,16 +4,17 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import os
-import pytest
 import subprocess
 import unittest
 
+import pytest
+
+from sos import execute_workflow
+from sos.converter import extract_workflow
 from sos.parser import ParsingError, SoS_Script
-from sos.targets import file_target, sos_targets, path, paths
+from sos.targets import file_target, path, paths, sos_targets
 from sos.utils import ArgumentError, env
 from sos.workflow_executor import Base_Executor
-from sos.converter import extract_workflow
-from sos import execute_workflow
 
 section1_sos = """
 #!/usr/bin/env sos-runner

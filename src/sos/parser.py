@@ -12,39 +12,20 @@ import re
 import shutil
 import sys
 import textwrap
+import typing
 from io import StringIO, TextIOBase
 from tokenize import generate_tokens
-import typing
-from typing import Dict, List, Optional, Tuple, Any, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 from uuid import UUID, uuid4
 
 from .eval import on_demand_options
-from .syntax import (
-    INDENTED,
-    SOS_CELL,
-    SOS_DIRECTIVE,
-    SOS_DIRECTIVES,
-    SOS_FORMAT_LINE,
-    SOS_FORMAT_VERSION,
-    SOS_INDENTED_ACTION,
-    SOS_MAGIC,
-    SOS_SECTION_HEADER,
-    SOS_SECTION_NAME,
-    SOS_SECTION_OPTION,
-    SOS_SUBWORKFLOW,
-    SOS_ACTION_OPTIONS,
-)
+from .syntax import (INDENTED, SOS_ACTION_OPTIONS, SOS_CELL, SOS_DIRECTIVE,
+                     SOS_DIRECTIVES, SOS_FORMAT_LINE, SOS_FORMAT_VERSION,
+                     SOS_INDENTED_ACTION, SOS_MAGIC, SOS_SECTION_HEADER,
+                     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_SUBWORKFLOW)
 from .targets import file_target, path, paths, sos_targets
-from .utils import (
-    Error,
-    env,
-    locate_script,
-    as_fstring,
-    valid_expr_till,
-    format_par,
-    separate_options,
-    textMD5,
-)
+from .utils import (Error, as_fstring, env, format_par, locate_script,
+                    separate_options, textMD5, valid_expr_till)
 
 __all__ = ["SoS_Script"]
 
