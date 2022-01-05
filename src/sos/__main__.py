@@ -138,11 +138,14 @@ def get_convert_parser(desc_only=False):
                 converter_parser = converter.get_parser()
             f_format, t_format = name.rsplit(".", 1)[0].split("-")
             subparser = add_sub_parser(
-                subparsers, converter_parser, name="{}-{}".format(f_format, t_format)
-            )
+                subparsers,
+                converter_parser,
+                name="{}-{}".format(f_format, t_format))
             subparser.add_argument(
-                "from_file", metavar="FROM", nargs="?", help="""File to be converted."""
-            )
+                "from_file",
+                metavar="FROM",
+                nargs="?",
+                help="""File to be converted.""")
             subparser.add_argument(
                 "to_file",
                 metavar="TO",
@@ -175,8 +178,7 @@ def get_converter_formats(argv):
     from_format = (
         args.from_file[1:]
         if args.from_file.startswith(".") and args.from_file.count(".") == 1
-        else os.path.splitext(args.from_file)[-1][1:].lower()
-    )
+        else os.path.splitext(args.from_file)[-1][1:].lower())
     if not from_format:
         from_format = "sos"
     if args.__to_format__:
@@ -185,8 +187,7 @@ def get_converter_formats(argv):
         to_format = (
             args.to_file[1:]
             if args.to_file.startswith(".") and args.to_file.count(".") == 1
-            else os.path.splitext(args.to_file)[-1][1:].lower()
-        )
+            else os.path.splitext(args.to_file)[-1][1:].lower())
     else:
         return None, None
     return from_format, to_format
@@ -194,8 +195,7 @@ def get_converter_formats(argv):
 
 def print_converter_help():
     from_format, to_format = get_converter_formats(
-        [x for x in sys.argv[2:] if x != "-h"]
-    )
+        [x for x in sys.argv[2:] if x != "-h"])
     if from_format is None or to_format is None:
         return
     for entrypoint in pkg_resources.iter_entry_points(group="sos_converters"):
@@ -230,7 +230,8 @@ def print_converter_help():
                 continue
             sys.exit(converter_parser.print_help())
         except Exception as e:
-            sys.exit("Failed to load converter {}: {}".format(entrypoint.name, e))
+            sys.exit("Failed to load converter {}: {}".format(
+                entrypoint.name, e))
 
 
 def cmd_convert(args, unknown_args):
@@ -240,7 +241,8 @@ def cmd_convert(args, unknown_args):
         try:
             if entrypoint.name == args.converter_name:
                 converter = entrypoint.load()()
-                converter.convert(args.from_file, args.to_file, args, unknown_args)
+                converter.convert(args.from_file, args.to_file, args,
+                                  unknown_args)
                 return
             elif entrypoint.name == args.converter_name + ".func":
                 func = entrypoint.load()
@@ -250,11 +252,8 @@ def cmd_convert(args, unknown_args):
             # if no other parameter, with option list all
             if args.verbosity and args.verbosity > 2:
                 sys.stderr.write(get_traceback())
-            env.logger.error(
-                "Failed to execute converter {}: {}".format(
-                    entrypoint.name.rsplit(".", 1)[0], e
-                )
-            )
+            env.logger.error("Failed to execute converter {}: {}".format(
+                entrypoint.name.rsplit(".", 1)[0], e))
             sys.exit(1)
     env.logger.error(f"No converter is found for {args.converter_name}")
     sys.exit(1)
@@ -278,8 +277,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         parser.add_argument("script", metavar="SCRIPT", help=script_help)
     if with_workflow:
         parser.add_argument(
-            "workflow", metavar="WORKFLOW", nargs="?", help=workflow_spec
-        )
+            "workflow", metavar="WORKFLOW", nargs="?", help=workflow_spec)
     parser.add_argument(
         "-j",
         metavar="WORKERS",
@@ -327,7 +325,8 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             only part of a workflow or multiple workflows or auxiliary steps
             to generate specified targets.""",
     )
-    parser.add_argument("-b", dest="__bin_dirs__", nargs="*", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "-b", dest="__bin_dirs__", nargs="*", help=argparse.SUPPRESS)
     parser.add_argument(
         "-q",
         dest="__queue__",
@@ -365,8 +364,8 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
     # parser.add_argument('-t', dest='__transcript__', nargs='?',
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(
-        title="Run mode options", description="""Control how sos scirpt is executed."""
-    )
+        title="Run mode options",
+        description="""Control how sos scirpt is executed.""")
     runmode.add_argument(
         "-n",
         action="store_true",
@@ -409,8 +408,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             them to make sure that the targets are current.""",
     )
     runmode.add_argument(
-        "-k", action="store_true", dest="keep_going", help=argparse.SUPPRESS
-    )
+        "-k", action="store_true", dest="keep_going", help=argparse.SUPPRESS)
     runmode.add_argument(
         "-e",
         choices=["abort", "default", "ignore"],
@@ -425,10 +423,10 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             error and continue to execute the workflow as best as it can.""",
     )
     # run in tapping mode etc
-    runmode.add_argument("-m", nargs="+", dest="exec_mode", help=argparse.SUPPRESS)
+    runmode.add_argument(
+        "-m", nargs="+", dest="exec_mode", help=argparse.SUPPRESS)
     output = parser.add_argument_group(
-        title="Output options", description="""Output of workflow"""
-    )
+        title="Output options", description="""Output of workflow""")
     output.add_argument(
         "-d",
         nargs="?",
@@ -526,7 +524,8 @@ def cmd_run(args, workflow_args):
     env.verbosity = args.verbosity
 
     if hasattr(args, "keep_going") and args.keep_going:
-        env.logger.warning("Option -k is deprecated and is now the default mode.")
+        env.logger.warning(
+            "Option -k is deprecated and is now the default mode.")
         args.__error_mode__ = "default"
 
     if args.__report__ and args.__dag__:
@@ -565,11 +564,11 @@ def cmd_run(args, workflow_args):
     try:
         # workflow args has to be in the format of --arg, not positional, not -a
         if workflow_args and not workflow_args[0].startswith("--"):
-            raise ValueError(
-                "Unrecognized command line option {}".format(" ".join(workflow_args))
-            )
+            raise ValueError("Unrecognized command line option {}".format(
+                " ".join(workflow_args)))
         script = SoS_Script(filename=args.script)
-        workflow = script.workflow(args.workflow, use_default=not args.__targets__)
+        workflow = script.workflow(
+            args.workflow, use_default=not args.__targets__)
         if not args.__queue__:
             args.__queue__ = None
             queue_args = {}
@@ -607,31 +606,46 @@ def cmd_run(args, workflow_args):
             args.__queue__ = args.__queue__[0]
 
         config = {
-            "config_file": args.__config__,
-            "output_dag": args.__dag__,
-            "output_report": args.__report__,
-            "default_queue": args.__queue__,
-            "queue_args": queue_args,
-            "worker_procs": get_nodelist()
-            if under_cluster()
-            else args.__worker_procs__,
-            "max_running_jobs": args.__max_running_jobs__,
-            "sig_mode": "ignore" if args.dryrun else args.__sig_mode__,
+            "config_file":
+                args.__config__,
+            "output_dag":
+                args.__dag__,
+            "output_report":
+                args.__report__,
+            "default_queue":
+                args.__queue__,
+            "queue_args":
+                queue_args,
+            "worker_procs":
+                get_nodelist() if under_cluster() else args.__worker_procs__,
+            "max_running_jobs":
+                args.__max_running_jobs__,
+            "sig_mode":
+                "ignore" if args.dryrun else args.__sig_mode__,
             # when being tapped by sos notebook, we suppose it is in interactive mode
-            "run_mode": "dryrun"
-            if args.dryrun
-            else ("interactive" if args.exec_mode else "run"),
-            "verbosity": args.verbosity,
+            "run_mode":
+                "dryrun" if args.dryrun else
+                ("interactive" if args.exec_mode else "run"),
+            "verbosity":
+                args.verbosity,
             # for infomration only
-            "workdir": os.getcwd(),
-            "script": args.script,
-            "workflow": args.workflow,
-            "targets": args.__targets__,
-            "workflow_args": workflow_args,
-            "trace_existing": args.trace_existing,
-            "error_mode": args.__error_mode__,
+            "workdir":
+                os.getcwd(),
+            "script":
+                args.script,
+            "workflow":
+                args.workflow,
+            "targets":
+                args.__targets__,
+            "workflow_args":
+                workflow_args,
+            "trace_existing":
+                args.trace_existing,
+            "error_mode":
+                args.__error_mode__,
             # tapping etc
-            "exec_mode": args.exec_mode,
+            "exec_mode":
+                args.exec_mode,
         }
         if args.exec_mode:
             if args.exec_mode[0] != "tapping" or len(args.exec_mode) == 1:
@@ -664,8 +678,9 @@ def cmd_run(args, workflow_args):
             from .monitor import WorkflowMonitor
 
             m = WorkflowMonitor(
-                args.monitor_id, monitor_interval=5, resource_monitor_interval=60
-            )
+                args.monitor_id,
+                monitor_interval=5,
+                resource_monitor_interval=60)
             m.start()
             m.write("status\trunning")
             m.write(f"tags\t{args.script}")
@@ -674,11 +689,12 @@ def cmd_run(args, workflow_args):
         # start controller
         executor.run(args.__targets__, mode=config["run_mode"])
 
-        if "PROFILE" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
+        if "PROFILE" in env.config["SOS_DEBUG"] or "ALL" in env.config[
+                "SOS_DEBUG"]:
             pr.disable()
             pr_file = os.path.join(
-                os.path.expanduser("~"), ".sos", f"profile_master_{os.getpid()}.txt"
-            )
+                os.path.expanduser("~"), ".sos",
+                f"profile_master_{os.getpid()}.txt")
             pr.dump_stats(pr_file)
             print(
                 f"Execution profile of master process {os.getpid()} is saved to {pr_file}"
@@ -721,7 +737,8 @@ def get_dryrun_parser(desc_only=False):
     if desc_only:
         return parser
     parser.add_argument("script", metavar="SCRIPT", help=script_help)
-    parser.add_argument("workflow", metavar="WORKFLOW", nargs="?", help=workflow_spec)
+    parser.add_argument(
+        "workflow", metavar="WORKFLOW", nargs="?", help=workflow_spec)
     parser.add_argument(
         "-c",
         dest="__config__",
@@ -753,8 +770,8 @@ def get_dryrun_parser(desc_only=False):
             is found. """,
     )
     runmode = parser.add_argument_group(
-        title="Run mode options", description="""Control how sos scirpt is executed."""
-    )
+        title="Run mode options",
+        description="""Control how sos scirpt is executed.""")
     runmode.add_argument(
         "-T",
         action="store_true",
@@ -763,8 +780,7 @@ def get_dryrun_parser(desc_only=False):
             them to make sure that the targets are current.""",
     )
     output = parser.add_argument_group(
-        title="Output options", description="""Output of workflow"""
-    )
+        title="Output options", description="""Output of workflow""")
     output.add_argument(
         "-d",
         nargs="?",
@@ -822,8 +838,7 @@ def cmd_dryrun(args, workflow_args):
 
 def get_worker_parser(desc_only=False):
     parser = argparse.ArgumentParser(
-        "worker", description="""Start one or more worker processes"""
-    )
+        "worker", description="""Start one or more worker processes""")
     if desc_only:
         return parser
     parser.add_argument("-r", "--router", help="""Port of the router""")
@@ -871,7 +886,9 @@ def cmd_worker(args, workflow_args):
         "config_file": args.config,
         "sig_mode": args.sig_mode,
         "run_mode": args.run_mode,
-        "sockets": {"worker_backend": args.router},
+        "sockets": {
+            "worker_backend": args.router
+        },
         "SOS_DEBUG": [],
         "exec_mode": None,
     }
@@ -885,7 +902,8 @@ def cmd_worker(args, workflow_args):
     try:
         os.chdir(args.workdir)
     except Exception:
-        env.logger.warning(f"Failed to change directory to workdir {args.workdir}")
+        env.logger.warning(
+            f"Failed to change directory to workdir {args.workdir}")
     load_config_files(args.config)
     try:
         import time
@@ -895,7 +913,8 @@ def cmd_worker(args, workflow_args):
 
         procs = [SoS_Worker(env.config) for i in range(args.workers)]
         [p.start() for p in procs]
-        env.logger.info(f"{args.workers} workers started on {get_localhost_ip()}")
+        env.logger.info(
+            f"{args.workers} workers started on {get_localhost_ip()}")
         while True:
             if all(not p.is_alive() for p in procs):
                 break
@@ -916,13 +935,14 @@ def cmd_worker(args, workflow_args):
 
 def get_remote_parser(desc_only=False):
     parser = argparse.ArgumentParser(
-        "remote", description="""Listing and testing remote configurations"""
-    )
+        "remote", description="""Listing and testing remote configurations""")
     if desc_only:
         return parser
     parser.add_argument(
         "action",
-        choices=["list", "status", "setup", "test", "login", "push", "pull", "run"],
+        choices=[
+            "list", "status", "setup", "test", "login", "push", "pull", "run"
+        ],
         help="""List (list), check status of tasks (status), setup public-key
                          authentication (setup), test configuration (test), login (login), push files
                          to one or more remote hosts (push), pull files from a remote host,
@@ -1016,8 +1036,7 @@ def cmd_remote(args, workflow_args):
         elif args.action == "run":
             if not args.cmd:
                 raise ValueError(
-                    "Please specify a command to execute with option --cmd"
-                )
+                    "Please specify a command to execute with option --cmd")
             from .remote import run_command_on_hosts
 
             run_command_on_hosts(cfg, args.hosts, args.cmd, args.verbosity)
@@ -1122,31 +1141,28 @@ def preview_file(previewers, filename, style=None):
 
     msg = []
     if not os.path.isfile(filename):
-        msg.append(
-            [
-                "stream",
-                {"name": "stderr", "text": "\n> " + filename + " does not exist"},
-            ]
-        )
-        return msg
-    msg.append(
-        [
-            "display_data",
+        msg.append([
+            "stream",
             {
-                "metadata": {},
-                "data": {
-                    "text/plain": "\n> {} ({}):".format(
-                        filename, pretty_size(os.path.getsize(filename))
-                    ),
-                    "text/html": HTML(
-                        '<div class="sos_hint">> {} ({}):</div>'.format(
-                            filename, pretty_size(os.path.getsize(filename))
-                        )
-                    ).data,
-                },
+                "name": "stderr",
+                "text": "\n> " + filename + " does not exist"
             },
-        ]
-    )
+        ])
+        return msg
+    msg.append([
+        "display_data",
+        {
+            "metadata": {},
+            "data": {
+                "text/plain":
+                    "\n> {} ({}):".format(
+                        filename, pretty_size(os.path.getsize(filename))),
+                "text/html":
+                    HTML('<div class="sos_hint">> {} ({}):</div>'.format(
+                        filename, pretty_size(os.path.getsize(filename)))).data,
+            },
+        },
+    ])
     previewer_func = None
     # lazy import of previewers
     import fnmatch
@@ -1167,17 +1183,16 @@ def preview_file(previewers, filename, style=None):
                     try:
                         previewer_func = y.load()
                     except Exception as e:
-                        msg.append(
-                            [
-                                "stream",
-                                {
-                                    "name": "stderr",
-                                    "text": "Failed to load previewer {}: {}".format(
-                                        y, e
-                                    ),
-                                },
-                            ]
-                        )
+                        msg.append([
+                            "stream",
+                            {
+                                "name":
+                                    "stderr",
+                                "text":
+                                    "Failed to load previewer {}: {}".format(
+                                        y, e),
+                            },
+                        ])
                         continue
                     break
             except Exception as e:
@@ -1194,36 +1209,38 @@ def preview_file(previewers, filename, style=None):
         if isinstance(result, str):
             msg.append(["stream", {"name": "stdout", "text": result}])
         elif isinstance(result, dict):
-            msg.append(
-                ["display_data", {"source": filename, "data": result, "metadata": {}}]
-            )
+            msg.append([
+                "display_data", {
+                    "source": filename,
+                    "data": result,
+                    "metadata": {}
+                }
+            ])
         elif isinstance(result, (list, tuple)) and len(result) == 2:
-            msg.append(
-                [
-                    "display_data",
-                    {"source": filename, "data": result[0], "metadata": result[1]},
-                ]
-            )
+            msg.append([
+                "display_data",
+                {
+                    "source": filename,
+                    "data": result[0],
+                    "metadata": result[1]
+                },
+            ])
         else:
-            msg.append(
-                [
-                    "stream",
-                    {
-                        "name": "stderr",
-                        "text": "Unrecognized preview content: {}".format(result),
-                    },
-                ]
-            )
-    except Exception as e:
-        msg.append(
-            [
+            msg.append([
                 "stream",
                 {
                     "name": "stderr",
-                    "text": "Failed to preview {}: {}".format(filename, e),
+                    "text": "Unrecognized preview content: {}".format(result),
                 },
-            ]
-        )
+            ])
+    except Exception as e:
+        msg.append([
+            "stream",
+            {
+                "name": "stderr",
+                "text": "Failed to preview {}: {}".format(filename, e),
+            },
+        ])
     return msg
 
 
@@ -1238,7 +1255,10 @@ def cmd_preview(args, unknown_args):
         # remote host?
         host = Host(args.host, start_engine=False)
         if args.exists:
-            rargs = [host.config.get("sos", "sos"), "preview", "--exists", args.exists]
+            rargs = [
+                host.config.get("sos", "sos"), "preview", "--exists",
+                args.exists
+            ]
         elif args.signature:
             rargs = [
                 host.config.get("sos", "sos"),
@@ -1247,11 +1267,13 @@ def cmd_preview(args, unknown_args):
                 args.signature,
             ]
         else:
-            rargs = [host.config.get("sos", "sos"), "preview"] + args.items + ["--html"]
+            rargs = [host.config.get("sos", "sos"), "preview"
+                    ] + args.items + ["--html"]
             if args.style:
                 rargs += ["-s", args.style] + unknown_args
 
-        if "GENERAL" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
+        if "GENERAL" in env.config["SOS_DEBUG"] or "ALL" in env.config[
+                "SOS_DEBUG"]:
             env.log_to_file("GENERAL", 'Running "{}"'.format(" ".join(rargs)))
         msgs = host._host_agent.check_output(rargs, under_workdir=True).strip()
         if not args.exists and not args.signature:
@@ -1264,9 +1286,8 @@ def cmd_preview(args, unknown_args):
 
             assert file_target
 
-            items = b64decode(
-                (args.exists if args.exists else args.signature).encode()
-            ).decode()
+            items = b64decode((args.exists if args.exists else
+                               args.signature).encode()).decode()
 
             try:
                 items = eval(items)
@@ -1282,11 +1303,10 @@ def cmd_preview(args, unknown_args):
 
             previewers = get_previewers()
             msgs = []
-            style = (
-                {"style": args.style, "options": unknown_args}
-                if args.style or unknown_args
-                else None
-            )
+            style = ({
+                "style": args.style,
+                "options": unknown_args
+            } if args.style or unknown_args else None)
             for filename in args.items:
                 msgs.extend(preview_file(previewers, filename, style))
     if args.exists or args.signature:
@@ -1312,19 +1332,15 @@ def cmd_preview(args, unknown_args):
                 elif "text/html" in msg[1]["data"]:
                     print(msg[1]["data"]["text/html"])
                 else:
-                    print(
-                        "BINARY DATA of type {}".format(
-                            ", ".join(msg[1]["data"].keys())
-                        )
-                    )
+                    print("BINARY DATA of type {}".format(", ".join(
+                        msg[1]["data"].keys())))
             else:
-                raise RuntimeError("Unrecognized preview output: {}".format(msg))
+                raise RuntimeError(
+                    "Unrecognized preview output: {}".format(msg))
     # exit with code 1 if error happens
-    sys.exit(
-        1
-        if any(msg[1]["name"] == "stderr" for msg in msgs if msg[0] == "stream")
-        else 0
-    )
+    sys.exit(1 if any(msg[1]["name"] == "stderr"
+                      for msg in msgs
+                      if msg[0] == "stream") else 0)
 
 
 #
@@ -1334,8 +1350,7 @@ def cmd_preview(args, unknown_args):
 
 def get_execute_parser(desc_only=False):
     parser = argparse.ArgumentParser(
-        "execute", description="""Execute a packages task"""
-    )
+        "execute", description="""Execute a packages task""")
     if desc_only:
         return parser
     parser.add_argument("tasks", nargs="+", help="""IDs of the task.""")
@@ -1386,8 +1401,11 @@ def get_execute_parser(desc_only=False):
         sos_taskexecutors that points to a class with at least a execute member function.""",
     )
     parser.add_argument(
-        "-n", "--dryrun", action="store_true", dest="dryrun", help=argparse.SUPPRESS
-    )
+        "-n",
+        "--dryrun",
+        action="store_true",
+        dest="dryrun",
+        help=argparse.SUPPRESS)
     parser.add_argument(
         "-j",
         metavar="WORKERS",
@@ -1440,23 +1458,23 @@ def cmd_execute(args, workflow_args):
         # local machine ...
         exit_code = []
 
-        env.config.update(
-            {
-                "config_file": args.config,
-                "sig_mode": "default"
-                if args.sig_mode in (None, "ignore")
-                else args.sig_mode,
-                "run_mode": "dryrun"
-                if args.dryrun
-                else (args.run_mode if args.run_mode else "run"),
-                "sockets": {},
-                "exec_mode": None,
-                "verbosity": args.verbosity,
-                "worker_procs": get_nodelist()
-                if under_cluster()
-                else args.__worker_procs__,
-            }
-        )
+        env.config.update({
+            "config_file":
+                args.config,
+            "sig_mode":
+                "default" if args.sig_mode in (None,
+                                               "ignore") else args.sig_mode,
+            "run_mode":
+                "dryrun" if args.dryrun else
+                (args.run_mode if args.run_mode else "run"),
+            "sockets": {},
+            "exec_mode":
+                None,
+            "verbosity":
+                args.verbosity,
+            "worker_procs":
+                get_nodelist() if under_cluster() else args.__worker_procs__,
+        })
         if not args.executor:
             from .task_executor import BaseTaskExecutor
 
@@ -1464,37 +1482,34 @@ def cmd_execute(args, workflow_args):
         else:
             found = False
             for entrypoint in pkg_resources.iter_entry_points(
-                group="sos_taskexecutors"
-            ):
+                    group="sos_taskexecutors"):
                 name = entrypoint.name.strip()
                 if name == args.executor:
                     try:
                         executor = entrypoint.load()()
                         found = True
                     except Exception as e:
-                        raise RuntimeError(f"Failed to load task executor {name}: {e}")
+                        raise RuntimeError(
+                            f"Failed to load task executor {name}: {e}")
             if not found:
-                raise RuntimeError(f"Failed to identify task executor {args.executor}.")
+                raise RuntimeError(
+                    f"Failed to identify task executor {args.executor}.")
         for task in args.tasks:
             #
             matched = [
-                os.path.basename(x)[:-5]
-                for x in glob.glob(
+                os.path.basename(x)[:-5] for x in glob.glob(
                     os.path.join(
-                        os.path.expanduser("~"), ".sos", "tasks", task + "*.task"
-                    )
-                )
+                        os.path.expanduser("~"), ".sos", "tasks", task +
+                        "*.task"))
             ]
             if not matched:
-                env.logger.error("{} does not match any existing task".format(task))
+                env.logger.error(
+                    "{} does not match any existing task".format(task))
                 exit_code.append(1)
                 continue
             elif len(matched) > 1:
-                env.logger.error(
-                    '"{}" matches more than one task ID {}'.format(
-                        task, ", ".join(matched)
-                    )
-                )
+                env.logger.error('"{}" matches more than one task ID {}'.format(
+                    task, ", ".join(matched)))
                 exit_code.append(1)
                 continue
             else:
@@ -1520,9 +1535,8 @@ def cmd_execute(args, workflow_args):
     load_config_files(args.config)
     env.verbosity = args.verbosity
     env.config["sig_mode"] = args.__sig_mode__
-    env.config["run_mode"] = (
-        "dryrun" if args.dryrun else (args.run_mode if args.run_mode else "run")
-    )
+    env.config["run_mode"] = ("dryrun" if args.dryrun else
+                              (args.run_mode if args.run_mode else "run"))
     host = Host(args.queue)
     for task in args.tasks:
         host.submit_task(task)
@@ -1540,10 +1554,10 @@ def cmd_execute(args, workflow_args):
                         len([x for x in res if x == "completed"]),
                         len([x for x in res if x == "failed"]),
                         len([x for x in res if x.startswith("aborted")]),
-                    )
-                )
+                    ))
         if all(x == "completed" for x in res):
-            if "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
+            if "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config[
+                    "SOS_DEBUG"]:
                 env.log_to_file("TASK", f"Put results for {args.tasks}")
             res = host.retrieve_results(args.tasks)
             return
@@ -1563,8 +1577,7 @@ def cmd_execute(args, workflow_args):
 
 def get_status_parser(desc_only=False):
     parser = argparse.ArgumentParser(
-        "status", description="""Check the status of specified tasks"""
-    )
+        "status", description="""Check the status of specified tasks""")
     if desc_only:
         return parser
     parser.add_argument(
@@ -1591,7 +1604,8 @@ def get_status_parser(desc_only=False):
         help="""A configuration file with host
         definitions, in case the definitions are not defined in global sos config.yml files.""",
     )
-    parser.add_argument("-a", "--all", nargs="?", const="both", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "-a", "--all", nargs="?", const="both", help=argparse.SUPPRESS)
     parser.add_argument(
         "-v",
         dest="verbosity",
@@ -1602,8 +1616,7 @@ def get_status_parser(desc_only=False):
             information to standard output (default to 2).""",
     )
     parser.add_argument(
-        "-f", "--full", action="store_true", help="""Display full status"""
-    )
+        "-f", "--full", action="store_true", help="""Display full status""")
     parser.add_argument(
         "-t",
         "--tags",
@@ -1632,7 +1645,8 @@ def get_status_parser(desc_only=False):
             verbosity and output detailed status information in HTML tables and
             figures.""",
     )
-    parser.add_argument("--numeric-times", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--numeric-times", action="store_true", help=argparse.SUPPRESS)
     parser.set_defaults(func=cmd_status)
     return parser
 
@@ -1644,11 +1658,11 @@ def cmd_status(args, workflow_args):
     from .workflow_engines import print_workflow_status
 
     args.tasks = (
-        args.jobs if not args.jobs else [x for x in args.jobs if x.startswith("t")]
-    )
+        args.jobs
+        if not args.jobs else [x for x in args.jobs if x.startswith("t")])
     args.workflows = (
-        args.jobs if not args.jobs else [x for x in args.jobs if x.startswith("w")]
-    )
+        args.jobs
+        if not args.jobs else [x for x in args.jobs if x.startswith("w")])
 
     if args.full:
         args.verbosity = 4
@@ -1656,11 +1670,9 @@ def cmd_status(args, workflow_args):
     try:
         load_config_files(args.config)
         if not args.queue:
-            if args.tasks or (
-                not args.tasks
-                and not args.workflows
-                and (args.all is None or args.all in ("tasks", "both"))
-            ):
+            if args.tasks or (not args.tasks and not args.workflows and
+                              (args.all is None or
+                               args.all in ("tasks", "both"))):
                 print_task_status(
                     tasks=args.tasks,
                     check_all=args.all in ("tasks", "both") or not args.tasks,
@@ -1671,14 +1683,13 @@ def cmd_status(args, workflow_args):
                     tags=args.tags,
                     status=args.status,
                 )
-            if args.workflows or (
-                not args.tasks
-                and not args.workflows
-                and (args.all is None or args.all in ("workflows", "both"))
-            ):
+            if args.workflows or (not args.tasks and not args.workflows and
+                                  (args.all is None or
+                                   args.all in ("workflows", "both"))):
                 print_workflow_status(
                     workflows=args.workflows,
-                    check_all=args.all in ("workflows", "both") or not args.workflows,
+                    check_all=args.all in ("workflows", "both") or
+                    not args.workflows,
                     verbosity=args.verbosity,
                     html=args.html,
                     numeric_times=args.numeric_times,
@@ -1689,11 +1700,9 @@ def cmd_status(args, workflow_args):
         else:
             # remote host?
             host = Host(args.queue, start_engine=False)
-            if args.tasks or (
-                not args.tasks
-                and not args.workflows
-                and (args.all is None or args.all in ("tasks", "both"))
-            ):
+            if args.tasks or (not args.tasks and not args.workflows and
+                              (args.all is None or
+                               args.all in ("tasks", "both"))):
                 res = host._task_engine.query_tasks(
                     tasks=args.tasks,
                     check_all=not args.tasks and not args.workflows,
@@ -1707,13 +1716,9 @@ def cmd_status(args, workflow_args):
                 if res:
                     print(res.strip())
             if host._workflow_engine is not None and (
-                args.workflows
-                or (
-                    not args.tasks
-                    and not args.workflows
-                    and (args.all is None or args.all in ("workflows", "both"))
-                )
-            ):
+                    args.workflows or
+                (not args.tasks and not args.workflows and
+                 (args.all is None or args.all in ("workflows", "both")))):
                 res = host._workflow_engine.query_workflows(
                     workflows=args.workflows,
                     check_all=not args.tasks and not args.workflows,
@@ -1740,8 +1745,7 @@ def cmd_status(args, workflow_args):
 
 def get_purge_parser(desc_only=False):
     parser = argparse.ArgumentParser(
-        "purge", description="""Remove local or remote tasks or workflows"""
-    )
+        "purge", description="""Remove local or remote tasks or workflows""")
     if desc_only:
         return parser
     parser.add_argument(
@@ -1821,11 +1825,11 @@ def cmd_purge(args, workflow_args):
     env.verbosity = args.verbosity
 
     args.tasks = (
-        args.jobs if not args.jobs else [x for x in args.jobs if x.startswith("t")]
-    )
+        args.jobs
+        if not args.jobs else [x for x in args.jobs if x.startswith("t")])
     args.workflows = (
-        args.jobs if not args.jobs else [x for x in args.jobs if x.startswith("w")]
-    )
+        args.jobs
+        if not args.jobs else [x for x in args.jobs if x.startswith("w")])
 
     try:
         if not (args.jobs or args.all or args.status or args.tags or args.age):
@@ -1833,13 +1837,8 @@ def cmd_purge(args, workflow_args):
                 "Please specify either IDs of jobs or one or more of options --all, --age, --status, or --tags."
             )
         if not args.queue:
-            if (
-                args.tasks
-                or args.all in ("both", "tasks")
-                or args.status
-                or args.tags
-                or args.age
-            ):
+            if (args.tasks or args.all in ("both", "tasks") or args.status or
+                    args.tags or args.age):
                 purge_tasks(
                     args.tasks,
                     args.all,
@@ -1848,13 +1847,8 @@ def cmd_purge(args, workflow_args):
                     args.tags,
                     args.verbosity,
                 )
-            if (
-                args.workflows
-                or args.all in ("both", "workflows")
-                or args.status
-                or args.tags
-                or args.age
-            ):
+            if (args.workflows or args.all in ("both", "workflows") or
+                    args.status or args.tags or args.age):
                 purge_workflows(
                     args.workflows,
                     args.all,
@@ -1868,13 +1862,8 @@ def cmd_purge(args, workflow_args):
             load_config_files(args.config)
             host = Host(args.queue)
 
-            if (
-                args.tasks
-                or args.all in ("both", "tasks")
-                or args.status
-                or args.tags
-                or args.age
-            ):
+            if (args.tasks or args.all in ("both", "tasks") or args.status or
+                    args.tags or args.age):
                 res = host._task_engine.purge_tasks(
                     args.tasks,
                     args.all,
@@ -1886,12 +1875,8 @@ def cmd_purge(args, workflow_args):
                 if res:
                     print(res.strip())
             if host._workflow_engine is not None and (
-                args.workflows
-                or args.all in ("both", "workflows")
-                or args.status
-                or args.tags
-                or args.age
-            ):
+                    args.workflows or args.all in ("both", "workflows") or
+                    args.status or args.tags or args.age):
                 res = host._workflow_engine.purge_workflows(
                     args.workflows,
                     args.all,
@@ -1916,8 +1901,7 @@ def cmd_purge(args, workflow_args):
 #
 def get_kill_parser(desc_only=False):
     parser = argparse.ArgumentParser(
-        "kill", description="""Stop the execution of running task"""
-    )
+        "kill", description="""Stop the execution of running task""")
     if desc_only:
         return parser
     parser.add_argument(
@@ -1981,15 +1965,16 @@ def cmd_kill(args, workflow_args):
     from .workflow_engines import kill_workflows
 
     if not args.jobs and not args.tags and not args.all:
-        env.logger.warning("Please specify job id, or one of options --all and --tags")
+        env.logger.warning(
+            "Please specify job id, or one of options --all and --tags")
 
     env.verbosity = args.verbosity
     args.tasks = (
-        args.jobs if not args.jobs else [x for x in args.jobs if x.startswith("t")]
-    )
+        args.jobs
+        if not args.jobs else [x for x in args.jobs if x.startswith("t")])
     args.workflows = (
-        args.jobs if not args.jobs else [x for x in args.jobs if x.startswith("w")]
-    )
+        args.jobs
+        if not args.jobs else [x for x in args.jobs if x.startswith("w")])
 
     if not (args.jobs or args.all or args.tags):
         raise ValueError(
@@ -2007,16 +1992,15 @@ def cmd_kill(args, workflow_args):
 
         if args.all in ("both", "tasks") or args.tasks or args.tags:
             res = host._task_engine.kill_tasks(
-                tasks=args.tasks, tags=args.tags, all_tasks=args.all
-            )
+                tasks=args.tasks, tags=args.tags, all_tasks=args.all)
             if res:
                 print(res.strip())
-        if host._workflow_engine and (
-            args.all in ("both", "workflows") or args.workflows or args.tags
-        ):
+        if host._workflow_engine and (args.all in ("both", "workflows") or
+                                      args.workflows or args.tags):
             res = host._workflow_engine.kill_workflows(
-                workflows=args.workflows, tags=args.tags, all_workflows=args.all
-            )
+                workflows=args.workflows,
+                tags=args.tags,
+                all_workflows=args.all)
             if res:
                 print(res.strip())
 
@@ -2028,8 +2012,8 @@ def cmd_kill(args, workflow_args):
 
 def get_remove_parser(desc_only=False):
     parser = argparse.ArgumentParser(
-        "remove", description="""Remove specified files and/or their signatures"""
-    )
+        "remove",
+        description="""Remove specified files and/or their signatures""")
     if desc_only:
         return parser
     parser.add_argument(
@@ -2138,6 +2122,7 @@ def get_remove_parser(desc_only=False):
 
 
 class AnswerMachine:
+
     def __init__(self, always_yes=False, confirmed=False):
         self._always_yes = always_yes
         self._confirmed = confirmed
@@ -2184,17 +2169,18 @@ def cmd_remove(args, unknown_args):
                 continue
             if p.size() == 0:
                 try:
-                    if (
-                        "GENERAL" in env.config["SOS_DEBUG"]
-                        or "ALL" in env.config["SOS_DEBUG"]
-                    ):
-                        env.log_to_file("GENERAL", f"Remove placeholder file {ph}")
+                    if ("GENERAL" in env.config["SOS_DEBUG"] or
+                            "ALL" in env.config["SOS_DEBUG"]):
+                        env.log_to_file("GENERAL",
+                                        f"Remove placeholder file {ph}")
                     p.unlink()
                     removed += 1
                 except Exception as e:
-                    env.logger.debug(f"Failed to remove placeholder file {ph}: {e}")
+                    env.logger.debug(
+                        f"Failed to remove placeholder file {ph}: {e}")
             else:
-                env.logger.debug(f"Keep placeholder {ph} because it is non-empty.")
+                env.logger.debug(
+                    f"Keep placeholder {ph} because it is non-empty.")
         if removed:
             env.logger.info(
                 f'{removed} placeholder file{"s are" if removed > 1 else "is"} removed'
@@ -2225,7 +2211,8 @@ def cmd_remove(args, unknown_args):
             )
         return
     #
-    tracked_files = list(set(sum([sum(x[1].values(), []) for x in sig_files], [])))
+    tracked_files = list(
+        set(sum([sum(x[1].values(), []) for x in sig_files], [])))
     if tracked_files:
         env.logger.info(f"{len(tracked_files)} tracked files are identified.")
     else:
@@ -2252,42 +2239,33 @@ def cmd_remove(args, unknown_args):
                 return False
             target = file_target(filename)
             if args.size:
-                if (args.size > 0 and os.path.getsize(filename) < args.size) or (
-                    args.size < 0 and os.path.getsize(filename) > -args.size
-                ):
-                    env.logger.debug(
-                        "{} ignored due to size limit {}".format(filename, args.size)
-                    )
+                if (args.size > 0 and os.path.getsize(filename) < args.size
+                   ) or (args.size < 0 and
+                         os.path.getsize(filename) > -args.size):
+                    env.logger.debug("{} ignored due to size limit {}".format(
+                        filename, args.size))
                     return False
             if args.age:
-                if (
-                    args.age > 0 and time.time() - os.path.getmtime(filename) < args.age
-                ) or (
-                    args.age < 0
-                    and time.time() - os.path.getmtime(filename) > -args.age
-                ):
-                    env.logger.debug(
-                        "{} ignored due to age limit {}".format(filename, args.age)
-                    )
+                if (args.age > 0 and
+                        time.time() - os.path.getmtime(filename) < args.age
+                   ) or (args.age < 0 and
+                         time.time() - os.path.getmtime(filename) > -args.age):
+                    env.logger.debug("{} ignored due to age limit {}".format(
+                        filename, args.age))
                     return False
-            if resp.get(
-                "{} tracked file {}".format(
-                    "Would remove" if args.dryrun else "Remove", filename
-                )
-            ):
+            if resp.get("{} tracked file {}".format(
+                    "Would remove" if args.dryrun else "Remove", filename)):
                 if not args.dryrun:
                     env.logger.debug("Remove {}".format(target))
                     try:
                         target.unlink()
                     except Exception as e:
-                        env.logger.warning(
-                            "Failed to remove {}: {}".format(filename, e)
-                        )
+                        env.logger.warning("Failed to remove {}: {}".format(
+                            filename, e))
                     return True
             else:
                 env.logger.debug(
-                    "No signature exists for tracked file {}".format(filename)
-                )
+                    "No signature exists for tracked file {}".format(filename))
             return False
 
     elif args.untracked:
@@ -2297,42 +2275,33 @@ def cmd_remove(args, unknown_args):
                 return False
             target = file_target(filename)
             if args.size:
-                if (args.size > 0 and os.path.getsize(filename) < args.size) or (
-                    args.size < 0 and os.path.getsize(filename) > -args.size
-                ):
-                    env.logger.debug(
-                        "{} ignored due to size limit {}".format(filename, args.size)
-                    )
+                if (args.size > 0 and os.path.getsize(filename) < args.size
+                   ) or (args.size < 0 and
+                         os.path.getsize(filename) > -args.size):
+                    env.logger.debug("{} ignored due to size limit {}".format(
+                        filename, args.size))
                     return False
             if args.age:
-                if (
-                    args.age > 0 and time.time() - os.path.getmtime(filename) < args.age
-                ) or (
-                    args.age < 0
-                    and time.time() - os.path.getmtime(filename) > -args.age
-                ):
-                    env.logger.debug(
-                        "{} ignored due to age limit {}".format(filename, args.age)
-                    )
+                if (args.age > 0 and
+                        time.time() - os.path.getmtime(filename) < args.age
+                   ) or (args.age < 0 and
+                         time.time() - os.path.getmtime(filename) > -args.age):
+                    env.logger.debug("{} ignored due to age limit {}".format(
+                        filename, args.age))
                     return False
-            if resp.get(
-                "{} untracked file {}".format(
-                    "Would remove" if args.dryrun else "Remove", filename
-                )
-            ):
+            if resp.get("{} untracked file {}".format(
+                    "Would remove" if args.dryrun else "Remove", filename)):
                 if not args.dryrun:
                     env.logger.debug("Remove {}".format(target))
                     try:
                         target.unlink()
                     except Exception as e:
-                        env.logger.warning(
-                            "Failed to remove {}: {}".format(filename, e)
-                        )
+                        env.logger.warning("Failed to remove {}: {}".format(
+                            filename, e))
                     return True
             else:
                 env.logger.debug(
-                    "No signature exists for tracked file {}".format(filename)
-                )
+                    "No signature exists for tracked file {}".format(filename))
             return False
 
     elif args.zap:
@@ -2340,40 +2309,33 @@ def cmd_remove(args, unknown_args):
         def func(filename, resp):
             target = file_target(filename)
             if args.size:
-                if (args.size > 0 and os.path.getsize(filename) < args.size) or (
-                    args.size < 0 and os.path.getsize(filename) > -args.size
-                ):
-                    env.logger.debug(
-                        "{} ignored due to size limit {}".format(filename, args.size)
-                    )
+                if (args.size > 0 and os.path.getsize(filename) < args.size
+                   ) or (args.size < 0 and
+                         os.path.getsize(filename) > -args.size):
+                    env.logger.debug("{} ignored due to size limit {}".format(
+                        filename, args.size))
                     return False
             if args.age:
-                if (
-                    args.age > 0 and time.time() - os.path.getmtime(filename) < args.age
-                ) or (
-                    args.age < 0
-                    and time.time() - os.path.getmtime(filename) > -args.age
-                ):
-                    env.logger.debug(
-                        "{} ignored due to age limit {}".format(filename, args.age)
-                    )
+                if (args.age > 0 and
+                        time.time() - os.path.getmtime(filename) < args.age
+                   ) or (args.age < 0 and
+                         time.time() - os.path.getmtime(filename) > -args.age):
+                    env.logger.debug("{} ignored due to age limit {}".format(
+                        filename, args.age))
                     return False
-            if resp.get(
-                "{} tracked file {}".format(
-                    "Would zap" if args.dryrun else "Zap", filename
-                )
-            ):
+            if resp.get("{} tracked file {}".format(
+                    "Would zap" if args.dryrun else "Zap", filename)):
                 if not args.dryrun:
                     env.logger.debug("Zap {}".format(target))
                     try:
                         file_target(target).zap()
                     except Exception as e:
-                        env.logger.warning("Failed to zap {}: {}".format(filename, e))
+                        env.logger.warning("Failed to zap {}: {}".format(
+                            filename, e))
                     return True
             else:
                 env.logger.debug(
-                    "No signature exists for tracked file {}".format(filename)
-                )
+                    "No signature exists for tracked file {}".format(filename))
             return False
 
     else:
@@ -2381,42 +2343,33 @@ def cmd_remove(args, unknown_args):
         def func(filename, resp):
             target = file_target(filename)
             if args.size:
-                if (args.size > 0 and os.path.getsize(filename) < args.size) or (
-                    args.size < 0 and os.path.getsize(filename) > -args.size
-                ):
-                    env.logger.debug(
-                        "{} ignored due to size limit {}".format(filename, args.size)
-                    )
+                if (args.size > 0 and os.path.getsize(filename) < args.size
+                   ) or (args.size < 0 and
+                         os.path.getsize(filename) > -args.size):
+                    env.logger.debug("{} ignored due to size limit {}".format(
+                        filename, args.size))
                     return False
             if args.age:
-                if (
-                    args.age > 0 and time.time() - os.path.getmtime(filename) < args.age
-                ) or (
-                    args.age < 0
-                    and time.time() - os.path.getmtime(filename) > -args.age
-                ):
-                    env.logger.debug(
-                        "{} ignored due to age limit {}".format(filename, args.age)
-                    )
+                if (args.age > 0 and
+                        time.time() - os.path.getmtime(filename) < args.age
+                   ) or (args.age < 0 and
+                         time.time() - os.path.getmtime(filename) > -args.age):
+                    env.logger.debug("{} ignored due to age limit {}".format(
+                        filename, args.age))
                     return False
-            if resp.get(
-                "{} file {}".format(
-                    "Would remove" if args.dryrun else "Remove", filename
-                )
-            ):
+            if resp.get("{} file {}".format(
+                    "Would remove" if args.dryrun else "Remove", filename)):
                 if not args.dryrun:
                     env.logger.debug("Remove {}".format(target))
                     try:
                         target.unlink()
                     except Exception as e:
-                        env.logger.warning(
-                            "Failed to remove {}: {}".format(filename, e)
-                        )
+                        env.logger.warning("Failed to remove {}: {}".format(
+                            filename, e))
                     return True
             else:
                 env.logger.debug(
-                    "No signature exists for tracked file {}".format(filename)
-                )
+                    "No signature exists for tracked file {}".format(filename))
             return False
 
     removed = 0
@@ -2436,14 +2389,12 @@ def cmd_remove(args, unknown_args):
                         continue
                     removed += func(os.path.join(dirname, x), resp)
             dirlist[:] = [x for x in dirlist if not x.startswith(".")]
-    env.logger.info(
-        "{}{} file{} {}".format(
-            "Signagure of " if args.signature else "",
-            removed,
-            "s" if removed > 1 else "",
-            "zapped" if args.zap else "removed",
-        )
-    )
+    env.logger.info("{}{} file{} {}".format(
+        "Signagure of " if args.signature else "",
+        removed,
+        "s" if removed > 1 else "",
+        "zapped" if args.zap else "removed",
+    ))
 
 
 #
@@ -2545,17 +2496,21 @@ def cmd_config(args, workflow_args):
     from .utils import dict_merge, env, load_config_files
 
     if workflow_args:
-        raise RuntimeError("Unrecognized arguments {}".format(" ".join(workflow_args)))
+        raise RuntimeError("Unrecognized arguments {}".format(
+            " ".join(workflow_args)))
     #
     if args.__unset_config__:
         if args.__site_config__:
-            config_file = os.path.join(os.path.split(__file__)[0], "site_config.yml")
+            config_file = os.path.join(
+                os.path.split(__file__)[0], "site_config.yml")
         elif args.__hosts_config__:
-            config_file = os.path.join(os.path.expanduser("~"), ".sos", "hosts.yml")
+            config_file = os.path.join(
+                os.path.expanduser("~"), ".sos", "hosts.yml")
         elif args.__config_file__:
             config_file = os.path.expanduser(args.__config_file__)
         else:
-            config_file = os.path.join(os.path.expanduser("~"), ".sos", "config.yml")
+            config_file = os.path.join(
+                os.path.expanduser("~"), ".sos", "config.yml")
 
         if os.path.isfile(config_file):
             try:
@@ -2565,13 +2520,12 @@ def cmd_config(args, workflow_args):
                     cfg = {}
             except Exception as e:
                 env.logger.error(
-                    "Failed to parse sos config file {}, is it in YAML/JSON format? ({})".format(
-                        config_file, e
-                    )
-                )
+                    "Failed to parse sos config file {}, is it in YAML/JSON format? ({})"
+                    .format(config_file, e))
                 sys.exit(1)
         else:
-            env.logger.error("Config file {} does not exist".format(config_file))
+            env.logger.error(
+                "Config file {} does not exist".format(config_file))
             sys.exit(1)
         #
 
@@ -2599,20 +2553,20 @@ def cmd_config(args, workflow_args):
             with open(config_file, "w") as config:
                 config.write(yaml.safe_dump(cfg, default_flow_style=False))
         else:
-            env.logger.warning(
-                "{} does not match any configuration key".format(
-                    ", ".join(args.__unset_config__)
-                )
-            )
+            env.logger.warning("{} does not match any configuration key".format(
+                ", ".join(args.__unset_config__)))
     elif args.__set_config__:
         if args.__site_config__:
-            config_file = os.path.join(os.path.split(__file__)[0], "site_config.yml")
+            config_file = os.path.join(
+                os.path.split(__file__)[0], "site_config.yml")
         elif args.__hosts_config__:
-            config_file = os.path.join(os.path.expanduser("~"), ".sos", "hosts.yml")
+            config_file = os.path.join(
+                os.path.expanduser("~"), ".sos", "hosts.yml")
         elif args.__config_file__:
             config_file = os.path.expanduser(args.__config_file__)
         else:
-            config_file = os.path.join(os.path.expanduser("~"), ".sos", "config.yml")
+            config_file = os.path.join(
+                os.path.expanduser("~"), ".sos", "config.yml")
 
         if os.path.isfile(config_file):
             try:
@@ -2622,18 +2576,15 @@ def cmd_config(args, workflow_args):
                     cfg = {}
             except Exception as e:
                 env.logger.error(
-                    "Failed to sos config file {}, is it in YAML/JSON format? ({})".format(
-                        config_file, e
-                    )
-                )
+                    "Failed to sos config file {}, is it in YAML/JSON format? ({})"
+                    .format(config_file, e))
                 sys.exit(1)
         else:
             cfg = {}
         #
         if len(args.__set_config__) == 1:
-            env.logger.error(
-                "Please specify a value for key {}".format(args.__set_config__[0])
-            )
+            env.logger.error("Please specify a value for key {}".format(
+                args.__set_config__[0]))
             sys.exit(1)
         #
         k = args.__set_config__[0]
@@ -2650,10 +2601,8 @@ def cmd_config(args, workflow_args):
                 v = v_val
             except Exception:
                 env.logger.debug(
-                    'Value "{}" is an invalid expression and is treated as a string.'.format(
-                        v
-                    )
-                )
+                    'Value "{}" is an invalid expression and is treated as a string.'
+                    .format(v))
             values.append(v)
         #
         if len(values) == 1:
@@ -2733,9 +2682,7 @@ def sosrunner():
         except Exception as e:
             sys.exit(
                 "No help information is available for script {}: {}".format(
-                    sys.argv[1], e
-                )
-            )
+                    sys.argv[1], e))
     args, workflow_args = parser.parse_known_args()
     cmd_run(args, workflow_args)
 
@@ -2758,8 +2705,7 @@ def add_sub_parser(subparsers, parser, name=None, hidden=False):
             description=parser.description,
             epilog=parser.epilog,
             help=parser.short_description
-            if hasattr(parser, "short_description")
-            else parser.description,
+            if hasattr(parser, "short_description") else parser.description,
             parents=[parser],
             add_help=False,
         )
@@ -2798,22 +2744,27 @@ def main():
         # add_sub_parser(subparsers, get_install_parser(desc_only='install'!=subcommand))
         #
         # command run
-        add_sub_parser(subparsers, get_run_parser(desc_only="run" != subcommand))
+        add_sub_parser(subparsers,
+                       get_run_parser(desc_only="run" != subcommand))
         #
         # command dryrun
-        add_sub_parser(subparsers, get_dryrun_parser(desc_only="dryrun" != subcommand))
+        add_sub_parser(subparsers,
+                       get_dryrun_parser(desc_only="dryrun" != subcommand))
 
         #
         # command status
-        add_sub_parser(subparsers, get_status_parser(desc_only="status" != subcommand))
+        add_sub_parser(subparsers,
+                       get_status_parser(desc_only="status" != subcommand))
         #
         # command push, replaced by sos remote push
         add_sub_parser(
-            subparsers, get_worker_parser(desc_only="worker" != subcommand), hidden=True
-        )
+            subparsers,
+            get_worker_parser(desc_only="worker" != subcommand),
+            hidden=True)
         #
         # command remote
-        add_sub_parser(subparsers, get_remote_parser(desc_only="remote" != subcommand))
+        add_sub_parser(subparsers,
+                       get_remote_parser(desc_only="remote" != subcommand))
         #
         # command preview
         add_sub_parser(
@@ -2823,40 +2774,43 @@ def main():
         )
         #
         # command execute
-        add_sub_parser(
-            subparsers, get_execute_parser(desc_only="execute" != subcommand)
-        )
+        add_sub_parser(subparsers,
+                       get_execute_parser(desc_only="execute" != subcommand))
         #
         # command kill
-        add_sub_parser(subparsers, get_kill_parser(desc_only="kill" != subcommand))
+        add_sub_parser(subparsers,
+                       get_kill_parser(desc_only="kill" != subcommand))
         #
         # command purge
-        add_sub_parser(subparsers, get_purge_parser(desc_only="purge" != subcommand))
+        add_sub_parser(subparsers,
+                       get_purge_parser(desc_only="purge" != subcommand))
 
         #
         # command config
-        add_sub_parser(subparsers, get_config_parser(desc_only="config" != subcommand))
+        add_sub_parser(subparsers,
+                       get_config_parser(desc_only="config" != subcommand))
         #
         # command convert
-        add_sub_parser(
-            subparsers, get_convert_parser(desc_only="convert" != subcommand)
-        )
+        add_sub_parser(subparsers,
+                       get_convert_parser(desc_only="convert" != subcommand))
         #
         # command remove
-        add_sub_parser(subparsers, get_remove_parser(desc_only="remove" != subcommand))
+        add_sub_parser(subparsers,
+                       get_remove_parser(desc_only="remove" != subcommand))
         #
         # addon packages
         if subcommand is None or subcommand not in [
-            "install",
-            "run",
-            "dryrun",
-            "convert",
-            "push",
-            "pull",
-            "remove",
-            "config",
+                "install",
+                "run",
+                "dryrun",
+                "convert",
+                "push",
+                "pull",
+                "remove",
+                "config",
         ]:
-            for entrypoint in pkg_resources.iter_entry_points(group="sos_addons"):
+            for entrypoint in pkg_resources.iter_entry_points(
+                    group="sos_addons"):
                 name = entrypoint.name
                 addon = entrypoint.load()()
                 if not hasattr(addon, "get_parser"):
@@ -2870,21 +2824,18 @@ def main():
                     env.logger.warning(f"Missing execute for addon {name}")
                     continue
 
-                parser = add_sub_parser(subparsers, addon.get_parser(), name=name)
+                parser = add_sub_parser(
+                    subparsers, addon.get_parser(), name=name)
                 parser.add_argument(
-                    "--addon-name", help=argparse.SUPPRESS, default=name
-                )
+                    "--addon-name", help=argparse.SUPPRESS, default=name)
                 parser.set_defaults(func=addon.execute)
         #
         if len(sys.argv) == 1 or sys.argv[1] == "-h":
             master_parser.print_help()
             sys.exit(0)
         if "-h" in sys.argv:
-            if (
-                len(sys.argv) > 3
-                and sys.argv[1] == "run"
-                and not sys.argv[2].startswith("-")
-            ):
+            if (len(sys.argv) > 3 and sys.argv[1] == "run" and
+                    not sys.argv[2].startswith("-")):
                 try:
                     from .parser import SoS_Script
 
@@ -2893,10 +2844,8 @@ def main():
                     sys.exit(0)
                 except Exception as e:
                     sys.exit(
-                        "No help information is available for script {}: {}".format(
-                            sys.argv[1], e
-                        )
-                    )
+                        "No help information is available for script {}: {}"
+                        .format(sys.argv[1], e))
             if len(sys.argv) > 3 and sys.argv[1] == "convert":
                 print_converter_help()
         elif sys.argv[1] == "convert":

@@ -60,8 +60,8 @@ from .workflow_engines import BackgroundProcess_WorkflowEngine
 #
 
 
-
 class DaemonizedProcess(mp.Process):
+
     def __init__(self, cmd, *args, **kwargs):
         super(DaemonizedProcess, self).__init__(*args, **kwargs)
         self.cmd = cmd
@@ -162,8 +162,7 @@ class LocalHost(object):
 
     def prepare_task(self, task_id):
         task_file = os.path.join(
-            os.path.expanduser("~"), ".sos", "tasks", task_id + ".task"
-        )
+            os.path.expanduser("~"), ".sos", "tasks", task_id + ".task")
         # add server restriction on task file
         if not os.path.isfile(task_file):
             raise ValueError(f"Missing task definition {task_file}")
@@ -174,61 +173,46 @@ class LocalHost(object):
         task_vars = params.sos_dict
         runtime = {
             "_runtime": {
-                x: task_vars["_runtime"][x]
-                for x in (
+                x: task_vars["_runtime"][x] for x in (
                     "verbosity",
                     "sig_mode",
                     "run_mode",
                     "walltime",
                     "cores",
                     "mem",
-                )
-                if x in task_vars["_runtime"]
+                ) if x in task_vars["_runtime"]
             }
         }
         runtime["_runtime"]["workdir"] = (
             task_vars["_runtime"]["workdir"]
-            if "workdir" in task_vars["_runtime"]
-            else os.getcwd()
-        )
+            if "workdir" in task_vars["_runtime"] else os.getcwd())
 
-        if (
-            "max_mem" in self.config
-            or "max_cores" in self.config
-            or "max_walltime" in self.config
-        ):
+        if ("max_mem" in self.config or "max_cores" in self.config or
+                "max_walltime" in self.config):
             for key in ("max_mem", "max_cores", "max_walltime"):
                 if key in self.config:
                     runtime["_runtime"][key] = (
                         format_HHMMSS(self.config[key])
-                        if key == "max_walltime"
-                        else self.config[key]
-                    )
+                        if key == "max_walltime" else self.config[key])
 
-            if (
-                self.config.get("max_mem", None) is not None
-                and task_vars["_runtime"].get("mem", None) is not None
-                and self.config["max_mem"] < task_vars["_runtime"]["mem"]
-            ):
+            if (self.config.get("max_mem", None) is not None and
+                    task_vars["_runtime"].get("mem", None) is not None and
+                    self.config["max_mem"] < task_vars["_runtime"]["mem"]):
                 env.logger.error(
                     f'Task {task_id} requested more mem ({task_vars["_runtime"]["mem"]}) than allowed max_mem ({self.config["max_mem"]})'
                 )
                 return False
-            if (
-                self.config.get("max_cores", None) is not None
-                and task_vars["_runtime"].get("cores", None) is not None
-                and self.config["max_cores"] < task_vars["_runtime"]["cores"]
-            ):
+            if (self.config.get("max_cores", None) is not None and
+                    task_vars["_runtime"].get("cores", None) is not None and
+                    self.config["max_cores"] < task_vars["_runtime"]["cores"]):
                 env.logger.error(
                     f'Task {task_id} requested more cores ({task_vars["_runtime"]["cores"]}) than allowed max_cores ({self.config["max_cores"]})'
                 )
                 return False
-            if (
-                self.config.get("max_walltime", None) is not None
-                and task_vars["_runtime"].get("walltime", None) is not None
-                and expand_time(self.config["max_walltime"])
-                < expand_time(task_vars["_runtime"]["walltime"])
-            ):
+            if (self.config.get("max_walltime", None) is not None and
+                    task_vars["_runtime"].get("walltime", None) is not None and
+                    expand_time(self.config["max_walltime"]) < expand_time(
+                        task_vars["_runtime"]["walltime"])):
                 env.logger.error(
                     f'Task {task_id} requested more walltime ({task_vars["_runtime"]["walltime"]}) than allowed max_walltime ({self.config["max_walltime"]})'
                 )
@@ -255,8 +239,7 @@ class LocalHost(object):
         try:
             cmd = cfg_interpolate(cmd)
             return subprocess.check_output(
-                cmd, shell=isinstance(cmd, str), **kwargs
-            ).decode()
+                cmd, shell=isinstance(cmd, str), **kwargs).decode()
         except Exception as e:
             env.logger.warning(f"Check output of {cmd} failed: {e}")
             raise
@@ -264,7 +247,8 @@ class LocalHost(object):
     def check_call(self, cmd, under_workdir=False, **kwargs):
         # get the output of command
         try:
-            return subprocess.check_call(cmd, shell=isinstance(cmd, str), **kwargs)
+            return subprocess.check_call(
+                cmd, shell=isinstance(cmd, str), **kwargs)
         except Exception as e:
             env.logger.warning(f"Check output of {cmd} failed: {e}")
             raise
@@ -291,9 +275,12 @@ class LocalHost(object):
         res = tf.result
         if not res or "ret_code" not in res:
             return {
-                "ret_code": 1,
-                "task": task_id,
-                "exception": ValueError(f"No result is received for task {task_id}"),
+                "ret_code":
+                    1,
+                "task":
+                    task_id,
+                "exception":
+                    ValueError(f"No result is received for task {task_id}"),
             }
 
         try:
@@ -327,7 +314,8 @@ class RemoteHost(object):
         if test_connection:
             test_res = self.test_connection()
             if test_res != "OK":
-                raise RuntimeError(f"Failed to connect to {self.alias}: {test_res}")
+                raise RuntimeError(
+                    f"Failed to connect to {self.alias}: {test_res}")
 
     def target_exists(self, targets):
         try:
@@ -372,7 +360,8 @@ class RemoteHost(object):
             return [value]
         if isinstance(value, Sequence):
             return value
-        raise ValueError("Option shared can only be a string or a list of strings")
+        raise ValueError(
+            "Option shared can only be a string or a list of strings")
 
     def _get_path_map(self) -> Dict[str, str]:
         res: Dict = {}
@@ -404,7 +393,8 @@ class RemoteHost(object):
         return res
 
     def _get_control_master_options(self):
-        master_dir = os.path.join(os.path.expanduser("~"), ".ssh", "controlmasters")
+        master_dir = os.path.join(
+            os.path.expanduser("~"), ".ssh", "controlmasters")
         if not os.path.isdir(master_dir):
             try:
                 os.makedirs(master_dir, exist_ok=True)
@@ -416,56 +406,35 @@ class RemoteHost(object):
         return f"-o 'ControlMaster=auto' -o 'ControlPath={master_dir}/%r@%h:%p' -o 'ControlPersist=10m'"
 
     def _get_identify_file_options(self):
-        if (
-            "pem_file" in self.config
-            and isinstance(self.config["pem_file"], str)
-            and self.config["pem_file"].strip() != ""
-        ):
+        if ("pem_file" in self.config and
+                isinstance(self.config["pem_file"], str) and
+                self.config["pem_file"].strip() != ""):
             return f""" -i '{self.config["pem_file"]}' """
         return ""
 
     def _get_send_cmd(self, rename=False):
         if rename:
             return (
-                "ssh "
-                + self.cm_opts
-                + self.pem_opts
-                + """ -q {host} -p {port} "mkdir -p {dest:dpq}" && """
-                + """rsync -a --no-g -e 'ssh """
-                + self.cm_opts
-                + self.pem_opts
-                + """ -p {port}' {source:aep} "{host}:{dest:dep}" && """
-                + """ssh """
-                + self.cm_opts
-                + self.pem_opts
-                + """ -q {host} -p {port} "mv {dest:dep}/{source:b} {dest:ep}" """
+                "ssh " + self.cm_opts + self.pem_opts +
+                """ -q {host} -p {port} "mkdir -p {dest:dpq}" && """ +
+                """rsync -a --no-g -e 'ssh """ + self.cm_opts + self.pem_opts +
+                """ -p {port}' {source:aep} "{host}:{dest:dep}" && """ +
+                """ssh """ + self.cm_opts + self.pem_opts +
+                """ -q {host} -p {port} "mv {dest:dep}/{source:b} {dest:ep}" """
             )
-        return (
-            "ssh "
-            + self.cm_opts
-            + self.pem_opts
-            + """ -q {host} -p {port} "mkdir -p {dest:dpq}" """
-            + """ && rsync -a --no-g -e "ssh -p {port} """
-            + self.cm_opts
-            + self.pem_opts
-            + ''' " {source:aep} "{host}:{dest:dep}"'''
-        )
+        return ("ssh " + self.cm_opts + self.pem_opts +
+                """ -q {host} -p {port} "mkdir -p {dest:dpq}" """ +
+                """ && rsync -a --no-g -e "ssh -p {port} """ + self.cm_opts +
+                self.pem_opts + ''' " {source:aep} "{host}:{dest:dep}"''')
 
     def _get_receive_cmd(self, rename=False):
         if rename:
-            return (
-                """rsync -a --no-g -e 'ssh """
-                + self.cm_opts
-                + self.pem_opts
-                + """ -p {port}' {host}:{source:e} "{dest:adep}" && """
-                + '''mv "{dest:adep}/{source:b}" "{dest:aep}"'''
-            )
-        return (
-            """rsync -a --no-g -e 'ssh """
-            + self.cm_opts
-            + self.pem_opts
-            + ''' -p {port}' {host}:{source:e} "{dest:adep}"'''
-        )
+            return ("""rsync -a --no-g -e 'ssh """ + self.cm_opts +
+                    self.pem_opts +
+                    """ -p {port}' {host}:{source:e} "{dest:adep}" && """ +
+                    '''mv "{dest:adep}/{source:b}" "{dest:aep}"''')
+        return ("""rsync -a --no-g -e 'ssh """ + self.cm_opts + self.pem_opts +
+                ''' -p {port}' {host}:{source:e} "{dest:adep}"''')
 
     def _get_execute_cmd(self, under_workdir=True, use_heredoc=True) -> str:
         # #1396
@@ -473,38 +442,21 @@ class RemoteHost(object):
             return self.config["execute_cmd"]
         if use_heredoc:
             return (
-                "ssh "
-                + self.cm_opts
-                + self.pem_opts
-                + """ -q {host} -p {port} <<'HEREDOC!!'\nbash --login -c '"""
-                + (
-                    " [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && "
-                    if under_workdir
-                    else " "
-                )
-                + """ {cmd} '\nHEREDOC!!\n"""
-            )
+                "ssh " + self.cm_opts + self.pem_opts +
+                """ -q {host} -p {port} <<'HEREDOC!!'\nbash --login -c '""" +
+                (" [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && "
+                 if under_workdir else " ") + """ {cmd} '\nHEREDOC!!\n""")
         else:
-            return (
-                "ssh "
-                + self.cm_opts
-                + self.pem_opts
-                + """ -q {host} -p {port} "bash --login -c '"""
-                + (
-                    " [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && "
-                    if under_workdir
-                    else " "
-                )
-                + """ {cmd}'" """
-            )
+            return ("ssh " + self.cm_opts + self.pem_opts +
+                    """ -q {host} -p {port} "bash --login -c '""" +
+                    (" [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && "
+                     if under_workdir else " ") + """ {cmd}'" """)
 
     def _get_query_cmd(self):
         return self.config.get(
             "query_cmd",
-            """ssh """
-            + self.cm_opts
-            + self.pem_opts
-            + """ -q {host} -p {port} "bash --login -c '{self.config.get("sos", "sos")} status {task} -v 0'" """,
+            """ssh """ + self.cm_opts + self.pem_opts +
+            """ -q {host} -p {port} "bash --login -c '{self.config.get("sos", "sos")} status {task} -v 0'" """,
         )
 
     def is_shared(self, path):
@@ -512,7 +464,9 @@ class RemoteHost(object):
         for sdir in self.shared_dirs:
             if fullpath.startswith(sdir):
                 # issue 710, if a directory is both under path_map and shared, then it is not considered to be shared.
-                if not any(fullpath.startswith(mdir) for mdir in self.path_map.keys()):
+                if not any(
+                        fullpath.startswith(mdir)
+                        for mdir in self.path_map.keys()):
                     return True
         return False
 
@@ -520,7 +474,8 @@ class RemoteHost(object):
         result = {}
         cwd = os.getcwd()
         if isinstance(source, str) and source.startswith("#"):
-            result[path(source, host="localhost")] = path(source, host=self.alias)
+            result[path(source, host="localhost")] = path(
+                source, host=self.alias)
         elif isinstance(source, (str, path)):
             dest = os.path.abspath(os.path.expanduser(source))
             # we use samefile to avoid problems with case-insensitive file system #522
@@ -528,20 +483,18 @@ class RemoteHost(object):
             # if the cwd = '/Users/user/Project'
             # then, dest = '/USERS/USER/PROJECT/a.txt'
             # would be converted to '/Users/user/Project/a.txt' before path mapping
-            if os.path.exists(dest[: len(cwd)]) and os.path.samefile(
-                dest[: len(cwd)], cwd
-            ):
-                dest = cwd + dest[len(cwd) :]
+            if os.path.exists(dest[:len(cwd)]) and os.path.samefile(
+                    dest[:len(cwd)], cwd):
+                dest = cwd + dest[len(cwd):]
             matched = [
-                k
-                for k in self.path_map.keys()
-                if os.path.exists(dest[: len(k)])
-                and os.path.samefile(dest[: len(k)], k)
+                k for k in self.path_map.keys()
+                if os.path.exists(dest[:len(k)]) and
+                os.path.samefile(dest[:len(k)], k)
             ]
             if matched:
                 # pick the longest key that matches
                 k = max(matched, key=len)
-                dest = self.path_map[k] + dest[len(k) :]
+                dest = self.path_map[k] + dest[len(k):]
             else:
                 env.logger.debug(
                     f"Path {source} is not under any specified paths of localhost and is mapped to {dest} on remote host."
@@ -571,20 +524,18 @@ class RemoteHost(object):
             # if the cwd = '/Users/user/Project'
             # then, dest = '/USERS/USER/PROJECT/a.txt'
             # would be converted to '/Users/user/Project/a.txt' before path mapping
-            if os.path.exists(dest[: len(cwd)]) and os.path.samefile(
-                dest[: len(cwd)], cwd
-            ):
-                dest = cwd + dest[len(cwd) :]
+            if os.path.exists(dest[:len(cwd)]) and os.path.samefile(
+                    dest[:len(cwd)], cwd):
+                dest = cwd + dest[len(cwd):]
             matched = [
-                k
-                for k in self.path_map.keys()
-                if os.path.exists(dest[: len(k)])
-                and os.path.samefile(dest[: len(k)], k)
+                k for k in self.path_map.keys()
+                if os.path.exists(dest[:len(k)]) and
+                os.path.samefile(dest[:len(k)], k)
             ]
             if matched:
                 # pick the longest key that matches
                 k = max(matched, key=len)
-                dest = self.path_map[k] + dest[len(k) :]
+                dest = self.path_map[k] + dest[len(k):]
             else:
                 env.logger.debug(
                     f"Path {source} is not under any specified paths of localhost and is mapped to {dest} on remote host."
@@ -645,20 +596,14 @@ class RemoteHost(object):
             dest = str(dest)
         if isinstance(dest, str):
             matched = [
-                l
-                for l, r in self.path_map.items()
-                if dest.startswith(r)
-                and (
-                    len(r) == len(dest)
-                    or r.endswith("/")
-                    or r.endswith("\\")
-                    or dest[len(r)] in ("/", "\\")
-                )
+                l for l, r in self.path_map.items()
+                if dest.startswith(r) and (len(r) == len(dest) or r.endswith(
+                    "/") or r.endswith("\\") or dest[len(r)] in ("/", "\\"))
             ]
             if matched:
                 # pick the longest key that matches
                 k = max(matched, key=len)
-                dest = k + dest[len(self.path_map[k]) :]
+                dest = k + dest[len(self.path_map[k]):]
             else:
                 env.logger.debug(
                     f"Path {dest} is not under any specified paths of localhost and is mapped to {dest} on local host."
@@ -690,7 +635,8 @@ class RemoteHost(object):
                 env.logger.info(f"``Ignore`` {ignored}")
             p = [path(x) for x in items if isinstance(x, (str, path))]
         else:
-            env.logger.warning(f"Unrecognized items to be sent to host: {items}")
+            env.logger.warning(
+                f"Unrecognized items to be sent to host: {items}")
             return {}
 
         items = sum(
@@ -714,25 +660,19 @@ class RemoteHost(object):
         for source in sorted(sending.keys()):
             dest = self._remote_abs(sending[source])
             if self.is_shared(source):
-                if (
-                    "TASK" in env.config["SOS_DEBUG"]
-                    or "ALL" in env.config["SOS_DEBUG"]
-                ):
+                if ("TASK" in env.config["SOS_DEBUG"] or
+                        "ALL" in env.config["SOS_DEBUG"]):
                     env.log_to_file(
-                        "TASK", f"Skip sending {source} on shared file system"
-                    )
+                        "TASK", f"Skip sending {source} on shared file system")
             else:
-                if (
-                    "TASK" in env.config["SOS_DEBUG"]
-                    or "ALL" in env.config["SOS_DEBUG"]
-                ):
+                if ("TASK" in env.config["SOS_DEBUG"] or
+                        "ALL" in env.config["SOS_DEBUG"]):
                     env.log_to_file(
-                        "TASK", f"Sending ``{source}`` to {self.alias}:{dest}"
-                    )
+                        "TASK", f"Sending ``{source}`` to {self.alias}:{dest}")
                 cmd = cfg_interpolate(
                     self._get_send_cmd(
-                        rename=os.path.basename(source) != os.path.basename(dest)
-                    ),
+                        rename=os.path.basename(source) != os.path.basename(
+                            dest)),
                     {
                         "source": sos_targets(str(source).rstrip("/")),
                         "dest": sos_targets(dest),
@@ -740,10 +680,8 @@ class RemoteHost(object):
                         "port": self.port,
                     },
                 )
-                if (
-                    "TASK" in env.config["SOS_DEBUG"]
-                    or "ALL" in env.config["SOS_DEBUG"]
-                ):
+                if ("TASK" in env.config["SOS_DEBUG"] or
+                        "ALL" in env.config["SOS_DEBUG"]):
                     env.log_to_file("TASK", cmd)
                 ret = subprocess.call(
                     cmd,
@@ -769,12 +707,14 @@ class RemoteHost(object):
                 env.logger.info(f"``Ignore`` {ignored}")
             items = [x for x in items if isinstance(x, (str, path))]
         else:
-            env.logger.warning(f"Unrecognized items to be retrieved from host: {items}")
+            env.logger.warning(
+                f"Unrecognized items to be retrieved from host: {items}")
             return {}
 
         # y could be path
         receiving = {
-            self._remote_abs(y): str(x) for x, y in self._map_path(items).items()
+            self._remote_abs(y): str(x)
+            for x, y in self._map_path(items).items()
         }
         #
         received = {}
@@ -788,16 +728,16 @@ class RemoteHost(object):
                     env.logger.error(
                         f"Failed to create destination directory {dest_dir}: {e}"
                     )
-            if self.is_shared(dest) and os.path.basename(source) == os.path.basename(
-                dest
-            ):
-                env.logger.debug(f"Skip retrieving ``{dest}`` from shared file system")
+            if self.is_shared(dest) and os.path.basename(
+                    source) == os.path.basename(dest):
+                env.logger.debug(
+                    f"Skip retrieving ``{dest}`` from shared file system")
                 received[dest] = source
             else:
                 cmd = cfg_interpolate(
                     self._get_receive_cmd(
-                        rename=os.path.basename(source) != os.path.basename(dest)
-                    ),
+                        rename=os.path.basename(source) != os.path.basename(
+                            dest)),
                     {
                         "source": sos_targets(str(source).rstrip("/")),
                         "dest": sos_targets(dest),
@@ -805,10 +745,8 @@ class RemoteHost(object):
                         "port": self.port,
                     },
                 )
-                if (
-                    "TASK" in env.config["SOS_DEBUG"]
-                    or "ALL" in env.config["SOS_DEBUG"]
-                ):
+                if ("TASK" in env.config["SOS_DEBUG"] or
+                        "ALL" in env.config["SOS_DEBUG"]):
                     env.log_to_file("TASK", cmd)
                 try:
                     ret = subprocess.call(
@@ -839,8 +777,7 @@ class RemoteHost(object):
 
     def _prepare_task(self, task_id):
         task_file = os.path.join(
-            os.path.expanduser("~"), ".sos", "tasks", task_id + ".task"
-        )
+            os.path.expanduser("~"), ".sos", "tasks", task_id + ".task")
         if not os.path.isfile(task_file):
             raise ValueError(f"Missing task definition {task_file}")
         tf = TaskFile(task_id)
@@ -848,67 +785,59 @@ class RemoteHost(object):
         task_vars = params.sos_dict
         runtime = {
             "_runtime": {
-                x: task_vars["_runtime"][x]
-                for x in (
+                x: task_vars["_runtime"][x] for x in (
                     "verbosity",
                     "sig_mode",
                     "run_mode",
                     "walltime",
                     "cores",
                     "mem",
-                )
-                if x in task_vars["_runtime"]
+                ) if x in task_vars["_runtime"]
             },
             task_id: {},
         }
 
-        if (
-            self.config.get("max_mem", None) is not None
-            and task_vars["_runtime"].get("mem", None) is not None
-            and self.config["max_mem"] < task_vars["_runtime"]["mem"]
-        ):
+        if (self.config.get("max_mem", None) is not None and
+                task_vars["_runtime"].get("mem", None) is not None and
+                self.config["max_mem"] < task_vars["_runtime"]["mem"]):
             raise ValueError(
                 f'Task {task_id} requested more mem ({task_vars["_runtime"]["mem"]}) than allowed max_mem ({self.config["max_mem"]})'
             )
-        if (
-            self.config.get("max_cores", None) is not None
-            and task_vars["_runtime"].get("cores", None) is not None
-            and self.config["max_cores"] < task_vars["_runtime"]["cores"]
-        ):
+        if (self.config.get("max_cores", None) is not None and
+                task_vars["_runtime"].get("cores", None) is not None and
+                self.config["max_cores"] < task_vars["_runtime"]["cores"]):
             raise ValueError(
                 f"Task {task_id} requested more cores ({task_vars['_runtime']['cores']}) than allowed max_cores ({self.config['max_cores']})"
             )
-        if (
-            self.config.get("max_walltime", None) is not None
-            and task_vars["_runtime"].get("walltime", None) is not None
-            and expand_time(self.config["max_walltime"])
-            < expand_time(task_vars["_runtime"]["walltime"])
-        ):
+        if (self.config.get("max_walltime", None) is not None and
+                task_vars["_runtime"].get("walltime", None) is not None and
+                expand_time(self.config["max_walltime"]) < expand_time(
+                    task_vars["_runtime"]["walltime"])):
             raise ValueError(
                 f'Task {task_id} requested more walltime ({task_vars["_runtime"]["walltime"]}) than allowed max_walltime ({self.config["max_walltime"]})'
             )
 
-        if task_vars["_input"] and not isinstance(task_vars["_input"], Undetermined):
+        if task_vars["_input"] and not isinstance(task_vars["_input"],
+                                                  Undetermined):
             sent = self.send_to_host(task_vars["_input"])
             if sent:
                 env.logger.info(
                     f"{task_id} ``sent`` {short_repr(sent.keys())} to {self.alias}"
                 )
-        if task_vars["_depends"] and not isinstance(
-            task_vars["_depends"], Undetermined
-        ):
+        if task_vars["_depends"] and not isinstance(task_vars["_depends"],
+                                                    Undetermined):
             sent = self.send_to_host(task_vars["_depends"])
             if sent:
                 env.logger.info(
                     f"{task_id} ``sent`` {short_repr(sent.keys())} to {self.alias}"
                 )
         if "to_host" in task_vars["_runtime"]:
-            if not isinstance(task_vars["_runtime"]["to_host"], (str, Sequence)) or (
-                isinstance(task_vars["_runtime"]["to_host"], Sequence)
-                and not all(
-                    isinstance(x, str) for x in task_vars["_runtime"]["to_host"]
-                )
-            ):
+            if not isinstance(
+                    task_vars["_runtime"]["to_host"],
+                (str, Sequence)) or (isinstance(
+                    task_vars["_runtime"]["to_host"], Sequence) and not all(
+                        isinstance(x, str)
+                        for x in task_vars["_runtime"]["to_host"])):
                 raise ValueError(
                     f'Parameter to_host accepts a list of paths (strings). {task_vars["_runtime"]["to_host"]} provided'
                 )
@@ -921,10 +850,8 @@ class RemoteHost(object):
 
         # map variables
         runtime["_runtime"]["workdir"] = (
-            task_vars["_runtime"]["workdir"]
-            if "workdir" in task_vars["_runtime"]
-            else path.cwd().to_named_path()
-        )
+            task_vars["_runtime"]["workdir"] if "workdir"
+            in task_vars["_runtime"] else path.cwd().to_named_path())
 
         if runtime["_runtime"]["workdir"].startswith("#"):
             try:
@@ -938,19 +865,17 @@ class RemoteHost(object):
                 f'Absolute path {path(runtime["_runtime"]["workdir"])} used as workdir.'
             )
 
-        env.log_to_file("TASK", f'Set workdir to {runtime["_runtime"]["workdir"]}')
+        env.log_to_file("TASK",
+                        f'Set workdir to {runtime["_runtime"]["workdir"]}')
 
         # server restrictions #488
         for key in ("max_mem", "max_cores", "max_walltime"):
             if key in self.config:
                 runtime["_runtime"][key] = (
                     format_HHMMSS(self.config[key])
-                    if key == "max_walltime"
-                    else self.config[key]
-                )
+                    if key == "max_walltime" else self.config[key])
         runtime["_runtime"]["localhost"] = get_config(
-            ["hosts", self.alias], allowed_keys=["shared", "paths"]
-        )
+            ["hosts", self.alias], allowed_keys=["shared", "paths"])
         # only update task file if there are runtime information
         if len(runtime) > 1 or runtime["_runtime"] or runtime != old_runtime:
             tf.runtime = runtime
@@ -979,14 +904,16 @@ class RemoteHost(object):
                 f"Failed to copy job {job_file} to {self.alias} using command {send_cmd}: {e}"
             )
 
-    def check_output(self, cmd: object, under_workdir=False, **kwargs) -> object:
+    def check_output(self,
+                     cmd: object,
+                     under_workdir=False,
+                     **kwargs) -> object:
         if isinstance(cmd, list):
             cmd = subprocess.list2cmdline(cmd)
         try:
             cmd = cfg_interpolate(
                 self._get_execute_cmd(
-                    under_workdir=under_workdir, use_heredoc="." in cmd
-                ),
+                    under_workdir=under_workdir, use_heredoc="." in cmd),
                 {
                     "host": self.address,
                     "port": self.port,
@@ -996,8 +923,7 @@ class RemoteHost(object):
             )
         except Exception as e:
             raise ValueError(
-                f'Failed to run command {cmd}: {e} ({env.sos_dict["CONFIG"]})'
-            )
+                f'Failed to run command {cmd}: {e} ({env.sos_dict["CONFIG"]})')
         if "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
             env.log_to_file("TASK", f"Executing command ``{cmd}``")
         try:
@@ -1012,8 +938,7 @@ class RemoteHost(object):
         try:
             cmd = cfg_interpolate(
                 self._get_execute_cmd(
-                    under_workdir=under_workdir, use_heredoc="." in cmd
-                ),
+                    under_workdir=under_workdir, use_heredoc="." in cmd),
                 {
                     "host": self.address,
                     "port": self.port,
@@ -1036,7 +961,8 @@ class RemoteHost(object):
             cmd = subprocess.list2cmdline(cmd)
         try:
             cmd = cfg_interpolate(
-                self._get_execute_cmd(under_workdir=False, use_heredoc="." in cmd),
+                self._get_execute_cmd(
+                    under_workdir=False, use_heredoc="." in cmd),
                 {
                     "host": self.address,
                     "port": self.port,
@@ -1079,8 +1005,8 @@ class RemoteHost(object):
         # make sure the files are readable and remove them. Also, we do not want any file that is
         # obsolete to appear as new after copying
         for lfile in glob.glob(
-            os.path.join(os.path.expanduser("~"), ".sos", "tasks", task_id + ".*")
-        ):
+                os.path.join(
+                    os.path.expanduser("~"), ".sos", "tasks", task_id + ".*")):
             if not os.access(lfile, os.W_OK):
                 os.chmod(lfile, stat.S_IREAD | stat.S_IWRITE)
             # os.remove(lfile)
@@ -1097,17 +1023,16 @@ class RemoteHost(object):
             ret = subprocess.call(receive_cmd, shell=True)
             if ret != 0:
                 raise RuntimeError(
-                    "Failed to retrieve result of job {} from {} with cmd\n{}".format(
-                        task_id, self.alias, receive_cmd
-                    )
-                )
+                    "Failed to retrieve result of job {} from {} with cmd\n{}"
+                    .format(task_id, self.alias, receive_cmd))
 
         tf = TaskFile(task_id)
         params = tf.params
         res = tf.result
 
         if not res:
-            env.logger.debug(f"Result for {task_id} is not received (no result)")
+            env.logger.debug(
+                f"Result for {task_id} is not received (no result)")
             return {
                 "ret_code": 1,
                 "task": task_id,
@@ -1115,9 +1040,8 @@ class RemoteHost(object):
                 "output": sos_targets(),
             }
 
-        if ("ret_code" in res and res["ret_code"] != 0) or (
-            "succ" in res and res["succ"] != 0
-        ):
+        if ("ret_code" in res and res["ret_code"] != 0) or ("succ" in res and
+                                                            res["succ"] != 0):
             _show_err_and_out(task_id, res)
             env.logger.info(f"Ignore remote results for failed job {task_id}")
             return res
@@ -1127,22 +1051,20 @@ class RemoteHost(object):
         # do we need to copy files? We need to consult original task file
         # not the converted one
         job_dict = params.sos_dict
-        if (
-            "_output" in job_dict
-            and job_dict["_output"]
-            and not isinstance(job_dict["_output"], Undetermined)
-            and env.config["run_mode"] != "dryrun"
-        ):
+        if ("_output" in job_dict and job_dict["_output"] and
+                not isinstance(job_dict["_output"], Undetermined) and
+                env.config["run_mode"] != "dryrun"):
             received = self.receive_from_host(
-                [x for x in job_dict["_output"] if isinstance(x, (str, path))]
-            )
+                [x for x in job_dict["_output"] if isinstance(x, (str, path))])
             if received:
                 env.logger.info(
                     f"{task_id} ``received`` {short_repr(received.keys())} from {self.alias}"
                 )
-        if "from_host" in job_dict["_runtime"] and env.config["run_mode"] != "dryrun":
+        if "from_host" in job_dict[
+                "_runtime"] and env.config["run_mode"] != "dryrun":
             if isinstance(job_dict["_runtime"]["from_host"], (Sequence, str)):
-                received = self.receive_from_host(job_dict["_runtime"]["from_host"])
+                received = self.receive_from_host(
+                    job_dict["_runtime"]["from_host"])
                 if received:
                     env.logger.info(
                         f"{task_id} ``received`` {short_repr(received.keys())} from {self.alias}"
@@ -1158,7 +1080,8 @@ class RemoteHost(object):
                 env.logger.warning("Missing _output in task dict")
                 res["output"] = sos_targets()
             elif job_dict["_output"].undetermined():
-                res["output"] = sos_targets(self._reverse_map_var(res["output"]))
+                res["output"] = sos_targets(
+                    self._reverse_map_var(res["output"]))
             else:
                 res["output"] = job_dict["_output"]
         if "subtasks" in res:
@@ -1170,10 +1093,11 @@ class RemoteHost(object):
                         res["subtasks"][tid]["output"] = sos_targets()
                     elif subparams.sos_dict["_output"].undetermined():
                         res["subtasks"][tid]["output"] = sos_targets(
-                            self._reverse_map_var(res["subtasks"][tid]["output"])
-                        )
+                            self._reverse_map_var(
+                                res["subtasks"][tid]["output"]))
                     else:
-                        res["subtasks"][tid]["output"] = subparams.sos_dict["_output"]
+                        res["subtasks"][tid]["output"] = subparams.sos_dict[
+                            "_output"]
         return res
 
 
@@ -1214,11 +1138,13 @@ class Host:
         #
         for host, host_info in env.sos_dict["CONFIG"]["hosts"].items():
             # find by key hostname
-            if "hostname" in host_info and host_info["hostname"].lower() == hostname:
+            if "hostname" in host_info and host_info["hostname"].lower(
+            ) == hostname:
                 return host
             # find by key hostname
             if "hostname" in host_info:
-                hn = get_config("hosts", host, "hostname", expected_type=str).lower()
+                hn = get_config(
+                    "hosts", host, "hostname", expected_type=str).lower()
                 if hn.split(".")[0] == hostname or hn == hostname.split(".")[0]:
                     return host
             # find by alias
@@ -1227,10 +1153,8 @@ class Host:
             # find by address
             if "address" in host_info:
                 addr = get_config("hosts", host, "address", expected_type=str)
-                if (
-                    addr.split("@")[-1].lower() == hostname
-                    or addr.split(".", 1)[0].split("@")[-1].lower() == hostname
-                ):
+                if (addr.split("@")[-1].lower() == hostname or addr.split(
+                        ".", 1)[0].split("@")[-1].lower() == hostname):
                     return host
                 if any(ip == addr.split("@")[-1] for ip in ips):
                     return host
@@ -1243,16 +1167,17 @@ class Host:
         # look for an entry with gethost
         if "hosts" not in env.sos_dict["CONFIG"]:
             env.sos_dict["CONFIG"]["hosts"] = {
-                "localhost": {"address": "localhost", "alias": "localhost"}
+                "localhost": {
+                    "address": "localhost",
+                    "alias": "localhost"
+                }
             }
             return "localhost"
         #
         # check if a key localhost is defined
         if "localhost" in env.sos_dict["CONFIG"]:
-            if (
-                env.sos_dict["CONFIG"]["localhost"]
-                not in env.sos_dict["CONFIG"]["hosts"]
-            ):
+            if (env.sos_dict["CONFIG"]["localhost"]
+                    not in env.sos_dict["CONFIG"]["hosts"]):
                 raise ValueError(
                     f"Undefined localhost {env.sos_dict['CONFIG']['localhost']}"
                 )
@@ -1317,25 +1242,26 @@ class Host:
             )
 
             same_host = LOCAL == REMOTE
-            if same_host and LOCAL != "localhost" and LOCAL != DETECTED and DETECTED not in env.sos_dict['CONFIG']['hosts']:
+            if same_host and LOCAL != "localhost" and LOCAL != DETECTED and DETECTED not in env.sos_dict[
+                    'CONFIG']['hosts']:
                 # if "localhost" is defined, but does not match by ip address etc,
                 # we assume that the matched_host is a separate host with the same
                 # configuration (see #1407 for details)
-                env.logger.debug(f'Specified host {LOCAL} does not match detected host {DETECTED}.')
-                local_cfg = copy.deepcopy(env.sos_dict["CONFIG"]["hosts"][LOCAL])
+                env.logger.debug(
+                    f'Specified host {LOCAL} does not match detected host {DETECTED}.'
+                )
+                local_cfg = copy.deepcopy(
+                    env.sos_dict["CONFIG"]["hosts"][LOCAL])
                 env.sos_dict["CONFIG"]["hosts"][DETECTED] = local_cfg
                 LOCAL = DETECTED
 
             cfg = env.sos_dict["CONFIG"]["hosts"]
             # if local and remote hosts are the same
-            if (same_host
-                or "address" not in env.sos_dict["CONFIG"]["hosts"][REMOTE]
-                or (
-                    "address" in env.sos_dict["CONFIG"]["hosts"][REMOTE]
-                    and env.sos_dict["CONFIG"]["hosts"][REMOTE]["address"]
-                    == "localhost"
-                )
-            ):
+            if (same_host or
+                    "address" not in env.sos_dict["CONFIG"]["hosts"][REMOTE] or
+                ("address" in env.sos_dict["CONFIG"]["hosts"][REMOTE] and
+                 env.sos_dict["CONFIG"]["hosts"][REMOTE]["address"]
+                 == "localhost")):
                 # there would be no path map
                 self.config["path_map"] = []
                 self.config["shared"] = ["/"]
@@ -1351,15 +1277,12 @@ class Host:
 
                 if "shared" in cfg[LOCAL] and "shared" in cfg[REMOTE]:
                     common = set(cfg[LOCAL]["shared"].keys()) & set(
-                        cfg[REMOTE]["shared"].keys()
-                    )
+                        cfg[REMOTE]["shared"].keys())
                     if common:
                         lcl_shrd = get_config(
-                            "hosts", LOCAL, "shared", expected_type=dict
-                        )
+                            "hosts", LOCAL, "shared", expected_type=dict)
                         rmt_shrd = get_config(
-                            "hosts", REMOTE, "shared", expected_type=dict
-                        )
+                            "hosts", REMOTE, "shared", expected_type=dict)
                         self.config["shared"] = [
                             normalize_value(lcl_shrd[x]) for x in common
                         ]
@@ -1368,36 +1291,36 @@ class Host:
                             for x in common
                         ]
                 # if paths are defined for both local and remote host, define path_map
-                if ("paths" in cfg[LOCAL] and cfg[LOCAL]["paths"]) and (
-                    "paths" in cfg[REMOTE] and cfg[REMOTE]["paths"]
-                ):
-                    if any(
-                        k not in cfg[REMOTE]["paths"]
-                        for k in cfg[LOCAL]["paths"].keys()
-                    ):
+                if ("paths" in cfg[LOCAL] and
+                        cfg[LOCAL]["paths"]) and ("paths" in cfg[REMOTE] and
+                                                  cfg[REMOTE]["paths"]):
+                    if any(k not in cfg[REMOTE]["paths"]
+                           for k in cfg[LOCAL]["paths"].keys()):
                         env.logger.debug(
                             f'One or more local paths {", ".join(cfg[LOCAL]["paths"].keys())} cannot be mapped to remote host {REMOTE} with paths {",".join(cfg[REMOTE]["paths"].keys())}'
                         )
                     #
-                    lpaths = get_config("hosts", LOCAL, "paths", expected_type=dict)
-                    rpaths = get_config("hosts", REMOTE, "paths", expected_type=dict)
-                    self.config["path_map"].extend(
-                        [
-                            f"{normalize_value(lpaths[x])} -> {normalize_value(rpaths[x])}"
-                            for x in lpaths.keys()
-                            if x in rpaths
-                        ]
-                    )
+                    lpaths = get_config(
+                        "hosts", LOCAL, "paths", expected_type=dict)
+                    rpaths = get_config(
+                        "hosts", REMOTE, "paths", expected_type=dict)
+                    self.config["path_map"].extend([
+                        f"{normalize_value(lpaths[x])} -> {normalize_value(rpaths[x])}"
+                        for x in lpaths.keys()
+                        if x in rpaths
+                    ])
                 if "pem_file" in cfg[LOCAL]:
                     if isinstance(cfg[LOCAL]["pem_file"], dict):
                         if REMOTE in cfg[LOCAL]["pem_file"]:
                             self.config["pem_file"] = get_config(
-                                "hosts", LOCAL, "pem_file", REMOTE, expected_type=str
-                            )
+                                "hosts",
+                                LOCAL,
+                                "pem_file",
+                                REMOTE,
+                                expected_type=str)
                     elif isinstance(cfg[LOCAL]["pem_file"], str):
                         self.config["pem_file"] = get_config(
-                            "hosts", LOCAL, "pem_file", expected_type=str
-                        )
+                            "hosts", LOCAL, "pem_file", expected_type=str)
                     else:
                         raise ValueError(
                             f"Option pem_file should be a string or dictionary, {cfg[LOCAL]['pem_file']} provided."
@@ -1410,14 +1333,16 @@ class Host:
                 "alias": LOCAL,
             }
         else:
-            raise ValueError(f"Undefined local and remote hosts {LOCAL} and {REMOTE}.")
+            raise ValueError(
+                f"Undefined local and remote hosts {LOCAL} and {REMOTE}.")
         #
         self.config["alias"] = self.alias
         self.description = self.config.get("description", "")
 
         # standardize parameters max_walltime, max_cores, and max_mem for the host
         if "max_walltime" in self.config:
-            self.config["max_walltime"] = format_HHMMSS(self.config["max_walltime"])
+            self.config["max_walltime"] = format_HHMMSS(
+                self.config["max_walltime"])
         if "max_cores" in self.config:
             if not isinstance(self.config["max_cores"], int):
                 raise ValueError("An integer is expected for max_cores")
@@ -1426,32 +1351,31 @@ class Host:
 
     def _get_task_and_workflow_engine(self):
         if self._engine_type == "process":
-            task_engine = BackgroundProcess_TaskEngine(self.host_instances[self.alias])
+            task_engine = BackgroundProcess_TaskEngine(
+                self.host_instances[self.alias])
             workflow_engine = BackgroundProcess_WorkflowEngine(
-                self.host_instances[self.alias]
-            )
+                self.host_instances[self.alias])
         else:
             task_engine = None
             workflow_engine = None
 
-            for entrypoint in pkg_resources.iter_entry_points(group="sos_taskengines"):
+            for entrypoint in pkg_resources.iter_entry_points(
+                    group="sos_taskengines"):
                 try:
                     if entrypoint.name == self._engine_type:
-                        task_engine = entrypoint.load()(self.host_instances[self.alias])
+                        task_engine = entrypoint.load()(
+                            self.host_instances[self.alias])
                         break
                 except Exception as e:
                     env.logger.debug(
-                        f"Failed to load task engine {self._engine_type}: {e}"
-                    )
+                        f"Failed to load task engine {self._engine_type}: {e}")
 
             for entrypoint in pkg_resources.iter_entry_points(
-                group="sos_workflowengines"
-            ):
+                    group="sos_workflowengines"):
                 try:
                     if entrypoint.name == self._engine_type:
                         workflow_engine = entrypoint.load()(
-                            self.host_instances[self.alias]
-                        )
+                            self.host_instances[self.alias])
                         break
                 except Exception as e:
                     env.logger.debug(
@@ -1464,24 +1388,22 @@ class Host:
                 )
         return task_engine, workflow_engine
 
-    def _get_host_agent(self, start_engine: bool, test_connection: bool) -> None:
+    def _get_host_agent(self, start_engine: bool,
+                        test_connection: bool) -> None:
         if "queue_type" not in self.config:
             self._engine_type = "process"
         else:
             self._engine_type = self.config["queue_type"].strip()
         # if there is no engine, or if the engine was stopped
         if self.alias not in self.host_instances or (
-            hasattr(self.host_instances[self.alias], "_task_engine")
-            and self.host_instances[self.alias]._task_engine._is_stopped
-        ):
+                hasattr(self.host_instances[self.alias], "_task_engine") and
+                self.host_instances[self.alias]._task_engine._is_stopped):
             if self.config["address"] == "localhost":
                 self.host_instances[self.alias] = LocalHost(
-                    self.config, test_connection=test_connection
-                )
+                    self.config, test_connection=test_connection)
             else:
                 self.host_instances[self.alias] = RemoteHost(
-                    self.config, test_connection=test_connection
-                )
+                    self.config, test_connection=test_connection)
 
             task_engine, workflow_engine = self._get_task_and_workflow_engine()
             self.host_instances[self.alias]._task_engine = task_engine
@@ -1499,11 +1421,8 @@ class Host:
             self._workflow_engine = self._host_agent._workflow_engine
         # it is possible that Host() is initialized before with start_engine=False
         # and called again to start engine
-        if (
-            start_engine
-            and self._task_engine is not None
-            and not self._task_engine.is_alive()
-        ):
+        if (start_engine and self._task_engine is not None and
+                not self._task_engine.is_alive()):
             self._task_engine.start()
 
     # public interface
@@ -1544,4 +1463,5 @@ class Host:
             raise RuntimeError(
                 f"No workflow engine or invalid engine definition defined for host {self.alias}"
             )
-        return self._workflow_engine.execute_workflow(script, cmd, **template_args)
+        return self._workflow_engine.execute_workflow(script, cmd,
+                                                      **template_args)

@@ -210,7 +210,8 @@ class SoS_DockerClient:
 
             if ret != 0:
                 if script:
-                    debug_script_dir = os.path.join(os.path.expanduser('~'), '.sos')
+                    debug_script_dir = os.path.join(
+                        os.path.expanduser('~'), '.sos')
                     msg = 'The Dockerfile has been saved to {}/Dockerfile. To reproduce the error please run:\n``{}``'.format(
                         debug_script_dir, cmd.replace(tempdir,
                                                       debug_script_dir))

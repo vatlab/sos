@@ -50,10 +50,11 @@ class SoS_SpyderKernel(SoS_Kernel, SpyderKernel):
         pass
 
     def get_edit_parser(self):
-        parser = argparse.ArgumentParser(prog='%edit',
-            description='Edit an existing file in spyder')
+        parser = argparse.ArgumentParser(
+            prog='%edit', description='Edit an existing file in spyder')
         parser.add_argument('filenames', nargs='+')
-        parser.add_argument('-c', '--cd', action='store_true', dest='__switch_dir__')
+        parser.add_argument(
+            '-c', '--cd', action='store_true', dest='__switch_dir__')
         parser.error = self._parse_error
         return parser
 
@@ -72,28 +73,42 @@ class SoS_SpyderKernel(SoS_Kernel, SpyderKernel):
                 return
         import1 = "import sys"
         import2 = "from spyder.app.start import send_args_to_spyder"
-        code = "send_args_to_spyder([{}])".format(','.join('"{}"'.format(x) for x in args.filenames))
-        cmd = "{0} -c '{1}; {2}; {3}'".format(sys.executable,
-            import1, import2, code)
+        code = "send_args_to_spyder([{}])".format(','.join(
+            '"{}"'.format(x) for x in args.filenames))
+        cmd = "{0} -c '{1}; {2}; {3}'".format(sys.executable, import1, import2,
+                                              code)
         subprocess.call(cmd, shell=True)
         if args.__switch_dir__:
             script_dir = os.path.dirname(os.path.abspath(args.filenames[-1]))
             os.chdir(script_dir)
-            self.send_response(self.iopub_socket, 'stream',
-                  {'name': 'stdout', 'text': 'Current working directory is set to {}\n'.format(script_dir)})
+            self.send_response(
+                self.iopub_socket, 'stream', {
+                    'name':
+                        'stdout',
+                    'text':
+                        'Current working directory is set to {}\n'.format(
+                            script_dir)
+                })
 
     # add an additional magic that only useful for spyder
-    def _do_execute(self, code, silent, store_history=True, user_expressions=None,
-                   allow_stdin=False):
+    def _do_execute(self,
+                    code,
+                    silent,
+                    store_history=True,
+                    user_expressions=None,
+                    allow_stdin=False):
         code = self.remove_leading_comments(code)
 
         if self.MAGIC_EDIT.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_edit(options)
             # self.options will be set to inflence the execution of remaing_code
-            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            return self._do_execute(remaining_code, silent, store_history,
+                                    user_expressions, allow_stdin)
         else:
-            return super(SoS_SpyderKernel, self)._do_execute(code, silent, store_history, user_expressions, allow_stdin)
+            return super(SoS_SpyderKernel,
+                         self)._do_execute(code, silent, store_history,
+                                           user_expressions, allow_stdin)
 
     def _reset_dict(self):
         super(SoS_SpyderKernel, self)._reset_dict()
@@ -109,6 +124,7 @@ def get_ipython():
 ''', None)
         self.original_keys.add('__ipython__')
         self.original_keys.add('get_ipython')
+
 
 if __name__ == '__main__':
     from ipykernel.kernelapp import IPKernelApp

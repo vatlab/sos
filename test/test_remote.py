@@ -17,7 +17,8 @@ try:
 except subprocess.CalledProcessError:
     subprocess.call("sh build_test_docker.sh", shell=True)
     try:
-        subprocess.check_output("docker ps | grep test_sos", shell=True).decode()
+        subprocess.check_output(
+            "docker ps | grep test_sos", shell=True).decode()
     except subprocess.CalledProcessError:
         print("Failed to set up a docker machine with sos")
         has_docker = False
@@ -153,7 +154,10 @@ def test_worker_procs():
         bash: expand=True
         echo {i}
         """,
-        options={"sig_mode": "force", "worker_proces": ["1", "localhost:2"]},
+        options={
+            "sig_mode": "force",
+            "worker_proces": ["1", "localhost:2"]
+        },
     )
 
 
@@ -185,12 +189,10 @@ def test_remote_execute(clear_now_and_after):
         w.write("something")
 
     assert 0 == subprocess.call(
-        "sos remote push docker --files local.txt -c ~/docker.yml", shell=True
-    )
+        "sos remote push docker --files local.txt -c ~/docker.yml", shell=True)
 
     with open("test_remote.sos", "w") as tr:
-        tr.write(
-            """
+        tr.write("""
 [10]
 input: 'local.txt'
 output: 'result_remote.txt'
@@ -200,8 +202,7 @@ run:
 cp local.txt result_remote.txt
 echo 'adf' >> 'result_remote.txt'
 
-"""
-        )
+""")
     assert 0 == subprocess.call(
         "sos run test_remote.sos -c ~/docker.yml -r docker -s force",
         shell=True,
@@ -212,8 +213,8 @@ echo 'adf' >> 'result_remote.txt'
     # self.assertEqual(subprocess.call('sos preview result_remote.txt -c ~/docker.yml -r docker', shell=True), 0)
     # self.assertNotEqual(subprocess.call('sos preview result_remote.txt', shell=True), 0)
     assert 0 == subprocess.call(
-        "sos remote pull docker --files result_remote.txt -c ~/docker.yml", shell=True
-    )
+        "sos remote pull docker --files result_remote.txt -c ~/docker.yml",
+        shell=True)
 
     assert file_target("result_remote.txt").target_exists()
 
@@ -229,8 +230,8 @@ echo 'adf' >> 'result_remote.txt'
         shell=True,
     )
     assert 0 == subprocess.call(
-        "sos remote pull docker --files result_remote1.txt -c ~/docker.yml", shell=True
-    )
+        "sos remote pull docker --files result_remote1.txt -c ~/docker.yml",
+        shell=True)
 
     assert file_target("result_remote1.txt").target_exists()
 
@@ -248,8 +249,8 @@ sh: expand=True
     echo I am {i} >> {_output}
     ''')
     assert 0 == subprocess.call(
-        "sos run test_r_q.sos -c ~/docker.yml -r ts -q ts", shell=True
-    )
+        "sos run test_r_q.sos -c ~/docker.yml -r ts -q ts", shell=True)
+
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_signature_of_remote_target(clear_now_and_after, monkeypatch):
@@ -257,15 +258,13 @@ def test_signature_of_remote_target(clear_now_and_after, monkeypatch):
     monkeypatch.setenv("SOS_DEBUG", "TASK,-")
     clear_now_and_after("remote_file.txt")  # , "result.txt")
     with open("remote_file.txt", "w") as rf:
-        rf.write(
-            """line1
+        rf.write("""line1
         line2
         line3
-        """
-        )
+        """)
     assert 0 == subprocess.call(
-        "sos remote push docker --files remote_file.txt -c ~/docker.yml", shell=True
-    )
+        "sos remote push docker --files remote_file.txt -c ~/docker.yml",
+        shell=True)
     os.remove("remote_file.txt")
     #
     wf = """
@@ -288,17 +287,15 @@ def test_signature_of_remote_target(clear_now_and_after, monkeypatch):
     #
     # now change the remote file
     with open("remote_file.txt", "w") as rf:
-        rf.write(
-            """line1
+        rf.write("""line1
         line2
         line3
         line4
         line5
-        """
-        )
+        """)
     assert 0 == subprocess.call(
-        "sos remote push docker --files remote_file.txt -c ~/docker.yml", shell=True
-    )
+        "sos remote push docker --files remote_file.txt -c ~/docker.yml",
+        shell=True)
     os.remove("remote_file.txt")
     #
     execute_workflow(

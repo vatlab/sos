@@ -102,9 +102,8 @@ def emphasize(msg: str, color: Optional[str] = None):
     elif level_color == 0:
         return re.sub(r"``([^`]*)``", "\033[32m\\1\033[0m", str(msg))
     else:
-        return re.sub(
-            r"``([^`]*)``", f"\033[0m\033[32m\\1\033[0m\033[{level_color}m", str(msg)
-        )
+        return re.sub(r"``([^`]*)``",
+                      f"\033[0m\033[32m\\1\033[0m\033[{level_color}m", str(msg))
 
 
 class ColoredFormatter(logging.Formatter):
@@ -131,7 +130,8 @@ class ColoredFormatter(logging.Formatter):
             level_color = self.LEVEL_COLOR[level_name]
             record.color_levelname = colorstr(level_name, level_color)
             record.color_name = colorstr(record.name, level_color)
-            record.color_msg = colorstr(emphasize(record.msg, level_color), level_color)
+            record.color_msg = colorstr(
+                emphasize(record.msg, level_color), level_color)
         else:
             # for INFO, use default color
             record.color_levelname = record.levelname
@@ -147,9 +147,8 @@ def short_repr(obj, noneAsNA=False):
     if obj is None:
         return "unspecified" if noneAsNA else "None"
     elif isinstance(obj, str) and len(obj) > 80:
-        return "{}...{}".format(
-            obj[:60].replace("\n", "\\n"), obj[-20:].replace("\n", "\\n")
-        )
+        return "{}...{}".format(obj[:60].replace("\n", "\\n"),
+                                obj[-20:].replace("\n", "\\n"))
     elif isinstance(obj, (str, int, float, bool)):
         return repr(obj)
     elif hasattr(obj, "__short_repr__"):
@@ -218,19 +217,15 @@ class WorkflowDict(object):
         """A short cut to set value to key without triggering any logging
         or warning message."""
         if hasattr(value, "labels"):
-            if (
-                "VARIABLE" in env.config["SOS_DEBUG"]
-                or "ALL" in env.config["SOS_DEBUG"]
-            ):
+            if ("VARIABLE" in env.config["SOS_DEBUG"] or
+                    "ALL" in env.config["SOS_DEBUG"]):
                 env.log_to_file(
                     "VARIABLE",
                     f"Set {key} to {short_repr(value)} with labels {short_repr(value.labels)}",
                 )
         else:
-            if (
-                "VARIABLE" in env.config["SOS_DEBUG"]
-                or "ALL" in env.config["SOS_DEBUG"]
-            ):
+            if ("VARIABLE" in env.config["SOS_DEBUG"] or
+                    "ALL" in env.config["SOS_DEBUG"]):
                 env.log_to_file(
                     "VARIABLE",
                     f"Set {key} to {short_repr(value)} of type {value.__class__.__name__}",
@@ -270,28 +265,27 @@ class WorkflowDict(object):
         if env.config["run_mode"] == "prepare":
             self._warn(key, value)
         if key in (
-            "input",
-            "output",
-            "depends",
-            "_input",
-            "_output",
-            "_depends",
-            "_runtime",
+                "input",
+                "output",
+                "depends",
+                "_input",
+                "_output",
+                "_depends",
+                "_runtime",
         ):
             raise ValueError(f"Variable {key} can only be set by SoS")
         self.set(key, value)
 
     def _log(self, key, value):
-        if "VARIABLE" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
-            env.log_to_file("VARIABLE", f"Set ``{key}`` = ``{short_repr(value)}``")
+        if "VARIABLE" in env.config["SOS_DEBUG"] or "ALL" in env.config[
+                "SOS_DEBUG"]:
+            env.log_to_file("VARIABLE",
+                            f"Set ``{key}`` = ``{short_repr(value)}``")
 
     def _warn(self, key, value):
-        if (
-            key.startswith("_")
-            and not key.startswith("__")
-            and key
-            not in ("_input", "_output", "_step", "_index", "_depends", "_runtime")
-        ):
+        if (key.startswith("_") and not key.startswith("__") and
+                key not in ("_input", "_output", "_step", "_index", "_depends",
+                            "_runtime")):
             env.logger.warning(
                 f"{key}: Variables with leading underscore is reserved for SoS temporary variables."
             )
@@ -332,10 +326,10 @@ def fileMD5(filename, partial=True):
     filesize = os.path.getsize(filename)
     # calculate md5 for specified file
     md5 = hash_md5()
-    block_size = 2 ** 20  # buffer of 1M
+    block_size = 2**20  # buffer of 1M
     try:
         # 2**24 = 16M
-        if (not partial) or filesize < 2 ** 24:
+        if (not partial) or filesize < 2**24:
             with open(filename, "rb") as f:
                 while True:
                     data = f.read(block_size)
@@ -351,7 +345,7 @@ def fileMD5(filename, partial=True):
                     count -= 1
                     if count == 8:
                         # 2**23 = 8M
-                        f.seek(-(2 ** 23), 2)
+                        f.seek(-(2**23), 2)
                     if not data or count == 0:
                         break
                     md5.update(data)
@@ -422,21 +416,24 @@ class RuntimeEnvironments(object):
         self._sub_envs[self._sub_idx]["sos_dict"] = self.sos_dict
         self._sub_envs[self._sub_idx]["config"] = copy.deepcopy(env.config)
         self._sub_envs[self._sub_idx]["socket"] = (
-            env.__socket__ if hasattr(env, "__socket__") else None
-        )
+            env.__socket__ if hasattr(env, "__socket__") else None)
         if len(self._sub_envs) <= idx:
-            self._sub_envs.append(
-                {
-                    "sos_dict": WorkflowDict(),
-                    "config": copy.deepcopy(env.config),
-                    "socket": env.__socket__ if hasattr(env, "__socket__") else None,
-                }
-            )
+            self._sub_envs.append({
+                "sos_dict":
+                    WorkflowDict(),
+                "config":
+                    copy.deepcopy(env.config),
+                "socket":
+                    env.__socket__ if hasattr(env, "__socket__") else None,
+            })
         if not self._sub_envs[idx]:
             self._sub_envs[idx] = {
-                "sos_dict": WorkflowDict(),
-                "config": copy.deepcopy(env.config),
-                "socket": env.__socket__ if hasattr(env, "__socket__") else None,
+                "sos_dict":
+                    WorkflowDict(),
+                "config":
+                    copy.deepcopy(env.config),
+                "socket":
+                    env.__socket__ if hasattr(env, "__socket__") else None,
             }
         self.sos_dict = self._sub_envs[idx]["sos_dict"]
         env.config = self._sub_envs[idx]["config"]
@@ -452,10 +449,8 @@ class RuntimeEnvironments(object):
         if not msg:
             self.logger.debug(topic)
             return
-        if (
-            topic not in self.config["SOS_DEBUG"]
-            and "ALL" not in self.config["SOS_DEBUG"]
-        ):
+        if (topic not in self.config["SOS_DEBUG"] and
+                "ALL" not in self.config["SOS_DEBUG"]):
             return
         self.logger.debug(topic + " - " + str(msg))
 
@@ -470,31 +465,26 @@ class RuntimeEnvironments(object):
         # run mode, this mode controls how SoS actions behave
         #
         self.config = defaultdict(str)
-        self.config.update(
-            {
-                "config_file": None,
-                "output_dag": None,
-                "output_report": None,
-                "wait_for_task": None,
-                "default_queue": "",
-                "worker_procs": ["2"],
-                "max_running_jobs": None,
-                "sig_mode": "default",
-                "run_mode": "run",
-                "verbosity": 1,
-                # determined later
-                "master_id": "",
-                "SOS_DEBUG": set(),
-            }
-        )
+        self.config.update({
+            "config_file": None,
+            "output_dag": None,
+            "output_report": None,
+            "wait_for_task": None,
+            "default_queue": "",
+            "worker_procs": ["2"],
+            "max_running_jobs": None,
+            "sig_mode": "default",
+            "run_mode": "run",
+            "verbosity": 1,
+            # determined later
+            "master_id": "",
+            "SOS_DEBUG": set(),
+        })
         if "SOS_DEBUG" in os.environ:
-            self.config["SOS_DEBUG"] = set(
-                [
-                    x
-                    for x in os.environ["SOS_DEBUG"].split(",")
-                    if "." not in x and x != "-"
-                ]
-            )
+            self.config["SOS_DEBUG"] = set([
+                x for x in os.environ["SOS_DEBUG"].split(",")
+                if "." not in x and x != "-"
+            ])
         #
         # global dictionaries used by SoS during the
         # execution of SoS workflows
@@ -504,13 +494,12 @@ class RuntimeEnvironments(object):
         #
         # this directory will be used by a lot of processes
         self.exec_dir = os.path.join(
-            os.path.expanduser("~"), ".sos", textMD5(os.getcwd())
-        )
+            os.path.expanduser("~"), ".sos", textMD5(os.getcwd()))
 
         for dir_name in ("tasks", "workflows", "signatures"):
             os.makedirs(
-                os.path.join(os.path.expanduser("~"), ".sos", dir_name), exist_ok=True
-            )
+                os.path.join(os.path.expanduser("~"), ".sos", dir_name),
+                exist_ok=True)
 
     #
     # attribute logger
@@ -534,12 +523,10 @@ class RuntimeEnvironments(object):
         }
         # stop setting root logger always to DEBUG. If SOS_DEBUG is defined as PROFILE, we profile
         # in non-debug mode. Otherwise debugging leval will be set to DEBUG
-        debug_mode = (
-            "SOS_DEBUG" in os.environ
-            and os.environ["SOS_DEBUG"]
-            and os.environ["SOS_DEBUG"] != "PROFILE"
-        )
-        self._logger.setLevel(logging.DEBUG if debug_mode else levels[self._verbosity])
+        debug_mode = ("SOS_DEBUG" in os.environ and os.environ["SOS_DEBUG"] and
+                      os.environ["SOS_DEBUG"] != "PROFILE")
+        self._logger.setLevel(
+            logging.DEBUG if debug_mode else levels[self._verbosity])
 
         if self._logging_socket:
             socket_handler = PUBHandler(self._logging_socket)
@@ -560,32 +547,33 @@ class RuntimeEnvironments(object):
             # output to standard output
             cout = logging.StreamHandler()
             cout.setLevel(levels[self._verbosity])
-            cout.setFormatter(ColoredFormatter("%(color_levelname)s: %(color_msg)s"))
+            cout.setFormatter(
+                ColoredFormatter("%(color_levelname)s: %(color_msg)s"))
             self._logger.addHandler(cout)
 
         if debug_mode:
             logfile_info = [
-                x for x in os.environ["SOS_DEBUG"].split(",") if "." in x or x == "-"
+                x for x in os.environ["SOS_DEBUG"].split(",")
+                if "." in x or x == "-"
             ]
             if logfile_info:
                 if logfile_info[0] == "-":
                     logfile = logging.StreamHandler()
-                    formatter = ColoredFormatter("%(color_levelname)s: %(color_msg)s")
+                    formatter = ColoredFormatter(
+                        "%(color_levelname)s: %(color_msg)s")
                 else:
                     logfile = logging.FileHandler(
-                        os.path.expanduser(logfile_info[0]), mode="a"
-                    )
+                        os.path.expanduser(logfile_info[0]), mode="a")
                     formatter = logging.Formatter(
-                        "%(asctime)s - %(levelname)s - %(message)s"
-                    )
+                        "%(asctime)s - %(levelname)s - %(message)s")
             else:
                 logfile = logging.FileHandler(
-                    os.path.join(os.path.expanduser("~"), ".sos", "sos_debug.log"),
+                    os.path.join(
+                        os.path.expanduser("~"), ".sos", "sos_debug.log"),
                     mode="a",
                 )
                 formatter = logging.Formatter(
-                    "%(asctime)s - %(levelname)s - %(message)s"
-                )
+                    "%(asctime)s - %(levelname)s - %(message)s")
             logfile.setFormatter(formatter)
             logfile.setLevel(logging.DEBUG)
             self._logger.addHandler(logfile)
@@ -768,8 +756,7 @@ def get_traceback():
     # print "*** print_exception:"
     try:
         traceback.print_exception(
-            exc_type, exc_value, exc_traceback, limit=5, file=output
-        )
+            exc_type, exc_value, exc_traceback, limit=5, file=output)
     except Exception:
         # the above function call can fail under Python 3.4 for some
         # exception but we do not really care if that happens
@@ -851,8 +838,7 @@ def get_output(cmd, show_command=False, prompt="$ ", **kwargs):
         if "shell" not in kwargs:
             kwargs["shell"] = True
         output = subprocess.check_output(
-            cmd, stderr=subprocess.DEVNULL, **kwargs
-        ).decode()
+            cmd, stderr=subprocess.DEVNULL, **kwargs).decode()
     except subprocess.CalledProcessError as e:
         if e.output.decode():
             env.logger.error(e.output.decode())
@@ -876,9 +862,10 @@ def locate_script(filename, start=""):
     #
     token = urllib.parse.urlparse(filename)
     # if no scheme or netloc, the URL is not acceptable
-    if all(
-        [getattr(token, qualifying_attr) for qualifying_attr in ("scheme", "netloc")]
-    ):
+    if all([
+            getattr(token, qualifying_attr)
+            for qualifying_attr in ("scheme", "netloc")
+    ]):
         try:
             local_filename, _ = urllib.request.urlretrieve(filename)
             with open(local_filename) as script:
@@ -891,7 +878,8 @@ def locate_script(filename, start=""):
     #
     # a search path
     pathes = [start]
-    sos_config_file = os.path.join(os.path.expanduser("~"), ".sos", "config.yml")
+    sos_config_file = os.path.join(
+        os.path.expanduser("~"), ".sos", "config.yml")
     if os.path.isfile(sos_config_file):
         try:
             with open(sos_config_file) as config:
@@ -906,18 +894,17 @@ def locate_script(filename, start=""):
     for path in pathes:
         if not path:
             continue
-        attemp = os.path.join(os.path.expanduser(path), os.path.expanduser(filename))
+        attemp = os.path.join(
+            os.path.expanduser(path), os.path.expanduser(filename))
         if os.path.isfile(attemp):
             return ("", attemp)
         # is it an URL?
         token = urllib.parse.urlparse(path)
         # if no scheme or netloc, the URL is not acceptable
-        if all(
-            [
+        if all([
                 getattr(token, qualifying_attr)
                 for qualifying_attr in ("scheme", "netloc")
-            ]
-        ):
+        ]):
             url = path + ("" if path.endswith("/") else "/") + filename
             try:
                 local_filename, _ = urllib.request.urlretrieve(url)
@@ -982,7 +969,7 @@ def split_fstring(text):
         # now we have a valid spos
         pieces.append(text[:spos])
         # skip '{'
-        rhs_pieces = text[spos + 1 :].split("}")
+        rhs_pieces = text[spos + 1:].split("}")
         if len(rhs_pieces) == 1:
             raise SyntaxError(
                 f"Invalid f-string {text}: missing right sigil at {text[pos:pos+20]}"
@@ -998,8 +985,7 @@ def split_fstring(text):
             # the last one, still not valid
             if n == len(rhs_pieces):
                 raise SyntaxError(
-                    f'Invalid f-string "{text}": invalid or empty expression'
-                )
+                    f'Invalid f-string "{text}": invalid or empty expression')
     return pieces
 
 
@@ -1045,10 +1031,13 @@ def natural_keys(text):
 
 def transcribe(text, cmd=None):
     if cmd is not None:
-        text = "{}:\n{}".format(cmd, "    " + text.replace("\n", "\n    ") + "\n")
-    with fasteners.InterProcessLock(os.path.join(env.temp_dir, "transcript.lck")):
+        text = "{}:\n{}".format(cmd,
+                                "    " + text.replace("\n", "\n    ") + "\n")
+    with fasteners.InterProcessLock(
+            os.path.join(env.temp_dir, "transcript.lck")):
         trans_file = os.path.join(env.exec_dir, "transcript.txt")
-        open_mode = 'w' if os.path.isfile(trans_file) and time.time() - os.path.getmtime(trans_file) > (30 * 24 * 60 * 60) else 'a'
+        open_mode = 'w' if os.path.isfile(trans_file) and time.time(
+        ) - os.path.getmtime(trans_file) > (30 * 24 * 60 * 60) else 'a'
         with open(trans_file, open_mode) as trans:
             trans.write(text)
 
@@ -1074,9 +1063,14 @@ def dict_merge(dct, merge_dct):
 # for its compact size
 
 
-def pretty_size(n, pow=0, b=1024, u="B", pre=[""] + [p + "i" for p in "KMGTPEZY"]):
-    pow, n = min(int(math.log(max(n * b ** pow, 1), b)), len(pre) - 1), n * b ** pow
-    return "%%.%if %%s%%s" % abs(pow % (-pow - 1)) % (n / b ** float(pow), pre[pow], u)
+def pretty_size(n,
+                pow=0,
+                b=1024,
+                u="B",
+                pre=[""] + [p + "i" for p in "KMGTPEZY"]):
+    pow, n = min(int(math.log(max(n * b**pow, 1), b)), len(pre) - 1), n * b**pow
+    return "%%.%if %%s%%s" % abs(pow %
+                                 (-pow - 1)) % (n / b**float(pow), pre[pow], u)
 
 
 def expand_size(size):
@@ -1091,8 +1085,8 @@ def expand_size(size):
         return sign * int(num)
     if not num:
         num = 1
-    s = {x + "I": 1024 ** (idx + 1) for idx, x in enumerate("KMGTPEZY")}
-    s.update({x: 1000 ** (idx + 1) for idx, x in enumerate("KMGTPEZY")})
+    s = {x + "I": 1024**(idx + 1) for idx, x in enumerate("KMGTPEZY")}
+    s.update({x: 1000**(idx + 1) for idx, x in enumerate("KMGTPEZY")})
     unit = unit[:-1].upper() if unit[-1].upper().endswith("B") else unit.upper()
     if unit not in s:
         raise ValueError(f"Invalid size specified: {size}")
@@ -1114,6 +1108,7 @@ def find_symbolic_links(item):
 
 
 class ActivityNotifier(threading.Thread):
+
     def __init__(self, msg, delay=5):
         threading.Thread.__init__(self)
         self.msg = msg
@@ -1133,17 +1128,13 @@ class ActivityNotifier(threading.Thread):
             if not prog:
                 print(self.msg)
                 prog = ProgressBar(
-                    desc="", position=0, bar_format="{desc}", total=100000000
-                )
+                    desc="", position=0, bar_format="{desc}", total=100000000)
             second_elapsed = time.time() - self.start_time
-            prog.set_description(
-                "Elapsed time {}{}".format(
-                    ""
-                    if second_elapsed < 86400
-                    else f'{int(second_elapsed/86400)} day{"s" if second_elapsed > 172800 else ""} ',
-                    time.strftime("%H:%M:%S", time.gmtime(second_elapsed)),
-                )
-            )
+            prog.set_description("Elapsed time {}{}".format(
+                "" if second_elapsed < 86400 else
+                f'{int(second_elapsed/86400)} day{"s" if second_elapsed > 172800 else ""} ',
+                time.strftime("%H:%M:%S", time.gmtime(second_elapsed)),
+            ))
             prog.update(1)
 
     def stop(self):
@@ -1193,8 +1184,7 @@ def sos_get_param(key, defvalue):
     if not env.config["workflow_args"] and not env.config["workflow_vars"]:
         if isinstance(defvalue, type):
             raise ArgumentError(
-                f"Argument {key} of type {defvalue.__name__} is required"
-            )
+                f"Argument {key} of type {defvalue.__name__} is required")
         else:
             return defvalue
     #
@@ -1215,15 +1205,17 @@ def sos_get_param(key, defvalue):
     if isinstance(defvalue, type) or defvalue is None:
         if defvalue == bool:
             feature_parser = parser.add_mutually_exclusive_group(required=True)
-            feature_parser.add_argument(f"--{key}", dest=key, action="store_true")
-            feature_parser.add_argument(f"--no-{key}", dest=key, action="store_false")
+            feature_parser.add_argument(
+                f"--{key}", dest=key, action="store_true")
+            feature_parser.add_argument(
+                f"--no-{key}", dest=key, action="store_false")
             if "_" in key:
                 feature_parser.add_argument(
-                    f'--{key.replace("_", "-")}', dest=key, action="store_true"
-                )
+                    f'--{key.replace("_", "-")}', dest=key, action="store_true")
                 feature_parser.add_argument(
-                    f'--no-{key.replace("_", "-")}', dest=key, action="store_false"
-                )
+                    f'--no-{key.replace("_", "-")}',
+                    dest=key,
+                    action="store_false")
         else:
             if defvalue is None:
                 defvalue = str
@@ -1231,60 +1223,51 @@ def sos_get_param(key, defvalue):
                 ret_type = defvalue
             # if only a type is specified, it is a required document of required type
             if "_" in key:
-                feature_parser = parser.add_mutually_exclusive_group(required=True)
+                feature_parser = parser.add_mutually_exclusive_group(
+                    required=True)
                 feature_parser.add_argument(
                     f"--{key}",
                     dest=key,
-                    type=str
-                    if hasattr(defvalue, "__iter__")
-                    and defvalue not in (file_target, path)
-                    else defvalue,
+                    type=str if hasattr(defvalue, "__iter__") and
+                    defvalue not in (file_target, path) else defvalue,
                     help="",
-                    nargs="+"
-                    if defvalue not in (str, file_target)
-                    and hasattr(defvalue, "__iter__")
-                    else "?",
+                    nargs="+" if defvalue not in (str, file_target) and
+                    hasattr(defvalue, "__iter__") else "?",
                 )
                 feature_parser.add_argument(
                     f'--{key.replace("_", "-")}',
                     dest=key,
-                    type=str
-                    if hasattr(defvalue, "__iter__")
-                    and defvalue not in (file_target, path)
-                    else defvalue,
+                    type=str if hasattr(defvalue, "__iter__") and
+                    defvalue not in (file_target, path) else defvalue,
                     help="",
-                    nargs="+"
-                    if defvalue not in (str, file_target)
-                    and hasattr(defvalue, "__iter__")
-                    else "?",
+                    nargs="+" if defvalue not in (str, file_target) and
+                    hasattr(defvalue, "__iter__") else "?",
                 )
             else:
                 parser.add_argument(
                     f"--{key}",
                     dest=key,
-                    type=str
-                    if hasattr(defvalue, "__iter__")
-                    and defvalue not in (file_target, path)
-                    else defvalue,
+                    type=str if hasattr(defvalue, "__iter__") and
+                    defvalue not in (file_target, path) else defvalue,
                     help="",
                     required=True,
-                    nargs="+"
-                    if defvalue not in (str, file_target, path)
-                    and hasattr(defvalue, "__iter__")
-                    else "?",
+                    nargs="+" if defvalue not in (str, file_target, path) and
+                    hasattr(defvalue, "__iter__") else "?",
                 )
     else:
         if isinstance(defvalue, bool):
             feature_parser = parser.add_mutually_exclusive_group(required=False)
-            feature_parser.add_argument(f"--{key}", dest=key, action="store_true")
-            feature_parser.add_argument(f"--no-{key}", dest=key, action="store_false")
+            feature_parser.add_argument(
+                f"--{key}", dest=key, action="store_true")
+            feature_parser.add_argument(
+                f"--no-{key}", dest=key, action="store_false")
             if "_" in key:
                 feature_parser.add_argument(
-                    f'--{key.replace("_", "-")}', dest=key, action="store_true"
-                )
+                    f'--{key.replace("_", "-")}', dest=key, action="store_true")
                 feature_parser.add_argument(
-                    f'--no-{key.replace("_", "-")}', dest=key, action="store_false"
-                )
+                    f'--no-{key.replace("_", "-")}',
+                    dest=key,
+                    action="store_false")
             feature_parser.set_defaults(**{key: defvalue})
         else:
             if isinstance(defvalue, (file_target, path)):
@@ -1306,23 +1289,22 @@ def sos_get_param(key, defvalue):
                 deftype = type(defvalue)
 
             if "_" in key:
-                feature_parser = parser.add_mutually_exclusive_group(required=False)
+                feature_parser = parser.add_mutually_exclusive_group(
+                    required=False)
                 feature_parser.add_argument(
                     f"--{key}",
                     dest=key,
                     type=deftype,
-                    nargs="*"
-                    if isinstance(defvalue, Sequence) and not isinstance(defvalue, str)
-                    else "?",
+                    nargs="*" if isinstance(defvalue, Sequence) and
+                    not isinstance(defvalue, str) else "?",
                     default=defvalue,
                 )
                 feature_parser.add_argument(
                     f'--{key.replace("_", "-")}',
                     dest=key,
                     type=deftype,
-                    nargs="*"
-                    if isinstance(defvalue, Sequence) and not isinstance(defvalue, str)
-                    else "?",
+                    nargs="*" if isinstance(defvalue, Sequence) and
+                    not isinstance(defvalue, str) else "?",
                     default=defvalue,
                 )
             else:
@@ -1330,9 +1312,8 @@ def sos_get_param(key, defvalue):
                     f"--{key}",
                     dest=key,
                     type=deftype,
-                    nargs="*"
-                    if isinstance(defvalue, Sequence) and not isinstance(defvalue, str)
-                    else "?",
+                    nargs="*" if isinstance(defvalue, Sequence) and
+                    not isinstance(defvalue, str) else "?",
                     default=defvalue,
                 )
     #
@@ -1371,8 +1352,7 @@ class TimeoutInterProcessLock(fasteners.InterProcessLock):
     #
     def __init__(self, path, timeout=5, sleep_func=time.sleep, logger=None):
         super(TimeoutInterProcessLock, self).__init__(
-            path, sleep_func=sleep_func, logger=logger
-        )
+            path, sleep_func=sleep_func, logger=logger)
         self.timeout = timeout
 
     def __enter__(self):
@@ -1404,30 +1384,29 @@ def load_config_files(filename=None, default_config_files=True):
     if filename is None and "config_file" in env.config:
         filename = env.config["config_file"]
 
-    if filename is not None and not os.path.isfile(os.path.expanduser(filename)):
+    if filename is not None and not os.path.isfile(
+            os.path.expanduser(filename)):
         env.logger.warning(f"Ignoring missing configuration file {filename}")
         filename = None
 
-    filemtime = (
-        None if filename is None else os.path.getmtime(os.path.expanduser(filename))
-    )
+    filemtime = (None if filename is None else os.path.getmtime(
+        os.path.expanduser(filename)))
 
     from .targets import textMD5
 
-    extra_cfg = (
-        None
-        if "extra_config" not in env.config
-        else textMD5(str(env.config["extra_config"]))
-    )
+    extra_cfg = (None if "extra_config" not in env.config else textMD5(
+        str(env.config["extra_config"])))
 
     if (filename, filemtime, extra_cfg) in config_cache:
-        env.sos_dict.set("CONFIG", config_cache[(filename, filemtime, extra_cfg)])
+        env.sos_dict.set("CONFIG",
+                         config_cache[(filename, filemtime, extra_cfg)])
         return config_cache[(filename, filemtime, extra_cfg)]
 
     cfg = {}
     # site configuration file
     if default_config_files:
-        sos_config_file = os.path.join(os.path.split(__file__)[0], "site_config.yml")
+        sos_config_file = os.path.join(
+            os.path.split(__file__)[0], "site_config.yml")
         if os.path.isfile(sos_config_file):
             try:
                 with open(sos_config_file) as config:
@@ -1438,7 +1417,8 @@ def load_config_files(filename=None, default_config_files=True):
                 )
 
         # global site file
-        sos_config_file = os.path.join(os.path.expanduser("~"), ".sos", "hosts.yml")
+        sos_config_file = os.path.join(
+            os.path.expanduser("~"), ".sos", "hosts.yml")
         if os.path.isfile(sos_config_file):
             try:
                 with open(sos_config_file) as config:
@@ -1450,7 +1430,8 @@ def load_config_files(filename=None, default_config_files=True):
                     f"Failed to parse global sos hosts file {sos_config_file}: {e}"
                 )
         # global config file
-        sos_config_file = os.path.join(os.path.expanduser("~"), ".sos", "config.yml")
+        sos_config_file = os.path.join(
+            os.path.expanduser("~"), ".sos", "config.yml")
         if os.path.isfile(sos_config_file):
             try:
                 with open(sos_config_file) as config:
@@ -1474,22 +1455,21 @@ def load_config_files(filename=None, default_config_files=True):
     if "user_name" not in cfg:
         cfg["user_name"] = getpass.getuser().lower()
 
-    if "extra_config" in env.config and isinstance(env.config["extra_config"], dict):
+    if "extra_config" in env.config and isinstance(env.config["extra_config"],
+                                                   dict):
         cfg.update(env.config["extra_config"])
 
     # handle keyword "based_on", which should fill the dictionary with others.
     def process_based_on(cfg, item):
         if "based_on" in item:
-            if not isinstance(item["based_on"], (str, list)) or not item["based_on"]:
+            if not isinstance(item["based_on"],
+                              (str, list)) or not item["based_on"]:
                 raise ValueError(
                     f'A string is expected for key based_on. {item["based_on"]} obtained'
                 )
 
-            referred_keys = (
-                [item["based_on"]]
-                if isinstance(item["based_on"], str)
-                else item["based_on"]
-            )
+            referred_keys = ([item["based_on"]] if isinstance(
+                item["based_on"], str) else item["based_on"])
             item.pop("based_on")
             for rkey in referred_keys:
                 # find item...
@@ -1498,7 +1478,8 @@ def load_config_files(filename=None, default_config_files=True):
                     if not isinstance(val, dict):
                         raise ValueError(f"Based on key {item} not found")
                     if key not in val:
-                        raise ValueError(f"Based on key {key} not found in config")
+                        raise ValueError(
+                            f"Based on key {key} not found in config")
                     else:
                         val = val[key]
                 #
@@ -1713,26 +1694,26 @@ def convertAnsi2html(txt):
     # 95 is purple, warning
     # 91 is red, error
     # 36 is cray, trace
-    return (
-        txt.replace("\033[94m", '<font color="">')
-        .replace("\033[32m", '<font color="DarkGreen">')
-        .replace("\033[36m", '<font color="cyan">')
-        .replace("\033[95m", '<font color="purple">')
-        .replace("\033[91m", '<font color="red">')
-        .replace("\033[0m", "</font>")
-        .replace("\n", "<br>")
-    )
+    return (txt.replace("\033[94m", '<font color="">').replace(
+        "\033[32m", '<font color="DarkGreen">').replace(
+            "\033[36m", '<font color="cyan">').replace(
+                "\033[95m", '<font color="purple">').replace(
+                    "\033[91m", '<font color="red">').replace(
+                        "\033[0m", "</font>").replace("\n", "<br>"))
 
 
 # log to file for debugging purpose only
 
 
 def pexpect_run(cmd, shell=False, win_width=None, stdout_socket=None):
+
     def send_output(output):
         if stdout_socket:
-            stdout_socket.send_multipart(
-                [b"PRINT", env.config.get("slave_id", "").encode(), output.encode()]
-            )
+            stdout_socket.send_multipart([
+                b"PRINT",
+                env.config.get("slave_id", "").encode(),
+                output.encode()
+            ])
         else:
             sys.stdout.write(output)
 
@@ -1761,16 +1742,18 @@ def pexpect_run(cmd, shell=False, win_width=None, stdout_socket=None):
         try:
             if isinstance(cmd, str):
                 if shell:
-                    child = pexpect.spawn("/bin/bash", ["-c", cmd], timeout=None)
+                    child = pexpect.spawn(
+                        "/bin/bash", ["-c", cmd], timeout=None)
                 else:
                     child = pexpect.spawn(cmd, timeout=None)
             else:
                 if shell:
                     child = pexpect.spawn(
-                        "/bin/bash", ["-c", subprocess.list2cmdline(cmd)], timeout=None
-                    )
+                        "/bin/bash", ["-c", subprocess.list2cmdline(cmd)],
+                        timeout=None)
                 else:
-                    child = pexpect.spawn(subprocess.list2cmdline(cmd), timeout=None)
+                    child = pexpect.spawn(
+                        subprocess.list2cmdline(cmd), timeout=None)
             while True:
                 try:
                     child.expect("\r\n")
@@ -1798,7 +1781,8 @@ def format_par(name, par):
                 return f"--[no-]{name} (required)"
             elif val is None:
                 return f"--{name} VAL (required)"
-            elif val not in (str, file_target, path) and hasattr(val, "__iter__"):
+            elif val not in (str, file_target, path) and hasattr(
+                    val, "__iter__"):
                 return f"--{name} VAL VAL ... (as {val.__class__.__name__}, required)"
             else:
                 return f"--{name} VAL (as {val.__name__}, required)"
@@ -1847,7 +1831,8 @@ def dot_to_gif(filename: str, warn=None):
         if len(pngFiles) == 1:
             return b64_of(outfile)
         # create a gif files from multiple png files
-        pngFiles.sort(key=lambda x: int(os.path.basename(x)[:-3].split(".")[1] or 0))
+        pngFiles.sort(
+            key=lambda x: int(os.path.basename(x)[:-3].split(".")[1] or 0))
         # find maximum size for all graphs corresponding to their subgraphs
         maxWidth = 0
         wf_maxHeight = {}
@@ -1858,10 +1843,10 @@ def dot_to_gif(filename: str, warn=None):
                 for png, wf in zip(pngFiles, subworkflows)
                 if wf == subworkflow
             }
-            maxWidth = max(maxWidth, max([x.size[0] for x in wf_images.values()]))
+            maxWidth = max(maxWidth,
+                           max([x.size[0] for x in wf_images.values()]))
             wf_maxHeight[subworkflow] = (
-                max([x.size[1] for x in wf_images.values()]) + 20
-            )
+                max([x.size[1] for x in wf_images.values()]) + 20)
             images.update(wf_images)
         # now, we stack workflows as follows
         #    G1
@@ -1885,7 +1870,8 @@ def dot_to_gif(filename: str, warn=None):
             lastGraph[subworkflow] = image
             # we need to stitch figures together
             try:
-                newImg = Image.new("RGB", (maxWidth, totalHeight), color=0xFFFFFF)
+                newImg = Image.new(
+                    "RGB", (maxWidth, totalHeight), color=0xFFFFFF)
                 y_loc = 0
                 for wf in unique_subworkflows:
                     # if current, use the new one
@@ -1895,7 +1881,8 @@ def dot_to_gif(filename: str, warn=None):
                         img = lastGraph[wf]
                     else:
                         continue
-                    newImg.paste(img, ((maxWidth - img.size[0]) // 2, y_loc + 20))
+                    newImg.paste(img,
+                                 ((maxWidth - img.size[0]) // 2, y_loc + 20))
                     draw = ImageDraw.Draw(newImg)
                     # font = ImageFont.truetype("sans-serif.ttf", 8)
                     # , font=font)
@@ -1952,7 +1939,8 @@ def separate_options(options: str) -> List[str]:
                 if idx == 0:
                     raise ValueError("Invalid section option")
                 # break myself again
-                pieces = pieces[:idx] + pieces[idx].split(",") + pieces[idx + 1 :]
+                pieces = pieces[:idx] + pieces[idx].split(",") + pieces[idx +
+                                                                        1:]
                 # go back
                 idx -= 1
                 pieces[idx] += "\n" + pieces[idx + 1]
@@ -1986,12 +1974,14 @@ def get_nodelist():
         import subprocess
 
         hostsstr = subprocess.check_output(
-            ["scontrol", "show", "hostnames", os.environ["SLURM_NODELIST"]]
-        ).decode()
+            ["scontrol", "show", "hostnames",
+             os.environ["SLURM_NODELIST"]]).decode()
         # Split using endline
         # Split using endlinea, numer of cpus can be in the format of 4(x2)
         nprocs = os.environ["SLURM_JOB_CPUS_PER_NODE"].split("(")[0]
-        args = [f"{x}:{nprocs}" for x in hostsstr.split(os.linesep) if x.strip()]
+        args = [
+            f"{x}:{nprocs}" for x in hostsstr.split(os.linesep) if x.strip()
+        ]
         env.log_to_file("WORKER", f'Using "-j {args}" on a SLURM cluster.')
         return args
     elif "PBS_ENVIRONMENT" in os.environ:
@@ -2000,7 +1990,10 @@ def get_nodelist():
             from collections import Counter, OrderedDict
 
             counts = Counter(hostlist)
-            args = [f"{x}:{counts[x]}" for x in list(OrderedDict.fromkeys(hostlist))]
+            args = [
+                f"{x}:{counts[x]}"
+                for x in list(OrderedDict.fromkeys(hostlist))
+            ]
         env.log_to_file("WORKER", f'Using "-j {args}" on a PBS cluster.')
         return args
     elif "PE_HOSTFILE" in os.environ:
@@ -2021,16 +2014,18 @@ def get_nodelist():
         # IBM LSF https://www.ibm.com/support/knowledgecenter/en/SSETD4_9.1.3/lsf_config_ref/lsf_envars_ref.html
         # LSB_MCPU_HOSTS="hostA 3 hostB 3"
         hostlist = os.environ["LSB_MCPU_HOSTS"].strip().split()
-        args = [f"{hostlist[2*i]}:{hostlist[2*i+1]}" for i in range(len(hostlist) // 2)]
+        args = [
+            f"{hostlist[2*i]}:{hostlist[2*i+1]}"
+            for i in range(len(hostlist) // 2)
+        ]
         env.log_to_file("WORKER", f'Using "-j {args}" on a IBM LSF cluster.')
         return args
 
 
 def under_cluster():
     return any(
-        x in os.environ
-        for x in ("SLURM_NODELIST", "PBS_ENVIRONMENT", "PE_HOSTFILE", "LSB_MCPU_HOSTS")
-    )
+        x in os.environ for x in ("SLURM_NODELIST", "PBS_ENVIRONMENT",
+                                  "PE_HOSTFILE", "LSB_MCPU_HOSTS"))
 
 
 def get_open_files_and_connections(pid):

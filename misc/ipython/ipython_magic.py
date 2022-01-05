@@ -43,6 +43,7 @@ from sos.utils import WorkflowDict, env
 @magics_class
 class SoS_Magics(Magics):
     '''Magics that works with Script of Scripts'''
+
     def __init__(self, shell):
         super(SoS_Magics, self).__init__(shell)
         self._reset()
@@ -126,10 +127,12 @@ class SoS_Magics(Magics):
         keys = [x for x in actions if not x.startswith('-')]
         for x in keys:
             if not x in env.sos_dict:
-                raise RuntimeError('Unrecognized sosdict option or variable name {}'.format(x))
+                raise RuntimeError(
+                    'Unrecognized sosdict option or variable name {}'.format(x))
         for x in [x for x in actions if x.startswith('-')]:
             if not x in ['-r', '--reset', '-k', '--keys', '-a', '--all']:
-                raise RuntimeError('Unrecognized option {} for magic %sosdict'.format(x))
+                raise RuntimeError(
+                    'Unrecognized option {} for magic %sosdict'.format(x))
         if '--reset' in actions or '-r' in actions:
             return self._reset()
         if '--keys' in actions or '-k' in actions:
@@ -138,14 +141,24 @@ class SoS_Magics(Magics):
             elif keys:
                 return set(keys)
             else:
-                return {x for x in env.sos_dict._dict.keys() if not x.startswith('__')} - self.original_keys
+                return {
+                    x for x in env.sos_dict._dict.keys()
+                    if not x.startswith('__')
+                } - self.original_keys
         else:
             if '--all' in actions or '-a' in actions:
                 return env.sos_dict._dict
             elif keys:
-                return {x:y for x,y in env.sos_dict._dict.items() if x in keys}
+                return {
+                    x: y for x, y in env.sos_dict._dict.items() if x in keys
+                }
             else:
-                return {x:y for x,y in env.sos_dict._dict.items() if x not in self.original_keys and not x.startswith('__')}
+                return {
+                    x: y
+                    for x, y in env.sos_dict._dict.items()
+                    if x not in self.original_keys and not x.startswith('__')
+                }
+
 
 def load_ipython_extension(ipython):
     ipython.register_magics(SoS_Magics)

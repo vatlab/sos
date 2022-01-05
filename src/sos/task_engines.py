@@ -560,8 +560,7 @@ class TaskEngine(threading.Thread):
                     self.running_pending_tasks.pop(task_id)
                 # status changed to completed
                 self.task_results[task_id] = self._thread_workers.submit(
-                    self.agent.receive_result,
-                    task_id)
+                    self.agent.receive_result, task_id)
             # for running pending tasks
             if status == 'aborted' and task_id in self.running_pending_tasks:
                 self.pending_tasks.append(task_id)
@@ -579,21 +578,28 @@ class TaskEngine(threading.Thread):
                         else:
                             res[task_id] = self.task_results[task_id].result()
                     elif task_id in self.task_status:
-                        if self.task_status[task_id] in ('running', 'pending', 'submitted'):
+                        if self.task_status[task_id] in ('running', 'pending',
+                                                         'submitted'):
                             time.sleep(0.1)
                         else:
                             res[task_id] = {
-                                'task': task_id,
-                                'exception': ValueError(f'Task {task_id} returns status {self.task_status[task_id]}'),
-                                'ret_code': 1,
-                                'output': sos_targets()
+                                'task':
+                                    task_id,
+                                'exception':
+                                    ValueError(
+                                        f'Task {task_id} returns status {self.task_status[task_id]}'
+                                    ),
+                                'ret_code':
+                                    1,
+                                'output':
+                                    sos_targets()
                             }
                     else:
                         res[task_id] = {
-                                'task': task_id,
-                                'exception': ValueError(f'Missing task {task_id}'),
-                                'ret_code': 1,
-                                'output': sos_targets()
+                            'task': task_id,
+                            'exception': ValueError(f'Missing task {task_id}'),
+                            'ret_code': 1,
+                            'output': sos_targets()
                         }
             if len(res) == len(task_ids):
                 return res

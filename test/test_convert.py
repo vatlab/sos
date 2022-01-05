@@ -32,16 +32,17 @@ def test_script_to_html(temp_factory):
     temp_factory('temp1.sos', content=script1)
     temp_factory('temp2.sos', content=script2)
 
-    scripts = ['temp1.sos','temp2.sos']
+    scripts = ['temp1.sos', 'temp2.sos']
     for script_file in scripts:
         assert subprocess.call(
-            f'sos convert {script_file} {script_file}.html',
-            shell=True) == 0
+            f'sos convert {script_file} {script_file}.html', shell=True) == 0
         assert subprocess.call(
             f'sos convert {script_file} {script_file}.html --linenos',
             shell=True) == 0
         #
-        assert subprocess.call(['sos', 'convert', script_file, '--to', 'html']) == 0
+        assert subprocess.call(['sos', 'convert', script_file, '--to',
+                                'html']) == 0
+
 
 def test_extract_workflow(sample_workflow):
     '''Test extract workflow from ipynb file'''

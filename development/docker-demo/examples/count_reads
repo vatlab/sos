@@ -3,4 +3,3 @@
 import sys
 
 print(f'Generating {sys.argv[4]} from {sys.argv[2]}')
-

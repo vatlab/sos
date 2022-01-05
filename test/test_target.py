@@ -21,6 +21,7 @@ from sos.workflow_executor import Base_Executor
 
 
 class TestTarget(unittest.TestCase):
+
     def setUp(self):
         env.reset()
         subprocess.call("sos remove -s", shell=True)
@@ -65,7 +66,8 @@ class TestTarget(unittest.TestCase):
         self.assertEqual(c.select(1), ["b1"])
         #
         # test slice of groups
-        res = sos_targets(a=["a.txt", "b.txt"], b=["c.txt", "d.txt"], group_by=1)
+        res = sos_targets(
+            a=["a.txt", "b.txt"], b=["c.txt", "d.txt"], group_by=1)
         self.assertEqual(len(res.groups), 4)
         self.assertEqual(res.labels, ["a", "a", "b", "b"])
         res_a = res["a"]
@@ -115,8 +117,11 @@ class TestTarget(unittest.TestCase):
     def test_target_group_by(self):
         """Test new option group_by to sos_targets"""
         res = sos_targets(
-            "e.txt", "f.ext", a=["a.txt", "b.txt"], b=["c.txt", "d.txt"], group_by=1
-        )
+            "e.txt",
+            "f.ext",
+            a=["a.txt", "b.txt"],
+            b=["c.txt", "d.txt"],
+            group_by=1)
         self.assertEqual(len(res.groups), 6)
         self.assertEqual(res.labels, ["", "", "a", "a", "b", "b"])
         #
@@ -126,8 +131,11 @@ class TestTarget(unittest.TestCase):
     def test_target_paired_with(self):
         """Test paired_with targets with vars"""
         res = sos_targets(
-            "e.txt", "f.ext", a=["a.txt", "b.txt"], b=["c.txt", "d.txt"], group_by=1
-        ).paired_with("_name", ["e", "f", "a", "b", "c", "d"])
+            "e.txt",
+            "f.ext",
+            a=["a.txt", "b.txt"],
+            b=["c.txt", "d.txt"],
+            group_by=1).paired_with("_name", ["e", "f", "a", "b", "c", "d"])
         for i, n in enumerate(["e", "f", "a", "b", "c", "d"]):
             self.assertEqual(res[i]._name, n)
         #
@@ -146,8 +154,11 @@ class TestTarget(unittest.TestCase):
     def test_target_group_with(self):
         """Test group_with targets with vars"""
         res = sos_targets(
-            "e.txt", "f.ext", a=["a.txt", "b.txt"], b=["c.txt", "d.txt"], group_by=2
-        ).group_with("name", ["a1", "a2", "a3"])
+            "e.txt",
+            "f.ext",
+            a=["a.txt", "b.txt"],
+            b=["c.txt", "d.txt"],
+            group_by=2).group_with("name", ["a1", "a2", "a3"])
         for i, n in enumerate(["a1", "a2", "a3"]):
             self.assertEqual(res.groups[i].name, n)
         #
@@ -164,8 +175,7 @@ class TestTarget(unittest.TestCase):
         )
 
     def test_group_with_with_no_output(self):
-        execute_workflow(
-            r"""
+        execute_workflow(r"""
 [10]
 input: for_each=dict(i=range(3))
 output: group_with=dict(var=['A', 'B', 'C'][_index])
@@ -173,13 +183,13 @@ print(i)
 
 [20]
 print(f'Input is {_input} {var}')
-"""
-        )
+""")
 
     def test_merging_of_sos_targets(self):
         """Test merging of multiple sos targets"""
         # merge 0 to 0
-        res = sos_targets("a.txt", "b.txt", sos_targets("c.txt", "d.txt", group_by=1))
+        res = sos_targets("a.txt", "b.txt",
+                          sos_targets("c.txt", "d.txt", group_by=1))
         self.assertEqual(len(res), 4)
         self.assertEqual(len(res.groups), 2)
         self.assertEqual(res.groups[0], ["a.txt", "b.txt", "c.txt"])
@@ -225,17 +235,18 @@ print(f'Input is {_input} {var}')
         ]:
             if isinstance(res, str):
                 self.assertEqual(
-                    interpolate("{{target:{}}}".format(fmt), globals(), locals()),
+                    interpolate("{{target:{}}}".format(fmt), globals(),
+                                locals()),
                     res,
-                    "Interpolation of {}:{} should be {}".format(target, fmt, res),
+                    "Interpolation of {}:{} should be {}".format(
+                        target, fmt, res),
                 )
             else:
                 self.assertTrue(
-                    interpolate("{{target:{}}}".format(fmt), globals(), locals())
-                    in res,
+                    interpolate("{{target:{}}}".format(fmt), globals(),
+                                locals()) in res,
                     "Interpolation of {}:{} should be one of {}".format(
-                        target, fmt, res
-                    ),
+                        target, fmt, res),
                 )
 
     def test_iter_targets(self):
@@ -260,8 +271,7 @@ print(f'Input is {_input} {var}')
 
     def test_shared(self):
         """Test option shared"""
-        script = SoS_Script(
-            r"""
+        script = SoS_Script(r"""
 parameter: res = 1
 
 [0]
@@ -269,15 +279,13 @@ res = 2
 
 [1]
 res = 3
-"""
-        )
+""")
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict["res"], 1)
         #
         env.sos_dict.pop("res", None)
-        script = SoS_Script(
-            r"""
+        script = SoS_Script(r"""
 parameter: res = 1
 
 [0: shared='res']
@@ -285,15 +293,13 @@ res = 2
 
 [1]
 res = 3
-"""
-        )
+""")
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict["res"], 2)
         #
         env.sos_dict.pop("res", None)
-        script = SoS_Script(
-            r"""
+        script = SoS_Script(r"""
 parameter: res = 1
 parameter: a = 30
 
@@ -304,16 +310,14 @@ res = 2
 res = 3
 a = 5
 
-"""
-        )
+""")
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict["res"], 3)
         self.assertEqual(env.sos_dict["a"], 30)
         # test multiple vars
         env.sos_dict.pop("res", None)
-        script = SoS_Script(
-            r"""
+        script = SoS_Script(r"""
 parameter: res = 1
 parameter: a = 30
 
@@ -321,8 +325,7 @@ parameter: a = 30
 res = 3
 a = 5
 
-"""
-        )
+""")
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict["res"], 3)
@@ -330,8 +333,7 @@ a = 5
         #
         # test expression
         env.sos_dict.pop("res", None)
-        script = SoS_Script(
-            r"""
+        script = SoS_Script(r"""
 parameter: res = 1
 parameter: a = 30
 
@@ -339,16 +341,14 @@ parameter: a = 30
 res = 3
 a = 5
 
-"""
-        )
+""")
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict["res"], 9)
         self.assertEqual(env.sos_dict["c"], 5)
         # test mixed vars and mapping
         env.sos_dict.pop("res", None)
-        script = SoS_Script(
-            r"""
+        script = SoS_Script(r"""
 parameter: res = 1
 parameter: a = 30
 
@@ -356,15 +356,13 @@ parameter: a = 30
 res = 3
 a = 5
 
-"""
-        )
+""")
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict["res"], 3)
         self.assertEqual(env.sos_dict["c"], 5)
         # test the step_ version of variables
-        script = SoS_Script(
-            r"""
+        script = SoS_Script(r"""
 parameter: res = 1
 parameter: a = 30
 
@@ -372,11 +370,10 @@ parameter: a = 30
 input: for_each={'i': range(10)}
 a = _index**2
 
-"""
-        )
+""")
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict["c"], sum(x ** 2 for x in range(10)))
+        self.assertEqual(env.sos_dict["c"], sum(x**2 for x in range(10)))
 
     #    def testSectionOptionWorkdir(self):
     #        '''Test section option workdir'''
@@ -393,14 +390,12 @@ a = _index**2
 
     def test_depends_executable(self):
         """Testing target executable."""
-        script = SoS_Script(
-            """
+        script = SoS_Script("""
 [0]
 depends: executable('python --version', '3.')
 run:
     touch a.txt
-"""
-        )
+""")
         wf = script.workflow()
         if file_target("a.txt").exists():
             file_target("a.txt").unlink()
@@ -408,23 +403,20 @@ run:
         self.assertTrue(os.path.isfile("a.txt"))
         file_target("a.txt").unlink()
 
-    @unittest.skipIf(
-        sys.platform == "win32", "Windows executable cannot be created with chmod."
-    )
+    @unittest.skipIf(sys.platform == "win32",
+                     "Windows executable cannot be created with chmod.")
     def test_output_executable(self):
         """Testing target executable."""
         # change $PATH so that lls can be found at the current
         # directory.
         os.environ["PATH"] += os.pathsep + "."
-        script = SoS_Script(
-            """
+        script = SoS_Script("""
 [0]
 output: executable('lls')
 run:
     touch lls
     chmod +x lls
-"""
-        )
+""")
         wf = script.workflow()
         if file_target("lls").exists():
             file_target("lls").unlink()
@@ -441,25 +433,21 @@ run:
         if file_target("a.txt").exists():
             file_target("a.txt").unlink()
         if sys.platform == "win32":
-            script = SoS_Script(
-                """
+            script = SoS_Script("""
 [0]
 depends: env_variable('AA')
 output:  'a.txt'
 run:
     echo %AA% > a.txt
-"""
-            )
+""")
         else:
-            script = SoS_Script(
-                """
+            script = SoS_Script("""
 [0]
 depends: env_variable('AA')
 output:  'a.txt'
 run:
     echo $AA > a.txt
-"""
-            )
+""")
         wf = script.workflow()
         os.environ["AA"] = "A1"
         Base_Executor(wf).run()
@@ -475,9 +463,8 @@ run:
             self.assertEqual(at.read().strip(), "A2")
         file_target("a.txt").unlink()
 
-    @unittest.skipIf(
-        sys.platform == "win32", "Windows executable cannot be created with chmod."
-    )
+    @unittest.skipIf(sys.platform == "win32",
+                     "Windows executable cannot be created with chmod.")
     def test_provides_executable(self):
         """Testing provides executable target."""
         # change $PATH so that lls can be found at the current
@@ -485,8 +472,7 @@ run:
         os.environ["PATH"] += os.pathsep + "."
         if file_target("lls").exists():
             file_target("lls").unlink()
-        script = SoS_Script(
-            """
+        script = SoS_Script("""
 [lls: provides=executable('lkls')]
 run:
     touch lkls
@@ -495,8 +481,7 @@ run:
 [c]
 depends: executable('lkls')
 
-"""
-        )
+""")
         wf = script.workflow("c")
         Base_Executor(wf).run()
         file_target("lkls").unlink()
@@ -506,8 +491,7 @@ depends: executable('lkls')
         for file in ("1.out", "2.out", "1.out2", "2.out2"):
             if file_target(file).exists():
                 file_target(file).unlink()
-        script = SoS_Script(
-            """
+        script = SoS_Script("""
 [work_1: shared = {'data': 'step_output'}]
 input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
 output: expand_pattern('{_name}.out')
@@ -520,8 +504,7 @@ input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}', paired_w
 output: expand_pattern('{_name}.out2')
 run: expand=True
   touch {data1[0]} {_output}
-"""
-        )
+""")
         wf = script.workflow()
         Base_Executor(wf).run()
         for file in ("1.out", "2.out", "1.out2", "2.out2"):
@@ -533,8 +516,7 @@ run: expand=True
         for file in ("1.out", "2.out", "1.out2", "2.out2"):
             if file_target(file).exists():
                 file_target(file).unlink()
-        script = SoS_Script(
-            """
+        script = SoS_Script("""
 [work_1: shared = {'data': 'step_output'}]
 input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
 output: expand_pattern('{_name}.out')
@@ -548,16 +530,14 @@ output: expand_pattern('{data}_{_name}.out2')
 run: expand=True
   touch {_output}
 
-"""
-        )
+""")
         wf = script.workflow()
         Base_Executor(wf).run()
 
     def test_removed_depends(self):
         """Test a case where a dependent file has signature, but
         gets removed before the next run."""
-        script = SoS_Script(
-            """
+        script = SoS_Script("""
 [tet: provides='a.txt']
 run:
     echo "something" > a.txt
@@ -567,8 +547,7 @@ depends: 'a.txt'
 output: 'b.txt'
 run:
     cat a.txt > b.txt
-"""
-        )
+""")
         wf = script.workflow()
         # this should be ok.
         Base_Executor(wf).run()
@@ -582,8 +561,7 @@ run:
         for file in ["t1.txt", "t2.txt", "5.txt", "10.txt", "20.txt"]:
             if file_target(file).exists():
                 file_target(file).unlink()
-        script = SoS_Script(
-            """
+        script = SoS_Script("""
 [t1]
 run:
     touch t1.txt
@@ -606,14 +584,14 @@ run:
 depends: sos_step('t1')
 run:
     touch 20.txt
-"""
-        )
+""")
         wf = script.workflow()
         env.config["sig_mode"] = "force"
         # this should be ok.
         Base_Executor(wf).run()
         for file in ["t1.txt", "t2.txt", "5.txt", "10.txt", "20.txt"]:
-            self.assertTrue(file_target(file).target_exists(), file + " should exist")
+            self.assertTrue(
+                file_target(file).target_exists(), file + " should exist")
             if file_target(file).exists():
                 file_target(file).unlink()
 
@@ -658,16 +636,14 @@ run:
         """Test run with zapped input files"""
         with open("zap1.txt", "w") as sf:
             sf.write("seomething")
-        script = SoS_Script(
-            """\
+        script = SoS_Script("""\
 [1]
 input: 'zap1.txt'
 output: "zap2.txt"
 run:
   echo asd>zap2.txt
 _input.zap()
-"""
-        )
+""")
         wf = script.workflow()
         env.config["sig_mode"] = "force"
         Base_Executor(wf).run()
@@ -684,39 +660,32 @@ _input.zap()
 
 def test_system_resource():
     """Test targtet system_resource"""
-    execute_workflow(
-        """\
+    execute_workflow("""\
         [1: shared='a']
         depends: system_resource(mem='1M',disk='1M')
         a = 1
-        """
-    )
+        """)
     assert env.sos_dict["a"] == 1
 
     #
     with pytest.raises(Exception):
-        execute_workflow(
-            """\
+        execute_workflow("""\
             [1: shared='a']
             depends: system_resource(mem='1T')
             a = 1
-            """
-        )
+            """)
 
     with pytest.raises(Exception):
-        execute_workflow(
-            """\
+        execute_workflow("""\
             [1: shared='a']
             depends: system_resource(disk='10P')
             a = 1
-        """
-        )
+        """)
 
 
 def test_temp_file():
     """Test sos_tempfile target"""
-    execute_workflow(
-        """
+    execute_workflow("""
         filename = sos_tempfile(name='a')
 
         assert filename == sos_tempfile(name='a')
@@ -732,8 +701,7 @@ def test_temp_file():
         assert sos_tempfile(path('a.txt')) == sos_tempfile(path('a.txt'))
         assert sos_tempfile(file_target('a.txt')) == sos_tempfile(file_target('a.txt'))
 
-    """
-    )
+    """)
 
 
 def test_named_path():
@@ -747,7 +715,9 @@ def test_named_path():
             assert 'home' in path.names()
             assert 'home' in path.names('docker')
         """,
-        options={"config_file": os.path.join(os.path.expanduser("~"), "docker.yml")},
+        options={
+            "config_file": os.path.join(os.path.expanduser("~"), "docker.yml")
+        },
     )
 
 
@@ -761,6 +731,5 @@ def test_to_named_path_path():
         """,
         options={
             "config_file": os.path.join(os.path.expanduser("~"), "docker.yml"),
-        }
-    )
+        })
     assert env.sos_dict['a'] == '#home/xxx/whatever'

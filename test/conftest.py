@@ -117,6 +117,7 @@ def clear_now_and_after():
 
     clear_files_and_dirs()
 
+
 @pytest.fixture
 def sample_workflow():
     with open('sample_workflow.ipynb', 'w') as sn:

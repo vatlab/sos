@@ -42,11 +42,9 @@ class R_library(BaseTarget):
         from sos.pattern import glob_wildcards
 
         output_file = tempfile.NamedTemporaryFile(
-            mode="w+t", suffix=".txt", delete=False
-        ).name
+            mode="w+t", suffix=".txt", delete=False).name
         script_file = tempfile.NamedTemporaryFile(
-            mode="w+t", suffix=".R", delete=False
-        ).name
+            mode="w+t", suffix=".R", delete=False).name
         #
         package_loaded = (
             "suppressMessages(require(package, character.only=TRUE, quietly=TRUE))"
@@ -93,9 +91,10 @@ class R_library(BaseTarget):
             # check version and mark version mismatch
             # if current version satisfies any of the
             # requirement the check program quits
-            version_satisfied = "||".join(
-                [f"(cur_version {y} {repr(x)})" for x, y in zip(version, operators)]
-            )
+            version_satisfied = "||".join([
+                f"(cur_version {y} {repr(x)})"
+                for x, y in zip(version, operators)
+            ])
         #
         if len(glob_wildcards("{repo}@{pkg}", [name])["repo"]):
             # package is from github
@@ -154,10 +153,12 @@ class R_library(BaseTarget):
             with open(script_file, "w") as sfile:
                 sfile.write(install_script)
             #
-            p = subprocess.Popen(["Rscript", "--default-packages=utils", script_file])
+            p = subprocess.Popen(
+                ["Rscript", "--default-packages=utils", script_file])
             ret = p.wait()
             if ret != 0:
-                env.logger.warning(f"Failed to detect or install R library {name}")
+                env.logger.warning(
+                    f"Failed to detect or install R library {name}")
                 return False
         except Exception as e:
             env.logger.error(f"Failed to execute script: {e}")
@@ -176,12 +177,12 @@ class R_library(BaseTarget):
                 elif status.strip() == "UNAVAILABLE":
                     env.logger.error(f"R library {lib} is not available.")
                 elif status.strip() == "AVAILABLE":
-                    env.logger.debug(f"R library {lib} ({cur_version}) is available")
+                    env.logger.debug(
+                        f"R library {lib} ({cur_version}) is available")
                     ret_val = True
                 elif status.strip() == "INSTALLED":
                     env.logger.debug(
-                        f"R library {lib} ({cur_version}) has been installed"
-                    )
+                        f"R library {lib} ({cur_version}) has been installed")
                     ret_val = True
                 elif status.strip() == "VERSION_MISMATCH":
                     env.logger.error(
@@ -196,10 +197,10 @@ class R_library(BaseTarget):
         return ret_val
 
     def target_exists(self, mode="any"):
-        if (self._library, self._version, self._autoinstall) in self.LIB_STATUS_CACHE:
-            return self.LIB_STATUS_CACHE[
-                (self._library, self._version, self._autoinstall)
-            ]
+        if (self._library, self._version,
+                self._autoinstall) in self.LIB_STATUS_CACHE:
+            return self.LIB_STATUS_CACHE[(self._library, self._version,
+                                          self._autoinstall)]
         else:
             # check if R is installed
             if not shutil.which("Rscript"):
@@ -208,9 +209,8 @@ class R_library(BaseTarget):
                 )
                 return False
             ret = self._install(self._library, self._version, self._repos)
-            self.LIB_STATUS_CACHE[
-                (self._library, self._version, self._autoinstall)
-            ] = ret
+            self.LIB_STATUS_CACHE[(self._library, self._version,
+                                   self._autoinstall)] = ret
             return ret
 
     def target_name(self):

@@ -41,9 +41,11 @@ def _load_group(group: str) -> None:
                         continue
             if _name == "run":
                 # this is critical so we print the warning
-                get_logger().warning(f"Failed to load target {_entrypoint.name}: {e}")
+                get_logger().warning(
+                    f"Failed to load target {_entrypoint.name}: {e}")
             else:
-                get_logger().debug(f"Failed to load target {_entrypoint.name}: {e}")
+                get_logger().debug(
+                    f"Failed to load target {_entrypoint.name}: {e}")
 
 
 _load_group("sos_targets")
