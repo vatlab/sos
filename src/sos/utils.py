@@ -1048,9 +1048,9 @@ def transcribe(text, cmd=None):
     if cmd is not None:
         text = "{}:\n{}".format(cmd, "    " + text.replace("\n", "\n    ") + "\n")
     with fasteners.InterProcessLock(os.path.join(env.temp_dir, "transcript.lck")):
-        with open(
-            os.path.join(env.exec_dir, "transcript.txt"), "a"
-        ) as trans:
+        trans_file = os.path.join(env.exec_dir, "transcript.txt")
+        open_mode = 'w' if os.path.isfile(trans_file) and time.time() - os.path.getmtime(trans_file) > (30 * 24 * 60 * 60) else 'a'
+        with open(trans_file, open_mode) as trans:
             trans.write(text)
 
 
