@@ -11,12 +11,12 @@ import unittest
 from sos.eval import accessed_vars, on_demand_options
 from sos.parser import SoS_Script
 from sos.pattern import expand_pattern, extract_pattern
-from sos.targets import executable, sos_targets, file_target, sos_step
+from sos.targets import executable, file_target, sos_step, sos_targets
 # these functions are normally not available but can be imported
 # using their names for testing purposes
-from sos.utils import WorkflowDict, env, get_logger, stable_repr, split_fstring, as_fstring
-from sos.workflow_executor import analyze_section
-from sos.workflow_executor import Base_Executor
+from sos.utils import (WorkflowDict, as_fstring, env, get_logger, split_fstring,
+                       stable_repr)
+from sos.workflow_executor import Base_Executor, analyze_section
 
 
 def internet_on(host='8.8.8.8', port=80, timeout=3):
@@ -243,7 +243,6 @@ task:
         self.assertEqual(stable_repr({1: 2, 3: 4}), "{1:2, 3:4}")
         self.assertEqual(stable_repr([1, 3, 4]), "[1, 3, 4]")
 
-
     def test_split_fstring(self):
         '''Test function to split f-string in pieces '''
         for string, pieces in [
@@ -312,6 +311,7 @@ input: something_unknown, sos_groups(output_from(['C1', 'C2']), by=2), group_by=
         if section.names[0][1] == 2:
             assert res['step_depends'] == sos_targets(
                 sos_step('C1'), sos_step('C2'))
+
 
 def test_file_sig(clear_now_and_after):
     '''test save and validate of file signature'''

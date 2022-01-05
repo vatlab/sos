@@ -1,9 +1,10 @@
-import pytest
 import os
+import pathlib
 import shutil
 import tempfile
 import textwrap
-import pathlib
+
+import pytest
 import yaml
 
 
@@ -115,6 +116,7 @@ def clear_now_and_after():
     yield get_names
 
     clear_files_and_dirs()
+
 
 @pytest.fixture
 def sample_workflow():

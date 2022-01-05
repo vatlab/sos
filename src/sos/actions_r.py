@@ -21,7 +21,8 @@ from .targets_r import R_library
     acceptable_args=["script", "args"],
     default_args={
         "default_env": {
-            "R_DEFAULT_PACKAGES": "datasets,methods,utils,stats,grDevices,graphics"
+            "R_DEFAULT_PACKAGES":
+                "datasets,methods,utils,stats,grDevices,graphics"
         }
     },
 )
@@ -76,8 +77,8 @@ def Rmarkdown(
     if len(output) == 0:
         write_to_stdout = True
         output = sos_targets(
-            tempfile.NamedTemporaryFile(mode="w+t", suffix=".html", delete=False).name
-        )
+            tempfile.NamedTemporaryFile(
+                mode="w+t", suffix=".html", delete=False).name)
     else:
         write_to_stdout = False
     #
@@ -90,15 +91,18 @@ def Rmarkdown(
         #        run_Rmarkdown = TRUE, quiet = FALSE, encoding = getOption("encoding"))
         cmd = interpolate(
             f'Rscript -e "rmarkdown::render({args})"',
-            {"input": input, "output": output},
+            {
+                "input": input,
+                "output": output
+            },
         )
-        if "ACTION" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
+        if "ACTION" in env.config["SOS_DEBUG"] or "ALL" in env.config[
+                "SOS_DEBUG"]:
             env.log_to_file("ACTION", f'Running command "{cmd}"')
         if env.config["run_mode"] == "interactive":
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
             p = subprocess.Popen(
-                cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE
-            )
+                cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             # pid = p.pid
             out, err = p.communicate()
             sys.stdout.write(out.decode())
@@ -115,7 +119,10 @@ def Rmarkdown(
         shutil.copyfile(str(input), temp_file)
         cmd = interpolate(
             f'Rscript -e "rmarkdown::render({args})"',
-            {"input": input, "output": sos_targets(temp_file)},
+            {
+                "input": input,
+                "output": sos_targets(temp_file)
+            },
         )
         raise RuntimeError(
             f'Failed to execute script. Please use command \n"{cmd}"\nunder {os.getcwd()} to test it.'

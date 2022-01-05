@@ -39,6 +39,7 @@ class Py_Module(BaseTarget):
         '''Check existence of Python module and install it using command
         pip install if necessary.'''
         import importlib
+
         import pkg_resources
         spam_spec = importlib.util.find_spec(name)
         reinstall = False

@@ -9,8 +9,8 @@ import time
 
 import psutil
 
-from .utils import env, expand_time, format_HHMMSS
 from .tasks import TaskFile
+from .utils import env, expand_time, format_HHMMSS
 
 
 class TaskMonitor(threading.Thread):

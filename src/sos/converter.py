@@ -5,23 +5,18 @@
 
 import argparse
 import os
-import time
 import sys
-import nbformat
+import time
 
+import nbformat
 from pygments.lexers import PythonLexer
 from pygments.token import Keyword, Name
 from pygments.util import shebang_matches
 
 from ._version import __version__
-from .syntax import (
-    SOS_DEPENDS_OPTIONS,
-    SOS_INPUT_OPTIONS,
-    SOS_OUTPUT_OPTIONS,
-    SOS_RUNTIME_OPTIONS,
-    SOS_SECTION_HEADER,
-    SOS_SECTION_OPTIONS,
-)
+from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS,
+                     SOS_RUNTIME_OPTIONS, SOS_SECTION_HEADER,
+                     SOS_SECTION_OPTIONS)
 
 
 class SoS_Lexer(PythonLexer):
@@ -41,24 +36,21 @@ class SoS_Lexer(PythonLexer):
     PythonLexer.tokens["root"].insert(0, (r"(^\w+)\s*:", Keyword.Namespace))
     from .actions import get_actions
 
-    EXTRA_KEYWORDS = set(
-        SOS_INPUT_OPTIONS
-        + SOS_OUTPUT_OPTIONS
-        + SOS_DEPENDS_OPTIONS
-        + SOS_RUNTIME_OPTIONS
-        + SOS_SECTION_OPTIONS
-        + get_actions()
-    )
+    EXTRA_KEYWORDS = set(SOS_INPUT_OPTIONS + SOS_OUTPUT_OPTIONS +
+                         SOS_DEPENDS_OPTIONS + SOS_RUNTIME_OPTIONS +
+                         SOS_SECTION_OPTIONS + get_actions())
 
     def get_tokens_unprocessed(self, text):
-        for index, token, value in PythonLexer.get_tokens_unprocessed(self, text):
+        for index, token, value in PythonLexer.get_tokens_unprocessed(
+                self, text):
             if token is Name and value in self.EXTRA_KEYWORDS:
                 yield index, Keyword.Pseudo, value
             else:
                 yield index, token, value
 
     def analyse_text(self, text):
-        return shebang_matches(text, r"sos-runner") or "#fileformat=SOS" in text[:1000]
+        return shebang_matches(
+            text, r"sos-runner") or "#fileformat=SOS" in text[:1000]
 
 
 #
@@ -125,6 +117,7 @@ codemirror_themes = [
 
 
 class ScriptToHTMLConverter(object):
+
     def __init__(self, *args, **kwargs):
         pass
 
@@ -146,7 +139,8 @@ class ScriptToHTMLConverter(object):
             help="Code mirror themes for the output",
             default="default",
         )
-        parser.add_argument("--linenos", action="store_true", help=argparse.SUPPRESS)
+        parser.add_argument(
+            "--linenos", action="store_true", help=argparse.SUPPRESS)
         parser.add_argument(
             "--template",
             help="""Name or path to an alternative template for
@@ -182,10 +176,8 @@ class ScriptToHTMLConverter(object):
             autoescape=select_autoescape(["html", "xml"]),
         )
         template = environment.get_template(
-            args.template
-            if args and hasattr(args, "template") and args.template
-            else "sos_script.tpl"
-        )
+            args.template if args and hasattr(args, "template") and
+            args.template else "sos_script.tpl")
 
         with open(script_file) as script:
             content = script.read()
@@ -193,13 +185,20 @@ class ScriptToHTMLConverter(object):
         if args and hasattr(args, "raw"):
             args.url = args.raw
         context = {
-            "filename": script_file,
-            "basename": os.path.basename(script_file),
-            "script": content,
-            "sos_version": __version__,
-            "linenos": args.linenos if args and hasattr(args, "linenos") else True,
-            "url": args.url if args and hasattr(args, "url") else "",
-            "theme": args.style if args and hasattr(args, "style") else "default",
+            "filename":
+                script_file,
+            "basename":
+                os.path.basename(script_file),
+            "script":
+                content,
+            "sos_version":
+                __version__,
+            "linenos":
+                args.linenos if args and hasattr(args, "linenos") else True,
+            "url":
+                args.url if args and hasattr(args, "url") else "",
+            "theme":
+                args.style if args and hasattr(args, "style") else "default",
         }
         html_content = template.render(context)
         if html_file is None:
@@ -208,8 +207,7 @@ class ScriptToHTMLConverter(object):
                 import tempfile
 
                 html_file = tempfile.NamedTemporaryFile(
-                    delete=False, suffix=".html"
-                ).name
+                    delete=False, suffix=".html").name
                 with open(html_file, "w") as out:
                     out.write(html_content)
             else:
@@ -246,15 +244,16 @@ def extract_workflow(notebook):
             continue
         # Non-sos code cells are also ignored
         if "kernel" in cell.metadata and cell.metadata["kernel"] not in (
-            "sos",
-            "SoS",
-            None,
+                "sos",
+                "SoS",
+                None,
         ):
             continue
         lines = cell.source.split("\n")
         valid_cell = False
         for idx, line in enumerate(lines):
-            if valid_cell or (line.startswith("%include") or line.startswith("%from")):
+            if valid_cell or (line.startswith("%include") or
+                              line.startswith("%from")):
                 content += line + "\n"
             elif SOS_SECTION_HEADER.match(line):
                 valid_cell = True

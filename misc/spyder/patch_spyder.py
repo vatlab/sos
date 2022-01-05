@@ -6,6 +6,7 @@
 import os
 import sys
 
+
 def patch_spyder2(verbose=False):
     '''Patch spyder to make it work with sos files and sos kernel '''
     try:
@@ -18,7 +19,9 @@ def patch_spyder2(verbose=False):
         with open(src_file, encoding='utf-8') as src:
             content = src.read()
         with open(src_file, 'w', encoding='utf-8') as src:
-            src.write(content.replace('''
+            src.write(
+                content.replace(
+                    '''
     (_("Cython/Pyrex files"), ('.pyx', '.pxd', '.pxi')),
     (_("C files"), ('.c', '.h')),''', '''
     (_("Cython/Pyrex files"), ('.pyx', '.pxd', '.pxi')),
@@ -32,9 +35,10 @@ def patch_spyder2(verbose=False):
         with open(src_file, encoding='utf-8') as src:
             content = src.read()
         with open(src_file, 'w', encoding='utf-8') as src:
-            src.write(content.replace('''with Python profiling)")
-    options, args = parser.parse_args()''',
-            '''with Python profiling)")
+            src.write(
+                content.replace(
+                    '''with Python profiling)")
+    options, args = parser.parse_args()''', '''with Python profiling)")
     parser.add_option('--kernel', help="Jupyter kernel to start.")
     options, args = parser.parse_args()'''))
         #
@@ -45,13 +49,14 @@ def patch_spyder2(verbose=False):
         with open(src_file, encoding='utf-8') as src:
             content = src.read()
         with open(src_file, 'w', encoding='utf-8') as src:
-            src.write(content.replace(
-                "'Python': ('py', 'pyw', 'python', 'ipy')",
-                "'Python': ('py', 'pyw', 'python', 'ipy', 'sos')")
+            src.write(
+                content.replace(
+                    "'Python': ('py', 'pyw', 'python', 'ipy')",
+                    "'Python': ('py', 'pyw', 'python', 'ipy', 'sos')")
                 .replace(
-                '''CELL_LANGUAGES = {'Python': ('#%%', '# %%', '# <codecell>', '# In[')}''',
-                '''CELL_LANGUAGES = {'Python': ('#%%', '# %%', '# <codecell>', '# In[', '%cell')}''')
-            )
+                    '''CELL_LANGUAGES = {'Python': ('#%%', '# %%', '# <codecell>', '# In[')}''',
+                    '''CELL_LANGUAGES = {'Python': ('#%%', '# %%', '# <codecell>', '# In[', '%cell')}'''
+                ))
         #
         # patch spyderlib/spyder.py
         src_file = os.path.join(spyderlib_dir, 'spyder.py')
@@ -60,11 +65,11 @@ def patch_spyder2(verbose=False):
         with open(src_file, encoding='utf-8') as src:
             content = src.read()
         with open(src_file, 'w', encoding='utf-8') as src:
-            src.write(content.replace(
-            '''
+            src.write(
+                content.replace(
+                    '''
     app.exec_()
-''',
-            r'''
+''', r'''
     try:
         if options.kernel == 'sos':
             cfg_file = os.path.expanduser('~/.ipython/profile_default/ipython_config.py')
@@ -81,7 +86,9 @@ def patch_spyder2(verbose=False):
                 os.rename(cfg_file + '.sos_bak', cfg_file)
 '''))
         #
-        print('\nSpyder is successfully patched to accept .sos format and sos kernel.')
+        print(
+            '\nSpyder is successfully patched to accept .sos format and sos kernel.'
+        )
         print('Use ')
         print()
         print('    $ spyder --kernel sos')
@@ -106,6 +113,7 @@ def patch_file(src_file, from_text, to_text, verbose):
         src.write(content.replace(from_text, to_text))
     return True
 
+
 def patch_spyder3(verbose=False):
     '''Patch spyder to make it work with sos files and sos kernel '''
     try:
@@ -113,18 +121,20 @@ def patch_spyder3(verbose=False):
         from spyder.config import utils
         src_file = utils.__file__
         spyder_dir = os.path.dirname(os.path.dirname(src_file))
-        patch_file(src_file,
-        '''
+        patch_file(
+            src_file,
+            '''
     (_("Cython/Pyrex files"), ('.pyx', '.pxd', '.pxi')),
     (_("C files"), ('.c', '.h')),''',
-        '''
+            '''
     (_("Cython/Pyrex files"), ('.pyx', '.pxd', '.pxi')),
     (_("SoS files"), ('.sos', )),
     (_("C files"), ('.c', '.h')),''',
             verbose=verbose)
         #
         # patch spyder/app/cli_options.py to add command line option --kernel
-        patch_file(os.path.join(spyder_dir, 'app', 'cli_options.py'),
+        patch_file(
+            os.path.join(spyder_dir, 'app', 'cli_options.py'),
             '''help="String to show in the main window title")
     options, args = parser.parse_args()''',
             '''help="String to show in the main window title")
@@ -133,17 +143,20 @@ def patch_spyder3(verbose=False):
             verbose=verbose)
         #
         # patch spyder/utils/sourcecode.py,
-        patch_file(os.path.join(spyder_dir, 'utils', 'sourcecode.py'),
-                "'Python': ('py', 'pyw', 'python', 'ipy')",
-                "'Python': ('py', 'pyw', 'python', 'ipy', 'sos')",
+        patch_file(
+            os.path.join(spyder_dir, 'utils', 'sourcecode.py'),
+            "'Python': ('py', 'pyw', 'python', 'ipy')",
+            "'Python': ('py', 'pyw', 'python', 'ipy', 'sos')",
             verbose=verbose)
-        patch_file(os.path.join(spyder_dir, 'utils', 'sourcecode.py'),
-                '''CELL_LANGUAGES = {'Python': ('#%%', '# %%', '# <codecell>', '# In[')}''',
-                '''CELL_LANGUAGES = {'Python': ('#%%', '# %%', '# <codecell>', '# In[', '%cell')}''',
+        patch_file(
+            os.path.join(spyder_dir, 'utils', 'sourcecode.py'),
+            '''CELL_LANGUAGES = {'Python': ('#%%', '# %%', '# <codecell>', '# In[')}''',
+            '''CELL_LANGUAGES = {'Python': ('#%%', '# %%', '# <codecell>', '# In[', '%cell')}''',
             verbose=verbose)
         #
         # patch spyder/app/mainwindow.py
-        patch_file(os.path.join(spyder_dir, 'app', 'mainwindow.py'),
+        patch_file(
+            os.path.join(spyder_dir, 'app', 'mainwindow.py'),
             '''
     app.exec_()
 ''',
@@ -165,7 +178,9 @@ def patch_spyder3(verbose=False):
 ''',
             verbose=verbose)
         #
-        print('\nSpyder is successfully patched to accept .sos format and sos kernel.')
+        print(
+            '\nSpyder is successfully patched to accept .sos format and sos kernel.'
+        )
         print('Use ')
         print()
         print('    $ spyder --kernel sos')
@@ -177,20 +192,26 @@ def patch_spyder3(verbose=False):
 
 def get_patch_spyder_parser():
     import argparse
-    parser = argparse.ArgumentParser('patch-spyder',
-        description='''Patch spyder to work with SoS kernel''')
-    parser.add_argument('-v', '--verbose', action='store_true',
-            help='Display details of files to be patched')
+    parser = argparse.ArgumentParser(
+        'patch-spyder', description='''Patch spyder to work with SoS kernel''')
+    parser.add_argument(
+        '-v',
+        '--verbose',
+        action='store_true',
+        help='Display details of files to be patched')
     return parser
+
 
 def patch_spyder(args, unknown_args):
     try:
         from spyderlib import config
+
         # suppress pyflakes warning
         config
         patch_spyder2(args.verbose)
     except ImportError:
         patch_spyder3(args.verbose)
+
 
 if __name__ == '__main__':
     parser = get_patch_spyder_parser()

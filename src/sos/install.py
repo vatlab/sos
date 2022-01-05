@@ -5,8 +5,8 @@
 
 import argparse
 import os
-import sys
 import shutil
+import sys
 
 _py_ver = sys.version_info
 if _py_ver.major == 2 or (_py_ver.major == 3 and

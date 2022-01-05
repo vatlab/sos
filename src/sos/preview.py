@@ -6,8 +6,10 @@
 import argparse
 import base64
 import io
+
 import pkg_resources
-from sos.utils import dehtml, env, dot_to_gif, linecount_of_file
+
+from sos.utils import dehtml, dot_to_gif, env, linecount_of_file
 
 
 def get_previewers():
@@ -22,8 +24,7 @@ def get_previewers():
             priority = int(priority)
         except Exception as e:
             env.logger.warning(
-                f"Ignore incorrect previewer entry point {entrypoint}: {e}"
-            )
+                f"Ignore incorrect previewer entry point {entrypoint}: {e}")
             continue
         # If name points to a function in a module. Let us try to import the module
         if ":" in name:
@@ -42,11 +43,9 @@ def get_previewers():
     # we put string infront of functions so that filename matching will be used before
     # content matching. For example, the xlsx file is actually a zip file so it could be
     # previewed as a zip file first.
-    return (
-        [x for x in result if isinstance(x[0], str) and x[0] != "*"]
-        + [x for x in result if not isinstance(x[0], str)]
-        + [x for x in result if x[0] == "*"]
-    )
+    return ([x for x in result if isinstance(x[0], str) and x[0] != "*"] +
+            [x for x in result if not isinstance(x[0], str)] +
+            [x for x in result if x[0] == "*"])
 
 
 def _preview_img_parser():
@@ -77,14 +76,11 @@ def preview_img(filename, kernel=None, style=None):
         parser = _preview_img_parser()
         try:
             args = parser.parse_args(style["options"])
-            meta.update(
-                {
-                    "image/png": dict(
-                        ([["width", args.width]] if args.width else [])
-                        + ([["height", args.height]] if args.height else [])
-                    )
-                }
-            )
+            meta.update({
+                "image/png":
+                    dict(([["width", args.width]] if args.width else []) +
+                         ([["height", args.height]] if args.height else []))
+            })
         except SystemExit:
             return
 
@@ -97,8 +93,10 @@ def preview_img(filename, kernel=None, style=None):
 
                 img = Image(filename=filename)
                 return {
-                    "image/" + image_type: image_data,
-                    "image/png": base64.b64encode(img._repr_png_()).decode("ascii"),
+                    "image/" + image_type:
+                        image_data,
+                    "image/png":
+                        base64.b64encode(img._repr_png_()).decode("ascii"),
                 }, meta
         except Exception:
             return {"image/" + image_type: image_data}, meta
@@ -115,8 +113,7 @@ def preview_svg(filename, kernel=None, style=None):
 def _preview_pdf_parser():
     parser = argparse.ArgumentParser(prog="%preview *.pdf")
     parser.add_argument(
-        "--pages", nargs="+", type=int, help="Pages of the PDF to preview."
-    )
+        "--pages", nargs="+", type=int, help="Pages of the PDF to preview.")
     parser.add_argument(
         "--width",
         help="Width of the previewed image, can be in any HTML units such as px, em.",
@@ -126,8 +123,10 @@ def _preview_pdf_parser():
         help="Height of the previewed image, can be in any HTML units such as px, em.",
     )
     parser.add_argument(
-        "--dpi", type=int, default=150, help="resolution of the converted png preview"
-    )
+        "--dpi",
+        type=int,
+        default=150,
+        help="resolution of the converted png preview")
     parser.error = lambda msg: env.logger.warning(msg)
     return parser
 
@@ -153,17 +152,13 @@ def preview_pdf(filename, kernel=None, style=None):
     meta = {}
     embed_options = ""
     if args and (args.width or args.height):
-        meta.update(
-            {
-                "image/png": dict(
-                    ([["width", args.width]] if args.width else [])
-                    + ([["height", args.height]] if args.height else [])
-                )
-            }
-        )
+        meta.update({
+            "image/png":
+                dict(([["width", args.width]] if args.width else []) +
+                     ([["height", args.height]] if args.height else []))
+        })
         embed_options += (f'width="{args.width}" ' if args.width else " ") + (
-            f'height="{args.height}" ' if args.height else " "
-        )
+            f'height="{args.height}" ' if args.height else " ")
     if use_png:
         try:
             # this import will fail even if wand is installed
@@ -181,41 +176,50 @@ def preview_pdf(filename, kernel=None, style=None):
                 pages = [x - 1 for x in args.pages]
                 for p in pages:
                     if p >= nPages:
-                        warn(f"Page {p} out of range of the pdf file ({nPages} pages)")
+                        warn(
+                            f"Page {p} out of range of the pdf file ({nPages} pages)"
+                        )
                         pages = list(range(nPages))
                         break
             # single page PDF
             if len(pages) == 1 and pages[0] == 0:
                 return {
-                    "image/png": base64.b64encode(img._repr_png_()).decode("ascii")
+                    "image/png":
+                        base64.b64encode(img._repr_png_()).decode("ascii")
                 }, meta
             elif len(pages) == 1:
                 # if only one page
                 return {
-                    "image/png": base64.b64encode(
-                        Image(img.sequence[pages[0]])._repr_png_()
-                    ).decode("ascii")
+                    "image/png":
+                        base64.b64encode(
+                            Image(img.sequence[pages[0]])._repr_png_()
+                        ).decode("ascii")
                 }, meta
             else:
                 widths = [img.sequence[p].width for p in pages]
                 heights = [img.sequence[p].height for p in pages]
                 image = Image(width=max(widths), height=sum(heights))
                 for i, p in enumerate(pages):
-                    image.composite(img.sequence[p], top=sum(heights[:i]), left=0)
+                    image.composite(
+                        img.sequence[p], top=sum(heights[:i]), left=0)
                 image.format = "png"
                 with io.BytesIO() as out:
                     image.save(file=out)
                     img_data = out.getvalue()
-                return {"image/png": base64.b64encode(img_data).decode("ascii")}, meta
+                return {
+                    "image/png": base64.b64encode(img_data).decode("ascii")
+                }, meta
         except Exception as e:
             warn(e)
             return {
-                "text/html": f'<embed src="{filename}" {embed_options} type="application/pdf" />'
+                "text/html":
+                    f'<embed src="{filename}" {embed_options} type="application/pdf" />'
             }
     else:
         # by default use iframe, because PDF figure can have multiple pages (#693)
         return {
-            "text/html": f'<embed src="{filename}" {embed_options} type="application/pdf" />'
+            "text/html":
+                f'<embed src="{filename}" {embed_options} type="application/pdf" />'
         }
 
 
@@ -268,6 +272,7 @@ def preview_txt(filename, kernel=None, style=None):
 
 def preview_csv(filename, kernel=None, style=None):
     import pandas
+
     from .visualize import Visualizer
 
     data = pandas.read_csv(filename)
@@ -276,6 +281,7 @@ def preview_csv(filename, kernel=None, style=None):
 
 def preview_xls(filename, kernel=None, style=None):
     import pandas
+
     from .visualize import Visualizer
 
     data = pandas.read_excel(filename)
@@ -286,11 +292,8 @@ def preview_zip(filename, kernel=None, style=None):
     import zipfile
 
     names = zipfile.ZipFile(filename).namelist()
-    return (
-        f"{len(names)} files\n"
-        + "\n".join(names[:5])
-        + ("\n..." if len(names) > 5 else "")
-    )
+    return (f"{len(names)} files\n" + "\n".join(names[:5]) +
+            ("\n..." if len(names) > 5 else ""))
 
 
 def preview_tar(filename, kernel=None, style=None):
@@ -299,11 +302,8 @@ def preview_tar(filename, kernel=None, style=None):
     with tarfile.open(filename, "r:*") as tar:
         # only extract files
         names = [x.name for x in tar.getmembers() if x.isfile()]
-    return (
-        f"{len(names)} files\n"
-        + "\n".join(names[:5])
-        + ("\n..." if len(names) > 5 else "")
-    )
+    return (f"{len(names)} files\n" + "\n".join(names[:5]) +
+            ("\n..." if len(names) > 5 else ""))
 
 
 def preview_gz(filename, kernel=None, style=None):
@@ -334,7 +334,8 @@ def preview_md(filename, kernel=None, style=None):
 
 
 def preview_dot(filename, kernel=None, style=None):
-    data = dot_to_gif(filename, warn=kernel.warn if kernel else env.logger.warning)
+    data = dot_to_gif(
+        filename, warn=kernel.warn if kernel else env.logger.warning)
     # according to https://github.com/ipython/ipython/issues/10045
     # I have to use 'image/png' instead of 'image/gif' to get the gif displayed.
     return {"image/png": data}

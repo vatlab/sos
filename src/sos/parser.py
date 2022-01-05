@@ -12,39 +12,20 @@ import re
 import shutil
 import sys
 import textwrap
+import typing
 from io import StringIO, TextIOBase
 from tokenize import generate_tokens
-import typing
-from typing import Dict, List, Optional, Tuple, Any, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 from uuid import UUID, uuid4
 
 from .eval import on_demand_options
-from .syntax import (
-    INDENTED,
-    SOS_CELL,
-    SOS_DIRECTIVE,
-    SOS_DIRECTIVES,
-    SOS_FORMAT_LINE,
-    SOS_FORMAT_VERSION,
-    SOS_INDENTED_ACTION,
-    SOS_MAGIC,
-    SOS_SECTION_HEADER,
-    SOS_SECTION_NAME,
-    SOS_SECTION_OPTION,
-    SOS_SUBWORKFLOW,
-    SOS_ACTION_OPTIONS,
-)
+from .syntax import (INDENTED, SOS_ACTION_OPTIONS, SOS_CELL, SOS_DIRECTIVE,
+                     SOS_DIRECTIVES, SOS_FORMAT_LINE, SOS_FORMAT_VERSION,
+                     SOS_INDENTED_ACTION, SOS_MAGIC, SOS_SECTION_HEADER,
+                     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_SUBWORKFLOW)
 from .targets import file_target, path, paths, sos_targets
-from .utils import (
-    Error,
-    env,
-    locate_script,
-    as_fstring,
-    valid_expr_till,
-    format_par,
-    separate_options,
-    textMD5,
-)
+from .utils import (Error, as_fstring, env, format_par, locate_script,
+                    separate_options, textMD5, valid_expr_till)
 
 __all__ = ["SoS_Script"]
 
@@ -151,15 +132,13 @@ def is_type_hint(stmt: str) -> bool:
     return True
 
 
-def extract_option_from_arg_list(
-    options: str, optname: str, default_value: None
-) -> Tuple[Any, str]:
+def extract_option_from_arg_list(options: str, optname: str,
+                                 default_value: None) -> Tuple[Any, str]:
     if not options:
         return default_value, options
     try:
-        args = list(ast.iter_fields(ast.parse(f"f({options})", mode="eval")))[0][
-            1
-        ].keywords
+        args = list(ast.iter_fields(ast.parse(f"f({options})",
+                                              mode="eval")))[0][1].keywords
         for field in args:
             if field.arg == optname:
                 try:
@@ -168,15 +147,11 @@ def extract_option_from_arg_list(
                             ast.Expression(body=field.value),
                             filename="<ast>",
                             mode="eval",
-                        )
-                    )
-                    new_options = ",".join(
-                        [
-                            x
-                            for x in options.split(",")
-                            if not x.strip().startswith(optname)
-                        ]
-                    )
+                        ))
+                    new_options = ",".join([
+                        x for x in options.split(",")
+                        if not x.strip().startswith(optname)
+                    ])
                     return value, new_options.strip()
                 except Exception:
                     raise ValueError(
@@ -184,18 +159,16 @@ def extract_option_from_arg_list(
                     )
         return default_value, options
     except SyntaxError:
-        raise ValueError(f"Expect a list of keyword arguments: {options} provided")
+        raise ValueError(
+            f"Expect a list of keyword arguments: {options} provided")
 
 
 def replace_sigil(text: str, sigil: str) -> str:
     if sigil == "{ }":
         return text
-    if sigil is not None and (
-        sigil.count(" ") != 1
-        or sigil[0] in (" ", "'")
-        or sigil[-1] in (" ", "'")
-        or sigil.split(" ")[0] == sigil.split(" ")[1]
-    ):
+    if sigil is not None and (sigil.count(" ") != 1 or sigil[0] in (" ", "'") or
+                              sigil[-1] in (" ", "'") or
+                              sigil.split(" ")[0] == sigil.split(" ")[1]):
         raise ValueError(f'Incorrect sigil "{sigil}"')
     # then we need to replace left sigil as { and right sigil asn }
     l, r = sigil.split(" ")
@@ -230,16 +203,14 @@ def replace_sigil(text: str, sigil: str) -> str:
             for n in range(1, len(rhs_pieces) + 1):
                 if valid_expr_till(r.join(rhs_pieces[:n])) > 0:
                     final_text += (
-                        pieces[0].replace("{", "{{").replace("}", "}}")
-                        + "{"
-                        + r.join(rhs_pieces[:n])
-                        + "}"
-                    )
+                        pieces[0].replace("{", "{{").replace("}", "}}") + "{" +
+                        r.join(rhs_pieces[:n]) + "}")
                     text = r.join(rhs_pieces[n:])
                     break
                 # the last one, still not valid
                 if n == len(rhs_pieces):
-                    raise ValueError(f"Invalid f-string {text}: invalid expression")
+                    raise ValueError(
+                        f"Invalid f-string {text}: invalid expression")
     # finally, replace LSIGIL etc
     return final_text
 
@@ -327,10 +298,8 @@ class SoS_Step:
     def match(self, step_name: str) -> bool:
         # if this step provides name...
         for name, index, _ in self.names:
-            if (
-                step_name == name
-                or step_name == f"{name}_{0 if index is None else int(index)}"
-            ):
+            if (step_name == name or step_name
+                    == f"{name}_{0 if index is None else int(index)}"):
                 return True
         return False
 
@@ -400,7 +369,9 @@ class SoS_Step:
                         mode="exec",
                     )
             elif self.category() == "statements":
-                compile(("".join(self.values)), filename="<string>", mode="exec")
+                compile(("".join(self.values)),
+                        filename="<string>",
+                        mode="exec")
             elif self.category() == "script":
                 #
                 # A valid script has an identation defined at the first line. That is to say
@@ -419,7 +390,8 @@ class SoS_Step:
                 # will be tested before inserted so this function will always return True
                 return True
             else:
-                raise RuntimeError(f"Unrecognized expression type {self.category()}")
+                raise RuntimeError(
+                    f"Unrecognized expression type {self.category()}")
             return True
         except Exception as e:
             self.error_msg = repr(e)
@@ -459,7 +431,10 @@ class SoS_Step:
         if lineno:
             self.lineno = lineno
 
-    def add_script(self, key: str, value: str, lineno: Optional[int] = None) -> None:
+    def add_script(self,
+                   key: str,
+                   value: str,
+                   lineno: Optional[int] = None) -> None:
         """script starts with key: value"""
         # we need a fake directive here because the : directive can be multi-line and
         # we need to borrow the syntax checking of directives here.
@@ -490,7 +465,8 @@ class SoS_Step:
             return
         # _action options can contain both runtime option and action options
         opt = self._action_options.strip()
-        if self.statements[-1][0] != ":" or self.statements[-1][1] != "__script__":
+        if self.statements[-1][0] != ":" or self.statements[-1][
+                1] != "__script__":
             raise RuntimeError("Failed to parse script")
         # under window, the lines will be ended with \r\n, which will cause
         # trouble with textwrap.dedent.
@@ -537,8 +513,8 @@ class SoS_Step:
         tokens: List = []
         for statement in self.statements:
             tokens.extend(
-                _get_tokens(statement[2] if statement[0] == ":" else statement[1])
-            )
+                _get_tokens(statement[2] if statement[0] ==
+                            ":" else statement[1]))
 
         if self.task:
             tokens.extend(_get_tokens(self.task))
@@ -553,13 +529,11 @@ class SoS_Step:
             return
         # handle tasks
         input_directive = [
-            idx
-            for idx, statement in enumerate(self.statements)
+            idx for idx, statement in enumerate(self.statements)
             if statement[0] == ":" and statement[1] == "input"
         ]
         task_directive = [
-            idx
-            for idx, statement in enumerate(self.statements)
+            idx for idx, statement in enumerate(self.statements)
             if statement[0] == ":" and statement[1] == "task"
         ]
         if len(task_directive) > 1:
@@ -568,7 +542,8 @@ class SoS_Step:
         for idx, statement in enumerate(self.statements):
             if statement[0] == ":" and statement[1] == "parameter":
                 if task_directive and task_directive[0] < idx:
-                    raise ValueError("Parameter statement is not allowed in tasks.")
+                    raise ValueError(
+                        "Parameter statement is not allowed in tasks.")
                 if "=" not in statement[2]:
                     if ":" in statement[2]:
                         if not is_type_hint(statement[2]):
@@ -627,7 +602,7 @@ class SoS_Step:
                 else:
                     self.task += statement[1]
             self.task_params = self.statements[task_directive[0]][2]
-            self.statements = self.statements[: task_directive[0]]
+            self.statements = self.statements[:task_directive[0]]
         # merge multiple statments at the end
         if len(self.statements) > 1 and self.statements[-1][0] == "!":
             starting = len(self.statements) - 1
@@ -640,14 +615,14 @@ class SoS_Step:
             for idx in range(starting + 1, len(self.statements)):
                 self.statements[starting][1] += self.statements[idx][1]
             # remove the rest of the statements
-            self.statements = self.statements[: starting + 1]
+            self.statements = self.statements[:starting + 1]
         #
         # auto provides #859
-        if (
-            not any(opt in self.options for opt in ("provides", "shared"))
-            and len([x for x in self.statements if x[0] == ":" and x[1] == "output"])
-            == 1
-        ):
+        if (not any(opt in self.options for opt in ("provides", "shared")) and
+                len([
+                    x for x in self.statements
+                    if x[0] == ":" and x[1] == "output"
+                ]) == 1):
             output_stmt = [
                 x for x in self.statements if x[0] == ":" and x[1] == "output"
             ][0][2]
@@ -658,15 +633,16 @@ class SoS_Step:
         """Output for command sos show"""
         textWidth = max(60, shutil.get_terminal_size((80, 20)).columns)
         text = f'  {self.step_name() + ":":<21} ' + self.comment
-        print(
-            "\n".join(
-                textwrap.wrap(
-                    text, width=textWidth, initial_indent="", subsequent_indent=" " * 24
-                )
-            )
-        )
+        print("\n".join(
+            textwrap.wrap(
+                text,
+                width=textWidth,
+                initial_indent="",
+                subsequent_indent=" " * 24)))
         local_parameters = {
-            x: y for x, y in self.parameters.items() if x not in self.global_parameters
+            x: y
+            for x, y in self.parameters.items()
+            if x not in self.global_parameters
         }
         if local_parameters:
             print("    Workflow Options:")
@@ -674,16 +650,13 @@ class SoS_Step:
             par_str = f"      {format_par(name, value)}"
             print(par_str)
             if comment:
-                print(
-                    "\n".join(
-                        textwrap.wrap(
-                            comment,
-                            width=textWidth,
-                            initial_indent=" " * 24,
-                            subsequent_indent=" " * 24,
-                        )
-                    )
-                )
+                print("\n".join(
+                    textwrap.wrap(
+                        comment,
+                        width=textWidth,
+                        initial_indent=" " * 24,
+                        subsequent_indent=" " * 24,
+                    )))
 
 
 class SoS_Workflow:
@@ -714,15 +687,13 @@ class SoS_Workflow:
                 self.auxiliary_sections[-1].uuid = uuid4()
                 # an auxiliary step can also serve as a regular step
                 # as long as it matches workflow name.
-                if (name == "" and workflow_name == "default") or fnmatch.fnmatch(
-                    workflow_name, name
-                ):
+                if (name == "" and
+                        workflow_name == "default") or fnmatch.fnmatch(
+                            workflow_name, name):
                     self.sections.append(copy.deepcopy(section))
                     self.sections[-1].name = (
-                        name
-                        if name == "" and workflow_name == "default"
-                        else workflow_name
-                    )
+                        name if name == "" and workflow_name == "default" else
+                        workflow_name)
                     self.sections[-1].index = index
                     self.sections[-1].alias = alias
                     self.sections[-1].uuid = uuid4()
@@ -733,7 +704,9 @@ class SoS_Workflow:
         # disable some disallowed steps
         if allowed_steps:
             all_steps = {
-                x.index: False for x in self.sections if x.index and x.index >= 0
+                x.index: False
+                for x in self.sections
+                if x.index and x.index >= 0
             }
             #
             for item in allowed_steps.split(","):
@@ -744,11 +717,8 @@ class SoS_Workflow:
                     all_steps[int(item)] = True
                 elif "-" in item and item.count("-") == 1:
                     l, u = item.split("-")
-                    if (
-                        (l and not l.isdigit())
-                        or (u and not u.isdigit())
-                        or (l and u and int(l) > int(u))
-                    ):
+                    if ((l and not l.isdigit()) or (u and not u.isdigit()) or
+                        (l and u and int(l) > int(u))):
                         raise ValueError(f"Invalid pipeline step item {item}")
                     # pipeline:-100, pipeline:100+ or pipeline:10-100
                     if not l:
@@ -772,8 +742,7 @@ class SoS_Workflow:
             last_step = section.step_name()
         # for auxiliary steps they may also have the step -1
         self.auxiliary_sections.sort(
-            key=lambda x: (x.name, 0 if x.index is None else x.index)
-        )
+            key=lambda x: (x.name, 0 if x.index is None else x.index))
         for idx, section in enumerate(self.auxiliary_sections):
             if idx == 0 or section.index is None:
                 continue
@@ -801,26 +770,23 @@ class SoS_Workflow:
             return
         section = workflow.sections[0]
         depends_idx = [
-            idx
-            for idx, stmt in enumerate(section.statements)
+            idx for idx, stmt in enumerate(section.statements)
             if stmt[0] == ":" and stmt[1] == "depends"
         ]
         if not depends_idx:
-            section.statements.insert(
-                0, [":", "depends", f"sos_step('{self.sections[-1].step_name()}')"]
-            )
+            section.statements.insert(0, [
+                ":", "depends", f"sos_step('{self.sections[-1].step_name()}')"
+            ])
         else:
             section.statements[depends_idx[0]][2] = (
-                section.statements[depends_idx[0]][2].strip()
-                + (", " if section.statements[depends_idx[0]][2].strip() else "")
-                + f"sos_step('{self.sections[-1].step_name()}')\n"
-            )
+                section.statements[depends_idx[0]][2].strip() +
+                (", " if section.statements[depends_idx[0]][2].strip() else "")
+                + f"sos_step('{self.sections[-1].step_name()}')\n")
         self.sections.extend(workflow.sections)
 
     def has_external_task(self) -> bool:
         return any(x.has_external_task() for x in self.sections) or any(
-            x.has_external_task() for x in self.auxiliary_sections
-        )
+            x.has_external_task() for x in self.auxiliary_sections)
 
     def parameters(self) -> Dict[str, str]:
         # collect parameters defined by `parameter:` of steps
@@ -836,11 +802,14 @@ class SoS_Workflow:
             sig.write(f"{args}\n")
             return 'w' + textMD5(sig.getvalue())[:16]
 
+
 class SoS_ScriptContent:
     """A small class to record the script information to be used by nested
     workflow."""
 
-    def __init__(self, content: str = "", filename: Optional[str] = None) -> None:
+    def __init__(self,
+                 content: str = "",
+                 filename: Optional[str] = None) -> None:
         self.content = content
         self.filename = filename
         self.included = []
@@ -872,9 +841,10 @@ class SoS_ScriptContent:
 
 
 class SoS_Script:
-    def __init__(
-        self, content: Optional[str] = "", filename: Optional[str] = None
-    ) -> None:
+
+    def __init__(self,
+                 content: Optional[str] = "",
+                 filename: Optional[str] = None) -> None:
         """Parse a sectioned SoS script file. Please refer to the SoS manual
         for detailed specification of this format.
 
@@ -899,14 +869,12 @@ class SoS_Script:
                 if not filename.endswith(".sos"):
                     try:
                         content, self.sos_script = locate_script(
-                            filename + ".sos", start="."
-                        )
+                            filename + ".sos", start=".")
                     except Exception:
                         if not filename.endswith(".ipynb"):
                             try:
                                 content, self.sos_script = locate_script(
-                                    filename + ".ipynb", start="."
-                                )
+                                    filename + ".ipynb", start=".")
                             except Exception as e:
                                 env.logger.debug(e)
                                 env.logger.error(
@@ -947,15 +915,13 @@ class SoS_Script:
         # workflows in this script, from sections that are not skipped.
         all_section_steps = sum([x.names for x in self.sections], [])
         forward_section_steps = sum(
-            [x.names for x in self.sections if "provides" not in x.options], []
-        )
+            [x.names for x in self.sections if "provides" not in x.options], [])
         # (name, None) is auxiliary steps
         self.workflows = list(
-            dict.fromkeys([x[0] for x in all_section_steps if "*" not in x[0]])
-        )
+            dict.fromkeys([x[0] for x in all_section_steps if "*" not in x[0]]))
         forward_workflows = list(
-            dict.fromkeys([x[0] for x in forward_section_steps if "*" not in x[0]])
-        )
+            dict.fromkeys(
+                [x[0] for x in forward_section_steps if "*" not in x[0]]))
         if not forward_workflows:
             self.workflows.append("default")
             self.default_workflow = "default"
@@ -980,12 +946,10 @@ class SoS_Script:
                 start_path = ""
             try:
                 content, script_file = locate_script(
-                    sos_file + ".sos", start=start_path
-                )
+                    sos_file + ".sos", start=start_path)
             except Exception:
                 content, script_file = locate_script(
-                    sos_file + ".ipynb", start=start_path
-                )
+                    sos_file + ".ipynb", start=start_path)
                 # convert ipynb to sos
                 from .converter import extract_workflow
 
@@ -1006,9 +970,8 @@ class SoS_Script:
         # [ ] --> use last comment
         # parameter: --> use last comment
         # All others: clear last comment
-        self._last_comment += (" " if self._last_comment else "") + line.lstrip(
-            "#"
-        ).strip()
+        self._last_comment += (" " if self._last_comment else
+                               "") + line.lstrip("#").strip()
 
     def clear_comment(self):
         self._last_comment = ""
@@ -1106,7 +1069,8 @@ class SoS_Script:
 
             #
             # a continuation of previous item?
-            if line[0].isspace() and cursect is not None and not cursect.empty():
+            if line[0].isspace(
+            ) and cursect is not None and not cursect.empty():
                 mo = SOS_INDENTED_ACTION.match(line)
 
                 if mo:
@@ -1132,13 +1096,14 @@ class SoS_Script:
                     #        something
                     #    whatever: <- this line
                     if cursect.category() == "script":
-                        if cursect.indented_script() > re.search(r"\S", line).start():
+                        if cursect.indented_script() > re.search(r"\S",
+                                                                 line).start():
                             try:
                                 cursect.wrap_script()
                             except Exception as e:
                                 parsing_errors.append(
-                                    cursect.lineno, "".join(cursect.values[:5]), str(e)
-                                )
+                                    cursect.lineno, "".join(cursect.values[:5]),
+                                    str(e))
                         else:
                             # case 2:
                             #
@@ -1194,9 +1159,9 @@ class SoS_Script:
                     try:
                         cursect.finalize()
                     except Exception as e:
-                        parsing_errors.append(
-                            cursect.lineno, "".join(cursect.values[:5]), str(e)
-                        )
+                        parsing_errors.append(cursect.lineno,
+                                              "".join(cursect.values[:5]),
+                                              str(e))
                 # start a new section
                 section_name = mo.group("section_name").strip()
                 section_option = mo.group("section_option")
@@ -1206,17 +1171,15 @@ class SoS_Script:
                 for name in section_name.split(","):
                     mo = SOS_SECTION_NAME.match(name)
                     if mo:
-                        n, i, di, al = mo.group(
-                            "name", "index", "default_index", "alias"
-                        )
+                        n, i, di, al = mo.group("name", "index",
+                                                "default_index", "alias")
                         if n == "global" and i is not None:
                             parsing_errors.append(
-                                lineno, line, "Invalid global section definition"
-                            )
+                                lineno, line,
+                                "Invalid global section definition")
                         if n == "":
                             parsing_errors.append(
-                                lineno, line, "Empty step name is not allowed"
-                            )
+                                lineno, line, "Empty step name is not allowed")
                         if i and str(int(i)) != i:
                             # disallow cases such as a_01
                             parsing_errors.append(
@@ -1235,8 +1198,10 @@ class SoS_Script:
                         if di:
                             step_names.append(["", int(di), al])
                     else:
-                        parsing_errors.append(lineno, line, "Invalid section name")
-                if "global" in [x[0] for x in step_names] and len(step_names) > 1:
+                        parsing_errors.append(lineno, line,
+                                              "Invalid section name")
+                if "global" in [x[0] for x in step_names
+                               ] and len(step_names) > 1:
                     parsing_errors.append(
                         lineno,
                         line,
@@ -1254,34 +1219,28 @@ class SoS_Script:
                                 opt_name, opt_value = mo.group("name", "value")
                                 if opt_name in step_options:
                                     parsing_errors.append(
-                                        lineno, line, "Duplicate options"
-                                    )
+                                        lineno, line, "Duplicate options")
                                 step_options[opt_name] = opt_value
                             else:
-                                parsing_errors.append(
-                                    lineno, line, "Invalid section option"
-                                )
+                                parsing_errors.append(lineno, line,
+                                                      "Invalid section option")
                     except Exception as e:
                         parsing_errors.append(lineno, line, str(e))
-                    if (
-                        "EXECUTOR" in env.config["SOS_DEBUG"]
-                        or "ALL" in env.config["SOS_DEBUG"]
-                    ):
+                    if ("EXECUTOR" in env.config["SOS_DEBUG"] or
+                            "ALL" in env.config["SOS_DEBUG"]):
                         env.log_to_file(
                             "EXECUTOR",
                             "Header parsed with names {} and options {}".format(
-                                step_names, step_options
-                            ),
+                                step_names, step_options),
                         )
                 for name in step_names:
-                    prev_workflows = [x[0] for x in all_step_names if "*" not in x[0]]
+                    prev_workflows = [
+                        x[0] for x in all_step_names if "*" not in x[0]
+                    ]
                     for prev_name in all_step_names:
                         # auxiliary step
-                        if (
-                            name[1] is None
-                            and prev_name[1] is None
-                            and name[0] != prev_name[0]
-                        ):
+                        if (name[1] is None and prev_name[1] is None and
+                                name[0] != prev_name[0]):
                             continue
                         # index not euqal (one of them can be None)
                         if name[1] != prev_name[1]:
@@ -1289,30 +1248,28 @@ class SoS_Script:
                         # index equal and one of them have wild card character
                         if "*" in name[0]:
                             names = [
-                                x
-                                for x in prev_workflows
+                                x for x in prev_workflows
                                 if re.match(name[0].replace("*", ".*"), x)
                             ]
                         else:
                             names = [name[0]]
                         if "*" in prev_name:
                             prev_names = [
-                                x
-                                for x in prev_workflows
+                                x for x in prev_workflows
                                 if re.match(prev_name[0].replace("*", ".*"), x)
                             ]
                         else:
                             prev_names = [prev_name[0]]
-                        if len(set(prev_names) & set(names)) and "global" not in names:
+                        if len(set(prev_names)
+                               & set(names)) and "global" not in names:
                             parsing_errors.append(
-                                lineno, line, f"Duplicate section name {names}"
-                            )
+                                lineno, line, f"Duplicate section name {names}")
                 all_step_names.extend(step_names)
                 if "global" in [x[0] for x in step_names]:
                     if step_options:
                         parsing_errors.append(
-                            lineno, line, "Global section does not accept any option"
-                        )
+                            lineno, line,
+                            "Global section does not accept any option")
                     self.sections.append(SoS_Step(is_global=True))
                 else:
                     # the second block is attached to
@@ -1324,8 +1281,7 @@ class SoS_Script:
                             step_names,
                             step_options,
                             comment=self._last_comment,
-                        )
-                    )
+                        ))
                 cursect = self.sections[-1]
                 self.clear_comment()
                 continue
@@ -1346,9 +1302,9 @@ class SoS_Script:
                     try:
                         cursect.wrap_script()
                     except Exception as e:
-                        parsing_errors.append(
-                            cursect.lineno, "".join(cursect.values[:5]), str(e)
-                        )
+                        parsing_errors.append(cursect.lineno,
+                                              "".join(cursect.values[:5]),
+                                              str(e))
                 else:
                     self.sections.append(SoS_Step(is_global=True))
                     cursect = self.sections[-1]
@@ -1365,7 +1321,8 @@ class SoS_Script:
                             f"Directive {directive_name} is not allowed outside of a SoS step",
                         )
                         continue
-                    cursect.add_directive(directive_name, directive_value, lineno)
+                    cursect.add_directive(directive_name, directive_value,
+                                          lineno)
                 else:
                     if directive_name == "parameter":
                         if not directive_value.strip():
@@ -1381,7 +1338,8 @@ class SoS_Script:
                         )
                     else:
                         # let us check if this is an acture action, or a type hint
-                        cursect.add_script(directive_name, directive_value, lineno)
+                        cursect.add_script(directive_name, directive_value,
+                                           lineno)
                 self.clear_comment()
                 continue
             # if section is in script mode?
@@ -1424,9 +1382,8 @@ class SoS_Script:
                 try:
                     cursect.finalize()
                 except Exception as e:
-                    parsing_errors.append(
-                        cursect.lineno, "".join(cursect.values[:5]), str(e)
-                    )
+                    parsing_errors.append(cursect.lineno,
+                                          "".join(cursect.values[:5]), str(e))
 
         #
         # if there is any parsing error, raise an exception
@@ -1435,7 +1392,8 @@ class SoS_Script:
         # definition being the content.
         global_parameters: Dict = {}
         if not [x for x in self.sections if not x.is_global]:
-            self.sections.append(SoS_Step(self.content, [("default", None, None)]))
+            self.sections.append(
+                SoS_Step(self.content, [("default", None, None)]))
             for section in [x for x in self.sections if x.is_global]:
                 if self.sections[-1].task != "":
                     parsing_errors.append(
@@ -1477,14 +1435,15 @@ class SoS_Script:
             #
             section.md5 = textMD5(section.get_tokens())
 
-    def workflow(
-        self, workflow_name: Optional[str] = None, use_default: bool = True
-    ) -> SoS_Workflow:
+    def workflow(self,
+                 workflow_name: Optional[str] = None,
+                 use_default: bool = True) -> SoS_Workflow:
         """Return a workflow with name_step+name_step specified in wf_name
         This function might be called recursively because of nested
         workflow."""
         if workflow_name is None and not use_default:
-            return SoS_Workflow(self.content, "", "", self.sections, self.global_stmts)
+            return SoS_Workflow(self.content, "", "", self.sections,
+                                self.global_stmts)
         allowed_steps = None
         if not workflow_name:
             wf_name = ""
@@ -1494,7 +1453,8 @@ class SoS_Script:
                 wfs = []
                 for wf in workflow_name.split("+"):
                     if not SOS_SUBWORKFLOW.match(wf):
-                        raise ValueError(f"Incorrect workflow name {workflow_name}")
+                        raise ValueError(
+                            f"Incorrect workflow name {workflow_name}")
                     # if this is a combined workflow, extra_section might be specied.
                     wfs.append(self.workflow(wf))
                 combined_wf = wfs[0]
@@ -1520,16 +1480,15 @@ class SoS_Script:
                 raise ValueError(
                     "Name of workflow should be specified because "
                     "the script defines more than one pipelines without a default one. "
-                    "Available pipelines are: {}.".format(", ".join(self.workflows))
-                )
+                    "Available pipelines are: {}.".format(", ".join(
+                        self.workflows)))
         elif wf_name not in self.workflows and wf_name != "default":
             raise ValueError(
                 f'Workflow {wf_name} is undefined. Available workflows are: {", ".join(self.workflows)}'
             )
 
-        return SoS_Workflow(
-            self.content, wf_name, allowed_steps, self.sections, self.global_stmts
-        )
+        return SoS_Workflow(self.content, wf_name, allowed_steps, self.sections,
+                            self.global_stmts)
 
     def print_help(self, script_name: str):
         """print a help message from the script"""
@@ -1551,7 +1510,9 @@ class SoS_Script:
         print(
             '  options:              Single-hyphen sos parameters (see "sos run -h" for details)'
         )
-        print("  workflow_options:     Double-hyphen workflow-specific parameters")
+        print(
+            "  workflow_options:     Double-hyphen workflow-specific parameters"
+        )
         description = [x.lstrip("# ").strip() for x in self.description]
         description = textwrap.dedent("\n".join(description)).strip()
         if description:
@@ -1569,16 +1530,13 @@ class SoS_Script:
                 par_str = f"  {format_par(name, value)}"
                 print(par_str)
                 if comment:
-                    print(
-                        "\n".join(
-                            textwrap.wrap(
-                                comment,
-                                width=textWidth,
-                                initial_indent=" " * 24,
-                                subsequent_indent=" " * 24,
-                            )
-                        )
-                    )
+                    print("\n".join(
+                        textwrap.wrap(
+                            comment,
+                            width=textWidth,
+                            initial_indent=" " * 24,
+                            subsequent_indent=" " * 24,
+                        )))
         #
         print("\nSections")
         for section in self.sections:

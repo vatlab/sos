@@ -1,5 +1,6 @@
-import sys
 import subprocess
+import sys
+
 import psutil
 
 

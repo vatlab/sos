@@ -31,7 +31,7 @@ def regex(filepattern: str) -> str:
     last = 0
     wildcards = set()
     for match in SOS_WILDCARD.finditer(filepattern):
-        f.append(re.escape(filepattern[last : match.start()]))
+        f.append(re.escape(filepattern[last:match.start()]))
         wildcard = match.group("name")
         if wildcard in wildcards:
             if match.group("constraint"):
@@ -43,12 +43,11 @@ def regex(filepattern: str) -> str:
             f.append(f"(?P={wildcard})")
         else:
             wildcards.add(wildcard)
-            f.append(
-                "(?P<{}>{})".format(
-                    wildcard,
-                    match.group("constraint") if match.group("constraint") else ".+",
-                )
-            )
+            f.append("(?P<{}>{})".format(
+                wildcard,
+                match.group("constraint")
+                if match.group("constraint") else ".+",
+            ))
         last = match.end()
     f.append(re.escape(filepattern[last:]))
     f.append("$")  # ensure that the match spans the whole file
@@ -56,7 +55,8 @@ def regex(filepattern: str) -> str:
 
 
 def glob_wildcards(
-    pattern: str, files: Optional[List[str]] = None
+    pattern: str,
+    files: Optional[List[str]] = None
 ) -> Dict[str, Union[List[Any], List[str]]]:
     """
     Glob the values of the wildcards by matching the given pattern to the filesystem.
@@ -68,10 +68,8 @@ def glob_wildcards(
         pattern = pattern.replace("\\", "/")
     first_wildcard = re.search("{[^{]", pattern)
     dirname = (
-        os.path.dirname(pattern[: first_wildcard.start()])
-        if first_wildcard
-        else os.path.dirname(pattern)
-    )
+        os.path.dirname(pattern[:first_wildcard.start()])
+        if first_wildcard else os.path.dirname(pattern))
     if not dirname:
         dirname = "."
 
@@ -80,11 +78,9 @@ def glob_wildcards(
     pattern = re.compile(regex(pattern))
 
     if files is None:
-        files = (
-            (os.path.join(dirpath, f) if dirpath != "." else f)
-            for dirpath, dirnames, filenames in os.walk(dirname)
-            for f in chain(filenames, dirnames)
-        )
+        files = ((os.path.join(dirpath, f) if dirpath != "." else f)
+                 for dirpath, dirnames, filenames in os.walk(dirname)
+                 for f in chain(filenames, dirnames))
 
     for f in files:
         # we perform path matching with only / slash
@@ -103,6 +99,7 @@ def apply_wildcards(
     dynamic_fill: None = None,
     keep_dynamic: bool = False,
 ) -> str:
+
     def format_match(match):
         name = match.group("name")
         try:
@@ -148,8 +145,7 @@ def expand_pattern(pattern: str) -> List[str]:
         if key not in env.sos_dict:
             raise ValueError(f"Undefined variable {key} in pattern {pattern}")
         if not isinstance(env.sos_dict[key], str) and isinstance(
-            env.sos_dict[key], collections.Sequence
-        ):
+                env.sos_dict[key], collections.Sequence):
             if sz is None:
                 sz = len(env.sos_dict[key])
                 wildcard = [copy.deepcopy(wildcard[0]) for x in range(sz)]
@@ -172,6 +168,5 @@ def expand_pattern(pattern: str) -> List[str]:
                 fail_dynamic=False,
                 dynamic_fill=None,
                 keep_dynamic=False,
-            )
-        )
+            ))
     return ofiles
