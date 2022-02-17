@@ -1307,12 +1307,8 @@ def check_tasks(tasks, is_all: bool):
             # if the cache file is corrupted, remove it. #1275
             os.remove(cache_file)
     # at most 20 threads
-    from multiprocessing.pool import ThreadPool as Pool
-
-    p = Pool(min(10, len(tasks)))
     # the result can be {} for unchanged, or real results
-    raw_status = p.starmap(check_task,
-                           [(x, status_cache.get(x, {})) for x in tasks])
+    raw_status = [check_task(x, status_cache.get(x, {})) for x in tasks]
 
     # if check all, we clear the cache and record all existing tasks
     has_changes: bool = any(x for x in raw_status)
@@ -1821,7 +1817,6 @@ showResourceFigure_""" + t + """()
 def kill_tasks(tasks, tags=None):
     #
     import glob
-    from multiprocessing.pool import ThreadPool as Pool
 
     if not tasks:
         tasks = glob.glob(
@@ -1849,8 +1844,7 @@ def kill_tasks(tasks, tags=None):
         return
     all_tasks = sorted(list(set(all_tasks)))
     # at most 20 threads
-    p = Pool(min(10, len(all_tasks)))
-    killed = p.map(kill_task, all_tasks)
+    killed = [kill_task(x) for x in all_tasks]
     for s, t in zip(killed, all_tasks):
         print(f"{t}\t{s}")
 
