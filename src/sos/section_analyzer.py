@@ -244,7 +244,7 @@ def get_all_used_vars(section):
                     raise ValueError(f"Failed to parse parameter for_each: {e}")
     if section.task:
         all_used_vars |= accessed_vars(section.task)
-        all_used_vars |= accessed_vars(section.task_params)
+        all_used_vars |= accessed_vars(section.task_params, mode='eval')
 
     # now we have a list of global variables that are actually used in the functions
     # this is specifically designed to handle the last case in #1225
