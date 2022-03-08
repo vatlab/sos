@@ -2,15 +2,16 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
-import os
 import getpass
+import os
 import subprocess
+
 import pytest
 
 from sos import execute_workflow
 from sos._version import __version__
-from sos.utils import env, load_config_files
 from sos.eval import get_config
+from sos.utils import env, load_config_files
 
 # if the test is imported under sos/test, test interacive executor
 

@@ -16,6 +16,7 @@ def test_python():
         print(a)
         ''')
 
+
 def test_python3():
     execute_workflow(r'''
         [0]

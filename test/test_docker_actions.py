@@ -78,8 +78,9 @@ except Exception as e:
     has_docker = False
 
 
-@pytest.mark.skipif(not has_docker or sys.platform == 'win32',
-                    reason='Skip test because docker is not installed.')
+@pytest.mark.skipif(
+    not has_docker or sys.platform == 'win32',
+    reason='Skip test because docker is not installed.')
 def test_bash_in_docker():
     '''Test action bash in docker environment'''
     execute_workflow(r'''
@@ -98,12 +99,15 @@ def test_bash_in_docker():
 #           dir c:\
 #           ''')
 
-@pytest.mark.skipif(not has_docker or sys.platform == 'win32',
-                    reason='Skip test because docker is not installed.')
+
+@pytest.mark.skipif(
+    not has_docker or sys.platform == 'win32',
+    reason='Skip test because docker is not installed.')
 def test_sh_in_docker():
     '''Test action sh in docker environment'''
     # test docker
-    script = execute_workflow(r'''
+    script = execute_workflow(
+        r'''
         [0]
         run: container='docker://ubuntu'
         echo 'Echo
@@ -112,8 +116,10 @@ def test_sh_in_docker():
     with pytest.raises(Exception):
         execute_workflow(script)
 
-@pytest.mark.skipif(not has_docker or sys.platform == 'win32',
-                    reason='Skip test because docker is not installed.')
+
+@pytest.mark.skipif(
+    not has_docker or sys.platform == 'win32',
+    reason='Skip test because docker is not installed.')
 def test_docker_build_linux_image():
     '''Test action docker build'''
     execute_workflow(r'''
@@ -131,8 +137,9 @@ def test_docker_build_linux_image():
         ''')
 
 
-@pytest.mark.skipif(not has_docker or sys.platform == 'win32',
-                 reason='Skip test because docker is not installed.')
+@pytest.mark.skipif(
+    not has_docker or sys.platform == 'win32',
+    reason='Skip test because docker is not installed.')
 def test_docker_build_linux_image_option_label_compress():
     '''Test action docker build'''
     # build with more options
@@ -149,9 +156,9 @@ def test_docker_build_linux_image_option_label_compress():
         ''')
 
 
-@pytest.mark.skipif(not has_docker or sys.platform == 'win32' or
-                 'TRAVIS' in os.environ,
-                 reason='Skip test because docker is not installed.')
+@pytest.mark.skipif(
+    not has_docker or sys.platform == 'win32' or 'TRAVIS' in os.environ,
+    reason='Skip test because docker is not installed.')
 def test_docker_build_linux_image_label_with_space():
     '''Test action docker build'''
     with pytest.raises(Exception):
@@ -168,9 +175,9 @@ def test_docker_build_linux_image_label_with_space():
             ''')
 
 
-@pytest.mark.skipif(not has_docker or sys.platform != 'win32' or
-                 'APPVEYOR' in os.environ,
-                 reason='Skip test because docker is not installed.')
+@pytest.mark.skipif(
+    not has_docker or sys.platform != 'win32' or 'APPVEYOR' in os.environ,
+    reason='Skip test because docker is not installed.')
 def test_docker_build_windows_image():
     '''Test action docker build'''
     execute_workflow(r'''
@@ -185,8 +192,9 @@ def test_docker_build_windows_image():
         ''')
 
 
-@pytest.mark.skipif(not has_docker or sys.platform == 'win32',
-                    reason='Skip test because docker is not installed.')
+@pytest.mark.skipif(
+    not has_docker or sys.platform == 'win32',
+    reason='Skip test because docker is not installed.')
 def test_docker_image(fastq_files):
     '''Test docker_image option'''
     execute_workflow(r'''
@@ -228,8 +236,9 @@ def test_docker_image_from_file():
         ''')
 
 
-@pytest.mark.skipif(not has_docker or sys.platform == 'win32',
-                    reason='Skip test because docker is not installed.')
+@pytest.mark.skipif(
+    not has_docker or sys.platform == 'win32',
+    reason='Skip test because docker is not installed.')
 def test_docker_script_action():
     '''Test action sh in docker environment'''
     # test docker
@@ -239,8 +248,10 @@ def test_docker_script_action():
         echo 'Echo'
         ''')
 
-@pytest.mark.skipif(not has_docker or sys.platform == 'win32',
-                    reason='Skip test because docker is not installed.')
+
+@pytest.mark.skipif(
+    not has_docker or sys.platform == 'win32',
+    reason='Skip test because docker is not installed.')
 def test_port_option():
     '''Test use of option port in action'''
     execute_workflow(r'''
@@ -255,8 +266,10 @@ def test_port_option():
         echo 'Echo'
         ''')
 
-@pytest.mark.skipif(not has_docker or sys.platform == 'win32',
-                    reason='Skip test because docker is not installed.')
+
+@pytest.mark.skipif(
+    not has_docker or sys.platform == 'win32',
+    reason='Skip test because docker is not installed.')
 def test_auto_output_mount():
     '''Test use of option port in action'''
     execute_workflow(r'''

@@ -4,29 +4,27 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import ast
-
 from collections.abc import Mapping, Sequence
 from typing import Any, Dict, Optional
 
-from .eval import SoS_eval, accessed_vars, used_in_func, SoS_exec
-from .parser import SoS_Step
-from .targets import dynamic, remote, sos_targets, sos_step, named_output, file_target
-from .utils import env
+from .eval import SoS_eval, SoS_exec, accessed_vars, used_in_func
 from .executor_utils import __null_func__, prepare_env, strip_param_defs
+from .parser import SoS_Step
 from .syntax import SOS_TARGETS_OPTIONS
+from .targets import (dynamic, file_target, named_output, remote, sos_step,
+                      sos_targets)
+from .utils import env
 
 # imported for eval, assert to reduce warning
 assert file_target
+
 
 def get_param_of_function(name, param_list, extra_dict={}):
     tree = ast.parse(f"__null_func__({param_list})")
     # x.func can be an attribute (e.g. a.b()) and do not have id
     funcs = [
-        x
-        for x in ast.walk(tree)
-        if x.__class__.__name__ == "Call"
-        and hasattr(x.func, "id")
-        and x.func.id == name
+        x for x in ast.walk(tree) if x.__class__.__name__ == "Call" and
+        hasattr(x.func, "id") and x.func.id == name
     ]
     params = []
     for func in funcs:
@@ -34,32 +32,26 @@ def get_param_of_function(name, param_list, extra_dict={}):
             try:
                 params.append([ast.literal_eval(arg)])
             except Exception as e:
-                if (
-                    "STEP" in env.config["SOS_DEBUG"]
-                    or "ALL" in env.config["SOS_DEBUG"]
-                ):
+                if ("STEP" in env.config["SOS_DEBUG"] or
+                        "ALL" in env.config["SOS_DEBUG"]):
                     env.log_to_file(
                         "STEP",
                         f"Failed to evaluate parameter of function {name} from {param_list}: {e}",
                     )
                 try:
-                    params.append(
-                        [
-                            eval(
-                                compile(
-                                    ast.Expression(body=arg),
-                                    filename="<string>",
-                                    mode="eval",
-                                ),
-                                extra_dict,
-                            )
-                        ]
-                    )
+                    params.append([
+                        eval(
+                            compile(
+                                ast.Expression(body=arg),
+                                filename="<string>",
+                                mode="eval",
+                            ),
+                            extra_dict,
+                        )
+                    ])
                 except Exception as e:
-                    if (
-                        "STEP" in env.config["SOS_DEBUG"]
-                        or "ALL" in env.config["SOS_DEBUG"]
-                    ):
+                    if ("STEP" in env.config["SOS_DEBUG"] or
+                            "ALL" in env.config["SOS_DEBUG"]):
                         env.log_to_file(
                             "STEP",
                             f"Failed to evaluate parameter of function {name} from {param_list}: {e}",
@@ -68,33 +60,27 @@ def get_param_of_function(name, param_list, extra_dict={}):
             try:
                 params.append([kwarg.arg, ast.literal_eval(kwarg.value)])
             except Exception as e:
-                if (
-                    "STEP" in env.config["SOS_DEBUG"]
-                    or "ALL" in env.config["SOS_DEBUG"]
-                ):
+                if ("STEP" in env.config["SOS_DEBUG"] or
+                        "ALL" in env.config["SOS_DEBUG"]):
                     env.log_to_file(
                         "STEP",
                         f"Failed to evaluate parameter of function {name} from {param_list}: {e}",
                     )
                 try:
-                    params.append(
-                        [
-                            kwarg.arg,
-                            eval(
-                                compile(
-                                    ast.Expression(body=kwarg.value),
-                                    filename="<string>",
-                                    mode="eval",
-                                ),
-                                extra_dict,
+                    params.append([
+                        kwarg.arg,
+                        eval(
+                            compile(
+                                ast.Expression(body=kwarg.value),
+                                filename="<string>",
+                                mode="eval",
                             ),
-                        ]
-                    )
+                            extra_dict,
+                        ),
+                    ])
                 except Exception as e:
-                    if (
-                        "STEP" in env.config["SOS_DEBUG"]
-                        or "ALL" in env.config["SOS_DEBUG"]
-                    ):
+                    if ("STEP" in env.config["SOS_DEBUG"] or
+                            "ALL" in env.config["SOS_DEBUG"]):
                         env.log_to_file(
                             "STEP",
                             f"Failed to evaluate parameter of function {name} from {param_list}: {e}",
@@ -105,19 +91,19 @@ def get_param_of_function(name, param_list, extra_dict={}):
 def get_names_of_param(name, param_list, extra_dict={}):
     tree = ast.parse(f"__null_func__({param_list})")
     kwargs = [
-        x for x in ast.walk(tree) if x.__class__.__name__ == "keyword" and x.arg == name
+        x for x in ast.walk(tree)
+        if x.__class__.__name__ == "keyword" and x.arg == name
     ]
 
     values = []
     for kwarg in kwargs:
         # Python 3.8 class name is named Constant, not Str
-        values.extend(
-            [
-                x.s
-                for x in ast.walk(kwarg.value)
-                if x.__class__.__name__ in ("Str", "Constant") and isinstance(x.s, str)
-            ]
-        )
+        values.extend([
+            x.s
+            for x in ast.walk(kwarg.value)
+            if x.__class__.__name__ in ("Str",
+                                        "Constant") and isinstance(x.s, str)
+        ])
     return values
 
 
@@ -132,7 +118,8 @@ def get_num_of_args_and_names_of_kwargs(param_list):
 
 def find_statement(section, name):
     stmt_idx = [
-        idx for idx, x in enumerate(section.statements) if x[0] == ":" and x[1] == name
+        idx for idx, x in enumerate(section.statements)
+        if x[0] == ":" and x[1] == name
     ]
     if not stmt_idx:
         return None
@@ -146,14 +133,12 @@ def find_statement(section, name):
 
 def no_output_from(*args, **kwargs):
     raise SyntaxError(
-        "Function output_from can only be used in input or depends statements"
-    )
+        "Function output_from can only be used in input or depends statements")
 
 
 def no_named_output(*args, **kwargs):
     raise SyntaxError(
-        "Function named_output can only be used in input or depends statements"
-    )
+        "Function named_output can only be used in input or depends statements")
 
 
 def no_sos_step(*args, **kwargs):
@@ -161,7 +146,8 @@ def no_sos_step(*args, **kwargs):
 
 
 def no_sos_variable(*args, **kwargs):
-    raise SyntaxError("Target sos_variable can only be used in depends statements")
+    raise SyntaxError(
+        "Target sos_variable can only be used in depends statements")
 
 
 def get_changed_vars(section: SoS_Step):
@@ -202,11 +188,11 @@ def get_environ_vars(section):
     if depends_idx is not None:
         value = section.statements[depends_idx][2]
         args = get_param_of_function(
-            "sos_variable", value, extra_dict=env.sos_dict.dict()
-        )
+            "sos_variable", value, extra_dict=env.sos_dict.dict())
         for arg in args:
             if len(arg) == 2:
-                raise SyntaxError("sos_variable does not accept keyword argument")
+                raise SyntaxError(
+                    "sos_variable does not accept keyword argument")
             environ_vars.add(arg[0])
     if section.task:
         # 1281
@@ -229,35 +215,42 @@ def get_all_used_vars(section):
             if "paired_with" in statement[2]:
                 try:
                     pws = get_names_of_param(
-                        "paired_with", statement[2], extra_dict=env.sos_dict.dict()
-                    )
+                        "paired_with",
+                        statement[2],
+                        extra_dict=env.sos_dict.dict())
                     all_used_vars |= set(pws)
                 except Exception as e:
-                    raise ValueError(f"Failed to parse parameter paired_with: {e}")
+                    raise ValueError(
+                        f"Failed to parse parameter paired_with: {e}")
             if "group_with" in statement[2]:
                 try:
                     pws = get_names_of_param(
-                        "group_with", statement[2], extra_dict=env.sos_dict.dict()
-                    )
+                        "group_with",
+                        statement[2],
+                        extra_dict=env.sos_dict.dict())
                     all_used_vars |= set(pws)
                 except Exception as e:
-                    raise ValueError(f"Failed to parse parameter group_with: {e}")
+                    raise ValueError(
+                        f"Failed to parse parameter group_with: {e}")
             if "for_each" in statement[2]:
                 try:
                     pws = get_names_of_param(
-                        "for_each", statement[2], extra_dict=env.sos_dict.dict()
-                    )
+                        "for_each",
+                        statement[2],
+                        extra_dict=env.sos_dict.dict())
                     for pw in pws:
                         all_used_vars |= set(pw.split(","))
                 except Exception as e:
                     raise ValueError(f"Failed to parse parameter for_each: {e}")
     if section.task:
         all_used_vars |= accessed_vars(section.task)
+        all_used_vars |= accessed_vars(section.task_params, mode='eval')
 
     # now we have a list of global variables that are actually used in the functions
     # this is specifically designed to handle the last case in #1225
     func_with_vars = [
-        y for x, y in used_in_func(section.global_stmts).items() if x in all_used_vars
+        y for x, y in used_in_func(section.global_stmts).items()
+        if x in all_used_vars
     ]
     return set.union(all_used_vars, *func_with_vars)
 
@@ -269,12 +262,10 @@ def get_signature_vars(section):
     # signature vars should contain parameters defined in global section
     # #1155, we however need to keep local parameters
     signature_vars = set(section.parameters.keys()) - set(
-        section.global_parameters.keys()
-    )
+        section.global_parameters.keys())
     signature_vars |= set(
         section.global_parameters.keys()
-        & accessed_vars(strip_param_defs(section.global_stmts))
-    )
+        & accessed_vars(strip_param_defs(section.global_stmts)))
 
     input_idx = find_statement(section, "input")
     after_input_idx = 0 if input_idx is None else input_idx + 1
@@ -299,21 +290,20 @@ def get_step_depends(section):
     input_idx = find_statement(section, "input")
     depends_idx = find_statement(section, "depends")
     for stmt_idx in ([] if input_idx is None else [input_idx]) + (
-        [] if depends_idx is None else [depends_idx]
-    ):
+        [] if depends_idx is None else [depends_idx]):
         # input statement
         stmt = section.statements[stmt_idx][2]
         if "sos_step" in stmt:
             step_depends.extend([sos_step(x) for x in get_sos_step_steps(stmt)])
         if "output_from" in stmt:
-            step_depends.extend(
-                [sos_step(x) for x in get_output_from_steps(stmt, section.last_step)]
-            )
+            step_depends.extend([
+                sos_step(x)
+                for x in get_output_from_steps(stmt, section.last_step)
+            ])
         if "named_output" in stmt:
             # there can be multiple named_output calls
             pars = get_param_of_function(
-                "named_output", stmt, extra_dict=env.sos_dict.dict()
-            )
+                "named_output", stmt, extra_dict=env.sos_dict.dict())
             for par in pars:
                 # a single argument
                 if len(par) == 1:
@@ -341,19 +331,18 @@ def get_step_depends(section):
         try:
             svars = ["output_from", "named_output"]
             old_values = {
-                x: env.sos_dict.dict()[x] for x in svars if x in env.sos_dict.dict()
+                x: env.sos_dict.dict()[x]
+                for x in svars
+                if x in env.sos_dict.dict()
             }
             # output_from and named_output has been processed
-            env.sos_dict.quick_update(
-                {
-                    "output_from": lambda *args, **kwargs: None,
-                    "named_output": lambda *args, **kwargs: None,
-                    "traced": lambda *args, **kwargs: sos_targets(*args, **kwargs),
-                }
-            )
+            env.sos_dict.quick_update({
+                "output_from": lambda *args, **kwargs: None,
+                "named_output": lambda *args, **kwargs: None,
+                "traced": lambda *args, **kwargs: sos_targets(*args, **kwargs),
+            })
             args, kwargs = SoS_eval(
-                f"__null_func__({value})", extra_dict=env.sos_dict.dict()
-            )
+                f"__null_func__({value})", extra_dict=env.sos_dict.dict())
             if any(isinstance(x, (dynamic, remote)) for x in args):
                 dynamic_depends = True
             else:
@@ -362,10 +351,11 @@ def get_step_depends(section):
         except SyntaxError:
             raise
         except Exception as e:
-            if "STEP" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
+            if "STEP" in env.config["SOS_DEBUG"] or "ALL" in env.config[
+                    "SOS_DEBUG"]:
                 env.log_to_file(
-                    "STEP", f"Args {value} in depends cannot be determined: {e}"
-                )
+                    "STEP",
+                    f"Args {value} in depends cannot be determined: {e}")
         finally:
             [env.sos_dict.dict().pop(x) for x in svars]
             env.sos_dict.quick_update(old_values)
@@ -381,9 +371,8 @@ def get_step_input(section, default_input):
     input_idx = find_statement(section, "input")
     # #1270. If there is any statement before input:, it might create input or remove input,
     # which essentially make input undetermined before actually run it.
-    if input_idx is None or (
-        input_idx != 0 and any(x[0] == "!" for x in section.statements[:input_idx])
-    ):
+    if input_idx is None or (input_idx != 0 and any(
+            x[0] == "!" for x in section.statements[:input_idx])):
         return step_input, dynamic_input
 
     # input statement
@@ -391,20 +380,19 @@ def get_step_input(section, default_input):
     try:
         svars = ["output_from", "named_output", "sos_step", "sos_variable"]
         old_values = {
-            x: env.sos_dict.dict()[x] for x in svars if x in env.sos_dict.dict()
+            x: env.sos_dict.dict()[x]
+            for x in svars
+            if x in env.sos_dict.dict()
         }
-        env.sos_dict.quick_update(
-            {
-                "output_from": lambda *args, **kwargs: None,
-                "named_output": lambda *args, **kwargs: None,
-                "traced": lambda *args, **kwargs: sos_targets(*args, **kwargs),
-                "sos_step": no_sos_step,
-                "sos_variable": no_sos_variable,
-            }
-        )
+        env.sos_dict.quick_update({
+            "output_from": lambda *args, **kwargs: None,
+            "named_output": lambda *args, **kwargs: None,
+            "traced": lambda *args, **kwargs: sos_targets(*args, **kwargs),
+            "sos_step": no_sos_step,
+            "sos_variable": no_sos_variable,
+        })
         args, kwargs = SoS_eval(
-            f"__null_func__({stmt})", extra_dict=env.sos_dict.dict()
-        )
+            f"__null_func__({stmt})", extra_dict=env.sos_dict.dict())
         if not args:
             if default_input is None:
                 step_input = sos_targets()
@@ -455,17 +443,15 @@ def get_step_output(section, default_output, analysis_type):
     # if the step is referred to by named_output, sos_step etc, we do not
     # care about their output. In terms of bug #1379, perhaps the step would
     # be added to the DAG multiple times, it will be run only once.
-    if analysis_type == "backward" and (
-        default_output is None or all(isinstance(x, sos_step) for x in default_output)
-    ):
+    if analysis_type == "backward" and (default_output is None or all(
+            isinstance(x, sos_step) for x in default_output)):
         return step_output
 
     # # if the output is of type named_output, we do not need to care about
     # # the exact output either. We just need to check if there are other
     # # named output
     n_args, name_kwargs = get_num_of_args_and_names_of_kwargs(
-        section.statements[output_idx][2]
-    )
+        section.statements[output_idx][2])
     name_kwargs = [x for x in name_kwargs if x not in SOS_TARGETS_OPTIONS]
     if name_kwargs:
         step_output.extend([named_output(x) for x in name_kwargs])
@@ -478,7 +464,7 @@ def get_step_output(section, default_output, analysis_type):
     #     return step_output
 
     # if we do have output, we have to evaluate starting from input...
-    for statement in section.statements[: output_idx + 1]:
+    for statement in section.statements[:output_idx + 1]:
         if statement[0] == ":" and statement[1] == "depends":
             continue
         if statement[0] == "!":
@@ -496,19 +482,18 @@ def get_step_output(section, default_output, analysis_type):
         try:
             svars = ["output_from", "named_output", "sos_step", "sos_variable"]
             old_values = {
-                x: env.sos_dict.dict()[x] for x in svars if x in env.sos_dict.dict()
+                x: env.sos_dict.dict()[x]
+                for x in svars
+                if x in env.sos_dict.dict()
             }
-            env.sos_dict.quick_update(
-                {
-                    "output_from": no_output_from,
-                    "named_output": no_named_output,
-                    "sos_step": no_sos_step,
-                    "sos_variable": no_sos_variable,
-                }
-            )
+            env.sos_dict.quick_update({
+                "output_from": no_output_from,
+                "named_output": no_named_output,
+                "sos_step": no_sos_step,
+                "sos_variable": no_sos_variable,
+            })
             args, kwargs = SoS_eval(
-                f"__null_func__({value})", extra_dict=env.sos_dict.dict()
-            )
+                f"__null_func__({value})", extra_dict=env.sos_dict.dict())
             if any(isinstance(x, (dynamic, remote)) for x in args):
                 raise ValueError(
                     f"Auxiliary step does not allow dynamic or remote input or output: {value} provided"
@@ -516,29 +501,37 @@ def get_step_output(section, default_output, analysis_type):
             if statement[1] == "input":
                 step_input = sos_targets(
                     *args,
-                    **{x: y for x, y in kwargs.items() if x not in SOS_TARGETS_OPTIONS},
+                    **{
+                        x: y
+                        for x, y in kwargs.items()
+                        if x not in SOS_TARGETS_OPTIONS
+                    },
                 )
                 env.sos_dict.set("_input", step_input)
                 env.sos_dict.set("step_input", step_input)
             else:
                 step_output = sos_targets(
                     *args,
-                    **{x: y for x, y in kwargs.items() if x not in SOS_TARGETS_OPTIONS},
+                    **{
+                        x: y
+                        for x, y in kwargs.items()
+                        if x not in SOS_TARGETS_OPTIONS
+                    },
                 )
             if kwargs:
                 step_output.extend(named_output(x) for x in kwargs.keys())
         except SyntaxError:
             raise
         except Exception as e:
-            if "STEP" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
-                env.log_to_file("STEP", f"Args {value} cannot be determined: {e}")
+            if "STEP" in env.config["SOS_DEBUG"] or "ALL" in env.config[
+                    "SOS_DEBUG"]:
+                env.log_to_file("STEP",
+                                f"Args {value} cannot be determined: {e}")
             # usually we want to get the exact output. However in the case when
             # the step is referred by named_output(), it is ok for us to not
             # know the details.
-            if analysis_type == "backward" and (
-                n_args > 0
-                or not all(isinstance(x, named_output) for x in default_output)
-            ):
+            if analysis_type == "backward" and (n_args > 0 or not all(
+                    isinstance(x, named_output) for x in default_output)):
                 raise RuntimeError(
                     f'Failed to determine input "{value}" of an auxiliary step: {e}'
                 )
@@ -560,7 +553,8 @@ def get_sos_step_steps(stmt):
     """
     Extract sos_step(x) from statement
     """
-    opt_values = get_param_of_function("sos_step", stmt, extra_dict=env.sos_dict.dict())
+    opt_values = get_param_of_function(
+        "sos_step", stmt, extra_dict=env.sos_dict.dict())
     for value in opt_values:
         if len(value) != 1:
             raise ValueError("sos_step only accept one and only one parameter")
@@ -573,8 +567,7 @@ def get_output_from_steps(stmt, last_step):
     to determine dependent steps
     """
     opt_values = get_param_of_function(
-        "output_from", stmt, extra_dict=env.sos_dict.dict()
-    )
+        "output_from", stmt, extra_dict=env.sos_dict.dict())
 
     def step_name(val):
         if isinstance(val, str):
@@ -638,9 +631,8 @@ def analyze_section(
     # use a fresh env for analysis
     new_env, old_env = env.request_new()
     try:
-        prepare_env(
-            section.global_def, section.global_vars, {} if context is None else context
-        )
+        prepare_env(section.global_def, section.global_vars,
+                    {} if context is None else context)
 
         env.sos_dict.set("step_name", section.step_name())
         env.sos_dict.set("__null_func__", __null_func__)
@@ -651,12 +643,17 @@ def analyze_section(
             )
 
         res = {
-            "step_name": section.step_name(),
-            "step_output": get_step_output(section, default_output, analysis_type),
+            "step_name":
+                section.step_name(),
+            "step_output":
+                get_step_output(section, default_output, analysis_type),
             # variables starting with __ are internals...
-            "environ_vars": get_environ_vars(section),
-            "signature_vars": get_signature_vars(section),
-            "changed_vars": get_changed_vars(section),
+            "environ_vars":
+                get_environ_vars(section),
+            "signature_vars":
+                get_signature_vars(section),
+            "changed_vars":
+                get_changed_vars(section),
         }
         if analysis_type != "initial":
             inps = get_step_input(section, default_input)
@@ -675,6 +672,8 @@ def analyze_section(
     # found all variables that will be used in the step, including ones used in substep (signature_vars)
     # and ones that will be used in input statement etc.
     section.global_vars = {
-        x: y for x, y in section.global_vars.items() if x in get_all_used_vars(section)
+        x: y
+        for x, y in section.global_vars.items()
+        if x in get_all_used_vars(section)
     }
     return res

@@ -8,10 +8,9 @@ from sos.actions import SoS_Action, SoS_ExecuteScript
 
 @SoS_Action(acceptable_args=["script", "args"])
 def matlab(
-    script,
-    args='''-nojvm -nodisplay -nosplash -nodesktop -r "try, run('{filename}'), catch me, fprintf('%s / %s\\n',me.identifier,me.message), exit(1), end, exit(0);"''',
-    **kwargs
-):
+        script,
+        args='''-nojvm -nodisplay -nosplash -nodesktop -r "try, run('{filename}'), catch me, fprintf('%s / %s\\n',me.identifier,me.message), exit(1), end, exit(0);"''',
+        **kwargs):
     """Execute specified script with command Matlab, with default options
     "-nojvm -nodisplay -nosplash -nodesktop -r". This action accepts common action arguments such as input,
     active, workdir, docker_image and args. In particular, content of one or more

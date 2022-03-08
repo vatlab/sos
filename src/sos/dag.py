@@ -6,14 +6,14 @@ import copy
 import pickle
 import time
 from collections import defaultdict
+from typing import Union
 
 import fasteners
 import networkx as nx
 
-from .targets import (sos_step, sos_targets, sos_variable, BaseTarget)
+from .targets import BaseTarget, sos_step, sos_targets, sos_variable
 from .utils import ActivityNotifier, env, short_repr, textMD5
 
-from typing import Union
 #
 # DAG design:
 #

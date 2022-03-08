@@ -5,13 +5,13 @@
 import argparse
 import json
 import operator
+import random
+import string
 from collections import defaultdict
 from itertools import tee
 
 import numpy
 import pandas
-import string
-import random
 
 
 def is_sorted(iterable, compare=operator.le):
@@ -21,6 +21,7 @@ def is_sorted(iterable, compare=operator.le):
 
 
 class Visualizer:
+
     def __init__(self, kernel, style):
         self.kernel = kernel
         if style is None:
@@ -90,47 +91,34 @@ class Visualizer:
             hint += f'<div class="sos_hint">Only the first {args.limit} of the {df.shape[0]} records are previewed. Use option --limit to set a new limit.</div><br>'
         if args.limit >= 0:
             code = (
-                df.head(args.limit)
-                .to_html(index=True)
-                .replace('class="', f'id="dataframe_{tid}" class="sos_dataframe ', 1)
-            )
+                df.head(args.limit).to_html(index=True).replace(
+                    'class="', f'id="dataframe_{tid}" class="sos_dataframe ',
+                    1))
         else:
             code = df.to_html(index=True).replace(
-                'class="', f'id="dataframe_{tid}" class="sos_dataframe ', 1
-            )
+                'class="', f'id="dataframe_{tid}" class="sos_dataframe ', 1)
 
         hr, rest = code.split("</tr>", 1)
-        index_type = (
-            "numeric" if isinstance(df.index, pandas.RangeIndex) else "alphabetic"
-        )
+        index_type = ("numeric" if isinstance(df.index, pandas.RangeIndex) else
+                      "alphabetic")
         col_type = [
-            "numeric" if self._is_numeric_type(x) else "alphabetic" for x in df.dtypes
+            "numeric" if self._is_numeric_type(x) else "alphabetic"
+            for x in df.dtypes
         ]
-        code = (
-            "".join(
-                """{} &nbsp; <i class="fa fa-sort" style="color:lightgray" onclick="sortDataFrame('{}', {}, '{}')"></th>""".format(
-                    x, tid, idx, index_type if idx == 0 else col_type[idx - 1]
-                )
-                if "<th" in x
-                else x
-                for idx, x in enumerate(hr.split("</th>"))
-            )
-            + "</tr>"
-            + rest
-        )
+        code = ("".join(
+            """{} &nbsp; <i class="fa fa-sort" style="color:lightgray" onclick="sortDataFrame('{}', {}, '{}')"></th>"""
+            .format(x, tid, idx, index_type if idx ==
+                    0 else col_type[idx - 1]) if "<th" in x else x
+            for idx, x in enumerate(hr.split("</th>"))) + "</tr>" + rest)
 
         # we put max-height 400px here because the notebook could be exported without using sos template
         # and associated css, resulting in very long table.
-        code = (
-            f"""
+        code = (f"""
     <div class='dataframe_container' style="max-height:400px">
-    <input type="text" class='dataframe_input' id="search_{tid}" """
-            + f"""onkeyup="filterDataFrame('{tid}"""
-            + """')" placeholder="Search for names..">
-    """
-            + code
-            + """</div>"""
-        )
+    <input type="text" class='dataframe_input' id="search_{tid}" """ +
+                f"""onkeyup="filterDataFrame('{tid}""" +
+                """')" placeholder="Search for names..">
+    """ + code + """</div>""")
         return {"text/html": hint + code}
 
     #
@@ -154,8 +142,10 @@ class Visualizer:
             choices=["x", "y", "xy", "yx"],
             help="""Make x-axis, y-axis, or both to logarithmic""",
         )
-        parser.add_argument("--width", default="50vw", help="""Width of the plot.""")
-        parser.add_argument("--height", default="38vw", help="""Height of the plot.""")
+        parser.add_argument(
+            "--width", default="50vw", help="""Width of the plot.""")
+        parser.add_argument(
+            "--height", default="38vw", help="""Height of the plot.""")
         parser.add_argument(
             "-b",
             "--by",
@@ -202,7 +192,7 @@ class Visualizer:
         # small scale, let flop decide
         if logh - logl < 3:
             return None
-        return list(10 ** x for x in range(logl, logh + 1))
+        return list(10**x for x in range(logl, logh + 1))
 
     def _handle_scatterplot(self, df):
         parser = self._get_scatterplot_parser()
@@ -223,7 +213,8 @@ class Visualizer:
         # replacing ' ' with &nbsp and '-' with unicode hyphen will disallow webpage to separate words
         # into lines
         indexes = [
-            str(x).replace(" ", "&nbsp;").replace("-", "&#8209;") for x in df.index
+            str(x).replace(" ", "&nbsp;").replace("-", "&#8209;")
+            for x in df.index
         ]
 
         data = df.head(args.limit)
@@ -243,11 +234,11 @@ class Visualizer:
             args.cols = ["_index", args.cols[0]]
 
         if args.cols[0] == "_index":
-            args.tooltip = [args.cols[0]] + (args.tooltip if args.tooltip else [])
+            args.tooltip = [args.cols[0]] + (
+                args.tooltip if args.tooltip else [])
         else:
             args.tooltip = ["_index", args.cols[0]] + (
-                args.tooltip if args.tooltip else []
-            )
+                args.tooltip if args.tooltip else [])
 
         # check datatype
         for col in args.cols + args.tooltip + (args.by if args.by else []):
@@ -291,12 +282,10 @@ class Visualizer:
                 val_y = self._to_list(data[col])
 
             tooltip = [
-                "<br>".join(
-                    [
-                        f'{"index" if t == "_index" else t}: {idxvalue if t == "_index" else df[t][idx]}'
-                        for t in args.tooltip
-                    ]
-                )
+                "<br>".join([
+                    f'{"index" if t == "_index" else t}: {idxvalue if t == "_index" else df[t][idx]}'
+                    for t in args.tooltip
+                ])
                 for idx, idxvalue in enumerate(indexes)
             ]
 
@@ -306,11 +295,9 @@ class Visualizer:
                 for cat in categories:
                     series = {}
                     series["label"] = (
-                        col
-                        + " ("
-                        + " ".join(f"{x}={y}" for x, y in zip(args.by, cat))
-                        + ")"
-                    )
+                        col + " (" +
+                        " ".join(f"{x}={y}" for x, y in zip(args.by, cat)) +
+                        ")")
                     # find index of values that falls into the category
                     series["data"] = [
                         all_data[i]
@@ -328,9 +315,9 @@ class Visualizer:
         options["xaxis"] = {}
         options["yaxis"] = {}
         options["series"]["lines"] = {
-            "show": is_sorted(val_x) and not args.by
-            if not args.show or "lines" in args.show
-            else False
+            "show":
+                is_sorted(val_x) and not args.by
+                if not args.show or "lines" in args.show else False
         }
         options["series"]["points"] = {
             "show": True if not args.show or "points" in args.show else False
@@ -340,8 +327,11 @@ class Visualizer:
 
         # if there are actual indexes... and plot by x
         class_name = "scatterplot"
-        if args.cols[0] == "_index" and not isinstance(df.index, pandas.RangeIndex):
-            options["xaxis"]["ticks"] = [[x, str(y)] for x, y in enumerate(indexes)]
+        if args.cols[0] == "_index" and not isinstance(df.index,
+                                                       pandas.RangeIndex):
+            options["xaxis"]["ticks"] = [
+                [x, str(y)] for x, y in enumerate(indexes)
+            ]
             class_name = "scatterplot_by_rowname"
 
         if args.xlim:
@@ -368,8 +358,12 @@ class Visualizer:
                 options["xaxis"]["max"] = range_x[1]
         if args.log and "y" in args.log:
             range_y = [
-                min([min([x[1] for x in series["data"]]) for series in all_series]),
-                max([max([x[1] for x in series["data"]]) for series in all_series]),
+                min([
+                    min([x[1] for x in series["data"]]) for series in all_series
+                ]),
+                max([
+                    max([x[1] for x in series["data"]]) for series in all_series
+                ]),
             ]
             optfunc += """
                 options['yaxis']['transform'] = function(v) { return Math.log(v); };
@@ -384,34 +378,18 @@ class Visualizer:
             if not args.ylim:
                 options["yaxis"]["min"] = range_y[0]
                 options["yaxis"]["max"] = range_y[1]
-        code = (
-            """
+        code = ("""
 <div class='scatterplot_container'>
-<div class='"""
-            + class_name
-            + """' id='dataframe_scatterplot_"""
-            + tid
-            + """' width='"""
-            + args.width
-            + """' height='"""
-            + args.height
-            + """'></div>
+<div class='""" + class_name + """' id='dataframe_scatterplot_""" + tid +
+                """' width='""" + args.width + """' height='""" + args.height +
+                """'></div>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 <script language="javascript" type="text/javascript" src="https://www.flotcharts.org/flot/jquery.flot.js"></script>
 <script>
-    var options = """
-            + json.dumps(options)
-            + """;"""
-            + optfunc
-            + """
-    function plotScatterPlot"""
-            + tid
-            + """() {
-        plot = $.plot('#dataframe_scatterplot_"""
-            + tid
-            + """', """
-            + json.dumps(all_series)
-            + """, options)
+    var options = """ + json.dumps(options) + """;""" + optfunc + """
+    function plotScatterPlot""" + tid + """() {
+        plot = $.plot('#dataframe_scatterplot_""" + tid + """', """ +
+                json.dumps(all_series) + """, options)
 
     if ($('#dftooltip').length == 0) {
         $("<div id='dftooltip'></div>").css({
@@ -424,9 +402,8 @@ class Visualizer:
             opacity: 0.80
             }).appendTo("body");
     }
-    $('#dataframe_scatterplot_"""
-            + tid
-            + """').bind("plothover", function (event, pos, item) {
+    $('#dataframe_scatterplot_""" + tid +
+                """').bind("plothover", function (event, pos, item) {
             if (item) {
                 $("#dftooltip").html((item.series.label + ": " +
                     item.series.data[item.dataIndex][1].toString() + "<br>" +
@@ -437,42 +414,26 @@ class Visualizer:
             }
     });
     }
-"""
-            + """
+""" + """
 // we will wait for the div to be displayed on the HTML/Jupyter side before we plot
 // the figure. This might not be necessary but at least this is a chance for us
 // to resize the div and avoid some flot error
 
 var dt = 100;
 // the frontend might be notified before the table is inserted as results.
-function showFigure"""
-            + tid
-            + """() {
-    if ( $('#dataframe_scatterplot_"""
-            + tid
-            + """').length === 0 || $.plot === undefined ) {
+function showFigure""" + tid + """() {
+    if ( $('#dataframe_scatterplot_""" + tid +
+                """').length === 0 || $.plot === undefined ) {
           dt = dt * 1.5; // slow-down checks for datatable as time goes on;
-          setTimeout(showFigure"""
-            + tid
-            + """, dt);
+          setTimeout(showFigure""" + tid + """, dt);
           return;
    } else {
-        $('#dataframe_scatterplot_"""
-            + tid
-            + """').css('width', '"""
-            + args.width
-            + """').css('height', '"""
-            + args.height
-            + """');
-        plotScatterPlot"""
-            + tid
-            + """();
+        $('#dataframe_scatterplot_""" + tid + """').css('width', '""" +
+                args.width + """').css('height', '""" + args.height + """');
+        plotScatterPlot""" + tid + """();
     }
 }
-showFigure"""
-            + tid
-            + """()
+showFigure""" + tid + """()
 </script>
-</div>"""
-        )
+</div>""")
         return {"text/html": hint + code}

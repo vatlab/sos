@@ -6,12 +6,11 @@
 import os
 import textwrap
 
-from ._version import __version__
+from sos.parser import SoS_Script
 
 from .__main__ import get_run_parser
+from ._version import __version__
 from .workflow_executor import Base_Executor
-
-from sos.parser import SoS_Script
 
 assert __version__
 

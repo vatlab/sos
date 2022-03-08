@@ -5,11 +5,12 @@
 
 import os
 import shutil
+
 import pytest
 
+from sos import execute_workflow
 from sos.targets import file_target
 from sos.targets_r import R_library
-from sos import execute_workflow
 
 
 @pytest.mark.skipif(
@@ -53,8 +54,7 @@ def test_rmarkdown_with_input(clear_now_and_after):
 
     clear_now_and_after("myreport.html")
     # Rmarkdown with specified input.
-    execute_workflow(
-        r"""
+    execute_workflow(r"""
         [10]
         report: output='a.md'
         ## Some random figure
@@ -66,8 +66,7 @@ def test_rmarkdown_with_input(clear_now_and_after):
         # generate report
         output: 'myreport.html'
         Rmarkdown(input='a.md', output=_output[0])
-        """
-    )
+        """)
     assert os.path.isfile("myreport.html")
 
 
@@ -107,10 +106,8 @@ def test_rmarkdown_with_action_output(clear_now_and_after):
 def test_rmarkdown_to_stdout():
     if not R_library('rmarkdown1').target_exists():
         pytest.xfail('rmarkdown is not properly installed.')
-    execute_workflow(
-        r"""
+    execute_workflow(r"""
         # generate report
         Rmarkdown:
             # this is title
-        """
-    )
+        """)

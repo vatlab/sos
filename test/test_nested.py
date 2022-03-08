@@ -7,11 +7,11 @@ import shutil
 import subprocess
 import unittest
 
+from sos import execute_workflow
 from sos.parser import SoS_Script
 from sos.targets import file_target
 from sos.utils import env
 from sos.workflow_executor import Base_Executor
-from sos import execute_workflow
 
 
 class TestNested(unittest.TestCase):

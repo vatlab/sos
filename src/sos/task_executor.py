@@ -4,47 +4,33 @@
 # Distributed under the terms of the 3-clause BSD License.
 import copy
 import os
-import subprocess
 import pickle
-import time
-import zmq
 import signal
-
+import subprocess
+import time
 from collections import OrderedDict
 from collections.abc import Mapping, Sequence
-from contextlib import redirect_stdout, redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from threading import Event
 
+import zmq
+
+from .controller import (Controller, close_socket, connect_controllers,
+                         create_socket, disconnect_controllers,
+                         request_answer_from_controller,
+                         send_message_to_controller)
 from .eval import SoS_eval, SoS_exec
-from .monitor import TaskMonitor
-from .targets import (
-    InMemorySignature,
-    file_target,
-    sos_step,
-    dynamic,
-    path,
-    sos_targets,
-)
-from .utils import StopInputGroup, env, pickleable, ProcessKilled, get_localhost_ip
-from .tasks import (
-    TaskFile,
-    combine_results,
-    remove_task_files,
-    monitor_interval,
-    resource_monitor_interval,
-)
-from .step_executor import parse_shared_vars
+from .executor_utils import (__null_func__, clear_output, get_traceback_msg,
+                             prepare_env)
 from .messages import decode_msg
-from .executor_utils import __null_func__, get_traceback_msg, prepare_env, clear_output
-from .controller import (
-    Controller,
-    connect_controllers,
-    disconnect_controllers,
-    create_socket,
-    close_socket,
-    request_answer_from_controller,
-    send_message_to_controller,
-)
+from .monitor import TaskMonitor
+from .step_executor import parse_shared_vars
+from .targets import (InMemorySignature, dynamic, file_target, path, sos_step,
+                      sos_targets)
+from .tasks import (TaskFile, combine_results, monitor_interval,
+                    remove_task_files, resource_monitor_interval)
+from .utils import (ProcessKilled, StopInputGroup, env, get_localhost_ip,
+                    pickleable)
 
 
 def signal_handler(*args, **kwargs):

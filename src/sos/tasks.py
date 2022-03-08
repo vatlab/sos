@@ -3,34 +3,24 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 import copy
-import os
-import fasteners
-import pickle
-import time
 import lzma
 import math
+import os
+import pickle
 import struct
-from enum import Enum
+import time
 from collections import namedtuple
 from collections.abc import Sequence
 from datetime import datetime
+from enum import Enum
+from typing import Dict, List, Union
 
-from typing import Union, Dict, List
+import fasteners
 
-from .utils import (
-    env,
-    expand_time,
-    linecount_of_file,
-    sample_lines,
-    short_repr,
-    tail_of_file,
-    pretty_size,
-    expand_size,
-    format_HHMMSS,
-    DelayedAction,
-    format_duration,
-)
 from .targets import sos_targets
+from .utils import (DelayedAction, env, expand_size, expand_time,
+                    format_duration, format_HHMMSS, linecount_of_file,
+                    pretty_size, sample_lines, short_repr, tail_of_file)
 
 monitor_interval = 5
 resource_monitor_interval = 60
@@ -48,7 +38,8 @@ class TaskParams(object):
         self.sos_dict = sos_dict
         self.tags = tags
         # remove builtins that could be saved in a dictionary
-        if "CONFIG" in self.sos_dict and "__builtins__" in self.sos_dict["CONFIG"]:
+        if "CONFIG" in self.sos_dict and "__builtins__" in self.sos_dict[
+                "CONFIG"]:
             self.sos_dict["CONFIG"].pop("__builtins__")
 
     def __repr__(self):
@@ -56,6 +47,7 @@ class TaskParams(object):
 
 
 class MasterTaskParams(TaskParams):
+
     def __init__(self, num_workers=None):
         self.ID = "t0"
         self.name = self.ID
@@ -63,7 +55,9 @@ class MasterTaskParams(TaskParams):
         self.task = ""
 
         self.sos_dict = {
-            "_runtime": {"num_workers": num_workers},
+            "_runtime": {
+                "num_workers": num_workers
+            },
             "_input": sos_targets(),
             "_output": sos_targets(),
             "_depends": sos_targets(),
@@ -86,8 +80,8 @@ class MasterTaskParams(TaskParams):
             n_nodes = len(num_workers)
         elif isinstance(num_workers, str):
             n_workers = (
-                num_workers.rsplit(":", 1)[-1] if ":" in num_workers else num_workers
-            )
+                num_workers.rsplit(":", 1)[-1]
+                if ":" in num_workers else num_workers)
             n_nodes = 1
         elif isinstance(num_workers, int):
             n_workers = num_workers
@@ -97,19 +91,16 @@ class MasterTaskParams(TaskParams):
             n_nodes = 1
         else:
             raise RuntimeError(
-                f"Unacceptable value for parameter trunk_workers {num_workers}"
-            )
+                f"Unacceptable value for parameter trunk_workers {num_workers}")
 
         try:
             n_workers = int(n_workers)
         except Exception:
             raise ValueError(
-                f"Unacceptable value for option trunk_workers {num_workers}"
-            )
+                f"Unacceptable value for option trunk_workers {num_workers}")
         if n_workers <= 0:
             raise ValueError(
-                f"Unacceptable value for option trunk_workers {num_workers}"
-            )
+                f"Unacceptable value for option trunk_workers {num_workers}")
 
         return n_nodes, n_workers
 
@@ -125,46 +116,45 @@ class MasterTaskParams(TaskParams):
         #
         # walltime etc
         n_nodes, n_workers = self._parse_num_workers(
-            self.sos_dict["_runtime"]["num_workers"]
-        )
+            self.sos_dict["_runtime"]["num_workers"])
 
         if not self.task_stack:
             for key in (
-                "walltime",
-                "max_walltime",
-                "cores",
-                "nodes",
-                "max_cores",
-                "mem",
-                "max_mem",
-                "name",
-                "workdir",
-                "verbosity",
-                "sig_mode",
-                "run_mode",
+                    "walltime",
+                    "max_walltime",
+                    "cores",
+                    "nodes",
+                    "max_cores",
+                    "mem",
+                    "max_mem",
+                    "name",
+                    "workdir",
+                    "verbosity",
+                    "sig_mode",
+                    "run_mode",
             ):
-                if (
-                    key in params.sos_dict["_runtime"]
-                    and params.sos_dict["_runtime"][key] is not None
-                ):
-                    self.sos_dict["_runtime"][key] = params.sos_dict["_runtime"][key]
+                if (key in params.sos_dict["_runtime"] and
+                        params.sos_dict["_runtime"][key] is not None):
+                    self.sos_dict["_runtime"][key] = params.sos_dict[
+                        "_runtime"][key]
             self.sos_dict["step_name"] = params.sos_dict["step_name"]
             self.tags = params.tags
         else:
             for key in (
-                "walltime",
-                "max_walltime",
-                "cores",
-                "max_cores",
-                "mem",
-                "max_mem",
-                "name",
-                "workdir",
+                    "walltime",
+                    "max_walltime",
+                    "cores",
+                    "max_cores",
+                    "mem",
+                    "max_mem",
+                    "name",
+                    "workdir",
             ):
                 val0 = self.task_stack[0][1].sos_dict["_runtime"].get(key, None)
                 val = params.sos_dict["_runtime"].get(key, None)
                 if val0 != val:
-                    raise ValueError(f"All tasks should have the same resource {key}")
+                    raise ValueError(
+                        f"All tasks should have the same resource {key}")
 
                 if val0 is None:
                     continue
@@ -173,37 +163,33 @@ class MasterTaskParams(TaskParams):
                 # n_workers * n_nodes workers at the same time, so the jobs
                 # will be completed in n_batches
                 n_batches = math.ceil(
-                    (len(self.task_stack) + 1) / (n_workers * n_nodes)
-                )
+                    (len(self.task_stack) + 1) / (n_workers * n_nodes))
 
                 if key == "walltime":
                     # the real walltime would be the total time on one node
                     self.sos_dict["_runtime"]["walltime"] = format_HHMMSS(
-                        n_batches * expand_time(val0)
-                    )
+                        n_batches * expand_time(val0))
                 elif key == "mem":
                     # number of columns * mem for each + 100M for master
-                    self.sos_dict["_runtime"]["mem"] = n_workers * expand_size(val0)
+                    self.sos_dict["_runtime"]["mem"] = n_workers * expand_size(
+                        val0)
                 elif key == "cores":
                     self.sos_dict["_runtime"]["cores"] = n_workers * val0
                 elif key == "name":
                     self.sos_dict["_runtime"][
-                        "name"
-                    ] = f"{val0}_{len(self.task_stack) + 1}"
+                        "name"] = f"{val0}_{len(self.task_stack) + 1}"
 
             self.tags.extend(params.tags)
 
         # if cores is unspecified but there are more than one workers
-        if (
-            "cores" not in self.sos_dict["_runtime"]
-            and n_workers is not None
-            and n_workers > 1
-        ):
+        if ("cores" not in self.sos_dict["_runtime"] and
+                n_workers is not None and n_workers > 1):
             self.sos_dict["_runtime"]["cores"] = n_workers
         #
         # input, output, preserved vars etc
         for key in ["_input", "_output", "_depends"]:
-            if key in params.sos_dict and isinstance(params.sos_dict[key], sos_targets):
+            if key in params.sos_dict and isinstance(params.sos_dict[key],
+                                                     sos_targets):
                 if key == "__builtins__":
                     continue
                 # do not extend duplicated input etc
@@ -227,10 +213,8 @@ class MasterTaskParams(TaskParams):
                 common_keys = set(params.sos_dict.keys())
             else:
                 common_keys = {
-                    key
-                    for key in common_keys
-                    if key in params.sos_dict
-                    and common_dict[key] == params.sos_dict[key]
+                    key for key in common_keys if key in params.sos_dict and
+                    common_dict[key] == params.sos_dict[key]
                 }
             if not common_keys:
                 break
@@ -243,7 +227,8 @@ class MasterTaskParams(TaskParams):
                 k: v for k, v in params.sos_dict.items() if k not in common_keys
             }
         #
-        n_nodes = self._parse_num_workers(self.sos_dict["_runtime"]["num_workers"])[0]
+        n_nodes = self._parse_num_workers(
+            self.sos_dict["_runtime"]["num_workers"])[0]
         # trunk_workers and cores cannot be specified together, so if n_nodes > 1,
         # nodes should not have been specified.
         if n_nodes is not None and n_nodes > 1:
@@ -289,9 +274,11 @@ def combine_results(task_id, results):
     if all_res["ret_code"] != 0:
         if all_res["ret_code"] == len(results):
             if env.config["run_mode"] == "run":
-                env.logger.info(f"All {len(results)} tasks in {task_id} ``failed``")
+                env.logger.info(
+                    f"All {len(results)} tasks in {task_id} ``failed``")
             else:
-                env.logger.debug(f"All {len(results)} tasks in {task_id} ``failed``")
+                env.logger.debug(
+                    f"All {len(results)} tasks in {task_id} ``failed``")
         else:
             if env.config["run_mode"] == "run":
                 env.logger.info(
@@ -329,9 +316,11 @@ def combine_results(task_id, results):
             all_res.pop("skipped")
     else:
         if env.config["run_mode"] == "run":
-            env.logger.info(f"All {len(results)} tasks in {task_id} ``completed``")
+            env.logger.info(
+                f"All {len(results)} tasks in {task_id} ``completed``")
         else:
-            env.logger.debug(f"All {len(results)} tasks in {task_id} ``completed``")
+            env.logger.debug(
+                f"All {len(results)} tasks in {task_id} ``completed``")
     return all_res
 
 
@@ -398,13 +387,13 @@ class TaskFile(object):
     def __init__(self, task_id: str):
         self.task_id = task_id
         self.task_file = os.path.join(
-            os.path.expanduser("~"), ".sos", "tasks", task_id + ".task"
-        )
+            os.path.expanduser("~"), ".sos", "tasks", task_id + ".task")
 
     def save(self, params):
         if os.path.isfile(self.task_file):
             if self.status == "running":
-                env.logger.debug(f"Task {self.task_id} is running and is not updated")
+                env.logger.debug(
+                    f"Task {self.task_id} is running and is not updated")
                 return
 
             # keep original stuff but update params, which could contain
@@ -440,8 +429,7 @@ class TaskFile(object):
             tags=" ".join(sorted(tags)).ljust(128).encode(),
         )
         with fasteners.InterProcessLock(
-            os.path.join(env.temp_dir, self.task_id + ".lck")
-        ):
+                os.path.join(env.temp_dir, self.task_id + ".lck")):
             with open(self.task_file, "wb+") as fh:
                 self._write_header(fh, header)
                 fh.write(params_block)
@@ -479,8 +467,7 @@ class TaskFile(object):
     def reset(self):
         # remove result, input, output etc and set the status of the task to new
         with fasteners.InterProcessLock(
-            os.path.join(env.temp_dir, self.task_id + ".lck")
-        ):
+                os.path.join(env.temp_dir, self.task_id + ".lck")):
             with open(self.task_file, "r+b") as fh:
                 self._reset(fh)
 
@@ -488,23 +475,24 @@ class TaskFile(object):
         fh.seek(0, 0)
         data = fh.read(self.header_size)
         if struct.unpack("!h", data[:2])[0] == 1:
-            header = self.TaskHeader_v1._make(struct.unpack(self.header_fmt_v1, data))
+            header = self.TaskHeader_v1._make(
+                struct.unpack(self.header_fmt_v1, data))
             if header.version not in (1, 2, 3):
                 raise RuntimeError(
                     f"Corrupted task file {self.task_file}. Please report a bug if you can reproduce the generation of this file."
                 )
             return self.TaskHeader(
-                runtime_size=0, shell_size=0, **header._asdict()
-            )._replace(version=3)
+                runtime_size=0, shell_size=0,
+                **header._asdict())._replace(version=3)
         if struct.unpack("!h", data[:2])[0] == 2:
-            header = self.TaskHeader_v2._make(struct.unpack(self.header_fmt_v2, data))
+            header = self.TaskHeader_v2._make(
+                struct.unpack(self.header_fmt_v2, data))
             if header.version not in (1, 2, 3):
                 raise RuntimeError(
                     f"Corrupted task file {self.task_file}. Please report a bug if you can reproduce the generation of this file."
                 )
-            return self.TaskHeader(runtime_size=0, **header._asdict())._replace(
-                version=3
-            )
+            return self.TaskHeader(
+                runtime_size=0, **header._asdict())._replace(version=3)
         header = self.TaskHeader._make(struct.unpack(self.header_fmt, data))
         if header.version not in (1, 2, 3):
             raise RuntimeError(
@@ -537,8 +525,7 @@ class TaskFile(object):
         stdout = self._get_content([".out", ".sosout"])
         stderr = self._get_content([".err", ".soserr"])
         with fasteners.InterProcessLock(
-            os.path.join(env.temp_dir, self.task_id + ".lck")
-        ):
+                os.path.join(env.temp_dir, self.task_id + ".lck")):
             with open(self.task_file, "r+b") as fh:
                 header = self._read_header(fh)
                 if header.result_size != 0:
@@ -549,13 +536,10 @@ class TaskFile(object):
                         result_size = header.result_size
                         signature_size = header.signature_size
                         fh.seek(
-                            self.header_size
-                            + header.params_size
-                            + header.runtime_size
-                            + header.shell_size
-                            + header.pulse_size
-                            + header.stdout_size
-                            + header.stderr_size,
+                            self.header_size + header.params_size +
+                            header.runtime_size + header.shell_size +
+                            header.pulse_size + header.stdout_size +
+                            header.stderr_size,
                             0,
                         )
                         result = fh.read(header.result_size)
@@ -572,7 +556,9 @@ class TaskFile(object):
                     signature_size=signature_size,
                 )
                 self._write_header(fh, header)
-                fh.seek(self.header_size + header.params_size + header.runtime_size, 0)
+                fh.seek(
+                    self.header_size + header.params_size + header.runtime_size,
+                    0)
                 if shell:
                     fh.write(shell)
                 if pulse:
@@ -594,8 +580,8 @@ class TaskFile(object):
                 missing_tasks = set([x[0] for x in params.task_stack])
                 #
                 cache_file = os.path.join(
-                    os.path.expanduser("~"), ".sos", "tasks", self.task_id + ".cache"
-                )
+                    os.path.expanduser("~"), ".sos", "tasks",
+                    self.task_id + ".cache")
                 results = []
                 if os.path.isfile(cache_file):
                     try:
@@ -616,17 +602,12 @@ class TaskFile(object):
                     return
                 else:
                     # now, if we have some results, we need to fill the rest of the aborted ones
-                    results.extend(
-                        [
-                            {
-                                "task": t,
-                                "ret_code": 2,
-                                "shared": {},
-                                "exception": RuntimeError(f"Subtask {t} is aborted"),
-                            }
-                            for t in missing_tasks
-                        ]
-                    )
+                    results.extend([{
+                        "task": t,
+                        "ret_code": 2,
+                        "shared": {},
+                        "exception": RuntimeError(f"Subtask {t} is aborted"),
+                    } for t in missing_tasks])
                 result = combine_results(self.task_id, results)
             else:
                 # single task, no result, do not save
@@ -636,10 +617,10 @@ class TaskFile(object):
         result.pop("signature", None)
         #
         result_block = lzma.compress(pickle.dumps(result))
-        signature_block = lzma.compress(pickle.dumps(signature)) if signature else b""
+        signature_block = lzma.compress(
+            pickle.dumps(signature)) if signature else b""
         with fasteners.InterProcessLock(
-            os.path.join(env.temp_dir, self.task_id + ".lck")
-        ):
+                os.path.join(env.temp_dir, self.task_id + ".lck")):
             with open(self.task_file, "r+b") as fh:
                 header = self._read_header(fh)
                 header = header._replace(
@@ -647,15 +628,10 @@ class TaskFile(object):
                     signature_size=len(signature_block),
                 )
                 self._write_header(fh, header)
-                fh.seek(
-                    self.header_size
-                    + header.params_size
-                    + header.runtime_size
-                    + header.shell_size
-                    + header.pulse_size
-                    + header.stdout_size
-                    + header.stderr_size
-                )
+                fh.seek(self.header_size + header.params_size +
+                        header.runtime_size + header.shell_size +
+                        header.pulse_size + header.stdout_size +
+                        header.stderr_size)
                 fh.write(result_block)
                 if signature:
                     fh.write(signature_block)
@@ -698,18 +674,17 @@ class TaskFile(object):
                 return {}
             else:
                 try:
-                    return pickle.loads(lzma.decompress(fh.read(header.params_size)))
+                    return pickle.loads(
+                        lzma.decompress(fh.read(header.params_size)))
                 except Exception as e:
                     raise RuntimeError(
-                        f"Failed to obtain params of task {self.task_id}: {e}"
-                    )
+                        f"Failed to obtain params of task {self.task_id}: {e}")
 
     def _set_params(self, params):
         params_block = lzma.compress(pickle.dumps(params))
         # env.logger.error(f'updating {self.task_id} params of size {len(params_block)}')
         with fasteners.InterProcessLock(
-            os.path.join(env.temp_dir, self.task_id + ".lck")
-        ):
+                os.path.join(env.temp_dir, self.task_id + ".lck")):
             with open(self.task_file, "r+b") as fh:
                 header = self._read_header(fh)
                 if len(params_block) == header.params_size:
@@ -741,17 +716,11 @@ class TaskFile(object):
                         fh.write(result)
                     if signature:
                         fh.write(signature)
-                    fh.truncate(
-                        self.header_size
-                        + header.params_size
-                        + header.runtime_size
-                        + header.shell_size
-                        + header.pulse_size
-                        + header.stdout_size
-                        + header.stderr_size
-                        + header.result_size
-                        + header.signature_size
-                    )
+                    fh.truncate(self.header_size + header.params_size +
+                                header.runtime_size + header.shell_size +
+                                header.pulse_size + header.stdout_size +
+                                header.stderr_size + header.result_size +
+                                header.signature_size)
 
     params = property(_get_params, _set_params)
 
@@ -762,19 +731,18 @@ class TaskFile(object):
                 return {}
             fh.seek(self.header_size + header.params_size, 0)
             try:
-                return pickle.loads(lzma.decompress(fh.read(header.runtime_size)))
+                return pickle.loads(
+                    lzma.decompress(fh.read(header.runtime_size)))
             except Exception as e:
                 env.logger.error(
-                    f"Failed to obtain runtime of task {self.task_id}: {e}"
-                )
+                    f"Failed to obtain runtime of task {self.task_id}: {e}")
                 return {"_runtime": {}}
 
     def _set_runtime(self, runtime):
         runtime_block = lzma.compress(pickle.dumps(runtime))
         # env.logger.error(f'updating {self.task_id} params of size {len(params_block)}')
         with fasteners.InterProcessLock(
-            os.path.join(env.temp_dir, self.task_id + ".lck")
-        ):
+                os.path.join(env.temp_dir, self.task_id + ".lck")):
             with open(self.task_file, "r+b") as fh:
                 header = self._read_header(fh)
                 if len(runtime_block) == header.runtime_size:
@@ -783,16 +751,21 @@ class TaskFile(object):
                 else:
                     params = fh.read(header.params_size)
                     fh.seek(
-                        self.header_size + header.params_size + header.runtime_size, 0
-                    )
-                    shell = fh.read(header.shell_size) if header.shell_size else b""
-                    pulse = fh.read(header.pulse_size) if header.pulse_size else b""
-                    stdout = fh.read(header.stdout_size) if header.stdout_size else b""
-                    stderr = fh.read(header.stderr_size) if header.stderr_size else b""
-                    result = fh.read(header.result_size) if header.result_size else b""
+                        self.header_size + header.params_size +
+                        header.runtime_size, 0)
+                    shell = fh.read(
+                        header.shell_size) if header.shell_size else b""
+                    pulse = fh.read(
+                        header.pulse_size) if header.pulse_size else b""
+                    stdout = fh.read(
+                        header.stdout_size) if header.stdout_size else b""
+                    stderr = fh.read(
+                        header.stderr_size) if header.stderr_size else b""
+                    result = fh.read(
+                        header.result_size) if header.result_size else b""
                     signature = (
-                        fh.read(header.signature_size) if header.signature_size else b""
-                    )
+                        fh.read(header.signature_size)
+                        if header.signature_size else b"")
                     header = header._replace(runtime_size=len(runtime_block))
                     self._write_header(fh, header)
                     fh.write(params)
@@ -809,17 +782,11 @@ class TaskFile(object):
                         fh.write(result)
                     if signature:
                         fh.write(signature)
-                    fh.truncate(
-                        self.header_size
-                        + header.params_size
-                        + header.runtime_size
-                        + header.shell_size
-                        + header.pulse_size
-                        + header.stdout_size
-                        + header.stderr_size
-                        + header.result_size
-                        + header.signature_size
-                    )
+                    fh.truncate(self.header_size + header.params_size +
+                                header.runtime_size + header.shell_size +
+                                header.pulse_size + header.stdout_size +
+                                header.stderr_size + header.result_size +
+                                header.signature_size)
 
     runtime = property(_get_runtime, _set_runtime)
 
@@ -833,7 +800,8 @@ class TaskFile(object):
                 params = {}
             else:
                 try:
-                    params = pickle.loads(lzma.decompress(fh.read(header.params_size)))
+                    params = pickle.loads(
+                        lzma.decompress(fh.read(header.params_size)))
                 except Exception as e:
                     env.logger.error(
                         f"Failed to obtain params with runtime of task {self.task_id}: {e}"
@@ -844,12 +812,10 @@ class TaskFile(object):
             if header.runtime_size > 0:
                 try:
                     runtime = pickle.loads(
-                        lzma.decompress(fh.read(header.runtime_size))
-                    )
+                        lzma.decompress(fh.read(header.runtime_size)))
                 except Exception as e:
                     env.logger.error(
-                        f"Failed to obtain runtime of task {self.task_id}: {e}"
-                    )
+                        f"Failed to obtain runtime of task {self.task_id}: {e}")
                     runtime = {"_runtime": {}}
             else:
                 runtime = {"_runtime": {}}
@@ -884,8 +850,7 @@ class TaskFile(object):
 
     def _set_status(self, status):
         with fasteners.InterProcessLock(
-            os.path.join(env.temp_dir, self.task_id + ".lck")
-        ):
+                os.path.join(env.temp_dir, self.task_id + ".lck")):
             with open(self.task_file, "r+b") as fh:
                 fh.seek(2, 0)
                 if status == "skipped":
@@ -967,7 +932,8 @@ class TaskFile(object):
             fh.seek(0, 0)
             ver = struct.unpack("!h", fh.read(2))[0]
             fh.seek(self.tags_offset[ver - 1], 0)
-            fh.write(" ".join(sorted(tags)).ljust(self.tags_size[ver - 1]).encode())
+            fh.write(" ".join(sorted(tags)).ljust(self.tags_size[ver -
+                                                                 1]).encode())
 
     tags = property(_get_tags, _set_tags)
 
@@ -976,7 +942,8 @@ class TaskFile(object):
             header = self._read_header(fh)
             if header.shell_size == 0:
                 return ""
-            fh.seek(self.header_size + header.params_size + header.runtime_size, 0)
+            fh.seek(self.header_size + header.params_size + header.runtime_size,
+                    0)
             try:
                 return lzma.decompress(fh.read(header.shell_size)).decode()
             except Exception as e:
@@ -991,10 +958,8 @@ class TaskFile(object):
             if header.pulse_size == 0:
                 return ""
             fh.seek(
-                self.header_size
-                + header.params_size
-                + header.runtime_size
-                + header.shell_size,
+                self.header_size + header.params_size + header.runtime_size +
+                header.shell_size,
                 0,
             )
             try:
@@ -1011,11 +976,8 @@ class TaskFile(object):
             if header.stdout_size == 0:
                 return ""
             fh.seek(
-                self.header_size
-                + header.params_size
-                + header.runtime_size
-                + header.pulse_size
-                + header.shell_size,
+                self.header_size + header.params_size + header.runtime_size +
+                header.pulse_size + header.shell_size,
                 0,
             )
             try:
@@ -1032,12 +994,8 @@ class TaskFile(object):
             if header.stderr_size == 0:
                 return ""
             fh.seek(
-                self.header_size
-                + header.params_size
-                + header.runtime_size
-                + header.shell_size
-                + header.pulse_size
-                + header.stdout_size,
+                self.header_size + header.params_size + header.runtime_size +
+                header.shell_size + header.pulse_size + header.stdout_size,
                 0,
             )
             try:
@@ -1054,17 +1012,14 @@ class TaskFile(object):
             if header.result_size == 0:
                 return {}
             fh.seek(
-                self.header_size
-                + header.params_size
-                + header.runtime_size
-                + header.shell_size
-                + header.pulse_size
-                + header.stdout_size
-                + header.stderr_size,
+                self.header_size + header.params_size + header.runtime_size +
+                header.shell_size + header.pulse_size + header.stdout_size +
+                header.stderr_size,
                 0,
             )
             try:
-                return pickle.loads(lzma.decompress(fh.read(header.result_size)))
+                return pickle.loads(
+                    lzma.decompress(fh.read(header.result_size)))
             except Exception as e:
                 env.logger.warning(f"Failed to decode result: {e}")
                 return {"ret_code": 1}
@@ -1077,18 +1032,14 @@ class TaskFile(object):
             if header.signature_size == 0:
                 return {}
             fh.seek(
-                self.header_size
-                + header.params_size
-                + header.runtime_size
-                + header.shell_size
-                + header.pulse_size
-                + header.stdout_size
-                + header.stderr_size
-                + header.result_size,
+                self.header_size + header.params_size + header.runtime_size +
+                header.shell_size + header.pulse_size + header.stdout_size +
+                header.stderr_size + header.result_size,
                 0,
             )
             try:
-                return pickle.loads(lzma.decompress(fh.read(header.signature_size)))
+                return pickle.loads(
+                    lzma.decompress(fh.read(header.signature_size)))
             except Exception as e:
                 env.logger.warning(f"Failed to decode signature: {e}")
                 return {"ret_code": 1}
@@ -1115,9 +1066,8 @@ class TaskFile(object):
             else:
                 return (
                     tags,
-                    ("Created " + format_duration(time.time() - ct, True) + " ago")
-                    if formatted
-                    else ct,
+                    ("Created " + format_duration(time.time() - ct, True) +
+                     " ago") if formatted else ct,
                     "",
                     "",
                 )
@@ -1128,9 +1078,8 @@ class TaskFile(object):
                 tags,
                 "Created " + format_duration(time.time() - ct, True) + " ago",
                 "Started " + format_duration(time.time() - st) + " ago",
-                ("Ran for " + format_duration(int(dr)))
-                if dr > 0
-                else "Signature checked",
+                ("Ran for " +
+                 format_duration(int(dr))) if dr > 0 else "Signature checked",
             )
         except Exception:
             # missing tag file or something went wrong
@@ -1138,7 +1087,8 @@ class TaskFile(object):
 
 
 def taskDuration(task):
-    filename = os.path.join(os.path.expanduser("~"), ".sos", "tasks", f"{task}.task")
+    filename = os.path.join(
+        os.path.expanduser("~"), ".sos", "tasks", f"{task}.task")
     return os.path.getatime(filename) - os.path.getmtime(filename)
 
 
@@ -1162,21 +1112,15 @@ def remove_task_files(task: str, exts: list):
 def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
     # when testing. if the timestamp is 0, the file does not exist originally, it should
     # still does not exist. Otherwise the file should exist and has the same timestamp
-    if (
-        hint
-        and hint["status"] not in ("pending", "running")
-        and all(
-            (os.path.isfile(f) and os.stat(f).st_mtime == v)
-            if v
-            else (not os.path.isfile(f))
-            for f, v in hint["files"].items()
-        )
-    ):
+    if (hint and hint["status"] not in ("pending", "running") and all(
+        (os.path.isfile(f) and os.stat(f).st_mtime == v) if v else (
+            not os.path.isfile(f)) for f, v in hint["files"].items())):
         return {}
     # status of the job, please refer to https://github.com/vatlab/SOS/issues/529
     # for details.
     #
-    task_file = os.path.join(os.path.expanduser("~"), ".sos", "tasks", task + ".task")
+    task_file = os.path.join(
+        os.path.expanduser("~"), ".sos", "tasks", task + ".task")
     if not os.path.isfile(task_file):
         return dict(status="missing", files={task_file: 0})
 
@@ -1191,11 +1135,9 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         # thse are terminal states. We simply return them
         # only change of the task file will trigger recheck of status
         stdout_file = os.path.join(
-            os.path.expanduser("~"), ".sos", "tasks", task + ".sosout"
-        )
+            os.path.expanduser("~"), ".sos", "tasks", task + ".sosout")
         stderr_file = os.path.join(
-            os.path.expanduser("~"), ".sos", "tasks", task + ".soserr"
-        )
+            os.path.expanduser("~"), ".sos", "tasks", task + ".soserr")
         # 1242
         if os.path.isfile(stdout_file) or os.path.isfile(stderr_file):
             tf.add_outputs(keep_result=True)
@@ -1210,7 +1152,8 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         }
         return dict(status=status, files=status_files)
 
-    pulse_file = os.path.join(os.path.expanduser("~"), ".sos", "tasks", task + ".pulse")
+    pulse_file = os.path.join(
+        os.path.expanduser("~"), ".sos", "tasks", task + ".pulse")
 
     # check the existence and validity of .pulse file
     if os.path.isfile(pulse_file):
@@ -1222,11 +1165,8 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
 
             # if we have hint, we know the time stamp of last
             # status file.
-            if (
-                not hint
-                or pulse_file not in hint["files"]
-                or status_files[pulse_file] != hint["files"][pulse_file]
-            ):
+            if (not hint or pulse_file not in hint["files"] or
+                    status_files[pulse_file] != hint["files"][pulse_file]):
                 return dict(status="running", files=status_files)
 
             elapsed = time.time() - status_files[pulse_file]
@@ -1234,8 +1174,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                 return dict(status="running", files=status_files)
 
             syserr_file = os.path.join(
-                os.path.expanduser("~"), ".sos", "tasks", task + ".err"
-            )
+                os.path.expanduser("~"), ".sos", "tasks", task + ".err")
 
             # if the system does not return any error message, write sos-specific one
             if os.path.isfile(syserr_file) and os.path.getsize(syserr_file) > 0:
@@ -1248,8 +1187,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                     )
             else:
                 soserr_file = os.path.join(
-                    os.path.expanduser("~"), ".sos", "tasks", task + ".soserr"
-                )
+                    os.path.expanduser("~"), ".sos", "tasks", task + ".soserr")
                 with open(soserr_file, "a") as err:
                     err.write(
                         f"Task {task} inactive for more than {int(elapsed)} seconds, might have been killed."
@@ -1266,7 +1204,10 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             tf.status = "aborted"
             return dict(
                 status="aborted",
-                files={task_file: os.stat(task_file).st_mtime, pulse_file: 0},
+                files={
+                    task_file: os.stat(task_file).st_mtime,
+                    pulse_file: 0
+                },
             )
         except Exception:
             # the pulse file could disappear when the job is completed.
@@ -1279,34 +1220,36 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         # if there is no pulse file .
         tf.status = "aborted"
         with open(
-            os.path.join(os.path.expanduser("~"), ".sos", "tasks", task + ".soserr"),
-            "a",
+                os.path.join(
+                    os.path.expanduser("~"), ".sos", "tasks", task + ".soserr"),
+                "a",
         ) as err:
-            err.write(f"Task {task} considered as aborted due to missing pulse file.")
+            err.write(
+                f"Task {task} considered as aborted due to missing pulse file.")
         env.logger.warning(
-            f"Task {task} considered as aborted due to missing pulse file."
-        )
+            f"Task {task} considered as aborted due to missing pulse file.")
         tf.add_outputs()
         # 1323
         tf.add_result()
         return dict(
             status="aborted",
-            files={task_file: os.stat(task_file).st_mtime, pulse_file: 0},
+            files={
+                task_file: os.stat(task_file).st_mtime,
+                pulse_file: 0
+            },
         )
 
     # if there is no pulse file
-    job_file = os.path.join(os.path.expanduser("~"), ".sos", "tasks", task + ".sh")
+    job_file = os.path.join(
+        os.path.expanduser("~"), ".sos", "tasks", task + ".sh")
 
     def has_job():
         job_id_file = os.path.join(
-            os.path.expanduser("~"), ".sos", "tasks", task + ".job_id"
-        )
-        return (
-            os.path.isfile(job_file)
-            and os.stat(job_file).st_mtime >= os.stat(task_file).st_mtime
-            and os.path.isfile(job_id_file)
-            and os.stat(job_id_file).st_mtime >= os.stat(job_file).st_mtime
-        )
+            os.path.expanduser("~"), ".sos", "tasks", task + ".job_id")
+        return (os.path.isfile(job_file) and
+                os.stat(job_file).st_mtime >= os.stat(task_file).st_mtime and
+                os.path.isfile(job_id_file) and
+                os.stat(job_id_file).st_mtime >= os.stat(job_file).st_mtime)
 
     if has_job():
         try:
@@ -1329,16 +1272,16 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
     else:
         # status not changed
         try:
-            if (
-                hint
-                and hint["status"] in ("new", "pending")
-                and hint["files"][task_file] == os.stat(task_file).st_mtime
-            ):
+            if (hint and hint["status"] in ("new", "pending") and
+                    hint["files"][task_file] == os.stat(task_file).st_mtime):
                 return {}
             else:
                 return dict(
                     status=status,
-                    files={task_file: os.stat(task_file).st_mtime, job_file: 0},
+                    files={
+                        task_file: os.stat(task_file).st_mtime,
+                        job_file: 0
+                    },
                 )
         except Exception:
             # the pulse file could disappear when the job is completed.
@@ -1352,8 +1295,7 @@ def check_tasks(tasks, is_all: bool):
     if not tasks:
         return {}
     cache_file: str = os.path.join(
-        os.path.expanduser("~"), ".sos", "tasks", "status_cache.pickle"
-    )
+        os.path.expanduser("~"), ".sos", "tasks", "status_cache.pickle")
     #
     status_cache: Dict = {}
     if os.path.isfile(cache_file):
@@ -1365,18 +1307,16 @@ def check_tasks(tasks, is_all: bool):
             # if the cache file is corrupted, remove it. #1275
             os.remove(cache_file)
     # at most 20 threads
-    from multiprocessing.pool import ThreadPool as Pool
-
-    p = Pool(min(10, len(tasks)))
     # the result can be {} for unchanged, or real results
-    raw_status = p.starmap(check_task, [(x, status_cache.get(x, {})) for x in tasks])
+    raw_status = [check_task(x, status_cache.get(x, {})) for x in tasks]
 
     # if check all, we clear the cache and record all existing tasks
     has_changes: bool = any(x for x in raw_status)
     if has_changes:
         if is_all:
             status_cache = {
-                k: v if v else status_cache[k] for k, v in zip(tasks, raw_status)
+                k: v if v else status_cache[k]
+                for k, v in zip(tasks, raw_status)
             }
         else:
             status_cache.update({k: v for k, v in zip(tasks, raw_status) if v})
@@ -1410,19 +1350,19 @@ def print_task_status(
     all_tasks: List = []
     if check_all:
         tasks = glob.glob(
-            os.path.join(os.path.expanduser("~"), ".sos", "tasks", "*.task")
-        )
-        all_tasks = [(os.path.basename(x)[:-5], os.path.getmtime(x)) for x in tasks]
+            os.path.join(os.path.expanduser("~"), ".sos", "tasks", "*.task"))
+        all_tasks = [
+            (os.path.basename(x)[:-5], os.path.getmtime(x)) for x in tasks
+        ]
         if not all_tasks:
             return
     else:
         for t in tasks:
             matched_names = glob.glob(
-                os.path.join(os.path.expanduser("~"), ".sos", "tasks", f"{t}*.task")
-            )
-            matched = [
-                (os.path.basename(x)[:-5], os.path.getmtime(x)) for x in matched_names
-            ]
+                os.path.join(
+                    os.path.expanduser("~"), ".sos", "tasks", f"{t}*.task"))
+            matched = [(os.path.basename(x)[:-5], os.path.getmtime(x))
+                       for x in matched_names]
             if not matched:
                 all_tasks.append((t, None))
             else:
@@ -1434,14 +1374,13 @@ def print_task_status(
         else:
             all_tasks = [x for x in all_tasks if time.time() - x[1] <= -age]
 
-    all_tasks = sorted(list(set(all_tasks)), key=lambda x: 0 if x[1] is None else x[1])
+    all_tasks = sorted(
+        list(set(all_tasks)), key=lambda x: 0 if x[1] is None else x[1])
 
     if tags:
         all_tasks = [
-            x
-            for x in all_tasks
-            if TaskFile(x[0]).exists()
-            and any(y in tags for y in TaskFile(x[0]).tags.split())
+            x for x in all_tasks if TaskFile(x[0]).exists() and any(
+                y in tags for y in TaskFile(x[0]).tags.split())
         ]
 
     if not all_tasks:
@@ -1453,29 +1392,36 @@ def print_task_status(
     #
     # automatically remove non-running tasks that are more than 30 days old
     to_be_removed = [
-        t
-        for s, (t, d) in zip(obtained_status, all_tasks)
-        if d is not None and time.time() - d > 30 * 24 * 60 * 60 and s != "running"
+        t for s, (t, d) in zip(obtained_status, all_tasks)
+        if d is not None and time.time() - d > 30 * 24 * 60 *
+        60 and s != "running"
     ]
 
     if status:
-        all_tasks = [x for x, s in zip(all_tasks, obtained_status) if s in status]
+        all_tasks = [
+            x for x, s in zip(all_tasks, obtained_status) if s in status
+        ]
         obtained_status = [x for x in obtained_status if x in status]
     #
     from .monitor import summarizeExecution
 
     if html:
         # HTML output
-        from .utils import isPrimitive
         import pprint
+
+        from .utils import isPrimitive
 
         print('<table width="100%" class="resource_table">')
 
         def row(th=None, td=None):
             if td is None:
-                print(f'<tr><th align="right" width="30%">{th}</th><td></td></tr>')
+                print(
+                    f'<tr><th align="right" width="30%">{th}</th><td></td></tr>'
+                )
             elif th is None:
-                print(f'<tr><td colspan="2" align="left"  width="30%">{td}</td></tr>')
+                print(
+                    f'<tr><td colspan="2" align="left"  width="30%">{td}</td></tr>'
+                )
             else:
                 print(
                     f'<tr><th align="right"  width="30%">{th}</th><td align="left"><div class="one_liner">{td}</div></td></tr>'
@@ -1495,16 +1441,16 @@ def print_task_status(
             params = tf.params
             row("Task")
             if hasattr(params, "task_stack"):
-                row(
-                    td=f'<pre style="text-align:left">{params.task_stack[0][1].task}</pre>'
-                )
+                row(td=f'<pre style="text-align:left">{params.task_stack[0][1].task}</pre>'
+                   )
             else:
                 row(td=f'<pre style="text-align:left">{params.task}</pre>')
             row("Tags")
             row(td=f'<pre style="text-align:left">{tf.tags}</pre>')
             if params.global_def:
                 row("Global")
-                row(td=f'<pre style="text-align:left">{params.global_def}</pre>')
+                row(td=f'<pre style="text-align:left">{params.global_def}</pre>'
+                   )
             # row('Environment')
             global_runtime = tf.runtime["_runtime"]
             job_vars = params.sos_dict
@@ -1514,11 +1460,13 @@ def print_task_status(
                 if not k.startswith("__") and not k == "CONFIG":
                     if k == "_runtime":
                         for _k, _v in v.items():
-                            if isPrimitive(_v) and _v not in (None, "", [], (), {}):
+                            if isPrimitive(_v) and _v not in (None, "", [],
+                                                              (), {}):
                                 row(_k, _v)
                     elif isPrimitive(v) and v not in (None, "", [], (), {}):
                         row(
-                            k, f'<pre style="text-align:left">{pprint.pformat(v)}</pre>'
+                            k,
+                            f'<pre style="text-align:left">{pprint.pformat(v)}</pre>'
                         )
             pulse_content = ""
 
@@ -1529,7 +1477,8 @@ def print_task_status(
                     if "start_time" in res and "end_time" in res:
                         row(
                             "Duration",
-                            format_duration(res["end_time"] - res["start_time"]),
+                            format_duration(res["end_time"] -
+                                            res["start_time"]),
                         )
                     if "peak_cpu" in res:
                         row("Peak CPU", f'{res["peak_cpu"]*100} %')
@@ -1540,8 +1489,7 @@ def print_task_status(
                     row(td=f'<div id="res_{t}"></div>')
             elif s == "running":
                 pulse_file = os.path.join(
-                    os.path.expanduser("~"), ".sos", "tasks", t + ".pulse"
-                )
+                    os.path.expanduser("~"), ".sos", "tasks", t + ".pulse")
                 if os.path.isfile(pulse_file):
                     with open(pulse_file) as pulse:
                         pulse_content = pulse.read()
@@ -1552,7 +1500,8 @@ def print_task_status(
                                 fields = line.split(None, 1)
                                 if fields[0] == "task":
                                     continue
-                                row(fields[0], "" if fields[1] is None else fields[1])
+                                row(fields[0],
+                                    "" if fields[1] is None else fields[1])
                             # this is a placeholder for the frontend to draw figure
                             row(td=f'<div id="res_{t}"></div>')
 
@@ -1562,46 +1511,40 @@ def print_task_status(
                     shell = tf.shell
                     numLines = shell.count("\n")
                     row("shell", f"{numLines} lines")
-                    row(td=f'<small><pre style="text-align:left">{shell}</pre></small>')
+                    row(td=f'<small><pre style="text-align:left">{shell}</pre></small>'
+                       )
                 if tf.has_stdout():
                     stdout = tf.stdout
                     numLines = stdout.count("\n")
                     row(
                         "stdout",
-                        "(empty)"
-                        if numLines == 0
-                        else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}',
+                        "(empty)" if numLines == 0 else
+                        f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}',
                     )
                     if numLines > 200:
                         stdout = "\n".join(stdout.splitlines()[-200:])
-                    row(
-                        td=f'<small><pre style="text-align:left">{stdout}</pre></small>'
-                    )
+                    row(td=f'<small><pre style="text-align:left">{stdout}</pre></small>'
+                       )
                 if tf.has_stderr():
                     stderr = tf.stderr
                     numLines = stderr.count("\n")
                     row(
                         "stderr",
-                        "(empty)"
-                        if numLines == 0
-                        else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}',
+                        "(empty)" if numLines == 0 else
+                        f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}',
                     )
                     if numLines > 200:
                         stderr = "\n".join(stderr.splitlines()[-200:])
-                    row(
-                        td=f'<small><pre style="text-align:left">{stderr}</pre></small>'
-                    )
+                    row(td=f'<small><pre style="text-align:left">{stderr}</pre></small>'
+                       )
             elif s == "running":
                 files = glob.glob(
-                    os.path.join(os.path.expanduser("~"), ".sos", "tasks", t + ".*")
-                )
-                for f in sorted(
-                    [
-                        x
-                        for x in files
+                    os.path.join(
+                        os.path.expanduser("~"), ".sos", "tasks", t + ".*"))
+                for f in sorted([
+                        x for x in files
                         if os.path.splitext(x)[-1] not in (".task", ".pulse")
-                    ]
-                ):
+                ]):
                     numLines = linecount_of_file(f)
                     rhead = os.path.splitext(f)[-1]
                     if rhead == ".sh":
@@ -1618,18 +1561,15 @@ def print_task_status(
                         rhead = "sos output"
                     row(
                         rhead,
-                        "(empty)"
-                        if numLines == 0
-                        else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}',
+                        "(empty)" if numLines == 0 else
+                        f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}',
                     )
                     try:
-                        row(
-                            td=f'<small><pre style="text-align:left">{tail_of_file(f, 200, ansi2html=True)}</pre></small>'
-                        )
+                        row(td=f'<small><pre style="text-align:left">{tail_of_file(f, 200, ansi2html=True)}</pre></small>'
+                           )
                     except Exception:
-                        row(
-                            td='<small><pre style="text-align:left">ignored.</pre><small>'
-                        )
+                        row(td='<small><pre style="text-align:left">ignored.</pre><small>'
+                           )
             print("</table>")
             #
             if not pulse_content:
@@ -1656,8 +1596,7 @@ def print_task_status(
             except Exception:
                 return
             #
-            print(
-                """
+            print("""
 <script>
     function loadFiles(files, fn) {
         if (!files.length) {
@@ -1691,35 +1630,21 @@ def print_task_status(
         loadFile(0);
     }
 
-function plotResourcePlot_"""
-                + t
-                + """() {
+function plotResourcePlot_""" + t + """() {
     // get the item
     // parent element is a table cell, needs enlarge
     document.getElementById(
-        "res_"""
-                + t
-                + """").parentElement.setAttribute("height", "300px;");
-    $("#res_"""
-                + t
-                + """").css("height", "300px");
-    $("#res_"""
-                + t
-                + """").css("width", "100%");
-    $("#res_"""
-                + t
-                + """").css("min-height", "300px");
+        "res_""" + t + """").parentElement.setAttribute("height", "300px;");
+    $("#res_""" + t + """").css("height", "300px");
+    $("#res_""" + t + """").css("width", "100%");
+    $("#res_""" + t + """").css("min-height", "300px");
 
-    var cpu = ["""
-                + ",".join([f"[{x*1000},{y}]" for x, y in zip(etime, cpu)])
-                + """];
-    var mem = ["""
-                + ",".join([f"[{x*1000},{y}]" for x, y in zip(etime, mem)])
-                + """];
+    var cpu = [""" + ",".join([f"[{x*1000},{y}]" for x, y in zip(etime, cpu)]) +
+                  """];
+    var mem = [""" + ",".join([f"[{x*1000},{y}]" for x, y in zip(etime, mem)]) +
+                  """];
 
-    $.plot('#res_"""
-                + t
-                + """', [{
+    $.plot('#res_""" + t + """', [{
                 data: cpu,
                 label: "CPU (%)"
             },
@@ -1748,34 +1673,21 @@ function plotResourcePlot_"""
 
 var dt = 100;
 // the frontend might be notified before the table is inserted as results.
-function showResourceFigure_"""
-                + t
-                + """() {
-    if ( $("#res_"""
-                + t
-                + """").length === 0) {
+function showResourceFigure_""" + t + """() {
+    if ( $("#res_""" + t + """").length === 0) {
           dt = dt * 1.5; // slow-down checks for datatable as time goes on;
-          setTimeout(showResourceFigure_"""
-                + t
-                + """, dt);
+          setTimeout(showResourceFigure_""" + t + """, dt);
           return;
     } else {
-        $("#res_"""
-                + t
-                + """").css('width', "100%").css('height', "300px");
+        $("#res_""" + t + """").css('width', "100%").css('height', "300px");
         loadFiles(["http://www.flotcharts.org/flot/jquery.flot.js",
              "http://www.flotcharts.org/flot/jquery.flot.time.js"
-            ], plotResourcePlot_"""
-                + t
-                + """);
+            ], plotResourcePlot_""" + t + """);
     }
 }
-showResourceFigure_"""
-                + t
-                + """()
+showResourceFigure_""" + t + """()
 </script>
-"""
-            )
+""")
     elif verbosity == 0:
         print("\n".join(obtained_status))
     elif verbosity == 1:
@@ -1785,16 +1697,14 @@ showResourceFigure_"""
         tsize = 20
         for s, (t, d) in zip(obtained_status, all_tasks):
             ts, _, _, dr = TaskFile(t).tags_created_start_and_duration(
-                formatted=not numeric_times
-            )
+                formatted=not numeric_times)
             tsize = max(tsize, len(ts))
             print(f"{t}\t{ts.ljust(tsize)}\t{dr:<14}\t{s}")
     elif verbosity == 3:
         tsize = 20
         for s, (t, d) in zip(obtained_status, all_tasks):
             ts, ct, st, dr = TaskFile(t).tags_created_start_and_duration(
-                formatted=not numeric_times
-            )
+                formatted=not numeric_times)
             tsize = max(tsize, len(ts))
             print(f"{t}\t{ts.ljust(tsize)}\t{ct:<14}\t{st:<14}\t{dr:<14}\t{s}")
     elif verbosity == 4:
@@ -1833,7 +1743,9 @@ showResourceFigure_"""
             job_vars["_runtime"].update(global_runtime)
             for k in sorted(job_vars.keys()):
                 v = job_vars[k]
-                print(f"{k:22}{short_repr(v) if verbosity == 3 else pprint.pformat(v)}")
+                print(
+                    f"{k:22}{short_repr(v) if verbosity == 3 else pprint.pformat(v)}"
+                )
             print()
             if tf.has_result():
                 if s not in ("pending", "submitted", "running"):
@@ -1851,8 +1763,7 @@ showResourceFigure_"""
             elif s == "running":
                 # we have separate pulse, out and err files
                 pulse_file = os.path.join(
-                    os.path.expanduser("~"), ".sos", "tasks", t + ".pulse"
-                )
+                    os.path.expanduser("~"), ".sos", "tasks", t + ".pulse")
                 if os.path.isfile(pulse_file):
                     print("EXECUTION STATS:\n================")
                     with open(pulse_file) as pulse:
@@ -1864,8 +1775,7 @@ showResourceFigure_"""
                     exts = [exts]
                 for ext in exts:
                     f = os.path.join(
-                        os.path.expanduser("~"), ".sos", "tasks", task + ext
-                    )
+                        os.path.expanduser("~"), ".sos", "tasks", task + ext)
                     if not os.path.isfile(f) or os.path.getsize(f) == 0:
                         return
                     print(
@@ -1907,19 +1817,17 @@ showResourceFigure_"""
 def kill_tasks(tasks, tags=None):
     #
     import glob
-    from multiprocessing.pool import ThreadPool as Pool
 
     if not tasks:
         tasks = glob.glob(
-            os.path.join(os.path.expanduser("~"), ".sos", "tasks", "*.task")
-        )
+            os.path.join(os.path.expanduser("~"), ".sos", "tasks", "*.task"))
         all_tasks = [os.path.basename(x)[:-5] for x in tasks]
     else:
         all_tasks = []
         for t in tasks:
             matched = glob.glob(
-                os.path.join(os.path.expanduser("~"), ".sos", "tasks", f"{t}*.task")
-            )
+                os.path.join(
+                    os.path.expanduser("~"), ".sos", "tasks", f"{t}*.task"))
             matched = [os.path.basename(x)[:-5] for x in matched]
             if not matched:
                 env.logger.warning(f"{t} does not match any existing task")
@@ -1927,7 +1835,8 @@ def kill_tasks(tasks, tags=None):
                 all_tasks.extend(matched)
     if tags:
         all_tasks = [
-            x for x in all_tasks if any(x in tags for x in TaskFile(x).tags.split())
+            x for x in all_tasks if any(
+                x in tags for x in TaskFile(x).tags.split())
         ]
 
     if not all_tasks:
@@ -1935,8 +1844,7 @@ def kill_tasks(tasks, tags=None):
         return
     all_tasks = sorted(list(set(all_tasks)))
     # at most 20 threads
-    p = Pool(min(10, len(all_tasks)))
-    killed = p.map(kill_task, all_tasks)
+    killed = [kill_task(x) for x in all_tasks]
     for s, t in zip(killed, all_tasks):
         print(f"{t}\t{s}")
 
@@ -1947,8 +1855,9 @@ def kill_task(task):
     if status == "completed":
         return "completed"
     with open(
-        os.path.join(os.path.expanduser("~"), ".sos", "tasks", task + ".soserr"), "a"
-    ) as err:
+            os.path.join(
+                os.path.expanduser("~"), ".sos", "tasks", task + ".soserr"),
+            "a") as err:
         err.write(f"Task {task} killed by sos kill command or task engine.")
     tf.add_outputs()
     # 1323
@@ -1956,12 +1865,17 @@ def kill_task(task):
 
     TaskFile(task).status = "aborted"
     remove_task_files(
-        task, [".sosout", ".soserr", ".out", ".err", ".pulse", ".sh", ".job_id"]
-    )
+        task,
+        [".sosout", ".soserr", ".out", ".err", ".pulse", ".sh", ".job_id"])
     return "aborted"
 
 
-def purge_tasks(tasks, purge_all=None, age=None, status=None, tags=None, verbosity=2):
+def purge_tasks(tasks,
+                purge_all=None,
+                age=None,
+                status=None,
+                tags=None,
+                verbosity=2):
     # verbose is ignored for now
     # if not tasks and not purge_all:
     #     # if not --all and no task is specified, find all tasks in the current directory
@@ -1978,17 +1892,20 @@ def purge_tasks(tasks, purge_all=None, age=None, status=None, tags=None, verbosi
         all_tasks = []
         for t in tasks:
             matched = glob.glob(
-                os.path.join(os.path.expanduser("~"), ".sos", "tasks", f"{t}*.task")
-            )
-            matched = [(os.path.basename(x)[:-5], os.path.getmtime(x)) for x in matched]
+                os.path.join(
+                    os.path.expanduser("~"), ".sos", "tasks", f"{t}*.task"))
+            matched = [
+                (os.path.basename(x)[:-5], os.path.getmtime(x)) for x in matched
+            ]
             if not matched:
                 print(f"{t}\tmissing")
             all_tasks.extend(matched)
     elif purge_all or age or status or tags:
         tasks = glob.glob(
-            os.path.join(os.path.expanduser("~"), ".sos", "tasks", "*.task")
-        )
-        all_tasks = [(os.path.basename(x)[:-5], os.path.getmtime(x)) for x in tasks]
+            os.path.join(os.path.expanduser("~"), ".sos", "tasks", "*.task"))
+        all_tasks = [
+            (os.path.basename(x)[:-5], os.path.getmtime(x)) for x in tasks
+        ]
     else:
         raise ValueError(
             "Please specify either tasks or one or more of --all, --status, --tags--age"
@@ -2004,11 +1921,14 @@ def purge_tasks(tasks, purge_all=None, age=None, status=None, tags=None, verbosi
     if status:
         # at most 20 threads
         task_status = check_tasks([x[0] for x in all_tasks], not tasks)
-        all_tasks = [x for x in all_tasks if task_status[x[0]]["status"] in status]
+        all_tasks = [
+            x for x in all_tasks if task_status[x[0]]["status"] in status
+        ]
 
     if tags:
         all_tasks = [
-            x for x in all_tasks if any(x in tags for x in TaskFile(x[0]).tags.split())
+            x for x in all_tasks if any(
+                x in tags for x in TaskFile(x[0]).tags.split())
         ]
     #
     # remoe all task files
@@ -2020,16 +1940,14 @@ def purge_tasks(tasks, purge_all=None, age=None, status=None, tags=None, verbosi
 
         to_be_removed = defaultdict(list)
         for dirname, _, filelist in os.walk(
-            os.path.join(os.path.expanduser("~"), ".sos", "tasks")
-        ):
+                os.path.join(os.path.expanduser("~"), ".sos", "tasks")):
             for f in filelist:
                 ID = os.path.basename(f).split(".", 1)[0]
                 if ID in all_tasks:
                     to_be_removed[ID].append(os.path.join(dirname, f))
         #
         cache_file: str = os.path.join(
-            os.path.expanduser("~"), ".sos", "tasks", "status_cache.pickle"
-        )
+            os.path.expanduser("~"), ".sos", "tasks", "status_cache.pickle")
 
         if os.path.isfile(cache_file):
             with fasteners.InterProcessLock(cache_file + "_"):
@@ -2042,16 +1960,15 @@ def purge_tasks(tasks, purge_all=None, age=None, status=None, tags=None, verbosi
             for f in to_be_removed[task]:
                 try:
                     if verbosity > 3:
-                        if (
-                            "TASK" in env.config["SOS_DEBUG"]
-                            or "ALL" in env.config["SOS_DEBUG"]
-                        ):
+                        if ("TASK" in env.config["SOS_DEBUG"] or
+                                "ALL" in env.config["SOS_DEBUG"]):
                             env.log_to_file("TASK", f"Remove {f}")
                     os.remove(f)
                 except Exception as e:
                     removed = False
                     if verbosity > 0:
-                        env.logger.warning(f"Failed to purge task {task[0]}: {e}")
+                        env.logger.warning(
+                            f"Failed to purge task {task[0]}: {e}")
             status_cache.pop(task, None)
             if removed and verbosity > 1:
                 print(f"{task}\tpurged")
@@ -2061,7 +1978,8 @@ def purge_tasks(tasks, purge_all=None, age=None, status=None, tags=None, verbosi
     elif verbosity > 1:
         env.logger.debug("No matching tasks to purge")
     if purge_all and age is None and status is None and tags is None:
-        matched = glob.glob(os.path.join(os.path.expanduser("~"), ".sos", "tasks", "*"))
+        matched = glob.glob(
+            os.path.join(os.path.expanduser("~"), ".sos", "tasks", "*"))
         count = 0
         for f in matched:
             if os.path.isdir(f):

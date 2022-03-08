@@ -62,8 +62,8 @@ def test_simple_dag(temp_factory):
 
             [A_3]
 
-            [A_4]''')
-        , textwrap.dedent('''strict digraph "" {
+            [A_4]'''),
+        textwrap.dedent('''strict digraph "" {
             A_2;
             A_4;
             A_1;
@@ -84,8 +84,8 @@ def test_simple_dag(temp_factory):
             [A_3]
             input: 'a.txt'
 
-            [A_4]''')
-        , textwrap.dedent('''strict digraph "" {
+            [A_4]'''),
+        textwrap.dedent('''strict digraph "" {
             A_2;
             A_4;
             A_1;
@@ -114,8 +114,8 @@ def test_simple_dag(temp_factory):
             [A_4]
             input: 'd.txt'
             output: 'e.txt'
-            ''')
-        , textwrap.dedent('''strict digraph "" {
+            '''),
+        textwrap.dedent('''strict digraph "" {
             A_2;
             A_4;
             A_1;
@@ -146,8 +146,8 @@ def test_simple_dag(temp_factory):
             [B_4]
             input: 'd.txt'
             output: 'e.txt'
-            ''')
-        , textwrap.dedent('''strict digraph "" {
+            '''),
+        textwrap.dedent('''strict digraph "" {
             B_2;
             B_4;
             B_1;
@@ -177,8 +177,8 @@ def test_simple_dag(temp_factory):
             [B_4]
             input: 'd.txt'
             output: 'e.txt'
-            ''')
-        , textwrap.dedent('''strict digraph "" {
+            '''),
+        textwrap.dedent('''strict digraph "" {
             B_1;
             B_4;
             B_2;
@@ -209,8 +209,8 @@ def test_simple_dag(temp_factory):
             [C_4]
             depends: 'd.txt'
             output: 'e.txt'
-            ''')
-        , textwrap.dedent('''
+            '''),
+        textwrap.dedent('''
             strict digraph "" {
             C_1;
             C_4;
@@ -221,6 +221,7 @@ def test_simple_dag(temp_factory):
             C_3 -> C_4;
             }
             '''))
+
 
 def test_undetermined(temp_factory):
     '''Test DAG with undetermined input.'''
@@ -246,9 +247,10 @@ def test_undetermined(temp_factory):
             depends: 'd.txt'
             output: 'e.txt'
             ''')
-                # dag.show_nodes()
-                # dag.save('a.dot')
-        , textwrap.dedent('''
+        # dag.show_nodes()
+        # dag.save('a.dot')
+        ,
+        textwrap.dedent('''
             strict digraph "" {
             C_1;
             C_4;
@@ -278,8 +280,8 @@ def test_undetermined(temp_factory):
             [C_4]
             depends: 'd.txt'
             output: 'e.txt'
-            ''')
-        , textwrap.dedent('''
+            '''),
+        textwrap.dedent('''
             strict digraph "" {
             C_1;
             C_4;
@@ -291,7 +293,8 @@ def test_undetermined(temp_factory):
             }
             '''))
 
-def test_auxiliary_steps(temp_factory,clear_now_and_after):
+
+def test_auxiliary_steps(temp_factory, clear_now_and_after):
     graph = textwrap.dedent(('''
         [K: provides='{name}.txt']
         output: f"{name}.txt"
@@ -324,7 +327,8 @@ def test_auxiliary_steps(temp_factory,clear_now_and_after):
     #
     dag.show_nodes()
     assertDAG(
-        dag, textwrap.dedent('''
+        dag,
+        textwrap.dedent('''
         strict digraph "" {
         "K (b.txt)";
         C_3;
@@ -332,6 +336,7 @@ def test_auxiliary_steps(temp_factory,clear_now_and_after):
         "K (b.txt)" -> C_2;
         }
         '''))
+
 
 def test_cycle():
     '''Test cycle detection of DAG'''
@@ -342,7 +347,8 @@ def test_cycle():
     #
     #  C.txt --> A.txt
     #
-    script = SoS_Script(textwrap.dedent('''
+    script = SoS_Script(
+        textwrap.dedent('''
     [A_1]
     input: 'A.txt'
     output: 'B.txt'
@@ -357,11 +363,12 @@ def test_cycle():
     wf = script.workflow()
     pytest.raises(RuntimeError, Base_Executor(wf).initialize_dag)
 
+
 def test_long_chain(clear_now_and_after):
     '''Test long make file style dependencies.'''
     #
-    clear_now_and_after('A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 
-        'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt')
+    clear_now_and_after('A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt',
+                        'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt')
 
     #
     #  A1 <- B1 <- B2 <- B3
@@ -420,8 +427,8 @@ def test_long_chain(clear_now_and_after):
         run:
             touch C4.txt
 
-        ''')
-    , textwrap.dedent('''
+        '''),
+        textwrap.dedent('''
         strict digraph "" {
         "C4 (C4.txt)";
         "B1 (B1.txt)";
@@ -445,11 +452,12 @@ def test_long_chain(clear_now_and_after):
         }
         '''))
 
+
 def test_target(clear_now_and_after):
     '''Test executing only part of a workflow.'''
     #
-    clear_now_and_after('A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 
-        'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt')
+    clear_now_and_after('A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt',
+                        'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt')
     #
     #  A1 <- B1 <- B2 <- B3
     #   |
@@ -458,7 +466,8 @@ def test_target(clear_now_and_after):
     #  A2 <- B2 <- C1 <- C2 <- C4
     #                    C3
     #
-    script = SoS_Script(textwrap.dedent('''
+    script = SoS_Script(
+        textwrap.dedent('''
     [A1]
     input: 'B1.txt'
     output: 'A1.txt'
@@ -511,7 +520,8 @@ def test_target(clear_now_and_after):
     dag = Base_Executor(wf).initialize_dag(targets=['B1.txt'])
     # note that A2 is no longer mentioned
     assertDAG(
-        dag, textwrap.dedent('''
+        dag,
+        textwrap.dedent('''
         strict digraph "" {
         "B3 (B3.txt)";
         "C4 (C4.txt)";
@@ -534,7 +544,8 @@ def test_target(clear_now_and_after):
     dag = Base_Executor(wf).initialize_dag(targets=['B2.txt', 'C2.txt'])
     # note that A2 is no longer mentioned
     assertDAG(
-        dag, textwrap.dedent('''
+        dag,
+        textwrap.dedent('''
         strict digraph "" {
         "C4 (C4.txt)";
         "B2 (B2.txt)";
@@ -556,7 +567,8 @@ def test_target(clear_now_and_after):
     dag = Base_Executor(wf).initialize_dag(targets=['B3.txt', 'C2.txt'])
     # note that A2 is no longer mentioned
     assertDAG(
-        dag, textwrap.dedent('''
+        dag,
+        textwrap.dedent('''
         strict digraph "" {
         "B3 (B3.txt)";
         "C2 (C2.txt)";
@@ -565,10 +577,12 @@ def test_target(clear_now_and_after):
         }
         '''))
 
+
 def test_pattern_reuse(clear_now_and_after):
     '''Test repeated use of steps that use pattern and produce different files.'''
     #
-    clear_now_and_after('A1.txt', 'A2.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p')
+    clear_now_and_after('A1.txt', 'A2.txt', 'B1.txt', 'B1.txt.p', 'B2.txt',
+                        'B2.txt.p')
     #
     #  A1 <- P <- B1
     #  A1 <- P <- B2
@@ -600,8 +614,8 @@ def test_pattern_reuse(clear_now_and_after):
         input: filename
         run: expand=True
             touch {_output}
-        ''')
-    , textwrap.dedent('''
+        '''),
+        textwrap.dedent('''
         strict digraph "" {
         "P (B2.txt.p)";
         "B1 (B1.txt)";
@@ -616,6 +630,7 @@ def test_pattern_reuse(clear_now_and_after):
         "P (B1.txt.p)" -> A_1;
         }
         '''))
+
 
 def test_parallel_execution(clear_now_and_after):
     '''Test basic parallel execution
@@ -644,8 +659,8 @@ def test_parallel_execution(clear_now_and_after):
         run:
             touch B2.txt
 
-        ''')
-    , textwrap.dedent('''
+        '''),
+        textwrap.dedent('''
         strict digraph "" {
         A_1;
         A_2;
@@ -657,6 +672,7 @@ def test_parallel_execution(clear_now_and_after):
     #env.verbosity = 4
     # the process is slower after switching to spawn mode
 
+
 def test_shared_dependency(clear_now_and_after):
     #
     # shared variable should introduce additional dependency
@@ -665,7 +681,8 @@ def test_shared_dependency(clear_now_and_after):
     #
     # A1 introduces a shared variable ss, A3 depends on ss but not A2
     #
-    script = SoS_Script(textwrap.dedent('''
+    script = SoS_Script(
+        textwrap.dedent('''
     [A_1: shared='ss']
     ss = 'A1'
 
@@ -686,7 +703,8 @@ def test_shared_dependency(clear_now_and_after):
     wf = script.workflow('A')
     dag = Base_Executor(wf).initialize_dag()
     assertDAG(
-        dag, textwrap.dedent('''
+        dag,
+        textwrap.dedent('''
         strict digraph "" {
         A_3;
         A_1;
@@ -696,13 +714,15 @@ def test_shared_dependency(clear_now_and_after):
         '''))
     env.max_jobs = 3
 
+
 def test_literal_connection(clear_now_and_after):
     '''Testing the connection of steps with by variables.'''
     clear_now_and_after('A1.txt')
     #
     # A1 introduces a shared variable ss, A3 depends on ss but not A2
     #
-    script = SoS_Script(textwrap.dedent('''
+    script = SoS_Script(
+        textwrap.dedent('''
     [A_1: shared='p']
     run:
         touch 'A1.txt'
@@ -735,7 +755,8 @@ def test_literal_connection(clear_now_and_after):
     wf = script.workflow('A')
     dag = Base_Executor(wf).initialize_dag()
     assertDAG(
-        dag, textwrap.dedent('''
+        dag,
+        textwrap.dedent('''
         strict digraph "" {
         A_1;
         A_4;
@@ -749,9 +770,11 @@ def test_literal_connection(clear_now_and_after):
         '''))
     env.max_jobs = 3
 
+
 def test_variable_target():
     '''Test dependency caused by variable usage.'''
-    script = SoS_Script(textwrap.dedent(r'''
+    script = SoS_Script(
+        textwrap.dedent(r'''
     [A: shared='b']
     b = 1
 
@@ -768,10 +791,12 @@ def test_variable_target():
     Base_Executor(wf).run()
     assert env.sos_dict['p'] == 3
 
+
 def test_reverse_shared_variable(clear_now_and_after):
     '''Test shared variables defined in auxiliary steps'''
     clear_now_and_after('a.txt')
-    script = SoS_Script(textwrap.dedent(r'''
+    script = SoS_Script(
+        textwrap.dedent(r'''
     [A: shared='b', provides='a.txt']
     b = 1
     run:
@@ -788,10 +813,12 @@ def test_reverse_shared_variable(clear_now_and_after):
     Base_Executor(wf).run()
     assert env.sos_dict['b'] == 1
 
+
 def test_chained_depends(temp_factory):
     '''Test chain dependent'''
     temp_factory('a.bam', 'a.bam.bai', 'a.vcf')
-    script = SoS_Script(textwrap.dedent(r'''
+    script = SoS_Script(
+        textwrap.dedent(r'''
     # this step provides variable `var`
     [index: provides='{filename}.bam.bai']
     input: f"{filename}.bam"
@@ -816,8 +843,8 @@ def test_chained_depends(temp_factory):
     #     if file_target(f).exists():
     #         file_target(f).unlink()
 
-@pytest.mark.skipif(
-    True, reason='This test is failing')
+
+@pytest.mark.skipif(True, reason='This test is failing')
 def test_output_of_dag(clear_now_and_after):
     '''Test output of dag'''
     #
@@ -832,7 +859,8 @@ def test_output_of_dag(clear_now_and_after):
     #  A2 <- B2 <- C1 <- C2 <- C4
     #                    C3
     #
-    script = SoS_Script(textwrap.dedent('''
+    script = SoS_Script(
+        textwrap.dedent('''
     [A_1]
     input: 'B1.txt'
     output: 'A1.txt'
@@ -883,14 +911,14 @@ def test_output_of_dag(clear_now_and_after):
     #
     # test 1, we only need to generate target 'B1.txt'
     Base_Executor(
-        wf,
-        config={
+        wf, config={
             'output_dag': 'test_outofdag1.dot',
             'trace_existing': True
         }).initialize_dag(targets=['B1.txt'])
     # note that A2 is no longer mentioned
     assertDAG(
-        'test_outofdag1.dot', textwrap.dedent('''
+        'test_outofdag1.dot',
+        textwrap.dedent('''
         strict digraph "" {
         "B3 (B3.txt)";
         "C4 (C4.txt)";
@@ -910,14 +938,14 @@ def test_output_of_dag(clear_now_and_after):
         '''))
     # test 2, we would like to generate two files
     Base_Executor(
-        wf,
-        config={
+        wf, config={
             'output_dag': 'test_outofdag2.dot',
             'trace_existing': True
         }).initialize_dag(targets=['B2.txt', 'C2.txt'])
     # note that A2 is no longer mentioned
     assertDAG(
-        'test_outofdag2.dot', textwrap.dedent('''
+        'test_outofdag2.dot',
+        textwrap.dedent('''
         strict digraph "" {
         "C4 (C4.txt)";
         "B2 (B2.txt)";
@@ -936,14 +964,14 @@ def test_output_of_dag(clear_now_and_after):
     # test 3, generate two separate trees
     #
     Base_Executor(
-        wf,
-        config={
+        wf, config={
             'output_dag': 'test_outofdag3.dot',
             'trace_existing': True
         }).initialize_dag(targets=['B3.txt', 'C2.txt'])
     # note that A2 is no longer mentioned
     assertDAG(
-        'test_outofdag3.dot', textwrap.dedent('''
+        'test_outofdag3.dot',
+        textwrap.dedent('''
         strict digraph "" {
         "B3 (B3.txt)";
         "C2 (C2.txt)";
@@ -953,11 +981,12 @@ def test_output_of_dag(clear_now_and_after):
         '''))
     clear_now_and_after('C2.txt', 'B3.txt', 'C4.txt', 'test.dot', 'test_2.dot')
 
-@pytest.mark.skipif(
-    True, reason='This test is failing')
+
+@pytest.mark.skipif(True, reason='This test is failing')
 def test_step_with_multiple_output(clear_now_and_after):
     '''Test addition of steps with multiple outputs. It should be added only once'''
-    script = SoS_Script(textwrap.dedent('''
+    script = SoS_Script(
+        textwrap.dedent('''
     [test_1: provides=['{}.txt'.format(i) for i in range(10)]]
     output: ['{}.txt'.format(i) for i in range(10)]
     run:
@@ -979,6 +1008,7 @@ def test_step_with_multiple_output(clear_now_and_after):
     assert lc == 6
     clear_now_and_after('test.dot')
 
+
 def test_auxiliary_sos_step():
     '''Testing the use of sos_step with auxiliary step. #736'''
     execute_workflow('''
@@ -995,7 +1025,8 @@ def test_auxiliary_sos_step():
         touch 1.txt
         ''')
 
-def test_forward_style_depend(clear_now_and_after,temp_factory):
+
+def test_forward_style_depend(clear_now_and_after, temp_factory):
     '''Test the execution of forward-style workflow with undtermined dependency'''
     clear_now_and_after('a.txt.bak')
     temp_factory('a.txt')
@@ -1013,9 +1044,11 @@ def test_forward_style_depend(clear_now_and_after,temp_factory):
         ''')
     assert file_target('a.txt.bak').target_exists()
 
+
 def test_sos_step_miniworkflow(clear_now_and_after):
     '''Test the addition of mini forward workflows introduced by sos_step'''
-    script = SoS_Script(textwrap.dedent('''
+    script = SoS_Script(
+        textwrap.dedent('''
     [a_1]
     print(step_name)
 
@@ -1050,7 +1083,8 @@ def test_sos_step_miniworkflow(clear_now_and_after):
     Base_Executor(wf, config={'output_dag': 'test.dot'}).run()
     # note that A2 is no longer mentioned
     assertDAG(
-        'test.dot', textwrap.dedent('''
+        'test.dot',
+        textwrap.dedent('''
         strict digraph "" {
         default;
         a_1;
@@ -1075,9 +1109,11 @@ def test_sos_step_miniworkflow(clear_now_and_after):
         '''))
     clear_now_and_after('test.dot')
 
+
 def test_compound_workflow(clear_now_and_after):
     '''Test the DAG of compound workflow'''
-    script = SoS_Script(textwrap.dedent('''
+    script = SoS_Script(
+        textwrap.dedent('''
     [A_1]
     [A_2]
     [B]
@@ -1085,7 +1121,8 @@ def test_compound_workflow(clear_now_and_after):
     wf = script.workflow('A+B')
     dag = Base_Executor(wf).initialize_dag()
     assertDAG(
-        dag, textwrap.dedent('''strict digraph "" {
+        dag,
+        textwrap.dedent('''strict digraph "" {
         A_1;
         A_2;
         B;
@@ -1093,7 +1130,8 @@ def test_compound_workflow(clear_now_and_after):
         A_2 -> B;
         }'''))
     # with empty depends
-    script = SoS_Script(textwrap.dedent('''
+    script = SoS_Script(
+        textwrap.dedent('''
     [A_1]
     [A_2]
     [B]
@@ -1102,7 +1140,8 @@ def test_compound_workflow(clear_now_and_after):
     wf = script.workflow('A+B')
     dag = Base_Executor(wf).initialize_dag()
     assertDAG(
-        dag, textwrap.dedent('''strict digraph "" {
+        dag,
+        textwrap.dedent('''strict digraph "" {
         A_1;
         A_2;
         B;
@@ -1110,7 +1149,8 @@ def test_compound_workflow(clear_now_and_after):
         A_2 -> B;
         }'''))
     clear_now_and_after('a.txt')
-    script = SoS_Script(textwrap.dedent('''
+    script = SoS_Script(
+        textwrap.dedent('''
     [A_1]
     [A_2]
     [C]
@@ -1124,7 +1164,8 @@ def test_compound_workflow(clear_now_and_after):
     wf = script.workflow('A+B')
     dag = Base_Executor(wf).initialize_dag()
     assertDAG(
-        dag, textwrap.dedent('''strict digraph "" {
+        dag,
+        textwrap.dedent('''strict digraph "" {
         A_1;
         A_2;
         B;
@@ -1134,10 +1175,10 @@ def test_compound_workflow(clear_now_and_after):
         "C (a.txt)" -> B;
         }'''))
 
+
 def test_provides_sos_variable():
     '''Test provides non-filename targets #1341'''
-    execute_workflow(
-        '''
+    execute_workflow('''
         [count: provides=sos_variable('numNotebooks')]
         numNotebooks = 1
 

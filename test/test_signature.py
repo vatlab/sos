@@ -10,12 +10,12 @@ import sys
 import time
 import unittest
 
+from sos import execute_workflow
 from sos.hosts import Host
 from sos.parser import SoS_Script
 from sos.targets import file_target, sos_targets
 from sos.utils import env
 from sos.workflow_executor import Base_Executor
-from sos import execute_workflow
 
 
 class TestSignature(unittest.TestCase):
