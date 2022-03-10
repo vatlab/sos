@@ -27,5 +27,7 @@ jobs:
       with:
         name: pylint report
         path: pylint.txt
-        
+    - name: GitHub Action for pylint
+	uses: cclauss/GitHub-Action-for-pylint@0.7.0
+
       
