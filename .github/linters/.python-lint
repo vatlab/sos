@@ -203,7 +203,6 @@ disable=print-statement,
 	simplifiable-if-expression,
 	too-many-boolean-expressions,
 	chained-comparison,
-	redefined-argument-from-local,
  
 
 # Enable the message, report, category or checker with the given id(s). You can
@@ -211,7 +210,7 @@ disable=print-statement,
 # multiple time (only on the command line, not in the configuration file where
 # it should appear only once). See also the "--disable" option for examples.
 enable=c-extension-no-member
-
+enable=redefined-argument-from-local
 
 [REPORTS]
 
