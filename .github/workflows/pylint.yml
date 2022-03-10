@@ -1,6 +1,6 @@
 name: Pylint
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -27,6 +27,3 @@ jobs:
       with:
         name: pylint report
         path: pylint.txt
-
-
-      
