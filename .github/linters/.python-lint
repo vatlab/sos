@@ -202,30 +202,6 @@ disable=print-statement,
 	unnecessary-comprehension,
 	simplifiable-if-expression,
 	too-many-boolean-expressions,
-	chained-comparison,
-	no-else-continue,
-	no-else-return,
-	inconsistent-return-statements
-	super-with-arguments,
-	consider-using-with,
-	too-many-nested-blocks,
-	no-else-break,
-	consider-using-with,
-	consider-using-set-comprehension,
-	no-else-raise
-	redefined-argument-from-local
-	consider-using-in
-	no-else-raise
-	consider-using-generator
-	consider-using-get
-	use-a-generator
-	useless-return	
-	unnecessary-comprehension
-	simplifiable-if-expression
-	too-many-boolean-expressions
-	chained-comparison
-	redefined-argument-from-local
-
  
 
 # Enable the message, report, category or checker with the given id(s). You can
