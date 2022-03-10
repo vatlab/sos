@@ -3,7 +3,7 @@ name: Pylint
 on: [push, pull_request]
 
 jobs:
-  build:
+  pylint:
 
     runs-on: ubuntu-latest
 
@@ -20,8 +20,7 @@ jobs:
         if [ -f requirements_dev.txt ]; then pip install -r requirements_dev.txt; fi
     - name: Analysing the code with pylint
       run: |
-        python -m pylint --fail-under=10 `find -regextype egrep -regex '(.*.py)$'` |
-        tee pylint.txt
+        python -m pylint --rcfile .github/linters/.python-lint src | tee pylint.txt
     - name: Upload pylint.txt as artifact
       uses: actions/upload-artifact@v2
       with:
