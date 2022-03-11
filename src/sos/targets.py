@@ -136,11 +136,11 @@ class BaseTarget(object):
     def __getattr__(self, name):
         try:
             return self._dict[name]
-        except Exception as name_in_self_dict:
+        except Exception as e:
             # if name in self._dict:
             # return self._dict.get(name)
             raise AttributeError(
-                f"{self.__class__.__name__} object has no attribute {name}") from name_in_self_dict
+                f"{self.__class__.__name__} object has no attribute {name}") from e
 
     def target_exists(self, mode="any"):
         # mode should be 'any', 'target', or 'signature'
