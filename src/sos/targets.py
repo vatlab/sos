@@ -1962,7 +1962,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                             )
                     except Exception as e:
                         raise ValueError(
-                            f"Cannot iterate through variable {name}: {e}")
+                            f"Cannot iterate through variable {name}: {e}") from e
                 if loop_size is None:
                     loop_size = len(values)
                 elif loop_size != len(values):
