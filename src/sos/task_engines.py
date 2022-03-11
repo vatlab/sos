@@ -797,9 +797,9 @@ class BackgroundProcess_TaskEngine(TaskEngine):
             try:
                 job_text += cfg_interpolate(self.task_template, runtime)
                 job_text += '\n'
-            except Exception:
+            except Exception as e:
                 raise ValueError(
-                    f'Failed to generate job file for task {task_id}: {e}')
+                    f'Failed to generate job file for task {task_id}: {e}') from e
 
         filename = task_ids[0] + ('.sh' if len(task_ids) == 1 else
                                   f'-{task_ids[-1]}.sh')
@@ -818,6 +818,6 @@ class BackgroundProcess_TaskEngine(TaskEngine):
             cmd = f'bash ~/.sos/tasks/{filename}'
             env.log_to_file('TASK', f'Execute "{cmd}" with script {job_text}')
             self.agent.run_command(cmd, wait_for_task=self.wait_for_task)
-        except Exception as e:
-            raise RuntimeError(f'Failed to submit task {task_ids}: {e}') from e
+        except Exception:
+            raise RuntimeError(f'Failed to submit task {task_ids}: {e}')
         return True
