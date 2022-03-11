@@ -1634,7 +1634,7 @@ class Base_Executor:
                     time.sleep(0.1)
         except KeyboardInterrupt as exec_error:
             if exec_error.errors:
-                failed_steps, pending_steps = dag.pending()
+                pending_steps = dag.pending()
                 if pending_steps:
                     sections = [
                         self.workflow.section_by_id(
