@@ -650,7 +650,7 @@ class path(type(Path())):
             return "#" + relative_paths[0][0] + related
         except Exception as e:
             raise ValueError(
-                f"Failed to relate {self} with any of the named paths: {e}")
+                f"Failed to relate {self} with any of the named paths: {e}") from e
 
     def expandname(self, host=None):
         if not self._parts or self._parts[0][:1] != "#":
