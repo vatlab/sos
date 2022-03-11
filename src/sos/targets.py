@@ -701,7 +701,7 @@ class path(type(Path())):
                     "__host__", "localhost")]):
                 raise RuntimeError(
                     f'Incomplete sos environment: paths not defined for host {env.sos_dict.get("__host__", "localhost")}'
-                )
+                ) from e
             name = self._parts[0][1:]
             if (name not in env.sos_dict["CONFIG"]["hosts"]
                 [env.sos_dict.get("__host__", "localhost"
