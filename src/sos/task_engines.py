@@ -797,9 +797,9 @@ class BackgroundProcess_TaskEngine(TaskEngine):
             try:
                 job_text += cfg_interpolate(self.task_template, runtime)
                 job_text += '\n'
-            except Exception as e:
+            except Exception:
                 raise ValueError(
-                    f'Failed to generate job file for task {task_id}: {e}') from e
+                    f'Failed to generate job file for task {task_id}: {e}')
 
         filename = task_ids[0] + ('.sh' if len(task_ids) == 1 else
                                   f'-{task_ids[-1]}.sh')
