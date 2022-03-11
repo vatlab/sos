@@ -441,7 +441,7 @@ class on_demand_options(object):
             if key == "skip":
                 raise ValueError(
                     f"Failed to evaluate option {key} with value {self._expressions[key]}: Only constant values are allowed for section option skip"
-                )
+                ) from e
             else:
                 raise ValueError(
                     f"Failed to evaluate option {key} with value {self._expressions[key]}: {e}"
