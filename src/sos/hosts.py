@@ -761,7 +761,7 @@ class RemoteHost(object):
                 except Exception as e:
                     raise RuntimeError(
                         f'Failed to copy {source} from {self.alias} using command "{cmd}": {e}'
-                    )
+                    ) from e
         return received
 
     #
