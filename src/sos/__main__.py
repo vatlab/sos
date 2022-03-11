@@ -670,7 +670,7 @@ def cmd_run(args, workflow_args):
             except Exception as e:
                 raise ValueError(
                     f"Unsupported exec_mode (option -m). {args.exec_mode} provided: {e}"
-                )
+                ) from e
             # env.logger.debug(f'Process being tapped as slave {config["slave_id"]} at {config["sockets"]["tapping_logging"]} (logger) and {config["sockets"]["tapping_controller"]} (controller)')
             config["exec_mode"] = args.exec_mode[1]
 
