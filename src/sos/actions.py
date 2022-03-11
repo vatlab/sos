@@ -1225,7 +1225,7 @@ def collect_input(script, input):
                 with open(input) as ifile:
                     tmp.write(ifile.read() + "\n\n")
             except Exception as e:
-                raise ValueError(f"Failed to read input file {input}: {e}")
+                raise ValueError(f"Failed to read input file {input}: {e}") from e
         elif isinstance(input, Sequence):
             for ifile in input:
                 try:
