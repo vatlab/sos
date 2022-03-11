@@ -902,7 +902,7 @@ class RemoteHost(object):
         except subprocess.CalledProcessError as e:
             raise RuntimeError(
                 f"Failed to copy job {job_file} to {self.alias} using command {send_cmd}: {e}"
-            )
+            ) from e
 
     def check_output(self,
                      cmd: object,
