@@ -1789,7 +1789,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                         self._groups.append(_sos_group(index, parent=self))
             except Exception as e:
                 raise ValueError(
-                    f"Failed to apply customized grouping method: {e}")
+                    f"Failed to apply customized grouping method: {e}") from e
         else:
             raise ValueError(f"Unsupported by option ``{by}``!")
         return self
