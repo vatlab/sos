@@ -445,7 +445,7 @@ class on_demand_options(object):
             else:
                 raise ValueError(
                     f"Failed to evaluate option {key} with value {self._expressions[key]}: {e}"
-                )
+                ) from e
 
     def __repr__(self):
         return repr(self._expressions)
