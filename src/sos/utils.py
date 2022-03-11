@@ -1414,7 +1414,7 @@ def load_config_files(filename=None, default_config_files=True):
             except Exception as e:
                 raise RuntimeError(
                     f"Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})"
-                )
+                ) from e
 
         # global site file
         sos_config_file = os.path.join(
