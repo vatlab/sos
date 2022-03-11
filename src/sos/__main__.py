@@ -540,7 +540,7 @@ def cmd_run(args, workflow_args):
         except ImportError as e:
             raise RuntimeError(
                 f"Python packages graphviz, pillow, and imageio are required for the generation of DAG animation in workflow report (options -p with -d): {e}"
-            )
+            ) from e
 
         import shutil
 
