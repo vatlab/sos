@@ -46,7 +46,7 @@ class WorkflowEngine:
         except Exception as e:
             raise ValueError(
                 f"Failed to generate job file for the execution of workflow: {e}"
-            )
+            ) from e
         try:
             wf_dir = os.path.join(os.path.expanduser("~"), ".sos", "workflows")
             if not os.path.isdir(wf_dir):
