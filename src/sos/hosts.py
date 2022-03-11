@@ -971,7 +971,7 @@ class RemoteHost(object):
                 },
             )
         except Exception as e:
-            raise ValueError(f"Failed to run command {cmd}: {e}")
+            raise ValueError(f"Failed to run command {cmd}: {e}") from e
         if "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
             env.log_to_file("TASK", f"Executing command ``{cmd}``")
         if realtime:
