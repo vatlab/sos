@@ -1305,7 +1305,7 @@ def report(script=None, input=None, output=None, **kwargs):
                             writer(itmp.read().rstrip() + "\n\n")
                     except Exception as e:
                         raise ValueError(
-                            f"Failed to read input file {ifile}: {e}")
+                            f"Failed to read input file {ifile}: {e}") from e
             else:
                 raise ValueError("Unknown input file for action report")
     #
