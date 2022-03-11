@@ -859,7 +859,7 @@ class RemoteHost(object):
             except Exception as e:
                 raise ValueError(
                     f'Working directory {runtime["_runtime"]["workdir"]} does not exist on remote host {self.alias}: {e}'
-                )
+                ) from e
         elif path(runtime["_runtime"]["workdir"]).is_absolute():
             env.logger.debug(
                 f'Absolute path {path(runtime["_runtime"]["workdir"])} used as workdir.'
