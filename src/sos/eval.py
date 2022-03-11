@@ -502,10 +502,11 @@ def analyze_global_statements(global_stmt):
     # test if global vars can be pickled
     try:
         pickle.dumps(global_vars)
-    except Exception:
+    except Exception as e:
         for key in set(env.sos_dict.keys()) - defined_keys:
             if not pickleable(env.sos_dict[key], key):
                 raise ValueError(
                     f"Variable {key} cannot be defined in global section because it cannot be pickled to workers."
-                )
+                ) from e
     return global_def, global_vars
+    
