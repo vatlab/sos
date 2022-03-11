@@ -211,7 +211,7 @@ def SoS_Action(
                 except Exception as e:
                     raise ValueError(
                         f'Unacceptable value ({kwargs["input"]}) for parameter input of actions: {e}'
-                    )
+                    ) from e
 
             # if there are parameters input and output, the action is subject to signature verification
             sig = None
