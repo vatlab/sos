@@ -1569,10 +1569,10 @@ def expand_time(v, default_unit="s") -> int:
         #
         try:
             return int(sign * unit * float(v))
-        except Exception:
+        except Exception as e:
             raise ValueError(
                 f"Unacceptable time for parameter age, expecting [+/-] num [s|m|h|d] or HH:MM:SS (e.g. +5h): {v} provided"
-            )
+            ) from e
     elif isinstance(v, int):
         return v
     else:
