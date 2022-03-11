@@ -22,7 +22,7 @@ def interpolate(text, global_dict=None, local_dict=None):
     try:
         return eval(as_fstring(text), global_dict, local_dict)
     except Exception as e:
-        raise ValueError(f"Failed to interpolate {text}: {e}")
+        raise ValueError(f"Failed to interpolate {text}: {e}") from e
 
 
 def cfg_interpolate(text, local_dict={}):
