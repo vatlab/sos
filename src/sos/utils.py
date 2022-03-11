@@ -874,7 +874,7 @@ def locate_script(filename, start=""):
             return (content, filename)
         except Exception as e:
             env.logger.error(str(e))
-            raise ValueError(f"Failed to open {filename}")
+            raise ValueError(f"Failed to open {filename}") from e
     #
     # a search path
     pathes = [start]
