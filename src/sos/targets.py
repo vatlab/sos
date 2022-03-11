@@ -1464,10 +1464,10 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             if len(self._targets) == 1:
                 try:
                     return getattr(self._targets[0], name)
-                except Exception:
+                except Exception as e:
                     raise AttributeError(
                         f"{self.__class__.__name__} object or its first child has no attribute {name}"
-                    )
+                    ) from e
             else:
                 raise AttributeError(
                     f"{self.__class__.__name__} object of length {len(self)} has no attribute {name}"
