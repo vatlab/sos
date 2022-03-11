@@ -493,7 +493,7 @@ def analyze_global_statements(global_stmt):
     except ArgumentError:
         raise
     except Exception as e:
-        raise RuntimeError(f"Failed to execute global statement: {e}")
+        raise RuntimeError(f"Failed to execute global statement: {e}") from e
     #
     global_vars = {
         k: env.sos_dict[k] for k in (set(env.sos_dict.keys()) - defined_keys)
