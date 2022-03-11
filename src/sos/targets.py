@@ -1782,10 +1782,10 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                         for x in sos_targets(grp):
                             try:
                                 index.append(self._targets.index(x))
-                            except Exception:
+                            except Exception as e:
                                 raise ValueError(
                                     f"Returned target is not one of the targets. {x}"
-                                )
+                                ) from e
                         self._groups.append(_sos_group(index, parent=self))
             except Exception as e:
                 raise ValueError(
