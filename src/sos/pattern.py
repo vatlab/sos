@@ -113,7 +113,7 @@ def apply_wildcards(
             elif fill_missing:
                 return dynamic_fill
             else:
-                raise RuntimeError(f"Wildcard apply error: {ex} ({wildcards})")
+                raise RuntimeError(f"Wildcard apply error: {ex} ({wildcards})") from ex
 
     return SOS_WILDCARD.sub(format_match, pattern)
 
