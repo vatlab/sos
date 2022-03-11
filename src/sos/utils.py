@@ -1533,7 +1533,7 @@ def format_HHMMSS(v):
         except Exception as e:
             raise ValueError(
                 f'walltime should be specified as a integer with unit s (default), h, m, d or string in the format of HH:MM:SS. "{v}" specified ({e})'
-            )
+            ) from e
     else:
         raise ValueError(
             f'walltime should be specified as a integer with unit s (default), h, m, d or string in the format of HH:MM:SS. "{v}" of type {v.__class__.__name__} specified'
