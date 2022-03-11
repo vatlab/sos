@@ -158,9 +158,9 @@ def extract_option_from_arg_list(options: str, optname: str,
                         f"A constant value is expected for option {optname}: {options} provided."
                     ) from e
         return default_value, options
-    except SyntaxError:
+    except SyntaxError as e:
         raise ValueError(
-            f"Expect a list of keyword arguments: {options} provided")
+            f"Expect a list of keyword arguments: {options} provided") from e
 
 
 def replace_sigil(text: str, sigil: str) -> str:
