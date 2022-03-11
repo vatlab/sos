@@ -1815,7 +1815,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 var_name = ["_" + x for x in paired_with]
             except Exception as e:
                 raise ValueError(
-                    f"Invalud value for option paired_with {paired_with}") from e
+                    f"Invalid value for option paired_with {paired_with}") from e
             var_value = []
             for vn in var_name:
                 if vn[1:] not in env.sos_dict:
@@ -1848,9 +1848,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         elif isinstance(group_with, Iterable):
             try:
                 var_name = ["_" + x for x in group_with]
-            except Exception:
+            except Exception as e:
                 raise ValueError(
-                    f"Invalud value for option group_with {group_with}")
+                    f"Invalud value for option group_with {group_with}") from e
             var_value = []
             for vn in var_name:
                 if vn[1:] not in env.sos_dict:
