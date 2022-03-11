@@ -1765,10 +1765,10 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 idx = by(self)
                 try:
                     idx = list(idx)
-                except Exception:
+                except Exception as e:
                     raise ValueError(
                         f"Customized grouping method should return a list. {idx} of type {idx.__class__.__name__} is returned."
-                    )
+                    ) from e
                 for grp in by(self):
                     if isinstance(grp, Sequence) and all(
                             isinstance(x, int) for x in grp):
