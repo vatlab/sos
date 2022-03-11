@@ -1490,7 +1490,7 @@ def cmd_execute(args, workflow_args):
                         found = True
                     except Exception as e:
                         raise RuntimeError(
-                            f"Failed to load task executor {name}: {e}")
+                            f"Failed to load task executor {name}: {e}") from e
             if not found:
                 raise RuntimeError(
                     f"Failed to identify task executor {args.executor}.")
