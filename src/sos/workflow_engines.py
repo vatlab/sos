@@ -61,7 +61,7 @@ class WorkflowEngine:
         except Exception as e:
             raise RuntimeError(
                 f"Failed to submit workflow {self.command} with script \n{self.job_text}\n: {e}"
-            )
+            ) from e
         return True
 
     def execute_workflow(self, filename, command, **template_args):
