@@ -253,7 +253,7 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
         except Exception as e:
             raise RuntimeError(
                 f"Failed to submit workflow {self.command} with script \n{self.job_text}\n: {e}"
-            )
+            ) from e
         finally:
             try:
                 os.remove(self.job_file)
