@@ -1638,8 +1638,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                         grp_size = int(by[10:])
                     else:
                         grp_size = int(by[9:])
-                except Exception:
-                    raise ValueError(f"Invalid pairsource option {by}")
+                except Exception as e:
+                    raise ValueError(f"Invalid pairsource option {by}") from e
             src_sizes = {s: self.labels.count(s) for s in labels}
             if max(src_sizes.values()) % grp_size != 0:
                 raise ValueError(
