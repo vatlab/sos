@@ -884,10 +884,10 @@ def locate_script(filename, start=""):
         try:
             with open(sos_config_file) as config:
                 cfg = yaml.safe_load(config)
-        except Exception:
+        except Exception as e:
             raise RuntimeError(
                 f"Failed to parse global sos config file {sos_config_file}, is it in JSON format?"
-            )
+            ) from e
         #
         pathes.extend(cfg.get("sos_path", []))
     #
