@@ -842,7 +842,7 @@ def get_output(cmd, show_command=False, prompt="$ ", **kwargs):
     except subprocess.CalledProcessError as e:
         if e.output.decode():
             env.logger.error(e.output.decode())
-        raise RuntimeError(e)
+        raise RuntimeError(e) from e
     if show_command:
         return f"{prompt}{cmd}\n{output}"
     else:
