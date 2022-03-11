@@ -12,7 +12,6 @@ import time
 import uuid
 from collections import defaultdict
 from collections.abc import Sequence
-from io import StringIO
 from threading import Event
 from typing import Any, Dict, List, Optional, Union
 
