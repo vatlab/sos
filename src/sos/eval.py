@@ -378,7 +378,7 @@ def SoS_exec(script: str,
                     _dict)
             res = None
     except SyntaxError as e:
-        raise SyntaxError(f"Invalid code {script}: {e}")
+        raise SyntaxError(f"Invalid code {script}: {e}") from e
 
     # if check_readonly:
     #    env.sos_dict.check_readonly_vars()
