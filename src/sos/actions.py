@@ -405,7 +405,7 @@ class SoS_ExecuteScript:
                     with open(ifile) as iscript:
                         content += iscript.read()
                 except Exception as e:
-                    raise RuntimeError(f"Failed to read from {ifile}: {e}")
+                    raise RuntimeError(f"Failed to read from {ifile}: {e}") from e
             self.script = content + self.script
 
         if "engine" in kwargs and kwargs["engine"] == "docker":
