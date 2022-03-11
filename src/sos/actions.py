@@ -387,7 +387,7 @@ class SoS_ExecuteScript:
             context["script"] = script
             return interpolate(template, context)
         except Exception as e:
-            raise ValueError(f"Failed to expand template {template}: {e}")
+            raise ValueError(f"Failed to expand template {template}: {e}") from e
 
     def run(self, **kwargs):
         #
