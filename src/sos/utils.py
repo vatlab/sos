@@ -1928,7 +1928,7 @@ def separate_options(options: str) -> List[str]:
             idx += 1
             if idx == len(pieces):
                 break
-        except Exception:
+        except Exception as e:
             # error happens merge the next piece
             if idx < len(pieces) - 1:
                 pieces[idx] += "," + pieces[idx + 1]
@@ -1937,7 +1937,7 @@ def separate_options(options: str) -> List[str]:
             else:
                 # if no next group, expand previously correct one
                 if idx == 0:
-                    raise ValueError("Invalid section option")
+                    raise ValueError("Invalid section option") from e
                 # break myself again
                 pieces = pieces[:idx] + pieces[idx].split(",") + pieces[idx +
                                                                         1:]
