@@ -233,9 +233,9 @@ def accessed_vars(statement: str, mode: str = "exec") -> Set[str]:
                 ast.parse("__NULL__(" + statement + ")", "<string>", "eval"))
             res.remove("__NULL__")
             return res
-    except Exception:
+    except Exception as e:
         raise RuntimeError(
-            f"Failed to parse statement: {statement} in {mode} mode")
+            f"Failed to parse statement: {statement} in {mode} mode") from e
 
 
 def get_used_in_func(node):
