@@ -153,10 +153,10 @@ def extract_option_from_arg_list(options: str, optname: str,
                         if not x.strip().startswith(optname)
                     ])
                     return value, new_options.strip()
-                except Exception:
+                except Exception as e:
                     raise ValueError(
                         f"A constant value is expected for option {optname}: {options} provided."
-                    )
+                    ) from e
         return default_value, options
     except SyntaxError:
         raise ValueError(
