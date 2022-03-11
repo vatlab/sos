@@ -998,7 +998,7 @@ class Base_Executor:
         if total_added:
             if runnable._depends_targets.valid():
                 runnable._depends_targets.extend(targets)
-            for taget in targets:
+            for target in targets:
                 if runnable not in dag._all_depends_files[target]:
                     dag._all_depends_files[target].append(runnable)
             dag.build()
