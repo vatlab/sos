@@ -675,7 +675,7 @@ class path(type(Path())):
             except KeyError:
                 return self._from_parts([cfg["shared"][self._parts[0][1:]]] +
                                         self._parts[1:])
-        except Exception:
+        except Exception as e:
             # if self._parts[0] == '#cwd':
             #     return self._from_parts(
             #         [self.cwd()] + self._parts[1:]
@@ -688,7 +688,7 @@ class path(type(Path())):
             if "CONFIG" not in env.sos_dict or "hosts" not in env.sos_dict[
                     "CONFIG"]:
                 raise RuntimeError(
-                    "Incomplete sos environment: missing hosts definition.")
+                    "Incomplete sos environment: missing hosts definition.") from e
             if host is not None and host not in env.sos_dict["CONFIG"]["hosts"]:
                 raise RuntimeError(
                     f"Incomplete sos environment: undefined host {host}")
