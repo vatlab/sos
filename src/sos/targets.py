@@ -1460,7 +1460,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def __getattr__(self, name):
         try:
             return self._dict[name]
-        except Exception:
+        except Exception as e:
             if len(self._targets) == 1:
                 try:
                     return getattr(self._targets[0], name)
@@ -1471,7 +1471,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             else:
                 raise AttributeError(
                     f"{self.__class__.__name__} object of length {len(self)} has no attribute {name}"
-                )
+                ) from e
 
     def target_name(self):
         return f"sos_targets([{','.join(x.target_name() for x in self._targets)}],_labels=[{','.join(self._labels)}])"
