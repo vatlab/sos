@@ -1632,7 +1632,7 @@ class Base_Executor:
                     break
                 else:
                     time.sleep(0.1)
-        except KeyboardInterrupt:
+        except KeyboardInterrupt as error:
             if exec_error.errors:
                 failed_steps, pending_steps = dag.pending()
                 if pending_steps:
@@ -1646,7 +1646,7 @@ class Base_Executor:
                             f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'
                         ),
                     )
-                    raise exec_error
+                    raise error
             else:
                 raise
         # close all processes
