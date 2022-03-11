@@ -1161,8 +1161,8 @@ class Base_Executor:
             try:
                 named_targets = [named_output(x) for x in targets]
                 dag = self.initialize_dag(targets=named_targets)
-            except UnknownTarget as no_step:
-                raise RuntimeError(f"No step to generate target {targets}") from no_step
+            except UnknownTarget as e:
+                raise RuntimeError(f"No step to generate target {targets}") from e
 
         # manager of processes
         manager = ExecutionManager(name=self.workflow.name)
