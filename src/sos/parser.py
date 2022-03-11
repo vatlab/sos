@@ -954,10 +954,10 @@ class SoS_Script:
                 from .converter import extract_workflow
 
                 content = extract_workflow(script_file)
-        except Exception:
+        except Exception as e:
             raise RuntimeError(
                 f"Source file for nested workflow {sos_file} with extension .sos or .ipynb does not exist"
-            )
+            ) from e
 
         return content, script_file
 
