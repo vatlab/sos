@@ -1232,7 +1232,7 @@ def collect_input(script, input):
                     with open(ifile) as itmp:
                         tmp.write(itmp.read().rstrip() + "\n\n")
                 except Exception as e:
-                    raise ValueError(f"Failed to read input file {ifile}: {e}")
+                    raise ValueError(f"Failed to read input file {ifile}: {e}") from e
     return input_file
 
 
