@@ -1559,7 +1559,7 @@ def expand_time(v, default_unit="s") -> int:
             except Exception as e:
                 raise ValueError(
                     f"Input of option walltime should be an integer with unit s (default), h, m, d or a string in the format of HH:MM:SS. {v} specified: {e}"
-                )
+                ) from e
         #
         try:
             unit = {"s": 1, "m": 60, "h": 3600, "d": 3600 * 24}[v[-1]]
