@@ -1708,8 +1708,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             else:
                 try:
                     grp_size = int(by[8:])
-                except Exception:
-                    raise ValueError(f"Invalid pairs option {by}")
+                except Exception as e:
+                    raise ValueError(f"Invalid pairs option {by}") from e
             if grp_size == 1:
                 f1, f2 = tee(range(len(self)))
                 next(f2, None)
