@@ -231,7 +231,7 @@ def SoS_Action(
                 except Exception as e:
                     raise ValueError(
                         f'Parameter tracked of actions can be None, True/False, or one or more filenames: {kwargs["tracked"]} provided: {e}'
-                    )
+                    ) from e
 
                 # append input and output
                 for t in ("input", "output"):
