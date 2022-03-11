@@ -397,7 +397,7 @@ class SoS_ExecuteScript:
             except Exception as e:
                 raise ValueError(
                     f'Unacceptable value ({kwargs["input"]}) for paremter input: {e}'
-                )
+                ) from e
 
             content = ""
             for ifile in ifiles:
