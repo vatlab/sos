@@ -260,7 +260,7 @@ def used_in_func(statement: str,
     try:
         return get_used_in_func(ast.parse(statement, filename, mode))
     except Exception as e:
-        raise RuntimeError(f"Failed to parse statement: {statement} {e}")
+        raise RuntimeError(f"Failed to parse statement: {statement} {e}") from e
 
 
 def SoS_eval(expr: str, extra_dict: dict = {}) -> Any:
