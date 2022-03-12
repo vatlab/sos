@@ -303,7 +303,7 @@ def evaluate_shared(vars, option):
             except Exception as e:
                 raise RuntimeError(
                     f"Failed to evaluate shared variable {var} from expression {val}: {e}"
-                )
+                ) from e
     # if there are dictionaries in the sequence, e.g.
     # shared=['A', 'B', {'C':'D"}]
     elif isinstance(option, Sequence):
