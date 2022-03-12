@@ -785,7 +785,7 @@ class Base_Step_Executor:
         except (StopInputGroup, TerminateExecution, UnavailableLock):
             raise
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(e.stderr)
+            raise RuntimeError(e.stderr) from e
         except ArgumentError:
             raise
         except ProcessKilled:
