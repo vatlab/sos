@@ -324,7 +324,7 @@ def evaluate_shared(vars, option):
                     except Exception as e:
                         raise RuntimeError(
                             f"Failed to evaluate shared variable {var} from expression {val}: {e}"
-                        )
+                        ) from e
             else:
                 raise RuntimeError(
                     f"Unacceptable shared option. Only str or mapping are accepted in sequence: {option}"
