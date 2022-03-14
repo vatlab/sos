@@ -393,6 +393,7 @@ class RuntimeEnvironments(object):
         # this function is used by tests to reset environments
         # after finishing an test
         self.reset()
+        return None
 
     def request_new(self):
         old_idx = self._sub_idx
