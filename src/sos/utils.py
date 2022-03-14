@@ -2021,6 +2021,7 @@ def get_nodelist():
         ]
         env.log_to_file("WORKER", f'Using "-j {args}" on a IBM LSF cluster.')
         return args
+    return None
 
 
 def under_cluster():
