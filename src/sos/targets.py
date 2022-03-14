@@ -709,6 +709,7 @@ class path(type(Path())):
                 raise ValueError(
                     f'Named path "{name}" not defined for host {env.sos_dict.get("__host__", "localhost") if host is None else host}'
                 ) from e
+        return None
 
     def fullname(self):
         return os.path.abspath(str(self))
