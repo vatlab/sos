@@ -214,3 +214,4 @@ class WorkflowSignatures(SignatureDB):
         except sqlite3.DatabaseError as e:
             env.logger.warning(f"Failed to clear workflow database: {e}")
             return []
+        return None
