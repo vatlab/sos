@@ -253,6 +253,8 @@ disable=print-statement,
 	unneeded-not
 	super-init-no-called
 	unscriptable-object
+	consider-iterating-dictionary
+	super-init-not-called
 
 
 # Enable the message, report, category or checker with the given id(s). You can
