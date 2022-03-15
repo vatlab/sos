@@ -248,6 +248,11 @@ disable=print-statement,
 	self-assigning-variable
 	useless-with-lock
 	consider-using-dict-items
+	signature-differs
+	arguments-renamed	
+	unneeded-not
+	super-init-no-called
+	unscriptable-object
 
 
 # Enable the message, report, category or checker with the given id(s). You can
