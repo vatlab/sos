@@ -224,6 +224,30 @@ disable=print-statement,
 	simplifiable-if-expression
 	too-many-boolean-expressions
 	redefined-argument-from-local
+	undefined-loop-variable
+	raise-missing-from
+	unused-variable
+	unused-import
+	pointless-statement
+	unspecified-encoding
+	consider-using-f-string
+	undefined-variable
+	invalid-unary-operand-type
+	logging-not-lazy
+	abstract-method
+	exec-used
+	reimported
+	inconsistent-return-statements
+	redefined-builtin
+	consider-iterating-dictionary
+	useless-super-delegation
+	super-with-arguments
+	unnecessary-lambda
+	deprecated-method
+	expression-not-assigned		
+	self-assigning-variable
+	useless-with-lock
+	consider-using-dict-items
 
 
 # Enable the message, report, category or checker with the given id(s). You can
