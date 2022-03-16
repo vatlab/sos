@@ -449,7 +449,7 @@ def validate_step_sig(sig):
     else:
         raise RuntimeError(
             f'Unrecognized signature mode {env.config["sig_mode"]}')
-    return None
+    return
 
 
 def strip_param_defs(stmt):

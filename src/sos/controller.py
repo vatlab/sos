@@ -509,7 +509,7 @@ class Controller(threading.Thread):
         except Exception as e:
             env.logger.warning(f"Failed to respond controller {msg}: {e}")
             self.master_request_socket.send(encode_msg(None))
-        return None
+        return
     
 
     def handle_worker_backend_msg(self, msg):

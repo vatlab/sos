@@ -393,7 +393,7 @@ class RuntimeEnvironments(object):
         # this function is used by tests to reset environments
         # after finishing an test
         self.reset()
-        return None
+        return
 
     def request_new(self):
         old_idx = self._sub_idx
@@ -2021,7 +2021,7 @@ def get_nodelist():
         ]
         env.log_to_file("WORKER", f'Using "-j {args}" on a IBM LSF cluster.')
         return args
-    return None
+    return
 
 
 def under_cluster():

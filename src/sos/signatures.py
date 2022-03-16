@@ -140,7 +140,7 @@ class WorkflowSignatures(SignatureDB):
                 f"Failed to write workflow signature of type {entry_type} and id {id}: {e}"
             )
             return None
-        return None
+        return
 
     def records(self, workflow_id):
         try:
