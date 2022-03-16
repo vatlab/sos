@@ -252,17 +252,19 @@ disable=print-statement,
 	arguments-renamed,
 	unneeded-not,
 	super-init-no-called,
-	unscriptable-object,
+	unsubscriptable-object,
 	consider-iterating-dictionary,
 	super-init-not-called,
 	unneeded-not,
 	arguments-renamed,
 	signature-differs,
 	try-except-raise,
-	no-value-for-paramter,
+	no-value-for-parameter,
 	expression-not-assigned,
 	abstract-method,
 	reimported,
+	self-cls-assignment,
+
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
