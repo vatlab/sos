@@ -231,7 +231,7 @@ def get_all_used_vars(section):
                     all_used_vars |= set(pws)
                 except Exception as e:
                     raise ValueError(
-                        f"Failed to parse parameter group_with: {e}")
+                        f"Failed to parse parameter group_with: {e}") from e
             if "for_each" in statement[2]:
                 try:
                     pws = get_names_of_param(
@@ -241,7 +241,7 @@ def get_all_used_vars(section):
                     for pw in pws:
                         all_used_vars |= set(pw.split(","))
                 except Exception as e:
-                    raise ValueError(f"Failed to parse parameter for_each: {e}")
+                    raise ValueError(f"Failed to parse parameter for_each: {e}") from e
     if section.task:
         all_used_vars |= accessed_vars(section.task)
         all_used_vars |= accessed_vars(section.task_params, mode='eval')
