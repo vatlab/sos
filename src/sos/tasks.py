@@ -95,9 +95,9 @@ class MasterTaskParams(TaskParams):
 
         try:
             n_workers = int(n_workers)
-        except Exception:
+        except Exception as e:
             raise ValueError(
-                f"Unacceptable value for option trunk_workers {num_workers}")
+                f"Unacceptable value for option trunk_workers {num_workers}") from e
         if n_workers <= 0:
             raise ValueError(
                 f"Unacceptable value for option trunk_workers {num_workers}")
@@ -678,7 +678,7 @@ class TaskFile(object):
                         lzma.decompress(fh.read(header.params_size)))
                 except Exception as e:
                     raise RuntimeError(
-                        f"Failed to obtain params of task {self.task_id}: {e}")
+                        f"Failed to obtain params of task {self.task_id}: {e}") from e
 
     def _set_params(self, params):
         params_block = lzma.compress(pickle.dumps(params))
@@ -922,10 +922,10 @@ class TaskFile(object):
                 ver = struct.unpack("!h", fh.read(2))[0]
                 fh.seek(self.tags_offset[ver - 1], 0)
                 return fh.read(self.tags_size[ver - 1]).decode().strip()
-        except Exception:
+        except Exception as e:
             raise RuntimeError(
                 f"Corrupted task file {self.task_file}. Please report a bug if you can reproduce the generation of this file."
-            )
+            ) from e
 
     def _set_tags(self, tags: list):
         with open(self.task_file, "r+b") as fh:
@@ -1052,10 +1052,10 @@ class TaskFile(object):
                 header = self._read_header(fh)
             try:
                 tags = header.tags.decode().strip()
-            except Exception:
+            except Exception as e:
                 raise ValueError(
                     f"{self.task_file} is in a format that is no longer supported."
-                )
+                ) from e
             ct = header.new_time
             if header.running_time != 0:
                 st = header.running_time

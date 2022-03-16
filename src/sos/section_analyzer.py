@@ -221,7 +221,7 @@ def get_all_used_vars(section):
                     all_used_vars |= set(pws)
                 except Exception as e:
                     raise ValueError(
-                        f"Failed to parse parameter paired_with: {e}")
+                        f"Failed to parse parameter paired_with: {e}") from e
             if "group_with" in statement[2]:
                 try:
                     pws = get_names_of_param(
@@ -534,7 +534,7 @@ def get_step_output(section, default_output, analysis_type):
                     isinstance(x, named_output) for x in default_output)):
                 raise RuntimeError(
                     f'Failed to determine input "{value}" of an auxiliary step: {e}'
-                )
+                ) from e
         finally:
             [env.sos_dict.dict().pop(x) for x in svars]
             env.sos_dict.quick_update(old_values)
