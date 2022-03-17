@@ -224,12 +224,7 @@ disable=print-statement,
 	simplifiable-if-expression,
 	too-many-boolean-expressions,
 	redefined-argument-from-local,
-<<<<<<< HEAD
 	undefined-loop-variable,,
-=======
-	undefined-loop-variable,
-	unused-variable,
->>>>>>> 89b9a9f6bf1179742c14ed4c103eb49bc0af7a3b
 	unused-import,
 	pointless-statement,
 	unspecified-encoding,
