@@ -115,6 +115,7 @@ class StepSignatures(SignatureDB):
             self.conn.commit()
         except sqlite3.DatabaseError as e:
             env.logger.warning(f"Failed to clear step signature database: {e}")
+            return []
 
 
 class WorkflowSignatures(SignatureDB):

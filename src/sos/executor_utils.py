@@ -401,6 +401,7 @@ def reevaluate_output():
     )
     if args is True:
         env.logger.error("Failed to resolve unspecified output")
+        return
     # handle dynamic args
     args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
     kwargs = {

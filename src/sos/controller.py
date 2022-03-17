@@ -504,7 +504,7 @@ class Controller(threading.Thread):
 
                 return False
             else:
-                raise RuntimeError(f"Unregicognized request {msg}")
+                raise RuntimeError(f"Unrecognized request {msg}")
             return True
         except Exception as e:
             env.logger.warning(f"Failed to respond controller {msg}: {e}")
