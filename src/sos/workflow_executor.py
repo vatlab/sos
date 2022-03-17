@@ -1635,10 +1635,10 @@ class Base_Executor:
         except KeyboardInterrupt as e:
             if exec_error.errors:
                 failed_steps, pending_steps = dag.pending()
-                if pending_steps:
+                if failed_steps:
                     sections = [
                         self.workflow.section_by_id(
-                            x._step_uuid).step_name(True) for x in pending_steps
+                            x._step_uuid).step_name(True) for x in failed_steps
                     ]
                     exec_error.append(
                         self.workflow.name,
@@ -1937,15 +1937,15 @@ class Base_Executor:
             # exec_error.append(self.workflow.name,
             #    RuntimeError('{} failed step{}: {}'.format(len(sections),
             #        's' if len(sections) > 1 else '', ', '.join(sections))))
-            if pending_steps:
+            if failed_steps:
                 sections = [
                     self.workflow.section_by_id(x._step_uuid).step_name(True)
-                    for x in pending_steps
+                    for x in failed_steps
                 ]
                 exec_error.append(
                     self.workflow.name,
                     RuntimeError(
-                        f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'
+                        f'{len(sections)} failed step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'
                     ),
                 )
             parent_socket.send(encode_msg(exec_error))
