@@ -12,6 +12,7 @@ import time
 import uuid
 from collections import defaultdict
 from collections.abc import Sequence
+from io import StringIO
 from threading import Event
 from typing import Any, Dict, List, Optional, Union
 
@@ -1645,7 +1646,7 @@ class Base_Executor:
                             f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'
                         ),
                     )
-                    raise error from e
+                    raise exec_error
             else:
                 raise
         # close all processes
@@ -1917,7 +1918,7 @@ class Base_Executor:
                             f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'
                         ),
                     )
-                    raise e
+                    raise exec_error
             else:
                 raise
         except Exception as e:
