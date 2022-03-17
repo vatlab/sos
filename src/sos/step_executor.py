@@ -8,6 +8,7 @@ import copy
 import os
 import subprocess
 import sys
+from textwrap import dedent
 import time
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
@@ -860,7 +861,7 @@ class Base_Step_Executor:
                         yield self.result_pull_socket
                         res = decode_msg(self.result_pull_socket.recv())
                         if "exception" in res:
-                            self.exec_error.append(f'index={res["index"]}',
+                            self.exec_error.append(f'index={res[i]}',
                                                    res["exception"])
                     raise self.exec_error
                 else:
