@@ -11,12 +11,12 @@ import unittest
 from sos.eval import accessed_vars, on_demand_options
 from sos.parser import SoS_Script
 from sos.pattern import expand_pattern, extract_pattern
-from sos.targets import executable, sos_targets, file_target, sos_step
+from sos.targets import executable, file_target, sos_step, sos_targets
 # these functions are normally not available but can be imported
 # using their names for testing purposes
-from sos.utils import WorkflowDict, env, get_logger, stable_repr, split_fstring, as_fstring
-from sos.workflow_executor import analyze_section
-from sos.workflow_executor import Base_Executor
+from sos.utils import (WorkflowDict, as_fstring, env, get_logger, split_fstring,
+                       stable_repr)
+from sos.workflow_executor import Base_Executor, analyze_section
 
 
 def internet_on(host='8.8.8.8', port=80, timeout=3):
@@ -38,7 +38,7 @@ class TestUtils(unittest.TestCase):
     def setUp(self):
         env.reset()
 
-    def testLogger(self):
+    def test_logger(self):
         '''Test logging level'''
         for verbosity in [0, 1, 2, 3, 4]:
             env.verbosity = verbosity
@@ -55,7 +55,7 @@ class TestUtils(unittest.TestCase):
                 'Verbosity {}:error message with ``empahsized text`` in between'
                 .format(env.verbosity))
 
-    def testWorkflowDict(self):
+    def test_workflow_dict(self):
         '''Test workflow dict with attribute access'''
         env.reset()
         d = WorkflowDict()
@@ -65,7 +65,7 @@ class TestUtils(unittest.TestCase):
         d['a'] += 1
         self.assertEqual(d['a'], 2)
 
-    def testPatternMatch(self):
+    def test_pattern_match(self):
         '''Test snake match's pattern match facility'''
         res = extract_pattern('{a}-{b}.txt', ['file-1.txt', 'file-ab.txt'])
         self.assertEqual(res['a'], ['file', 'file'])
@@ -99,7 +99,7 @@ class TestUtils(unittest.TestCase):
             expand_pattern('{a}_{c}.txt'),
             ['100_file1.txt', '100_file2.txt', '100_file 3.txt'])
 
-    def testAccessedVars(self):
+    def test_accessed_vars(self):
         '''Test accessed vars of a SoS expression or statement.'''
         self.assertEqual(accessed_vars('''a = 1'''), set())
         self.assertEqual(accessed_vars('''a = b + 2.0'''), {'b'})
@@ -117,7 +117,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(
             accessed_vars('''a, b=2, c=d ''', mode='eva'), {'a', 'd'})
 
-    def testProgressBar(self):
+    def test_progress_bar(self):
         '''Test progress bar'''
         env.verbosity = 1
         #
@@ -132,7 +132,7 @@ class TestUtils(unittest.TestCase):
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    def testTextRepr(self):
+    def test_text_repr(self):
         # the " as the last character can lead to problems...
         script = SoS_Script('''
 run:
@@ -158,7 +158,7 @@ k = """b"""'''.format(text, '{a}'))
                 self.assertEqual(tmp.read(), eval(text) + '1')
         os.remove('tmp.txt')
 
-    def testAnalyzeSection(self):
+    def test_analyze_section(self):
         '''Test analysis of sections (statically)'''
         script = SoS_Script('''
 g1 = 'a'
@@ -222,27 +222,7 @@ task:
             elif section.names[0][1] == '5':
                 self.assertTrue('output' not in res['signature_vars'])
 
-    def testAnalyzeOutputFrom(self):
-        '''Test extracting of from=value option from input'''
-        script = SoS_Script('''
-[A_1]
-input:  output_from('B')
-
-[A_2]
-input: something_unknown, sos_groups(output_from(['C1', 'C2']), by=2), group_by=1
-''')
-        wf = script.workflow('A')
-        Base_Executor(wf)
-        for section in wf.sections:
-            res = analyze_section(section)
-            if section.names[0][1] == 1:
-                self.assertEqual(res['step_depends'],
-                                 sos_targets(sos_step('B')))
-            if section.names[0][1] == 2:
-                self.assertTrue(res['step_depends'] == sos_targets(
-                    sos_step('C1'), sos_step('C2')))
-
-    def testOnDemandOptions(self):
+    def test_on_demand_options(self):
         '''Test options that are evaluated upon request.'''
         options = on_demand_options({'a': '"est"', 'b': 'c', 'c': 'e + 2'})
         env.sos_dict = WorkflowDict({
@@ -258,26 +238,12 @@ input: something_unknown, sos_groups(output_from(['C1', 'C2']), by=2), group_by=
         env.sos_dict.set('c', 200)
         self.assertEqual(options['b'], 200)
 
-    def testStableRepr(self):
+    def test_stable_repr(self):
         self.assertEqual(stable_repr({1, 2, '3', '1'}), "{'1', '3', 1, 2}")
         self.assertEqual(stable_repr({1: 2, 3: 4}), "{1:2, 3:4}")
         self.assertEqual(stable_repr([1, 3, 4]), "[1, 3, 4]")
 
-    def testFileSig(self):
-        '''test save and validate of file signature'''
-        with open('test_sig.txt', 'w') as ts:
-            ts.write('ba')
-        a = file_target('test_sig.txt')
-        a.write_sig()
-        self.assertTrue(a.validate())
-        #
-        a.zap()
-        self.assertTrue(a.validate())
-        with open('test_sig.txt', 'w') as ts:
-            ts.write('bac')
-        self.assertFalse(a.validate())
-
-    def testSplitFstring(self):
+    def test_split_fstring(self):
         '''Test function to split f-string in pieces '''
         for string, pieces in [
             ('hello world', ['hello world']),
@@ -301,7 +267,7 @@ input: something_unknown, sos_groups(output_from(['C1', 'C2']), by=2), group_by=
             else:
                 self.assertEqual(split_fstring(string), pieces)
 
-    def testAsFstring(self):
+    def test_as_fstring(self):
         '''Test as fstring '''
         for string, fstring in [
             ('hello world', 'fr"""hello world"""'),
@@ -327,5 +293,40 @@ input: something_unknown, sos_groups(output_from(['C1', 'C2']), by=2), group_by=
             self.assertEqual(as_fstring(string), fstring)
 
 
-if __name__ == '__main__':
-    unittest.main()
+def test_analyze_output_from():
+    '''Test extracting of from=value option from input'''
+    script = SoS_Script('''
+[A_1]
+input:  output_from('B')
+
+[A_2]
+input: something_unknown, sos_groups(output_from(['C1', 'C2']), by=2), group_by=1
+''')
+    wf = script.workflow('A')
+    Base_Executor(wf)
+    for section in wf.sections:
+        res = analyze_section(section, analysis_type='forward')
+        if section.names[0][1] == 1:
+            assert res['step_depends'] == sos_targets(sos_step('B'))
+        if section.names[0][1] == 2:
+            assert res['step_depends'] == sos_targets(
+                sos_step('C1'), sos_step('C2'))
+
+
+def test_file_sig(clear_now_and_after):
+    '''test save and validate of file signature'''
+    clear_now_and_after('test_sig.txt')
+
+    with open('test_sig.txt', 'w') as ts:
+        ts.write('ba')
+    a = file_target('test_sig.txt')
+    a.write_sig()
+    assert a.validate()
+    #
+    a.zap()
+    assert a.validate()
+
+    with open('test_sig.txt', 'w') as ts:
+        ts.write('bac')
+
+    assert not a.validate()

@@ -18,32 +18,35 @@ from .targets_r import R_library
 
 
 @SoS_Action(
-    acceptable_args=['script', 'args'],
+    acceptable_args=["script", "args"],
     default_args={
-        'default_env': {
-            'R_DEFAULT_PACKAGES':
-                'datasets,methods,utils,stats,grDevices,graphics'
+        "default_env": {
+            "R_DEFAULT_PACKAGES":
+                "datasets,methods,utils,stats,grDevices,graphics"
         }
-    })
-def R(script, args='', **kwargs):
-    '''Execute specified script with command Rscript, with default options
+    },
+)
+def R(script, args="", **kwargs):
+    """Execute specified script with command Rscript, with default options
     "--default-packages=datasets,methods,utils,stats,grDevices,graphics". This action accepts
     common action arguments such as input, active, workdir, docker_image and args.
     In particular, content of one or more files  specified by option input would be
     prepended before the specified script.
-    '''
+    """
     # > getOption('defaultPackages')
     # [1] "datasets"  "utils"     "grDevices" "graphics"  "stats"     "methods"
-    return SoS_ExecuteScript(script, 'Rscript', '.R', args).run(**kwargs)
+    return SoS_ExecuteScript(script, "Rscript", ".R", args).run(**kwargs)
 
 
-@SoS_Action(acceptable_args=['script', 'args'])
-def Rmarkdown(script=None,
-              input=None,
-              output=None,
-              args='{input:r}, output_file={output:ar}',
-              **kwargs):
-    '''Convert input file to output using Rmarkdown
+@SoS_Action(acceptable_args=["script", "args"])
+def Rmarkdown(
+    script=None,
+    input=None,
+    output=None,
+    args="{input:r}, output_file={output:ar}",
+    **kwargs,
+):
+    """Convert input file to output using Rmarkdown
 
     The input can be specified in three ways:
 
@@ -64,9 +67,9 @@ def Rmarkdown(script=None,
 
     You can specify more options using the args parameter of the action. The default value
     of args is `${input!r} --output ${output!ar}'
-    '''
-    if not R_library('rmarkdown').target_exists():
-        raise RuntimeError('Library rmarkdown does not exist')
+    """
+    if not R_library("rmarkdown").target_exists():
+        raise RuntimeError("Library rmarkdown does not exist")
 
     input = sos_targets(collect_input(script, input))
 
@@ -75,7 +78,7 @@ def Rmarkdown(script=None,
         write_to_stdout = True
         output = sos_targets(
             tempfile.NamedTemporaryFile(
-                mode='w+t', suffix='.html', delete=False).name)
+                mode="w+t", suffix=".html", delete=False).name)
     else:
         write_to_stdout = False
     #
@@ -86,35 +89,41 @@ def Rmarkdown(script=None,
         #        runtime = c("auto", "static", "shiny"),
         #        clean = TRUE, params = NULL, knit_meta = NULL, envir = parent.frame(),
         #        run_Rmarkdown = TRUE, quiet = FALSE, encoding = getOption("encoding"))
-        cmd = interpolate(f'Rscript -e "rmarkdown::render({args})"', {
-            'input': input,
-            'output': output
-        })
-        if 'ACTION' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
-                'SOS_DEBUG']:
-            env.log_to_file('ACTION', f'Running command "{cmd}"')
-        if env.config['run_mode'] == 'interactive':
+        cmd = interpolate(
+            f'Rscript -e "rmarkdown::render({args})"',
+            {
+                "input": input,
+                "output": output
+            },
+        )
+        if "ACTION" in env.config["SOS_DEBUG"] or "ALL" in env.config[
+                "SOS_DEBUG"]:
+            env.log_to_file("ACTION", f'Running command "{cmd}"')
+        if env.config["run_mode"] == "interactive":
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
             p = subprocess.Popen(
                 cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            #pid = p.pid
+            # pid = p.pid
             out, err = p.communicate()
             sys.stdout.write(out.decode())
             sys.stderr.write(err.decode())
             ret = p.returncode
         else:
             p = subprocess.Popen(cmd, shell=True)
-            #pid = p.pid
+            # pid = p.pid
             ret = p.wait()
     except Exception as e:
         env.logger.error(str(e))
     if ret != 0:
-        temp_file = os.path.join('.sos', f'{"Rmarkdown"}_{os.getpid()}.md')
+        temp_file = os.path.join(".sos", f'{"Rmarkdown"}_{os.getpid()}.md')
         shutil.copyfile(str(input), temp_file)
-        cmd = interpolate(f'Rscript -e "rmarkdown::render({args})"', {
-            'input': input,
-            'output': sos_targets(temp_file)
-        })
+        cmd = interpolate(
+            f'Rscript -e "rmarkdown::render({args})"',
+            {
+                "input": input,
+                "output": sos_targets(temp_file)
+            },
+        )
         raise RuntimeError(
             f'Failed to execute script. Please use command \n"{cmd}"\nunder {os.getcwd()} to test it.'
         )
@@ -122,4 +131,4 @@ def Rmarkdown(script=None,
         with open(str(output[0])) as out:
             sys.stdout.write(out.read())
     else:
-        env.logger.info(f'Report saved to {output}')
+        env.logger.info(f"Report saved to {output}")

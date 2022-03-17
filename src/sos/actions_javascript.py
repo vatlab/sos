@@ -6,10 +6,10 @@
 from sos.actions import SoS_Action, SoS_ExecuteScript
 
 
-@SoS_Action(acceptable_args=['script', 'args'])
-def node(script, args='', **kwargs):
-    '''Execute specified script with command node. This action accepts common action arguments
+@SoS_Action(acceptable_args=["script", "args"])
+def node(script, args="", **kwargs):
+    """Execute specified script with command node. This action accepts common action arguments
     such as input, active, workdir, docker_image and args. In particular, content of one or
     more files  specified by option input would be prepended before the specified script.
-    '''
-    return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)
+    """
+    return SoS_ExecuteScript(script, "node", ".js", args).run(**kwargs)

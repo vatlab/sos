@@ -11,9 +11,10 @@ import time
 from collections import OrderedDict, defaultdict
 
 from .eval import cfg_interpolate
-from .utils import env, expand_time
-from .tasks import TaskFile
 from .messages import encode_msg
+from .targets import sos_targets
+from .tasks import TaskFile
+from .utils import env, expand_time
 
 
 class TaskEngine(threading.Thread):
@@ -45,6 +46,7 @@ class TaskEngine(threading.Thread):
 
         self.task_status = OrderedDict()
         self.task_info = defaultdict(dict)
+        self.task_results = {}
         self.last_checked = None
         if 'status_check_interval' not in self.config:
             self.status_check_interval = 10
@@ -103,9 +105,12 @@ class TaskEngine(threading.Thread):
     def monitor_tasks(self, tasks=None, status=None, age=None):
         '''Start monitoring specified or all tasks'''
         self.engine_ready.wait()
+
         if not tasks:
             tasks = self.task_status.keys()
+            missing_tasks = []
         else:
+            missing_tasks = [x for x in tasks if x not in self.task_status]
             tasks = [x for x in tasks if x in self.task_status]
 
         # we only monitor running tasks
@@ -132,7 +137,9 @@ class TaskEngine(threading.Thread):
                  self.task_info[x].get('date',
                                        (time.time(), None, None))[0] < -age)))
         ],
-                      key=lambda x: -x[2][0])
+                      key=lambda x: -x[2][0]) + [
+                          (x, 'missing', '') for x in missing_tasks
+                      ]
 
     def get_tasks(self):
         with threading.Lock():
@@ -153,6 +160,8 @@ class TaskEngine(threading.Thread):
                 try:
                     # return creation time, start time, and duration
                     tid, tags, ct, st, dr, tst = line.split('\t')
+                    if tid.startswith('w'):
+                        continue
                     # for some reason on windows there can be a \r at the end
                     self.task_status[tid] = tst.strip()
                     self.task_info[tid]['date'] = [
@@ -362,7 +371,7 @@ class TaskEngine(threading.Thread):
                     self.last_report = time.time()
                     env.log_to_file(
                         'TASK',
-                        f'No running or pending task. Task engine is idle.')
+                        'No running or pending task. Task engine is idle.')
 
     def submit_task(self, task_id):
         # we wait for the engine to start
@@ -498,6 +507,7 @@ class TaskEngine(threading.Thread):
                     self.task_info[task_id]['date'] = [None, None, None]
                 if task_id in self.task_status and self.task_status[
                         task_id] == status:
+                    # nothing has changed.
                     self.notify_controller({
                         'queue': self.agent.alias,
                         'task_id': task_id,
@@ -528,7 +538,7 @@ class TaskEngine(threading.Thread):
                 elif task_id in self.running_tasks:
                     # this should not happen
                     env.logger.warning(
-                        f'Task in "new" status when it is supposed to be running. Resubmitting.'
+                        'Task in "new" status when it is supposed to be running. Resubmitting.'
                     )
                     self.submit_task(task_id)
                 if task_id in self.pending_tasks:
@@ -548,11 +558,51 @@ class TaskEngine(threading.Thread):
                 if status in ('completed', 'failed'
                              ) and task_id in self.running_pending_tasks:
                     self.running_pending_tasks.pop(task_id)
+                # status changed to completed
+                self.task_results[task_id] = self._thread_workers.submit(
+                    self.agent.receive_result, task_id)
             # for running pending tasks
             if status == 'aborted' and task_id in self.running_pending_tasks:
                 self.pending_tasks.append(task_id)
                 self.task_status[task_id] = 'pending'
                 self.running_pending_tasks.pop(task_id)
+
+    def get_results(self, task_ids):
+        res = {}
+        while True:
+            with threading.Lock():
+                for task_id in task_ids:
+                    if task_id in self.task_results:
+                        if self.task_results[task_id].running():
+                            time.sleep(0.1)
+                        else:
+                            res[task_id] = self.task_results[task_id].result()
+                    elif task_id in self.task_status:
+                        if self.task_status[task_id] in ('running', 'pending',
+                                                         'submitted'):
+                            time.sleep(0.1)
+                        else:
+                            res[task_id] = {
+                                'task':
+                                    task_id,
+                                'exception':
+                                    ValueError(
+                                        f'Task {task_id} returns status {self.task_status[task_id]}'
+                                    ),
+                                'ret_code':
+                                    1,
+                                'output':
+                                    sos_targets()
+                            }
+                    else:
+                        res[task_id] = {
+                            'task': task_id,
+                            'exception': ValueError(f'Missing task {task_id}'),
+                            'ret_code': 1,
+                            'output': sos_targets()
+                        }
+            if len(res) == len(task_ids):
+                return res
 
     def query_tasks(self,
                     tasks=None,
@@ -565,9 +615,11 @@ class TaskEngine(threading.Thread):
                     status=None):
         try:
             return self.agent.check_output(
-                "sos status {} -v {} {} {} {} {} {}".format(
+                "{} status {} -v {} {} {} {} {} {} {}".format(
+                    self.agent.config.get('sos', 'sos'),
                     '' if tasks is None else ' '.join(tasks),
                     verbosity,
+                    '--all tasks' if check_all else '',
                     '--html' if html else '',
                     '--numeric-times' if numeric_times else '',
                     f'--age {age}' if age else '',
@@ -613,16 +665,17 @@ class TaskEngine(threading.Thread):
         #
         # verbosity cannot be send to underlying command because task engines
         # rely on the output of certain verbosity (-v1) to post kill the jobs
-        cmd = "sos kill {} {} {}".format(
-            '' if all_tasks else ' '.join(tasks),
+        cmd = "{} kill {} {} {}".format(
+            self.agent.config.get('sos',
+                                  'sos'), '' if all_tasks else ' '.join(tasks),
             f'--tags {" ".join(tags)}' if tags else '',
-            '-a' if all_tasks else '')
+            '--all tasks' if all_tasks else '')
 
         try:
             ret = self.agent.check_output(cmd)
             env.logger.debug(f'"{cmd}" executed with response "{ret}"')
         except subprocess.CalledProcessError:
-            env.logger.error(f'Failed to kill all tasks' if all_tasks else
+            env.logger.error('Failed to kill all tasks' if all_tasks else
                              f'Failed to kill tasks {" ".join(tasks)}')
             return ''
         return ret
@@ -655,8 +708,9 @@ class TaskEngine(threading.Thread):
             #                 '.task'))
             #     ]
             return self.agent.check_output(
-                "sos purge {} {} {} {} {} -v {}".format(
-                    ' '.join(tasks), '--all' if purge_all else '',
+                "{} purge {} {} {} {} {} -v {}".format(
+                    self.agent.config.get('sos', 'sos'), ' '.join(tasks),
+                    '--all' if purge_all else '',
                     f'--age {age}' if age is not None else '',
                     f'--status {" ".join(status)}' if status is not None else
                     '', f'--tags {" ".join(tags)}' if tags is not None else '',
@@ -670,6 +724,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
 
     def __init__(self, agent):
         super(BackgroundProcess_TaskEngine, self).__init__(agent)
+        self.wait_for_task = False
         if 'task_template' in self.config:
             self.task_template = self.config['task_template'].replace(
                 '\r\n', '\n')
@@ -736,14 +791,15 @@ class BackgroundProcess_TaskEngine(TaskEngine):
             task_runtime['_runtime'].update(
                 tf.params.sos_dict.get('_runtime', {}))
 
-            runtime['command'] = f"sos execute {task_id} -v {env.verbosity} -s {env.config.get('sig_mode', 'default')} -m {env.config.get('run_mode', 'run')}"
+            runtime[
+                'command'] = f"{self.config.get('sos', 'sos')} execute {task_id} -v {env.verbosity} -s {env.config.get('sig_mode', 'default')} -m {env.config.get('run_mode', 'run')}"
             runtime.update(task_runtime['_runtime'])
             try:
                 job_text += cfg_interpolate(self.task_template, runtime)
                 job_text += '\n'
             except Exception as e:
                 raise ValueError(
-                    f'Failed to generate job file for task {task_id}: {e}')
+                    f'Failed to generate job file for task {task_id}: {e}') from e
 
         filename = task_ids[0] + ('.sh' if len(task_ids) == 1 else
                                   f'-{task_ids[-1]}.sh')
@@ -763,5 +819,5 @@ class BackgroundProcess_TaskEngine(TaskEngine):
             env.log_to_file('TASK', f'Execute "{cmd}" with script {job_text}')
             self.agent.run_command(cmd, wait_for_task=self.wait_for_task)
         except Exception as e:
-            raise RuntimeError(f'Failed to submit task {task_ids}: {e}')
+            raise RuntimeError(f'Failed to submit task {task_ids}: {e}') from e
         return True

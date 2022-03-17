@@ -6,14 +6,14 @@ import copy
 import pickle
 import time
 from collections import defaultdict
+from typing import Union
 
 import fasteners
 import networkx as nx
 
-from .targets import (sos_step, sos_targets, sos_variable, textMD5, BaseTarget)
-from .utils import ActivityNotifier, env, short_repr
+from .targets import BaseTarget, sos_step, sos_targets, sos_variable
+from .utils import ActivityNotifier, env, short_repr, textMD5
 
-from typing import Union
 #
 # DAG design:
 #
@@ -267,26 +267,26 @@ class SoS_DAG(nx.DiGraph):
         1. missing targets, which are missing from the DAG or from the provided targets
         2. existing targets of provided target list, not in DAG
         '''
-        existing = []
-        missing = []
+        existing = set()
+        missing = set()
         if env.config['trace_existing']:
             for x in self._all_depends_files.keys():
                 if x not in self._all_output_files:
                     if x.target_exists():
-                        existing.append(x)
+                        existing.add(x)
                     else:
-                        missing.append(x)
+                        missing.add(x)
         else:
-            missing = [
+            missing = set([
                 x for x in self._all_depends_files.keys()
                 if x not in self._all_output_files and not x.target_exists()
-            ]
+            ])
         for x in targets:
             if x not in self._all_output_files:
                 if x.target_exists('target'):
-                    existing.append(x)
+                    existing.add(x)
                 else:
-                    missing.append(x)
+                    missing.add(x)
         return missing, existing
 
     def regenerate_target(self, target: BaseTarget):

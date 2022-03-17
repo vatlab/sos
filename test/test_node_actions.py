@@ -4,36 +4,18 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import shutil
-import unittest
 
-from sos.parser import SoS_Script
-from sos.targets import file_target
-from sos.utils import env
-from sos.workflow_executor import Base_Executor
+import pytest
+
+from sos import execute_workflow
 
 
-class TestActions(unittest.TestCase):
-
-    def setUp(self):
-        env.reset()
-        self.temp_files = []
-
-    def tearDown(self):
-        for f in self.temp_files:
-            file_target(f).unlink()
-
-    @unittest.skipIf(not shutil.which('node'), 'node not installed')
-    def testNode(self):
-        '''Test action node'''
-        script = SoS_Script(r'''
-[0]
-node:
-var args = process.argv.slice(2);
-console.log('Hello ' + args.join(' ') + '!');
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-
-if __name__ == '__main__':
-    unittest.main()
+@pytest.mark.skipif(not shutil.which('node'), reason='node not installed')
+def test_node():
+    '''Test action node'''
+    execute_workflow(r'''
+        [0]
+        node:
+        var args = process.argv.slice(2);
+        console.log('Hello ' + args.join(' ') + '!');
+        ''')

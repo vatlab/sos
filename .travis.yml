@@ -10,51 +10,55 @@ python:
     - "3.8"
 
 addons:
-  apt:
-    update: true
-    packages:
-      - flawfinder
-      - squashfs-tools
-      - uuid-dev
-      - libuuid1
-      - libssl-dev
-      - libssl1.0.0
-      - libarchive-dev
-      - libgpgme11-dev
-      - libseccomp-dev
-      - git
-      - build-essential
-      - libtool
-      - autotools-dev
-      - automake
-      - autoconf
-      - uuid-dev
-      - libmagickwand-dev
-      - libmagickcore-extra
-      - graphviz
-      - octave
-      - ruby-full
-      - r-base
-      - pandoc
+    apt:
+        update: true
+        packages:
+            - flawfinder
+            - squashfs-tools
+            - uuid-dev
+            - libuuid1
+            - libssl-dev
+            - libssl1.0.0
+            - libarchive-dev
+            - libgpgme11-dev
+            - libseccomp-dev
+            - git
+            - build-essential
+            - libtool
+            - autotools-dev
+            - automake
+            - autoconf
+            - uuid-dev
+            - libmagickwand-dev
+            - libmagickcore-extra
+            - graphviz
+            - octave
+            - ruby-full
+            - r-base
+            - r-base-dev
+            - pandoc
 
 before_install:
     # singularity
     - sudo sed -i -e 's/^Defaults\tsecure_path.*$//' /etc/sudoers
     - pip install sregistry[all]
- 
 
     # this is to allow sos R_Library target to operate and pass test as well
     - sudo chmod -R 777 /usr/local/lib/R/site-library
+    - R -e 'install.packages(c("digest", "rlang"), repos = "http://cran.us.r-project.org")'
     - R -e 'install.packages(c("rmarkdown"), repos = "http://cran.us.r-project.org")'
     - pip install pandas numpy
     # add docker
-    - pip install docker pyyaml psutil tqdm fasteners pygments networkx pydot pydotplus graphviz imageio pillow entrypoints jupyter coverage codacy-coverage pytest pytest-cov python-coveralls
+    - pip install docker pyyaml psutil tqdm fasteners pygments networkx pydot pydotplus graphviz imageio pillow entrypoints jupyter coverage codacy-coverage
+    - pip install pytest pytest-cov python-coveralls -U
     - olddir=`pwd` && cd /tmp && wget https://github.com/singularityware/singularity/archive/2.6.0.tar.gz && tar zxf 2.6.0.tar.gz && cd singularity-2.6.0 && ./autogen.sh && ./configure --prefix=/usr/local && make && sudo make install && cd $olddir
 
 sudo: required
 services:
     - docker
-install: "pip install ."
+install:
+    - pip install .
+    - pip install sos-pbs
 before_script:
     - cd test
     - sh build_test_docker.sh
@@ -71,4 +75,3 @@ notifications:
             - ben.bob@gmail.com
         on_success: never
         on_failure: always
-

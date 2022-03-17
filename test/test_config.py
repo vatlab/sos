@@ -2,170 +2,193 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
-
-import os
-import shutil
-import subprocess
-import unittest
 import getpass
+import os
+import subprocess
 
+import pytest
+
+from sos import execute_workflow
 from sos._version import __version__
-from sos.parser import SoS_Script
-from sos.targets import file_target
+from sos.eval import get_config
 from sos.utils import env, load_config_files
+
 # if the test is imported under sos/test, test interacive executor
-from sos.workflow_executor import Base_Executor
+
+test_cfg = '''
+    cut: 0.5
+    cut1:
+    - 0.5
+    - 2
+    - 3
+    cut2: a3
+    cut3:
+    - a
+    - b
+    - c
+    cut4:
+    A: 123
+    me: '{user_name}@my'
+'''
 
 
-class TestConfig(unittest.TestCase):
-
-    def setUp(self):
-        env.reset()
-        subprocess.call('sos remove -s', shell=True)
-        # self.resetDir('~/.sos')
-        self.temp_files = []
-
-    def tearDown(self):
-        for f in self.temp_files:
-            if file_target(f).exists():
-                file_target(f).unlink()
-
-    def touch(self, files):
-        '''create temporary files'''
-        if isinstance(files, str):
-            files = [files]
-        #
-        for f in files:
-            with open(f, 'w') as tmp:
-                tmp.write('test')
-        #
-        self.temp_files.extend(files)
-
-    def resetDir(self, dirname):
-        if os.path.isdir(os.path.expanduser(dirname)):
-            shutil.rmtree(os.path.expanduser(dirname))
-        os.mkdir(os.path.expanduser(dirname))
-
-    def testCommandLine(self):
-        '''Test command line arguments'''
-        self.assertEqual(
-            subprocess.call(
-                'sos config -h',
-                stderr=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                shell=True), 0)
-        self.assertEqual(
-            subprocess.call(
-                'sos config -g --get',
-                stderr=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                shell=True), 0)
-        self.assertEqual(
-            subprocess.call(
-                'sos config',
-                stderr=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                shell=True), 0)
-        self.assertEqual(
-            subprocess.call(
-                'sos config --get',
-                stderr=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                shell=True), 0)
-        self.assertEqual(
-            subprocess.call(
-                'sos config -g --set a 5',
-                stderr=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                shell=True), 0)
-        self.assertEqual(
-            subprocess.call(
-                'sos config --get a',
-                stderr=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                shell=True), 0)
-        self.assertEqual(
-            subprocess.call(
-                'sos config -g --unset a',
-                stderr=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                shell=True), 0)
-
-    def testGlobalVars(self):
-        '''Test SoS defined variables'''
-        script = SoS_Script(r"""
-[0]
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['SOS_VERSION'], __version__)
-        self.assertTrue(isinstance(env.sos_dict['CONFIG'], dict))
-        #
-        with open('local_cfg.yml', 'w') as cfg:
-            cfg.write('my_config: 5')
-        #
-        Base_Executor(wf, config={'config_file': 'local_cfg.yml'}).run()
-        self.assertEqual(env.sos_dict['CONFIG']['my_config'], 5)
-
-    def testConfigSet(self):
-        '''Test interpolation of config'''
-        self.assertEqual(
-            subprocess.call(
-                'sos config --set cut 0.5 -c myconfig.yml',
-                stderr=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                shell=True), 0)
-        load_config_files('myconfig.yml')
-        self.assertEqual(env.sos_dict['CONFIG']['cut'], 0.5)
-        #
-        self.assertEqual(
-            subprocess.call(
-                'sos config --set cut1 0.5 2 3 -c myconfig.yml',
-                stderr=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                shell=True), 0)
-        load_config_files('myconfig.yml')
-        self.assertEqual(env.sos_dict['CONFIG']['cut1'], [0.5, 2, 3])
-        #
-        self.assertEqual(
-            subprocess.call(
-                'sos config --set cut2 a3 -c myconfig.yml',
-                stderr=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                shell=True), 0)
-        load_config_files('myconfig.yml')
-        self.assertEqual(env.sos_dict['CONFIG']['cut2'], 'a3')
-        #
-        self.assertEqual(
-            subprocess.call(
-                'sos config --set cut3 a b c -c myconfig.yml',
-                stderr=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                shell=True), 0)
-        load_config_files('myconfig.yml')
-        self.assertEqual(env.sos_dict['CONFIG']['cut3'], ['a', 'b', 'c'])
-        #
-        self.assertEqual(
-            subprocess.call(
-                '''sos config --set cut4 "{'A': 123}" -c myconfig.yml''',
-                stderr=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                shell=True), 0)
-        load_config_files('myconfig.yml')
-        self.assertEqual(env.sos_dict['CONFIG']['cut4'], {'A': 123})
-
-    def testInterpolate(self):
-        '''Test interpolation of config'''
-        self.assertEqual(
-            subprocess.call(
-                '''sos config --set me '{user_name}@my' -c myconfig.yml''',
-                stderr=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                shell=True), 0)
-        load_config_files('myconfig.yml')
-        self.assertEqual(env.sos_dict['CONFIG']['me'],
-                         f'{getpass.getuser().lower()}@my')
+def test_command_line():
+    '''Test command line arguments'''
+    assert subprocess.call(
+        'sos config -h',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
+    assert subprocess.call(
+        'sos config -g --get',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
+    assert subprocess.call(
+        'sos config',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
+    assert subprocess.call(
+        'sos config --get',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
+    assert subprocess.call(
+        'sos config -g --set a 5',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
+    assert subprocess.call(
+        'sos config --get a',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
+    assert subprocess.call(
+        'sos config -g --unset a',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
 
 
-if __name__ == '__main__':
-    unittest.main()
+def test_config_set(config_factory):
+    '''Test interpolation of config'''
+    myconfig = config_factory(test_cfg)
+
+    assert subprocess.call(
+        f'sos config --set cut 0.5 -c {myconfig}',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
+    load_config_files(myconfig)
+    assert env.sos_dict['CONFIG']['cut'] == 0.5
+    #
+    assert subprocess.call(
+        f'sos config --set cut1 0.5 2 3 -c {myconfig}',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
+    load_config_files(myconfig)
+    assert env.sos_dict['CONFIG']['cut1'] == [0.5, 2, 3]
+    #
+    assert subprocess.call(
+        f'sos config --set cut2 a3 -c {myconfig}',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
+    load_config_files(myconfig)
+    assert env.sos_dict['CONFIG']['cut2'] == 'a3'
+    #
+    assert subprocess.call(
+        f'sos config --set cut3 a b c -c {myconfig}',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
+    load_config_files(myconfig)
+    assert env.sos_dict['CONFIG']['cut3'] == ['a', 'b', 'c']
+    #
+    assert subprocess.call(
+        f'''sos config --set cut4 "{{'A': 123}}" -c {myconfig}''',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
+    load_config_files(myconfig)
+    assert env.sos_dict['CONFIG']['cut4'] == {'A': 123}
+
+
+def test_interpolate(config_factory):
+    '''Test interpolation of config'''
+    myconfig = config_factory(test_cfg)
+    assert subprocess.call(
+        f'''sos config --set me '{{user_name}}@my' -c {myconfig}''',
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        shell=True) == 0
+    load_config_files(myconfig, default_config_files=False)
+    assert get_config('me') == f'{getpass.getuser().lower()}@my'
+
+
+def test_global_vars(config_factory):
+    '''Test SoS defined variables'''
+    execute_workflow("[0]", options={'mode': 'dryrun'})
+
+    assert env.sos_dict['SOS_VERSION'] == __version__
+    assert isinstance(env.sos_dict['CONFIG'], dict)
+
+    cfg = config_factory({'my_config': 5})
+
+    execute_workflow("[0]", options={'config_file': cfg})
+    assert env.sos_dict['CONFIG']['my_config'] == 5
+
+
+def test_get_config(config_factory):
+    myconfig = config_factory({
+        'val': 5,
+        'A': {
+            'B.C': '33',
+            'B.C1': {
+                'D': '34'
+            },
+            'D': '45'
+        },
+        'E': {
+            'F': {
+                'val': 6,
+                'val1': 10,
+                'G': '{val + val1}'
+            },
+            'H': '{val}'
+        },
+        'O': 'A{nonexisting}',
+        'X': '{os.environ.get("HOME", "no_home")}'
+    })
+    load_config_files(myconfig)
+    assert get_config('A', 'D') == '45'
+    assert get_config('A.D') == '45'
+    assert get_config(['A', 'D']) == '45'
+    assert get_config(['A', 'D']) == '45'
+    assert get_config('A.B.C') == '33'
+    assert get_config('A.B.C1.D') == '34'
+    assert get_config('A') == {'B.C': '33', 'B.C1': {'D': '34'}, 'D': '45'}
+    assert get_config('E.F') == {'val': 6, 'val1': 10, 'G': '16'}
+    assert get_config('E.F', val=7) == {'val': 6, 'val1': 10, 'G': '17'}
+    assert get_config('E.F', val=7, allowed_keys=['G']) == {'G': '17'}
+    assert get_config(
+        'E.F', val=7, val1=20) == {
+            'val': 6,
+            'val1': 10,
+            'G': '27'
+        }
+    assert get_config('E.F', {
+        'val': 8,
+        'val1': 30
+    }) == {
+        'val': 6,
+        'val1': 10,
+        'G': '38'
+    }
+    assert get_config('E.H', val=7) == '7'
+    with pytest.raises(ValueError):
+        get_config('O')
+    assert get_config('O', nonexisting=7) == 'A7'
+    assert get_config('X') == os.environ.get("HOME", "no_home")

@@ -47,6 +47,7 @@ RUN  pip install fasteners pygments ipython ptpython networkx pydotplus
 ARG  SHA=LATEST
 RUN  SHA=$SHA git clone http://github.com/vatlab/sos sos
 RUN  cd sos && pip install . -U
+RUN  pip install sos-pbs
 
 RUN  echo "export TS_SLOTS=10" >> /root/.bash_profile
 
@@ -122,10 +123,15 @@ cat >> ~/docker.yml << 'HERE'
         status_check_interval: 5
         task_template: |
             #!/bin/bash
+            # {task}
             cd {cur_dir}
             sos execute {task} -v {verbosity} -s {sig_mode} {'--dryrun' if run_mode == 'dryrun' else ''}
         max_running_jobs: 100
-        submit_cmd: tsp -L {task} sh {job_file}
+        submit_cmd: tsp -L {job_name} sh {job_file}
         status_cmd: tsp -s {job_id}
         kill_cmd: tsp -r {job_id}
+        workflow_template: |
+            #!/bin/bash
+            #
+            {command}
 HERE

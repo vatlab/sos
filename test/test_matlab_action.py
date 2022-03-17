@@ -5,40 +5,21 @@
 
 import os
 import shutil
-import unittest
 
-from sos.parser import SoS_Script
-from sos.targets import file_target
-from sos.utils import env
-from sos.workflow_executor import Base_Executor
+import pytest
+
+from sos import execute_workflow
 
 
-class TestActions(unittest.TestCase):
-
-    def setUp(self):
-        env.reset()
-        self.temp_files = []
-
-    def tearDown(self):
-        for f in self.temp_files:
-            file_target(f).unlink()
-
-    @unittest.skipIf(not shutil.which('matlab'), 'Matlab not installed')
-    def testMatlab(self):
-        '''Test action matlab'''
-        if os.path.isfile('/tmp/matlab_example.txt'):
-            os.remove('/tmp/matlab_example.txt')
-        script = SoS_Script(r'''
-[0]
-matlab:
-    f = fopen("/tmp/matlab_example.txt", "w");
-    fprintf(f, "A, B, C, D\n");
-    fclose(f);
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-        self.assertTrue(os.path.isfile('/tmp/matlab_example.txt'))
-
-
-if __name__ == '__main__':
-    unittest.main()
+@pytest.mark.skipif(not shutil.which('matlab'), reason='Matlab not installed')
+def test_matlab(clear_now_and_after):
+    '''Test action matlab'''
+    clear_now_and_after('/tmp/matlab_example.txt')
+    execute_workflow(r'''
+        [0]
+        matlab:
+            f = fopen("/tmp/matlab_example.txt", "w");
+            fprintf(f, "A, B, C, D\n");
+            fclose(f);
+    ''')
+    assert os.path.isfile('/tmp/matlab_example.txt')

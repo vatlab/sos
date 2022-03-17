@@ -7,14 +7,14 @@ import os
 import shutil
 import subprocess
 import sys
-import time
 import tempfile
+import time
 
+from sos.controller import (request_answer_from_controller,
+                            send_message_to_controller)
 from sos.eval import interpolate
 from sos.targets import path
 from sos.utils import env, pexpect_run
-
-from sos.controller import request_answer_from_controller, send_message_to_controller
 
 #
 # Singularity support
@@ -34,7 +34,7 @@ class SoS_SingularityClient:
 
     def _ensure_singularity(self):
         if not shutil.which('singularity'):
-            raise RuntimeError(f'Command singularity is not found')
+            raise RuntimeError('Command singularity is not found')
 
     def _is_image_avail(self, image):
         # the command will return ID of the image if it exists
@@ -151,7 +151,7 @@ class SoS_SingularityClient:
         self._ensure_singularity()
         if not dest:
             raise ValueError(
-                f'Please specify result of sigularity build with option dest')
+                'Please specify result of sigularity build with option dest')
 
         if os.path.isfile(dest) and not 'force' in kwargs:
             raise ValueError(
@@ -165,7 +165,7 @@ class SoS_SingularityClient:
             else:
                 if not src:
                     raise ValueError(
-                        f'Please specify either a script file as script or a source url with option --src'
+                        'Please specify either a script file as script or a source url with option --src'
                     )
                 file_opt = [dest, src]
 
@@ -203,7 +203,8 @@ class SoS_SingularityClient:
 
             if ret != 0:
                 if script:
-                    debug_script_dir = os.path.join(env.exec_dir, '.sos')
+                    debug_script_dir = os.path.join(
+                        os.path.expanduser('~'), '.sos')
                     msg = 'The definition has been saved to {}/singularity.def. To reproduce the error please run:\n``{}``'.format(
                         debug_script_dir, cmd.replace(tempdir,
                                                       debug_script_dir))
@@ -222,10 +223,10 @@ class SoS_SingularityClient:
         if not os.path.isdir(lib_path):
             try:
                 os.makedirs(lib_path, exist_ok=True)
-            except:
+            except Exception as e:
                 raise RuntimeError(
                     f'Failed to create singularity library directory {lib_path}'
-                )
+                ) from e
 
         if '://' in image:
             ctx, cname = image.split('://', 1)
@@ -275,7 +276,7 @@ class SoS_SingularityClient:
         # if image is specified, check if it is available locally. If not, pull it
         try:
             print(
-                f'HINT: Pulling image {image} to {image_file.replace(os.path.expanduser("~"), "~")}'
+                f'HINT: Pulling singularity image {image} to {image_file.replace(os.path.expanduser("~"), "~")}'
             )
             subprocess.check_output(
                 'singularity pull {} {}'.format(image_file, image),
@@ -290,6 +291,8 @@ class SoS_SingularityClient:
         if not path(image_file).exists():
             raise ValueError(
                 f'Image {image_file} does not exist after pulling {image}.')
+        else:
+            print(f'HINT: Singularity image {image} is now up to date')
         send_message_to_controller(
             ['resource', 'singularity_image', 'available', image])
 
@@ -349,7 +352,7 @@ class SoS_SingularityClient:
             ret = self._run_cmd(cmd, **kwargs)
 
             if ret != 0:
-                debug_script_dir = os.path.join(env.exec_dir, '.sos')
+                debug_script_dir = env.exec_dir
                 msg = 'The script has been saved to {}/{}. To reproduce the error please run:\n``{}``'.format(
                     debug_script_dir, tempscript,
                     cmd.replace(f'{path(tempdir):p}',

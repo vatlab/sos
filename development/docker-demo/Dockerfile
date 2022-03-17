@@ -2,20 +2,15 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 # SoS official docker image for latest version of SoS. Use command
-# 
-#     docker build -t mdabioinfo/sos-notebook:latest docker-notebook
+#
+#     docker build -t vatlab/sos-notebook:latest docker-demo
 #
 # to build it.
 #
 
-FROM mdabioinfo/sos-notebook:latest
+FROM vatlab/sos-notebook:latest
 
 MAINTAINER Bo Peng <Bo.Peng@bcm.edu>
-
-USER    root
-
-RUN     R --slave -e 'install.packages("glmnet", repos="http://cran.us.r-project.org")'
-RUN     pip install sklearn
 
 USER    jovyan
 

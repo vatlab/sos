@@ -5,9 +5,9 @@
 
 import multiprocessing as mp
 import os
+import pickle
 import signal
 import time
-import pickle
 from typing import Any, Dict, Optional
 
 import zmq
@@ -15,8 +15,9 @@ import zmq
 from .controller import (close_socket, connect_controllers, create_socket,
                          disconnect_controllers)
 from .executor_utils import kill_all_subprocesses, prepare_env
-from .utils import env, ProcessKilled, short_repr, get_localhost_ip
-from .messages import encode_msg, decode_msg
+from .messages import decode_msg, encode_msg
+from .utils import (ProcessKilled, env, get_localhost_ip,
+                    get_open_files_and_connections, short_repr)
 
 
 def signal_handler(*args, **kwargs):
@@ -24,7 +25,7 @@ def signal_handler(*args, **kwargs):
 
 
 class Runner(object):
-    '''
+    """
     This runner class takea a generator function and run it.
     1. When the generator returns None, continue to run without yielding.
     2. When the generator returns a poller, continue is it receives any message in 0.2s.
@@ -34,7 +35,7 @@ class Runner(object):
     So in summary, the Runner returns
     1. True if all completed, return value from generator is ignored.
     2. `self` if waiting.
-    '''
+    """
 
     def __init__(self, runner, name):
         self._runner = runner
@@ -74,7 +75,7 @@ class Runner(object):
 
 
 class SoS_Worker(mp.Process):
-    '''
+    """
     Worker process to process SoS step or workflow in separate process. This most
     distinguished feature of this worker is that it allows multiple steps or
     workflows to run, and the worker will yield to other jobs when it needs to
@@ -97,11 +98,12 @@ class SoS_Worker(mp.Process):
 
 
 
-    '''
+    """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None,
+    def __init__(self,
+                 config: Optional[Dict[str, Any]] = None,
                  **kwargs) -> None:
-        '''
+        """
 
         config:
             values for command line options
@@ -113,7 +115,7 @@ class SoS_Worker(mp.Process):
             command line argument passed to workflow. However, if a dictionary is passed,
             then it is assumed to be a nested workflow where parameters are made
             immediately available.
-        '''
+        """
         # the worker process knows configuration file, command line argument etc
         super(SoS_Worker, self).__init__(**kwargs)
         #
@@ -162,31 +164,33 @@ class SoS_Worker(mp.Process):
             # a new socket is needed
             env.master_socket = create_socket(env.zmq_context, zmq.PAIR)
             port = env.master_socket.bind_to_random_port(
-                f'tcp://{self.local_ip}')
+                f"tcp://{self.local_ip}")
             # switch to a new env_idx and returns new_idx, old_idx
             self._env_idx.append(env.request_new()[0])
             self._master_sockets.append(env.master_socket)
-            self._master_ports.append(f'tcp://{self.local_ip}:{port}')
+            self._master_ports.append(f"tcp://{self.local_ip}:{port}")
             self._runners.append(True)
-            if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
-                    'SOS_DEBUG']:
+            if "WORKER" in env.config["SOS_DEBUG"] or "ALL" in env.config[
+                    "SOS_DEBUG"]:
                 env.log_to_file(
-                    'WORKER',
-                    f'WORKER {self.name} ({os.getpid()}) creates ports {self._master_ports}'
+                    "WORKER",
+                    f"WORKER {self.name} ({os.getpid()}) creates ports {self._master_ports}",
                 )
 
     def __repr__(self):
-        return self.name + ' ' + ' '.join(
+        return (self.name + " " + " ".join(
             str(x) if isinstance(x, Runner) else str(idx)
-            for idx, x in enumerate(self._runners))
+            for idx, x in enumerate(self._runners)))
 
     def run(self):
         # env.logger.warning(f'Worker created {os.getpid()}')
         env.config.update(self.config)
+        env.verbosity = self.config.get("verbosity", 2)
 
-        if 'PROFILE' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
-                'SOS_DEBUG']:
+        if "PROFILE" in env.config["SOS_DEBUG"] or "ALL" in env.config[
+                "SOS_DEBUG"]:
             import cProfile
+
             pr = cProfile.Profile()
             pr.enable()
 
@@ -194,11 +198,11 @@ class SoS_Worker(mp.Process):
 
         # create controller socket
         env.ctrl_socket = create_socket(env.zmq_context, zmq.REQ,
-                                        'worker backend')
+                                        "worker backend")
         # worker_backend, or the router, might be on another machine
         env.log_to_file(
-            'WORKER',
-            f'Connecting to router {self.config["sockets"]["worker_backend"]} from {get_localhost_ip()}'
+            "WORKER",
+            f'Connecting to router {self.config["sockets"]["worker_backend"]} from {get_localhost_ip()}',
         )
         env.ctrl_socket.connect(self.config["sockets"]["worker_backend"])
 
@@ -210,6 +214,13 @@ class SoS_Worker(mp.Process):
         # wait to handle jobs
         while True:
             try:
+                if ("OPENFILES" in env.config["SOS_DEBUG"] or
+                        "ALL" in env.config["SOS_DEBUG"]):
+                    ofc = get_open_files_and_connections(os.getpid())
+                    env.log_to_file(
+                        "OPENFILES",
+                        f'WORKER {os.getpid()} has {len(ofc["open_files"])} open files and {len(ofc["connections"])} connections.',
+                    )
                 wr = self.waiting_runners()
                 if wr:
                     for idx in wr:
@@ -236,13 +247,13 @@ class SoS_Worker(mp.Process):
                 if reply is None:
                     if len(wr) != 0:
                         env.logger.error(
-                            f'WORKER terminates with pending tasks. sos might not be termianting properly.'
+                            "WORKER terminates with pending tasks. sos might not be termianting properly."
                         )
-                    if 'WORKER' in env.config[
-                            'SOS_DEBUG'] or 'ALL' in env.config['SOS_DEBUG']:
+                    if ("WORKER" in env.config["SOS_DEBUG"] or
+                            "ALL" in env.config["SOS_DEBUG"]):
                         env.log_to_file(
-                            'WORKER',
-                            f'WORKER {self.name} ({os.getpid()}) quits after receiving None.'
+                            "WORKER",
+                            f"WORKER {self.name} ({os.getpid()}) quits after receiving None.",
                         )
                     break
                 if not reply:  # if an empty job is returned
@@ -253,28 +264,28 @@ class SoS_Worker(mp.Process):
                 # if a real job is returned, run it. _process_job will either return True
                 # or a runner in case it is interrupted.
                 env.log_to_file(
-                    'WORKER',
-                    f'WORKER {self.name} ({os.getpid()}, {self.num_pending()} pending) receives {self._type_of_work(reply)} request {self._name_of_work(reply)} with master port {self._master_ports[new_idx]}'
+                    "WORKER",
+                    f"WORKER {self.name} ({os.getpid()}, {self.num_pending()} pending) receives {self._type_of_work(reply)} request {self._name_of_work(reply)} with master port {self._master_ports[new_idx]}",
                 )
 
-                if 'task' in reply:
+                if "task" in reply:
                     self.run_substep(reply)
                     env.log_to_file(
-                        'WORKER',
-                        f'WORKER {self.name} ({os.getpid()}) completes substep {self._name_of_work(reply)}'
+                        "WORKER",
+                        f"WORKER {self.name} ({os.getpid()}) completes substep {self._name_of_work(reply)}",
                     )
                     self._runners[new_idx] = True
                     continue
-                elif 'task_id' in reply:
+                elif "task_id" in reply:
                     self.run_task(reply)
                     env.log_to_file(
-                        'WORKER',
-                        f'WORKER {self.name} ({os.getpid()}) completes task {self._name_of_work(reply)}'
+                        "WORKER",
+                        f"WORKER {self.name} ({os.getpid()}) completes task {self._name_of_work(reply)}",
                     )
                     self._runners[new_idx] = True
                     continue
 
-                master_port = reply['config']['sockets']['master_port']
+                master_port = reply["config"]["sockets"]["master_port"]
                 if master_port != self._master_ports[new_idx]:
                     new_idx = self._master_ports.index(master_port)
                     self.switch_to(new_idx)
@@ -282,13 +293,14 @@ class SoS_Worker(mp.Process):
                 # step and workflow can yield. Here we call run_until_waiting directly because we know the Runner can proceed.
                 self._runners[new_idx] = Runner(
                     self.run_step(**reply)
-                    if 'section' in reply else self.run_workflow(**reply),
-                    name=self._name_of_work(reply)).run_until_waiting()
-                if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
-                        'SOS_DEBUG']:
+                    if "section" in reply else self.run_workflow(**reply),
+                    name=self._name_of_work(reply),
+                ).run_until_waiting()
+                if ("WORKER" in env.config["SOS_DEBUG"] or
+                        "ALL" in env.config["SOS_DEBUG"]):
                     env.log_to_file(
-                        'WORKER',
-                        'STATUS ' + self._name_of_work(reply) + str(self))
+                        "WORKER",
+                        "STATUS " + self._name_of_work(reply) + str(self))
             except ProcessKilled:
                 # in theory, this will not be executed because the exception
                 # will be caught by the step executor, and then sent to the master
@@ -297,48 +309,48 @@ class SoS_Worker(mp.Process):
             except KeyboardInterrupt:
                 # ignore SIGINT because workers are supposed to be killed through messages
                 env.log_to_file(
-                    'PROCESS',
-                    f'KeyboardInterrupt received by {os.getpid()}. Ignoring.')
+                    "PROCESS",
+                    f"KeyboardInterrupt received by {os.getpid()}. Ignoring.")
         # Finished
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
         kill_all_subprocesses(os.getpid())
 
-        close_socket(env.result_socket, 'substep result', now=True)
+        close_socket(env.result_socket, "substep result", now=True)
 
         for socket in self._master_sockets:
-            close_socket(socket, 'worker master', now=True)
+            close_socket(socket, "worker master", now=True)
         close_socket(env.ctrl_socket, now=True)
         disconnect_controllers(env.zmq_context)
-        if 'PROFILE' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
-                'SOS_DEBUG']:
+        if "PROFILE" in env.config["SOS_DEBUG"] or "ALL" in env.config[
+                "SOS_DEBUG"]:
             pr.disable()
             pr_file = os.path.join(
-                os.path.expanduser('~'), '.sos',
-                f'profile_worker_{os.getpid()}.txt')
+                os.path.expanduser("~"), ".sos",
+                f"profile_worker_{os.getpid()}.txt")
             pr.dump_stats(pr_file)
             print(
-                f'Execution profile of worker process {os.getpid()} is saved to {pr_file}'
+                f"Execution profile of worker process {os.getpid()} is saved to {pr_file}"
             )
 
     def _type_of_work(self, work):
-        if 'section' in work:
-            return 'step'
-        elif 'wf' in work:
-            return 'workflow'
-        elif 'task_id' in work:
-            return 'task'
+        if "section" in work:
+            return "step"
+        elif "wf" in work:
+            return "workflow"
+        elif "task_id" in work:
+            return "task"
         else:
-            return 'substep'
+            return "substep"
 
     def _name_of_work(self, work):
-        if 'section' in work:
-            return work['section'].step_name()
-        elif 'wf' in work:
-            return work['workflow_id']
-        elif 'task_id' in work:
-            return work['task_id']
+        if "section" in work:
+            return work["section"].step_name()
+        elif "wf" in work:
+            return work["workflow_id"]
+        elif "task_id" in work:
+            return work["task_id"]
         else:
-            return 'substep'
+            return "substep"
 
     def run_workflow(self, workflow_id, wf, targets, args, shared, config,
                      **kwargs):
@@ -346,13 +358,14 @@ class SoS_Worker(mp.Process):
         #
         # get workflow, args, shared, and config
         from .workflow_executor import Base_Executor
+
         env.config.update(config)
         # we are in a separate process and need to set verbosity from workflow config
         # but some tests do not provide verbosity
-        env.verbosity = config.get('verbosity', 2)
+        env.verbosity = config.get("verbosity", 2)
         env.log_to_file(
-            'WORKER',
-            f'Worker {self.name} working on a workflow {workflow_id} with args {short_repr(args)}'
+            "WORKER",
+            f"Worker {self.name} working on a workflow {workflow_id} with args {short_repr(args)}",
         )
 
         executer = Base_Executor(wf, args=args, shared=shared, config=config)
@@ -363,7 +376,8 @@ class SoS_Worker(mp.Process):
             runner = executer.run_as_nested(
                 targets=targets,
                 parent_socket=env.master_socket,
-                my_workflow_id=workflow_id)
+                my_workflow_id=workflow_id,
+            )
             try:
                 yreq = next(runner)
                 while True:
@@ -379,8 +393,8 @@ class SoS_Worker(mp.Process):
         from .step_executor import Step_Executor
 
         env.log_to_file(
-            'WORKER',
-            f'Worker {self.name} working on {section.step_name()} with args {short_repr(args)}'
+            "WORKER",
+            f"Worker {self.name} working on {section.step_name()} with args {short_repr(args)}",
         )
         env.config.update(config)
         env.verbosity = verbosity
@@ -389,11 +403,11 @@ class SoS_Worker(mp.Process):
         # step is that the content of the dictioary might be overridden by context
         # variables.
         prepare_env(section.global_def, section.global_vars,
-                    env.config['workflow_vars'])
+                    env.config["workflow_vars"])
 
         # clear existing keys, otherwise the results from some random result
         # might mess with the execution of another step that does not define input
-        for k in ['__step_input__', '__default_output__', '__step_output__']:
+        for k in ["__step_input__", "__default_output__", "__step_output__"]:
             if k in env.sos_dict:
                 env.sos_dict.pop(k)
         # if the step has its own context
@@ -403,7 +417,7 @@ class SoS_Worker(mp.Process):
         # __step_output__ from auxiliary steps. #526
         env.sos_dict.quick_update(context)
         executor = Step_Executor(
-            section, env.master_socket, mode=env.config['run_mode'])
+            section, env.master_socket, mode=env.config["run_mode"])
 
         runner = executor.run()
         try:
@@ -416,15 +430,18 @@ class SoS_Worker(mp.Process):
 
     def run_substep(self, work):
         from .substep_executor import execute_substep
+
         execute_substep(**work)
 
     def run_task(self, work):
         from .task_executor import BaseTaskExecutor
+
         executor = BaseTaskExecutor()
 
-        result_socket = work['config']['sockets']['result_push_socket']
+        result_socket = work["config"]["sockets"]["result_push_socket"]
 
-        if env.result_socket_port is not None and env.result_socket_port != result_socket:
+        if (env.result_socket_port is not None and
+                env.result_socket_port != result_socket):
             close_socket(env.result_socket)
             env.result_socket = None
 
@@ -458,8 +475,8 @@ class WorkerManager(object):
             self._worker_hosts = []
             self._max_workers = []
             for worker_proc in self._worker_procs:
-                if ':' in worker_proc:
-                    worker_host, max_workers = worker_proc.rsplit(':', 1)
+                if ":" in worker_proc:
+                    worker_host, max_workers = worker_proc.rsplit(":", 1)
                     if not max_workers.isdigit():
                         raise ValueError(
                             f'Invalid worker specification {worker_proc}: number of process expected after ":"'
@@ -477,10 +494,10 @@ class WorkerManager(object):
                         min(max(os.cpu_count() // 2, 2), 8))
 
             self._num_workers = [0 for x in self._worker_procs]
-        except Exception:
+        except Exception as e:
             raise RuntimeError(
-                f'Incorrect format for option -j ({self._worker_procs}), which should be one or more [host:]nproc'
-            )
+                f"Incorrect format for option -j ({self._worker_procs}), which should be one or more [host:]nproc"
+            ) from e
 
         self._local_workers = []
         self._remote_connections = []
@@ -512,25 +529,25 @@ class WorkerManager(object):
         self.start_worker()
 
     def report(self, msg):
-        if 'WORKER' in env.config['SOS_DEBUG'] or 'ALL' in env.config[
-                'SOS_DEBUG']:
+        if "WORKER" in env.config["SOS_DEBUG"] or "ALL" in env.config[
+                "SOS_DEBUG"]:
             env.log_to_file(
-                'WORKER',
-                f'{msg.upper()}: {self._num_workers} workers (of which {len(self._blocking_ports)} is blocking), {self._n_requested} requested, {self._n_processed} processed'
+                "WORKER",
+                f"{msg.upper()}: {self._num_workers} workers (of which {len(self._blocking_ports)} is blocking), {self._n_requested} requested, {self._n_processed} processed",
             )
 
     def add_request(self, msg_type, msg):
         self._n_requested += 1
-        if msg_type == 'substep':
+        if msg_type == "substep":
             self._substep_requests.insert(0, msg)
-            self.report(f'Substep requested')
-        elif msg_type == 'task':
+            self.report("Substep requested")
+        elif msg_type == "task":
             self._task_requests.insert(0, msg)
-            self.report(f'Task requested')
+            self.report("Task requested")
         else:
-            port = msg['config']['sockets']['master_port']
+            port = msg["config"]["sockets"]["master_port"]
             self._step_requests[port] = msg
-            self.report(f'Step {port} requested')
+            self.report(f"Step {port} requested")
 
         if sum(self._num_workers) < sum(self._max_workers):
             self.start_worker()
@@ -555,7 +572,7 @@ class WorkerManager(object):
         self.start_worker()
         while True:
             if not self._worker_backend_socket.poll(5000):
-                raise RuntimeError('No worker is started after 5 seconds')
+                raise RuntimeError("No worker is started after 5 seconds")
             msg = decode_msg(self._worker_backend_socket.recv())
             port = self.process_request(msg[0], msg[1:], request_blocking=True)
             if port is None or port in excluded:
@@ -563,22 +580,22 @@ class WorkerManager(object):
             self._claimed_ports.add(port)
             self._blocking_ports.add(port)
             env.logger.debug(
-                f'Increasing maximum number of local workers to {self._max_workers[0]} to accommodate a blocking subworkflow.'
+                f"Increasing maximum number of local workers to {self._max_workers[0]} to accommodate a blocking subworkflow."
             )
             return port
 
     def process_request(self, num_pending, ports, request_blocking=False):
-        '''port is the open port at the worker, num_pending is the num_pending of stack.
+        """port is the open port at the worker, num_pending is the num_pending of stack.
         A non-zero num_pending means that the worker is pending on something while
         looking for new job, so the worker should not be killed.
-        '''
+        """
         if any(port in self._step_requests for port in ports):
             # if the port is available
             port = [x for x in ports if x in self._step_requests][0]
             self._worker_backend_socket.send(
                 encode_msg(self._step_requests.pop(port)))
             self._n_processed += 1
-            self.report(f'Step {port} processed')
+            self.report(f"Step {port} processed")
             # port should be in claimed ports
             self._claimed_ports.remove(port)
             # if ports[0] in self._last_pending_time:
@@ -586,7 +603,7 @@ class WorkerManager(object):
         elif any(port in self._claimed_ports for port in ports):
             # the port is claimed, but the real message is not yet available
             self._worker_backend_socket.send(encode_msg({}))
-            self.report(f'pending with claimed {ports}')
+            self.report(f"pending with claimed {ports}")
         # elif any(port in self._blocking_ports for port in ports):
         #     # in block list but appear to be idle, kill it
         #     self._max_workers -= 1
@@ -606,7 +623,7 @@ class WorkerManager(object):
             msg = self._task_requests.pop()
             self._worker_backend_socket.send(encode_msg(msg))
             self._n_processed += 1
-            self.report(f'Task processed with {ports[0]}')
+            self.report(f"Task processed with {ports[0]}")
             # port can however be in available ports
             for port in ports:
                 if port in self._available_ports:
@@ -618,7 +635,7 @@ class WorkerManager(object):
             msg = self._substep_requests.pop()
             self._worker_backend_socket.send(encode_msg(msg))
             self._n_processed += 1
-            self.report(f'Substep processed with {ports[0]}')
+            self.report(f"Substep processed with {ports[0]}")
             # port can however be in available ports
             for port in ports:
                 if port in self._available_ports:
@@ -645,10 +662,13 @@ class WorkerManager(object):
             self._available_ports.add(ports[0])
             self._worker_backend_socket.send(encode_msg({}))
             ports = tuple(ports)
-            if (ports, num_pending) not in self._last_pending_msg or time.time(
+            if (
+                    ports,
+                    num_pending,
+            ) not in self._last_pending_msg or time.time(
             ) - self._last_pending_msg[(ports, num_pending)] > 1.0:
                 self.report(
-                    f'pending with port {ports} at num_pending {num_pending}')
+                    f"pending with port {ports} at num_pending {num_pending}")
                 self._last_pending_msg[(ports, num_pending)] = time.time()
 
     def start_worker(self):
@@ -663,49 +683,60 @@ class WorkerManager(object):
                 self._local_worker_alive_time = time.time()
                 self._local_workers.append(worker)
                 self._num_workers[0] += 1
-                self.report('start a local worker')
+                self.report("start a local worker")
             else:
                 # start all remote workers on a host
                 try:
                     from .hosts import Host
+
                     host = Host(worker_host, start_engine=False)
                     env_file = os.path.join(
-                        os.path.expanduser('~'), '.sos',
-                        f'worker_envs.{os.getpid()}')
+                        os.path.expanduser("~"), ".sos",
+                        f"worker_envs.{os.getpid()}")
                     if not os.path.isfile(env_file):
-                        with open(env_file, 'wb') as envfile:
+                        with open(env_file, "wb") as envfile:
                             pickle.dump(
                                 {
                                     x: y
                                     for x, y in os.environ.items()
                                     if isinstance(y, str)
-                                }, envfile)
+                                },
+                                envfile,
+                            )
                     # NOTE: we assume file systems are shared so we do not copy env_file to remote host
                     cmd = [
-                        'sos', 'worker', '--router',
-                        env.config["sockets"]["worker_backend"], '--sig_mode',
-                        env.config['sig_mode'], '--run_mode',
-                        env.config['run_mode'], '--env', env_file, '--workdir',
-                        os.getcwd(), '-v',
-                        str(env.config['verbosity'])
+                        "sos",
+                        "worker",
+                        "--router",
+                        env.config["sockets"]["worker_backend"],
+                        "--sig_mode",
+                        env.config["sig_mode"],
+                        "--run_mode",
+                        env.config["run_mode"],
+                        "--env",
+                        env_file,
+                        "--workdir",
+                        os.getcwd(),
+                        "-v",
+                        str(env.config["verbosity"]),
                     ]
                     if max_worker is not None:
-                        cmd += ['-j', str(max_worker)]
+                        cmd += ["-j", str(max_worker)]
                     p = host._host_agent.run_command(cmd, wait_for_task=False)
                     self._remote_connections.append(p)
                 except Exception as e:
                     env.logger.error(
-                        f'Failed to start workers on host {worker_host}: {e}')
+                        f"Failed to start workers on host {worker_host}: {e}")
                     raise RuntimeError(
-                        f'Failed to start workers on host {worker_host}: {e}')
+                        f"Failed to start workers on host {worker_host}: {e}") from e
                 self._num_workers[idx] = self._max_workers[idx]
                 self.report(
-                    f'start {max_worker} remote workers on {worker_host}')
+                    f"start {max_worker} remote workers on {worker_host}")
             break
 
     def check_workers(self):
-        '''Kill workers that have been pending for a while and check if all workers
-        are alive. '''
+        """Kill workers that have been pending for a while and check if all workers
+        are alive."""
         if time.time() - self._local_worker_alive_time > 5:
             self._local_worker_alive_time = time.time()
             # join processes if they are now gone, it should not do anything bad
@@ -719,15 +750,15 @@ class WorkerManager(object):
                 worker for worker in self._local_workers if worker.is_alive()
             ]
             if len(self._local_workers) < self._num_workers[0]:
-                raise ProcessKilled('One of the local workers has been killed.')
+                raise ProcessKilled("One of the local workers has been killed.")
 
     def kill_all(self):
-        '''Kill all workers'''
+        """Kill all workers"""
         total_num_workers = sum(self._num_workers)
         while total_num_workers > 0 and self._worker_backend_socket.poll(1000):
             msg = decode_msg(self._worker_backend_socket.recv())
             self._worker_backend_socket.send(encode_msg(None))
             total_num_workers -= 1
-            self.report(f'Kill {msg[1:]}')
+            self.report(f"Kill {msg[1:]}")
         # join all local processes
         [worker.join() for worker in self._local_workers]

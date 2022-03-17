@@ -3,8 +3,8 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
-from .targets import BaseTarget, textMD5
-from .utils import env
+from .targets import BaseTarget
+from .utils import env, textMD5
 
 
 class Py_Module(BaseTarget):
@@ -39,6 +39,7 @@ class Py_Module(BaseTarget):
         '''Check existence of Python module and install it using command
         pip install if necessary.'''
         import importlib
+
         import pkg_resources
         spam_spec = importlib.util.find_spec(name)
         reinstall = False
