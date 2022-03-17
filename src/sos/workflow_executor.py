@@ -1646,7 +1646,7 @@ class Base_Executor:
                             f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'
                         ),
                     )
-                    raise exec_error
+                    raise exec_error from e
             else:
                 raise
         # close all processes
@@ -1918,7 +1918,7 @@ class Base_Executor:
                             f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'
                         ),
                     )
-                    raise exec_error
+                    raise exec_error from e
             else:
                 raise
         except Exception as e:
