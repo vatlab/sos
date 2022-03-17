@@ -543,7 +543,7 @@ class BaseTaskExecutor(object):
                     ),
                 ])
 
-            for idx in range(len(params.task_stack)):
+            for _ in range(len(params.task_stack)):
                 res = decode_msg(self.result_pull_socket.recv())
                 try:
                     self._append_subtask_outputs(res)
