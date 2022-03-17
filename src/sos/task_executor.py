@@ -101,9 +101,9 @@ class BaseTaskExecutor(object):
         except KeyboardInterrupt:
             tf.status = "aborted"
             raise
-        except ProcessKilled:
+        except ProcessKilled as e:
             tf.status = "aborted"
-            raise ProcessKilled("task interrupted")
+            raise ProcessKilled("task interrupted") from e
         finally:
             signal.signal(signal.SIGTERM, signal.SIG_DFL)
 
@@ -312,7 +312,7 @@ class BaseTaskExecutor(object):
                     except Exception as e:
                         raise ValueError(
                             f"Failed to collect logfile {logfile} after the completion of task: {e}"
-                        )
+                        ) from e
 
             if quiet or env.config["run_mode"] != "run":
                 env.logger.debug(f"{task_id} ``completed``")

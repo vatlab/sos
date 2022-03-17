@@ -494,10 +494,10 @@ class WorkerManager(object):
                         min(max(os.cpu_count() // 2, 2), 8))
 
             self._num_workers = [0 for x in self._worker_procs]
-        except Exception:
+        except Exception as e:
             raise RuntimeError(
                 f"Incorrect format for option -j ({self._worker_procs}), which should be one or more [host:]nproc"
-            )
+            ) from e
 
         self._local_workers = []
         self._remote_connections = []
@@ -728,7 +728,7 @@ class WorkerManager(object):
                     env.logger.error(
                         f"Failed to start workers on host {worker_host}: {e}")
                     raise RuntimeError(
-                        f"Failed to start workers on host {worker_host}: {e}")
+                        f"Failed to start workers on host {worker_host}: {e}") from e
                 self._num_workers[idx] = self._max_workers[idx]
                 self.report(
                     f"start {max_worker} remote workers on {worker_host}")

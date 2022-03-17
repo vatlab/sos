@@ -235,7 +235,7 @@ class SoS_DockerClient:
         try:
             subprocess.call(f'''docker load -i {image} --quiet''', shell=True)
         except Exception as e:
-            raise RuntimeError(f'Failed to load image {image}: {e}')
+            raise RuntimeError(f'Failed to load image {image}: {e}') from e
 
     def pull(self, image):
         if not self.client:

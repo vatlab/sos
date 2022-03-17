@@ -540,7 +540,7 @@ def cmd_run(args, workflow_args):
         except ImportError as e:
             raise RuntimeError(
                 f"Python packages graphviz, pillow, and imageio are required for the generation of DAG animation in workflow report (options -p with -d): {e}"
-            )
+            ) from e
 
         import shutil
 
@@ -670,7 +670,7 @@ def cmd_run(args, workflow_args):
             except Exception as e:
                 raise ValueError(
                     f"Unsupported exec_mode (option -m). {args.exec_mode} provided: {e}"
-                )
+                ) from e
             # env.logger.debug(f'Process being tapped as slave {config["slave_id"]} at {config["sockets"]["tapping_logging"]} (logger) and {config["sockets"]["tapping_controller"]} (controller)')
             config["exec_mode"] = args.exec_mode[1]
 
@@ -1490,7 +1490,7 @@ def cmd_execute(args, workflow_args):
                         found = True
                     except Exception as e:
                         raise RuntimeError(
-                            f"Failed to load task executor {name}: {e}")
+                            f"Failed to load task executor {name}: {e}") from e
             if not found:
                 raise RuntimeError(
                     f"Failed to identify task executor {args.executor}.")

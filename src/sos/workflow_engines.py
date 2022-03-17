@@ -46,7 +46,7 @@ class WorkflowEngine:
         except Exception as e:
             raise ValueError(
                 f"Failed to generate job file for the execution of workflow: {e}"
-            )
+            ) from e
         try:
             wf_dir = os.path.join(os.path.expanduser("~"), ".sos", "workflows")
             if not os.path.isdir(wf_dir):
@@ -61,7 +61,7 @@ class WorkflowEngine:
         except Exception as e:
             raise RuntimeError(
                 f"Failed to submit workflow {self.command} with script \n{self.job_text}\n: {e}"
-            )
+            ) from e
         return True
 
     def execute_workflow(self, filename, command, **template_args):
@@ -234,7 +234,7 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
         try:
             self.agent.check_call(self.command, under_workdir=True)
         except Exception as e:
-            raise RuntimeError(f"Failed to submit workflow {self.command}: {e}")
+            raise RuntimeError(f"Failed to submit workflow {self.command}: {e}") from e
         return True
 
     def _execute_workflow_with_template(self):
@@ -253,7 +253,7 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
         except Exception as e:
             raise RuntimeError(
                 f"Failed to submit workflow {self.command} with script \n{self.job_text}\n: {e}"
-            )
+            ) from e
         finally:
             try:
                 os.remove(self.job_file)

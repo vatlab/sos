@@ -211,7 +211,7 @@ def SoS_Action(
                 except Exception as e:
                     raise ValueError(
                         f'Unacceptable value ({kwargs["input"]}) for parameter input of actions: {e}'
-                    )
+                    ) from e
 
             # if there are parameters input and output, the action is subject to signature verification
             sig = None
@@ -231,7 +231,7 @@ def SoS_Action(
                 except Exception as e:
                     raise ValueError(
                         f'Parameter tracked of actions can be None, True/False, or one or more filenames: {kwargs["tracked"]} provided: {e}'
-                    )
+                    ) from e
 
                 # append input and output
                 for t in ("input", "output"):
@@ -387,7 +387,7 @@ class SoS_ExecuteScript:
             context["script"] = script
             return interpolate(template, context)
         except Exception as e:
-            raise ValueError(f"Failed to expand template {template}: {e}")
+            raise ValueError(f"Failed to expand template {template}: {e}") from e
 
     def run(self, **kwargs):
         #
@@ -397,7 +397,7 @@ class SoS_ExecuteScript:
             except Exception as e:
                 raise ValueError(
                     f'Unacceptable value ({kwargs["input"]}) for paremter input: {e}'
-                )
+                ) from e
 
             content = ""
             for ifile in ifiles:
@@ -405,7 +405,7 @@ class SoS_ExecuteScript:
                     with open(ifile) as iscript:
                         content += iscript.read()
                 except Exception as e:
-                    raise RuntimeError(f"Failed to read from {ifile}: {e}")
+                    raise RuntimeError(f"Failed to read from {ifile}: {e}") from e
             self.script = content + self.script
 
         if "engine" in kwargs and kwargs["engine"] == "docker":
@@ -1225,14 +1225,14 @@ def collect_input(script, input):
                 with open(input) as ifile:
                     tmp.write(ifile.read() + "\n\n")
             except Exception as e:
-                raise ValueError(f"Failed to read input file {input}: {e}")
+                raise ValueError(f"Failed to read input file {input}: {e}") from e
         elif isinstance(input, Sequence):
             for ifile in input:
                 try:
                     with open(ifile) as itmp:
                         tmp.write(itmp.read().rstrip() + "\n\n")
                 except Exception as e:
-                    raise ValueError(f"Failed to read input file {ifile}: {e}")
+                    raise ValueError(f"Failed to read input file {ifile}: {e}") from e
     return input_file
 
 
@@ -1305,7 +1305,7 @@ def report(script=None, input=None, output=None, **kwargs):
                             writer(itmp.read().rstrip() + "\n\n")
                     except Exception as e:
                         raise ValueError(
-                            f"Failed to read input file {ifile}: {e}")
+                            f"Failed to read input file {ifile}: {e}") from e
             else:
                 raise ValueError("Unknown input file for action report")
     #
