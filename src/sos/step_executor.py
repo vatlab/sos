@@ -857,11 +857,11 @@ class Base_Step_Executor:
                     env.logger.warning(
                         f'``{self.step.step_name(True)}`` {idx_msg} returns an error.{f" Terminating step after completing {waiting} submitted substeps." if waiting else " Terminating now."}'
                     )
-                    for i in range(waiting):
+                    for _ in range(waiting):
                         yield self.result_pull_socket
                         res = decode_msg(self.result_pull_socket.recv())
                         if "exception" in res:
-                            self.exec_error.append(f'index={res[i]}',
+                            self.exec_error.append(f'index={res["index"]}',
                                                    res["exception"])
                     raise self.exec_error
                 else:
