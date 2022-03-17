@@ -153,14 +153,14 @@ def extract_option_from_arg_list(options: str, optname: str,
                         if not x.strip().startswith(optname)
                     ])
                     return value, new_options.strip()
-                except Exception:
+                except Exception as e:
                     raise ValueError(
                         f"A constant value is expected for option {optname}: {options} provided."
-                    )
+                    ) from e
         return default_value, options
-    except SyntaxError:
+    except SyntaxError as e:
         raise ValueError(
-            f"Expect a list of keyword arguments: {options} provided")
+            f"Expect a list of keyword arguments: {options} provided") from e
 
 
 def replace_sigil(text: str, sigil: str) -> str:
@@ -954,10 +954,10 @@ class SoS_Script:
                 from .converter import extract_workflow
 
                 content = extract_workflow(script_file)
-        except Exception:
+        except Exception as e:
             raise RuntimeError(
                 f"Source file for nested workflow {sos_file} with extension .sos or .ipynb does not exist"
-            )
+            ) from e
 
         return content, script_file
 

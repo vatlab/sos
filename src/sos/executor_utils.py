@@ -401,7 +401,7 @@ def reevaluate_output():
     )
     if args is True:
         env.logger.error("Failed to resolve unspecified output")
-        return
+        return None
     # handle dynamic args
     args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
     kwargs = {
@@ -449,6 +449,7 @@ def validate_step_sig(sig):
     else:
         raise RuntimeError(
             f'Unrecognized signature mode {env.config["sig_mode"]}')
+    return None
 
 
 def strip_param_defs(stmt):

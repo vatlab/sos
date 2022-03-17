@@ -303,7 +303,7 @@ def evaluate_shared(vars, option):
             except Exception as e:
                 raise RuntimeError(
                     f"Failed to evaluate shared variable {var} from expression {val}: {e}"
-                )
+                ) from e
     # if there are dictionaries in the sequence, e.g.
     # shared=['A', 'B', {'C':'D"}]
     elif isinstance(option, Sequence):
@@ -324,7 +324,7 @@ def evaluate_shared(vars, option):
                     except Exception as e:
                         raise RuntimeError(
                             f"Failed to evaluate shared variable {var} from expression {val}: {e}"
-                        )
+                        ) from e
             else:
                 raise RuntimeError(
                     f"Unacceptable shared option. Only str or mapping are accepted in sequence: {option}"
@@ -785,13 +785,13 @@ class Base_Step_Executor:
         except (StopInputGroup, TerminateExecution, UnavailableLock):
             raise
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(e.stderr)
+            raise RuntimeError(e.stderr) from e
         except ArgumentError:
             raise
         except ProcessKilled:
             raise
         except KeyboardInterrupt as e:
-            raise RuntimeError(get_traceback_msg(e))
+            raise RuntimeError(get_traceback_msg(e)) from e
         except Exception as e:
             raise RuntimeError(get_traceback_msg(e))
 

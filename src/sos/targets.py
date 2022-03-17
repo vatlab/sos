@@ -136,11 +136,11 @@ class BaseTarget(object):
     def __getattr__(self, name):
         try:
             return self._dict[name]
-        except Exception:
+        except Exception as e:
             # if name in self._dict:
             # return self._dict.get(name)
             raise AttributeError(
-                f"{self.__class__.__name__} object has no attribute {name}")
+                f"{self.__class__.__name__} object has no attribute {name}") from e
 
     def target_exists(self, mode="any"):
         # mode should be 'any', 'target', or 'signature'
@@ -650,7 +650,7 @@ class path(type(Path())):
             return "#" + relative_paths[0][0] + related
         except Exception as e:
             raise ValueError(
-                f"Failed to relate {self} with any of the named paths: {e}")
+                f"Failed to relate {self} with any of the named paths: {e}") from e
 
     def expandname(self, host=None):
         if not self._parts or self._parts[0][:1] != "#":
@@ -675,7 +675,7 @@ class path(type(Path())):
             except KeyError:
                 return self._from_parts([cfg["shared"][self._parts[0][1:]]] +
                                         self._parts[1:])
-        except Exception:
+        except Exception as e:
             # if self._parts[0] == '#cwd':
             #     return self._from_parts(
             #         [self.cwd()] + self._parts[1:]
@@ -688,27 +688,28 @@ class path(type(Path())):
             if "CONFIG" not in env.sos_dict or "hosts" not in env.sos_dict[
                     "CONFIG"]:
                 raise RuntimeError(
-                    "Incomplete sos environment: missing hosts definition.")
+                    "Incomplete sos environment: missing hosts definition.") from e
             if host is not None and host not in env.sos_dict["CONFIG"]["hosts"]:
                 raise RuntimeError(
-                    f"Incomplete sos environment: undefined host {host}")
+                    f"Incomplete sos environment: undefined host {host}") from e
             elif (env.sos_dict.get("__host__", "localhost")
                   not in env.sos_dict["CONFIG"]["hosts"]):
                 raise RuntimeError(
                     f'Incomplete sos environment: undefined host {env.sos_dict.get("__host__", "locahost")}'
-                )
+                ) from e
             if ("paths" not in env.sos_dict["CONFIG"]["hosts"][env.sos_dict.get(
                     "__host__", "localhost")]):
                 raise RuntimeError(
                     f'Incomplete sos environment: paths not defined for host {env.sos_dict.get("__host__", "localhost")}'
-                )
+                ) from e
             name = self._parts[0][1:]
             if (name not in env.sos_dict["CONFIG"]["hosts"]
                 [env.sos_dict.get("__host__", "localhost"
                                  ) if host is None else host]["paths"]):
                 raise ValueError(
                     f'Named path "{name}" not defined for host {env.sos_dict.get("__host__", "localhost") if host is None else host}'
-                )
+                ) from e
+        return None
 
     def fullname(self):
         return os.path.abspath(str(self))
@@ -1460,18 +1461,18 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def __getattr__(self, name):
         try:
             return self._dict[name]
-        except Exception:
+        except Exception as e:
             if len(self._targets) == 1:
                 try:
                     return getattr(self._targets[0], name)
-                except Exception:
+                except Exception as e:
                     raise AttributeError(
                         f"{self.__class__.__name__} object or its first child has no attribute {name}"
-                    )
+                    ) from e
             else:
                 raise AttributeError(
                     f"{self.__class__.__name__} object of length {len(self)} has no attribute {name}"
-                )
+                ) from e
 
     def target_name(self):
         return f"sos_targets([{','.join(x.target_name() for x in self._targets)}],_labels=[{','.join(self._labels)}])"
@@ -1638,8 +1639,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                         grp_size = int(by[10:])
                     else:
                         grp_size = int(by[9:])
-                except Exception:
-                    raise ValueError(f"Invalid pairsource option {by}")
+                except Exception as e:
+                    raise ValueError(f"Invalid pairsource option {by}") from e
             src_sizes = {s: self.labels.count(s) for s in labels}
             if max(src_sizes.values()) % grp_size != 0:
                 raise ValueError(
@@ -1678,8 +1679,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             else:
                 try:
                     grp_size = int(by[5:])
-                except Exception:
-                    raise ValueError(f"Invalid pairs option {by}")
+                except Exception as e:
+                    raise ValueError(f"Invalid pairs option {by}") from e
             if grp_size == 1:
                 self._groups = [
                     _sos_group(x, parent=self) for x in zip(
@@ -1708,8 +1709,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             else:
                 try:
                     grp_size = int(by[8:])
-                except Exception:
-                    raise ValueError(f"Invalid pairs option {by}")
+                except Exception as e:
+                    raise ValueError(f"Invalid pairs option {by}") from e
             if grp_size == 1:
                 f1, f2 = tee(range(len(self)))
                 next(f2, None)
@@ -1734,8 +1735,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             else:
                 try:
                     grp_size = int(by[12:])
-                except Exception:
-                    raise ValueError(f"Invalid pairs option {by}")
+                except Exception as e:
+                    raise ValueError(f"Invalid pairs option {by}") from e
             self._groups = [
                 _sos_group(x, parent=self)
                 for x in combinations(range(len(self)), grp_size)
@@ -1765,10 +1766,10 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 idx = by(self)
                 try:
                     idx = list(idx)
-                except Exception:
+                except Exception as e:
                     raise ValueError(
                         f"Customized grouping method should return a list. {idx} of type {idx.__class__.__name__} is returned."
-                    )
+                    ) from e
                 for grp in by(self):
                     if isinstance(grp, Sequence) and all(
                             isinstance(x, int) for x in grp):
@@ -1782,14 +1783,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                         for x in sos_targets(grp):
                             try:
                                 index.append(self._targets.index(x))
-                            except Exception:
+                            except Exception as e:
                                 raise ValueError(
                                     f"Returned target is not one of the targets. {x}"
-                                )
+                                ) from e
                         self._groups.append(_sos_group(index, parent=self))
             except Exception as e:
                 raise ValueError(
-                    f"Failed to apply customized grouping method: {e}")
+                    f"Failed to apply customized grouping method: {e}") from e
         else:
             raise ValueError(f"Unsupported by option ``{by}``!")
         return self
@@ -1813,9 +1814,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         elif isinstance(paired_with, Iterable):
             try:
                 var_name = ["_" + x for x in paired_with]
-            except Exception:
+            except Exception as e:
                 raise ValueError(
-                    f"Invalud value for option paired_with {paired_with}")
+                    f"Invalid value for option paired_with {paired_with}") from e
             var_value = []
             for vn in var_name:
                 if vn[1:] not in env.sos_dict:
@@ -1848,9 +1849,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         elif isinstance(group_with, Iterable):
             try:
                 var_name = ["_" + x for x in group_with]
-            except Exception:
+            except Exception as e:
                 raise ValueError(
-                    f"Invalud value for option group_with {group_with}")
+                    f"Invalud value for option group_with {group_with}") from e
             var_value = []
             for vn in var_name:
                 if vn[1:] not in env.sos_dict:
@@ -1962,7 +1963,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                             )
                     except Exception as e:
                         raise ValueError(
-                            f"Cannot iterate through variable {name}: {e}")
+                            f"Cannot iterate through variable {name}: {e}") from e
                 if loop_size is None:
                     loop_size = len(values)
                 elif loop_size != len(values):

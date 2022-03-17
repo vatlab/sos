@@ -12,7 +12,6 @@ import time
 import uuid
 from collections import defaultdict
 from collections.abc import Sequence
-from io import StringIO
 from threading import Event
 from typing import Any, Dict, List, Optional, Union
 
@@ -998,7 +997,7 @@ class Base_Executor:
         if total_added:
             if runnable._depends_targets.valid():
                 runnable._depends_targets.extend(targets)
-            for taget in targets:
+            for target in targets:
                 if runnable not in dag._all_depends_files[target]:
                     dag._all_depends_files[target].append(runnable)
             dag.build()
@@ -1162,8 +1161,8 @@ class Base_Executor:
             try:
                 named_targets = [named_output(x) for x in targets]
                 dag = self.initialize_dag(targets=named_targets)
-            except UnknownTarget:
-                raise RuntimeError(f"No step to generate target {targets}")
+            except UnknownTarget as e:
+                raise RuntimeError(f"No step to generate target {targets}") from e
 
         # manager of processes
         manager = ExecutionManager(name=self.workflow.name)
@@ -1632,7 +1631,7 @@ class Base_Executor:
                     break
                 else:
                     time.sleep(0.1)
-        except KeyboardInterrupt:
+        except KeyboardInterrupt as e:
             if exec_error.errors:
                 failed_steps, pending_steps = dag.pending()
                 if pending_steps:
@@ -1646,7 +1645,7 @@ class Base_Executor:
                             f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'
                         ),
                     )
-                    raise exec_error
+                    raise error
             else:
                 raise
         # close all processes
@@ -1904,7 +1903,7 @@ class Base_Executor:
                 #     break
                 else:
                     time.sleep(0.01)
-        except KeyboardInterrupt:
+        except KeyboardInterrupt as e:
             if exec_error.errors:
                 failed_steps, pending_steps = dag.pending()
                 if pending_steps:
@@ -1918,7 +1917,7 @@ class Base_Executor:
                             f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'
                         ),
                     )
-                    raise exec_error
+                    raise e
             else:
                 raise
         except Exception as e:

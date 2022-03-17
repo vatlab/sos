@@ -393,6 +393,7 @@ class RuntimeEnvironments(object):
         # this function is used by tests to reset environments
         # after finishing an test
         self.reset()
+        return None
 
     def request_new(self):
         old_idx = self._sub_idx
@@ -842,7 +843,7 @@ def get_output(cmd, show_command=False, prompt="$ ", **kwargs):
     except subprocess.CalledProcessError as e:
         if e.output.decode():
             env.logger.error(e.output.decode())
-        raise RuntimeError(e)
+        raise RuntimeError(e) from e
     if show_command:
         return f"{prompt}{cmd}\n{output}"
     else:
@@ -874,7 +875,7 @@ def locate_script(filename, start=""):
             return (content, filename)
         except Exception as e:
             env.logger.error(str(e))
-            raise ValueError(f"Failed to open {filename}")
+            raise ValueError(f"Failed to open {filename}") from e
     #
     # a search path
     pathes = [start]
@@ -884,10 +885,10 @@ def locate_script(filename, start=""):
         try:
             with open(sos_config_file) as config:
                 cfg = yaml.safe_load(config)
-        except Exception:
+        except Exception as e:
             raise RuntimeError(
                 f"Failed to parse global sos config file {sos_config_file}, is it in JSON format?"
-            )
+            ) from e
         #
         pathes.extend(cfg.get("sos_path", []))
     #
@@ -1414,7 +1415,7 @@ def load_config_files(filename=None, default_config_files=True):
             except Exception as e:
                 raise RuntimeError(
                     f"Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})"
-                )
+                ) from e
 
         # global site file
         sos_config_file = os.path.join(
@@ -1533,7 +1534,7 @@ def format_HHMMSS(v):
         except Exception as e:
             raise ValueError(
                 f'walltime should be specified as a integer with unit s (default), h, m, d or string in the format of HH:MM:SS. "{v}" specified ({e})'
-            )
+            ) from e
     else:
         raise ValueError(
             f'walltime should be specified as a integer with unit s (default), h, m, d or string in the format of HH:MM:SS. "{v}" of type {v.__class__.__name__} specified'
@@ -1559,7 +1560,7 @@ def expand_time(v, default_unit="s") -> int:
             except Exception as e:
                 raise ValueError(
                     f"Input of option walltime should be an integer with unit s (default), h, m, d or a string in the format of HH:MM:SS. {v} specified: {e}"
-                )
+                ) from e
         #
         try:
             unit = {"s": 1, "m": 60, "h": 3600, "d": 3600 * 24}[v[-1]]
@@ -1569,10 +1570,10 @@ def expand_time(v, default_unit="s") -> int:
         #
         try:
             return int(sign * unit * float(v))
-        except Exception:
+        except Exception as e:
             raise ValueError(
                 f"Unacceptable time for parameter age, expecting [+/-] num [s|m|h|d] or HH:MM:SS (e.g. +5h): {v} provided"
-            )
+            ) from e
     elif isinstance(v, int):
         return v
     else:
@@ -1928,7 +1929,7 @@ def separate_options(options: str) -> List[str]:
             idx += 1
             if idx == len(pieces):
                 break
-        except Exception:
+        except Exception as e:
             # error happens merge the next piece
             if idx < len(pieces) - 1:
                 pieces[idx] += "," + pieces[idx + 1]
@@ -1937,7 +1938,7 @@ def separate_options(options: str) -> List[str]:
             else:
                 # if no next group, expand previously correct one
                 if idx == 0:
-                    raise ValueError("Invalid section option")
+                    raise ValueError("Invalid section option") from e
                 # break myself again
                 pieces = pieces[:idx] + pieces[idx].split(",") + pieces[idx +
                                                                         1:]
@@ -2020,6 +2021,7 @@ def get_nodelist():
         ]
         env.log_to_file("WORKER", f'Using "-j {args}" on a IBM LSF cluster.')
         return args
+    return None
 
 
 def under_cluster():

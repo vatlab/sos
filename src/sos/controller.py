@@ -504,11 +504,13 @@ class Controller(threading.Thread):
 
                 return False
             else:
-                raise RuntimeError(f"Unrecognized request {msg}")
+                raise RuntimeError(f"Unregicognized request {msg}")
             return True
         except Exception as e:
             env.logger.warning(f"Failed to respond controller {msg}: {e}")
             self.master_request_socket.send(encode_msg(None))
+        return None
+    
 
     def handle_worker_backend_msg(self, msg):
         # msg should be a port number from the worker

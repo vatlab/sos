@@ -22,7 +22,7 @@ def interpolate(text, global_dict=None, local_dict=None):
     try:
         return eval(as_fstring(text), global_dict, local_dict)
     except Exception as e:
-        raise ValueError(f"Failed to interpolate {text}: {e}")
+        raise ValueError(f"Failed to interpolate {text}: {e}") from e
 
 
 def cfg_interpolate(text, local_dict={}):
@@ -233,9 +233,9 @@ def accessed_vars(statement: str, mode: str = "exec") -> Set[str]:
                 ast.parse("__NULL__(" + statement + ")", "<string>", "eval"))
             res.remove("__NULL__")
             return res
-    except Exception:
+    except Exception as e:
         raise RuntimeError(
-            f"Failed to parse statement: {statement} in {mode} mode")
+            f"Failed to parse statement: {statement} in {mode} mode") from e
 
 
 def get_used_in_func(node):
@@ -260,7 +260,7 @@ def used_in_func(statement: str,
     try:
         return get_used_in_func(ast.parse(statement, filename, mode))
     except Exception as e:
-        raise RuntimeError(f"Failed to parse statement: {statement} {e}")
+        raise RuntimeError(f"Failed to parse statement: {statement} {e}") from e
 
 
 def SoS_eval(expr: str, extra_dict: dict = {}) -> Any:
@@ -378,7 +378,7 @@ def SoS_exec(script: str,
                     _dict)
             res = None
     except SyntaxError as e:
-        raise SyntaxError(f"Invalid code {script}: {e}")
+        raise SyntaxError(f"Invalid code {script}: {e}") from e
 
     # if check_readonly:
     #    env.sos_dict.check_readonly_vars()
@@ -441,11 +441,11 @@ class on_demand_options(object):
             if key == "skip":
                 raise ValueError(
                     f"Failed to evaluate option {key} with value {self._expressions[key]}: Only constant values are allowed for section option skip"
-                )
+                ) from e
             else:
                 raise ValueError(
                     f"Failed to evaluate option {key} with value {self._expressions[key]}: {e}"
-                )
+                ) from e
 
     def __repr__(self):
         return repr(self._expressions)
@@ -493,7 +493,7 @@ def analyze_global_statements(global_stmt):
     except ArgumentError:
         raise
     except Exception as e:
-        raise RuntimeError(f"Failed to execute global statement: {e}")
+        raise RuntimeError(f"Failed to execute global statement: {e}") from e
     #
     global_vars = {
         k: env.sos_dict[k] for k in (set(env.sos_dict.keys()) - defined_keys)
@@ -502,10 +502,11 @@ def analyze_global_statements(global_stmt):
     # test if global vars can be pickled
     try:
         pickle.dumps(global_vars)
-    except Exception:
+    except Exception as e:
         for key in set(env.sos_dict.keys()) - defined_keys:
             if not pickleable(env.sos_dict[key], key):
                 raise ValueError(
                     f"Variable {key} cannot be defined in global section because it cannot be pickled to workers."
-                )
+                ) from e
     return global_def, global_vars
+    
