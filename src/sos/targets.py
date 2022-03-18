@@ -2007,10 +2007,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         if len(self._targets) == 0:
             raise ValueError(
                 "Cannot treat an empty sos_targets as single target")
-        else:
-            raise ValueError(
-                f"Cannot treat an sos_targets object {self} with more than one targets as a single target"
-            )
+        raise ValueError(
+            f"Cannot treat an sos_targets object {self} with more than one targets as a single target"
+        )
 
     def __repr__(self):
         return (("[" + ", ".join(repr(x) for x in self._targets) +
