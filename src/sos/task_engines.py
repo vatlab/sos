@@ -193,9 +193,8 @@ class TaskEngine(threading.Thread):
                 if self._status_checker.running():
                     time.sleep(0.01)
                     continue
-                else:
-                    status_output = self._status_checker.result()
-                    self._status_checker = None
+                status_output = self._status_checker.result()
+                self._status_checker = None
                 #
                 for line in status_output.splitlines():
                     if not line.strip():
