@@ -147,11 +147,11 @@ def short_repr(obj, noneAsNA=False):
     if isinstance(obj, str) and len(obj) > 80:
         return "{}...{}".format(obj[:60].replace("\n", "\\n"),
                                 obj[-20:].replace("\n", "\\n"))
-    elif isinstance(obj, (str, int, float, bool)):
+    if isinstance(obj, (str, int, float, bool)):
         return repr(obj)
-    elif hasattr(obj, "__short_repr__"):
+    if hasattr(obj, "__short_repr__"):
         return obj.__short_repr__()
-    elif isinstance(obj, Sequence):  # should be a list or tuple
+    if isinstance(obj, Sequence):  # should be a list or tuple
         if len(obj) == 0:
             return "[]"
         elif len(obj) == 1:
