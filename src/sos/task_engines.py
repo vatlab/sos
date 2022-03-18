@@ -190,7 +190,7 @@ class TaskEngine(threading.Thread):
                         verbosity=3,
                         numeric_times=True)
                     continue
-                elif self._status_checker.running():
+                if self._status_checker.running():
                     time.sleep(0.01)
                     continue
                 else:
