@@ -1634,7 +1634,7 @@ class Base_Executor:
                     time.sleep(0.1)
         except KeyboardInterrupt as e:
             if exec_error.errors:
-                pending_steps = dag.pending()
+                pending_steps = dag.pending()[1]
                 if pending_steps:
                     sections = [
                         self.workflow.section_by_id(
@@ -1906,7 +1906,7 @@ class Base_Executor:
                     time.sleep(0.01)
         except KeyboardInterrupt as e:
             if exec_error.errors:
-                pending_steps = dag.pending()
+                pending_steps = dag.pending()[1]
                 if pending_steps:
                     sections = [
                         self.workflow.section_by_id(
@@ -1915,7 +1915,7 @@ class Base_Executor:
                     exec_error.append(
                         self.workflow.name,
                         RuntimeError(
-                            f'{len(sections)} failed step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'
+                            f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'
                         ),
                     )
                     raise exec_error from e
@@ -1931,7 +1931,7 @@ class Base_Executor:
             ("with" if exec_error.errors else "without") + " error",
         )
         if exec_error.errors:
-            pending_steps = dag.pending()
+            pending_steps = dag.pending()[1]
             # if failed_steps:
             # sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in failed_steps]
             # exec_error.append(self.workflow.name,
