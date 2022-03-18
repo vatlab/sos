@@ -410,7 +410,7 @@ class TaskEngine(threading.Thread):
                 # because we do not know if the user asks to rerun (-s force), we have to
                 # resubmit the job. In the case of not-rerun, the task would be marked
                 # completed very soon.
-                elif self.task_status[task_id] == 'completed':
+                if self.task_status[task_id] == 'completed':
                     if task_id in self.running_pending_tasks:
                         self.running_pending_tasks.pop(task_id)
                     if task_id in env.config.get('resumed_tasks', []):
