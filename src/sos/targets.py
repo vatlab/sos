@@ -773,7 +773,7 @@ class file_target(path, BaseTarget):
         try:
             if mode in ("any", "target") and self.exists():
                 return True
-            elif mode == "any" and (self + ".zapped").exists():
+            if mode == "any" and (self + ".zapped").exists():
                 return True
             return False
         except Exception as e:
