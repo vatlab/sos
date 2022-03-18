@@ -144,7 +144,7 @@ def short_repr(obj, noneAsNA=False):
     """Return a short representation of obj for clarity."""
     if obj is None:
         return "unspecified" if noneAsNA else "None"
-    elif isinstance(obj, str) and len(obj) > 80:
+    if isinstance(obj, str) and len(obj) > 80:
         return "{}...{}".format(obj[:60].replace("\n", "\\n"),
                                 obj[-20:].replace("\n", "\\n"))
     elif isinstance(obj, (str, int, float, bool)):
