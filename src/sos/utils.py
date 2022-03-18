@@ -937,8 +937,7 @@ def check_last_piece(text):
         if spos == len(text) - 2:
             # }} as the last
             return True
-        else:
-            pos = spos + 2
+        pos = spos + 2
 
 
 def split_fstring(text):
