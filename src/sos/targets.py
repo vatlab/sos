@@ -799,7 +799,7 @@ class file_target(path, BaseTarget):
             if not self._md5:
                 self._md5 = fileMD5(self)
             return (os.path.getmtime(self), os.path.getsize(self), self._md5)
-        elif (self + ".zapped").is_file():
+        if (self + ".zapped").is_file():
             with open(self + ".zapped") as sig:
                 line = sig.readline()
                 _, mtime, size, md5 = line.strip().rsplit("\t", 3)
