@@ -423,8 +423,7 @@ class TaskEngine(threading.Thread):
                         # self.notify_controller(['new-status', task_id, 'completed'])
                         env.logger.info(f'{task_id} ``resume with completed``')
                         return 'completed'
-                    else:
-                        env.logger.info(f'{task_id} ``re-execute completed``')
+                    env.logger.info(f'{task_id} ``re-execute completed``')
                 elif self.task_status[task_id] != 'new':
                     env.logger.info(
                         f'{task_id} ``restart`` from status ``{self.task_status[task_id]}``'

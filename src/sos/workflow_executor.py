@@ -587,7 +587,6 @@ class Base_Executor:
                         resolved += 1
                         # dag.show_nodes()
                         continue
-                    else:
                         raise RuntimeError(
                             f'Multiple steps {", ".join(x.step_name() for x in mo)} to generate target {target}'
                         )
@@ -628,7 +627,6 @@ class Base_Executor:
             if not env.config["trace_existing"] and not traced:
                 if added_node == 0:
                     break
-                else:
                     continue
 
             existing_targets = (
@@ -1187,7 +1185,7 @@ class Base_Executor:
                     if isinstance(res, list):
                         if res[0] == "tasks":
                             env.log_to_file(
-                                "TASK", f"Master receives task request {res}")
+:                                "TASK", f"Master receives task request {res}")
                             host = res[1]
                             if host == "__default__":
                                 if "default_queue" in env.config:
