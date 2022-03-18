@@ -1996,7 +1996,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def __add__(self, part):
         if len(self._targets) == 1:
             return self._targets[0].__add__(part)
-        elif len(self._targets) == 0:
+        if len(self._targets) == 0:
             raise ValueError(f"Cannot add {part} to empty target list")
         else:
             raise ValueError(
