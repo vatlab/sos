@@ -178,8 +178,7 @@ def short_repr(obj, noneAsNA=False):
     ret = str(obj)
     if len(ret) > 40:
         return f"{repr(obj)[:35]}..."
-    else:
-        return ret
+    return ret
 
 
 #
