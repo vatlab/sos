@@ -1391,15 +1391,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                         ],
                     ).set(**grp._dict))
             return ret
-        else:
-            ret = sos_targets()
-            ret._undetermined = self._undetermined
-            ret._targets = ([self._targets[i]]
-                            if isinstance(i, int) else self._targets[i])
-            ret._labels = [self._labels[i]] if isinstance(
-                i, int) else self._labels[i]
-            ret._groups = []
-            return ret
+        ret = sos_targets()
+        ret._undetermined = self._undetermined
+        ret._targets = ([self._targets[i]]
+                        if isinstance(i, int) else self._targets[i])
+        ret._labels = [self._labels[i]] if isinstance(
+            i, int) else self._labels[i]
+        ret._groups = []
+        return ret
 
     def __getitem__(self, i):
         if isinstance(i, str):
@@ -1558,7 +1557,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def get(self, name, default=None):
         if name in self._dict:
             return self._dict[name]
-        elif len(self._targets) == 1:
+        if len(self._targets) == 1:
             return self._targets[0].get(name, default)
         else:
             return default
