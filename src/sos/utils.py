@@ -1469,8 +1469,7 @@ def load_config_files(filename=None, default_config_files=True):
                     if key not in val:
                         raise ValueError(
                             f"Based on key {key} not found in config")
-                    else:
-                        val = val[key]
+                    val = val[key]
                 #
                 if not isinstance(val, dict):
                     raise ValueError("Based on item must be a dictionary")
