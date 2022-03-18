@@ -493,8 +493,7 @@ class executable(BaseTarget):
                     if ver in output:
                         return True
                 return False
-            else:
-                return True
+            return True
         return False
 
     def target_name(self):
