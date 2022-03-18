@@ -90,8 +90,7 @@ def colorstr(astr: str, color: Optional[str] = None) -> str:
     color_code = 0 if color is None else COLOR_CODE[color]
     if sys.platform == "win32":
         return astr
-    else:
-        return f"\033[{color_code}m{astr}\033[0m"
+    return f"\033[{color_code}m{astr}\033[0m"
 
 
 def emphasize(msg: str, color: Optional[str] = None):
